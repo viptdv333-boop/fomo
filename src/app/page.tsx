@@ -108,9 +108,9 @@ export default function HomePage() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-8">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-16 pb-4">
         {/* Logo with photo-reveal effect */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={isDark ? "/images/logo-dark.png" : "/logo-fomo.png"}
@@ -127,8 +127,8 @@ export default function HomePage() {
         </div>
 
         {/* Welcome text */}
-        <div className={`welcome-text max-w-xl text-center mb-10 ${textVisible ? "visible" : ""}`}>
-          <p className={`text-lg leading-relaxed ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+        <div className={`welcome-text max-w-xl text-center mb-6 ${textVisible ? "visible" : ""}`}>
+          <p className={`text-base leading-relaxed ${isDark ? "text-gray-300" : "text-gray-700"}`}>
             {t.welcome}
           </p>
         </div>
@@ -158,7 +158,7 @@ export default function HomePage() {
         </div>
 
         {/* Continue without registration */}
-        <div className={`continue-link mt-8 ${loginVisible ? "visible" : ""}`}>
+        <div className={`continue-link mt-5 ${loginVisible ? "visible" : ""}`}>
           <a
             href="/feed"
             className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
@@ -172,7 +172,7 @@ export default function HomePage() {
         </div>
 
         {/* Stats with animated counters */}
-        <div className={`stats-container mt-16 grid grid-cols-3 gap-12 ${loginVisible ? "visible" : ""}`}>
+        <div className={`stats-container mt-10 grid grid-cols-3 gap-12 ${loginVisible ? "visible" : ""}`}>
           <div className="stat-item text-center">
             <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{membersCount}</div>
             <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.participants}</div>

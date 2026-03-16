@@ -368,7 +368,7 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+    <div className="flex h-[calc(100vh-180px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
       {/* Sidebar */}
       <div className="w-80 border-r dark:border-gray-700 flex flex-col">
         {/* Tabs */}
