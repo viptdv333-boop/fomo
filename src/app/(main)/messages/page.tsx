@@ -116,6 +116,18 @@ function MessagesPage() {
   const lastMsgIdRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Hide footer and remove padding on messages page to prevent scroll
+  useEffect(() => {
+    const footer = document.querySelector("footer");
+    const main = document.querySelector("main.max-w-7xl") as HTMLElement;
+    if (footer) footer.style.display = "none";
+    if (main) { main.style.paddingTop = "0.5rem"; main.style.paddingBottom = "0"; }
+    return () => {
+      if (footer) footer.style.display = "";
+      if (main) { main.style.paddingTop = ""; main.style.paddingBottom = ""; }
+    };
+  }, []);
+
   useEffect(() => {
     loadConversations();
     loadContacts();
@@ -136,18 +148,21 @@ function MessagesPage() {
   useEffect(() => {
     if (messages.length === 0) return;
     const lastId = messages[messages.length - 1]?.id;
+    const prevId = lastMsgIdRef.current;
     // Only scroll if new messages appeared
-    if (lastId !== lastMsgIdRef.current) {
+    if (lastId !== prevId) {
+      const isFirstLoad = prevId === null;
       lastMsgIdRef.current = lastId;
-      // Auto-scroll only if user is near bottom
       const container = chatContainerRef.current;
-      if (container) {
+      if (isFirstLoad) {
+        // First load: always scroll to bottom instantly
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior }), 50);
+      } else if (container) {
+        // Subsequent: only if near bottom
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
-        if (isNearBottom || !lastMsgIdRef.current) {
+        if (isNearBottom) {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
-      } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
     }
   }, [messages]);
@@ -368,7 +383,7 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-130px)] sm:h-[calc(100vh-180px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+    <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden" style={{ height: "calc(100dvh - 4.5rem)" }}>
       {/* Sidebar — full width on mobile, fixed width on desktop */}
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
         {/* Tabs */}
