@@ -104,12 +104,29 @@ function MessagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Chat background
+  // Chat settings
   const [chatBg, setChatBg] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("fomo-chat-bg") || "default";
     return "default";
   });
-  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [chatNotifications, setChatNotifications] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("fomo-chat-notif") !== "off";
+    return true;
+  });
+  const [chatFontSize, setChatFontSize] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("fomo-chat-font") || "normal";
+    return "normal";
+  });
+
+  // Contact/user context menu (right-click)
+  const [userContextMenu, setUserContextMenu] = useState<{ userId: string; userName: string; x: number; y: number } | null>(null);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try { return JSON.parse(localStorage.getItem("fomo-favorites") || "[]"); } catch { return []; }
+    }
+    return [];
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -244,7 +261,31 @@ function MessagesPage() {
   function selectBg(bgId: string) {
     setChatBg(bgId);
     localStorage.setItem("fomo-chat-bg", bgId);
-    setShowBgPicker(false);
+  }
+
+  function toggleNotifications() {
+    const next = !chatNotifications;
+    setChatNotifications(next);
+    localStorage.setItem("fomo-chat-notif", next ? "on" : "off");
+  }
+
+  function changeFontSize(size: string) {
+    setChatFontSize(size);
+    localStorage.setItem("fomo-chat-font", size);
+  }
+
+  function toggleFavorite(userId: string) {
+    const next = favorites.includes(userId)
+      ? favorites.filter((id) => id !== userId)
+      : [...favorites, userId];
+    setFavorites(next);
+    localStorage.setItem("fomo-favorites", JSON.stringify(next));
+    setUserContextMenu(null);
+  }
+
+  function handleUserContextMenu(e: React.MouseEvent, userId: string, userName: string) {
+    e.preventDefault();
+    setUserContextMenu({ userId, userName, x: e.clientX, y: e.clientY });
   }
 
   async function startConversation(userId: string) {
@@ -431,10 +472,20 @@ function MessagesPage() {
                   Нет диалогов
                 </div>
               ) : (
-                conversations.map((conv) => (
+                [...conversations]
+                  .sort((a, b) => {
+                    const aFav = favorites.includes(a.otherUser?.id || "");
+                    const bFav = favorites.includes(b.otherUser?.id || "");
+                    if (aFav && !bFav) return -1;
+                    if (!aFav && bFav) return 1;
+                    if (aFav && bFav) return (a.otherUser?.displayName || "").localeCompare(b.otherUser?.displayName || "", "ru");
+                    return 0;
+                  })
+                  .map((conv) => (
                   <button
                     key={conv.id}
                     onClick={() => setActiveConvId(conv.id)}
+                    onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName)}
                     className={`w-full text-left px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
                       activeConvId === conv.id ? "bg-blue-50 dark:bg-blue-900/30" : ""
                     }`}
@@ -450,6 +501,7 @@ function MessagesPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex justify-between items-center">
                           <span className={`text-sm font-medium truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
                             {conv.otherUser?.displayName || "Удалённый пользователь"}
                           </span>
                           {conv.lastMessage && (
@@ -490,10 +542,20 @@ function MessagesPage() {
                   Нет контактов
                 </div>
               ) : (
-                contacts.map((c) => (
+                [...contacts]
+                  .sort((a, b) => {
+                    const aFav = favorites.includes(a.user.id);
+                    const bFav = favorites.includes(b.user.id);
+                    if (aFav && !bFav) return -1;
+                    if (!aFav && bFav) return 1;
+                    if (aFav && bFav) return (a.user.displayName || "").localeCompare(b.user.displayName || "", "ru");
+                    return 0;
+                  })
+                  .map((c) => (
                   <div
                     key={c.id}
                     className="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onContextMenu={(e) => handleUserContextMenu(e, c.user.id, c.user.displayName)}
                   >
                     <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden shrink-0">
                       {c.user.avatarUrl ? (
@@ -503,9 +565,10 @@ function MessagesPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <Link href={`/profile/${c.user.id}`} className="text-sm font-medium truncate hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400">
+                      <span className="text-sm font-medium truncate hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400 cursor-pointer" onClick={() => startConversation(c.user.id)}>
+                        {favorites.includes(c.user.id) && <span className="text-amber-400 mr-1">★</span>}
                         {c.nickname || c.user.displayName}
-                      </Link>
+                      </span>
                     </div>
                     <div className="flex gap-1">
                       {c.user.dmEnabled && (
@@ -565,29 +628,69 @@ function MessagesPage() {
                 </button>
               )}
 
-              {/* Background picker */}
+              {/* Settings gear */}
               <div className="ml-auto relative">
                 <button
-                  onClick={() => setShowBgPicker(!showBgPicker)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm px-2 py-1"
-                  title="Фон чата"
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  title="Настройки чата"
                 >
-                  🎨
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
-                {showBgPicker && (
-                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-xl p-3 z-50 min-w-[200px]">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Фон чата</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {CHAT_BACKGROUNDS.map(bg => (
-                        <button
-                          key={bg.id}
-                          onClick={() => selectBg(bg.id)}
-                          className={`h-12 rounded-lg border-2 transition ${
-                            bg.class || "bg-white dark:bg-gray-900"
-                          } ${chatBg === bg.id ? "border-blue-500" : "border-gray-200 dark:border-gray-700"}`}
-                          title={bg.label}
-                        />
-                      ))}
+                {showSettings && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-xl p-4 z-50 w-64" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">Настройки чата</div>
+
+                    {/* Background */}
+                    <div className="mb-4">
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Фон чата</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {CHAT_BACKGROUNDS.map(bg => (
+                          <button
+                            key={bg.id}
+                            onClick={() => selectBg(bg.id)}
+                            className={`h-10 rounded-lg border-2 transition ${
+                              bg.class || "bg-white dark:bg-gray-900"
+                            } ${chatBg === bg.id ? "border-blue-500" : "border-gray-200 dark:border-gray-700"}`}
+                            title={bg.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Notifications */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs text-gray-600 dark:text-gray-300">Уведомления</span>
+                      <button
+                        onClick={toggleNotifications}
+                        className={`w-10 h-5 rounded-full transition-colors ${chatNotifications ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"} relative`}
+                      >
+                        <span className={`block w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${chatNotifications ? "translate-x-5" : "translate-x-0.5"}`} />
+                      </button>
+                    </div>
+
+                    {/* Font size */}
+                    <div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Размер шрифта</div>
+                      <div className="flex gap-1">
+                        {[
+                          { id: "small", label: "А", cls: "text-xs" },
+                          { id: "normal", label: "А", cls: "text-sm" },
+                          { id: "large", label: "А", cls: "text-base" },
+                        ].map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => changeFontSize(s.id)}
+                            className={`flex-1 py-1.5 rounded-lg border transition ${s.cls} font-medium ${
+                              chatFontSize === s.id
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -604,8 +707,8 @@ function MessagesPage() {
             {/* Messages */}
             <div
               ref={chatContainerRef}
-              className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass}`}
-              onClick={() => { setContextMenu(null); setShowBgPicker(false); }}
+              className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass} ${chatFontSize === "small" ? "text-xs" : chatFontSize === "large" ? "text-base" : "text-sm"}`}
+              onClick={() => { setContextMenu(null); setShowSettings(false); setUserContextMenu(null); }}
             >
               {messages.map((msg) => {
                 const isMe = msg.senderId === myId;
@@ -675,9 +778,9 @@ function MessagesPage() {
                         </div>
                       )}
 
-                      {/* Quick reactions on hover */}
+                      {/* Quick reactions on hover — absolute so no layout shift */}
                       {!msg.isDeleted && (
-                        <div className={`hidden group-hover:flex gap-0.5 mt-1 ${isMe ? "justify-end" : ""}`}>
+                        <div className={`flex gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isMe ? "justify-end" : ""}`}>
                           {QUICK_REACTIONS.map((emoji) => (
                             <button
                               key={emoji}
@@ -944,6 +1047,49 @@ function MessagesPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* User context menu (right-click on contact/chat) */}
+      {userContextMenu && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setUserContextMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setUserContextMenu(null); }}
+        >
+          <div
+            className="absolute bg-white dark:bg-gray-800 rounded-xl shadow-lg border dark:border-gray-700 py-1 w-48"
+            style={{ left: userContextMenu.x, top: userContextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500 truncate border-b dark:border-gray-700">
+              {userContextMenu.userName}
+            </div>
+            <button
+              onClick={() => toggleFavorite(userContextMenu.userId)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
+            >
+              {favorites.includes(userContextMenu.userId) ? (
+                <><span className="text-amber-400">★</span> Убрать из избранного</>
+              ) : (
+                <><span className="text-gray-300">☆</span> В избранное</>
+              )}
+            </button>
+            <button
+              onClick={() => { removeContact(userContextMenu.userId); setUserContextMenu(null); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-500 dark:text-red-400 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              Удалить
+            </button>
+            <button
+              onClick={() => { /* TODO: block user */ setUserContextMenu(null); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+              Заблокировать
+            </button>
           </div>
         </div>
       )}

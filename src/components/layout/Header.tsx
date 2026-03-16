@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import Image from "next/image";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
@@ -12,27 +11,36 @@ export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Image
-            src="/images/logo-light.png"
+        {/* Logo — same as landing page */}
+        <Link href="/" className="flex items-center shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-fomo.png"
             alt="FOMO"
-            width={100}
-            height={50}
-            className="block dark:hidden w-[80px] sm:w-[100px] h-auto"
-            priority
+            className="block dark:hidden h-8 sm:h-10 w-auto"
           />
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/images/logo-dark.png"
             alt="FOMO"
-            width={100}
-            height={50}
-            className="hidden dark:block w-[80px] sm:w-[100px] h-auto"
-            priority
+            className="hidden dark:block h-8 sm:h-10 w-auto"
           />
         </Link>
 
@@ -47,11 +55,6 @@ export default function Header() {
           <Link href="/messages" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
             Мессенджер
           </Link>
-          {user?.role === "ADMIN" && (
-            <Link href="/admin" className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium">
-              Админ
-            </Link>
-          )}
         </nav>
 
         {/* Desktop right section */}
@@ -61,15 +64,97 @@ export default function Header() {
           {session && <NotificationBell />}
           {session ? (
             <>
-              <Link href="/ideas/new" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-                + Идея
-              </Link>
-              <Link href="/profile" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
-                {user?.name}
-              </Link>
-              <button onClick={() => signOut({ callbackUrl: "/" })} className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                Выйти
-              </button>
+              {/* Admin link — before profile */}
+              {user?.role === "ADMIN" && (
+                <Link href="/admin" className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium">
+                  Панель управления
+                </Link>
+              )}
+
+              {/* Profile dropdown */}
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs overflow-hidden">
+                    {user?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      user?.name?.[0] || "?"
+                    )}
+                  </div>
+                  <span>Профиль</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border dark:border-gray-700 py-2 z-50">
+                    {/* User info */}
+                    <div className="px-4 py-3 border-b dark:border-gray-700">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
+                          {user?.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={user.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            user?.name?.[0] || "?"
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</div>
+                          {user?.fomoId && <div className="text-xs text-gray-500 dark:text-gray-400">@{user.fomoId}</div>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu items */}
+                    <Link
+                      href="/ideas/new"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                      Создать идею
+                    </Link>
+                    <Link
+                      href="/profile#tariffs"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                      Создать тариф
+                    </Link>
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      Редактировать профиль
+                    </Link>
+                    <Link
+                      href="/profile#finances"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      Финансы
+                    </Link>
+
+                    <div className="border-t dark:border-gray-700 mt-1 pt-1">
+                      <button
+                        onClick={() => { signOut({ callbackUrl: "/" }); setProfileOpen(false); }}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        Выйти
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <Link href="/login" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
@@ -98,6 +183,22 @@ export default function Header() {
       {/* Mobile menu dropdown */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
+          {session && (
+            <div className="flex items-center gap-3 py-2 mb-2 border-b dark:border-gray-800 pb-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
+                {user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.image} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.[0] || "?"
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name}</div>
+                {user?.fomoId && <div className="text-xs text-gray-500 dark:text-gray-400">@{user.fomoId}</div>}
+              </div>
+            </div>
+          )}
           <Link href="/feed" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
             Стакан
           </Link>
@@ -107,30 +208,35 @@ export default function Header() {
           <Link href="/messages" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
             Мессенджер
           </Link>
-          {user?.role === "ADMIN" && (
-            <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">
-              Админ
+          {session && (
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2 space-y-1">
+              <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                + Создать идею
+              </Link>
+              <Link href="/profile#tariffs" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                Создать тариф
+              </Link>
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                Редактировать профиль
+              </Link>
+              <Link href="/profile#finances" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                Финансы
+              </Link>
+              {user?.role === "ADMIN" && (
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">
+                  Панель управления
+                </Link>
+              )}
+              <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">
+                Выйти
+              </button>
+            </div>
+          )}
+          {!session && (
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">
+              Войти
             </Link>
           )}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
-            {session ? (
-              <>
-                <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">
-                  + Новая идея
-                </Link>
-                <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">
-                  {user?.name} — Профиль
-                </Link>
-                <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">
-                  Выйти
-                </button>
-              </>
-            ) : (
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">
-                Войти
-              </Link>
-            )}
-          </div>
         </div>
       )}
     </header>
