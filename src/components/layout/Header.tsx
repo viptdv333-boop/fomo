@@ -14,7 +14,6 @@ export default function Header() {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Close profile dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -25,52 +24,40 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const avatarUrl = user?.image || null;
+  const fomoId = user?.fomoId || null;
+
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
-        {/* Logo — same as landing page */}
+      <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center">
+        {/* Logo — full header height */}
         <Link href="/" className="flex items-center shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-fomo.png"
-            alt="FOMO"
-            className="block dark:hidden h-8 sm:h-10 w-auto"
-          />
+          <img src="/logo-fomo.png" alt="FOMO" className="block dark:hidden h-12 sm:h-14 w-auto" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/logo-dark.png"
-            alt="FOMO"
-            className="hidden dark:block h-8 sm:h-10 w-auto"
-          />
+          <img src="/images/logo-dark.png" alt="FOMO" className="hidden dark:block h-12 sm:h-14 w-auto" />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/feed" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-            Стакан
+        {/* Desktop nav — centered */}
+        <nav className="hidden md:flex items-center gap-8 flex-1 justify-center">
+          <Link href="/feed" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
+            Доска
           </Link>
-          <Link href="/chat" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-            Чат
+          <Link href="/chat" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
+            Болталка
           </Link>
-          <Link href="/messages" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-            Мессенджер
+          <Link href="/messages" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
+            Сообщения
           </Link>
         </nav>
 
         {/* Desktop right section */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3 shrink-0">
           <LanguageSelector />
           <ThemeToggle />
           {session && <NotificationBell />}
           {session ? (
             <>
-              {/* Admin link — before profile */}
-              {user?.role === "ADMIN" && (
-                <Link href="/admin" className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium">
-                  Панель управления
-                </Link>
-              )}
-
               {/* Profile dropdown */}
               <div className="relative" ref={profileRef}>
                 <button
@@ -78,9 +65,9 @@ export default function Header() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs overflow-hidden">
-                    {user?.image ? (
+                    {avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.image} alt="" className="w-full h-full object-cover" />
+                      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
                       user?.name?.[0] || "?"
                     )}
@@ -90,55 +77,39 @@ export default function Header() {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border dark:border-gray-700 py-2 z-50">
+                  <div className="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-lg border dark:border-gray-700 py-2 z-50">
                     {/* User info */}
                     <div className="px-4 py-3 border-b dark:border-gray-700">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
-                          {user?.image ? (
+                        <div className="w-11 h-11 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden shrink-0">
+                          {avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={user.image} alt="" className="w-full h-full object-cover" />
+                            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
                             user?.name?.[0] || "?"
                           )}
                         </div>
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</div>
-                          {user?.fomoId && <div className="text-xs text-gray-500 dark:text-gray-400">@{user.fomoId}</div>}
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{fomoId ? `@${fomoId}` : user?.email}</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Menu items */}
-                    <Link
-                      href="/ideas/new"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
+                    {/* Menu items — each goes to a DIFFERENT page/action */}
+                    <Link href="/ideas/new" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                       Создать идею
                     </Link>
-                    <Link
-                      href="/profile#tariffs"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
+                    <Link href="/subscriptions" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-                      Создать тариф
+                      Тарифы и подписки
                     </Link>
-                    <Link
-                      href="/profile"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
+                    <Link href="/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       Редактировать профиль
                     </Link>
-                    <Link
-                      href="/profile#finances"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
+                    <Link href="/payments" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                       Финансы
                     </Link>
@@ -155,6 +126,13 @@ export default function Header() {
                   </div>
                 )}
               </div>
+
+              {/* Admin — rightmost */}
+              {user?.role === "ADMIN" && (
+                <Link href="/admin" className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium px-2 py-1 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  Панель
+                </Link>
+              )}
             </>
           ) : (
             <Link href="/login" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
@@ -164,13 +142,10 @@ export default function Header() {
         </div>
 
         {/* Mobile right section */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex md:hidden items-center gap-2 ml-auto">
           <ThemeToggle />
           {session && <NotificationBell />}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-          >
+          <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
             {menuOpen ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             ) : (
@@ -180,62 +155,42 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile menu dropdown */}
+      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
           {session && (
             <div className="flex items-center gap-3 py-2 mb-2 border-b dark:border-gray-800 pb-3">
               <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
-                {user?.image ? (
+                {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.image} alt="" className="w-full h-full object-cover" />
+                  <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
                   user?.name?.[0] || "?"
                 )}
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name}</div>
-                {user?.fomoId && <div className="text-xs text-gray-500 dark:text-gray-400">@{user.fomoId}</div>}
+                <div className="text-xs text-gray-500 dark:text-gray-400">{fomoId ? `@${fomoId}` : user?.email}</div>
               </div>
             </div>
           )}
-          <Link href="/feed" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-            Стакан
-          </Link>
-          <Link href="/chat" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-            Чат
-          </Link>
-          <Link href="/messages" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-            Мессенджер
-          </Link>
+          <Link href="/feed" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Доска</Link>
+          <Link href="/chat" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Болталка</Link>
+          <Link href="/messages" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Сообщения</Link>
           {session && (
             <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2 space-y-1">
-              <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-                + Создать идею
-              </Link>
-              <Link href="/profile#tariffs" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-                Создать тариф
-              </Link>
-              <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-                Редактировать профиль
-              </Link>
-              <Link href="/profile#finances" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">
-                Финансы
-              </Link>
+              <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">+ Создать идею</Link>
+              <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Тарифы и подписки</Link>
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Редактировать профиль</Link>
+              <Link href="/payments" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Финансы</Link>
               {user?.role === "ADMIN" && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">
-                  Панель управления
-                </Link>
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">Панель управления</Link>
               )}
-              <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">
-                Выйти
-              </button>
+              <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Выйти</button>
             </div>
           )}
           {!session && (
-            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">
-              Войти
-            </Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">Войти</Link>
           )}
         </div>
       )}

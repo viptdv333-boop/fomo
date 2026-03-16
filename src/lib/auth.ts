@@ -27,9 +27,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
         if (!isValid) return null;
 
-        if (user.status === "PENDING") {
-          throw new Error("PENDING");
-        }
         if (user.status === "BANNED") {
           throw new Error("BANNED");
         }
@@ -38,8 +35,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           email: user.email,
           name: user.displayName,
+          image: user.avatarUrl || null,
           role: user.role,
           status: user.status,
+          fomoId: user.fomoId || null,
         };
       },
     }),
@@ -54,6 +53,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.role = (user as any).role;
         token.status = (user as any).status;
+        token.fomoId = (user as any).fomoId;
+        token.picture = user.image;
       }
       return token;
     },
@@ -62,6 +63,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         (session.user as any).role = token.role;
         (session.user as any).status = token.status;
+        (session.user as any).fomoId = token.fomoId;
+        session.user.image = token.picture as string;
       }
       return session;
     },
