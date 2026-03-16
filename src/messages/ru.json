@@ -1,0 +1,148 @@
+{
+  "common": {
+    "login": "Войти",
+    "register": "Регистрация",
+    "logout": "Выйти",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "back": "Назад",
+    "search": "Поиск",
+    "all": "Все",
+    "confirm": "Подтвердить",
+    "reject": "Отклонить"
+  },
+  "nav": {
+    "feed": "Стакан",
+    "chat": "Чат",
+    "messenger": "Мессенджер",
+    "profile": "Профиль",
+    "admin": "Админ"
+  },
+  "landing": {
+    "tagline": "Find Opportunities. Make Outcomes.",
+    "subtitle": "Платформа для публикации торговых идей",
+    "participants": "Участников",
+    "ideas": "Идей",
+    "instruments": "Инструментов"
+  },
+  "auth": {
+    "loginTitle": "Вход в FOMO",
+    "registerTitle": "Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "displayName": "Отображаемое имя",
+    "noAccount": "Нет аккаунта?",
+    "hasAccount": "Уже есть аккаунт?",
+    "registerLink": "Зарегистрироваться",
+    "loginLink": "Войти",
+    "registerSuccess": "Регистрация успешна! Дождитесь одобрения администратора.",
+    "invalidCredentials": "Неверные данные"
+  },
+  "feed": {
+    "title": "Стакан идей",
+    "newIdea": "Новая идея",
+    "noIdeas": "Идей пока нет",
+    "sortNew": "Новые",
+    "sortPopular": "Популярные",
+    "sortRating": "По рейтингу",
+    "filterAuthor": "Автор",
+    "filterDate": "Дата"
+  },
+  "idea": {
+    "title": "Заголовок",
+    "preview": "Превью",
+    "content": "Полный контент",
+    "instruments": "Инструменты",
+    "attachments": "Вложения",
+    "price": "Цена",
+    "paidIdea": "Платная идея",
+    "buy": "Купить",
+    "upvote": "За",
+    "downvote": "Против",
+    "writeIdea": "Написать идею"
+  },
+  "profile": {
+    "title": "Мой профиль",
+    "firstName": "Имя",
+    "lastName": "Фамилия",
+    "displayName": "Отображаемое имя",
+    "fomoId": "FOMO ID",
+    "birthDate": "Дата рождения",
+    "city": "Город",
+    "workplace": "Место работы",
+    "experience": "Опыт на бирже",
+    "specialization": "Специализация",
+    "bio": "О себе",
+    "subscriptionPrice": "Цена подписки (₽/мес)",
+    "socialLinks": "Соцсети и мессенджеры",
+    "paymentCard": "Номер карты для получения переводов",
+    "dmEnabled": "Разрешить личные сообщения",
+    "education": "Образование",
+    "finance": "Финансы",
+    "follow": "Подписаться",
+    "unfollow": "Отписаться",
+    "followers": "Подписчиков",
+    "ideas": "Идей",
+    "rating": "Рейтинг"
+  },
+  "messenger": {
+    "title": "Мессенджер",
+    "conversations": "Диалоги",
+    "contacts": "Контакты",
+    "typeMessage": "Введите сообщение...",
+    "noConversations": "Нет диалогов",
+    "noContacts": "Нет контактов",
+    "reply": "Ответить",
+    "forward": "Переслать",
+    "copy": "Копировать",
+    "quote": "Цитировать",
+    "delete": "Удалить",
+    "pin": "Закрепить"
+  },
+  "chat": {
+    "general": "Общий чат",
+    "typeMessage": "Введите сообщение...",
+    "noMessages": "Сообщений пока нет"
+  },
+  "finance": {
+    "title": "Финансы",
+    "totalEarnings": "Заработано всего",
+    "thisMonth": "В этом месяце",
+    "activeSubscribers": "Активных подписчиков",
+    "ideaSales": "Продано идей",
+    "myTariffs": "Мои тарифы",
+    "myExpenses": "Мои расходы",
+    "totalSpent": "Потрачено всего",
+    "transactions": "Транзакций",
+    "mySubscriptions": "Мои подписки",
+    "daysLeft": "дн. осталось",
+    "expired": "Истекла",
+    "myPurchases": "Мои покупки",
+    "mySales": "Мои продажи"
+  },
+  "payments": {
+    "title": "Оплаты",
+    "pending": "Ожидает",
+    "confirmed": "Подтверждена",
+    "rejected": "Отклонена",
+    "uploadReceipt": "Загрузить квитанцию",
+    "sendForReview": "Отправить на проверку",
+    "replaceReceipt": "Заменить квитанцию",
+    "subscription": "Подписка"
+  },
+  "instrument": {
+    "onExchange": "На бирже",
+    "ideasFor": "Идеи по",
+    "noIdeas": "Нет идей по этому инструменту"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "markAllRead": "Прочитать все",
+    "noNotifications": "Нет уведомлений"
+  }
+}

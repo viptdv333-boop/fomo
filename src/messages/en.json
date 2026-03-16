@@ -1,0 +1,148 @@
+{
+  "common": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "back": "Back",
+    "search": "Search",
+    "all": "All",
+    "confirm": "Confirm",
+    "reject": "Reject"
+  },
+  "nav": {
+    "feed": "Feed",
+    "chat": "Chat",
+    "messenger": "Messenger",
+    "profile": "Profile",
+    "admin": "Admin"
+  },
+  "landing": {
+    "tagline": "Find Opportunities. Make Outcomes.",
+    "subtitle": "Platform for publishing trading ideas",
+    "participants": "Participants",
+    "ideas": "Ideas",
+    "instruments": "Instruments"
+  },
+  "auth": {
+    "loginTitle": "Login to FOMO",
+    "registerTitle": "Registration",
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Display Name",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "registerLink": "Register",
+    "loginLink": "Login",
+    "registerSuccess": "Registration successful! Wait for admin approval.",
+    "invalidCredentials": "Invalid credentials"
+  },
+  "feed": {
+    "title": "Trading Ideas",
+    "newIdea": "New Idea",
+    "noIdeas": "No ideas yet",
+    "sortNew": "New",
+    "sortPopular": "Popular",
+    "sortRating": "By Rating",
+    "filterAuthor": "Author",
+    "filterDate": "Date"
+  },
+  "idea": {
+    "title": "Title",
+    "preview": "Preview",
+    "content": "Full Content",
+    "instruments": "Instruments",
+    "attachments": "Attachments",
+    "price": "Price",
+    "paidIdea": "Paid Idea",
+    "buy": "Buy",
+    "upvote": "Upvote",
+    "downvote": "Downvote",
+    "writeIdea": "Write Idea"
+  },
+  "profile": {
+    "title": "My Profile",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "displayName": "Display Name",
+    "fomoId": "FOMO ID",
+    "birthDate": "Date of Birth",
+    "city": "City",
+    "workplace": "Workplace",
+    "experience": "Trading Experience",
+    "specialization": "Specialization",
+    "bio": "About",
+    "subscriptionPrice": "Subscription Price (₽/mo)",
+    "socialLinks": "Social Media",
+    "paymentCard": "Payment Card Number",
+    "dmEnabled": "Allow Direct Messages",
+    "education": "Education",
+    "finance": "Finance",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "followers": "Followers",
+    "ideas": "Ideas",
+    "rating": "Rating"
+  },
+  "messenger": {
+    "title": "Messenger",
+    "conversations": "Conversations",
+    "contacts": "Contacts",
+    "typeMessage": "Type a message...",
+    "noConversations": "No conversations",
+    "noContacts": "No contacts",
+    "reply": "Reply",
+    "forward": "Forward",
+    "copy": "Copy",
+    "quote": "Quote",
+    "delete": "Delete",
+    "pin": "Pin"
+  },
+  "chat": {
+    "general": "General Chat",
+    "typeMessage": "Type a message...",
+    "noMessages": "No messages yet"
+  },
+  "finance": {
+    "title": "Finance",
+    "totalEarnings": "Total Earnings",
+    "thisMonth": "This Month",
+    "activeSubscribers": "Active Subscribers",
+    "ideaSales": "Ideas Sold",
+    "myTariffs": "My Tariffs",
+    "myExpenses": "My Expenses",
+    "totalSpent": "Total Spent",
+    "transactions": "Transactions",
+    "mySubscriptions": "My Subscriptions",
+    "daysLeft": "days left",
+    "expired": "Expired",
+    "myPurchases": "My Purchases",
+    "mySales": "My Sales"
+  },
+  "payments": {
+    "title": "Payments",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "rejected": "Rejected",
+    "uploadReceipt": "Upload Receipt",
+    "sendForReview": "Send for Review",
+    "replaceReceipt": "Replace Receipt",
+    "subscription": "Subscription"
+  },
+  "instrument": {
+    "onExchange": "On Exchange",
+    "ideasFor": "Ideas for",
+    "noIdeas": "No ideas for this instrument"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark All Read",
+    "noNotifications": "No notifications"
+  }
+}

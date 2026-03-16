@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
+  <rect width="400" height="200" fill="#111" rx="0"/>
+  <text x="200" y="110" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="120" letter-spacing="-2">
+    <tspan fill="#ef4444">F</tspan><tspan fill="#4ade80">O</tspan><tspan fill="#ef4444">M</tspan><tspan fill="#4ade80">O</tspan>
+  </text>
+  <text x="200" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="16" letter-spacing="6" fill="#f97316">FIND OPPORTUNITIES. MAKE OUTCOMES.</text>
+</svg>

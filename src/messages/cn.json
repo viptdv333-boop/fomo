@@ -1,0 +1,148 @@
+{
+  "common": {
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "back": "返回",
+    "search": "搜索",
+    "all": "全部",
+    "confirm": "确认",
+    "reject": "拒绝"
+  },
+  "nav": {
+    "feed": "行情",
+    "chat": "聊天",
+    "messenger": "消息",
+    "profile": "个人资料",
+    "admin": "管理"
+  },
+  "landing": {
+    "tagline": "Find Opportunities. Make Outcomes.",
+    "subtitle": "交易理念发布平台",
+    "participants": "参与者",
+    "ideas": "理念",
+    "instruments": "工具"
+  },
+  "auth": {
+    "loginTitle": "登录 FOMO",
+    "registerTitle": "注册",
+    "email": "电子邮箱",
+    "password": "密码",
+    "displayName": "显示名称",
+    "noAccount": "没有账号？",
+    "hasAccount": "已有账号？",
+    "registerLink": "注册",
+    "loginLink": "登录",
+    "registerSuccess": "注册成功！请等待管理员审批。",
+    "invalidCredentials": "凭据无效"
+  },
+  "feed": {
+    "title": "交易理念",
+    "newIdea": "新理念",
+    "noIdeas": "暂无理念",
+    "sortNew": "最新",
+    "sortPopular": "热门",
+    "sortRating": "按评分",
+    "filterAuthor": "作者",
+    "filterDate": "日期"
+  },
+  "idea": {
+    "title": "标题",
+    "preview": "预览",
+    "content": "完整内容",
+    "instruments": "工具",
+    "attachments": "附件",
+    "price": "价格",
+    "paidIdea": "付费理念",
+    "buy": "购买",
+    "upvote": "赞成",
+    "downvote": "反对",
+    "writeIdea": "写理念"
+  },
+  "profile": {
+    "title": "我的资料",
+    "firstName": "名",
+    "lastName": "姓",
+    "displayName": "显示名称",
+    "fomoId": "FOMO ID",
+    "birthDate": "出生日期",
+    "city": "城市",
+    "workplace": "工作单位",
+    "experience": "交易经验",
+    "specialization": "专长",
+    "bio": "关于我",
+    "subscriptionPrice": "订阅价格（₽/月）",
+    "socialLinks": "社交媒体",
+    "paymentCard": "收款卡号",
+    "dmEnabled": "允许私信",
+    "education": "教育",
+    "finance": "财务",
+    "follow": "关注",
+    "unfollow": "取消关注",
+    "followers": "关注者",
+    "ideas": "理念",
+    "rating": "评分"
+  },
+  "messenger": {
+    "title": "消息",
+    "conversations": "对话",
+    "contacts": "联系人",
+    "typeMessage": "输入消息...",
+    "noConversations": "暂无对话",
+    "noContacts": "暂无联系人",
+    "reply": "回复",
+    "forward": "转发",
+    "copy": "复制",
+    "quote": "引用",
+    "delete": "删除",
+    "pin": "置顶"
+  },
+  "chat": {
+    "general": "公共聊天",
+    "typeMessage": "输入消息...",
+    "noMessages": "暂无消息"
+  },
+  "finance": {
+    "title": "财务",
+    "totalEarnings": "总收入",
+    "thisMonth": "本月",
+    "activeSubscribers": "活跃订阅者",
+    "ideaSales": "已售理念",
+    "myTariffs": "我的套餐",
+    "myExpenses": "我的支出",
+    "totalSpent": "总支出",
+    "transactions": "交易数",
+    "mySubscriptions": "我的订阅",
+    "daysLeft": "天剩余",
+    "expired": "已过期",
+    "myPurchases": "我的购买",
+    "mySales": "我的销售"
+  },
+  "payments": {
+    "title": "付款",
+    "pending": "待处理",
+    "confirmed": "已确认",
+    "rejected": "已拒绝",
+    "uploadReceipt": "上传凭证",
+    "sendForReview": "提交审核",
+    "replaceReceipt": "替换凭证",
+    "subscription": "订阅"
+  },
+  "instrument": {
+    "onExchange": "在交易所",
+    "ideasFor": "相关理念",
+    "noIdeas": "该工具暂无理念"
+  },
+  "notifications": {
+    "title": "通知",
+    "markAllRead": "全部已读",
+    "noNotifications": "暂无通知"
+  }
+}

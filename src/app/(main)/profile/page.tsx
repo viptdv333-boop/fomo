@@ -1,0 +1,634 @@
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import TariffManager from "@/components/profile/TariffManager";
+import FinanceTab from "@/components/profile/FinanceTab";
+
+const SPECIALIZATION_OPTIONS = [
+  { value: "trader", label: "Трейдер" },
+  { value: "analyst", label: "Аналитик" },
+  { value: "investor", label: "Инвестор" },
+  { value: "scalper", label: "Скальпер" },
+  { value: "algotrader", label: "Алготрейдер" },
+];
+
+interface EducationRecord {
+  id: string;
+  university: string;
+  faculty: string;
+  specialty: string;
+  yearEnd: number | null;
+}
+
+export default function MyProfilePage() {
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const [displayName, setDisplayName] = useState("");
+  const [fomoId, setFomoId] = useState("");
+  const [fomoIdError, setFomoIdError] = useState("");
+  const [bio, setBio] = useState("");
+  const [subscriptionPrice, setSubscriptionPrice] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [city, setCity] = useState("");
+  const [workplace, setWorkplace] = useState("");
+  const [exchangeExperience, setExchangeExperience] = useState("");
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const [education, setEducation] = useState<EducationRecord[]>([]);
+  const [dmEnabled, setDmEnabled] = useState(true);
+  const [paymentCard, setPaymentCard] = useState("");
+  const [socialLinks, setSocialLinks] = useState({
+    telegram: "",
+    vk: "",
+    youtube: "",
+    twitter: "",
+    instagram: "",
+    website: "",
+  });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // Education form
+  const [eduUniversity, setEduUniversity] = useState("");
+  const [eduFaculty, setEduFaculty] = useState("");
+  const [eduSpecialty, setEduSpecialty] = useState("");
+  const [eduYearEnd, setEduYearEnd] = useState("");
+  const [showEduForm, setShowEduForm] = useState(false);
+  const [rating, setRating] = useState(0);
+  const initialTab = searchParams.get("tab") === "finance" ? "finance" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "finance">(initialTab);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch(`/api/users/${session.user.id}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setDisplayName(data.displayName || "");
+          setFomoId(data.fomoId || "");
+          setBio(data.bio || "");
+          setSubscriptionPrice(data.subscriptionPrice ? String(data.subscriptionPrice) : "");
+          setFirstName(data.firstName || "");
+          setLastName(data.lastName || "");
+          setBirthDate(data.birthDate ? data.birthDate.slice(0, 10) : "");
+          setCity(data.city || "");
+          setWorkplace(data.workplace || "");
+          setExchangeExperience(data.exchangeExperience || "");
+          setSpecializations(data.specializations || []);
+          setEducation(data.education || []);
+          setAvatarUrl(data.avatarUrl || null);
+          setDmEnabled(data.dmEnabled ?? true);
+          setPaymentCard(data.paymentCard || "");
+          setRating(Number(data.rating) || 0);
+          if (data.socialLinks) {
+            setSocialLinks({
+              telegram: data.socialLinks.telegram || "",
+              vk: data.socialLinks.vk || "",
+              youtube: data.socialLinks.youtube || "",
+              twitter: data.socialLinks.twitter || "",
+              instagram: data.socialLinks.instagram || "",
+              website: data.socialLinks.website || "",
+            });
+          }
+        });
+    }
+  }, [session]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    const res = await fetch(`/api/users/${session?.user?.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName,
+        ...(fomoId && { fomoId }),
+        bio,
+        subscriptionPrice: subscriptionPrice ? Number(subscriptionPrice) : null,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        birthDate: birthDate || null,
+        city: city || null,
+        workplace: workplace || null,
+        exchangeExperience: exchangeExperience || null,
+        specializations,
+        dmEnabled,
+        paymentCard: paymentCard || null,
+        socialLinks: Object.values(socialLinks).some(Boolean) ? socialLinks : null,
+      }),
+    });
+
+    setLoading(false);
+    if (res.ok) {
+      setMessage("Профиль обновлён");
+    } else {
+      setMessage("Ошибка сохранения");
+    }
+  }
+
+  function toggleSpecialization(value: string) {
+    setSpecializations((prev) =>
+      prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value]
+    );
+  }
+
+  async function addEducation(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch(`/api/users/${session?.user?.id}/education`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        university: eduUniversity,
+        faculty: eduFaculty || undefined,
+        specialty: eduSpecialty || undefined,
+        yearEnd: eduYearEnd ? Number(eduYearEnd) : undefined,
+      }),
+    });
+    if (res.ok) {
+      const record = await res.json();
+      setEducation((prev) => [record, ...prev]);
+      setEduUniversity("");
+      setEduFaculty("");
+      setEduSpecialty("");
+      setEduYearEnd("");
+      setShowEduForm(false);
+    }
+  }
+
+  async function deleteEducation(educationId: string) {
+    const res = await fetch(
+      `/api/users/${session?.user?.id}/education?educationId=${educationId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      setEducation((prev) => prev.filter((e) => e.id !== educationId));
+    }
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("type", "avatars");
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const { url } = await res.json();
+      setAvatarUrl(url);
+      // Save avatar immediately
+      await fetch(`/api/users/${session?.user?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: url }),
+      });
+    }
+    setAvatarUploading(false);
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">Мой профиль</h1>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <button
+          onClick={() => setActiveTab("profile")}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
+            activeTab === "profile"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Профиль
+        </button>
+        <button
+          onClick={() => setActiveTab("finance")}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
+            activeTab === "finance"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Финансы
+        </button>
+      </div>
+
+      {activeTab === "finance" && session?.user?.id && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+            <FinanceTab userId={session.user.id} />
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+            <TariffManager userId={session.user.id} rating={rating} />
+          </div>
+        </div>
+      )}
+
+      {activeTab === "profile" && (
+      <>
+      {/* Avatar */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-6 flex items-center gap-4">
+        <div
+          className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
+          onClick={() => avatarInputRef.current?.click()}
+        >
+          {avatarUploading ? (
+            <span className="text-sm text-gray-400">...</span>
+          ) : avatarUrl ? (
+            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            displayName?.[0] || "?"
+          )}
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            {avatarUrl ? "Изменить фото" : "Загрузить фото"}
+          </button>
+          <p className="text-xs text-gray-500 mt-1">JPG, PNG или WebP, до 2 МБ</p>
+        </div>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleAvatarUpload}
+          className="hidden"
+        />
+      </div>
+
+      <form onSubmit={handleSave} className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Имя</label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              placeholder="Алексей"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Фамилия</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              placeholder="Иванов"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Отображаемое имя</label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">FOMO ID</label>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 dark:text-gray-500 text-lg font-mono">#</span>
+            <input
+              type="text"
+              value={fomoId}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^a-zA-Z0-9_!?$%]/g, "").slice(0, 13);
+                setFomoId(val);
+                setFomoIdError("");
+              }}
+              className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100 font-mono"
+              placeholder="fomo_user1234567"
+              maxLength={13}
+            />
+          </div>
+          {fomoIdError && <p className="text-xs text-red-500 mt-1">{fomoIdError}</p>}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Латинские буквы, цифры и символы _ ! ? $ % — до 13 символов
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Дата рождения</label>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Город</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              placeholder="Москва"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Место работы</label>
+          <input
+            type="text"
+            value={workplace}
+            onChange={(e) => setWorkplace(e.target.value)}
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="Компания или 'Частный трейдер'"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Опыт на бирже</label>
+          <input
+            type="text"
+            value={exchangeExperience}
+            onChange={(e) => setExchangeExperience(e.target.value)}
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="3 года, 10+ лет"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Специализация</label>
+          <div className="flex flex-wrap gap-2">
+            {SPECIALIZATION_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition ${
+                  specializations.includes(opt.value)
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={specializations.includes(opt.value)}
+                  onChange={() => toggleSpecialization(opt.value)}
+                  className="sr-only"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">О себе</label>
+          <textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={3}
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="Расскажите о себе и своём опыте..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Цена подписки (₽/мес)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={subscriptionPrice}
+            onChange={(e) => setSubscriptionPrice(e.target.value)}
+            className="w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="Оставьте пустым для бесплатного доступа"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Подписчики получат доступ ко всем вашим платным идеям
+          </p>
+        </div>
+
+        {/* Social links */}
+        <div className="border-t dark:border-gray-700 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Соцсети и мессенджеры</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telegram</label>
+              <input
+                type="text"
+                value={socialLinks.telegram}
+                onChange={(e) => setSocialLinks({ ...socialLinks, telegram: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="@username или ссылка"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">VK</label>
+              <input
+                type="text"
+                value={socialLinks.vk}
+                onChange={(e) => setSocialLinks({ ...socialLinks, vk: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="https://vk.com/..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">YouTube</label>
+              <input
+                type="text"
+                value={socialLinks.youtube}
+                onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="https://youtube.com/..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Twitter / X</label>
+              <input
+                type="text"
+                value={socialLinks.twitter}
+                onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="@username или ссылка"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Instagram</label>
+              <input
+                type="text"
+                value={socialLinks.instagram}
+                onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="@username или ссылка"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Сайт</label>
+              <input
+                type="text"
+                value={socialLinks.website}
+                onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="https://..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Payment card */}
+        <div className="border-t dark:border-gray-700 pt-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Номер карты для получения переводов
+          </label>
+          <input
+            type="text"
+            value={paymentCard}
+            onChange={(e) => setPaymentCard(e.target.value)}
+            className="w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="0000 0000 0000 0000"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Покупатели увидят этот номер для перевода оплаты за идеи
+          </p>
+        </div>
+
+        {/* DM toggle */}
+        <div className="border-t dark:border-gray-700 pt-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={dmEnabled}
+              onChange={(e) => setDmEnabled(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Разрешить личные сообщения</span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Другие пользователи смогут писать вам в мессенджер</p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-4 pt-2">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? "Сохранение..." : "Сохранить"}
+          </button>
+          {message && (
+            <span className={message.includes("Ошибка") ? "text-red-600" : "text-green-600"}>
+              {message}
+            </span>
+          )}
+        </div>
+      </form>
+
+      {/* Education section */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Образование</h2>
+          <button
+            onClick={() => setShowEduForm(!showEduForm)}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            {showEduForm ? "Отмена" : "+ Добавить"}
+          </button>
+        </div>
+
+        {showEduForm && (
+          <form onSubmit={addEducation} className="border dark:border-gray-700 rounded-lg p-4 mb-4 bg-gray-50 dark:bg-gray-800 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ВУЗ *</label>
+              <input
+                type="text"
+                value={eduUniversity}
+                onChange={(e) => setEduUniversity(e.target.value)}
+                required
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                placeholder="МГУ им. Ломоносова"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Факультет</label>
+                <input
+                  type="text"
+                  value={eduFaculty}
+                  onChange={(e) => setEduFaculty(e.target.value)}
+                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Специальность</label>
+                <input
+                  type="text"
+                  value={eduSpecialty}
+                  onChange={(e) => setEduSpecialty(e.target.value)}
+                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </div>
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="w-32">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Год окончания</label>
+                <input
+                  type="number"
+                  value={eduYearEnd}
+                  onChange={(e) => setEduYearEnd(e.target.value)}
+                  min="1950"
+                  max="2050"
+                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              >
+                Добавить
+              </button>
+            </div>
+          </form>
+        )}
+
+        {education.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Нет записей об образовании</p>
+        ) : (
+          <div className="space-y-3">
+            {education.map((edu) => (
+              <div key={edu.id} className="flex items-start justify-between border dark:border-gray-700 rounded-lg p-3">
+                <div>
+                  <div className="font-medium text-sm">{edu.university}</div>
+                  {edu.faculty && <div className="text-sm text-gray-600 dark:text-gray-400">{edu.faculty}</div>}
+                  {edu.specialty && <div className="text-sm text-gray-500 dark:text-gray-400">{edu.specialty}</div>}
+                  {edu.yearEnd && <div className="text-xs text-gray-400 mt-1">Выпуск {edu.yearEnd}</div>}
+                </div>
+                <button
+                  onClick={() => deleteEducation(edu.id)}
+                  className="text-red-500 hover:text-red-700 text-xs"
+                >
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      </>
+      )}
+    </div>
+  );
+}

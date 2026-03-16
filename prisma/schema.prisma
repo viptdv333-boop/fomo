@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  BANNED
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  displayName        String
+  fomoId             String?   @unique
+  bio                String?
+  avatarUrl          String?
+  role               UserRole  @default(USER)
+  status             UserStatus @default(PENDING)
+  rating             Decimal   @default(1.0) @db.Decimal(4, 2)
+  subscriptionPrice  Decimal?  @db.Decimal(10, 2)
+  lastPublishedAt    DateTime?
+  firstName          String?
+  lastName           String?
+  birthDate          DateTime?
+  city               String?
+  workplace          String?
+  exchangeExperience String?
+  specializations    String[]  @default([])
+  dmEnabled          Boolean   @default(true)
+  paymentCard        String?
+  socialLinks        Json?
+  locale             String    @default("ru")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  ideas                  Idea[]
+  chatMessages           ChatMessage[]
+  purchases              Purchase[]
+  votes                  IdeaVote[]
+  subscriptionsGiven     Subscription[] @relation("Subscriber")
+  subscriptionsReceived  Subscription[] @relation("Author")
+  followersReceived      Follow[]       @relation("FollowedAuthor")
+  followingGiven         Follow[]       @relation("Follower")
+  education              Education[]
+  directConversations    DirectConversationParticipant[]
+  directMessagesSent     DirectMessage[] @relation("DirectMessagesSent")
+  contactsOwned          Contact[]       @relation("ContactOwner")
+  contactsOf             Contact[]       @relation("ContactOf")
+  paymentRequestsSent    PaymentRequest[] @relation("PaymentRequestBuyer")
+  paymentRequestsReceived PaymentRequest[] @relation("PaymentRequestSeller")
+  notifications          Notification[]
+  tariffs                SubscriptionTariff[]
+
+  @@index([status])
+}
+
+model Education {
+  id         String @id @default(cuid())
+  userId     String
+  university String
+  faculty    String?
+  specialty  String?
+  yearEnd    Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model InstrumentCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  instruments Instrument[]
+}
+
+model Instrument {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  slug              String   @unique
+  categoryId        String?
+  ticker            String?
+  exchange          String?
+  exchangeUrl       String?
+  tradingViewSymbol String?
+  description       String?
+  createdAt         DateTime @default(now())
+
+  category InstrumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  ideas    IdeaInstrument[]
+  chatRoom ChatRoom?
+
+  @@index([categoryId])
+}
+
+model Idea {
+  id        String   @id @default(cuid())
+  authorId  String
+  title     String
+  preview   String
+  content   String
+  isPaid    Boolean  @default(false)
+  price     Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments Json?
+
+  author          User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  instruments     IdeaInstrument[]
+  purchases       Purchase[]
+  votes           IdeaVote[]
+  paymentRequests PaymentRequest[]
+
+  @@index([createdAt])
+  @@index([authorId])
+}
+
+model IdeaInstrument {
+  ideaId       String
+  instrumentId String
+
+  idea       Idea       @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  instrument Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@id([ideaId, instrumentId])
+}
+
+model IdeaVote {
+  id     String @id @default(cuid())
+  userId String
+  ideaId String
+  value  Int    // +1 or -1
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ideaId])
+  @@index([ideaId])
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  authorId   String
+  createdAt  DateTime @default(now())
+
+  follower User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  author   User @relation("FollowedAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, authorId])
+  @@index([authorId])
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  ideaId    String
+  amount    Decimal  @db.Decimal(10, 2)
+  status    String   @default("completed")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ideaId])
+}
+
+model Subscription {
+  id           String   @id @default(cuid())
+  subscriberId String
+  authorId     String
+  monthlyPrice Decimal  @db.Decimal(10, 2)
+  status       String   @default("active")
+  startDate    DateTime @default(now())
+  endDate      DateTime
+  createdAt    DateTime @default(now())
+  tariffId     String?
+  durationDays Int?
+
+  subscriber User                @relation("Subscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  author     User                @relation("Author", fields: [authorId], references: [id], onDelete: Cascade)
+  tariff     SubscriptionTariff? @relation(fields: [tariffId], references: [id], onDelete: SetNull)
+
+  @@unique([subscriberId, authorId])
+}
+
+model ChatRoom {
+  id           String  @id @default(cuid())
+  name         String
+  instrumentId String? @unique
+  isGeneral    Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  instrument Instrument?  @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  messages   ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  text      String
+  replyToId String?
+  isPinned  Boolean  @default(false)
+  isDeleted Boolean  @default(false)
+  reactions Json?
+  createdAt DateTime @default(now())
+
+  room    ChatRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo ChatMessage? @relation("ChatMessageReply", fields: [replyToId], references: [id])
+  replies ChatMessage[] @relation("ChatMessageReply")
+
+  @@index([roomId, createdAt])
+}
+
+model RatingConfig {
+  id                    String  @id @default("singleton")
+  subscriberWeight      Decimal @default(0.3) @db.Decimal(5, 3)
+  likeWeight            Decimal @default(0.1) @db.Decimal(5, 3)
+  dislikeWeight         Decimal @default(0.15) @db.Decimal(5, 3)
+  inactivityPenalty     Decimal @default(0.05) @db.Decimal(5, 3)
+  inactivityThresholdDays Int   @default(7)
+  paidTiers             Json    @default("[{\"min\":0,\"max\":3,\"maxPaid\":0},{\"min\":3,\"max\":5,\"maxPaid\":3},{\"min\":5,\"max\":7,\"maxPaid\":10},{\"min\":7,\"max\":10,\"maxPaid\":-1}]")
+}
+
+model DirectConversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants DirectConversationParticipant[]
+  messages     DirectMessage[]
+}
+
+model DirectConversationParticipant {
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model DirectMessage {
+  id              String   @id @default(cuid())
+  conversationId  String
+  senderId        String
+  text            String
+  replyToId       String?
+  forwardedFromId String?
+  isPinned        Boolean  @default(false)
+  isDeleted       Boolean  @default(false)
+  reactions       Json?
+  createdAt       DateTime @default(now())
+
+  conversation  DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender        User               @relation("DirectMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo       DirectMessage?     @relation("DMReply", fields: [replyToId], references: [id])
+  replies       DirectMessage[]    @relation("DMReply")
+  forwardedFrom DirectMessage?     @relation("DMForward", fields: [forwardedFromId], references: [id])
+  forwards      DirectMessage[]    @relation("DMForward")
+
+  @@index([conversationId, createdAt])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  contactId String
+  nickname  String?
+  createdAt DateTime @default(now())
+
+  user    User @relation("ContactOwner", fields: [userId], references: [id], onDelete: Cascade)
+  contact User @relation("ContactOf", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contactId])
+  @@index([userId])
+}
+
+enum PaymentRequestStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+model PaymentRequest {
+  id               String               @id @default(cuid())
+  buyerId          String
+  sellerId         String
+  ideaId           String?
+  subscriptionType String?
+  tariffId         String?
+  amount           Decimal              @db.Decimal(10, 2)
+  receiptUrl       String?
+  status           PaymentRequestStatus @default(PENDING)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  buyer  User  @relation("PaymentRequestBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller User  @relation("PaymentRequestSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  idea   Idea? @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model SubscriptionTariff {
+  id           String   @id @default(cuid())
+  authorId     String
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  durationDays Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([authorId])
+}
+
+model Language {
+  code      String  @id
+  name      String
+  enabled   Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model Translation {
+  id     String @id @default(cuid())
+  locale String
+  key    String
+  value  String
+
+  @@unique([locale, key])
+  @@index([locale])
+}
