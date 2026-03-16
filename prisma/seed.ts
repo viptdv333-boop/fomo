@@ -542,6 +542,46 @@ async function main() {
     console.log("DM conversation 3 created (analyst <-> ivan)");
   }
 
+  // Conversation 4: admin <-> trader1
+  const existingConv4 = await prisma.directConversation.findFirst({
+    where: {
+      AND: [
+        { participants: { some: { userId: admin.id } } },
+        { participants: { some: { userId: trader1.id } } },
+      ],
+    },
+  });
+  if (!existingConv4) {
+    const conv4 = await prisma.directConversation.create({
+      data: {
+        participants: {
+          create: [{ userId: admin.id }, { userId: trader1.id }],
+        },
+      },
+    });
+    const dm4 = [
+      { senderId: admin.id, text: "Алексей, привет! Видел твои идеи по крипто. Отличная работа!" },
+      { senderId: trader1.id, text: "Спасибо! Стараюсь давать качественный контент для платформы." },
+      { senderId: admin.id, text: "Хотим сделать тебя топ-автором. Что думаешь?" },
+      { senderId: trader1.id, text: "С удовольствием! Какие условия?" },
+      { senderId: admin.id, text: "Верифицированный бейдж, приоритет в ленте, сниженная комиссия 10% вместо 20%." },
+      { senderId: trader1.id, text: "Звучит отлично! Когда запускаем?" },
+      { senderId: admin.id, text: "На следующей неделе обновим платформу. Подготовь пару эксклюзивных идей к запуску." },
+      { senderId: trader1.id, text: "Договорились! Уже есть пара интересных сетапов по ETH и SOL." },
+    ];
+    for (let i = 0; i < dm4.length; i++) {
+      await prisma.directMessage.create({
+        data: {
+          conversationId: conv4.id,
+          senderId: dm4[i].senderId,
+          text: dm4[i].text,
+          createdAt: new Date(Date.now() - (dm4.length - i) * 60000 * 8),
+        },
+      });
+    }
+    console.log("DM conversation 4 created (admin <-> trader1)");
+  }
+
   // ─── Follows ────────────────────────────────────────────────────────
   const followPairs = [
     [ivan.id, trader1.id],
