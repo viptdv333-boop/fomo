@@ -16,7 +16,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Image
-            src="/images/logo-light.svg"
+            src="/images/logo-light.png"
             alt="FOMO"
             width={120}
             height={60}
@@ -24,7 +24,7 @@ export default function Header() {
             priority
           />
           <Image
-            src="/images/logo-dark.svg"
+            src="/images/logo-dark.png"
             alt="FOMO"
             width={120}
             height={60}
