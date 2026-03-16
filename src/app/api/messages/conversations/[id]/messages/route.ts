@@ -40,6 +40,9 @@ export async function GET(
     select: {
       id: true,
       text: true,
+      fileUrl: true,
+      fileName: true,
+      fileType: true,
       createdAt: true,
       senderId: true,
       replyToId: true,
@@ -101,21 +104,25 @@ export async function POST(
     return NextResponse.json({ error: "Not a participant" }, { status: 403 });
   }
 
-  const { text, replyToId } = await request.json();
-  if (!text || typeof text !== "string" || text.trim().length === 0) {
-    return NextResponse.json({ error: "Text required" }, { status: 400 });
+  const { text, replyToId, fileUrl, fileName, fileType } = await request.json();
+  if ((!text || typeof text !== "string" || text.trim().length === 0) && !fileUrl) {
+    return NextResponse.json({ error: "Text or file required" }, { status: 400 });
   }
 
   const message = await prisma.directMessage.create({
     data: {
       conversationId,
       senderId: userId,
-      text: text.trim(),
+      text: text?.trim() || "",
       ...(replyToId ? { replyToId } : {}),
+      ...(fileUrl ? { fileUrl, fileName, fileType } : {}),
     },
     select: {
       id: true,
       text: true,
+      fileUrl: true,
+      fileName: true,
+      fileType: true,
       createdAt: true,
       senderId: true,
       replyToId: true,

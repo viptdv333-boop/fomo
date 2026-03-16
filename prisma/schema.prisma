@@ -266,6 +266,9 @@ model DirectMessage {
   conversationId  String
   senderId        String
   text            String
+  fileUrl         String?
+  fileName        String?
+  fileType        String?
   replyToId       String?
   forwardedFromId String?
   isPinned        Boolean  @default(false)

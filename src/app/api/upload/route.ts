@@ -16,14 +16,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "file and type required" }, { status: 400 });
   }
 
-  if (!["avatars", "ideas", "receipts"].includes(type)) {
+  if (!["avatars", "ideas", "receipts", "messages"].includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
 
   try {
     const result = await saveUploadedFile(
       file,
-      type as "avatars" | "ideas" | "receipts",
+      type as "avatars" | "ideas" | "receipts" | "messages",
       session.user.id!
     );
     return NextResponse.json(result);

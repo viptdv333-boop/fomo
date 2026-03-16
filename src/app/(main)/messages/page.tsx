@@ -30,6 +30,9 @@ interface Conversation {
 interface Message {
   id: string;
   text: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileType: string | null;
   createdAt: string;
   senderId: string;
   replyToId: string | null;
@@ -45,6 +48,22 @@ interface Contact {
   nickname: string | null;
   user: { id: string; displayName: string; avatarUrl: string | null; dmEnabled: boolean };
 }
+
+const CHAT_BACKGROUNDS = [
+  { id: "default", label: "Стандартный", class: "" },
+  { id: "blue", label: "Голубой", class: "bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20" },
+  { id: "purple", label: "Фиолетовый", class: "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20" },
+  { id: "green", label: "Зелёный", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
+  { id: "dark", label: "Тёмный", class: "bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-950" },
+  { id: "warm", label: "Тёплый", class: "bg-gradient-to-b from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20" },
+];
+
+const EMOJI_CATEGORIES = [
+  { name: "Часто", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
+  { name: "Лица", emojis: ["😀", "😃", "😄", "😁", "😅", "😆", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "😮‍💨", "🤥"] },
+  { name: "Жесты", emojis: ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏"] },
+  { name: "Символы", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
+];
 
 export default function MessagesPageWrapper() {
   return (
@@ -67,19 +86,31 @@ function MessagesPage() {
   const [newText, setNewText] = useState("");
   const [sending, setSending] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [showContacts, setShowContacts] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ id: string; displayName: string; avatarUrl: string | null }[]>([]);
   const [tab, setTab] = useState<"chats" | "contacts">("chats");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    msg: Message;
-    x: number;
-    y: number;
-  } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
   const [dmUsers, setDmUsers] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
+  const [contactFilter, setContactFilter] = useState("");
+
+  // Emoji picker
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
+
+  // File upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  // Chat background
+  const [chatBg, setChatBg] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("fomo-chat-bg") || "default";
+    return "default";
+  });
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -91,7 +122,6 @@ function MessagesPage() {
   useEffect(() => {
     if (activeConvId) {
       loadMessages(activeConvId);
-      // Poll for new messages every 3s
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(() => loadMessages(activeConvId), 3000);
     }
@@ -134,10 +164,54 @@ function MessagesPage() {
     if (res.ok) {
       setNewText("");
       setReplyTo(null);
+      setShowEmoji(false);
       await loadMessages(activeConvId);
       await loadConversations();
     }
     setSending(false);
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activeConvId) return;
+    if (file.size > 15 * 1024 * 1024) {
+      alert("Файл слишком большой. Максимум 15 МБ.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "messages");
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+      const { url, fileType } = await uploadRes.json();
+
+      const res = await fetch(`/api/messages/conversations/${activeConvId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "",
+          fileUrl: url,
+          fileName: file.name,
+          fileType: fileType || "document",
+        }),
+      });
+      if (res.ok) {
+        await loadMessages(activeConvId);
+        await loadConversations();
+      }
+    } catch {
+      alert("Ошибка загрузки файла");
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function selectBg(bgId: string) {
+    setChatBg(bgId);
+    localStorage.setItem("fomo-chat-bg", bgId);
+    setShowBgPicker(false);
   }
 
   async function startConversation(userId: string) {
@@ -236,8 +310,44 @@ function MessagesPage() {
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
   const myId = session?.user?.id;
+  const bgClass = CHAT_BACKGROUNDS.find(b => b.id === chatBg)?.class || "";
 
   const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎"];
+
+  const filteredDmUsers = contactFilter
+    ? dmUsers.filter(u =>
+        u.displayName.toLowerCase().includes(contactFilter.toLowerCase()) ||
+        (u.fomoId && u.fomoId.toLowerCase().includes(contactFilter.toLowerCase()))
+      )
+    : dmUsers;
+
+  function renderFileAttachment(msg: Message) {
+    if (!msg.fileUrl) return null;
+    if (msg.fileType === "image") {
+      return (
+        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
+          <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-[240px] max-h-[200px] rounded-lg object-cover" />
+        </a>
+      );
+    }
+    if (msg.fileType === "video") {
+      return (
+        <video src={msg.fileUrl} controls className="max-w-[280px] max-h-[200px] rounded-lg mt-1" />
+      );
+    }
+    // Document
+    return (
+      <a
+        href={msg.fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 mt-1 px-3 py-2 bg-white/20 dark:bg-black/20 rounded-lg hover:bg-white/30 dark:hover:bg-black/30 transition"
+      >
+        <span className="text-lg">📎</span>
+        <span className="text-xs truncate max-w-[180px]">{msg.fileName || "Файл"}</span>
+      </a>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-80px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
@@ -267,15 +377,17 @@ function MessagesPage() {
           </button>
         </div>
 
-        {/* New Chat Button */}
-        <div className="px-3 py-2 border-b dark:border-gray-700">
-          <button
-            onClick={() => setShowNewChat(true)}
-            className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
-          >
-            + Начать новый чат
-          </button>
-        </div>
+        {/* New Chat Button — only in Chats tab */}
+        {tab === "chats" && (
+          <div className="px-3 py-2 border-b dark:border-gray-700">
+            <button
+              onClick={() => setShowNewChat(true)}
+              className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            >
+              + Начать новый чат
+            </button>
+          </div>
+        )}
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
@@ -316,7 +428,7 @@ function MessagesPage() {
                         {conv.lastMessage && (
                           <p className={`text-xs truncate ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
                             {conv.lastMessage.senderId === myId ? "Вы: " : ""}
-                            {conv.lastMessage.text}
+                            {conv.lastMessage.text || "📎 Файл"}
                           </p>
                         )}
                       </div>
@@ -334,7 +446,7 @@ function MessagesPage() {
             <>
               <div className="px-3 py-2 border-b dark:border-gray-700">
                 <button
-                  onClick={() => { loadDmUsers(); setShowAddContact(true); }}
+                  onClick={() => { setContactFilter(""); loadDmUsers(); setShowAddContact(true); }}
                   className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
                 >
                   + Добавить контакт
@@ -402,26 +514,58 @@ function MessagesPage() {
               <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-medium hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400">
                 {activeConv.otherUser?.displayName || "Удалённый пользователь"}
               </Link>
-              {/* Add to contacts button */}
+
+              {/* Add to contacts */}
               {activeConv.otherUser && !contacts.find((c) => c.user.id === activeConv.otherUser!.id) && (
                 <button
                   onClick={() => addContact(activeConv.otherUser!.id)}
-                  className="ml-auto text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   + В контакты
                 </button>
               )}
+
+              {/* Background picker */}
+              <div className="ml-auto relative">
+                <button
+                  onClick={() => setShowBgPicker(!showBgPicker)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm px-2 py-1"
+                  title="Фон чата"
+                >
+                  🎨
+                </button>
+                {showBgPicker && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-xl p-3 z-50 min-w-[200px]">
+                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Фон чата</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {CHAT_BACKGROUNDS.map(bg => (
+                        <button
+                          key={bg.id}
+                          onClick={() => selectBg(bg.id)}
+                          className={`h-12 rounded-lg border-2 transition ${
+                            bg.class || "bg-white dark:bg-gray-900"
+                          } ${chatBg === bg.id ? "border-blue-500" : "border-gray-200 dark:border-gray-700"}`}
+                          title={bg.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Pinned messages */}
             {messages.filter((m) => m.isPinned).length > 0 && (
               <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b dark:border-gray-700 text-xs text-amber-700 dark:text-amber-400">
-                📌 Закреплено: {messages.filter((m) => m.isPinned).map((m) => m.text.slice(0, 40)).join(", ")}
+                📌 Закреплено: {messages.filter((m) => m.isPinned).map((m) => m.text.slice(0, 40) || "📎 Файл").join(", ")}
               </div>
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3" onClick={() => setContextMenu(null)}>
+            <div
+              className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass}`}
+              onClick={() => { setContextMenu(null); setShowBgPicker(false); }}
+            >
               {messages.map((msg) => {
                 const isMe = msg.senderId === myId;
                 return (
@@ -453,8 +597,10 @@ function MessagesPage() {
                             : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md"
                         } ${msg.isPinned ? "ring-1 ring-amber-400" : ""}`}
                       >
-                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                        <div className={`flex items-center gap-1 mt-1`}>
+                        {!msg.isDeleted && renderFileAttachment(msg)}
+                        {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
+                        {msg.isDeleted && <p className="whitespace-pre-wrap break-words">Сообщение удалено</p>}
+                        <div className="flex items-center gap-1 mt-1">
                           {msg.isPinned && <span className="text-[10px]">📌</span>}
                           <span
                             className={`text-[10px] ${
@@ -471,7 +617,7 @@ function MessagesPage() {
 
                       {/* Reactions */}
                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                        <div className={`flex gap-1 mt-1 ${isMe ? "justify-end" : ""}`}>
+                        <div className={`flex gap-1 mt-1 flex-wrap ${isMe ? "justify-end" : ""}`}>
                           {Object.entries(msg.reactions).map(([emoji, users]) => (
                             <button
                               key={emoji}
@@ -516,47 +662,32 @@ function MessagesPage() {
                 style={{ top: contextMenu.y, left: contextMenu.x }}
               >
                 <button
-                  onClick={() => {
-                    setReplyTo(contextMenu.msg);
-                    setContextMenu(null);
-                  }}
+                  onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
                   ↩ Ответить
                 </button>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(contextMenu.msg.text);
-                    setContextMenu(null);
-                  }}
+                  onClick={() => { navigator.clipboard.writeText(contextMenu.msg.text); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
                   📋 Копировать
                 </button>
                 <button
-                  onClick={() => {
-                    setNewText(`> ${contextMenu.msg.sender.displayName}: ${contextMenu.msg.text}\n\n`);
-                    setContextMenu(null);
-                  }}
+                  onClick={() => { setNewText(`> ${contextMenu.msg.sender.displayName}: ${contextMenu.msg.text}\n\n`); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
                   💬 Цитировать
                 </button>
                 <button
-                  onClick={() => {
-                    pinMessage(contextMenu.msg.id);
-                    setContextMenu(null);
-                  }}
+                  onClick={() => { pinMessage(contextMenu.msg.id); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
                   {contextMenu.msg.isPinned ? "📌 Открепить" : "📌 Закрепить"}
                 </button>
                 {contextMenu.msg.senderId === myId && !contextMenu.msg.isDeleted && (
                   <button
-                    onClick={() => {
-                      deleteMessage(contextMenu.msg.id);
-                      setContextMenu(null);
-                    }}
+                    onClick={() => { deleteMessage(contextMenu.msg.id); setContextMenu(null); }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     🗑 Удалить
@@ -573,20 +704,81 @@ function MessagesPage() {
                     {replyTo.sender.displayName}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {replyTo.text.slice(0, 80)}
+                    {replyTo.text.slice(0, 80) || "📎 Файл"}
                   </div>
                 </div>
-                <button
-                  onClick={() => setReplyTo(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
+                <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                   ✕
                 </button>
               </div>
             )}
 
+            {/* Emoji Picker */}
+            {showEmoji && (
+              <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3">
+                <div className="flex gap-2 mb-2">
+                  {EMOJI_CATEGORIES.map((cat, i) => (
+                    <button
+                      key={cat.name}
+                      onClick={() => setEmojiCategory(i)}
+                      className={`text-xs px-3 py-1 rounded-full transition ${
+                        emojiCategory === i
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-10 gap-1 max-h-[120px] overflow-y-auto">
+                  {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji, i) => (
+                    <button
+                      key={`${emoji}-${i}`}
+                      onClick={() => setNewText(prev => prev + emoji)}
+                      className="text-xl hover:scale-125 transition-transform p-1 text-center"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Input */}
-            <form onSubmit={sendMessage} className="border-t dark:border-gray-700 px-4 py-3 flex gap-2">
+            <form onSubmit={sendMessage} className="border-t dark:border-gray-700 px-4 py-3 flex gap-2 items-center">
+              {/* File upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg shrink-0 disabled:opacity-50"
+                title="Прикрепить файл"
+              >
+                {uploading ? (
+                  <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                ) : (
+                  "📎"
+                )}
+              </button>
+
+              {/* Emoji toggle */}
+              <button
+                type="button"
+                onClick={() => setShowEmoji(!showEmoji)}
+                className={`text-lg shrink-0 transition ${showEmoji ? "text-blue-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                title="Эмодзи"
+              >
+                😊
+              </button>
+
               <input
                 type="text"
                 value={newText}
@@ -596,7 +788,7 @@ function MessagesPage() {
               />
               <button
                 type="submit"
-                disabled={sending || !newText.trim()}
+                disabled={sending || (!newText.trim() && !uploading)}
                 className="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
               >
                 →
@@ -656,7 +848,7 @@ function MessagesPage() {
         </div>
       )}
 
-      {/* Add Contact Modal */}
+      {/* Add Contact Modal with Search */}
       {showAddContact && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddContact(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-[440px] max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -666,11 +858,21 @@ function MessagesPage() {
                 ✕
               </button>
             </div>
+            <input
+              type="text"
+              value={contactFilter}
+              onChange={(e) => setContactFilter(e.target.value)}
+              placeholder="Поиск по имени или ID..."
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
+              autoFocus
+            />
             <div className="flex-1 overflow-y-auto space-y-1">
-              {dmUsers.length === 0 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Нет доступных пользователей</p>
+              {filteredDmUsers.length === 0 && (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+                  {contactFilter ? "Никого не найдено" : "Нет доступных пользователей"}
+                </p>
               )}
-              {dmUsers.map((user) => (
+              {filteredDmUsers.map((user) => (
                 <div
                   key={user.id}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
