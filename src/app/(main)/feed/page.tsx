@@ -182,7 +182,7 @@ function FeedPage() {
       {session && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 mb-6 space-y-3">
           {/* Search + Sort row */}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <input
                 type="text"
@@ -206,7 +206,7 @@ function FeedPage() {
           </div>
 
           {/* Author filter + Date range row */}
-          <div className="flex gap-3 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div className="relative flex-1">
               <input
                 type="text"

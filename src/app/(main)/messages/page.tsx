@@ -368,9 +368,9 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-180px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-80 border-r dark:border-gray-700 flex flex-col">
+    <div className="flex h-[calc(100vh-130px)] sm:h-[calc(100vh-180px)] bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+      {/* Sidebar — full width on mobile, fixed width on desktop */}
+      <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
         {/* Tabs */}
         <div className="flex border-b dark:border-gray-700">
           <button
@@ -516,12 +516,19 @@ function MessagesPage() {
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col">
+      {/* Chat area — full width on mobile when chat selected */}
+      <div className={`${activeConvId ? "flex" : "hidden md:flex"} flex-1 flex-col`}>
         {activeConvId && activeConv ? (
           <>
             {/* Header */}
-            <div className="px-6 py-3 border-b dark:border-gray-700 flex items-center gap-3">
+            <div className="px-3 sm:px-6 py-3 border-b dark:border-gray-700 flex items-center gap-3">
+              {/* Mobile back button */}
+              <button
+                onClick={() => setActiveConvId(null)}
+                className="md:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
               <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
                 {activeConv.otherUser?.avatarUrl ? (
                   <img src={activeConv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -593,7 +600,7 @@ function MessagesPage() {
                     className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
                     onContextMenu={(e) => handleContextMenu(e, msg)}
                   >
-                    <div className="max-w-xs">
+                    <div className="max-w-[75vw] sm:max-w-xs">
                       {/* Reply preview */}
                       {msg.replyTo && !msg.isDeleted && (
                         <div
@@ -750,7 +757,7 @@ function MessagesPage() {
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-10 gap-1 max-h-[120px] overflow-y-auto">
+                <div className="grid grid-cols-6 sm:grid-cols-10 gap-1 max-h-[120px] overflow-y-auto">
                   {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji, i) => (
                     <button
                       key={`${emoji}-${i}`}
@@ -824,7 +831,7 @@ function MessagesPage() {
       {/* New Chat Modal */}
       {showNewChat && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewChat(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-96 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-96 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold dark:text-gray-100">Новый чат</h3>
               <button onClick={() => setShowNewChat(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
@@ -870,7 +877,7 @@ function MessagesPage() {
       {/* Add Contact Modal with Search */}
       {showAddContact && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddContact(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-[440px] max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-[440px] max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold dark:text-gray-100">Добавить контакт</h3>
               <button onClick={() => setShowAddContact(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">

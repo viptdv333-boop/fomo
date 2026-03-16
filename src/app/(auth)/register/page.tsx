@@ -59,7 +59,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
       <Link href="/" className="flex justify-center mb-6">
         <Image
           src="/images/logo-light.png"

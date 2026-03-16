@@ -243,7 +243,7 @@ function ProfileContent() {
       {activeTab === "profile" && (
       <>
       {/* Avatar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-6 flex items-center gap-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-center gap-4">
         <div
           className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
           onClick={() => avatarInputRef.current?.click()}
@@ -275,8 +275,8 @@ function ProfileContent() {
         />
       </div>
 
-      <form onSubmit={handleSave} className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={handleSave} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Имя</label>
             <input
@@ -332,7 +332,7 @@ function ProfileContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Дата рождения</label>
             <input
@@ -421,7 +421,7 @@ function ProfileContent() {
             step="1"
             value={subscriptionPrice}
             onChange={(e) => setSubscriptionPrice(e.target.value)}
-            className="w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full sm:w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Оставьте пустым для бесплатного доступа"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -432,7 +432,7 @@ function ProfileContent() {
         {/* Social links */}
         <div className="border-t dark:border-gray-700 pt-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Соцсети и мессенджеры</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telegram</label>
               <input
@@ -505,7 +505,7 @@ function ProfileContent() {
             type="text"
             value={paymentCard}
             onChange={(e) => setPaymentCard(e.target.value)}
-            className="w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full sm:w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="0000 0000 0000 0000"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -570,7 +570,7 @@ function ProfileContent() {
                 placeholder="МГУ им. Ломоносова"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Факультет</label>
                 <input
