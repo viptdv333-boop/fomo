@@ -113,6 +113,8 @@ function MessagesPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMsgIdRef = useRef<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadConversations();
@@ -121,6 +123,7 @@ function MessagesPage() {
 
   useEffect(() => {
     if (activeConvId) {
+      lastMsgIdRef.current = null;
       loadMessages(activeConvId);
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(() => loadMessages(activeConvId), 3000);
@@ -131,7 +134,22 @@ function MessagesPage() {
   }, [activeConvId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const lastId = messages[messages.length - 1]?.id;
+    // Only scroll if new messages appeared
+    if (lastId !== lastMsgIdRef.current) {
+      lastMsgIdRef.current = lastId;
+      // Auto-scroll only if user is near bottom
+      const container = chatContainerRef.current;
+      if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isNearBottom || !lastMsgIdRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
   }, [messages]);
 
   async function loadConversations() {
@@ -563,6 +581,7 @@ function MessagesPage() {
 
             {/* Messages */}
             <div
+              ref={chatContainerRef}
               className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass}`}
               onClick={() => { setContextMenu(null); setShowBgPicker(false); }}
             >

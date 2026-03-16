@@ -1,45 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect, useState, useRef } from "react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import { useTheme } from "@/lib/theme";
 
-function AnimatedCounter({ target, label }: { target: number; label: string }) {
+function useCountUp(end: number, duration: number = 1500, start: boolean = false) {
   const [count, setCount] = useState(0);
+  const countRef = useRef(0);
+  const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (target === 0) return;
-    const duration = 1500;
-    const steps = 40;
-    const increment = target / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
+    if (!start) { setCount(0); return; }
+    const animate = (timestamp: number) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const progress = Math.min((timestamp - startTimeRef.current) / duration, 1);
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const currentCount = Math.floor(easeOutQuart * end);
+      if (currentCount !== countRef.current) {
+        countRef.current = currentCount;
+        setCount(currentCount);
       }
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [target]);
+      if (progress < 1) requestAnimationFrame(animate);
+      else setCount(end);
+    };
+    requestAnimationFrame(animate);
+    return () => { startTimeRef.current = null; };
+  }, [end, duration, start]);
 
-  return (
-    <div className="text-center">
-      <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{count}</div>
-      <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</div>
-    </div>
-  );
+  return count;
 }
 
 export default function HomePage() {
   const { theme } = useTheme();
   const [stats, setStats] = useState({ users: 0, ideas: 0, instruments: 0 });
-  const [logoOpacity, setLogoOpacity] = useState(0);
-  const [showContent, setShowContent] = useState(false);
+  const [logoRevealed, setLogoRevealed] = useState(false);
+  const [textVisible, setTextVisible] = useState(false);
+  const [loginVisible, setLoginVisible] = useState(false);
+  const [lang, setLang] = useState<"ru" | "en">("ru");
 
   useEffect(() => {
     fetch("/api/stats/public")
@@ -47,112 +45,153 @@ export default function HomePage() {
       .then(setStats)
       .catch(() => {});
 
-    // Logo slowly "develops" like a photo — from 0 to full opacity over 3 seconds
-    let start: number | null = null;
-    const duration = 3000;
-    function animate(ts: number) {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      // Easing: slow start, accelerate in middle, slow at end
-      const eased = progress < 0.5
-        ? 2 * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-      setLogoOpacity(eased);
-      if (progress < 1) requestAnimationFrame(animate);
-    }
-    const raf = requestAnimationFrame(animate);
-
-    // Show auth block after logo is mostly visible
-    const contentTimer = setTimeout(() => setShowContent(true), 2000);
+    const logoTimer = setTimeout(() => setLogoRevealed(true), 300);
+    const textTimer = setTimeout(() => setTextVisible(true), 1800);
+    const loginTimer = setTimeout(() => setLoginVisible(true), 2500);
 
     return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(contentTimer);
+      clearTimeout(logoTimer);
+      clearTimeout(textTimer);
+      clearTimeout(loginTimer);
     };
   }, []);
 
+  const membersCount = useCountUp(stats.users || 4, 1500, loginVisible);
+  const ideasCount = useCountUp(stats.ideas || 10, 1800, loginVisible);
+  const instrumentsCount = useCountUp(stats.instruments || 30, 2000, loginVisible);
+
+  const isDark = theme === "dark";
+
+  const content = {
+    ru: {
+      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
+      welcome: "Платформа для публикации и обсуждения торговых идей. Читайте аналитику, делитесь прогнозами, зарабатывайте на подписках.",
+      login: "Войти",
+      register: "Зарегистрироваться",
+      continue: "Продолжить без регистрации",
+      participants: "Участников",
+      ideas: "Идей",
+      instruments: "Инструментов",
+      copyright: "Copyright © Neurotrader 2026",
+    },
+    en: {
+      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
+      welcome: "A platform for publishing and discussing trading ideas. Read analytics, share forecasts, earn from subscriptions.",
+      login: "Sign In",
+      register: "Sign Up",
+      continue: "Continue without registration",
+      participants: "Members",
+      ideas: "Ideas",
+      instruments: "Instruments",
+      copyright: "Copyright © Neurotrader 2026",
+    },
+  };
+
+  const t = content[lang];
+
   return (
-    <main className="flex min-h-screen flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
+    <div className={`min-h-screen flex flex-col ${isDark ? "bg-gray-900" : "bg-white"}`}>
       {/* Top bar */}
-      <div className="flex items-center justify-end px-6 py-4 gap-2">
-        <LanguageSwitcher />
-        <ThemeToggle />
-      </div>
-
-      {/* Center content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-8">
-        {/* Logo — slowly appears like a developing photo */}
-        <div
-          style={{ opacity: logoOpacity }}
-          className="mb-10"
-        >
-          {theme === "dark" ? (
-            <Image
-              src="/images/logo-dark.png"
-              alt="FOMO"
-              width={800}
-              height={400}
-              className="mx-auto max-w-[80vw] h-auto"
-              priority
-            />
-          ) : (
-            <Image
-              src="/images/logo-light.png"
-              alt="FOMO"
-              width={800}
-              height={400}
-              className="mx-auto max-w-[80vw] h-auto"
-              priority
-            />
-          )}
-        </div>
-
-        {/* Auth block with delayed fade-in */}
-        <div
-          className={`transition-all duration-[1500ms] ease-out ${
-            showContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      <header className="w-full px-6 py-4 flex justify-end items-center gap-4 fixed top-0 left-0 right-0 z-50">
+        <button
+          onClick={() => setLang(lang === "ru" ? "en" : "ru")}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
+            isDark
+              ? "text-gray-300 hover:text-white hover:bg-gray-800"
+              : "text-gray-600 hover:text-black hover:bg-gray-100"
           }`}
         >
-          <p className="text-base text-gray-500 dark:text-gray-400 mb-8 text-center max-w-md">
-            Платформа для публикации и обсуждения торговых идей.
-            Читайте аналитику, делитесь прогнозами, зарабатывайте на подписках.
-          </p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span className="text-sm font-medium uppercase">{lang}</span>
+        </button>
+        <ThemeToggle />
+      </header>
 
-          <div className="flex flex-col items-center gap-3 mb-10 w-full max-w-xs mx-auto">
-            <a
-              href="/login"
-              className="w-full text-center rounded-xl bg-blue-600 px-6 py-3.5 text-white font-medium hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all duration-300"
-            >
-              Войти
-            </a>
-            <a
-              href="/register"
-              className="w-full text-center rounded-xl border-2 border-blue-600 px-6 py-3.5 text-blue-600 dark:text-blue-400 dark:border-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300"
-            >
-              Зарегистрироваться
-            </a>
-            <a
-              href="/feed"
-              className="w-full text-center rounded-xl border border-gray-300 dark:border-gray-700 px-6 py-3.5 text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300"
-            >
-              Продолжить без регистрации
-            </a>
+      {/* Main content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-8">
+        {/* Logo with photo-reveal effect */}
+        <div className="flex flex-col items-center mb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={isDark ? "/images/logo-dark.png" : "/logo-fomo.png"}
+            alt="FOMO"
+            className={`logo-image ${logoRevealed ? "revealed" : ""}`}
+          />
+          <div
+            className={`logo-subtitle ${logoRevealed ? "revealed" : ""} ${
+              isDark ? "text-gray-400" : "text-gray-500"
+            }`}
+          >
+            {t.tagline}
           </div>
-
-          {(stats.users > 0 || stats.ideas > 0 || stats.instruments > 0) && (
-            <div className="flex gap-12 px-8 py-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mx-auto">
-              <AnimatedCounter target={stats.users} label="Участников" />
-              <AnimatedCounter target={stats.ideas} label="Идей" />
-              <AnimatedCounter target={stats.instruments} label="Инструментов" />
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Copyright at the very bottom */}
-      <footer className="text-center text-xs text-gray-400 dark:text-gray-600 py-6">
-        Copyright &copy; Neurotrader 2026
+        {/* Welcome text */}
+        <div className={`welcome-text max-w-xl text-center mb-10 ${textVisible ? "visible" : ""}`}>
+          <p className={`text-lg leading-relaxed ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+            {t.welcome}
+          </p>
+        </div>
+
+        {/* Login buttons */}
+        <div className={`login-block flex flex-col sm:flex-row gap-4 items-center ${loginVisible ? "visible" : ""}`}>
+          <a
+            href="/login"
+            className={`min-w-[160px] text-center px-6 py-3 rounded-lg border-2 font-medium transition-all duration-300 ${
+              isDark
+                ? "border-gray-600 text-gray-200 hover:bg-gray-800 hover:text-white"
+                : "border-gray-300 text-gray-800 hover:bg-gray-50"
+            }`}
+          >
+            {t.login}
+          </a>
+          <a
+            href="/register"
+            className={`min-w-[160px] text-center px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
+              isDark
+                ? "bg-white text-black hover:bg-gray-200"
+                : "bg-black text-white hover:bg-gray-800"
+            }`}
+          >
+            {t.register}
+          </a>
+        </div>
+
+        {/* Continue without registration */}
+        <div className={`continue-link mt-8 ${loginVisible ? "visible" : ""}`}>
+          <a
+            href="/feed"
+            className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
+              isDark
+                ? "text-gray-400 hover:text-white"
+                : "text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {t.continue}
+          </a>
+        </div>
+
+        {/* Stats with animated counters */}
+        <div className={`stats-container mt-16 grid grid-cols-3 gap-12 ${loginVisible ? "visible" : ""}`}>
+          <div className="stat-item text-center">
+            <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{membersCount}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.participants}</div>
+          </div>
+          <div className="stat-item text-center">
+            <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{ideasCount}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.ideas}</div>
+          </div>
+          <div className="stat-item text-center">
+            <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{instrumentsCount}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.instruments}</div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className={`landing-footer w-full py-6 text-center text-xs ${loginVisible ? "visible" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+        {t.copyright}
       </footer>
-    </main>
+    </div>
   );
 }
