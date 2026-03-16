@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
@@ -58,6 +60,24 @@ export default function RegisterPage() {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
+      <Link href="/" className="flex justify-center mb-6">
+        <Image
+          src="/images/logo-light.png"
+          alt="FOMO"
+          width={160}
+          height={80}
+          className="block dark:hidden"
+          priority
+        />
+        <Image
+          src="/images/logo-dark.png"
+          alt="FOMO"
+          width={160}
+          height={80}
+          className="hidden dark:block"
+          priority
+        />
+      </Link>
       <h1 className="text-2xl font-bold text-center mb-6 dark:text-gray-100">
         Регистрация в FOMO
       </h1>
