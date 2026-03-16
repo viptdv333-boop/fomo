@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
@@ -23,6 +23,14 @@ interface EducationRecord {
 }
 
 export default function MyProfilePage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Загрузка...</div>}>
+      <ProfileContent />
+    </Suspense>
+  );
+}
+
+function ProfileContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [displayName, setDisplayName] = useState("");
