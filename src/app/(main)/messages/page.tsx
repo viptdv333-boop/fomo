@@ -79,8 +79,7 @@ function MessagesPage() {
     y: number;
   } | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
-  const [contactSearchQuery, setContactSearchQuery] = useState("");
-  const [contactSearchResults, setContactSearchResults] = useState<{ id: string; displayName: string; avatarUrl: string | null }[]>([]);
+  const [dmUsers, setDmUsers] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -221,22 +220,18 @@ function MessagesPage() {
     setSearchResults([]);
   }
 
-  async function searchContacts(query: string) {
-    setContactSearchQuery(query);
-    if (query.length < 2) { setContactSearchResults([]); return; }
-    const res = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
+  async function loadDmUsers() {
+    const res = await fetch("/api/users/dm-enabled");
     if (res.ok) {
       const data = await res.json();
       const contactIds = contacts.map(c => c.user.id);
-      setContactSearchResults(data.filter((u: any) => u.id !== session?.user?.id && !contactIds.includes(u.id)));
+      setDmUsers(data.filter((u: any) => u.id !== session?.user?.id && !contactIds.includes(u.id)));
     }
   }
 
-  async function addContactFromSearch(userId: string) {
+  async function addContactFromList(userId: string) {
     await addContact(userId);
-    setShowAddContact(false);
-    setContactSearchQuery("");
-    setContactSearchResults([]);
+    setDmUsers(prev => prev.filter(u => u.id !== userId));
   }
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
@@ -339,7 +334,7 @@ function MessagesPage() {
             <>
               <div className="px-3 py-2 border-b dark:border-gray-700">
                 <button
-                  onClick={() => setShowAddContact(true)}
+                  onClick={() => { loadDmUsers(); setShowAddContact(true); }}
                   className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
                 >
                   + Добавить контакт
@@ -664,33 +659,21 @@ function MessagesPage() {
       {/* Add Contact Modal */}
       {showAddContact && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddContact(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-96 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-[440px] max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold dark:text-gray-100">Добавить контакт</h3>
               <button onClick={() => setShowAddContact(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                 ✕
               </button>
             </div>
-            <input
-              type="text"
-              value={contactSearchQuery}
-              onChange={(e) => searchContacts(e.target.value)}
-              placeholder="Поиск пользователей..."
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
-              autoFocus
-            />
             <div className="flex-1 overflow-y-auto space-y-1">
-              {contactSearchResults.length === 0 && contactSearchQuery.length >= 2 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Никого не найдено</p>
+              {dmUsers.length === 0 && (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Нет доступных пользователей</p>
               )}
-              {contactSearchQuery.length < 2 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Введите имя для поиска</p>
-              )}
-              {contactSearchResults.map((user) => (
-                <button
+              {dmUsers.map((user) => (
+                <div
                   key={user.id}
-                  onClick={() => addContactFromSearch(user.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                 >
                   <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm shrink-0 overflow-hidden">
                     {user.avatarUrl ? (
@@ -699,9 +682,23 @@ function MessagesPage() {
                       user.displayName[0]
                     )}
                   </div>
-                  <span className="text-sm font-medium dark:text-gray-100 flex-1">{user.displayName}</span>
-                  <span className="text-xs text-green-600 dark:text-green-400">+ Добавить</span>
-                </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium dark:text-gray-100 truncate">
+                      {user.displayName}
+                    </div>
+                    {user.fomoId && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                        @{user.fomoId}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => addContactFromList(user.id)}
+                    className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition shrink-0"
+                  >
+                    Добавить
+                  </button>
+                </div>
               ))}
             </div>
           </div>

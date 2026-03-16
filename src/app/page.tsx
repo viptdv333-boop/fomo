@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import { useTheme } from "@/lib/theme";
 
 function AnimatedCounter({ target, label }: { target: number; label: string }) {
   const [count, setCount] = useState(0);
@@ -35,8 +36,9 @@ function AnimatedCounter({ target, label }: { target: number; label: string }) {
 }
 
 export default function HomePage() {
+  const { theme } = useTheme();
   const [stats, setStats] = useState({ users: 0, ideas: 0, instruments: 0 });
-  const [showLogo, setShowLogo] = useState(false);
+  const [logoOpacity, setLogoOpacity] = useState(0);
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
@@ -45,60 +47,70 @@ export default function HomePage() {
       .then(setStats)
       .catch(() => {});
 
-    // Animation sequence
-    const logoTimer = setTimeout(() => setShowLogo(true), 100);
-    const contentTimer = setTimeout(() => setShowContent(true), 1200);
+    // Logo slowly "develops" like a photo — from 0 to full opacity over 3 seconds
+    let start: number | null = null;
+    const duration = 3000;
+    function animate(ts: number) {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      // Easing: slow start, accelerate in middle, slow at end
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      setLogoOpacity(eased);
+      if (progress < 1) requestAnimationFrame(animate);
+    }
+    const raf = requestAnimationFrame(animate);
+
+    // Show auth block after logo is mostly visible
+    const contentTimer = setTimeout(() => setShowContent(true), 2000);
 
     return () => {
-      clearTimeout(logoTimer);
+      cancelAnimationFrame(raf);
       clearTimeout(contentTimer);
     };
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col bg-white dark:bg-gray-950 transition-colors duration-500">
+    <main className="flex min-h-screen flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4">
-        <div className="w-20" />
-        <div />
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          <ThemeToggle />
-        </div>
+      <div className="flex items-center justify-end px-6 py-4 gap-2">
+        <LanguageSwitcher />
+        <ThemeToggle />
       </div>
 
       {/* Center content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-16">
-        {/* Logo with fade-in animation */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-8">
+        {/* Logo — slowly appears like a developing photo */}
         <div
-          className={`transition-all duration-[1500ms] ease-out ${
-            showLogo ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"
-          }`}
+          style={{ opacity: logoOpacity }}
+          className="mb-10"
         >
-          <div className="mb-8">
-            <Image
-              src="/images/logo-light.png"
-              alt="FOMO"
-              width={220}
-              height={110}
-              className="block dark:hidden mx-auto"
-              priority
-            />
+          {theme === "dark" ? (
             <Image
               src="/images/logo-dark.png"
               alt="FOMO"
-              width={220}
-              height={110}
-              className="hidden dark:block mx-auto"
+              width={800}
+              height={400}
+              className="mx-auto max-w-[80vw] h-auto"
               priority
             />
-          </div>
+          ) : (
+            <Image
+              src="/images/logo-light.png"
+              alt="FOMO"
+              width={800}
+              height={400}
+              className="mx-auto max-w-[80vw] h-auto"
+              priority
+            />
+          )}
         </div>
 
         {/* Auth block with delayed fade-in */}
         <div
-          className={`transition-all duration-1000 ease-out ${
-            showContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          className={`transition-all duration-[1500ms] ease-out ${
+            showContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
           <p className="text-base text-gray-500 dark:text-gray-400 mb-8 text-center max-w-md">
@@ -128,7 +140,7 @@ export default function HomePage() {
           </div>
 
           {(stats.users > 0 || stats.ideas > 0 || stats.instruments > 0) && (
-            <div className="flex gap-12 px-8 py-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="flex gap-12 px-8 py-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mx-auto">
               <AnimatedCounter target={stats.users} label="Участников" />
               <AnimatedCounter target={stats.ideas} label="Идей" />
               <AnimatedCounter target={stats.instruments} label="Инструментов" />
