@@ -3,7 +3,7 @@ export function generateFomoId(): string {
   return `fomo_user${num}`;
 }
 
-export const FOMO_ID_REGEX = /^[a-zA-Z0-9_!?$%]{1,13}$/;
+export const FOMO_ID_REGEX = /^[a-zA-Z0-9_!?$%]{7,33}$/;
 
 export function isValidCustomFomoId(id: string): boolean {
   return FOMO_ID_REGEX.test(id);

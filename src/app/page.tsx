@@ -113,7 +113,7 @@ export default function HomePage() {
         <div className="flex flex-col items-center mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={isDark ? "/images/logo-dark.png" : "/logo-fomo.png"}
+            src="/logo-fomo.png"
             alt="FOMO"
             className={`logo-image ${logoRevealed ? "revealed" : ""}`}
           />

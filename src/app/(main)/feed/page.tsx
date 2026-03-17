@@ -175,10 +175,6 @@ function FeedPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Стакан идей</h1>
-      </div>
-
       {session && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 mb-6 space-y-3">
           {/* Search + Sort row */}

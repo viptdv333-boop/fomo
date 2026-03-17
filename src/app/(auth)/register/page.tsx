@@ -116,15 +116,6 @@ export default function RegisterPage() {
           alt="FOMO"
           width={160}
           height={80}
-          className="block dark:hidden"
-          priority
-        />
-        <Image
-          src="/images/logo-dark.png"
-          alt="FOMO"
-          width={160}
-          height={80}
-          className="hidden dark:block"
           priority
         />
       </Link>

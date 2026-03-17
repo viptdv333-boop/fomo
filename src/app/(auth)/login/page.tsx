@@ -45,19 +45,10 @@ export default function LoginPage() {
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
       <Link href="/" className="flex justify-center mb-6">
         <Image
-          src="/images/logo-light.png"
+          src="/logo-fomo.png"
           alt="FOMO"
           width={160}
           height={80}
-          className="block dark:hidden"
-          priority
-        />
-        <Image
-          src="/images/logo-dark.png"
-          alt="FOMO"
-          width={160}
-          height={80}
-          className="hidden dark:block"
           priority
         />
       </Link>

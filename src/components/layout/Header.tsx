@@ -30,12 +30,10 @@ export default function Header() {
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center">
-        {/* Logo — full header height */}
+        {/* Logo */}
         <Link href="/" className="flex items-center shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo.png" alt="FOMO" className="block dark:hidden h-12 sm:h-14 w-auto" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-dark.png" alt="FOMO" className="hidden dark:block h-12 sm:h-14 w-auto" />
+          <img src="/logo-fomo.png" alt="FOMO" className="h-10 sm:h-14 w-auto" />
         </Link>
 
         {/* Desktop nav — centered */}
