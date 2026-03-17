@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { createNotification } from "@/lib/notifications";
+
+const globalForIO = globalThis as unknown as { io: any };
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -86,6 +89,41 @@ export async function POST(req: NextRequest) {
       },
     },
   });
+
+  // Emit via Socket.IO to room
+  const io = globalForIO.io;
+  if (io) {
+    io.to(parsed.data.roomId).emit("new_message", message);
+  }
+
+  // Check for @mentions
+  const text = parsed.data.text;
+  const mentionRegex = /@(\S+)/g;
+  const mentions = text.match(mentionRegex);
+  if (mentions) {
+    const mentionNames = mentions.map((m: string) => m.slice(1).toLowerCase());
+    const mentionedUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { displayName: { in: mentionNames, mode: "insensitive" } },
+          { fomoId: { in: mentionNames, mode: "insensitive" } },
+        ],
+        id: { not: session.user.id! },
+      },
+      select: { id: true },
+    });
+
+    const senderName = message.user.displayName;
+    for (const u of mentionedUsers) {
+      await createNotification({
+        userId: u.id,
+        type: "chat_mention",
+        title: `${senderName} упомянул вас в болталке`,
+        body: text.length > 80 ? text.slice(0, 80) + "…" : text,
+        link: "/chat",
+      });
+    }
+  }
 
   return NextResponse.json(message);
 }

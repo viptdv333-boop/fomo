@@ -1,5 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
+// Access the global IO instance set by server/socket.ts
+const globalForIO = globalThis as unknown as { io: any };
+
+function emitNotification(userId: string) {
+  const io = globalForIO.io;
+  if (io) {
+    io.to(`user_${userId}`).emit("new_notification");
+  }
+}
+
 interface CreateNotificationParams {
   userId: string;
   type: string;
@@ -15,9 +25,11 @@ export async function createNotification({
   body,
   link,
 }: CreateNotificationParams) {
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: { userId, type, title, body, link },
   });
+  emitNotification(userId);
+  return notification;
 }
 
 export async function notifyFollowers(
@@ -43,4 +55,9 @@ export async function notifyFollowers(
       link,
     })),
   });
+
+  // Emit to all followers
+  for (const f of followers) {
+    emitNotification(f.followerId);
+  }
 }

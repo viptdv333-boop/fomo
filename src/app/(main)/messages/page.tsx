@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthGuard from "@/components/layout/AuthGuard";
+import { getSocket } from "@/lib/socket";
 
 interface OtherUser {
   id: string;
@@ -162,12 +163,40 @@ function MessagesPage() {
     loadContacts();
   }, []);
 
+  // Socket.IO for real-time DMs
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const socket = getSocket(session.user.id);
+
+    const handleNewDm = (msg: Message) => {
+      // Only add if this is the active conversation
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+      // Also refresh conversation list to update last message preview
+      loadConversations();
+    };
+
+    socket.on("new_dm", handleNewDm);
+    return () => { socket.off("new_dm", handleNewDm); };
+  }, [session?.user?.id]);
+
+  // Join/leave conversation socket rooms
+  useEffect(() => {
+    if (!session?.user?.id || !activeConvId) return;
+    const socket = getSocket(session.user.id);
+    socket.emit("join_conversation", activeConvId);
+    return () => { socket.emit("leave_conversation", activeConvId); };
+  }, [activeConvId, session?.user?.id]);
+
   useEffect(() => {
     if (activeConvId) {
       lastMsgIdRef.current = null;
       loadMessages(activeConvId);
+      // Fallback polling at 10s (socket handles real-time)
       if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(() => loadMessages(activeConvId), 3000);
+      pollRef.current = setInterval(() => loadMessages(activeConvId), 10000);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);

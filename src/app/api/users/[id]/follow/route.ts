@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalculateRating } from "@/lib/rating";
+import { createNotification } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -51,6 +52,20 @@ export async function POST(
       data: { followerId, authorId },
     });
     following = true;
+
+    // Notify the author about new follower
+    const follower = await prisma.user.findUnique({
+      where: { id: followerId },
+      select: { displayName: true },
+    });
+    if (follower) {
+      await createNotification({
+        userId: authorId,
+        type: "new_follower",
+        title: `${follower.displayName} подписался на вас`,
+        link: `/profile/${followerId}`,
+      });
+    }
   }
 
   // Recalculate author rating

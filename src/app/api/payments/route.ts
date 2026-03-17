@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -50,6 +51,19 @@ export async function POST(req: NextRequest) {
         amount: idea.price,
         subscriptionType: null,
       },
+    });
+
+    // Notify seller about incoming payment
+    const buyer = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+    await createNotification({
+      userId: idea.authorId,
+      type: "payment",
+      title: `${buyer?.displayName || "Покупатель"} хочет купить идею`,
+      body: `${idea.title} — ${idea.price} ₽`,
+      link: `/profile/${idea.authorId}`,
     });
 
     return NextResponse.json({

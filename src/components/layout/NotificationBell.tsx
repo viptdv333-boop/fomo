@@ -15,19 +15,49 @@ interface Notification {
   createdAt: string;
 }
 
+// Notification sound using Web Audio API (no external file needed)
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
+    oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.1); // C#6
+    oscillator.frequency.setValueAtTime(1320, ctx.currentTime + 0.2); // E6
+
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.4);
+  } catch {}
+}
+
 export default function NotificationBell() {
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const prevUnreadRef = useRef<number>(0);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/notifications?limit=10");
     if (res.ok) {
       const data = await res.json();
       setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      const newCount = data.unreadCount;
+
+      // Play sound if unread count increased
+      if (newCount > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+        playNotificationSound();
+      }
+      prevUnreadRef.current = newCount;
+      setUnreadCount(newCount);
     }
   }, []);
 
@@ -63,8 +93,20 @@ export default function NotificationBell() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ markAllRead: true }),
     });
+    prevUnreadRef.current = 0;
     setUnreadCount(0);
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  }
+
+  function getIcon(type: string) {
+    switch (type) {
+      case "new_message": return "💬";
+      case "chat_mention": return "📢";
+      case "new_follower": return "👤";
+      case "new_idea": return "💡";
+      case "payment": return "💰";
+      default: return "🔔";
+    }
   }
 
   return (
@@ -87,7 +129,7 @@ export default function NotificationBell() {
           />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -129,42 +171,56 @@ export default function NotificationBell() {
                       onClick={() => setOpen(false)}
                       className="block"
                     >
-                      <div className="text-sm font-medium dark:text-gray-200">
-                        {n.title}
-                      </div>
-                      {n.body && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-                          {n.body}
+                      <div className="flex items-start gap-2">
+                        <span className="text-base mt-0.5">{getIcon(n.type)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium dark:text-gray-200">
+                            {n.title}
+                          </div>
+                          {n.body && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                              {n.body}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                            {new Date(n.createdAt).toLocaleDateString("ru", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
                         </div>
-                      )}
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                        {new Date(n.createdAt).toLocaleDateString("ru", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {!n.isRead && (
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+                        )}
                       </div>
                     </Link>
                   ) : (
-                    <>
-                      <div className="text-sm font-medium dark:text-gray-200">
-                        {n.title}
-                      </div>
-                      {n.body && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-                          {n.body}
+                    <div className="flex items-start gap-2">
+                      <span className="text-base mt-0.5">{getIcon(n.type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium dark:text-gray-200">
+                          {n.title}
                         </div>
-                      )}
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                        {new Date(n.createdAt).toLocaleDateString("ru", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {n.body && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                            {n.body}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                          {new Date(n.createdAt).toLocaleDateString("ru", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
                       </div>
-                    </>
+                      {!n.isRead && (
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+                      )}
+                    </div>
                   )}
                 </div>
               ))

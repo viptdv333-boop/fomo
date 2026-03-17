@@ -34,6 +34,20 @@ export async function PATCH(
       where: { id },
       data: { receiptUrl: body.receiptUrl },
     });
+
+    // Notify seller about receipt
+    const buyer = await prisma.user.findUnique({
+      where: { id: paymentRequest.buyerId },
+      select: { displayName: true },
+    });
+    await createNotification({
+      userId: paymentRequest.sellerId,
+      type: "payment",
+      title: `${buyer?.displayName || "Покупатель"} отправил квитанцию`,
+      body: `Сумма: ${paymentRequest.amount} ₽`,
+      link: `/profile/${paymentRequest.sellerId}`,
+    });
+
     return NextResponse.json(updated);
   }
 
@@ -151,6 +165,18 @@ export async function PATCH(
       });
     }
 
+    // Notify seller about confirmed payment
+    const buyerUser = await prisma.user.findUnique({
+      where: { id: paymentRequest.buyerId },
+      select: { displayName: true },
+    });
+    await createNotification({
+      userId: paymentRequest.sellerId,
+      type: "payment",
+      title: `Оплата подтверждена`,
+      body: `${buyerUser?.displayName || "Покупатель"} — ${paymentRequest.amount} ₽`,
+    });
+
     return NextResponse.json(updated);
   }
 
@@ -164,6 +190,16 @@ export async function PATCH(
       where: { id },
       data: { status: "REJECTED" },
     });
+
+    // Notify buyer about rejection
+    await createNotification({
+      userId: paymentRequest.buyerId,
+      type: "payment",
+      title: "Платёж отклонён",
+      body: `Сумма: ${paymentRequest.amount} ₽`,
+      link: "/messages",
+    });
+
     return NextResponse.json(updated);
   }
 

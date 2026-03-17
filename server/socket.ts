@@ -4,6 +4,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Store io instance globally so API routes can access it
+const globalForIO = globalThis as unknown as { io: SocketIOServer | undefined };
+
+export function getIOInstance(): SocketIOServer | null {
+  return globalForIO.io ?? null;
+}
+
 export function initSocket(httpServer: HTTPServer) {
   const io = new SocketIOServer(httpServer, {
     path: "/api/socketio",
@@ -13,6 +20,9 @@ export function initSocket(httpServer: HTTPServer) {
       methods: ["GET", "POST"],
     },
   });
+
+  // Store globally
+  globalForIO.io = io;
 
   io.use(async (socket, next) => {
     const userId = socket.handshake.auth.userId;
@@ -49,6 +59,15 @@ export function initSocket(httpServer: HTTPServer) {
 
     // Join personal notification room
     socket.join(`user_${socket.data.userId}`);
+
+    // Join DM conversation rooms
+    socket.on("join_conversation", (conversationId: string) => {
+      socket.join(`conv_${conversationId}`);
+    });
+
+    socket.on("leave_conversation", (conversationId: string) => {
+      socket.leave(`conv_${conversationId}`);
+    });
 
     socket.on("send_message", async (data: { roomId: string; text: string }) => {
       const { roomId, text } = data;
@@ -93,7 +112,7 @@ export function initSocket(httpServer: HTTPServer) {
             data: {
               userId: u.id,
               type: "chat_mention",
-              title: `${socket.data.displayName} упомянул вас в чате`,
+              title: `${socket.data.displayName} упомянул вас в болталке`,
               body: text.length > 80 ? text.slice(0, 80) + "…" : text,
               link: "/chat",
             },

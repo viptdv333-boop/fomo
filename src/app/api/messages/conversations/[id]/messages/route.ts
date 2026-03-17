@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 
+const globalForIO = globalThis as unknown as { io: any };
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET: List messages in a conversation
@@ -127,8 +129,18 @@ export async function POST(
       createdAt: true,
       senderId: true,
       replyToId: true,
+      isPinned: true,
+      isDeleted: true,
+      reactions: true,
       sender: {
         select: { id: true, displayName: true, avatarUrl: true },
+      },
+      replyTo: {
+        select: {
+          id: true,
+          text: true,
+          sender: { select: { displayName: true } },
+        },
       },
     },
   });
@@ -146,6 +158,12 @@ export async function POST(
     },
     data: { lastReadAt: new Date() },
   });
+
+  // Emit via Socket.IO to conversation room
+  const io = globalForIO.io;
+  if (io) {
+    io.to(`conv_${conversationId}`).emit("new_dm", message);
+  }
 
   // Notify other participants about new message
   const otherParticipants = await prisma.directConversationParticipant.findMany({
