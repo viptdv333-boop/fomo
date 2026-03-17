@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 
 interface ChatRoomInfo {
@@ -25,10 +26,12 @@ interface CategoryGroup {
 interface Props {
   currentSlug?: string;
   currentRoomId?: string;
-  onSelectRoom?: (room: { id: string; name: string; isClosed: boolean }) => void;
+  onSelectRoom?: (room: { id: string; name: string; isClosed: boolean; isArchived: boolean }) => void;
 }
 
 export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }: Props) {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [rooms, setRooms] = useState<ChatRoomInfo[]>([]);
   const [archivedRooms, setArchivedRooms] = useState<ChatRoomInfo[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -84,6 +87,19 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
       localStorage.setItem("fomo-chat-favorites", JSON.stringify(next));
       return next;
     });
+  }
+
+  async function unarchiveRoom(roomId: string) {
+    try {
+      const res = await fetch("/api/chat/rooms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, action: "unarchive" }),
+      });
+      if (res.ok) {
+        loadRooms();
+      }
+    } catch {}
   }
 
   // Group rooms by category
@@ -152,7 +168,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
       <div key={room.id}>
         {onSelectRoom ? (
           <button
-            onClick={() => onSelectRoom({ id: room.id, name: room.name, isClosed: room.isClosed })}
+            onClick={() => onSelectRoom({ id: room.id, name: room.name, isClosed: room.isClosed, isArchived: room.isArchived })}
             className={`w-full text-left ${cls}`}
           >
             {inner}
@@ -275,7 +291,20 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   Нет архивных чатов
                 </div>
               ) : (
-                archivedRooms.map((r) => renderRoom(r))
+                archivedRooms.map((r) => (
+                  <div key={r.id} className="flex items-center gap-1">
+                    <div className="flex-1 min-w-0">{renderRoom(r)}</div>
+                    {isAdmin && (
+                      <button
+                        onClick={() => unarchiveRoom(r.id)}
+                        className="shrink-0 p-1 rounded text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                        title="Разархивировать"
+                      >
+                        📤
+                      </button>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           )}

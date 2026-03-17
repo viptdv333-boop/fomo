@@ -28,6 +28,7 @@ interface ChatRoomProps {
   roomId: string;
   roomName: string;
   isClosed?: boolean;
+  isArchived?: boolean;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
@@ -38,7 +39,7 @@ const EMOJI_CATEGORIES = [
   { name: "Символы", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
 ];
 
-export default function ChatRoom({ roomId, roomName, isClosed }: ChatRoomProps) {
+export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: ChatRoomProps) {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
@@ -220,13 +221,23 @@ export default function ChatRoom({ roomId, roomName, isClosed }: ChatRoomProps) 
         {/* Admin controls */}
         {isAdmin && (
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => adminAction("archive")}
-              className="p-1.5 rounded-lg text-sm text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition"
-              title="В архив"
-            >
-              📦
-            </button>
+            {isArchived ? (
+              <button
+                onClick={() => adminAction("unarchive")}
+                className="p-1.5 rounded-lg text-sm text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                title="Разархивировать"
+              >
+                📤
+              </button>
+            ) : (
+              <button
+                onClick={() => adminAction("archive")}
+                className="p-1.5 rounded-lg text-sm text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition"
+                title="В архив"
+              >
+                📦
+              </button>
+            )}
             <button
               onClick={() => adminAction(isClosed ? "open" : "close")}
               className="p-1.5 rounded-lg text-sm text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition"
@@ -421,9 +432,9 @@ export default function ChatRoom({ roomId, roomName, isClosed }: ChatRoomProps) 
       )}
 
       {/* Input area */}
-      {isClosed ? (
+      {isClosed || isArchived ? (
         <div className="bg-gray-100 dark:bg-gray-800 rounded-b-xl border-t dark:border-gray-700 px-4 py-3 text-center text-sm text-gray-500">
-          🔒 Чат закрыт
+          {isArchived ? "📦 Чат в архиве" : "🔒 Чат закрыт"}
         </div>
       ) : (
         <form

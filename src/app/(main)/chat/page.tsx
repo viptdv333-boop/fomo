@@ -6,10 +6,11 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
 
 export default function ChatPage() {
-  const [currentRoom, setCurrentRoom] = useState<{ id: string; name: string; isClosed: boolean }>({
+  const [currentRoom, setCurrentRoom] = useState<{ id: string; name: string; isClosed: boolean; isArchived: boolean }>({
     id: "general",
     name: "Общий чат",
     isClosed: false,
+    isArchived: false,
   });
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function ChatPage() {
             roomId={currentRoom.id}
             roomName={currentRoom.name}
             isClosed={currentRoom.isClosed}
+            isArchived={currentRoom.isArchived}
           />
         </div>
       </div>

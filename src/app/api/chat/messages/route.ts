@@ -62,6 +62,9 @@ export async function POST(req: NextRequest) {
   if (room.isClosed) {
     return NextResponse.json({ error: "Chat is closed" }, { status: 403 });
   }
+  if (room.isArchived) {
+    return NextResponse.json({ error: "Chat is archived" }, { status: 403 });
+  }
 
   const message = await prisma.chatMessage.create({
     data: {
