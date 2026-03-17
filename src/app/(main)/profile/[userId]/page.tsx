@@ -108,8 +108,13 @@ export default function AuthorProfilePage() {
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl">
-              {profile.displayName[0]}
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl overflow-hidden">
+              {profile.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                profile.displayName[0]
+              )}
             </div>
             <div>
               <h1 className="text-2xl font-bold">{profile.displayName}</h1>
