@@ -120,10 +120,22 @@ function MessagesPage() {
   });
 
   // Contact/user context menu (right-click)
-  const [userContextMenu, setUserContextMenu] = useState<{ userId: string; userName: string; x: number; y: number } | null>(null);
+  const [userContextMenu, setUserContextMenu] = useState<{ userId: string; userName: string; convId?: string; x: number; y: number } | null>(null);
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try { return JSON.parse(localStorage.getItem("fomo-favorites") || "[]"); } catch { return []; }
+    }
+    return [];
+  });
+  const [pinnedChats, setPinnedChats] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try { return JSON.parse(localStorage.getItem("fomo-pinned-chats") || "[]"); } catch { return []; }
+    }
+    return [];
+  });
+  const [mutedChats, setMutedChats] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try { return JSON.parse(localStorage.getItem("fomo-muted-chats") || "[]"); } catch { return []; }
     }
     return [];
   });
@@ -283,9 +295,28 @@ function MessagesPage() {
     setUserContextMenu(null);
   }
 
-  function handleUserContextMenu(e: React.MouseEvent, userId: string, userName: string) {
+  function togglePinChat(convId: string) {
+    const isPinned = pinnedChats.includes(convId);
+    const next = isPinned
+      ? pinnedChats.filter((id) => id !== convId)
+      : pinnedChats.length >= 5
+      ? pinnedChats
+      : [...pinnedChats, convId];
+    setPinnedChats(next);
+    localStorage.setItem("fomo-pinned-chats", JSON.stringify(next));
+  }
+
+  function toggleMuteChat(convId: string) {
+    const next = mutedChats.includes(convId)
+      ? mutedChats.filter((id) => id !== convId)
+      : [...mutedChats, convId];
+    setMutedChats(next);
+    localStorage.setItem("fomo-muted-chats", JSON.stringify(next));
+  }
+
+  function handleUserContextMenu(e: React.MouseEvent, userId: string, userName: string, convId?: string) {
     e.preventDefault();
-    setUserContextMenu({ userId, userName, x: e.clientX, y: e.clientY });
+    setUserContextMenu({ userId, userName, convId, x: e.clientX, y: e.clientY });
   }
 
   async function startConversation(userId: string) {
@@ -474,18 +505,21 @@ function MessagesPage() {
               ) : (
                 [...conversations]
                   .sort((a, b) => {
+                    const aPin = pinnedChats.includes(a.id);
+                    const bPin = pinnedChats.includes(b.id);
+                    if (aPin && !bPin) return -1;
+                    if (!aPin && bPin) return 1;
                     const aFav = favorites.includes(a.otherUser?.id || "");
                     const bFav = favorites.includes(b.otherUser?.id || "");
                     if (aFav && !bFav) return -1;
                     if (!aFav && bFav) return 1;
-                    if (aFav && bFav) return (a.otherUser?.displayName || "").localeCompare(b.otherUser?.displayName || "", "ru");
                     return 0;
                   })
                   .map((conv) => (
                   <button
                     key={conv.id}
                     onClick={() => setActiveConvId(conv.id)}
-                    onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName)}
+                    onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName, conv.id)}
                     className={`w-full text-left px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
                       activeConvId === conv.id ? "bg-blue-50 dark:bg-blue-900/30" : ""
                     }`}
@@ -501,6 +535,8 @@ function MessagesPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex justify-between items-center">
                           <span className={`text-sm font-medium truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {pinnedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">📌</span>}
+                            {mutedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">🔕</span>}
                             {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
                             {conv.otherUser?.displayName || "Удалённый пользователь"}
                           </span>
@@ -672,24 +708,24 @@ function MessagesPage() {
                     {/* Font size */}
                     <div>
                       <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Размер шрифта</div>
-                      <div className="flex gap-1">
-                        {[
-                          { id: "small", label: "А", cls: "text-xs" },
-                          { id: "normal", label: "А", cls: "text-sm" },
-                          { id: "large", label: "А", cls: "text-base" },
-                        ].map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => changeFontSize(s.id)}
-                            className={`flex-1 py-1.5 rounded-lg border transition ${s.cls} font-medium ${
-                              chatFontSize === s.id
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            }`}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => changeFontSize(chatFontSize === "large" ? "normal" : chatFontSize === "normal" ? "small" : "small")}
+                          disabled={chatFontSize === "small"}
+                          className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 text-base font-bold"
+                        >
+                          −
+                        </button>
+                        <div className="flex-1 text-center text-xs text-gray-500 dark:text-gray-400 font-medium">
+                          {chatFontSize === "small" ? "Мелкий" : chatFontSize === "large" ? "Крупный" : "Обычный"}
+                        </div>
+                        <button
+                          onClick={() => changeFontSize(chatFontSize === "small" ? "normal" : chatFontSize === "normal" ? "large" : "large")}
+                          disabled={chatFontSize === "large"}
+                          className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 text-base font-bold"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -722,10 +758,10 @@ function MessagesPage() {
                       {/* Reply preview */}
                       {msg.replyTo && !msg.isDeleted && (
                         <div
-                          className={`text-[11px] px-3 py-1 mb-0.5 rounded-t-lg border-l-2 border-blue-400 ${
+                          className={`text-[11px] px-3 py-1 mb-0.5 rounded-t-lg border-l-2 ${
                             isMe
-                              ? "bg-blue-700/50 text-blue-100"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                              ? "border-red-300 bg-red-700/50 text-red-100"
+                              : "border-green-300 bg-green-700/50 text-green-100"
                           }`}
                         >
                           <span className="font-medium">{msg.replyTo.sender.displayName}</span>
@@ -737,8 +773,8 @@ function MessagesPage() {
                           msg.isDeleted
                             ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 italic"
                             : isMe
-                            ? "bg-blue-600 text-white rounded-br-md"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md"
+                            ? "bg-red-600 text-white rounded-br-md"
+                            : "bg-green-600 text-white rounded-bl-md"
                         } ${msg.isPinned ? "ring-1 ring-amber-400" : ""}`}
                       >
                         {!msg.isDeleted && renderFileAttachment(msg)}
@@ -748,7 +784,7 @@ function MessagesPage() {
                           {msg.isPinned && <span className="text-[10px]">📌</span>}
                           <span
                             className={`text-[10px] ${
-                              isMe ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
+                              isMe ? "text-red-200" : "text-green-200"
                             }`}
                           >
                             {new Date(msg.createdAt).toLocaleTimeString("ru", {
@@ -1076,6 +1112,30 @@ function MessagesPage() {
                 <><span className="text-gray-300">☆</span> В избранное</>
               )}
             </button>
+            {userContextMenu.convId && (
+              <>
+                <button
+                  onClick={() => { togglePinChat(userContextMenu.convId!); setUserContextMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
+                >
+                  {pinnedChats.includes(userContextMenu.convId) ? (
+                    <>📌 Открепить</>
+                  ) : (
+                    <>📌 Закрепить{pinnedChats.length >= 5 ? " (макс. 5)" : ""}</>
+                  )}
+                </button>
+                <button
+                  onClick={() => { toggleMuteChat(userContextMenu.convId!); setUserContextMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
+                >
+                  {mutedChats.includes(userContextMenu.convId) ? (
+                    <>🔔 Включить уведомления</>
+                  ) : (
+                    <>🔕 Отключить уведомления</>
+                  )}
+                </button>
+              </>
+            )}
             <button
               onClick={() => { removeContact(userContextMenu.userId); setUserContextMenu(null); }}
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-500 dark:text-red-400 flex items-center gap-2"
