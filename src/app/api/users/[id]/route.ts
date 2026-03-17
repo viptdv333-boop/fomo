@@ -5,7 +5,11 @@ import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 
 const adminPatchSchema = z.object({
-  status: z.enum(["PENDING", "APPROVED", "BANNED"]),
+  status: z.enum(["PENDING", "APPROVED", "BANNED"]).optional(),
+  role: z.enum(["USER", "ADMIN"]).optional(),
+  ratingDelta: z.number().min(-10).max(10).optional(),
+  bannedUntil: z.string().nullable().optional(),
+  banReason: z.string().max(500).nullable().optional(),
 });
 
 const userPatchSchema = z.object({
@@ -131,20 +135,45 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Admin changing user status
-  if (isAdmin && body.status !== undefined) {
+  // Admin actions: status, role, rating, ban
+  if (isAdmin && (body.status !== undefined || body.role !== undefined || body.ratingDelta !== undefined || body.bannedUntil !== undefined)) {
     const parsed = adminPatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid status", details: parsed.error.issues },
+        { error: "Invalid input", details: parsed.error.issues },
         { status: 400 }
       );
     }
 
+    const data: Record<string, unknown> = {};
+
+    if (parsed.data.status !== undefined) {
+      data.status = parsed.data.status;
+    }
+    if (parsed.data.role !== undefined) {
+      data.role = parsed.data.role;
+    }
+    if (parsed.data.bannedUntil !== undefined) {
+      data.bannedUntil = parsed.data.bannedUntil ? new Date(parsed.data.bannedUntil) : null;
+      if (parsed.data.bannedUntil) {
+        data.status = "BANNED";
+      }
+    }
+    if (parsed.data.banReason !== undefined) {
+      data.banReason = parsed.data.banReason;
+    }
+    if (parsed.data.ratingDelta !== undefined) {
+      const current = await prisma.user.findUnique({ where: { id }, select: { rating: true } });
+      if (current) {
+        const newRating = Math.max(0, Math.min(99.99, Number(current.rating) + parsed.data.ratingDelta));
+        data.rating = newRating;
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id },
-      data: { status: parsed.data.status },
-      select: { id: true, status: true },
+      data,
+      select: { id: true, status: true, role: true, rating: true, bannedUntil: true, banReason: true },
     });
 
     return NextResponse.json(updated);

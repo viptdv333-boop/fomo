@@ -28,6 +28,8 @@ model User {
   avatarUrl          String?
   role               UserRole  @default(USER)
   status             UserStatus @default(PENDING)
+  bannedUntil        DateTime?
+  banReason          String?
   rating             Decimal   @default(1.0) @db.Decimal(4, 2)
   subscriptionPrice  Decimal?  @db.Decimal(10, 2)
   lastPublishedAt    DateTime?
