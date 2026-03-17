@@ -33,7 +33,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo.png" alt="FOMO" className="h-10 sm:h-14 w-auto" />
+          <img src="/logo-fomo.png" alt="FOMO" className="h-12 sm:h-16 w-auto" />
         </Link>
 
         {/* Desktop nav — centered */}

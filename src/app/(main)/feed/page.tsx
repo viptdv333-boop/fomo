@@ -131,40 +131,43 @@ function FeedPage() {
   return (
     <div>
       {/* Filter bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 mb-6">
-        {/* Row 1: Sort + Paid filter + View mode */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          {/* Sort buttons */}
-          <button
-            onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
-            className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
-          >
-            Сначала новые
-          </button>
-          <button
-            onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
-            className={filterBtnClass(sortBy === "date" && sortOrder === "asc")}
-          >
-            Сначала старые
-          </button>
-          <button
-            onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "free")}
-          >
-            Бесплатные
-          </button>
-          <button
-            onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "paid")}
-          >
-            Платные
-          </button>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6 space-y-2.5">
+        {/* Row 1: Sort + Paid + Author + View mode — single row */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
+              className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
+            >
+              Сначала новые
+            </button>
+            <button
+              onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
+              className={filterBtnClass(sortBy === "date" && sortOrder === "asc")}
+            >
+              Сначала старые
+            </button>
 
-          {/* Spacer */}
+            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+
+            <button
+              onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
+              className={filterBtnClass(paidFilter === "free")}
+            >
+              Бесплатные
+            </button>
+            <button
+              onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
+              className={filterBtnClass(paidFilter === "paid")}
+            >
+              Платные
+            </button>
+          </div>
+
           <div className="flex-1" />
 
           {/* View mode */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0">
             <button
               onClick={() => setViewMode("list")}
               className={`p-1.5 rounded transition ${viewMode === "list" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
@@ -189,8 +192,8 @@ function FeedPage() {
           </div>
         </div>
 
-        {/* Row 2: Author + Categories */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Row 2: Author + Categories — uniform buttons */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Author filter dropdown */}
           <div className="relative">
             <button
@@ -264,9 +267,6 @@ function FeedPage() {
               </>
             )}
           </div>
-
-          {/* Divider */}
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 
           {/* Category instrument filters */}
           <button
