@@ -42,7 +42,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
               href="/feed"
               className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition mt-1"
             >
-              ← Вернуться к стакану идей
+              ← На доску
             </Link>
           </div>
         </div>

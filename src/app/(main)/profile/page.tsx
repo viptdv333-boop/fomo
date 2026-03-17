@@ -317,18 +317,18 @@ function ProfileContent() {
               type="text"
               value={fomoId}
               onChange={(e) => {
-                const val = e.target.value.replace(/[^a-zA-Z0-9_!?$%]/g, "").slice(0, 13);
+                const val = e.target.value.replace(/[^a-zA-Z0-9_!?$%]/g, "").slice(0, 33);
                 setFomoId(val);
                 setFomoIdError("");
               }}
               className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100 font-mono"
-              placeholder="fomo_user1234567"
-              maxLength={13}
+              placeholder="my_unique_id"
+              maxLength={33}
             />
           </div>
           {fomoIdError && <p className="text-xs text-red-500 mt-1">{fomoIdError}</p>}
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Латинские буквы, цифры и символы _ ! ? $ % — до 13 символов
+            Латинские буквы, цифры и символы _ ! ? $ % — от 7 до 33 символов
           </p>
         </div>
 

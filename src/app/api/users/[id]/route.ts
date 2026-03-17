@@ -22,7 +22,7 @@ const userPatchSchema = z.object({
   avatarUrl: z.string().max(500).nullable().optional(),
   dmEnabled: z.boolean().optional(),
   paymentCard: z.string().max(30).nullable().optional(),
-  fomoId: z.string().min(1).max(13).optional(),
+  fomoId: z.string().min(7).max(33).optional(),
   socialLinks: z.object({
     telegram: z.string().max(200).optional(),
     vk: z.string().max(200).optional(),
@@ -164,7 +164,7 @@ export async function PATCH(
     if (parsed.data.fomoId !== undefined) {
       if (!isValidCustomFomoId(parsed.data.fomoId)) {
         return NextResponse.json(
-          { error: "FOMO ID может содержать только латинские буквы, цифры и символы _ ! ? $ %, до 13 символов" },
+          { error: "FOMO ID: латинские буквы, цифры и символы _ ! ? $ %, от 7 до 33 символов" },
           { status: 400 }
         );
       }
