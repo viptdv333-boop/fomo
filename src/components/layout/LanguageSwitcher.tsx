@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FlagIcon } from "./FlagIcon";
 
 const LANGUAGES = [
   { code: "ru", label: "RU", name: "Русский" },
@@ -18,17 +19,15 @@ export default function LanguageSwitcher() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-        </svg>
+        <FlagIcon code={current === "cn" ? "zh" : current} size={20} />
         {currentLang?.label}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[120px] py-1">
+          <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[140px] py-1">
             {LANGUAGES.map((lang) => (
               <button
                 key={lang.code}
@@ -36,12 +35,13 @@ export default function LanguageSwitcher() {
                   setCurrent(lang.code);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition ${
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 ${
                   current === lang.code
                     ? "text-blue-600 dark:text-blue-400 font-medium"
                     : "text-gray-700 dark:text-gray-300"
                 }`}
               >
+                <FlagIcon code={lang.code === "cn" ? "zh" : lang.code} size={18} />
                 {lang.label} — {lang.name}
               </button>
             ))}

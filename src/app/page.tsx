@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
 
 function useCountUp(end: number, duration: number = 1500, start: boolean = false) {
@@ -37,7 +38,7 @@ export default function HomePage() {
   const [logoRevealed, setLogoRevealed] = useState(false);
   const [textVisible, setTextVisible] = useState(false);
   const [loginVisible, setLoginVisible] = useState(false);
-  const [lang, setLang] = useState<"ru" | "en">("ru");
+  const [lang, setLang] = useState<"ru" | "en" | "cn">("ru");
 
   useEffect(() => {
     fetch("/api/stats/public")
@@ -85,6 +86,17 @@ export default function HomePage() {
       instruments: "Instruments",
       copyright: "Copyright © Neurotrader 2026",
     },
+    cn: {
+      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
+      welcome: "\u53D1\u5E03\u548C\u8BA8\u8BBA\u4EA4\u6613\u60F3\u6CD5\u7684\u5E73\u53F0\u3002\u9605\u8BFB\u5206\u6790\uFF0C\u5206\u4EAB\u9884\u6D4B\uFF0C\u901A\u8FC7\u8BA2\u9605\u8D5A\u53D6\u6536\u5165\u3002",
+      login: "\u767B\u5F55",
+      register: "\u6CE8\u518C",
+      continue: "\u65E0\u9700\u6CE8\u518C\u7EE7\u7EED",
+      participants: "\u53C2\u4E0E\u8005",
+      ideas: "\u60F3\u6CD5",
+      instruments: "\u5DE5\u5177",
+      copyright: "Copyright © Neurotrader 2026",
+    },
   };
 
   const t = content[lang];
@@ -94,14 +106,14 @@ export default function HomePage() {
       {/* Top bar */}
       <header className="w-full px-6 py-4 flex justify-end items-center gap-4 fixed top-0 left-0 right-0 z-50">
         <button
-          onClick={() => setLang(lang === "ru" ? "en" : "ru")}
+          onClick={() => setLang(lang === "ru" ? "en" : lang === "en" ? "cn" : "ru")}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
             isDark
               ? "text-gray-300 hover:text-white hover:bg-gray-800"
               : "text-gray-600 hover:text-black hover:bg-gray-100"
           }`}
         >
-          <span className="text-lg leading-none">{lang === "ru" ? "\u{1F1F7}\u{1F1FA}" : "\u{1F1EC}\u{1F1E7}"}</span>
+          <FlagIcon code={lang === "cn" ? "zh" : lang} size={22} />
           <span className="text-sm font-medium uppercase">{lang}</span>
         </button>
         <ThemeToggle />
