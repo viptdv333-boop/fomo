@@ -47,6 +47,9 @@ export function initSocket(httpServer: HTTPServer) {
       socket.leave(roomId);
     });
 
+    // Join personal notification room
+    socket.join(`user_${socket.data.userId}`);
+
     socket.on("send_message", async (data: { roomId: string; text: string }) => {
       const { roomId, text } = data;
       if (!text?.trim()) return;
@@ -68,6 +71,36 @@ export function initSocket(httpServer: HTTPServer) {
       });
 
       io.to(roomId).emit("new_message", message);
+
+      // Check for @mentions in message text
+      const mentionRegex = /@(\S+)/g;
+      const mentions = text.match(mentionRegex);
+      if (mentions) {
+        const mentionNames = mentions.map((m) => m.slice(1).toLowerCase());
+        const mentionedUsers = await prisma.user.findMany({
+          where: {
+            OR: [
+              { displayName: { in: mentionNames, mode: "insensitive" } },
+              { fomoId: { in: mentionNames, mode: "insensitive" } },
+            ],
+            id: { not: socket.data.userId },
+          },
+          select: { id: true },
+        });
+
+        for (const u of mentionedUsers) {
+          await prisma.notification.create({
+            data: {
+              userId: u.id,
+              type: "chat_mention",
+              title: `${socket.data.displayName} упомянул вас в чате`,
+              body: text.length > 80 ? text.slice(0, 80) + "…" : text,
+              link: "/chat",
+            },
+          });
+          io.to(`user_${u.id}`).emit("new_notification");
+        }
+      }
     });
 
     socket.on("disconnect", () => {

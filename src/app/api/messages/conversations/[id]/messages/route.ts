@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -145,6 +146,29 @@ export async function POST(
     },
     data: { lastReadAt: new Date() },
   });
+
+  // Notify other participants about new message
+  const otherParticipants = await prisma.directConversationParticipant.findMany({
+    where: { conversationId, userId: { not: userId } },
+    select: { userId: true },
+  });
+
+  const senderName = message.sender.displayName;
+  const preview = message.text
+    ? message.text.length > 80
+      ? message.text.slice(0, 80) + "…"
+      : message.text
+    : "Файл";
+
+  for (const p of otherParticipants) {
+    await createNotification({
+      userId: p.userId,
+      type: "new_message",
+      title: `Сообщение от ${senderName}`,
+      body: preview,
+      link: "/messages",
+    });
+  }
 
   return NextResponse.json(message, { status: 201 });
 }

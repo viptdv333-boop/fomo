@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { getSocket } from "@/lib/socket";
 
 interface Notification {
   id: string;
@@ -14,25 +16,36 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+  const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch("/api/notifications?limit=10");
     if (res.ok) {
       const data = await res.json();
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
     }
-  }
+  }, []);
 
   useEffect(() => {
     load();
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [load]);
+
+  // Listen for real-time notification events via socket
+  useEffect(() => {
+    const userId = (session?.user as any)?.id;
+    if (!userId) return;
+    const socket = getSocket(userId);
+    const handler = () => load();
+    socket.on("new_notification", handler);
+    return () => { socket.off("new_notification", handler); };
+  }, [session, load]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
