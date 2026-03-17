@@ -134,7 +134,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(room.id); }}
           className={`shrink-0 text-base leading-none transition-colors ${
-            isFav ? "text-yellow-500 hover:text-yellow-600" : "text-gray-400 dark:text-gray-500 hover:text-yellow-500"
+            isFav ? "text-yellow-400 hover:text-yellow-500" : "text-yellow-300 dark:text-yellow-700 hover:text-yellow-400"
           }`}
           title={isFav ? "Убрать из избранного" : "В избранное"}
         >
