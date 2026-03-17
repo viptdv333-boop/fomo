@@ -96,6 +96,14 @@ export async function GET(request: NextRequest) {
     where.authorId = authorId;
   }
 
+  // Paid/free filter
+  const isPaidParam = searchParams.get("isPaid");
+  if (isPaidParam === "true") {
+    where.isPaid = true;
+  } else if (isPaidParam === "false") {
+    where.isPaid = false;
+  }
+
   // Dynamic sorting
   let orderBy: Record<string, unknown>;
   switch (sortByParam) {

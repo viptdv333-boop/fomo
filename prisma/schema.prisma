@@ -205,6 +205,8 @@ model ChatRoom {
   name         String
   instrumentId String? @unique
   isGeneral    Boolean @default(false)
+  isArchived   Boolean @default(false)
+  isClosed     Boolean @default(false)
   createdAt    DateTime @default(now())
 
   instrument Instrument?  @relation(fields: [instrumentId], references: [id], onDelete: SetNull)

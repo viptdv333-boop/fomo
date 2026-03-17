@@ -39,6 +39,8 @@ interface IdeaData {
 interface AuthorOption {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
+  ideasCount: number;
 }
 
 export default function FeedPageWrapper() {
@@ -85,22 +87,15 @@ function FeedPage() {
     loadIdeas();
   }, [selectedInstrument, page, sortBy, sortOrder, authorFilter, paidFilter]);
 
-  // Author search
+  // Load all idea authors on mount
   useEffect(() => {
-    if (!authorSearch || authorSearch.length < 2) {
-      setAuthorOptions([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      const res = await fetch(`/api/users?search=${encodeURIComponent(authorSearch)}&limit=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setAuthorOptions(data);
-        setShowAuthorDropdown(true);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [authorSearch]);
+    fetch("/api/ideas/authors")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAuthorOptions(data);
+      })
+      .catch(() => {});
+  }, []);
 
   async function loadIdeas() {
     setLoading(true);
@@ -196,60 +191,78 @@ function FeedPage() {
 
         {/* Row 2: Author + Categories */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Author filter */}
+          {/* Author filter dropdown */}
           <div className="relative">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Автор:</span>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Все авторы"
-                  value={authorFilter ? authorDisplayName : authorSearch}
-                  onChange={(e) => {
-                    if (authorFilter) {
-                      setAuthorFilter("");
-                      setAuthorDisplayName("");
-                    }
-                    setAuthorSearch(e.target.value);
-                  }}
-                  onFocus={() => authorOptions.length > 0 && setShowAuthorDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 200)}
-                  className="w-40 px-2 py-1 border dark:border-gray-700 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-                />
-                {authorFilter && (
-                  <button
-                    onClick={() => {
-                      setAuthorFilter("");
-                      setAuthorDisplayName("");
-                      setAuthorSearch("");
-                      setPage(1);
-                    }}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
-                  >
-                    x
-                  </button>
-                )}
-                {showAuthorDropdown && authorOptions.length > 0 && (
-                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-10 w-full max-h-40 overflow-y-auto">
-                    {authorOptions.map((a) => (
-                      <button
-                        key={a.id}
-                        onMouseDown={() => {
-                          setAuthorFilter(a.id);
-                          setAuthorDisplayName(a.displayName);
-                          setAuthorSearch("");
-                          setShowAuthorDropdown(false);
-                          setPage(1);
-                        }}
-                        className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                      >
-                        {a.displayName}
-                      </button>
-                    ))}
+            <button
+              onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
+              className={filterBtnClass(!!authorFilter)}
+            >
+              {authorFilter ? authorDisplayName : "Автор"} ▾
+            </button>
+            {showAuthorDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 w-56">
+                  {/* Search input */}
+                  <div className="p-2 border-b dark:border-gray-700">
+                    <input
+                      type="text"
+                      placeholder="Поиск автора..."
+                      value={authorSearch}
+                      onChange={(e) => setAuthorSearch(e.target.value)}
+                      className="w-full px-2 py-1.5 border dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                      autoFocus
+                    />
                   </div>
-                )}
-              </div>
-            </div>
+                  {/* All authors option */}
+                  <div className="max-h-60 overflow-y-auto">
+                    <button
+                      onClick={() => {
+                        setAuthorFilter("");
+                        setAuthorDisplayName("");
+                        setAuthorSearch("");
+                        setShowAuthorDropdown(false);
+                        setPage(1);
+                      }}
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                        !authorFilter ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      Все авторы
+                    </button>
+                    {authorOptions
+                      .filter((a) =>
+                        !authorSearch || a.displayName.toLowerCase().includes(authorSearch.toLowerCase())
+                      )
+                      .map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={() => {
+                            setAuthorFilter(a.id);
+                            setAuthorDisplayName(a.displayName);
+                            setAuthorSearch("");
+                            setShowAuthorDropdown(false);
+                            setPage(1);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
+                            authorFilter === a.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          {a.avatarUrl ? (
+                            <img src={a.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-500">
+                              {a.displayName[0]}
+                            </div>
+                          )}
+                          <span className="flex-1 truncate">{a.displayName}</span>
+                          <span className="text-gray-400 text-[10px]">{a.ideasCount}</span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Divider */}

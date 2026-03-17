@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ChatRoom from "@/components/chat/ChatRoom";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
 
 export default function ChatPage() {
+  const [currentRoom, setCurrentRoom] = useState<{ id: string; name: string; isClosed: boolean }>({
+    id: "general",
+    name: "Общий чат",
+    isClosed: false,
+  });
+
   useEffect(() => {
     // Hide footer and fix height for chat page (same approach as messenger)
     const footer = document.querySelector("footer");
@@ -29,9 +35,16 @@ export default function ChatPage() {
   return (
     <AuthGuard>
       <div className="flex gap-4" style={{ height: "calc(100dvh - 4.5rem)" }}>
-        <ChatSidebar />
+        <ChatSidebar
+          currentRoomId={currentRoom.id}
+          onSelectRoom={(room) => setCurrentRoom(room)}
+        />
         <div className="flex-1 min-h-0">
-          <ChatRoom roomId="general" roomName="Общий чат" />
+          <ChatRoom
+            roomId={currentRoom.id}
+            roomName={currentRoom.name}
+            isClosed={currentRoom.isClosed}
+          />
         </div>
       </div>
     </AuthGuard>
