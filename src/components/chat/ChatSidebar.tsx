@@ -123,47 +123,45 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     const active = isActive(room);
     const isFav = favorites.includes(room.id);
 
-    const content = (
-      <>
-        <span className="flex-1 truncate">
-          {room.name}
-          {room.isClosed && <span className="ml-1 text-[10px]">🔒</span>}
-        </span>
-        <span className="text-[10px] text-gray-400 shrink-0 mr-5">({room.membersCount})</span>
-      </>
-    );
-
-    const cls = `flex items-center gap-1.5 ${indent ? "pl-5 pr-2" : "px-3"} py-1.5 rounded-lg text-sm transition ${
+    const cls = `flex items-center gap-1 ${indent ? "pl-5 pr-1" : "px-2"} py-1.5 rounded-lg text-sm transition ${
       active
         ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
         : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
     }`;
 
-    return (
-      <div key={room.id} className="group relative">
-        {onSelectRoom ? (
-          <button
-            onClick={() => onSelectRoom({ id: room.id, name: room.name, isClosed: room.isClosed })}
-            className={`w-full text-left ${cls}`}
-          >
-            {content}
-          </button>
-        ) : (
-          <Link href={getRoomHref(room)} className={cls}>
-            {content}
-          </Link>
-        )}
+    const inner = (
+      <>
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(room.id); }}
-          className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-sm transition-all ${
-            isFav
-              ? "text-yellow-500 opacity-100"
-              : "text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-yellow-500"
+          className={`shrink-0 text-sm leading-none transition-colors ${
+            isFav ? "text-yellow-500" : "text-gray-300 dark:text-gray-600 hover:text-yellow-400"
           }`}
           title={isFav ? "Убрать из избранного" : "В избранное"}
         >
           {isFav ? "★" : "☆"}
         </button>
+        <span className="flex-1 truncate">
+          {room.name}
+          {room.isClosed && <span className="ml-1 text-[10px]">🔒</span>}
+        </span>
+        <span className="text-[10px] text-gray-400 shrink-0">({room.membersCount})</span>
+      </>
+    );
+
+    return (
+      <div key={room.id}>
+        {onSelectRoom ? (
+          <button
+            onClick={() => onSelectRoom({ id: room.id, name: room.name, isClosed: room.isClosed })}
+            className={`w-full text-left ${cls}`}
+          >
+            {inner}
+          </button>
+        ) : (
+          <Link href={getRoomHref(room)} className={cls}>
+            {inner}
+          </Link>
+        )}
       </div>
     );
   }
