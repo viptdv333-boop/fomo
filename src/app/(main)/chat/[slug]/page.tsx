@@ -46,7 +46,7 @@ export default function InstrumentChatPage() {
 
   return (
     <AuthGuard>
-      <div className="flex gap-4" style={{ height: "calc(100dvh - 4.5rem)" }}>
+      <div className="flex gap-4" style={{ height: "calc(100dvh - 5.5rem)" }}>
         <ChatSidebar currentSlug={params.slug as string} />
         <div className="flex-1 min-h-0">
           {currentRoom ? (

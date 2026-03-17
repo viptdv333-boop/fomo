@@ -424,7 +424,7 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden" style={{ height: "calc(100dvh - 4.5rem)" }}>
+    <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden" style={{ height: "calc(100dvh - 5.5rem)" }}>
       {/* Sidebar — full width on mobile, fixed width on desktop */}
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
         {/* Tabs */}

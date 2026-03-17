@@ -132,9 +132,11 @@ function FeedPage() {
     <div>
       {/* Filter bar */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6 space-y-2.5">
-        {/* Row 1: Sort + Paid + Author + View mode — single row */}
+        {/* Row 1: Sort + Paid (centered) + View mode (right) */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
               className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}

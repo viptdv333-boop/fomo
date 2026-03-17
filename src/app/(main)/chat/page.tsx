@@ -34,7 +34,7 @@ export default function ChatPage() {
 
   return (
     <AuthGuard>
-      <div className="flex gap-4" style={{ height: "calc(100dvh - 4.5rem)" }}>
+      <div className="flex gap-4" style={{ height: "calc(100dvh - 5.5rem)" }}>
         <ChatSidebar
           currentRoomId={currentRoom.id}
           onSelectRoom={(room) => setCurrentRoom(room)}
