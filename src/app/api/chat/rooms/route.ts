@@ -13,7 +13,13 @@ export async function GET(req: NextRequest) {
   const rooms = await prisma.chatRoom.findMany({
     where: includeArchived ? {} : { isArchived: false },
     include: {
-      instrument: { select: { name: true, slug: true } },
+      instrument: {
+        select: {
+          name: true,
+          slug: true,
+          category: { select: { id: true, name: true } },
+        },
+      },
       _count: { select: { messages: true } },
     },
     orderBy: [{ isGeneral: "desc" }, { name: "asc" }],
@@ -46,6 +52,8 @@ export async function GET(req: NextRequest) {
       isArchived: room.isArchived,
       isClosed: room.isClosed,
       instrumentSlug: room.instrument?.slug || null,
+      categoryId: (room.instrument as any)?.category?.id || null,
+      categoryName: (room.instrument as any)?.category?.name || null,
       messagesCount: room._count.messages,
       membersCount: memberCountMap[room.id] || 0,
     }))

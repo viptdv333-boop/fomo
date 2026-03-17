@@ -80,7 +80,8 @@ export default function ChatRoom({ roomId, roomName, isClosed }: ChatRoomProps) 
     socket.emit("join_room", roomId);
 
     socket.on("new_message", (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
+      // Dedup: skip if message already exists (sent via API)
+      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
     });
 
     return () => {
@@ -132,30 +133,29 @@ export default function ChatRoom({ roomId, roomName, isClosed }: ChatRoomProps) 
     e.preventDefault();
     if (!input.trim() || !session?.user?.id) return;
 
-    // Send via API (which also handles replyTo)
+    const textToSend = input;
+    const replyToSend = replyTo;
+    setInput("");
+    setReplyTo(null);
+    setShowEmojiPicker(false);
+
+    // Send via API only (no socket.emit to avoid duplicates)
     try {
       const res = await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           roomId,
-          text: input,
-          replyToId: replyTo?.id || undefined,
+          text: textToSend,
+          replyToId: replyToSend?.id || undefined,
         }),
       });
       if (res.ok) {
         const msg = await res.json();
-        setMessages((prev) => [...prev, msg]);
-
-        // Also emit via socket for other users
-        const socket = getSocket(session.user.id);
-        socket.emit("send_message", { roomId, text: input, replyToId: replyTo?.id });
+        // Add only if not already present (socket might deliver it too)
+        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
       }
     } catch {}
-
-    setInput("");
-    setReplyTo(null);
-    setShowEmojiPicker(false);
   }
 
   async function toggleReaction(messageId: string, emoji: string) {
