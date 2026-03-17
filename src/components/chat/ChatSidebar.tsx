@@ -48,7 +48,7 @@ export default function ChatSidebar({ currentSlug }: { currentSlug?: string }) {
   }
 
   return (
-    <div className="w-64 shrink-0">
+    <div className="w-64 shrink-0 overflow-y-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
         <h3 className="font-semibold text-sm text-gray-500 dark:text-gray-400 uppercase mb-3">Чаты</h3>
         <div className="space-y-1">

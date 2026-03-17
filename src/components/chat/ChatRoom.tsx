@@ -63,7 +63,7 @@ export default function ChatRoom({ roomId, roomName }: ChatRoomProps) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)]">
+    <div className="flex flex-col h-full overflow-hidden">
       <div className="bg-white dark:bg-gray-900 rounded-t-xl border-b dark:border-gray-700 px-4 py-3 font-semibold dark:text-gray-100">
         {roomName}
       </div>
