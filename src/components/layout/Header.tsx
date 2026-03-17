@@ -37,9 +37,15 @@ export default function Header() {
         </Link>
 
         {/* Desktop nav — centered */}
-        <nav className="hidden md:flex items-center gap-8 flex-1 justify-center">
+        <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
           <Link href="/feed" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
             Доска
+          </Link>
+          <Link href="/channels" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
+            Каналы
+          </Link>
+          <Link href="/authors" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
+            Авторы
           </Link>
           <Link href="/chat" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
             Болталка
@@ -173,6 +179,8 @@ export default function Header() {
             </div>
           )}
           <Link href="/feed" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Доска</Link>
+          <Link href="/channels" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Каналы</Link>
+          <Link href="/authors" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Авторы</Link>
           <Link href="/chat" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Болталка</Link>
           <Link href="/messages" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Сообщения</Link>
           {session && (
