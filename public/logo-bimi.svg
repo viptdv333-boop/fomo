@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="10" fill="#ffffff"/>
+  <text x="50" y="58" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="28" letter-spacing="-1">
+    <tspan fill="#E31E24">F</tspan><tspan fill="#1B8B3D">O</tspan><tspan fill="#1B8B3D">M</tspan><tspan fill="#1B8B3D">O</tspan>
+  </text>
+  <line x1="18" y1="30" x2="18" y2="70" stroke="#E31E24" stroke-width="2"/>
+  <line x1="82" y1="30" x2="82" y2="70" stroke="#E31E24" stroke-width="2"/>
+</svg>
