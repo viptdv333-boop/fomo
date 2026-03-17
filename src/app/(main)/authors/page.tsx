@@ -96,7 +96,7 @@ export default function AuthorsPage() {
 
               <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
-                  <span className="text-yellow-500">⭐</span> {author.rating.toFixed(1)}
+                  <span className="text-yellow-500">⭐</span> {Number(author.rating).toFixed(1)}
                 </span>
                 <span>{author.ideasCount} идей</span>
                 <span>{author.subscribersCount} подписчиков</span>
