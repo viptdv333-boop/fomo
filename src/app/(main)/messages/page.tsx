@@ -116,8 +116,11 @@ function MessagesPage() {
     return true;
   });
   const [chatFontSize, setChatFontSize] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("fomo-chat-font") || "normal";
-    return "normal";
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("fomo-chat-font-v2");
+      return saved ? Number(saved) : 1;
+    }
+    return 1;
   });
 
   // Contact/user context menu (right-click)
@@ -310,9 +313,9 @@ function MessagesPage() {
     localStorage.setItem("fomo-chat-notif", next ? "on" : "off");
   }
 
-  function changeFontSize(size: string) {
+  function changeFontSize(size: number) {
     setChatFontSize(size);
-    localStorage.setItem("fomo-chat-font", size);
+    localStorage.setItem("fomo-chat-font-v2", String(size));
   }
 
   function toggleFavorite(userId: string) {
@@ -411,6 +414,17 @@ function MessagesPage() {
     setContextMenu({ msg, x: e.clientX, y: e.clientY });
   }
 
+  // All users for new chat dialog
+  const [allChatUsers, setAllChatUsers] = useState<{ id: string; displayName: string; avatarUrl: string | null }[]>([]);
+
+  async function loadAllChatUsers() {
+    const res = await fetch("/api/users/dm-enabled");
+    if (res.ok) {
+      const data = await res.json();
+      setAllChatUsers(data.filter((u: any) => u.id !== session?.user?.id));
+    }
+  }
+
   async function searchUsers(query: string) {
     setSearchQuery(query);
     if (query.length < 2) { setSearchResults([]); return; }
@@ -426,6 +440,7 @@ function MessagesPage() {
     setShowNewChat(false);
     setSearchQuery("");
     setSearchResults([]);
+    setAllChatUsers([]);
   }
 
   async function loadDmUsers() {
@@ -515,7 +530,7 @@ function MessagesPage() {
         {tab === "chats" && (
           <div className="px-3 py-2 border-b dark:border-gray-700">
             <button
-              onClick={() => setShowNewChat(true)}
+              onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
               className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
               + Начать новый чат
@@ -734,27 +749,21 @@ function MessagesPage() {
                       </button>
                     </div>
 
-                    {/* Font size */}
+                    {/* Font size slider */}
                     <div>
-                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Размер шрифта</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Размер шрифта: {chatFontSize}</div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => changeFontSize(chatFontSize === "large" ? "normal" : chatFontSize === "normal" ? "small" : "small")}
-                          disabled={chatFontSize === "small"}
-                          className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 text-base font-bold"
-                        >
-                          −
-                        </button>
-                        <div className="flex-1 text-center text-xs text-gray-500 dark:text-gray-400 font-medium">
-                          {chatFontSize === "small" ? "Мелкий" : chatFontSize === "large" ? "Крупный" : "Обычный"}
-                        </div>
-                        <button
-                          onClick={() => changeFontSize(chatFontSize === "small" ? "normal" : chatFontSize === "normal" ? "large" : "large")}
-                          disabled={chatFontSize === "large"}
-                          className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 text-base font-bold"
-                        >
-                          +
-                        </button>
+                        <span className="text-xs text-gray-400">0</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={10}
+                          step={1}
+                          value={chatFontSize}
+                          onChange={(e) => changeFontSize(Number(e.target.value))}
+                          className="flex-1 accent-blue-600"
+                        />
+                        <span className="text-xs text-gray-400">10</span>
                       </div>
                     </div>
                   </div>
@@ -772,7 +781,8 @@ function MessagesPage() {
             {/* Messages */}
             <div
               ref={chatContainerRef}
-              className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass} ${chatFontSize === "small" ? "text-xs" : chatFontSize === "large" ? "text-base" : "text-sm"}`}
+              style={{ fontSize: `${12 + chatFontSize * 2}px` }}
+              className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass}`}
               onClick={() => { setContextMenu(null); setShowSettings(false); setUserContextMenu(null); }}
             >
               {messages.map((msg) => {
@@ -798,7 +808,8 @@ function MessagesPage() {
                         </div>
                       )}
                       <div
-                        className={`px-4 py-2 rounded-2xl text-sm relative ${
+                        style={{ padding: `${6 + chatFontSize * 1.5}px ${12 + chatFontSize * 2}px` }}
+                        className={`rounded-2xl relative ${
                           msg.isDeleted
                             ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 italic"
                             : isMe
@@ -1013,45 +1024,50 @@ function MessagesPage() {
 
       {/* New Chat Modal */}
       {showNewChat && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewChat(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowNewChat(false); setAllChatUsers([]); }}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-96 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold dark:text-gray-100">Новый чат</h3>
-              <button onClick={() => setShowNewChat(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
+              <button onClick={() => { setShowNewChat(false); setAllChatUsers([]); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                 ✕
               </button>
             </div>
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => searchUsers(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск пользователей..."
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
               autoFocus
             />
             <div className="flex-1 overflow-y-auto space-y-1">
-              {searchResults.length === 0 && searchQuery.length >= 2 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Никого не найдено</p>
-              )}
-              {searchQuery.length < 2 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Введите имя для поиска</p>
-              )}
-              {searchResults.map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => startNewChat(user.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
-                >
-                  <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm shrink-0 overflow-hidden">
-                    {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      user.displayName[0]
-                    )}
-                  </div>
-                  <span className="text-sm font-medium dark:text-gray-100">{user.displayName}</span>
-                </button>
-              ))}
+              {(() => {
+                const filtered = allChatUsers.filter((u) =>
+                  searchQuery.length === 0 || u.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                if (allChatUsers.length === 0) {
+                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Загрузка...</p>;
+                }
+                if (filtered.length === 0) {
+                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Никого не найдено</p>;
+                }
+                return filtered.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => startNewChat(user.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm shrink-0 overflow-hidden">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        user.displayName[0]
+                      )}
+                    </div>
+                    <span className="text-sm font-medium dark:text-gray-100">{user.displayName}</span>
+                  </button>
+                ));
+              })()}
             </div>
           </div>
         </div>

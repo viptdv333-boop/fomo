@@ -184,19 +184,36 @@ function ProfileContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("type", "avatars");
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (res.ok) {
-      const { url } = await res.json();
-      setAvatarUrl(url);
-      // Save avatar immediately
-      await fetch(`/api/users/${session?.user?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: url }),
-      });
+    // Show local preview immediately
+    const localPreview = URL.createObjectURL(file);
+    setAvatarUrl(localPreview);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "avatars");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          // Save avatar URL to user profile
+          const patchRes = await fetch(`/api/users/${session?.user?.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl: data.url }),
+          });
+          if (patchRes.ok) {
+            // Keep showing local preview (blob URL) — it's already visible
+            // Server URL will be used on next page load
+          }
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error("Upload failed:", err);
+        setMessage("Ошибка загрузки аватара: " + (err.error || "неизвестная ошибка"));
+      }
+    } catch (err) {
+      console.error("Avatar upload error:", err);
+      setMessage("Ошибка загрузки аватара");
     }
     setAvatarUploading(false);
   }
@@ -248,10 +265,17 @@ function ProfileContent() {
           className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
           onClick={() => avatarInputRef.current?.click()}
         >
-          {avatarUploading ? (
+          {avatarUrl ? (
+            <>
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              {avatarUploading && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-white text-xs">...</span>
+                </div>
+              )}
+            </>
+          ) : avatarUploading ? (
             <span className="text-sm text-gray-400">...</span>
-          ) : avatarUrl ? (
-            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
           ) : (
             displayName?.[0] || "?"
           )}
