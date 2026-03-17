@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
@@ -10,9 +11,12 @@ import LanguageSelector from "./LanguageSelector";
 export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -38,21 +42,25 @@ export default function Header() {
 
         {/* Desktop nav — centered */}
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
-          <Link href="/feed" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
-            Доска
-          </Link>
-          <Link href="/channels" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
-            Каналы
-          </Link>
-          <Link href="/authors" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
-            Авторы
-          </Link>
-          <Link href="/chat" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
-            Болталка
-          </Link>
-          <Link href="/messages" className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 font-medium">
-            Сообщения
-          </Link>
+          {[
+            { href: "/feed", label: "Доска" },
+            { href: "/channels", label: "Каналы" },
+            { href: "/authors", label: "Авторы" },
+            { href: "/chat", label: "Болталка" },
+            { href: "/messages", label: "Сообщения" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`text-sm font-medium transition ${
+                isActive(link.href)
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Desktop right section */}
@@ -178,11 +186,26 @@ export default function Header() {
               </div>
             </div>
           )}
-          <Link href="/feed" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Доска</Link>
-          <Link href="/channels" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Каналы</Link>
-          <Link href="/authors" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Авторы</Link>
-          <Link href="/chat" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Болталка</Link>
-          <Link href="/messages" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600">Сообщения</Link>
+          {[
+            { href: "/feed", label: "Доска" },
+            { href: "/channels", label: "Каналы" },
+            { href: "/authors", label: "Авторы" },
+            { href: "/chat", label: "Болталка" },
+            { href: "/messages", label: "Сообщения" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              className={`block py-2 text-sm ${
+                isActive(link.href)
+                  ? "text-blue-600 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:text-blue-600"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
           {session && (
             <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2 space-y-1">
               <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">+ Создать идею</Link>

@@ -99,8 +99,13 @@ export default function IdeaPage() {
     <div className="max-w-3xl mx-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg">
-            {idea.author.displayName[0]}
+          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg overflow-hidden">
+            {idea.author.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              idea.author.displayName[0]
+            )}
           </div>
           <div>
             <Link
