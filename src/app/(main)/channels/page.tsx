@@ -80,7 +80,7 @@ export default function ChannelsPage() {
           </div>
           {session && (
             <Link
-              href="/channels/new"
+              href="/channels/create"
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
             >
               + Создать канал
@@ -114,6 +114,7 @@ export default function ChannelsPage() {
               <ChannelAvatar ch={ch} size="sm" />
               <div className="flex-1 min-w-0">
                 <span className="font-medium text-gray-900 dark:text-gray-100">{ch.name}</span>
+                <span className="text-xs text-gray-400 ml-1">({ch.id.slice(0, 8)})</span>
                 <span className="text-xs text-gray-400 ml-2">{ch.author.displayName}</span>
               </div>
               <div className="flex items-center gap-4 text-xs shrink-0">
@@ -134,7 +135,7 @@ export default function ChannelsPage() {
               <div className="flex justify-center mb-2">
                 <ChannelAvatar ch={ch} />
               </div>
-              <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{ch.name}</div>
+              <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{ch.name} <span className="font-normal text-gray-400">({ch.id.slice(0, 8)})</span></div>
               <div className="text-xs text-gray-400 truncate">{ch.author.displayName}</div>
               <div className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-2">{ch.price} ₽ / {ch.durationDays} дн.</div>
             </Link>
@@ -151,7 +152,7 @@ export default function ChannelsPage() {
               <div className="flex items-center gap-3 mb-3">
                 <ChannelAvatar ch={ch} />
                 <div className="min-w-0">
-                  <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">{ch.name}</div>
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">{ch.name} <span className="font-normal text-sm text-gray-400">({ch.id.slice(0, 8)})</span></div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">{ch.author.displayName}</div>
                 </div>
               </div>
