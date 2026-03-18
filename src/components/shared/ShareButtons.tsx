@@ -25,8 +25,8 @@ const WhatsAppIcon = () => (
 
 const MaxIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <rect width="24" height="24" rx="12" fill="#FF8C00"/>
-    <text x="12" y="16" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold" fontFamily="Arial">M</text>
+    <rect width="24" height="24" rx="12" fill="#0077FF"/>
+    <path d="M6.5 8.5v4.2c0 .5.1.9.3 1.1.2.3.5.4.9.4.5 0 1-.3 1.4-.8V8.5h1.8v4.2c0 .5.1.9.3 1.1.2.3.5.4.9.4.5 0 1-.3 1.4-.8V8.5h1.8v5.3c0 .5 0 1 .1 1.4h-1.7l-.1-.7c-.6.6-1.3.9-2 .9-.8 0-1.4-.3-1.7-.9-.7.6-1.4.9-2.1.9-.7 0-1.2-.2-1.6-.7-.4-.5-.5-1.1-.5-1.9V8.5h1.8z" fill="#fff"/>
   </svg>
 );
 
@@ -81,7 +81,7 @@ const SHARE_TARGETS = [
     label: "MAX",
     Icon: MaxIcon,
     urlFn: (url: string, text: string) =>
-      `https://connect.ok.ru/offer?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,
+      `https://max.ru/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
   },
   {
     id: "wechat",
