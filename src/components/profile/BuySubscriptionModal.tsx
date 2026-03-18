@@ -30,8 +30,9 @@ export default function BuySubscriptionModal({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [receiptUrl, setReceiptUrl] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "yukassa">("card");
+  const [cardCopied, setCardCopied] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     fetch(`/api/users/${authorId}/tariffs`)
@@ -40,7 +41,6 @@ export default function BuySubscriptionModal({
         setTariffs(data);
         if (data.length > 0) {
           setSelectedTariff(data[0].id);
-          // Auto-select first available payment method
           const methods = data[0].paymentMethods || ["card"];
           setPaymentMethod(methods.includes("yukassa") ? "yukassa" : "card");
         }
@@ -48,7 +48,6 @@ export default function BuySubscriptionModal({
       .finally(() => setLoading(false));
   }, [authorId]);
 
-  // Update payment method when tariff changes
   function handleTariffChange(tariffId: string) {
     setSelectedTariff(tariffId);
     const tariff = tariffs.find((t) => t.id === tariffId);
@@ -58,6 +57,12 @@ export default function BuySubscriptionModal({
         setPaymentMethod(methods[0] as "card" | "yukassa");
       }
     }
+  }
+
+  async function copyCard(cardNumber: string) {
+    await navigator.clipboard.writeText(cardNumber.replace(/\s/g, ""));
+    setCardCopied(true);
+    setTimeout(() => setCardCopied(false), 2000);
   }
 
   async function handleCardPayment() {
@@ -76,13 +81,11 @@ export default function BuySubscriptionModal({
         subscriptionType: "tariff",
         tariffId: selectedTariff,
         amount: tariff.price,
-        receiptUrl: receiptUrl || undefined,
       }),
     });
 
     if (res.ok) {
-      onClose();
-      router.refresh();
+      setSuccess(true);
     } else {
       const data = await res.json();
       setError(data.error || "Ошибка оплаты");
@@ -106,7 +109,6 @@ export default function BuySubscriptionModal({
 
     if (res.ok) {
       const data = await res.json();
-      // Redirect to YuKassa payment page
       window.location.href = data.paymentUrl;
     } else {
       const data = await res.json();
@@ -144,7 +146,24 @@ export default function BuySubscriptionModal({
             </button>
           </div>
 
-          {loading ? (
+          {/* Success state */}
+          {success ? (
+            <div className="text-center py-6">
+              <div className="text-4xl mb-3">✅</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Заявка отправлена!
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Автор получит уведомление и подтвердит вашу подписку после проверки оплаты.
+              </p>
+              <button
+                onClick={() => { onClose(); router.refresh(); }}
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              >
+                Понятно
+              </button>
+            </div>
+          ) : loading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               Загрузка каналов...
             </div>
@@ -206,7 +225,7 @@ export default function BuySubscriptionModal({
                           : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
                       }`}
                     >
-                      🏦 ЮKassa
+                      🏦 ЮKassa (авто)
                     </button>
                     <button
                       onClick={() => setPaymentMethod("card")}
@@ -222,28 +241,36 @@ export default function BuySubscriptionModal({
                 </div>
               )}
 
-              {/* Card payment section */}
+              {/* Card payment section — card number + copy, no receipt link */}
               {selected && paymentMethod === "card" && hasCard && (
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-                  {selected.cardNumber && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> на карту{" "}
-                      <strong className="text-gray-800 dark:text-gray-200 font-mono">{selected.cardNumber}</strong>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> на карту:
+                  </p>
+                  {selected.cardNumber ? (
+                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg px-4 py-3">
+                      <span className="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-wider flex-1">
+                        {selected.cardNumber}
+                      </span>
+                      <button
+                        onClick={() => copyCard(selected.cardNumber!)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          cardCopied
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-600"
+                            : "bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                        }`}
+                      >
+                        {cardCopied ? "✓ Скопировано" : "Копировать"}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Номер карты не указан автором. Свяжитесь с автором для уточнения реквизитов.
                     </p>
                   )}
-                  {!selected.cardNumber && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> автору
-                      и приложите чек:
-                    </p>
-                  )}
-                  <input
-                    type="url"
-                    value={receiptUrl}
-                    onChange={(e) => setReceiptUrl(e.target.value)}
-                    placeholder="Ссылка на чек (необязательно)"
-                    className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:bg-gray-900 dark:text-gray-100"
-                  />
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                    После перевода нажмите «Я оплатил» — автор получит уведомление и подтвердит подписку.
+                  </p>
                 </div>
               )}
 
@@ -270,7 +297,7 @@ export default function BuySubscriptionModal({
                   ? "Обработка..."
                   : paymentMethod === "yukassa"
                   ? "Оплатить через ЮKassa"
-                  : "Отправить заявку на подписку"}
+                  : "Я оплатил"}
               </button>
             </>
           )}
