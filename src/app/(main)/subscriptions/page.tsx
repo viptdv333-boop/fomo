@@ -96,13 +96,7 @@ export default function SubscriptionsPage() {
           {channels.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
               <div className="text-4xl mb-3">📺</div>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">У вас пока нет каналов</p>
-              <Link
-                href="/channels/create"
-                className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-              >
-                Создать канал
-              </Link>
+              <p className="text-gray-500 dark:text-gray-400">У вас пока нет каналов</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -134,91 +128,90 @@ export default function SubscriptionsPage() {
 
       {/* Subscriptions tab */}
       {tab === "subscriptions" && (
-        <div>
-          {subs.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
-              <div className="text-4xl mb-3">📋</div>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">У вас нет активных подписок</p>
-              <Link href="/feed" className="text-blue-600 dark:text-blue-400 hover:underline">
-                Перейти в ленту
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Author subscriptions (free follows) */}
-              {authorSubs.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Авторы
-                  </h2>
-                  <div className="space-y-3">
-                    {authorSubs.map((sub) => (
-                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
-                          {sub.author.avatarUrl ? (
-                            <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            sub.author.displayName[0]
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Link
-                            href={`/profile/${sub.author.id}`}
-                            className="font-medium hover:text-blue-600 dark:text-gray-100"
-                          >
-                            {sub.author.displayName}
-                          </Link>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Рейтинг: {Number(sub.author.rating).toFixed(1)}
-                          </div>
-                        </div>
-                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
-                          Отписаться
-                        </button>
+        <div className="space-y-6">
+          {/* Authors section (free follows) */}
+          <div>
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              Авторы
+            </h2>
+            {authorSubs.length === 0 ? (
+              <div className="text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
+                <p className="text-gray-400 dark:text-gray-500 text-sm">Вы не подписаны ни на одного автора</p>
+                <Link href="/authors" className="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">
+                  Найти авторов
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {authorSubs.map((sub) => (
+                  <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
+                      {sub.author.avatarUrl ? (
+                        <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        sub.author.displayName[0]
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/profile/${sub.author.id}`}
+                        className="font-medium hover:text-blue-600 dark:text-gray-100"
+                      >
+                        {sub.author.displayName}
+                      </Link>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Рейтинг: {Number(sub.author.rating).toFixed(1)}
                       </div>
-                    ))}
+                    </div>
+                    <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
+                      Отписаться
+                    </button>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+            )}
+          </div>
 
-              {/* Channel subscriptions (paid) */}
-              {channelSubs.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Каналы
-                  </h2>
-                  <div className="space-y-3">
-                    {channelSubs.map((sub) => (
-                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
-                          {sub.author.avatarUrl ? (
-                            <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            sub.author.displayName[0]
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Link
-                            href={`/profile/${sub.author.id}`}
-                            className="font-medium hover:text-blue-600 dark:text-gray-100"
-                          >
-                            {sub.author.displayName}
-                          </Link>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {Number(sub.monthlyPrice)} ₽/мес
-                            {sub.endDate && <> · До {new Date(sub.endDate).toLocaleDateString("ru")}</>}
-                          </div>
-                        </div>
-                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
-                          Отписаться
-                        </button>
+          {/* Channels section (paid subscriptions) */}
+          <div>
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              Каналы
+            </h2>
+            {channelSubs.length === 0 ? (
+              <div className="text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
+                <p className="text-gray-400 dark:text-gray-500 text-sm">У вас нет платных подписок на каналы</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {channelSubs.map((sub) => (
+                  <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
+                      {sub.author.avatarUrl ? (
+                        <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        sub.author.displayName[0]
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/profile/${sub.author.id}`}
+                        className="font-medium hover:text-blue-600 dark:text-gray-100"
+                      >
+                        {sub.author.displayName}
+                      </Link>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {Number(sub.monthlyPrice)} ₽/мес
+                        {sub.endDate && <> · До {new Date(sub.endDate).toLocaleDateString("ru")}</>}
                       </div>
-                    ))}
+                    </div>
+                    <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
+                      Отписаться
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

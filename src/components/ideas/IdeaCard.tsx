@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
 
 interface IdeaCardProps {
   idea: {
@@ -10,6 +11,7 @@ interface IdeaCardProps {
     preview: string;
     isPaid: boolean;
     price: number | null;
+    acceptDonations?: boolean;
     createdAt: string;
     author: {
       id: string;
@@ -17,6 +19,7 @@ interface IdeaCardProps {
       fomoId?: string | null;
       rating: number;
       avatarUrl: string | null;
+      donationCard?: string | null;
     };
     instruments: { id: string; name: string; slug: string }[];
     voteScore: number;
@@ -29,6 +32,7 @@ interface IdeaCardProps {
 
 export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardProps) {
   const { data: session } = useSession();
+  const [showDonateInfo, setShowDonateInfo] = useState(false);
 
   async function handleVote(value: number) {
     if (!session) return;
@@ -190,31 +194,75 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           ))}
         </div>
 
-        {session && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => handleVote(1)}
-              className={`px-2 py-1 rounded text-sm transition ${
-                idea.userVote === 1 ? "bg-green-100 text-green-700" : "text-gray-400 hover:text-green-600"
-              }`}
-            >
-              ▲
-            </button>
-            <span className={`text-sm font-medium min-w-[2rem] text-center ${
-              idea.voteScore > 0 ? "text-green-600" : idea.voteScore < 0 ? "text-red-600" : "text-gray-400"
-            }`}>
-              {idea.voteScore}
-            </span>
-            <button
-              onClick={() => handleVote(-1)}
-              className={`px-2 py-1 rounded text-sm transition ${
-                idea.userVote === -1 ? "bg-red-100 text-red-700" : "text-gray-400 hover:text-red-600"
-              }`}
-            >
-              ▼
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Donate button */}
+          {!idea.isPaid && idea.acceptDonations && session && session.user?.id !== idea.author.id && (
+            <div className="relative">
+              <button
+                onClick={() => setShowDonateInfo(!showDonateInfo)}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 transition"
+                title="Отправить донат"
+              >
+                💰 Донат
+              </button>
+              {showDonateInfo && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowDonateInfo(false)} />
+                  <div className="absolute bottom-8 right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg p-3 z-20 min-w-[220px]">
+                    {idea.author.donationCard ? (
+                      <>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                          Переведите любую сумму автору:
+                        </p>
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 font-mono text-sm text-gray-800 dark:text-gray-200 text-center">
+                          {idea.author.donationCard}
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(idea.author.donationCard!);
+                          }}
+                          className="w-full mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline text-center"
+                        >
+                          Скопировать номер карты
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Автор пока не указал карту для донатов
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {session && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleVote(1)}
+                className={`px-2 py-1 rounded text-sm transition ${
+                  idea.userVote === 1 ? "bg-green-100 text-green-700" : "text-gray-400 hover:text-green-600"
+                }`}
+              >
+                ▲
+              </button>
+              <span className={`text-sm font-medium min-w-[2rem] text-center ${
+                idea.voteScore > 0 ? "text-green-600" : idea.voteScore < 0 ? "text-red-600" : "text-gray-400"
+              }`}>
+                {idea.voteScore}
+              </span>
+              <button
+                onClick={() => handleVote(-1)}
+                className={`px-2 py-1 rounded text-sm transition ${
+                  idea.userVote === -1 ? "bg-red-100 text-red-700" : "text-gray-400 hover:text-red-600"
+                }`}
+              >
+                ▼
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -24,6 +24,7 @@ interface IdeaData {
   preview: string;
   isPaid: boolean;
   price: number | null;
+  acceptDonations?: boolean;
   createdAt: string;
   author: {
     id: string;
@@ -31,6 +32,7 @@ interface IdeaData {
     fomoId?: string | null;
     rating: number;
     avatarUrl: string | null;
+    donationCard?: string | null;
   };
   instruments: { id: string; name: string; slug: string }[];
   voteScore: number;

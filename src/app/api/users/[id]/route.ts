@@ -26,13 +26,14 @@ const userPatchSchema = z.object({
   avatarUrl: z.string().max(500).nullable().optional(),
   dmEnabled: z.boolean().optional(),
   paymentCard: z.string().max(30).nullable().optional(),
+  donationCard: z.string().max(30).nullable().optional(),
   fomoId: z.string().min(7).max(33).optional(),
   socialLinks: z.object({
     telegram: z.string().max(200).optional(),
     vk: z.string().max(200).optional(),
     youtube: z.string().max(200).optional(),
-    twitter: z.string().max(200).optional(),
-    instagram: z.string().max(200).optional(),
+    whatsapp: z.string().max(200).optional(),
+    max: z.string().max(200).optional(),
     website: z.string().max(500).optional(),
   }).nullable().optional(),
 });
@@ -65,6 +66,7 @@ export async function GET(
       specializations: true,
       dmEnabled: true,
       paymentCard: true,
+      donationCard: true,
       socialLinks: true,
       createdAt: true,
       education: {
@@ -108,6 +110,7 @@ export async function GET(
     specializations: user.specializations,
     dmEnabled: user.dmEnabled,
     paymentCard: user.paymentCard,
+    donationCard: user.donationCard,
     socialLinks: user.socialLinks,
     education: user.education,
     createdAt: user.createdAt,
@@ -208,7 +211,7 @@ export async function PATCH(
       "displayName", "bio", "subscriptionPrice",
       "firstName", "lastName", "city", "workplace",
       "exchangeExperience", "specializations",
-      "avatarUrl", "dmEnabled", "paymentCard", "socialLinks",
+      "avatarUrl", "dmEnabled", "paymentCard", "donationCard", "socialLinks",
       "fomoId",
     ] as const;
 
@@ -245,6 +248,7 @@ export async function PATCH(
         avatarUrl: true,
         dmEnabled: true,
         paymentCard: true,
+        donationCard: true,
         socialLinks: true,
       },
     });

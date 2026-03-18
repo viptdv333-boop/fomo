@@ -22,6 +22,7 @@ interface IdeaFormProps {
     content: string;
     isPaid: boolean;
     price: number | null;
+    acceptDonations?: boolean;
     instrumentIds: string[];
     attachments?: Attachment[];
   };
@@ -36,6 +37,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
   const [content, setContent] = useState(initialData?.content || "");
   const [isPaid, setIsPaid] = useState(initialData?.isPaid || false);
   const [price, setPrice] = useState(initialData?.price ? String(initialData.price) : "");
+  const [acceptDonations, setAcceptDonations] = useState(initialData?.acceptDonations ?? false);
   const [selectedInstruments, setSelectedInstruments] = useState<string[]>(
     initialData?.instrumentIds || []
   );
@@ -93,6 +95,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
       content,
       isPaid,
       price: isPaid ? Number(price) : undefined,
+      acceptDonations: !isPaid ? acceptDonations : false,
       instrumentIds: selectedInstruments,
       attachments: attachments.length > 0 ? attachments : undefined,
     };
@@ -275,6 +278,26 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
             </div>
           )}
         </div>
+
+        {/* Donations toggle — only for free ideas */}
+        {!isPaid && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptDonations}
+                onChange={(e) => setAcceptDonations(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-green-600 focus:ring-green-500"
+              />
+              <div>
+                <span className="font-medium dark:text-gray-100">Принимать донаты</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Читатели смогут отправить вам благодарность за идею. Настройте карту для донатов в профиле.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         <button
           type="submit"

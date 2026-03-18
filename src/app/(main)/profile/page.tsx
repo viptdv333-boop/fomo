@@ -49,6 +49,7 @@ function ProfileContent() {
   const [education, setEducation] = useState<EducationRecord[]>([]);
   const [dmEnabled, setDmEnabled] = useState(true);
   const [paymentCard, setPaymentCard] = useState("");
+  const [donationCard, setDonationCard] = useState("");
   const [socialLinks, setSocialLinks] = useState({
     telegram: "",
     vk: "",
@@ -93,6 +94,7 @@ function ProfileContent() {
           setAvatarUrl(data.avatarUrl || null);
           setDmEnabled(data.dmEnabled ?? true);
           setPaymentCard(data.paymentCard || "");
+          setDonationCard(data.donationCard || "");
           setRating(Number(data.rating) || 0);
           if (data.socialLinks) {
             setSocialLinks({
@@ -130,6 +132,7 @@ function ProfileContent() {
         specializations,
         dmEnabled,
         paymentCard: paymentCard || null,
+        donationCard: donationCard || null,
         socialLinks: Object.values(socialLinks).some(Boolean) ? socialLinks : null,
       }),
     });
@@ -597,6 +600,21 @@ function ProfileContent() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Donation card */}
+        <div className="border-t dark:border-gray-700 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Карта для донатов</h3>
+          <input
+            type="text"
+            value={donationCard}
+            onChange={(e) => setDonationCard(e.target.value)}
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="0000 0000 0000 0000"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Укажите номер карты для получения донатов от читателей ваших бесплатных идей
+          </p>
         </div>
 
         {/* DM toggle */}

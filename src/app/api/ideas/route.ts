@@ -13,6 +13,7 @@ const ideaSelect = {
   preview: true,
   isPaid: true,
   price: true,
+  acceptDonations: true,
   createdAt: true,
   author: {
     select: {
@@ -21,6 +22,7 @@ const ideaSelect = {
       fomoId: true,
       rating: true,
       avatarUrl: true,
+      donationCard: true,
     },
   },
   instruments: {
@@ -54,6 +56,7 @@ export async function GET(request: NextRequest) {
         preview: idea.preview,
         isPaid: idea.isPaid,
         price: idea.price,
+        acceptDonations: idea.acceptDonations,
         createdAt: idea.createdAt,
         author: idea.author,
         instruments: idea.instruments.map((ii) => ii.instrument),
@@ -140,6 +143,7 @@ export async function GET(request: NextRequest) {
       preview: idea.preview,
       isPaid: idea.isPaid,
       price: idea.price,
+      acceptDonations: idea.acceptDonations,
       createdAt: idea.createdAt,
       author: idea.author,
       instruments: idea.instruments.map((ii) => ii.instrument),
@@ -166,6 +170,7 @@ const createIdeaSchema = z.object({
   content: z.string().min(1),
   isPaid: z.boolean(),
   price: z.number().positive().optional(),
+  acceptDonations: z.boolean().optional(),
   instrumentIds: z.array(z.string()).min(1),
   attachments: z.array(attachmentSchema).optional(),
 });
@@ -203,7 +208,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { title, preview, content, isPaid, price, instrumentIds, attachments } = parsed.data;
+  const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments } = parsed.data;
 
   if (isPaid && (price === undefined || price <= 0)) {
     return NextResponse.json(
@@ -289,6 +294,7 @@ export async function POST(request: NextRequest) {
       content,
       isPaid,
       price: isPaid ? price : null,
+      acceptDonations: !isPaid ? (acceptDonations ?? false) : false,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       authorId: userId,
       instruments: {

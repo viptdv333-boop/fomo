@@ -29,7 +29,6 @@ interface AuthorProfile {
   bio: string | null;
   avatarUrl: string | null;
   rating: number;
-  subscriptionPrice: number | null;
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
@@ -42,8 +41,8 @@ interface AuthorProfile {
     telegram?: string;
     vk?: string;
     youtube?: string;
-    twitter?: string;
-    instagram?: string;
+    whatsapp?: string;
+    max?: string;
     website?: string;
   } | null;
   education: EducationRecord[];
@@ -70,6 +69,7 @@ export default function AuthorProfilePage() {
   const [ideas, setIdeas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [hasTariffs, setHasTariffs] = useState(false);
 
   async function loadProfile() {
     const res = await fetch(`/api/users/${params.userId}`);
@@ -83,9 +83,20 @@ export default function AuthorProfilePage() {
     setLoading(false);
   }
 
+  async function checkTariffs() {
+    try {
+      const res = await fetch(`/api/users/${params.userId}/tariffs`);
+      if (res.ok) {
+        const data = await res.json();
+        setHasTariffs(Array.isArray(data) && data.length > 0);
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     loadProfile();
     loadIdeas();
+    checkTariffs();
   }, [params.userId]);
 
   async function toggleFollow() {
@@ -167,7 +178,7 @@ export default function AuthorProfilePage() {
               >
                 {profile.isFollowing ? "Отписаться" : "Подписаться"}
               </button>
-              {profile.subscriptionPrice && (
+              {hasTariffs && (
                 <button
                   onClick={() => setShowBuyModal(true)}
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition"
@@ -266,18 +277,18 @@ export default function AuthorProfilePage() {
                   YouTube
                 </a>
               )}
-              {profile.socialLinks.twitter && (
-                <a href={profile.socialLinks.twitter.startsWith("http") ? profile.socialLinks.twitter : `https://x.com/${profile.socialLinks.twitter.replace("@", "")}`}
+              {profile.socialLinks.whatsapp && (
+                <a href={`https://wa.me/${profile.socialLinks.whatsapp.replace(/[^0-9+]/g, "")}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium hover:bg-gray-200 transition">
-                  Twitter / X
+                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition">
+                  WhatsApp
                 </a>
               )}
-              {profile.socialLinks.instagram && (
-                <a href={profile.socialLinks.instagram.startsWith("http") ? profile.socialLinks.instagram : `https://instagram.com/${profile.socialLinks.instagram.replace("@", "")}`}
+              {profile.socialLinks.max && (
+                <a href={profile.socialLinks.max.startsWith("http") ? profile.socialLinks.max : `https://max.ru/${profile.socialLinks.max}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium hover:bg-pink-100 transition">
-                  Instagram
+                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition">
+                  MAX
                 </a>
               )}
               {profile.socialLinks.website && (
@@ -288,12 +299,6 @@ export default function AuthorProfilePage() {
                 </a>
               )}
             </div>
-          </div>
-        )}
-
-        {profile.subscriptionPrice && (
-          <div className="mt-4 pt-4 border-t dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-            Платная подписка на все идеи: <strong>{Number(profile.subscriptionPrice)} ₽/мес</strong>
           </div>
         )}
       </div>

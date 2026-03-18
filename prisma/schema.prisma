@@ -42,6 +42,7 @@ model User {
   specializations    String[]  @default([])
   dmEnabled          Boolean   @default(true)
   paymentCard        String?
+  donationCard       String?
   socialLinks        Json?
   locale             String    @default("ru")
   createdAt          DateTime  @default(now())
@@ -111,15 +112,16 @@ model Instrument {
 }
 
 model Idea {
-  id        String   @id @default(cuid())
-  authorId  String
-  title     String
-  preview   String
-  content   String
-  isPaid    Boolean  @default(false)
-  price     Decimal? @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  authorId        String
+  title           String
+  preview         String
+  content         String
+  isPaid          Boolean  @default(false)
+  price           Decimal? @db.Decimal(10, 2)
+  acceptDonations Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   attachments Json?
 
