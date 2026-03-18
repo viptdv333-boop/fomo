@@ -78,7 +78,7 @@ export default function InstrumentPage() {
             <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
               {instrument.category && (
                 <Link
-                  href={`/feed?category=${instrument.category.slug}`}
+                  href={`/feed`}
                   className="hover:text-blue-600 transition"
                 >
                   {instrument.category.name}
