@@ -135,70 +135,37 @@ function FeedPage() {
     <div>
       {/* Filter bar */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6 space-y-2.5">
-        {/* Row 1: Sort + Paid (centered) + View mode (right) */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1" />
+        {/* Row 1: Sort + Paid + Author + View mode */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
+            className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
+          >
+            Новые
+          </button>
+          <button
+            onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
+            className={filterBtnClass(sortBy === "date" && sortOrder === "asc")}
+          >
+            Старые
+          </button>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
-              className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
-            >
-              Сначала новые
-            </button>
-            <button
-              onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
-              className={filterBtnClass(sortBy === "date" && sortOrder === "asc")}
-            >
-              Сначала старые
-            </button>
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+          <button
+            onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
+            className={filterBtnClass(paidFilter === "free")}
+          >
+            Бесплатные
+          </button>
+          <button
+            onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
+            className={filterBtnClass(paidFilter === "paid")}
+          >
+            Платные
+          </button>
 
-            <button
-              onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
-              className={filterBtnClass(paidFilter === "free")}
-            >
-              Бесплатные
-            </button>
-            <button
-              onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
-              className={filterBtnClass(paidFilter === "paid")}
-            >
-              Платные
-            </button>
-          </div>
-
-          <div className="flex-1" />
-
-          {/* View mode */}
-          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded transition ${viewMode === "list" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
-              title="Список"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-            </button>
-            <button
-              onClick={() => setViewMode("paragraph")}
-              className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
-              title="Абзац"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
-            </button>
-            <button
-              onClick={() => setViewMode("cards")}
-              className={`p-1.5 rounded transition ${viewMode === "cards" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
-              title="Карточки"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Row 2: Author + Categories — uniform buttons */}
-        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
           {/* Author filter dropdown */}
           <div className="relative">
             <button
@@ -273,6 +240,22 @@ function FeedPage() {
             )}
           </div>
 
+          {/* View mode — right side */}
+          <div className="ml-auto flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0">
+            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Список">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+            </button>
+            <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Абзац">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
+            </button>
+            <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Карточки">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Category/instrument filters */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Category instrument filters */}
           <button
             onClick={() => {
