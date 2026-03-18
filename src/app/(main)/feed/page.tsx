@@ -180,47 +180,57 @@ function FeedPage() {
 
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
-          {/* Categories — tree dropdown */}
-          {categories.map((cat) => (
-            <div key={cat.id} className="relative">
-              <button
-                onClick={() => toggleCategory(cat.id)}
-                className={`${filterBtnClass(
-                  cat.instruments.some((i) => i.id === selectedInstrument)
-                )} ${expandedCategory === cat.id ? "ring-1 ring-blue-400" : ""}`}
-              >
-                {cat.name} ▾
-              </button>
-              {expandedCategory === cat.id && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setExpandedCategory(null)} />
-                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[180px]">
-                    {cat.instruments.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Нет инструментов</div>
-                    ) : (
-                      cat.instruments.map((inst) => (
-                        <button
-                          key={inst.id}
-                          onClick={() => {
-                            setSelectedInstrument(inst.id);
-                            setExpandedCategory(null);
-                            setPage(1);
-                          }}
-                          className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                            selectedInstrument === inst.id
-                              ? "text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-900/30"
-                              : "text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          {inst.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+          {/* Categories — single button with tree dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
+              className={`${filterBtnClass(!!selectedInstrument)} ${expandedCategory === "__root" ? "ring-1 ring-blue-400" : ""}`}
+            >
+              {selectedInstrument
+                ? categories.flatMap((c) => c.instruments).find((i) => i.id === selectedInstrument)?.name || "Категории"
+                : "Категории"} ▾
+            </button>
+            {expandedCategory === "__root" && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExpandedCategory(null)} />
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[220px] max-h-80 overflow-y-auto">
+                  {/* All instruments */}
+                  <button
+                    onClick={() => { setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
+                    className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                      !selectedInstrument ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                    }`}
+                  >
+                    Все инструменты
+                  </button>
+                  {categories.map((cat) => (
+                    <div key={cat.id}>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">
+                        {cat.name}
+                      </div>
+                      {cat.instruments.length === 0 ? (
+                        <div className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Нет инструментов</div>
+                      ) : (
+                        cat.instruments.map((inst) => (
+                          <button
+                            key={inst.id}
+                            onClick={() => { setSelectedInstrument(inst.id); setExpandedCategory(null); setPage(1); }}
+                            className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                              selectedInstrument === inst.id
+                                ? "text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-900/30"
+                                : "text-gray-700 dark:text-gray-300"
+                            }`}
+                          >
+                            {inst.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Author dropdown */}
           <div className="relative">
