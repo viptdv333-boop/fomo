@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
+import ShareButtons from "@/components/shared/ShareButtons";
 
 const SPECIALIZATION_OPTIONS = [
   { value: "trader", label: "Трейдер" },
@@ -345,6 +346,18 @@ function ProfileContent() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Латинские буквы, цифры и символы _ ! ? $ % — от 7 до 33 символов
           </p>
+          {/* Personal page link */}
+          {session?.user?.id && (
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Моя страница: <span className="font-mono text-blue-600 dark:text-blue-400">fomo.broker/profile/{session.user.id}</span>
+              </p>
+              <ShareButtons
+                url={`https://fomo.broker/profile/${session.user.id}`}
+                text={`${[firstName, lastName].filter(Boolean).join(" ") || displayName || "Профиль"} на FOMO`}
+              />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
