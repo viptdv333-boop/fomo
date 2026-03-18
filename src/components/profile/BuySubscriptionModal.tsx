@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Tariff {
@@ -25,6 +25,7 @@ export default function BuySubscriptionModal({
   onClose,
 }: BuySubscriptionModalProps) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [selectedTariff, setSelectedTariff] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,11 @@ export default function BuySubscriptionModal({
   const [paymentMethod, setPaymentMethod] = useState<"card" | "yukassa">("card");
   const [cardCopied, setCardCopied] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Receipt image
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/users/${authorId}/tariffs`)
@@ -65,14 +71,69 @@ export default function BuySubscriptionModal({
     setTimeout(() => setCardCopied(false), 2000);
   }
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Можно прикрепить только изображение");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Максимальный размер файла — 10 МБ");
+      return;
+    }
+    setReceiptFile(file);
+    setReceiptPreview(URL.createObjectURL(file));
+    setError("");
+  }
+
+  function removeReceipt() {
+    setReceiptFile(null);
+    if (receiptPreview) URL.revokeObjectURL(receiptPreview);
+    setReceiptPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function uploadReceipt(): Promise<string | null> {
+    if (!receiptFile) return null;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", receiptFile);
+      formData.append("type", "receipts");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Ошибка загрузки");
+      const data = await res.json();
+      return data.url;
+    } catch {
+      setError("Не удалось загрузить скриншот");
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleCardPayment() {
     if (!selectedTariff) return;
+    if (!receiptFile) {
+      setError("Прикрепите скриншот чека об оплате");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
+
+    // 1. Upload receipt image
+    const receiptUrl = await uploadReceipt();
+    if (!receiptUrl) {
+      setSubmitting(false);
+      return;
+    }
 
     const tariff = tariffs.find((t) => t.id === selectedTariff);
     if (!tariff) return;
 
+    // 2. Create payment request
     const res = await fetch("/api/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,13 +145,57 @@ export default function BuySubscriptionModal({
       }),
     });
 
-    if (res.ok) {
-      setSuccess(true);
-    } else {
+    if (!res.ok) {
       const data = await res.json();
       setError(data.error || "Ошибка оплаты");
+      setSubmitting(false);
+      return;
     }
+
+    const paymentData = await res.json();
+    const paymentId = paymentData.paymentRequest?.id || paymentData.id;
+
+    // 3. Attach receipt to payment
+    if (paymentId) {
+      await fetch(`/api/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiptUrl }),
+      });
+    }
+
+    // 4. Send DM to author with receipt
+    await sendReceiptToAuthor(receiptUrl, tariff);
+
+    setSuccess(true);
     setSubmitting(false);
+  }
+
+  async function sendReceiptToAuthor(receiptUrl: string, tariff: Tariff) {
+    try {
+      // Create or get conversation
+      const convRes = await fetch("/api/messages/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participantId: authorId }),
+      });
+      if (!convRes.ok) return;
+      const conv = await convRes.json();
+
+      // Send message with receipt
+      await fetch(`/api/messages/conversations/${conv.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `💳 Оплата подписки «${tariff.name}» — ${Number(tariff.price)} ₽\n\nЧек об оплате прикреплён ниже. Пожалуйста, подтвердите получение.`,
+          fileUrl: receiptUrl,
+          fileName: "чек_оплаты.png",
+          fileType: "image",
+        }),
+      });
+    } catch {
+      // Non-critical — payment request already created
+    }
   }
 
   async function handleYukassaPayment() {
@@ -154,7 +259,7 @@ export default function BuySubscriptionModal({
                 Заявка отправлена!
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Автор получит уведомление и подтвердит вашу подписку после проверки оплаты.
+                Автор получил ваш чек в сообщениях и подтвердит подписку после проверки оплаты.
               </p>
               <button
                 onClick={() => { onClose(); router.refresh(); }}
@@ -241,14 +346,23 @@ export default function BuySubscriptionModal({
                 </div>
               )}
 
-              {/* Card payment section — card number + copy, no receipt link */}
+              {/* Card payment section */}
               {selected && paymentMethod === "card" && hasCard && (
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> на карту:
-                  </p>
+                <div className="space-y-3 mb-4">
+                  {/* Instructions */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">Как оплатить:</p>
+                    <ol className="text-xs text-blue-700 dark:text-blue-400 space-y-0.5 list-decimal list-inside">
+                      <li>Скопируйте номер карты ниже</li>
+                      <li>Переведите {Number(selected.price)} ₽ через банковское приложение</li>
+                      <li>Сделайте скриншот чека об оплате</li>
+                      <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                    </ol>
+                  </div>
+
+                  {/* Card number */}
                   {selected.cardNumber ? (
-                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg px-4 py-3">
                       <span className="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-wider flex-1">
                         {selected.cardNumber}
                       </span>
@@ -264,13 +378,54 @@ export default function BuySubscriptionModal({
                       </button>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Номер карты не указан автором. Свяжитесь с автором для уточнения реквизитов.
+                    <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      Номер карты не указан. Свяжитесь с автором.
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-                    После перевода нажмите «Я оплатил» — автор получит уведомление и подтвердит подписку.
-                  </p>
+
+                  {/* Receipt upload */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                      Скриншот чека об оплате <span className="text-red-500">*</span>
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {receiptPreview ? (
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={receiptPreview}
+                          alt="Чек"
+                          className="w-full max-h-48 object-contain rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                        />
+                        <button
+                          onClick={removeReceipt}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                        >
+                          ✕
+                        </button>
+                        <p className="text-xs text-green-600 mt-1">✓ Скриншот прикреплён</p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-500 transition"
+                      >
+                        <div className="text-2xl mb-1">📎</div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Нажмите, чтобы прикрепить скриншот
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          JPG, PNG до 10 МБ
+                        </p>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -290,11 +445,11 @@ export default function BuySubscriptionModal({
 
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !selectedTariff}
+                disabled={submitting || uploading || !selectedTariff}
                 className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
               >
-                {submitting
-                  ? "Обработка..."
+                {submitting || uploading
+                  ? "Отправка..."
                   : paymentMethod === "yukassa"
                   ? "Оплатить через ЮKassa"
                   : "Я оплатил"}

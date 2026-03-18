@@ -523,8 +523,13 @@ function PaymentCard({
         </div>
       )}
 
-      {/* Show receipt link for confirmed/rejected or for seller */}
-      {p.receiptUrl && !showSendButton && !showUploadButton && (
+      {/* Receipt image for seller + confirm/reject */}
+      {p.receiptUrl && role === "seller" && p.status === "PENDING" && (
+        <SellerActions paymentId={p.id} receiptUrl={p.receiptUrl} />
+      )}
+
+      {/* Show receipt link for confirmed/rejected */}
+      {p.receiptUrl && !(role === "seller" && p.status === "PENDING") && !showSendButton && !showUploadButton && (
         <div className="mt-2 pt-2 border-t dark:border-gray-700">
           <a
             href={p.receiptUrl}
@@ -536,6 +541,85 @@ function PaymentCard({
           </a>
         </div>
       )}
+    </div>
+  );
+}
+
+function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUrl: string }) {
+  const [confirming, setConfirming] = useState<"none" | "confirm" | "reject">("none");
+  const [processing, setProcessing] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+
+  async function handleAction(action: "confirm" | "reject") {
+    if (confirming !== action) {
+      setConfirming(action);
+      return;
+    }
+    // Second click — actually do it
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        setDone(action === "confirm" ? "Подтверждено" : "Отклонено");
+      }
+    } catch {}
+    setProcessing(false);
+  }
+
+  if (done) {
+    return (
+      <div className="mt-2 pt-2 border-t dark:border-gray-700">
+        <span className={`text-xs font-medium ${done === "Подтверждено" ? "text-green-600" : "text-red-500"}`}>
+          ✓ {done}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 pt-2 border-t dark:border-gray-700 space-y-2">
+      {/* Receipt preview */}
+      <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={receiptUrl} alt="Чек" className="max-h-32 rounded-lg border dark:border-gray-600 object-contain" />
+      </a>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleAction("confirm")}
+          disabled={processing}
+          className={`text-xs px-3 py-1.5 rounded-md font-medium transition disabled:opacity-50 ${
+            confirming === "confirm"
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200"
+          }`}
+        >
+          {processing ? "..." : confirming === "confirm" ? "Точно подтвердить?" : "Подтвердить"}
+        </button>
+        <button
+          onClick={() => handleAction("reject")}
+          disabled={processing}
+          className={`text-xs px-3 py-1.5 rounded-md font-medium transition disabled:opacity-50 ${
+            confirming === "reject"
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200"
+          }`}
+        >
+          {processing ? "..." : confirming === "reject" ? "Точно отклонить?" : "Отклонить"}
+        </button>
+        {confirming !== "none" && (
+          <button
+            onClick={() => setConfirming("none")}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            Отмена
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -22,6 +22,17 @@ interface ChannelData {
   };
 }
 
+interface IdeaData {
+  id: string;
+  title: string;
+  preview: string;
+  isPaid: boolean;
+  price: number | null;
+  createdAt: string;
+  voteScore: number;
+  instruments: { id: string; name: string; slug: string }[];
+}
+
 export default function ChannelPage() {
   const params = useParams();
   const router = useRouter();
@@ -30,19 +41,21 @@ export default function ChannelPage() {
 
   const [channel, setChannel] = useState<ChannelData | null>(null);
   const [otherTariffs, setOtherTariffs] = useState<ChannelData[]>([]);
+  const [ideas, setIdeas] = useState<IdeaData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ideasLoading, setIdeasLoading] = useState(true);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
+  // Load channel data
   useEffect(() => {
-    // Fetch all channels and find this one
     fetch("/api/channels")
       .then((r) => r.json())
       .then((data: ChannelData[]) => {
         const found = data.find((ch) => ch.id === channelId);
         if (found) {
           setChannel(found);
-          // Find other tariffs by same author
           const others = data.filter(
             (ch) => ch.author.id === found.author.id && ch.id !== found.id
           );
@@ -53,22 +66,45 @@ export default function ChannelPage() {
       .finally(() => setLoading(false));
   }, [channelId]);
 
-  // Check subscription status
+  // Check subscription & load ideas when channel loaded
   useEffect(() => {
-    if (!session?.user?.id || !channel) return;
-    fetch("/api/subscriptions")
+    if (!channel) return;
+
+    const owner = session?.user?.id === channel.author.id;
+    setIsOwner(owner);
+
+    // Check subscription
+    if (session?.user?.id && !owner) {
+      fetch("/api/subscriptions")
+        .then((r) => r.json())
+        .then((subs) => {
+          if (Array.isArray(subs)) {
+            const hasSub = subs.some(
+              (s: { type: string; author: { id: string } }) =>
+                s.author.id === channel.author.id && s.type === "paid"
+            );
+            setIsSubscribed(hasSub);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Load author's paid ideas
+    fetch(`/api/ideas?authorId=${channel.author.id}&isPaid=true&limit=50`)
       .then((r) => r.json())
-      .then((subs) => {
-        if (Array.isArray(subs)) {
-          const hasSub = subs.some(
-            (s: { type: string; author: { id: string } }) =>
-              s.author.id === channel.author.id && s.type === "paid"
-          );
-          setIsSubscribed(hasSub);
-        }
+      .then((data) => {
+        const list = data.data || data.ideas || (Array.isArray(data) ? data : []);
+        setIdeas(list);
       })
-      .catch(() => {});
-  }, [session, channel]);
+      .catch(() => {})
+      .finally(() => setIdeasLoading(false));
+  }, [channel, session]);
+
+  const canView = isOwner || isSubscribed;
+
+  const handleBuyFromLock = useCallback(() => {
+    setShowBuyModal(true);
+  }, []);
 
   if (loading) {
     return (
@@ -98,10 +134,8 @@ export default function ChannelPage() {
     );
   }
 
-  const isOwner = session?.user?.id === channel.author.id;
-
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       {/* Back */}
       <button
         onClick={() => router.push("/channels")}
@@ -113,15 +147,10 @@ export default function ChannelPage() {
       {/* Channel header */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6 mb-4">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
           <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl overflow-hidden shrink-0">
             {channel.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={channel.author.avatarUrl}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               (channel.author.displayName || "?")[0]
             )}
@@ -130,46 +159,28 @@ export default function ChannelPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {channel.name}{" "}
-              <span className="text-sm font-normal text-gray-400">
-                ({channel.id.slice(0, 8)})
-              </span>
+              <span className="text-sm font-normal text-gray-400">({channel.id.slice(0, 8)})</span>
             </h1>
-
-            <Link
-              href={`/profile/${channel.author.id}`}
-              className="text-sm text-blue-600 hover:underline"
-            >
+            <Link href={`/profile/${channel.author.id}`} className="text-sm text-blue-600 hover:underline">
               {channel.author.displayName}
             </Link>
-
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
               <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
               <span>👥 {channel.subscribersCount} подписчиков</span>
             </div>
           </div>
 
-          {/* Share */}
-          <ShareButtons
-            url={`https://fomo.broker/channels/${channel.id}`}
-            text={`${channel.name} — канал на FOMO`}
-          />
+          <ShareButtons url={`https://fomo.broker/channels/${channel.id}`} text={`${channel.name} — канал на FOMO`} />
         </div>
 
         {channel.description && (
-          <p className="text-gray-600 dark:text-gray-400 mt-4 text-sm leading-relaxed">
-            {channel.description}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 mt-4 text-sm leading-relaxed">{channel.description}</p>
         )}
 
-        {/* Price info */}
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-2">
-            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-              {channel.price} ₽
-            </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-              / {channel.durationDays} дн.
-            </span>
+            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{channel.price} ₽</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ {channel.durationDays} дн.</span>
           </div>
 
           {!isOwner && !isSubscribed && (
@@ -180,17 +191,97 @@ export default function ChannelPage() {
               Купить подписку
             </button>
           )}
-
           {isSubscribed && (
             <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg text-sm font-medium">
               ✓ Вы подписаны
             </span>
           )}
-
-          {isOwner && (
-            <span className="text-sm text-gray-400">Это ваш канал</span>
-          )}
+          {isOwner && <span className="text-sm text-gray-400">Это ваш канал</span>}
         </div>
+      </div>
+
+      {/* Ideas section */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Идеи канала
+          {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
+        </h2>
+
+        {ideasLoading ? (
+          <div className="text-center py-8 text-gray-400">Загрузка идей...</div>
+        ) : ideas.length === 0 ? (
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-8 text-center">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Автор пока не опубликовал платных идей в этом канале</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ideas.map((idea) => (
+              <div key={idea.id} className="relative">
+                {canView ? (
+                  /* Unlocked idea card */
+                  <Link
+                    href={`/ideas/${idea.id}`}
+                    className="block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{idea.preview}</p>
+                      </div>
+                      {idea.price && (
+                        <span className="text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded shrink-0">
+                          {Number(idea.price)} ₽
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                      <span>{new Date(idea.createdAt).toLocaleDateString("ru-RU")}</span>
+                      {idea.instruments.length > 0 && (
+                        <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
+                      )}
+                      <span>👍 {idea.voteScore}</span>
+                    </div>
+                  </Link>
+                ) : (
+                  /* Locked/blurred idea card */
+                  <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 relative overflow-hidden">
+                    <div className="filter blur-sm select-none pointer-events-none">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{idea.preview}</p>
+                        </div>
+                        {idea.price && (
+                          <span className="text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded shrink-0">
+                            {Number(idea.price)} ₽
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                        <span>{new Date(idea.createdAt).toLocaleDateString("ru-RU")}</span>
+                        {idea.instruments.length > 0 && (
+                          <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
+                        )}
+                        <span>👍 {idea.voteScore}</span>
+                      </div>
+                    </div>
+                    {/* Lock overlay */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 dark:bg-gray-900/60">
+                      <div className="text-3xl mb-2">🔒</div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Доступно по подписке</p>
+                      <button
+                        onClick={handleBuyFromLock}
+                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition"
+                      >
+                        Купить подписку
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Other tariffs by same author */}
@@ -207,12 +298,8 @@ export default function ChannelPage() {
                 className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               >
                 <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                    {t.name}
-                  </span>
-                  <span className="text-xs text-gray-400 ml-1">
-                    ({t.id.slice(0, 8)})
-                  </span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.name}</span>
+                  <span className="text-xs text-gray-400 ml-1">({t.id.slice(0, 8)})</span>
                 </div>
                 <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                   {t.price} ₽ / {t.durationDays} дн.
@@ -225,9 +312,7 @@ export default function ChannelPage() {
 
       {/* Author link */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-          Об авторе
-        </h2>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Об авторе</h2>
         <Link
           href={`/profile/${channel.author.id}`}
           className="flex items-center gap-3 p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -235,22 +320,14 @@ export default function ChannelPage() {
           <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
             {channel.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={channel.author.avatarUrl}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               (channel.author.displayName || "?")[0]
             )}
           </div>
           <div>
-            <div className="font-medium text-gray-900 dark:text-gray-100">
-              {channel.author.displayName}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Рейтинг: {Number(channel.author.rating).toFixed(1)} ⭐
-            </div>
+            <div className="font-medium text-gray-900 dark:text-gray-100">{channel.author.displayName}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Рейтинг: {Number(channel.author.rating).toFixed(1)} ⭐</div>
           </div>
           <span className="ml-auto text-blue-600 text-sm">Профиль →</span>
         </Link>
