@@ -133,10 +133,32 @@ function FeedPage() {
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6 space-y-2.5">
-        {/* Row 1: Sort + Paid + Author + View mode */}
+      {/* Filter bar — single row */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6">
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* All / Paid / Free */}
+          <button
+            onClick={() => { setPaidFilter("all"); setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
+            className={filterBtnClass(paidFilter === "all" && !selectedInstrument)}
+          >
+            Все
+          </button>
+          <button
+            onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
+            className={filterBtnClass(paidFilter === "paid")}
+          >
+            Платные
+          </button>
+          <button
+            onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
+            className={filterBtnClass(paidFilter === "free")}
+          >
+            Бесплатные
+          </button>
+
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+
+          {/* Sort */}
           <button
             onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
             className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
@@ -149,24 +171,58 @@ function FeedPage() {
           >
             Старые
           </button>
-
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
           <button
-            onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "free")}
+            onClick={() => { setSortBy(sortBy === "rating" ? "date" : "rating"); setSortOrder("desc"); setPage(1); }}
+            className={filterBtnClass(sortBy === "rating")}
           >
-            Бесплатные
-          </button>
-          <button
-            onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "paid")}
-          >
-            Платные
+            Рейтинг
           </button>
 
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-          {/* Author filter dropdown */}
+
+          {/* Categories — tree dropdown */}
+          {categories.map((cat) => (
+            <div key={cat.id} className="relative">
+              <button
+                onClick={() => toggleCategory(cat.id)}
+                className={`${filterBtnClass(
+                  cat.instruments.some((i) => i.id === selectedInstrument)
+                )} ${expandedCategory === cat.id ? "ring-1 ring-blue-400" : ""}`}
+              >
+                {cat.name} ▾
+              </button>
+              {expandedCategory === cat.id && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setExpandedCategory(null)} />
+                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[180px]">
+                    {cat.instruments.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Нет инструментов</div>
+                    ) : (
+                      cat.instruments.map((inst) => (
+                        <button
+                          key={inst.id}
+                          onClick={() => {
+                            setSelectedInstrument(inst.id);
+                            setExpandedCategory(null);
+                            setPage(1);
+                          }}
+                          className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                            selectedInstrument === inst.id
+                              ? "text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-900/30"
+                              : "text-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          {inst.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Author dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
@@ -178,7 +234,6 @@ function FeedPage() {
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
                 <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 w-56">
-                  {/* Search input */}
                   <div className="p-2 border-b dark:border-gray-700">
                     <input
                       type="text"
@@ -189,46 +244,26 @@ function FeedPage() {
                       autoFocus
                     />
                   </div>
-                  {/* All authors option */}
                   <div className="max-h-60 overflow-y-auto">
                     <button
-                      onClick={() => {
-                        setAuthorFilter("");
-                        setAuthorDisplayName("");
-                        setAuthorSearch("");
-                        setShowAuthorDropdown(false);
-                        setPage(1);
-                      }}
-                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                        !authorFilter ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
-                      }`}
+                      onClick={() => { setAuthorFilter(""); setAuthorDisplayName(""); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!authorFilter ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
                     >
                       Все авторы
                     </button>
                     {authorOptions
-                      .filter((a) =>
-                        !authorSearch || a.displayName.toLowerCase().includes(authorSearch.toLowerCase())
-                      )
+                      .filter((a) => !authorSearch || a.displayName.toLowerCase().includes(authorSearch.toLowerCase()))
                       .map((a) => (
                         <button
                           key={a.id}
-                          onClick={() => {
-                            setAuthorFilter(a.id);
-                            setAuthorDisplayName(a.displayName);
-                            setAuthorSearch("");
-                            setShowAuthorDropdown(false);
-                            setPage(1);
-                          }}
-                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
-                            authorFilter === a.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
-                          }`}
+                          onClick={() => { setAuthorFilter(a.id); setAuthorDisplayName(a.displayName); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${authorFilter === a.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
                         >
                           {a.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={a.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
                           ) : (
-                            <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-500">
-                              {a.displayName[0]}
-                            </div>
+                            <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-500">{a.displayName[0]}</div>
                           )}
                           <span className="flex-1 truncate">{a.displayName}</span>
                           <span className="text-gray-400 text-[10px]">{a.ideasCount}</span>
@@ -239,6 +274,19 @@ function FeedPage() {
               </>
             )}
           </div>
+
+          {/* Reset active filters */}
+          {(selectedInstrument || authorFilter) && (
+            <>
+              <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+              <button
+                onClick={() => { setSelectedInstrument(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕ сбросить
+              </button>
+            </>
+          )}
 
           {/* View mode — right side */}
           <div className="ml-auto flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0">
@@ -252,67 +300,6 @@ function FeedPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             </button>
           </div>
-        </div>
-
-        {/* Row 2: Category/instrument filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Category instrument filters */}
-          <button
-            onClick={() => {
-              setSelectedInstrument("");
-              setExpandedCategory(null);
-              setPage(1);
-            }}
-            className={filterBtnClass(!selectedInstrument)}
-          >
-            Все
-          </button>
-          {categories.map((cat) => (
-            <div key={cat.id} className="relative">
-              <button
-                onClick={() => toggleCategory(cat.id)}
-                className={`${filterBtnClass(
-                  cat.instruments.some((i) => i.id === selectedInstrument)
-                )} ${expandedCategory === cat.id ? "ring-1 ring-blue-400" : ""}`}
-              >
-                {cat.name} ▾
-              </button>
-              {expandedCategory === cat.id && (
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
-                  {cat.instruments.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Нет инструментов</div>
-                  ) : (
-                    cat.instruments.map((inst) => (
-                      <button
-                        key={inst.id}
-                        onClick={() => {
-                          setSelectedInstrument(inst.id);
-                          setExpandedCategory(null);
-                          setPage(1);
-                        }}
-                        className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                          selectedInstrument === inst.id
-                            ? "text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-900/30"
-                            : "text-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {inst.name}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {selectedInstrument && (
-            <button
-              onClick={() => { setSelectedInstrument(""); setPage(1); }}
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              x сбросить
-            </button>
-          )}
         </div>
       </div>
 
