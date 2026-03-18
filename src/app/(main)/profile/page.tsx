@@ -116,7 +116,7 @@ function ProfileContent() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        displayName,
+        displayName: [firstName, lastName].filter(Boolean).join(" ") || displayName,
         ...(fomoId && { fomoId }),
         bio,
         subscriptionPrice: subscriptionPrice ? Number(subscriptionPrice) : null,
