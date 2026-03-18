@@ -73,7 +73,73 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Subscribe to author via bank transfer
+  // Subscribe via tariff (card payment)
+  if (body.sellerId && body.subscriptionType === "tariff" && body.tariffId) {
+    const tariff = await prisma.subscriptionTariff.findUnique({
+      where: { id: body.tariffId },
+      include: { author: { select: { id: true, displayName: true, paymentCard: true } } },
+    });
+
+    if (!tariff || !tariff.isActive) {
+      return NextResponse.json({ error: "Тариф не найден" }, { status: 400 });
+    }
+
+    if (tariff.authorId === userId) {
+      return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
+    }
+
+    // Check existing active subscription
+    const existing = await prisma.subscription.findUnique({
+      where: { subscriberId_authorId: { subscriberId: userId, authorId: tariff.authorId } },
+    });
+    if (existing && existing.status === "active" && existing.endDate > new Date()) {
+      return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
+    }
+
+    // Check existing pending payment request
+    const existingRequest = await prisma.paymentRequest.findFirst({
+      where: { buyerId: userId, sellerId: tariff.authorId, tariffId: tariff.id, status: "PENDING" },
+    });
+    if (existingRequest) {
+      return NextResponse.json({
+        paymentRequest: existingRequest,
+        sellerCard: tariff.cardNumber || tariff.author.paymentCard,
+        sellerName: tariff.author.displayName,
+      });
+    }
+
+    const paymentRequest = await prisma.paymentRequest.create({
+      data: {
+        buyerId: userId,
+        sellerId: tariff.authorId,
+        amount: tariff.price,
+        subscriptionType: "tariff",
+        tariffId: tariff.id,
+        receiptUrl: body.receiptUrl || null,
+      },
+    });
+
+    // Notify seller
+    const buyer = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+    await createNotification({
+      userId: tariff.authorId,
+      type: "payment",
+      title: `${buyer?.displayName || "Покупатель"} подал заявку на подписку`,
+      body: `${tariff.name} — ${Number(tariff.price)} ₽`,
+      link: `/profile/${tariff.authorId}`,
+    });
+
+    return NextResponse.json({
+      paymentRequest,
+      sellerCard: tariff.cardNumber || tariff.author.paymentCard,
+      sellerName: tariff.author.displayName,
+    });
+  }
+
+  // Subscribe to author via bank transfer (legacy monthly)
   if (body.authorId && body.type === "subscription") {
     const author = await prisma.user.findUnique({
       where: { id: body.authorId },

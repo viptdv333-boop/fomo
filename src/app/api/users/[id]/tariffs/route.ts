@@ -15,7 +15,21 @@ export async function GET(
     orderBy: { price: "asc" },
   });
 
-  return NextResponse.json(tariffs);
+  // Hide sensitive YuKassa credentials from public API
+  const safeTariffs = tariffs.map((t) => ({
+    id: t.id,
+    authorId: t.authorId,
+    name: t.name,
+    description: t.description,
+    price: t.price,
+    durationDays: t.durationDays,
+    isActive: t.isActive,
+    paymentMethods: t.paymentMethods,
+    cardNumber: t.cardNumber,
+    createdAt: t.createdAt,
+  }));
+
+  return NextResponse.json(safeTariffs);
 }
 
 // POST: create a new tariff (author only, rating >= 5)
@@ -24,6 +38,10 @@ const createTariffSchema = z.object({
   description: z.string().max(500).optional(),
   price: z.number().positive(),
   durationDays: z.number().int().min(1).max(365),
+  paymentMethods: z.array(z.enum(["card", "yukassa"])).optional(),
+  cardNumber: z.string().max(30).optional(),
+  yukassaShopId: z.string().max(50).optional(),
+  yukassaSecret: z.string().max(200).optional(),
 });
 
 export async function POST(
@@ -80,6 +98,10 @@ export async function POST(
       description: parsed.data.description,
       price: parsed.data.price,
       durationDays: parsed.data.durationDays,
+      paymentMethods: parsed.data.paymentMethods || ["card"],
+      cardNumber: parsed.data.cardNumber,
+      yukassaShopId: parsed.data.yukassaShopId,
+      yukassaSecret: parsed.data.yukassaSecret,
     },
   });
 

@@ -9,6 +9,8 @@ interface Tariff {
   description: string | null;
   price: number;
   durationDays: number;
+  paymentMethods: string[];
+  cardNumber?: string | null;
 }
 
 interface BuySubscriptionModalProps {
@@ -29,18 +31,36 @@ export default function BuySubscriptionModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [receiptUrl, setReceiptUrl] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "yukassa">("card");
 
   useEffect(() => {
     fetch(`/api/users/${authorId}/tariffs`)
       .then((r) => r.json())
       .then((data) => {
         setTariffs(data);
-        if (data.length > 0) setSelectedTariff(data[0].id);
+        if (data.length > 0) {
+          setSelectedTariff(data[0].id);
+          // Auto-select first available payment method
+          const methods = data[0].paymentMethods || ["card"];
+          setPaymentMethod(methods.includes("yukassa") ? "yukassa" : "card");
+        }
       })
       .finally(() => setLoading(false));
   }, [authorId]);
 
-  async function handleSubmit() {
+  // Update payment method when tariff changes
+  function handleTariffChange(tariffId: string) {
+    setSelectedTariff(tariffId);
+    const tariff = tariffs.find((t) => t.id === tariffId);
+    if (tariff) {
+      const methods = tariff.paymentMethods || ["card"];
+      if (!methods.includes(paymentMethod)) {
+        setPaymentMethod(methods[0] as "card" | "yukassa");
+      }
+    }
+  }
+
+  async function handleCardPayment() {
     if (!selectedTariff) return;
     setSubmitting(true);
     setError("");
@@ -70,7 +90,43 @@ export default function BuySubscriptionModal({
     setSubmitting(false);
   }
 
+  async function handleYukassaPayment() {
+    if (!selectedTariff) return;
+    setSubmitting(true);
+    setError("");
+
+    const res = await fetch("/api/yukassa/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tariffId: selectedTariff,
+        sellerId: authorId,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Redirect to YuKassa payment page
+      window.location.href = data.paymentUrl;
+    } else {
+      const data = await res.json();
+      setError(data.error || "Ошибка создания платежа");
+      setSubmitting(false);
+    }
+  }
+
+  function handleSubmit() {
+    if (paymentMethod === "yukassa") {
+      handleYukassaPayment();
+    } else {
+      handleCardPayment();
+    }
+  }
+
   const selected = tariffs.find((t) => t.id === selectedTariff);
+  const selectedMethods = selected?.paymentMethods || ["card"];
+  const hasCard = selectedMethods.includes("card");
+  const hasYukassa = selectedMethods.includes("yukassa");
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -98,6 +154,7 @@ export default function BuySubscriptionModal({
             </div>
           ) : (
             <>
+              {/* Tariff selection */}
               <div className="space-y-3 mb-4">
                 {tariffs.map((t) => (
                   <label
@@ -113,7 +170,7 @@ export default function BuySubscriptionModal({
                       name="tariff"
                       value={t.id}
                       checked={selectedTariff === t.id}
-                      onChange={() => setSelectedTariff(t.id)}
+                      onChange={() => handleTariffChange(t.id)}
                       className="sr-only"
                     />
                     <div className="flex items-center justify-between">
@@ -134,12 +191,52 @@ export default function BuySubscriptionModal({
                 ))}
               </div>
 
-              {selected && (
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    Для оплаты переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> автору
-                    и приложите чек (необязательно):
+              {/* Payment method selection */}
+              {selected && hasCard && hasYukassa && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Способ оплаты
                   </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPaymentMethod("yukassa")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition ${
+                        paymentMethod === "yukassa"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
+                      🏦 ЮKassa
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod("card")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition ${
+                        paymentMethod === "card"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
+                      💳 Перевод на карту
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Card payment section */}
+              {selected && paymentMethod === "card" && hasCard && (
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+                  {selected.cardNumber && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> на карту{" "}
+                      <strong className="text-gray-800 dark:text-gray-200 font-mono">{selected.cardNumber}</strong>
+                    </p>
+                  )}
+                  {!selected.cardNumber && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Переведите <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> автору
+                      и приложите чек:
+                    </p>
+                  )}
                   <input
                     type="url"
                     value={receiptUrl}
@@ -147,6 +244,16 @@ export default function BuySubscriptionModal({
                     placeholder="Ссылка на чек (необязательно)"
                     className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:bg-gray-900 dark:text-gray-100"
                   />
+                </div>
+              )}
+
+              {/* YuKassa payment section */}
+              {selected && paymentMethod === "yukassa" && hasYukassa && (
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Оплата <strong className="text-gray-800 dark:text-gray-200">{Number(selected.price)} ₽</strong> пройдёт автоматически через ЮKassa.
+                    Вы будете перенаправлены на страницу оплаты.
+                  </p>
                 </div>
               )}
 
@@ -159,7 +266,11 @@ export default function BuySubscriptionModal({
                 disabled={submitting || !selectedTariff}
                 className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
               >
-                {submitting ? "Отправка..." : "Отправить заявку на подписку"}
+                {submitting
+                  ? "Обработка..."
+                  : paymentMethod === "yukassa"
+                  ? "Оплатить через ЮKassa"
+                  : "Отправить заявку на подписку"}
               </button>
             </>
           )}

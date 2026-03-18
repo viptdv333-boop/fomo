@@ -348,14 +348,18 @@ model Notification {
 }
 
 model SubscriptionTariff {
-  id           String   @id @default(cuid())
-  authorId     String
-  name         String
-  description  String?
-  price        Decimal  @db.Decimal(10, 2)
-  durationDays Int
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  authorId       String
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  durationDays   Int
+  isActive       Boolean  @default(true)
+  paymentMethods String[] @default(["card"])
+  cardNumber     String?
+  yukassaShopId  String?
+  yukassaSecret  String?
+  createdAt      DateTime @default(now())
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
