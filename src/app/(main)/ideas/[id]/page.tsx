@@ -100,7 +100,7 @@ export default function IdeaPage() {
               href={`/instruments/${inst.slug}`}
               className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
             >
-              {inst.name}
+              #{inst.name}
             </Link>
           ))}
         </div>

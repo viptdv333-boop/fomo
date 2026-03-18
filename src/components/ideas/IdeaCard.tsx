@@ -108,9 +108,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <div className="flex items-center justify-between mt-auto">
           <div className="flex gap-1 flex-wrap">
             {idea.instruments.slice(0, 2).map((inst) => (
-              <span key={inst.id} className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-[10px]">
-                {inst.name}
-              </span>
+              <Link key={inst.id} href={`/instruments/${inst.slug}`} className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-[10px] hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                #{inst.name}
+              </Link>
             ))}
           </div>
           <div className="flex items-center gap-1">
@@ -190,7 +190,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               href={`/instruments/${inst.slug}`}
               className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
             >
-              {inst.name}
+              #{inst.name}
             </Link>
           ))}
         </div>
