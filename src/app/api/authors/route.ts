@@ -13,6 +13,7 @@ export async function GET() {
       fomoId: true,
       rating: true,
       bio: true,
+      createdAt: true,
       _count: {
         select: {
           ideas: true,
@@ -31,6 +32,7 @@ export async function GET() {
       fomoId: a.fomoId,
       rating: a.rating,
       bio: a.bio,
+      createdAt: a.createdAt,
       ideasCount: a._count.ideas,
       subscribersCount: a._count.subscriptionsReceived,
     }))
