@@ -48,7 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
@@ -56,18 +56,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.fomoId = (user as any).fomoId;
         token.picture = user.image;
       }
-      // Refresh avatar and role from DB on every request
+      // Refresh avatar and role from DB periodically
       if (token.id) {
-        const { prisma } = await import("@/lib/prisma");
-        const fresh = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { avatarUrl: true, role: true, status: true, fomoId: true },
-        });
-        if (fresh) {
-          token.picture = fresh.avatarUrl || null;
-          token.role = fresh.role;
-          token.status = fresh.status;
-          token.fomoId = fresh.fomoId;
+        try {
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { avatarUrl: true, role: true, status: true, fomoId: true },
+          });
+          if (fresh) {
+            token.picture = fresh.avatarUrl || null;
+            token.role = fresh.role;
+            token.status = fresh.status;
+            token.fomoId = fresh.fomoId;
+          }
+        } catch {
+          // DB query failed, keep existing token values
         }
       }
       return token;
