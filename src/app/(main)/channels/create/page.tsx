@@ -8,7 +8,19 @@ interface TariffRow {
   name: string;
   price: string;
   durationDays: string;
+  paymentMethods: ("card" | "yukassa")[];
+  cardNumber: string;
+  yukassaShopId: string;
+  yukassaSecret: string;
 }
+
+const SHARE_TARGETS = [
+  { id: "telegram", label: "Telegram", icon: "✈️", urlFn: (url: string, text: string) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}` },
+  { id: "whatsapp", label: "WhatsApp", icon: "📱", urlFn: (url: string, text: string) => `https://wa.me/?text=${encodeURIComponent(text + " " + url)}` },
+  { id: "max", label: "MAX", icon: "💬", urlFn: (url: string, text: string) => `https://connect.ok.ru/offer?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}` },
+  { id: "wechat", label: "WeChat", icon: "🟢", urlFn: (url: string) => `weixin://dl/business/?ticket=${encodeURIComponent(url)}` },
+  { id: "email", label: "Почта", icon: "📧", urlFn: (url: string, text: string) => `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}` },
+];
 
 export default function CreateChannelPage() {
   const { data: session } = useSession();
@@ -19,28 +31,45 @@ export default function CreateChannelPage() {
   const [channelId, setChannelId] = useState("");
   const [description, setDescription] = useState("");
   const [tariffs, setTariffs] = useState<TariffRow[]>([
-    { name: "Базовый", price: "", durationDays: "30" },
+    { name: "Базовый", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" },
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   function addTariff() {
-    setTariffs([...tariffs, { name: "", price: "", durationDays: "30" }]);
+    setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" }]);
   }
 
   function removeTariff(index: number) {
     setTariffs(tariffs.filter((_, i) => i !== index));
   }
 
-  function updateTariff(index: number, field: keyof TariffRow, value: string) {
+  function updateTariff(index: number, field: keyof TariffRow, value: any) {
     const updated = [...tariffs];
     updated[index] = { ...updated[index], [field]: value };
     setTariffs(updated);
   }
 
+  function togglePaymentMethod(index: number, method: "card" | "yukassa") {
+    const current = tariffs[index].paymentMethods;
+    const updated = current.includes(method)
+      ? current.filter((m) => m !== method)
+      : [...current, method];
+    updateTariff(index, "paymentMethods", updated);
+  }
+
   function handleChannelIdChange(value: string) {
     const clean = value.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
     setChannelId(clean);
+  }
+
+  async function copyLink() {
+    if (!channelId) return;
+    await navigator.clipboard.writeText(`https://fomo.broker/channels/${channelId}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleCreate() {
@@ -62,11 +91,22 @@ export default function CreateChannelPage() {
         setError(`Некорректная цена в тарифе "${t.name}"`);
         return;
       }
+      if (t.paymentMethods.length === 0) {
+        setError(`Выберите способ оплаты для тарифа "${t.name}"`);
+        return;
+      }
+      if (t.paymentMethods.includes("card") && !t.cardNumber.trim()) {
+        setError(`Укажите номер карты для тарифа "${t.name}"`);
+        return;
+      }
+      if (t.paymentMethods.includes("yukassa") && (!t.yukassaShopId.trim() || !t.yukassaSecret.trim())) {
+        setError(`Укажите настройки ЮKassa для тарифа "${t.name}"`);
+        return;
+      }
     }
 
     setSaving(true);
 
-    // Create tariffs one by one
     let allOk = true;
     for (const t of validTariffs) {
       const res = await fetch(`/api/users/${user?.id}/tariffs`, {
@@ -77,6 +117,10 @@ export default function CreateChannelPage() {
           description: description.trim() || undefined,
           price: parseFloat(t.price),
           durationDays: parseInt(t.durationDays) || 30,
+          paymentMethods: t.paymentMethods,
+          cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() : undefined,
+          yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() : undefined,
+          yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() : undefined,
         }),
       });
       if (!res.ok) {
@@ -94,9 +138,8 @@ export default function CreateChannelPage() {
     }
   }
 
-  const channelUrl = channelId
-    ? `fomo.broker/channels/${channelId}`
-    : "fomo.broker/channels/...";
+  const channelUrl = channelId ? `https://fomo.broker/channels/${channelId}` : "";
+  const channelUrlDisplay = channelId ? `fomo.broker/channels/${channelId}` : "fomo.broker/channels/...";
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -133,9 +176,53 @@ export default function CreateChannelPage() {
               maxLength={30}
             />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Прямая ссылка: <span className="font-mono text-blue-600 dark:text-blue-400">{channelUrl}</span>
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Прямая ссылка: <span className="font-mono text-blue-600 dark:text-blue-400">{channelUrlDisplay}</span>
+            </p>
+            {channelId && (
+              <div className="flex items-center gap-1 relative">
+                {/* Copy button */}
+                <button
+                  onClick={copyLink}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  title="Скопировать ссылку"
+                >
+                  {copied ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  )}
+                </button>
+                {/* Share button */}
+                <button
+                  onClick={() => setShowShare(!showShare)}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  title="Поделиться"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                </button>
+                {/* Share dropdown */}
+                {showShare && (
+                  <div className="absolute top-7 right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[180px]">
+                    {SHARE_TARGETS.map((t) => (
+                      <a
+                        key={t.id}
+                        href={t.urlFn(channelUrl, `Канал "${channelName}" на FOMO`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setShowShare(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                      >
+                        <span className="text-base">{t.icon}</span>
+                        {t.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Description */}
@@ -165,7 +252,7 @@ export default function CreateChannelPage() {
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {tariffs.map((t, i) => (
               <div
                 key={i}
@@ -185,6 +272,7 @@ export default function CreateChannelPage() {
                     </button>
                   )}
                 </div>
+
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Название</label>
                   <input
@@ -195,6 +283,7 @@ export default function CreateChannelPage() {
                     placeholder="Базовый / Премиум / VIP"
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Цена (₽)</label>
@@ -215,6 +304,89 @@ export default function CreateChannelPage() {
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                       placeholder="30"
                     />
+                  </div>
+                </div>
+
+                {/* Payment methods */}
+                <div className="border-t dark:border-gray-700 pt-3">
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Способы оплаты</label>
+                  <div className="space-y-3">
+                    {/* Card transfer */}
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={t.paymentMethods.includes("card")}
+                          onChange={() => togglePaymentMethod(i, "card")}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">💳 Перевод на карту</span>
+                          <span className="text-xs text-gray-400 ml-1">(полуавтоматический)</span>
+                        </div>
+                      </label>
+                      {t.paymentMethods.includes("card") && (
+                        <div className="mt-2 ml-6">
+                          <input
+                            type="text"
+                            value={t.cardNumber}
+                            onChange={(e) => updateTariff(i, "cardNumber", e.target.value)}
+                            className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
+                            placeholder="0000 0000 0000 0000"
+                          />
+                          <p className="text-[11px] text-gray-400 mt-1">
+                            Покупатель переводит на эту карту и присылает квитанцию. Вы подтверждаете получение.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* YuKassa */}
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={t.paymentMethods.includes("yukassa")}
+                          onChange={() => togglePaymentMethod(i, "yukassa")}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🏦 ЮKassa</span>
+                          <span className="text-xs text-gray-400 ml-1">(автоматический)</span>
+                        </div>
+                      </label>
+                      {t.paymentMethods.includes("yukassa") && (
+                        <div className="mt-2 ml-6 space-y-2">
+                          <div>
+                            <label className="block text-[11px] text-gray-400 mb-0.5">Shop ID</label>
+                            <input
+                              type="text"
+                              value={t.yukassaShopId}
+                              onChange={(e) => updateTariff(i, "yukassaShopId", e.target.value)}
+                              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
+                              placeholder="123456"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-gray-400 mb-0.5">Секретный ключ</label>
+                            <input
+                              type="password"
+                              value={t.yukassaSecret}
+                              onChange={(e) => updateTariff(i, "yukassaSecret", e.target.value)}
+                              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
+                              placeholder="live_..."
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-400">
+                            Получите ключи в{" "}
+                            <a href="https://yookassa.ru/my/merchant/integration/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                              личном кабинете ЮKassa
+                            </a>
+                            . Оплата проходит автоматически.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
