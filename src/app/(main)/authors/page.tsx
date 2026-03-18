@@ -16,7 +16,6 @@ interface Author {
 }
 
 type SortField = "rating" | "ideasCount" | "subscribersCount" | "createdAt";
-type SortDir = "asc" | "desc";
 
 function AuthorAvatar({ author, size = "md" }: { author: Author; size?: "sm" | "md" }) {
   const cls = size === "sm" ? "w-8 h-8 text-xs" : "w-12 h-12 text-lg";
@@ -26,7 +25,7 @@ function AuthorAvatar({ author, size = "md" }: { author: Author; size?: "sm" | "
         // eslint-disable-next-line @next/next/no-img-element
         <img src={author.avatarUrl} alt="" className="w-full h-full object-cover" />
       ) : (
-        author.displayName[0]
+        (author.displayName || "?")[0]
       )}
     </div>
   );
@@ -43,13 +42,12 @@ export default function AuthorsPage() {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid" | "cards">("cards");
 
-  // Filters
-  const [minRating, setMinRating] = useState<number>(0);
-  const [minIdeas, setMinIdeas] = useState<number>(0);
-  const [registeredPeriod, setRegisteredPeriod] = useState<string>("all"); // all, 7d, 30d, 90d, 365d
+  // Filters — button style like feed page
   const [sortField, setSortField] = useState<SortField>("rating");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [showFilters, setShowFilters] = useState(false);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [ratingFilter, setRatingFilter] = useState<string>("all"); // all, 3+, 5+, 7+, 9+
+  const [ideasFilter, setIdeasFilter] = useState<string>("all"); // all, 1+, 5+, 10+, 20+
+  const [periodFilter, setPeriodFilter] = useState<string>("all"); // all, 7, 30, 90, 365
 
   useEffect(() => {
     fetch("/api/authors")
@@ -72,13 +70,19 @@ export default function AuthorsPage() {
         )
           return false;
       }
-      // Min rating
-      if (minRating > 0 && Number(a.rating) < minRating) return false;
-      // Min ideas
-      if (minIdeas > 0 && a.ideasCount < minIdeas) return false;
-      // Registration period
-      if (registeredPeriod !== "all") {
-        const days = parseInt(registeredPeriod);
+      // Rating
+      if (ratingFilter !== "all") {
+        const min = parseFloat(ratingFilter);
+        if (Number(a.rating) < min) return false;
+      }
+      // Ideas
+      if (ideasFilter !== "all") {
+        const min = parseInt(ideasFilter);
+        if (a.ideasCount < min) return false;
+      }
+      // Period
+      if (periodFilter !== "all") {
+        const days = parseInt(periodFilter);
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         if (new Date(a.createdAt) < cutoff) return false;
@@ -90,45 +94,35 @@ export default function AuthorsPage() {
     result.sort((a, b) => {
       let va: number, vb: number;
       switch (sortField) {
-        case "rating":
-          va = Number(a.rating);
-          vb = Number(b.rating);
-          break;
-        case "ideasCount":
-          va = a.ideasCount;
-          vb = b.ideasCount;
-          break;
-        case "subscribersCount":
-          va = a.subscribersCount;
-          vb = b.subscribersCount;
-          break;
-        case "createdAt":
-          va = new Date(a.createdAt).getTime();
-          vb = new Date(b.createdAt).getTime();
-          break;
-        default:
-          va = 0;
-          vb = 0;
+        case "rating": va = Number(a.rating); vb = Number(b.rating); break;
+        case "ideasCount": va = a.ideasCount; vb = b.ideasCount; break;
+        case "subscribersCount": va = a.subscribersCount; vb = b.subscribersCount; break;
+        case "createdAt": va = new Date(a.createdAt).getTime(); vb = new Date(b.createdAt).getTime(); break;
+        default: va = 0; vb = 0;
       }
       return sortDir === "desc" ? vb - va : va - vb;
     });
 
     return result;
-  }, [authors, search, minRating, minIdeas, registeredPeriod, sortField, sortDir]);
+  }, [authors, search, ratingFilter, ideasFilter, periodFilter, sortField, sortDir]);
 
-  const activeFiltersCount = [
-    minRating > 0,
-    minIdeas > 0,
-    registeredPeriod !== "all",
-  ].filter(Boolean).length;
+  const filterBtnClass = (active: boolean) =>
+    `px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+      active
+        ? "bg-blue-600 text-white"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+    }`;
 
-  function resetFilters() {
-    setMinRating(0);
-    setMinIdeas(0);
-    setRegisteredPeriod("all");
-    setSortField("rating");
-    setSortDir("desc");
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir(sortDir === "desc" ? "asc" : "desc");
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
   }
+
+  const hasActiveFilters = ratingFilter !== "all" || ideasFilter !== "all" || periodFilter !== "all";
 
   return (
     <div>
@@ -160,151 +154,108 @@ export default function AuthorsPage() {
         </div>
       </div>
 
-      {/* Search + Filter toggle */}
-      <div className="flex items-center gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Поиск по имени или ID..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 max-w-md px-4 py-2.5 border dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500"
-        />
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
-            showFilters || activeFiltersCount > 0
-              ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400"
-              : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          Фильтры
-          {activeFiltersCount > 0 && (
-            <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {activeFiltersCount}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Filter bar — same style as feed page */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6 space-y-2.5">
+        {/* Row 1: Sort buttons + view */}
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          <button onClick={() => handleSort("rating")} className={filterBtnClass(sortField === "rating")}>
+            Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          </button>
+          <button onClick={() => handleSort("ideasCount")} className={filterBtnClass(sortField === "ideasCount")}>
+            Кол-во идей {sortField === "ideasCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          </button>
+          <button onClick={() => handleSort("subscribersCount")} className={filterBtnClass(sortField === "subscribersCount")}>
+            Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          </button>
+          <button onClick={() => handleSort("createdAt")} className={filterBtnClass(sortField === "createdAt")}>
+            Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          </button>
+        </div>
 
-      {/* Filters panel */}
-      {showFilters && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Rating filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Минимальный рейтинг
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.5"
-                  value={minRating}
-                  onChange={(e) => setMinRating(parseFloat(e.target.value))}
-                  className="flex-1 accent-blue-600"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-8 text-right">
-                  {minRating > 0 ? `${minRating}+` : "—"}
-                </span>
-              </div>
-              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                <span>0</span>
-                <span>5</span>
-                <span>10</span>
-              </div>
-            </div>
+        {/* Row 2: Filters */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Поиск..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-3 py-1.5 border dark:border-gray-700 rounded-lg text-xs w-40 focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+          />
 
-            {/* Ideas count filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Минимум идей
-              </label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={minIdeas}
-                  onChange={(e) => setMinIdeas(parseInt(e.target.value))}
-                  className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
-                >
-                  <option value="0">Любое</option>
-                  <option value="1">≥ 1</option>
-                  <option value="3">≥ 3</option>
-                  <option value="5">≥ 5</option>
-                  <option value="10">≥ 10</option>
-                  <option value="20">≥ 20</option>
-                  <option value="50">≥ 50</option>
-                </select>
-              </div>
-            </div>
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
-            {/* Registration period filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Зарегистрирован
-              </label>
-              <select
-                value={registeredPeriod}
-                onChange={(e) => setRegisteredPeriod(e.target.value)}
-                className="w-full px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
-              >
-                <option value="all">За всё время</option>
-                <option value="7">За последнюю неделю</option>
-                <option value="30">За последний месяц</option>
-                <option value="90">За последние 3 месяца</option>
-                <option value="365">За последний год</option>
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Сортировка
-              </label>
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={sortField}
-                  onChange={(e) => setSortField(e.target.value as SortField)}
-                  className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
-                >
-                  <option value="rating">Рейтинг</option>
-                  <option value="ideasCount">Кол-во идей</option>
-                  <option value="subscribersCount">Подписчики</option>
-                  <option value="createdAt">Дата регистрации</option>
-                </select>
-                <button
-                  onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-                  className="p-1.5 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                  title={sortDir === "desc" ? "По убыванию" : "По возрастанию"}
-                >
-                  {sortDir === "desc" ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 5v14M5 12l7 7 7-7"/>
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 19V5M5 12l7-7 7 7"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Reset */}
-          {activeFiltersCount > 0 && (
+          {/* Rating filter */}
+          <span className="text-xs text-gray-400 mr-0.5">Рейтинг:</span>
+          {[
+            { label: "Все", value: "all" },
+            { label: "3+", value: "3" },
+            { label: "5+", value: "5" },
+            { label: "7+", value: "7" },
+            { label: "9+", value: "9" },
+          ].map((opt) => (
             <button
-              onClick={resetFilters}
-              className="mt-3 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              key={opt.value}
+              onClick={() => setRatingFilter(ratingFilter === opt.value && opt.value !== "all" ? "all" : opt.value)}
+              className={filterBtnClass(ratingFilter === opt.value)}
             >
-              Сбросить фильтры
+              {opt.label}
             </button>
+          ))}
+
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+
+          {/* Ideas filter */}
+          <span className="text-xs text-gray-400 mr-0.5">Идей:</span>
+          {[
+            { label: "Все", value: "all" },
+            { label: "1+", value: "1" },
+            { label: "5+", value: "5" },
+            { label: "10+", value: "10" },
+            { label: "20+", value: "20" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setIdeasFilter(ideasFilter === opt.value && opt.value !== "all" ? "all" : opt.value)}
+              className={filterBtnClass(ideasFilter === opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+
+          {/* Period filter */}
+          <span className="text-xs text-gray-400 mr-0.5">Рег.:</span>
+          {[
+            { label: "Все", value: "all" },
+            { label: "Неделя", value: "7" },
+            { label: "Месяц", value: "30" },
+            { label: "3 мес.", value: "90" },
+            { label: "Год", value: "365" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriodFilter(periodFilter === opt.value && opt.value !== "all" ? "all" : opt.value)}
+              className={filterBtnClass(periodFilter === opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+
+          {hasActiveFilters && (
+            <>
+              <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+              <button
+                onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); setPeriodFilter("all"); }}
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕ сбросить
+              </button>
+            </>
           )}
         </div>
-      )}
+      </div>
 
       {/* Results count */}
       {!loading && (
@@ -321,16 +272,16 @@ export default function AuthorsPage() {
         <div className="text-center py-16">
           <div className="text-5xl mb-4">👤</div>
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            {search || activeFiltersCount > 0 ? "Авторы не найдены" : "Авторов пока нет"}
+            {search || hasActiveFilters ? "Авторы не найдены" : "Авторов пока нет"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {search || activeFiltersCount > 0
+            {search || hasActiveFilters
               ? "Попробуйте изменить параметры поиска или фильтры"
               : "Здесь будут профили авторов торговых идей"}
           </p>
-          {activeFiltersCount > 0 && (
+          {hasActiveFilters && (
             <button
-              onClick={resetFilters}
+              onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); setPeriodFilter("all"); setSearch(""); }}
               className="mt-3 text-sm text-blue-600 hover:underline"
             >
               Сбросить фильтры

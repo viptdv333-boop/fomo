@@ -123,7 +123,7 @@ export default function ChannelPage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              channel.author.displayName[0]
+              (channel.author.displayName || "?")[0]
             )}
           </div>
 
@@ -143,7 +143,7 @@ export default function ChannelPage() {
             </Link>
 
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-              <span>⭐ {channel.author.rating.toFixed(1)}</span>
+              <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
               <span>👥 {channel.subscribersCount} подписчиков</span>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function ChannelPage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              channel.author.displayName[0]
+              (channel.author.displayName || "?")[0]
             )}
           </div>
           <div>
@@ -249,7 +249,7 @@ export default function ChannelPage() {
               {channel.author.displayName}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Рейтинг: {channel.author.rating.toFixed(1)} ⭐
+              Рейтинг: {Number(channel.author.rating).toFixed(1)} ⭐
             </div>
           </div>
           <span className="ml-auto text-blue-600 text-sm">Профиль →</span>
