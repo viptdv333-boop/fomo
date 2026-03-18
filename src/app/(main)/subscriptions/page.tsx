@@ -16,7 +16,7 @@ interface Sub {
   };
 }
 
-interface Tariff {
+interface Channel {
   id: string;
   monthlyPrice: number;
   description: string | null;
@@ -26,17 +26,17 @@ export default function SubscriptionsPage() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const [subs, setSubs] = useState<Sub[]>([]);
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"tariffs" | "subscriptions">("tariffs");
+  const [tab, setTab] = useState<"channels" | "subscriptions">("channels");
 
   useEffect(() => {
     Promise.all([
       fetch("/api/subscriptions").then((r) => r.json()),
       user?.id ? fetch(`/api/users/${user.id}/tariffs`).then((r) => r.json()).catch(() => []) : Promise.resolve([]),
-    ]).then(([subsData, tariffsData]) => {
+    ]).then(([subsData, channelsData]) => {
       setSubs(Array.isArray(subsData) ? subsData : []);
-      setTariffs(Array.isArray(tariffsData) ? tariffsData : []);
+      setChannels(Array.isArray(channelsData) ? channelsData : []);
       setLoading(false);
     });
   }, [user?.id]);
@@ -48,19 +48,19 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Тарифы и подписки</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Каналы и подписки</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
         <button
-          onClick={() => setTab("tariffs")}
+          onClick={() => setTab("channels")}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition ${
-            tab === "tariffs"
+            tab === "channels"
               ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           }`}
         >
-          Мои тарифы
+          Мои каналы
         </button>
         <button
           onClick={() => setTab("subscriptions")}
@@ -74,35 +74,35 @@ export default function SubscriptionsPage() {
         </button>
       </div>
 
-      {/* Tariffs tab */}
-      {tab === "tariffs" && (
+      {/* Channels tab */}
+      {tab === "channels" && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Создайте платный тариф, чтобы монетизировать свои идеи
+              Создайте платный канал, чтобы монетизировать свои идеи
             </p>
             <Link
-              href="/profile#tariffs"
+              href="/profile?tab=finance"
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 ml-4"
             >
-              + Создать тариф
+              + Создать канал
             </Link>
           </div>
 
-          {tariffs.length === 0 ? (
+          {channels.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
               <div className="text-4xl mb-3">💰</div>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">У вас пока нет тарифов</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">У вас пока нет каналов</p>
               <Link
-                href="/profile#tariffs"
+                href="/profile?tab=finance"
                 className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
               >
-                Создать платный тариф
+                Создать платный канал
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {tariffs.map((t) => (
+              {channels.map((t) => (
                 <div key={t.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center justify-between">
                   <div>
                     <div className="font-medium dark:text-gray-100">{Number(t.monthlyPrice)} ₽/мес</div>
@@ -111,7 +111,7 @@ export default function SubscriptionsPage() {
                     )}
                   </div>
                   <Link
-                    href="/profile#tariffs"
+                    href="/profile?tab=finance"
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Настроить
@@ -136,7 +136,6 @@ export default function SubscriptionsPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Paid subscriptions */}
               {paidSubs.length > 0 && (
                 <div>
                   <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
@@ -165,7 +164,6 @@ export default function SubscriptionsPage() {
                 </div>
               )}
 
-              {/* Free subscriptions */}
               {freeSubs.length > 0 && (
                 <div>
                   <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">

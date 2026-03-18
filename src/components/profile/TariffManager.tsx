@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-interface Tariff {
+interface Channel {
   id: string;
   name: string;
   description: string | null;
@@ -17,7 +17,7 @@ interface TariffManagerProps {
 }
 
 export default function TariffManager({ userId, rating }: TariffManagerProps) {
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -26,13 +26,13 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function loadTariffs() {
+  async function loadChannels() {
     const res = await fetch(`/api/users/${userId}/tariffs`);
-    if (res.ok) setTariffs(await res.json());
+    if (res.ok) setChannels(await res.json());
   }
 
   useEffect(() => {
-    loadTariffs();
+    loadChannels();
   }, [userId]);
 
   async function handleCreate() {
@@ -70,7 +70,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
       setDescription("");
       setPrice("");
       setDurationDays("30");
-      loadTariffs();
+      loadChannels();
     } else {
       const data = await res.json();
       setError(data.error || "Ошибка создания");
@@ -81,9 +81,9 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   if (rating < 5) {
     return (
       <div className="mt-6 pt-6 border-t dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-2 dark:text-gray-100">Тарифы подписки</h3>
+        <h3 className="text-lg font-semibold mb-2 dark:text-gray-100">Каналы</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Для создания платных тарифов необходим рейтинг не менее 5.0. Ваш текущий рейтинг: {rating.toFixed(1)}
+          Для создания платных каналов необходим рейтинг не менее 5.0. Ваш текущий рейтинг: {rating.toFixed(1)}
         </p>
       </div>
     );
@@ -92,12 +92,12 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   return (
     <div className="mt-6 pt-6 border-t dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold dark:text-gray-100">Тарифы подписки</h3>
+        <h3 className="text-lg font-semibold dark:text-gray-100">Каналы</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="text-sm text-blue-600 hover:text-blue-800 transition"
         >
-          {showForm ? "Отмена" : "+ Новый тариф"}
+          {showForm ? "Отмена" : "+ Новый канал"}
         </button>
       </div>
 
@@ -159,16 +159,16 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
             disabled={saving}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {saving ? "Сохранение..." : "Создать тариф"}
+            {saving ? "Сохранение..." : "Создать канал"}
           </button>
         </div>
       )}
 
-      {tariffs.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Нет активных тарифов</p>
+      {channels.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">Нет активных каналов</p>
       ) : (
         <div className="space-y-3">
-          {tariffs.map((t) => (
+          {channels.map((t) => (
             <div
               key={t.id}
               className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4"

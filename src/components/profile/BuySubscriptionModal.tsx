@@ -90,11 +90,11 @@ export default function BuySubscriptionModal({
 
           {loading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Загрузка тарифов...
+              Загрузка каналов...
             </div>
           ) : tariffs.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              У автора нет активных тарифов
+              У автора нет активных каналов
             </div>
           ) : (
             <>

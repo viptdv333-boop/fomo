@@ -186,7 +186,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {data.tariffs.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-            Мои тарифы
+            Мои каналы
           </h3>
           <div className="space-y-2">
             {data.tariffs.map((t) => (
