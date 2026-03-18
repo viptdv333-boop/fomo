@@ -52,8 +52,8 @@ function ProfileContent() {
     telegram: "",
     vk: "",
     youtube: "",
-    twitter: "",
-    instagram: "",
+    whatsapp: "",
+    max: "",
     website: "",
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -98,8 +98,8 @@ function ProfileContent() {
               telegram: data.socialLinks.telegram || "",
               vk: data.socialLinks.vk || "",
               youtube: data.socialLinks.youtube || "",
-              twitter: data.socialLinks.twitter || "",
-              instagram: data.socialLinks.instagram || "",
+              whatsapp: data.socialLinks.whatsapp || "",
+              max: data.socialLinks.max || "",
               website: data.socialLinks.website || "",
             });
           }
@@ -147,8 +147,9 @@ function ProfileContent() {
     );
   }
 
-  async function addEducation(e: React.FormEvent) {
-    e.preventDefault();
+  async function addEducation(e?: React.FormEvent | React.MouseEvent) {
+    e?.preventDefault();
+    if (!eduUniversity.trim()) return;
     const res = await fetch(`/api/users/${session?.user?.id}/education`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -324,16 +325,6 @@ function ProfileContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Отображаемое имя</label>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
-          />
-        </div>
-
-        <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">FOMO ID</label>
           <div className="flex items-center gap-2">
             <span className="text-gray-400 dark:text-gray-500 text-lg font-mono">#</span>
@@ -435,24 +426,6 @@ function ProfileContent() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Цена подписки (₽/мес)
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={subscriptionPrice}
-            onChange={(e) => setSubscriptionPrice(e.target.value)}
-            className="w-full sm:w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Оставьте пустым для бесплатного доступа"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Подписчики получат доступ ко всем вашим платным идеям
-          </p>
-        </div>
-
         {/* Social links */}
         <div className="border-t dark:border-gray-700 pt-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Соцсети и мессенджеры</h3>
@@ -488,23 +461,23 @@ function ProfileContent() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Twitter / X</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">WhatsApp</label>
               <input
                 type="text"
-                value={socialLinks.twitter}
-                onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
+                value={socialLinks.whatsapp}
+                onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp: e.target.value })}
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="@username или ссылка"
+                placeholder="+7 999 123-45-67"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Instagram</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">MAX (Одноклассники)</label>
               <input
                 type="text"
-                value={socialLinks.instagram}
-                onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                value={socialLinks.max}
+                onChange={(e) => setSocialLinks({ ...socialLinks, max: e.target.value })}
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="@username или ссылка"
+                placeholder="Ссылка на профиль"
               />
             </div>
             <div>
@@ -520,21 +493,97 @@ function ProfileContent() {
           </div>
         </div>
 
-        {/* Payment card */}
+        {/* Education section */}
         <div className="border-t dark:border-gray-700 pt-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Номер карты для получения переводов
-          </label>
-          <input
-            type="text"
-            value={paymentCard}
-            onChange={(e) => setPaymentCard(e.target.value)}
-            className="w-full sm:w-64 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="0000 0000 0000 0000"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Покупатели увидят этот номер для перевода оплаты за идеи
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Образование</h3>
+            <button
+              type="button"
+              onClick={() => setShowEduForm(!showEduForm)}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              {showEduForm ? "Отмена" : "+ Добавить"}
+            </button>
+          </div>
+
+          {showEduForm && (
+            <div className="border dark:border-gray-700 rounded-lg p-4 mb-3 bg-gray-50 dark:bg-gray-800 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ВУЗ *</label>
+                <input
+                  type="text"
+                  value={eduUniversity}
+                  onChange={(e) => setEduUniversity(e.target.value)}
+                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  placeholder="МГУ им. Ломоносова"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Факультет</label>
+                  <input
+                    type="text"
+                    value={eduFaculty}
+                    onChange={(e) => setEduFaculty(e.target.value)}
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Специальность</label>
+                  <input
+                    type="text"
+                    value={eduSpecialty}
+                    onChange={(e) => setEduSpecialty(e.target.value)}
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="w-32">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Год окончания</label>
+                  <input
+                    type="number"
+                    value={eduYearEnd}
+                    onChange={(e) => setEduYearEnd(e.target.value)}
+                    min="1950"
+                    max="2050"
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addEducation}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                >
+                  Добавить
+                </button>
+              </div>
+            </div>
+          )}
+
+          {education.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Нет записей об образовании</p>
+          ) : (
+            <div className="space-y-3">
+              {education.map((edu) => (
+                <div key={edu.id} className="flex items-start justify-between border dark:border-gray-700 rounded-lg p-3">
+                  <div>
+                    <div className="font-medium text-sm">{edu.university}</div>
+                    {edu.faculty && <div className="text-sm text-gray-600 dark:text-gray-400">{edu.faculty}</div>}
+                    {edu.specialty && <div className="text-sm text-gray-500 dark:text-gray-400">{edu.specialty}</div>}
+                    {edu.yearEnd && <div className="text-xs text-gray-400 mt-1">Выпуск {edu.yearEnd}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteEducation(edu.id)}
+                    className="text-red-500 hover:text-red-700 text-xs"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* DM toggle */}
@@ -568,97 +617,6 @@ function ProfileContent() {
           )}
         </div>
       </form>
-
-      {/* Education section */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Образование</h2>
-          <button
-            onClick={() => setShowEduForm(!showEduForm)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          >
-            {showEduForm ? "Отмена" : "+ Добавить"}
-          </button>
-        </div>
-
-        {showEduForm && (
-          <form onSubmit={addEducation} className="border dark:border-gray-700 rounded-lg p-4 mb-4 bg-gray-50 dark:bg-gray-800 space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ВУЗ *</label>
-              <input
-                type="text"
-                value={eduUniversity}
-                onChange={(e) => setEduUniversity(e.target.value)}
-                required
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="МГУ им. Ломоносова"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Факультет</label>
-                <input
-                  type="text"
-                  value={eduFaculty}
-                  onChange={(e) => setEduFaculty(e.target.value)}
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Специальность</label>
-                <input
-                  type="text"
-                  value={eduSpecialty}
-                  onChange={(e) => setEduSpecialty(e.target.value)}
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                />
-              </div>
-            </div>
-            <div className="flex items-end gap-3">
-              <div className="w-32">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Год окончания</label>
-                <input
-                  type="number"
-                  value={eduYearEnd}
-                  onChange={(e) => setEduYearEnd(e.target.value)}
-                  min="1950"
-                  max="2050"
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                />
-              </div>
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-              >
-                Добавить
-              </button>
-            </div>
-          </form>
-        )}
-
-        {education.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Нет записей об образовании</p>
-        ) : (
-          <div className="space-y-3">
-            {education.map((edu) => (
-              <div key={edu.id} className="flex items-start justify-between border dark:border-gray-700 rounded-lg p-3">
-                <div>
-                  <div className="font-medium text-sm">{edu.university}</div>
-                  {edu.faculty && <div className="text-sm text-gray-600 dark:text-gray-400">{edu.faculty}</div>}
-                  {edu.specialty && <div className="text-sm text-gray-500 dark:text-gray-400">{edu.specialty}</div>}
-                  {edu.yearEnd && <div className="text-xs text-gray-400 mt-1">Выпуск {edu.yearEnd}</div>}
-                </div>
-                <button
-                  onClick={() => deleteEducation(edu.id)}
-                  className="text-red-500 hover:text-red-700 text-xs"
-                >
-                  Удалить
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
       </>
       )}
     </div>
