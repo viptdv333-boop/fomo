@@ -14,6 +14,7 @@ interface IdeaCardProps {
     author: {
       id: string;
       displayName: string;
+      fomoId?: string | null;
       rating: number;
       avatarUrl: string | null;
     };
@@ -145,6 +146,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               {idea.author.displayName}
             </Link>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              {idea.author.fomoId && <span className="font-mono">#{idea.author.fomoId}</span>}
               <span>Рейтинг: {Number(idea.author.rating).toFixed(1)}</span>
               <span>.</span>
               <span>{new Date(idea.createdAt).toLocaleDateString("ru", {

@@ -471,7 +471,7 @@ function ProfileContent() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">MAX (Одноклассники)</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">MAX</label>
               <input
                 type="text"
                 value={socialLinks.max}

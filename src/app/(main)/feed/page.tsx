@@ -28,6 +28,7 @@ interface IdeaData {
   author: {
     id: string;
     displayName: string;
+    fomoId?: string | null;
     rating: number;
     avatarUrl: string | null;
   };

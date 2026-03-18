@@ -116,7 +116,7 @@ export default function AuthorsPage() {
               <AuthorAvatar author={author} size="sm" />
               <div className="flex-1 min-w-0">
                 <span className="font-medium text-gray-900 dark:text-gray-100">{author.displayName}</span>
-                {author.fomoId && <span className="text-xs text-gray-400 ml-2">@{author.fomoId}</span>}
+                {author.fomoId && <span className="text-xs text-gray-400 ml-2">#{author.fomoId}</span>}
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 shrink-0">
                 <span>⭐ {Number(author.rating).toFixed(1)}</span>
@@ -140,7 +140,7 @@ export default function AuthorsPage() {
               </div>
               <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{author.displayName}</div>
               {author.fomoId && (
-                <div className="text-xs text-gray-400 truncate">@{author.fomoId}</div>
+                <div className="text-xs text-gray-400 truncate">#{author.fomoId}</div>
               )}
               <div className="flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-2">
                 <span>⭐ {Number(author.rating).toFixed(1)}</span>
@@ -163,7 +163,7 @@ export default function AuthorsPage() {
                 <div className="min-w-0">
                   <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">{author.displayName}</div>
                   {author.fomoId && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">@{author.fomoId}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">#{author.fomoId}</div>
                   )}
                 </div>
               </div>

@@ -18,6 +18,7 @@ const ideaSelect = {
     select: {
       id: true,
       displayName: true,
+      fomoId: true,
       rating: true,
       avatarUrl: true,
     },
