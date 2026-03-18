@@ -93,7 +93,7 @@ export default function AuthorsPage() {
         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
     }`;
 
-  const hasActiveFilters = ratingFilter !== "all" || ideasFilter !== "all" || periodFilter !== "all";
+  const hasActiveFilters = ratingFilter !== "all" || ideasFilter !== "all";
 
   return (
     <div>
@@ -152,28 +152,12 @@ export default function AuthorsPage() {
             </button>
           ))}
 
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
-          {/* Period filter */}
-          {[
-            { label: "Неделя", value: "7" },
-            { label: "Месяц", value: "30" },
-            { label: "Год", value: "365" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setPeriodFilter(periodFilter === opt.value ? "all" : opt.value)}
-              className={filterBtnClass(periodFilter === opt.value)}
-            >
-              {opt.label}
-            </button>
-          ))}
 
           {hasActiveFilters && (
             <>
               <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
               <button
-                onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); setPeriodFilter("all"); }}
+                onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }}
                 className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 ✕ сбросить
@@ -217,7 +201,7 @@ export default function AuthorsPage() {
             {hasActiveFilters ? "Попробуйте изменить фильтры" : "Здесь будут профили авторов торговых идей"}
           </p>
           {hasActiveFilters && (
-            <button onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); setPeriodFilter("all"); }} className="mt-3 text-sm text-blue-600 hover:underline">
+            <button onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }} className="mt-3 text-sm text-blue-600 hover:underline">
               Сбросить фильтры
             </button>
           )}
