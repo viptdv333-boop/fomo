@@ -4,29 +4,33 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
-interface Sub {
+interface SubItem {
   id: string;
+  type: "paid" | "free";
   monthlyPrice: number;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   author: {
     id: string;
     displayName: string;
     rating: number;
+    avatarUrl?: string | null;
   };
 }
 
-interface Channel {
+interface ChannelItem {
   id: string;
+  name: string;
   monthlyPrice: number;
   description: string | null;
+  durationDays?: number;
 }
 
 export default function SubscriptionsPage() {
   const { data: session } = useSession();
   const user = session?.user as any;
-  const [subs, setSubs] = useState<Sub[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [subs, setSubs] = useState<SubItem[]>([]);
+  const [channels, setChannels] = useState<ChannelItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"channels" | "subscriptions">("channels");
 
@@ -43,8 +47,8 @@ export default function SubscriptionsPage() {
 
   if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
 
-  const paidSubs = subs.filter((s) => Number(s.monthlyPrice) > 0);
-  const freeSubs = subs.filter((s) => Number(s.monthlyPrice) === 0);
+  const authorSubs = subs.filter((s) => s.type === "free");
+  const channelSubs = subs.filter((s) => s.type === "paid");
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -82,7 +86,7 @@ export default function SubscriptionsPage() {
               Создайте платный канал, чтобы монетизировать свои идеи
             </p>
             <Link
-              href="/profile?tab=finance"
+              href="/channels/create"
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 ml-4"
             >
               + Создать канал
@@ -91,31 +95,36 @@ export default function SubscriptionsPage() {
 
           {channels.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
-              <div className="text-4xl mb-3">💰</div>
+              <div className="text-4xl mb-3">📺</div>
               <p className="text-gray-500 dark:text-gray-400 mb-4">У вас пока нет каналов</p>
               <Link
-                href="/profile?tab=finance"
+                href="/channels/create"
                 className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
               >
-                Создать платный канал
+                Создать канал
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {channels.map((t) => (
-                <div key={t.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium dark:text-gray-100">{Number(t.monthlyPrice)} ₽/мес</div>
-                    {t.description && (
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.description}</div>
-                    )}
+              {channels.map((ch) => (
+                <div key={ch.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium dark:text-gray-100">{ch.name}</div>
+                      <div className="text-sm text-green-600 font-semibold mt-0.5">
+                        {Number(ch.monthlyPrice)} ₽ / {ch.durationDays || 30} дн.
+                      </div>
+                      {ch.description && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
+                      )}
+                    </div>
+                    <Link
+                      href="/channels/create"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Настроить
+                    </Link>
                   </div>
-                  <Link
-                    href="/profile?tab=finance"
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Настроить
-                  </Link>
                 </div>
               ))}
             </div>
@@ -136,26 +145,34 @@ export default function SubscriptionsPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {paidSubs.length > 0 && (
+              {/* Author subscriptions (free follows) */}
+              {authorSubs.length > 0 && (
                 <div>
                   <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Платные подписки
+                    Авторы
                   </h2>
                   <div className="space-y-3">
-                    {paidSubs.map((sub) => (
-                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center justify-between">
-                        <div>
+                    {authorSubs.map((sub) => (
+                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
+                          {sub.author.avatarUrl ? (
+                            <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            sub.author.displayName[0]
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <Link
                             href={`/profile/${sub.author.id}`}
                             className="font-medium hover:text-blue-600 dark:text-gray-100"
                           >
                             {sub.author.displayName}
                           </Link>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {Number(sub.monthlyPrice)} ₽/мес · До {new Date(sub.endDate).toLocaleDateString("ru")}
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Рейтинг: {Number(sub.author.rating).toFixed(1)}
                           </div>
                         </div>
-                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
                           Отписаться
                         </button>
                       </div>
@@ -164,26 +181,35 @@ export default function SubscriptionsPage() {
                 </div>
               )}
 
-              {freeSubs.length > 0 && (
+              {/* Channel subscriptions (paid) */}
+              {channelSubs.length > 0 && (
                 <div>
                   <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Бесплатные подписки
+                    Каналы
                   </h2>
                   <div className="space-y-3">
-                    {freeSubs.map((sub) => (
-                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center justify-between">
-                        <div>
+                    {channelSubs.map((sub) => (
+                      <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
+                          {sub.author.avatarUrl ? (
+                            <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            sub.author.displayName[0]
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <Link
                             href={`/profile/${sub.author.id}`}
                             className="font-medium hover:text-blue-600 dark:text-gray-100"
                           >
                             {sub.author.displayName}
                           </Link>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Бесплатно
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {Number(sub.monthlyPrice)} ₽/мес
+                            {sub.endDate && <> · До {new Date(sub.endDate).toLocaleDateString("ru")}</>}
                           </div>
                         </div>
-                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                        <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
                           Отписаться
                         </button>
                       </div>
