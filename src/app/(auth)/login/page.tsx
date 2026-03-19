@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +37,13 @@ export default function LoginPage() {
         setError("Неверный email или пароль");
       }
       return;
+    }
+
+    // Save remember-me preference
+    if (rememberMe) {
+      localStorage.setItem("fomo-remember", "1");
+    } else {
+      localStorage.removeItem("fomo-remember");
     }
 
     router.push("/feed");
@@ -101,6 +109,19 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
+        {/* Remember me */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+          />
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Оставаться в системе
+          </span>
+        </label>
 
         <button
           type="submit"
