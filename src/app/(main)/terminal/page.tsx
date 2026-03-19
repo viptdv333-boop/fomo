@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import type { DataSource } from "@/lib/marketdata";
+
+const KlineChartWidget = dynamic(
+  () => import("@/components/instruments/KlineChartWidget"),
+  { ssr: false, loading: () => <div className="flex-1 bg-gray-100 dark:bg-gray-800 animate-pulse" /> }
+);
 
 interface Instrument {
   id: string;
@@ -9,6 +16,8 @@ interface Instrument {
   slug: string;
   ticker: string | null;
   exchange: string | null;
+  dataSource: string | null;
+  dataTicker: string | null;
   tradingViewSymbol: string | null;
   category: { id: string; name: string; slug: string } | null;
 }
@@ -24,11 +33,9 @@ export default function TerminalPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [allInstruments, setAllInstruments] = useState<Instrument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState("");
+  const [selected, setSelected] = useState<Instrument | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/categories?withInstruments=true")
@@ -37,68 +44,14 @@ export default function TerminalPage() {
         setCategories(data);
         const all = data.flatMap((c) => c.instruments);
         setAllInstruments(all);
-        // Expand all categories by default
         setExpandedCats(new Set(data.map((c) => c.id)));
-        // Select first instrument with tradingViewSymbol
-        const first = all.find((i) => i.tradingViewSymbol);
-        if (first) {
-          setSelectedSymbol(first.tradingViewSymbol);
-          setSelectedName(first.name);
-        }
+        // Select first instrument with data
+        const first = all.find((i) => i.dataSource && i.dataTicker);
+        if (first) setSelected(first);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  // Render TradingView chart
-  useEffect(() => {
-    if (!chartRef.current || !selectedSymbol) return;
-    chartRef.current.innerHTML = "";
-
-    const isDark = document.documentElement.classList.contains("dark");
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "tradingview-widget-container";
-    wrapper.style.height = "100%";
-    wrapper.style.width = "100%";
-
-    const inner = document.createElement("div");
-    inner.className = "tradingview-widget-container__widget";
-    inner.style.height = "calc(100% - 32px)";
-    inner.style.width = "100%";
-
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-    script.async = true;
-    script.type = "text/javascript";
-    script.innerHTML = JSON.stringify({
-      symbol: selectedSymbol,
-      interval: "D",
-      timezone: "Europe/Moscow",
-      theme: isDark ? "dark" : "light",
-      style: "1",
-      locale: "ru",
-      allow_symbol_change: true,
-      support_host: "https://www.tradingview.com",
-      hide_side_toolbar: false,
-      hide_top_toolbar: false,
-      withdateranges: true,
-      details: true,
-      hotlist: true,
-      calendar: false,
-      studies: ["STD;SMA", "STD;RSI"],
-      width: "100%",
-      height: "100%",
-    });
-
-    wrapper.appendChild(inner);
-    wrapper.appendChild(script);
-    chartRef.current.appendChild(wrapper);
-
-    return () => {
-      if (chartRef.current) chartRef.current.innerHTML = "";
-    };
-  }, [selectedSymbol]);
 
   function toggleCategory(catId: string) {
     setExpandedCats((prev) => {
@@ -123,6 +76,9 @@ export default function TerminalPage() {
     }))
     .filter((cat) => cat.instruments.length > 0);
 
+  const chartTicker = selected?.dataTicker || selected?.ticker || "";
+  const chartSource = (selected?.dataSource || "none") as DataSource;
+
   return (
     <div className="flex gap-4 h-[calc(100vh-6rem)]">
       {/* Watchlist sidebar */}
@@ -146,7 +102,6 @@ export default function TerminalPage() {
           ) : (
             filteredCategories.map((cat) => (
               <div key={cat.id}>
-                {/* Category header */}
                 <button
                   onClick={() => toggleCategory(cat.id)}
                   className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -155,31 +110,35 @@ export default function TerminalPage() {
                   <span className="text-gray-400">{expandedCats.has(cat.id) ? "▾" : "▸"}</span>
                 </button>
 
-                {/* Instruments */}
                 {expandedCats.has(cat.id) &&
                   cat.instruments.map((inst) => {
-                    const isSelected = inst.tradingViewSymbol === selectedSymbol;
+                    const isSelected = selected?.id === inst.id;
+                    const hasData = inst.dataSource && inst.dataTicker;
                     return (
                       <button
                         key={inst.id}
                         onClick={() => {
-                          if (inst.tradingViewSymbol) {
-                            setSelectedSymbol(inst.tradingViewSymbol);
-                            setSelectedName(inst.name);
-                          }
+                          if (hasData) setSelected(inst);
                         }}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left transition ${
                           isSelected
                             ? "bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-500"
-                            : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-transparent"
+                            : hasData
+                            ? "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-transparent"
+                            : "opacity-40 border-l-2 border-transparent cursor-default"
                         }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className={`text-xs font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "dark:text-gray-100"}`}>
                             {inst.name}
                           </div>
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
-                            {inst.ticker || inst.tradingViewSymbol || "—"}
+                          <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex items-center gap-1">
+                            <span>{inst.ticker || "—"}</span>
+                            {inst.dataSource && (
+                              <span className={`px-1 rounded ${inst.dataSource === "moex" ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600"}`}>
+                                {inst.dataSource === "moex" ? "MOEX" : "Bybit"}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <Link
@@ -204,16 +163,16 @@ export default function TerminalPage() {
         {/* Chart header */}
         <div className="flex items-center justify-between px-4 py-2 border-b dark:border-gray-800">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold dark:text-gray-100">{selectedName || "Выберите инструмент"}</h3>
-            {selectedSymbol && (
+            <h3 className="text-sm font-semibold dark:text-gray-100">{selected?.name || "Выберите инструмент"}</h3>
+            {selected?.ticker && (
               <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                {selectedSymbol}
+                {selected.ticker}
               </span>
             )}
           </div>
-          {selectedSymbol && (
+          {selected && (
             <Link
-              href={`/instruments/${allInstruments.find((i) => i.tradingViewSymbol === selectedSymbol)?.slug || ""}`}
+              href={`/instruments/${selected.slug}`}
               className="text-xs text-blue-600 hover:underline"
             >
               Открыть страницу →
@@ -221,14 +180,24 @@ export default function TerminalPage() {
           )}
         </div>
 
-        {/* TradingView chart */}
-        {selectedSymbol ? (
-          <div ref={chartRef} className="flex-1" />
+        {/* Chart */}
+        {selected && chartSource !== "none" && chartTicker ? (
+          <div className="flex-1 min-h-0">
+            <KlineChartWidget
+              key={`${selected.id}-${chartTicker}`}
+              ticker={chartTicker}
+              source={chartSource}
+              name={selected.name}
+              height={0}
+            />
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
             <div className="text-center">
               <div className="text-4xl mb-3">📊</div>
-              <p className="text-sm">Выберите инструмент из списка слева</p>
+              <p className="text-sm">
+                {selected ? "Нет данных для этого инструмента" : "Выберите инструмент из списка слева"}
+              </p>
             </div>
           </div>
         )}

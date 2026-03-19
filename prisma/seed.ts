@@ -386,7 +386,7 @@ async function main() {
     {
       authorId: channelUser3.id,
       tariffs: [
-        { name: "Форекс Сигналы", description: "Точки входа EUR/USD, GBP/USD с уровнями. 5-7 сигналов в неделю.", price: 790, durationDays: 30 },
+        { name: "Валютные Сигналы", description: "Точки входа по валютным фьючерсам Si, Eu с уровнями. 5-7 сигналов в неделю.", price: 790, durationDays: 30 },
       ],
     },
     {
@@ -446,9 +446,8 @@ async function main() {
     { name: "Криптовалюты", slug: "crypto", sortOrder: 1 },
     { name: "Акции РФ", slug: "stocks-ru", sortOrder: 2 },
     { name: "Акции США", slug: "stocks-us", sortOrder: 3 },
-    { name: "Форекс", slug: "forex", sortOrder: 4 },
-    { name: "Сырьё", slug: "commodities", sortOrder: 5 },
-    { name: "Облигации", slug: "bonds", sortOrder: 6 },
+    { name: "Сырьё", slug: "commodities", sortOrder: 4 },
+    { name: "Облигации", slug: "bonds", sortOrder: 5 },
   ];
 
   const cats: Record<string, string> = {};
@@ -464,46 +463,39 @@ async function main() {
   // ─── 30 Instruments (5 per category) ────────────────────────────────
   const instrumentData = [
     // Crypto (Bybit)
-    { name: "Bitcoin", slug: "btc", ticker: "BTC", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BTCUSDT", tradingViewSymbol: "BYBIT:BTCUSDT", description: "Биткоин — первая и крупнейшая криптовалюта", categorySlug: "crypto" },
-    { name: "Ethereum", slug: "eth", ticker: "ETH", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/ETHUSDT", tradingViewSymbol: "BYBIT:ETHUSDT", description: "Эфириум — платформа смарт-контрактов", categorySlug: "crypto" },
-    { name: "Solana", slug: "sol", ticker: "SOL", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/SOLUSDT", tradingViewSymbol: "BYBIT:SOLUSDT", description: "Solana — высокопроизводительный блокчейн", categorySlug: "crypto" },
-    { name: "BNB", slug: "bnb", ticker: "BNB", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BNBUSDT", tradingViewSymbol: "BYBIT:BNBUSDT", description: "Binance Coin — токен экосистемы Binance", categorySlug: "crypto" },
-    { name: "XRP", slug: "xrp", ticker: "XRP", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/XRPUSDT", tradingViewSymbol: "BYBIT:XRPUSDT", description: "Ripple — платёжная криптовалюта", categorySlug: "crypto" },
+    { name: "Bitcoin", slug: "btc", ticker: "BTC", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BTCUSDT", tradingViewSymbol: "BYBIT:BTCUSDT", dataSource: "bybit", dataTicker: "BTCUSDT", description: "Биткоин — первая и крупнейшая криптовалюта", categorySlug: "crypto" },
+    { name: "Ethereum", slug: "eth", ticker: "ETH", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/ETHUSDT", tradingViewSymbol: "BYBIT:ETHUSDT", dataSource: "bybit", dataTicker: "ETHUSDT", description: "Эфириум — платформа смарт-контрактов", categorySlug: "crypto" },
+    { name: "Solana", slug: "sol", ticker: "SOL", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/SOLUSDT", tradingViewSymbol: "BYBIT:SOLUSDT", dataSource: "bybit", dataTicker: "SOLUSDT", description: "Solana — высокопроизводительный блокчейн", categorySlug: "crypto" },
+    { name: "BNB", slug: "bnb", ticker: "BNB", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BNBUSDT", tradingViewSymbol: "BYBIT:BNBUSDT", dataSource: "bybit", dataTicker: "BNBUSDT", description: "Binance Coin — токен экосистемы Binance", categorySlug: "crypto" },
+    { name: "XRP", slug: "xrp", ticker: "XRP", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/XRPUSDT", tradingViewSymbol: "BYBIT:XRPUSDT", dataSource: "bybit", dataTicker: "XRPUSDT", description: "Ripple — платёжная криптовалюта", categorySlug: "crypto" },
 
     // Russian stocks (MOEX)
-    { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks-ru" },
-    { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks-ru" },
-    { name: "ЛУКОЙЛ", slug: "lkoh", ticker: "LKOH", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", tradingViewSymbol: "MOEX:LKOH", description: "ПАО ЛУКОЙЛ — нефтяная компания", categorySlug: "stocks-ru" },
-    { name: "Яндекс", slug: "ydex", ticker: "YDEX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", tradingViewSymbol: "MOEX:YDEX", description: "Яндекс — IT-гигант России", categorySlug: "stocks-ru" },
-    { name: "Роснефть", slug: "rosn", ticker: "ROSN", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", tradingViewSymbol: "MOEX:ROSN", description: "ПАО Роснефть — нефтяная компания", categorySlug: "stocks-ru" },
+    { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", dataSource: "moex", dataTicker: "SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks-ru" },
+    { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", dataSource: "moex", dataTicker: "GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks-ru" },
+    { name: "ЛУКОЙЛ", slug: "lkoh", ticker: "LKOH", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", tradingViewSymbol: "MOEX:LKOH", dataSource: "moex", dataTicker: "LKOH", description: "ПАО ЛУКОЙЛ — нефтяная компания", categorySlug: "stocks-ru" },
+    { name: "Яндекс", slug: "ydex", ticker: "YDEX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", tradingViewSymbol: "MOEX:YDEX", dataSource: "moex", dataTicker: "YDEX", description: "Яндекс — IT-гигант России", categorySlug: "stocks-ru" },
+    { name: "Роснефть", slug: "rosn", ticker: "ROSN", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", tradingViewSymbol: "MOEX:ROSN", dataSource: "moex", dataTicker: "ROSN", description: "ПАО Роснефть — нефтяная компания", categorySlug: "stocks-ru" },
 
     // US stocks / futures (MOEX)
-    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: "MOEX:SI1!", description: "Фьючерс на доллар/рубль", categorySlug: "stocks-us" },
-    { name: "NASDAQ 100 (NASD)", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NASD", tradingViewSymbol: "MOEX:NASD", description: "Фьючерс на индекс NASDAQ 100", categorySlug: "stocks-us" },
-    { name: "S&P 500 (SPX)", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SPYF", tradingViewSymbol: "MOEX:SPYF", description: "Фьючерс на индекс S&P 500", categorySlug: "stocks-us" },
-    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: "MOEX:EU1!", description: "Фьючерс на евро/рубль", categorySlug: "stocks-us" },
-    { name: "Юань/Рубль (CNY)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: "MOEX:CR1!", description: "Фьючерс на юань/рубль", categorySlug: "stocks-us" },
-
-    // Forex
-    { name: "EUR/USD", slug: "eurusd", ticker: "EURUSD", exchange: "Forex", exchangeUrl: null, tradingViewSymbol: "FX:EURUSD", description: "Евро к доллару США", categorySlug: "forex" },
-    { name: "GBP/USD", slug: "gbpusd", ticker: "GBPUSD", exchange: "Forex", exchangeUrl: null, tradingViewSymbol: "FX:GBPUSD", description: "Фунт стерлингов к доллару", categorySlug: "forex" },
-    { name: "USD/JPY", slug: "usdjpy", ticker: "USDJPY", exchange: "Forex", exchangeUrl: null, tradingViewSymbol: "FX:USDJPY", description: "Доллар к японской иене", categorySlug: "forex" },
-    { name: "USD/RUB", slug: "usdrub", ticker: "USDRUB", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=CETS&code=USD000UTSTOM", tradingViewSymbol: "MOEX:USDRUB_TOM", description: "Доллар к российскому рублю", categorySlug: "forex" },
-    { name: "EUR/GBP", slug: "eurgbp", ticker: "EURGBP", exchange: "Forex", exchangeUrl: null, tradingViewSymbol: "FX:EURGBP", description: "Евро к фунту стерлингов", categorySlug: "forex" },
+    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: "MOEX:SI1!", dataSource: "moex", dataTicker: "USD000UTSTOM", description: "Фьючерс на доллар/рубль", categorySlug: "stocks-us" },
+    { name: "NASDAQ 100 (NASD)", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NASD", tradingViewSymbol: "MOEX:NASD", dataSource: null, dataTicker: null, description: "Фьючерс на индекс NASDAQ 100", categorySlug: "stocks-us" },
+    { name: "S&P 500 (SPX)", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SPYF", tradingViewSymbol: "MOEX:SPYF", dataSource: null, dataTicker: null, description: "Фьючерс на индекс S&P 500", categorySlug: "stocks-us" },
+    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: "MOEX:EU1!", dataSource: "moex", dataTicker: "EUR_RUB__TOM", description: "Фьючерс на евро/рубль", categorySlug: "stocks-us" },
+    { name: "Юань/Рубль (CNY)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: "MOEX:CR1!", dataSource: "moex", dataTicker: "CNY000UTSTOM", description: "Фьючерс на юань/рубль", categorySlug: "stocks-us" },
 
     // Commodities (MOEX futures)
-    { name: "Нефть Brent (BR)", slug: "br", ticker: "BR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: "MOEX:BR1!", description: "Фьючерс на нефть Brent", categorySlug: "commodities" },
-    { name: "Золото (GOLD)", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: "MOEX:GOLD1!", description: "Фьючерс на золото", categorySlug: "commodities" },
-    { name: "Серебро (SILV)", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: "MOEX:SILV1!", description: "Фьючерс на серебро", categorySlug: "commodities" },
-    { name: "Природный газ (NG)", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: "MOEX:NG1!", description: "Фьючерс на природный газ", categorySlug: "commodities" },
-    { name: "Пшеница (WHEAT)", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=WH", tradingViewSymbol: "CBOT:ZW1!", description: "Фьючерс на пшеницу", categorySlug: "commodities" },
+    { name: "Нефть Brent (BR)", slug: "br", ticker: "BR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: "MOEX:BR1!", dataSource: null, dataTicker: null, description: "Фьючерс на нефть Brent", categorySlug: "commodities" },
+    { name: "Золото (GOLD)", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: "MOEX:GOLD1!", dataSource: null, dataTicker: null, description: "Фьючерс на золото", categorySlug: "commodities" },
+    { name: "Серебро (SILV)", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: "MOEX:SILV1!", dataSource: null, dataTicker: null, description: "Фьючерс на серебро", categorySlug: "commodities" },
+    { name: "Природный газ (NG)", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: "MOEX:NG1!", dataSource: null, dataTicker: null, description: "Фьючерс на природный газ", categorySlug: "commodities" },
+    { name: "Пшеница (WHEAT)", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=WH", tradingViewSymbol: "CBOT:ZW1!", dataSource: null, dataTicker: null, description: "Фьючерс на пшеницу", categorySlug: "commodities" },
 
     // Bonds
-    { name: "ОФЗ 26238", slug: "ofz26238", ticker: "SU26238RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26238RMFS4", tradingViewSymbol: "MOEX:SU26238RMFS4", description: "ОФЗ-ПД 26238 (15 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26243", slug: "ofz26243", ticker: "SU26243RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26243RMFS4", tradingViewSymbol: "MOEX:SU26243RMFS4", description: "ОФЗ-ПД 26243 (12 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26240", slug: "ofz26240", ticker: "SU26240RMFS0", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26240RMFS0", tradingViewSymbol: "MOEX:SU26240RMFS0", description: "ОФЗ-ПД 26240 (7 лет)", categorySlug: "bonds" },
-    { name: "Корпоративные облигации", slug: "corp-bonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/corp-bond.aspx", tradingViewSymbol: null, description: "Корпоративные облигации на MOEX", categorySlug: "bonds" },
-    { name: "Еврооблигации", slug: "eurobonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/euro-bond.aspx", tradingViewSymbol: null, description: "Еврооблигации на MOEX", categorySlug: "bonds" },
+    { name: "ОФЗ 26238", slug: "ofz26238", ticker: "SU26238RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26238RMFS4", tradingViewSymbol: "MOEX:SU26238RMFS4", dataSource: null, dataTicker: null, description: "ОФЗ-ПД 26238 (15 лет)", categorySlug: "bonds" },
+    { name: "ОФЗ 26243", slug: "ofz26243", ticker: "SU26243RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26243RMFS4", tradingViewSymbol: "MOEX:SU26243RMFS4", dataSource: null, dataTicker: null, description: "ОФЗ-ПД 26243 (12 лет)", categorySlug: "bonds" },
+    { name: "ОФЗ 26240", slug: "ofz26240", ticker: "SU26240RMFS0", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26240RMFS0", tradingViewSymbol: "MOEX:SU26240RMFS0", dataSource: null, dataTicker: null, description: "ОФЗ-ПД 26240 (7 лет)", categorySlug: "bonds" },
+    { name: "Корпоративные облигации", slug: "corp-bonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/corp-bond.aspx", tradingViewSymbol: null, dataSource: null, dataTicker: null, description: "Корпоративные облигации на MOEX", categorySlug: "bonds" },
+    { name: "Еврооблигации", slug: "eurobonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/euro-bond.aspx", tradingViewSymbol: null, dataSource: null, dataTicker: null, description: "Еврооблигации на MOEX", categorySlug: "bonds" },
   ];
 
   const instruments: Record<string, string> = {};
@@ -515,6 +507,8 @@ async function main() {
         exchange: inst.exchange,
         exchangeUrl: inst.exchangeUrl,
         tradingViewSymbol: inst.tradingViewSymbol,
+        dataSource: inst.dataSource,
+        dataTicker: inst.dataTicker,
         description: inst.description,
       },
       create: {
@@ -525,6 +519,8 @@ async function main() {
         exchange: inst.exchange,
         exchangeUrl: inst.exchangeUrl,
         tradingViewSymbol: inst.tradingViewSymbol,
+        dataSource: inst.dataSource,
+        dataTicker: inst.dataTicker,
         description: inst.description,
       },
     });
@@ -541,7 +537,7 @@ async function main() {
     });
   }
 
-  console.log("30 instruments created with chat rooms");
+  console.log("25 instruments created with chat rooms");
 
   // ─── Test Ideas ──────────────────────────────────────────────────────
   const ideaData = [
@@ -601,7 +597,7 @@ async function main() {
       preview: "ЕЦБ готовит паузу в снижении ставок. Доллар слабеет.",
       content: "Макроанализ пары EUR/USD:\n\n1. ЕЦБ сигнализирует паузу в цикле снижения ставок\n2. ФРС, напротив, может снизить ставку в Q2\n3. Дифференциал ставок сужается — позитив для EUR\n\nТехнически: пара формирует двойное дно на 1.0720.\n\nЦель: 1.1050\nГоризонт: 1-2 месяца",
       isPaid: false,
-      instruments: ["eurusd"],
+      instruments: ["si"],
     },
     {
       author: ivan.id,
@@ -682,7 +678,7 @@ async function main() {
 
     // ideaUser4 — Татьяна Макро (2 free + 3 paid)
     { author: ideaUser4.id, title: "Ставка ЦБ: прогноз на 2026", preview: "Анализ траектории ключевой ставки ЦБ РФ и её влияния на рынки.", content: "Прогноз ставки ЦБ РФ:\n\nТекущая: 21%\nМой прогноз:\n- Q1 2026: 21% (без изменений)\n- Q2 2026: 19-20% (начало снижения)\n- Q3 2026: 17-18%\n- Q4 2026: 15-16%\n\nОснования:\n1. Инфляция замедляется (с 9.5% до 7% к концу года)\n2. Экономика охлаждается\n3. Кредитование замедлилось\n\nСтратегия: покупать длинные ОФЗ сейчас.\nМаксимальный эффект: ОФЗ 26238 (+25-30% при снижении до 15%).", isPaid: true, price: 500, instruments: ["ofz26238", "ofz26243"] },
-    { author: ideaUser4.id, title: "USD/RUB: рубль укрепится к лету", preview: "Сезонные факторы и цена нефти поддержат рубль в Q2 2026.", content: "Прогноз курса доллар/рубль:\n\nФакторы укрепления рубля:\n1. Налоговый период (март-апрель) — экспортёры продают валюту\n2. Нефть выше $80 — сильный торговый баланс\n3. Высокая ставка ЦБ — carry trade в рубль\n4. Сезонно низкий импорт\n\nФакторы ослабления:\n1. Бюджетные расходы\n2. Геополитика\n\nПрогноз: 88-92 руб/$ к июню (сейчас 95)\nТорговая идея: шорт Si от 95000.", isPaid: false, acceptDonations: true, instruments: ["usdrub", "si"] },
+    { author: ideaUser4.id, title: "USD/RUB: рубль укрепится к лету", preview: "Сезонные факторы и цена нефти поддержат рубль в Q2 2026.", content: "Прогноз курса доллар/рубль:\n\nФакторы укрепления рубля:\n1. Налоговый период (март-апрель) — экспортёры продают валюту\n2. Нефть выше $80 — сильный торговый баланс\n3. Высокая ставка ЦБ — carry trade в рубль\n4. Сезонно низкий импорт\n\nФакторы ослабления:\n1. Бюджетные расходы\n2. Геополитика\n\nПрогноз: 88-92 руб/$ к июню (сейчас 95)\nТорговая идея: шорт Si от 95000.", isPaid: false, acceptDonations: true, instruments: ["si"] },
     { author: ideaUser4.id, title: "EUR/USD: ЕЦБ vs ФРС — кто снизит первым", preview: "Дивергенция монетарных политик ЕЦБ и ФРС. Торговая идея.", content: "Макроанализ EUR/USD:\n\nЕЦБ:\n- Текущая ставка: 3.75%\n- Инфляция: 2.3% (близка к цели)\n- Настрой: dovish, пауза в снижении\n\nФРС:\n- Текущая ставка: 4.75%\n- Инфляция: 3.1% (выше цели)\n- Настрой: hawkish, но рынок закладывает 2 снижения\n\nДифференциал ставок сужается → EUR укрепляется.\n\nТорговая идея: лонг EUR/USD от 1.075\nЦель: 1.12\nСтоп: 1.055", isPaid: true, price: 250, instruments: ["eurusd"] },
     { author: ideaUser4.id, title: "Инфляция в России: что ждать инвестору", preview: "Детальный разбор инфляционных трендов и их влияния на активы.", content: "Инфляция РФ — текущая картина:\n\nОфициальная (Росстат): 8.5% г/г\nНаблюдаемая (опросы): 15%+\nЦель ЦБ: 4%\n\nЧто дорожает сильнее всего:\n- Продукты: +12%\n- Услуги: +10%\n- Непродовольственные товары: +6%\n\nЗащита от инфляции:\n1. Флоатеры (ОФЗ-ПК) — купон = RUONIA + спред\n2. Акции экспортёров — выручка в валюте\n3. Золото — классический хедж\n4. Короткие облигации — быстрая переоценка\n\nИзбегать: длинные фиксированные депозиты, кэш.", isPaid: false, acceptDonations: true, instruments: ["gold", "ofz26240"] },
     { author: ideaUser4.id, title: "Нефть Brent: макроанализ Q2 2026", preview: "Глобальный спрос, OPEC+, геополитика — что определит цену нефти.", content: "Нефть Brent — макрокартина:\n\nСпрос:\n- Китай восстанавливается (+0.5 мб/д)\n- Индия растёт (+0.3 мб/д)\n- Европа стагнирует\n\nПредложение:\n- OPEC+ сохраняет ограничения\n- США: рост добычи замедлился\n- Иран: санкции ограничивают экспорт\n\nБаланс: дефицит ~0.5 мб/д в Q2\n\nПрогноз: $80-90 за баррель\nТорговая идея: лонг BR от $78, стоп $74, тейк $88\n\nРиски: рецессия в США, OPEC+ разногласия.", isPaid: true, price: 300, instruments: ["br"] },

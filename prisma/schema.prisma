@@ -101,6 +101,8 @@ model Instrument {
   exchange          String?
   exchangeUrl       String?
   tradingViewSymbol String?
+  dataSource        String?  // "moex", "bybit", or null
+  dataTicker        String?  // ticker for data API (e.g. "GAZP" for MOEX, "BTCUSDT" for Bybit)
   description       String?
   createdAt         DateTime @default(now())
 
