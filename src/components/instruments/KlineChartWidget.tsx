@@ -129,6 +129,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
   const [showChartType, setShowChartType] = useState(false);
   const [activeDraw, setActiveDraw] = useState<string | null>(null);
   const [magnet, setMagnet] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
 
   /* ── Fetch historical candles from /api/klines ── */
   const fetchCandles = useCallback(async (): Promise<{ data: KLineData[]; resolved: string }> => {
@@ -176,7 +177,10 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
   /* ── Load data into chart ── */
   const loadData = useCallback(async () => {
     const chart = chartRef.current;
-    if (!chart) return;
+    if (!chart) {
+      // Chart not yet initialized — will be called from init effect
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -334,18 +338,20 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
 
     if (!chart) return;
     chartRef.current = chart;
+    setChartReady(true);
 
     return () => {
       if (rtTimer.current) clearInterval(rtTimer.current);
       dispose(chartId);
       chartRef.current = null;
+      setChartReady(false);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Reload on ticker/tf change ── */
+  /* ── Reload on ticker/tf change, or when chart becomes ready ── */
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (chartReady) loadData();
+  }, [chartReady, loadData]);
 
   /* ── Start realtime after data loads ── */
   useEffect(() => {
