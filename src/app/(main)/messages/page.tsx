@@ -149,17 +149,7 @@ function MessagesPage() {
   const lastMsgIdRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Hide footer and remove padding on messages page to prevent scroll
-  useEffect(() => {
-    const footer = document.querySelector("footer");
-    const main = document.querySelector("main.max-w-7xl") as HTMLElement;
-    if (footer) footer.style.display = "none";
-    if (main) { main.style.paddingTop = "0.5rem"; main.style.paddingBottom = "0"; }
-    return () => {
-      if (footer) footer.style.display = "";
-      if (main) { main.style.paddingTop = ""; main.style.paddingBottom = ""; }
-    };
-  }, []);
+  // No extra scroll hacks needed — layout handles overflow
 
   useEffect(() => {
     loadConversations();
@@ -499,7 +489,7 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden" style={{ height: "calc(100dvh - 5.5rem)" }}>
+    <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden flex-1 min-h-0">
       {/* Sidebar — full width on mobile, fixed width on desktop */}
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
         {/* Tabs */}
