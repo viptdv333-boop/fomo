@@ -7,7 +7,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
-import type { DataSource } from "@/lib/marketdata";
+import type { DataSource } from "@/components/instruments/KlineChartWidget";
 
 // Dynamic import to avoid SSR issues with canvas
 const KlineChartWidget = dynamic(
@@ -129,7 +129,7 @@ export default function InstrumentPage() {
       )}
 
       {/* MOEX Stats */}
-      {instrument.exchange === "MOEX" && <MoexStats slug={slug} />}
+      {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
 
       {/* Ideas */}
       <div>
