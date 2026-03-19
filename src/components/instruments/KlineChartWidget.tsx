@@ -285,8 +285,8 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
             noChangeWickColor: "#888888",
           },
           tooltip: {
-            showRule: "always" as const,
-            showType: "standard" as const,
+            showRule: "always" as any,
+            showType: "standard" as any,
           },
         },
         indicator: {
