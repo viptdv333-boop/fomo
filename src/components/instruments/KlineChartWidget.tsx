@@ -682,7 +682,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
             <div className="text-sm text-gray-500">Загрузка...</div>
           </div>
         )}
-        {error && !loading && (
+        {error && !loading && lastBarTs.current === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70 z-10">
             <div className="text-center">
               <div className="text-2xl mb-2">📊</div>

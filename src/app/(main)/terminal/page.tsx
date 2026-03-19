@@ -82,7 +82,7 @@ export default function TerminalPage() {
   const chartSource = (selected?.dataSource || "none") as DataSource;
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-6rem)]">
+    <div className="flex gap-4 h-[calc(100vh-6rem)] overflow-hidden -mb-6">
       {/* Left sidebar: Watchlist + Sandbox */}
       <div className="w-72 shrink-0 flex flex-col gap-3 overflow-hidden">
         {/* Watchlist */}

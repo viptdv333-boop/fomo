@@ -96,7 +96,7 @@ export async function postSandboxOrder(params: OrderParams): Promise<any> {
     quantity: String(params.quantity),
     direction: params.direction,
     orderType: params.orderType,
-    orderId: `fomo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    orderId: crypto.randomUUID(),
   };
   if (params.orderType === "ORDER_TYPE_LIMIT" && params.price != null) {
     body.price = toQuotation(params.price);
