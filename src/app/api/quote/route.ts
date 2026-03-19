@@ -19,10 +19,14 @@ const MOEX_BOARDS = [
 ];
 
 const FUTURES_PREFIX: Record<string, string> = {
-  BR: "BR", GOLD: "GD", SILV: "SV", NG: "NG", WHEAT: "W4",
-  PLT: "PT", PLD: "PD", COCOA: "CC",
+  // Commodities
+  BR: "BR", GOLD: "GD", SILV: "SV", PLT: "PT", PLD: "PD",
+  NG: "NG", WHEAT: "W4", COCOA: "CC", SUGAR: "SA",
+  CU: "CU", ALUM: "AL", NICK: "NL",
+  // Currency
   Si: "Si", Eu: "Eu", CR: "CR",
-  NASD: "NA", SPYF: "SF", MIX: "MX",
+  // Indices
+  NASD: "NA", SPYF: "SF", MIX: "MX", RTS: "RI", BTCF: "BA",
 };
 
 // Simple contract cache (shared with klines via module scope in edge runtime)

@@ -755,7 +755,7 @@ export default function KlineChartWidget({
               <div className="text-sm text-gray-500">Загрузка...</div>
             </div>
           )}
-          {error && !loading && (
+          {error && !loading && chartInstance.current && chartInstance.current.getDataList().length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
               <div className="text-center">
                 <div className="text-2xl mb-2">📊</div>
