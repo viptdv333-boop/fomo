@@ -481,6 +481,26 @@ async function main() {
     }
   }
 
+  // ─── Delete crypto category ────────────────────────────────────────
+  for (const delSlug of ["crypto"]) {
+    const delCat = await prisma.instrumentCategory.findUnique({ where: { slug: delSlug } });
+    if (delCat) {
+      const delInstruments = await prisma.instrument.findMany({ where: { categoryId: delCat.id }, select: { id: true } });
+      const delIds = delInstruments.map(i => i.id);
+      if (delIds.length > 0) {
+        await prisma.ideaInstrument.deleteMany({ where: { instrumentId: { in: delIds } } });
+        const delRooms = await prisma.chatRoom.findMany({ where: { instrumentId: { in: delIds } }, select: { id: true } });
+        if (delRooms.length > 0) {
+          await prisma.chatMessage.deleteMany({ where: { roomId: { in: delRooms.map(r => r.id) } } });
+          await prisma.chatRoom.deleteMany({ where: { id: { in: delRooms.map(r => r.id) } } });
+        }
+        await prisma.instrument.deleteMany({ where: { id: { in: delIds } } });
+      }
+      await prisma.instrumentCategory.delete({ where: { id: delCat.id } });
+      console.log("Crypto category and instruments deleted");
+    }
+  }
+
   // ─── Delete old categories that are being renamed/restructured ──────
   for (const oldSlug of ["stocks-us"]) {
     const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
@@ -492,10 +512,9 @@ async function main() {
 
   // ─── Categories ──────────────────────────────────────────────────────
   const catData = [
-    { name: "Криптовалюты", slug: "crypto", sortOrder: 1 },
-    { name: "Акции РФ", slug: "stocks-ru", sortOrder: 2 },
-    { name: "Товарные фьючерсы", slug: "commodities", sortOrder: 3 },
-    { name: "Фьючерсы на индексы", slug: "index-futures", sortOrder: 4 },
+    { name: "Акции РФ", slug: "stocks-ru", sortOrder: 1 },
+    { name: "Товарные фьючерсы", slug: "commodities", sortOrder: 2 },
+    { name: "Фьючерсы на индексы", slug: "index-futures", sortOrder: 3 },
   ];
 
   const cats: Record<string, string> = {};
@@ -510,13 +529,6 @@ async function main() {
 
   // ─── Instruments ─────────────────────────────────────────────────────
   const instrumentData = [
-    // ══════ КРИПТОВАЛЮТЫ (Bybit) ══════
-    { name: "Bitcoin", slug: "btc", ticker: "BTC", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BTCUSDT", tradingViewSymbol: "BYBIT:BTCUSDT", dataSource: "bybit", dataTicker: "BTCUSDT", description: "Биткоин — первая и крупнейшая криптовалюта", categorySlug: "crypto" },
-    { name: "Ethereum", slug: "eth", ticker: "ETH", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/ETHUSDT", tradingViewSymbol: "BYBIT:ETHUSDT", dataSource: "bybit", dataTicker: "ETHUSDT", description: "Эфириум — платформа смарт-контрактов", categorySlug: "crypto" },
-    { name: "Solana", slug: "sol", ticker: "SOL", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/SOLUSDT", tradingViewSymbol: "BYBIT:SOLUSDT", dataSource: "bybit", dataTicker: "SOLUSDT", description: "Solana — высокопроизводительный блокчейн", categorySlug: "crypto" },
-    { name: "BNB", slug: "bnb", ticker: "BNB", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BNBUSDT", tradingViewSymbol: "BYBIT:BNBUSDT", dataSource: "bybit", dataTicker: "BNBUSDT", description: "Binance Coin — токен экосистемы Binance", categorySlug: "crypto" },
-    { name: "XRP", slug: "xrp", ticker: "XRP", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/XRPUSDT", tradingViewSymbol: "BYBIT:XRPUSDT", dataSource: "bybit", dataTicker: "XRPUSDT", description: "Ripple — платёжная криптовалюта", categorySlug: "crypto" },
-
     // ══════ АКЦИИ РФ (MOEX, TQBR) ══════
     { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", dataSource: "moex", dataTicker: "SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks-ru" },
     { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", dataSource: "moex", dataTicker: "GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks-ru" },
