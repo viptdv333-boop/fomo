@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import type { DataSource } from "@/components/instruments/KlineChartWidget";
+import type { DataSource } from "@/components/instruments/TradingViewWidget";
 
-const KlineChartWidget = dynamic(
-  () => import("@/components/instruments/KlineChartWidget"),
+const TradingViewWidget = dynamic(
+  () => import("@/components/instruments/TradingViewWidget"),
   { ssr: false, loading: () => <div className="flex-1 bg-gray-100 dark:bg-gray-800 animate-pulse" /> }
 );
 
@@ -31,7 +31,6 @@ interface Category {
 
 export default function TerminalPage() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [allInstruments, setAllInstruments] = useState<Instrument[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Instrument | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -42,10 +41,8 @@ export default function TerminalPage() {
       .then((r) => r.json())
       .then((data: Category[]) => {
         setCategories(data);
-        const all = data.flatMap((c) => c.instruments);
-        setAllInstruments(all);
         setExpandedCats(new Set(data.map((c) => c.id)));
-        // Select first instrument with data
+        const all = data.flatMap((c) => c.instruments);
         const first = all.find((i) => i.dataSource && i.dataTicker);
         if (first) setSelected(first);
       })
@@ -117,9 +114,7 @@ export default function TerminalPage() {
                     return (
                       <button
                         key={inst.id}
-                        onClick={() => {
-                          if (hasData) setSelected(inst);
-                        }}
+                        onClick={() => { if (hasData) setSelected(inst); }}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left transition ${
                           isSelected
                             ? "bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-500"
@@ -145,7 +140,7 @@ export default function TerminalPage() {
                           href={`/instruments/${inst.slug}`}
                           onClick={(e) => e.stopPropagation()}
                           className="text-[10px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0"
-                          title="Открыть страницу инструмента"
+                          title="Открыть страницу"
                         >
                           →
                         </Link>
@@ -159,40 +154,17 @@ export default function TerminalPage() {
       </div>
 
       {/* Chart area */}
-      <div className="flex-1 bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 overflow-hidden flex flex-col">
-        {/* Chart header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b dark:border-gray-800">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold dark:text-gray-100">{selected?.name || "Выберите инструмент"}</h3>
-            {selected?.ticker && (
-              <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                {selected.ticker}
-              </span>
-            )}
-          </div>
-          {selected && (
-            <Link
-              href={`/instruments/${selected.slug}`}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              Открыть страницу →
-            </Link>
-          )}
-        </div>
-
-        {/* Chart */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selected && chartSource !== "none" && chartTicker ? (
-          <div className="flex-1 min-h-0">
-            <KlineChartWidget
-              key={`${selected.id}-${chartTicker}`}
-              ticker={chartTicker}
-              source={chartSource}
-              name={selected.name}
-              height={0}
-            />
-          </div>
+          <TradingViewWidget
+            key={`${selected.id}-${chartTicker}`}
+            ticker={chartTicker}
+            source={chartSource}
+            name={selected.name}
+            height={0}
+          />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800">
             <div className="text-center">
               <div className="text-4xl mb-3">📊</div>
               <p className="text-sm">

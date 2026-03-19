@@ -7,11 +7,11 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
-import type { DataSource } from "@/components/instruments/KlineChartWidget";
+import type { DataSource } from "@/components/instruments/TradingViewWidget";
 
-// Dynamic import to avoid SSR issues with canvas
-const KlineChartWidget = dynamic(
-  () => import("@/components/instruments/KlineChartWidget"),
+// Dynamic import to avoid SSR issues
+const TradingViewWidget = dynamic(
+  () => import("@/components/instruments/TradingViewWidget"),
   { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
 );
 
@@ -118,13 +118,13 @@ export default function InstrumentPage() {
         </div>
       </div>
 
-      {/* KlineChart */}
+      {/* TradingView Chart */}
       {chartSource !== "none" && chartTicker && (
-        <KlineChartWidget
+        <TradingViewWidget
           ticker={chartTicker}
           source={chartSource}
           name={instrument.name}
-          height={500}
+          height={550}
         />
       )}
 
