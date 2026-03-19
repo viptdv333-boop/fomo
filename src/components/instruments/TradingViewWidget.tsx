@@ -20,30 +20,36 @@ function getTVSymbol(ticker: string, source: DataSource): string {
   }
 
   if (source === "moex") {
-    // Futures → continuous contract
-    const futuresMap: Record<string, string> = {
-      BR: "MOEX:BR1!",
-      GOLD: "MOEX:GD1!",
-      SILV: "MOEX:SV1!",
-      NG: "MOEX:NG1!",
-      WHEAT: "MOEX:W41!",
-      PLT: "MOEX:PT1!",
-      PLD: "MOEX:PD1!",
-      COCOA: "MOEX:CC1!",
-      Si: "MOEX:SI1!",
-      Eu: "MOEX:EU1!",
-      CR: "MOEX:CR1!",
-      NASD: "MOEX:NA1!",
-      SPYF: "MOEX:SF1!",
-      MIX: "MOEX:MX1!",
+    const map: Record<string, string> = {
+      // Commodities → international exchanges (free, real-time)
+      BR: "NYMEX:BZ1!",          // Brent crude
+      GOLD: "COMEX:GC1!",         // Gold
+      SILV: "COMEX:SI1!",         // Silver
+      NG: "NYMEX:NG1!",           // Natural gas
+      WHEAT: "CBOT:ZW1!",         // Wheat
+      PLT: "NYMEX:PL1!",          // Platinum
+      PLD: "NYMEX:PA1!",          // Palladium
+      COCOA: "ICEUS:CC1!",        // Cocoa
+
+      // Russian index futures
+      MIX: "MOEX:IMOEX",          // MOEX index
+      IMOEXF: "MOEX:IMOEX",       // MOEX index
+
+      // US indices via MOEX futures → international
+      NASD: "NASDAQ:NDX",          // Nasdaq 100
+      SPYF: "SP:SPX",             // S&P 500
+
+      // Currency
+      Si: "FX:USDRUB",            // Dollar/Ruble
+      Eu: "FX:EURRUB",            // Euro/Ruble
+      CR: "FX:CNYRUB",            // Yuan/Ruble
+      USD000UTSTOM: "FX:USDRUB",
+      EUR_RUB__TOM: "FX:EURRUB",
+      CNY000UTSTOM: "FX:CNYRUB",
     };
-    if (futuresMap[ticker]) return futuresMap[ticker];
+    if (map[ticker]) return map[ticker];
 
-    // Currency
-    if (ticker === "USD000UTSTOM") return "MOEX:USDRUB_TOM";
-    if (ticker === "EUR_RUB__TOM") return "MOEX:EURRUB_TOM";
-    if (ticker === "CNY000UTSTOM") return "MOEX:CNYRUB_TOM";
-
+    // Stocks, bonds → MOEX:TICKER
     return `MOEX:${ticker}`;
   }
 
