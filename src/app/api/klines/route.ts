@@ -23,11 +23,15 @@ const FUTURES_PREFIX: Record<string, string> = {
   "SILV": "SV",      // Silver
   "NG": "NG",        // Natural gas
   "WHEAT": "W4",     // Wheat
+  "PLT": "PT",       // Platinum
+  "PLD": "PD",       // Palladium
+  "COCOA": "CC",     // Cocoa
   "Si": "Si",        // USD/RUB
   "Eu": "Eu",        // EUR/RUB
   "CR": "CR",        // CNY/RUB
   "NASD": "NA",      // NASDAQ
   "SPYF": "SF",      // S&P500
+  "MIX": "MX",       // MOEX Index
 };
 
 // Cache for resolved futures contracts (base ticker → {contract, expiry})
