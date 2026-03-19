@@ -11,8 +11,8 @@ interface ChartWidgetProps {
   height?: number;
 }
 
-const AdvancedChartWidget = dynamic(
-  () => import("./AdvancedChartWidget"),
+const LightweightChartWidget = dynamic(
+  () => import("./LightweightChartWidget"),
   {
     ssr: false,
     loading: () => (
@@ -23,7 +23,7 @@ const AdvancedChartWidget = dynamic(
 
 export default function ChartWidget(props: ChartWidgetProps) {
   return (
-    <AdvancedChartWidget
+    <LightweightChartWidget
       ticker={props.ticker}
       source={props.source}
       name={props.name}
