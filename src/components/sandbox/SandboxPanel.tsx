@@ -12,11 +12,14 @@ interface SandboxAccount {
 }
 
 interface Position {
-  instrumentUid: string;
+  instrumentId: string;
   instrumentType: string;
+  name: string;
+  ticker: string;
   quantity: number;
   averagePrice: number;
   currentPrice: number;
+  currentValue: number;
   expectedYield: number;
 }
 
@@ -111,6 +114,9 @@ export default function SandboxPanel({ selectedTicker, selectedName }: Props) {
 
   useEffect(() => {
     loadAccount();
+    // Auto-refresh portfolio every 30 seconds
+    const interval = setInterval(loadAccount, 30000);
+    return () => clearInterval(interval);
   }, [loadAccount]);
 
   useEffect(() => {
@@ -360,14 +366,14 @@ export default function SandboxPanel({ selectedTicker, selectedName }: Props) {
                 ) : (
                   account?.positions.map((p, i) => (
                     <div key={i} className="flex items-center justify-between py-1.5 border-b dark:border-gray-800 last:border-0">
-                      <div>
-                        <div className="text-xs font-medium dark:text-gray-200 font-mono">{p.instrumentUid?.slice(0, 12) || "—"}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium dark:text-gray-200 truncate">{p.name || p.ticker || "—"}</div>
                         <div className="text-[10px] text-gray-400">
-                          {p.quantity} шт. × {p.averagePrice.toFixed(2)}₽
+                          <span className="font-mono">{p.ticker}</span> • {p.quantity} шт. × {p.averagePrice.toFixed(2)}₽
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs font-mono dark:text-gray-200">{p.currentPrice.toFixed(2)}₽</div>
+                      <div className="text-right shrink-0 ml-2">
+                        <div className="text-xs font-mono dark:text-gray-200">{formatMoney(p.currentValue)}</div>
                         <div className={`text-[10px] font-mono ${p.expectedYield >= 0 ? "text-green-500" : "text-red-500"}`}>
                           {p.expectedYield >= 0 ? "+" : ""}{p.expectedYield.toFixed(2)}₽
                         </div>

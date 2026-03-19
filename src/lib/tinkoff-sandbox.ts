@@ -36,6 +36,59 @@ async function sandboxRequest(endpoint: string, body: object): Promise<any> {
   return res.json();
 }
 
+const PROD_URL =
+  "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
+
+async function prodRequest(endpoint: string, body: object): Promise<any> {
+  const res = await fetch(`${PROD_URL}.${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TINKOFF_TOKEN}`,
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/* ── Instrument info cache ── */
+const instrumentCache = new Map<string, { name: string; ticker: string; resolved: number }>();
+
+export async function getInstrumentInfo(uid: string): Promise<{ name: string; ticker: string }> {
+  const cached = instrumentCache.get(uid);
+  if (cached && Date.now() - cached.resolved < 86400_000) {
+    return { name: cached.name, ticker: cached.ticker };
+  }
+  try {
+    const data = await prodRequest("InstrumentsService/GetInstrumentBy", {
+      idType: "INSTRUMENT_ID_TYPE_UID",
+      id: uid,
+    });
+    const inst = data?.instrument;
+    if (inst) {
+      const info = { name: inst.name || inst.ticker || uid, ticker: inst.ticker || uid };
+      instrumentCache.set(uid, { ...info, resolved: Date.now() });
+      return info;
+    }
+  } catch { /* fallback */ }
+  return { name: uid.slice(0, 12), ticker: uid.slice(0, 8) };
+}
+
+/* ── Get last price for instrument ── */
+export async function getLastPrice(instrumentId: string): Promise<number> {
+  try {
+    const data = await prodRequest("MarketDataService/GetLastPrices", {
+      instrumentId: [instrumentId],
+      lastPriceType: "LAST_PRICE_EXCHANGE",
+    });
+    const lp = data?.lastPrices?.[0];
+    if (lp?.price) return parseQuotation(lp.price);
+  } catch { /* */ }
+  return 0;
+}
+
 /* ── Account management ── */
 
 export async function openSandboxAccount(): Promise<string> {

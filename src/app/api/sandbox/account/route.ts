@@ -7,6 +7,7 @@ import {
   getSandboxPortfolio,
   closeSandboxAccount,
   parseQuotation,
+  getInstrumentInfo,
 } from "@/lib/tinkoff-sandbox";
 
 const INITIAL_BALANCE = 1_000_000; // 1M RUB demo money
@@ -50,17 +51,30 @@ export async function GET() {
   try {
     const portfolio = await getSandboxPortfolio(sandbox.tinkoffAccountId);
     const totalAmount = parseQuotation(portfolio.totalAmountPortfolio);
-    const positions = (portfolio.positions || [])
-      .filter((p: any) => p.instrumentType !== "currency") // filter out RUB balance from positions
-      .map((p: any) => ({
-        instrumentId: p.instrumentUid || p.figi,
-        instrumentType: p.instrumentType,
-        quantity: parseQuotation(p.quantity),
-        averagePrice: parseQuotation(p.averagePositionPrice),
-        currentPrice: parseQuotation(p.currentPrice),
-        currentValue: parseQuotation(p.currentNkd) || parseQuotation(p.currentPrice) * parseQuotation(p.quantity),
-        expectedYield: parseQuotation(p.expectedYield),
-      }));
+    const rawPositions = (portfolio.positions || [])
+      .filter((p: any) => p.instrumentType !== "currency");
+
+    // Resolve instrument names in parallel
+    const positions = await Promise.all(
+      rawPositions.map(async (p: any) => {
+        const uid = p.instrumentUid || p.figi || "";
+        const info = await getInstrumentInfo(uid);
+        const qty = parseQuotation(p.quantity);
+        const avgPrice = parseQuotation(p.averagePositionPrice);
+        const curPrice = parseQuotation(p.currentPrice);
+        return {
+          instrumentId: uid,
+          instrumentType: p.instrumentType,
+          name: info.name,
+          ticker: info.ticker,
+          quantity: qty,
+          averagePrice: avgPrice,
+          currentPrice: curPrice,
+          currentValue: curPrice * qty,
+          expectedYield: parseQuotation(p.expectedYield),
+        };
+      })
+    );
 
     return NextResponse.json({
       id: sandbox.id,
