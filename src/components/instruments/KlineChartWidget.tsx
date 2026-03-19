@@ -160,10 +160,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
     });
     // Add active main indicators
     main.forEach(name => {
-      const ind = MAIN_INDICATORS.find(i => i.value === name);
-      if (ind) {
-        chart.createIndicator(name, false, { id: "candle_pane", ...ind.params });
-      }
+      chart.createIndicator(name, false, { id: "candle_pane" });
     });
 
     // For sub indicators — remove all sub panes first, then re-add active ones
@@ -172,10 +169,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
       try { chart.removeIndicator(name); } catch { /* ok */ }
     });
     sub.forEach(name => {
-      const ind = SUB_INDICATORS.find(i => i.value === name);
-      if (ind) {
-        chart.createIndicator(name, false, ind.params);
-      }
+      chart.createIndicator(name, false);
     });
   }, []);
 
