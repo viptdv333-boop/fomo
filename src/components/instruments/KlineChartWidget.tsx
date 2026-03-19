@@ -228,12 +228,13 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
           lastBarTs.current = curPeriod;
           chart.updateData(newBar);
         } else {
-          // Update last candle — we update using the existing timestamp
+          // Update last candle — open is required by KLineData type
           chart.updateData({
             timestamp: lastBarTs.current,
+            open: q.price,
             close: q.price,
-            high: q.price, // chart will take max internally from existing
-            low: q.price,  // chart will take min internally from existing
+            high: q.price,
+            low: q.price,
             volume: q.volume || 0,
           });
         }
