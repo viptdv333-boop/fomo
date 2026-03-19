@@ -22,11 +22,11 @@ const FUTURES_PREFIX: Record<string, string> = {
   // Commodities
   BR: "BR", GOLD: "GD", SILV: "SV", PLT: "PT", PLD: "PD",
   NG: "NG", WHEAT: "W4", COCOA: "CC", SUGAR: "SA",
-  CU: "CU", ALUM: "AL", NICK: "NL",
+  CU: "CE",
   // Currency
   Si: "Si", Eu: "Eu", CR: "CR",
   // Indices
-  NASD: "NA", SPYF: "SF", MIX: "MX", RTS: "RI", BTCF: "BA",
+  NASD: "NA", SPYF: "SF", MIX: "MX", RTS: "RI", BTCF: "BT",
 };
 
 // Simple contract cache (shared with klines via module scope in edge runtime)

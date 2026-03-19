@@ -28,9 +28,7 @@ const FUTURES_PREFIX: Record<string, string> = {
   "WHEAT": "W4",     // Wheat
   "COCOA": "CC",     // Cocoa
   "SUGAR": "SA",     // Sugar
-  "CU": "CU",        // Copper
-  "ALUM": "AL",      // Aluminium
-  "NICK": "NL",      // Nickel
+  "CU": "CE",        // Copper
   // Currency
   "Si": "Si",        // USD/RUB
   "Eu": "Eu",        // EUR/RUB
@@ -40,7 +38,7 @@ const FUTURES_PREFIX: Record<string, string> = {
   "SPYF": "SF",      // S&P 500
   "MIX": "MX",       // MOEX Index
   "RTS": "RI",       // RTS Index
-  "BTCF": "BA",      // Bitcoin futures MOEX
+  "BTCF": "BT",      // Bitcoin futures MOEX
 };
 
 // Cache for resolved futures contracts (base ticker → {contract, expiry})
