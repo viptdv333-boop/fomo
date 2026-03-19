@@ -115,8 +115,8 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
 
   useEffect(() => {
     loadAccount();
-    // Auto-refresh portfolio every 30 seconds
-    const interval = setInterval(loadAccount, 30000);
+    // Auto-refresh portfolio every 15 seconds
+    const interval = setInterval(loadAccount, 15000);
     return () => clearInterval(interval);
   }, [loadAccount]);
 

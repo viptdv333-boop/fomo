@@ -8,6 +8,7 @@ import {
   closeSandboxAccount,
   parseQuotation,
   getInstrumentInfo,
+  getLastPrice,
 } from "@/lib/tinkoff-sandbox";
 
 const INITIAL_BALANCE = 1_000_000; // 1M RUB demo money
@@ -54,14 +55,20 @@ export async function GET() {
     const rawPositions = (portfolio.positions || [])
       .filter((p: any) => p.instrumentType !== "currency");
 
-    // Resolve instrument names in parallel
+    // Resolve instrument names + fetch live market prices in parallel
     const positions = await Promise.all(
       rawPositions.map(async (p: any) => {
         const uid = p.instrumentUid || p.figi || "";
-        const info = await getInstrumentInfo(uid);
+        const [info, livePrice] = await Promise.all([
+          getInstrumentInfo(uid),
+          getLastPrice(uid),
+        ]);
         const qty = parseQuotation(p.quantity);
         const avgPrice = parseQuotation(p.averagePositionPrice);
-        const curPrice = parseQuotation(p.currentPrice);
+        // Use live market price if available, otherwise sandbox price
+        const sandboxPrice = parseQuotation(p.currentPrice);
+        const curPrice = livePrice > 0 ? livePrice : sandboxPrice;
+        const expectedYield = (curPrice - avgPrice) * qty;
         return {
           instrumentId: uid,
           instrumentType: p.instrumentType,
@@ -71,7 +78,7 @@ export async function GET() {
           averagePrice: avgPrice,
           currentPrice: curPrice,
           currentValue: curPrice * qty,
-          expectedYield: parseQuotation(p.expectedYield),
+          expectedYield,
         };
       })
     );

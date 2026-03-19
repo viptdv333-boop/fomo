@@ -55,6 +55,7 @@ async function prodRequest(endpoint: string, body: object): Promise<any> {
 
 /* ── Instrument info cache ── */
 const instrumentCache = new Map<string, { name: string; ticker: string; resolved: number }>();
+const instrumentFullCache = new Map<string, { classCode: string; figi: string }>();
 
 export async function getInstrumentInfo(uid: string): Promise<{ name: string; ticker: string }> {
   const cached = instrumentCache.get(uid);
@@ -70,15 +71,29 @@ export async function getInstrumentInfo(uid: string): Promise<{ name: string; ti
     if (inst) {
       const info = { name: inst.name || inst.ticker || uid, ticker: inst.ticker || uid };
       instrumentCache.set(uid, { ...info, resolved: Date.now() });
+      // Also cache classCode and figi for price lookups
+      instrumentFullCache.set(uid, {
+        classCode: inst.classCode || "TQBR",
+        figi: inst.figi || "",
+      });
       return info;
     }
   } catch { /* fallback */ }
   return { name: uid.slice(0, 12), ticker: uid.slice(0, 8) };
 }
 
-/* ── Get last price for instrument ── */
-export async function getLastPrice(instrumentId: string): Promise<number> {
+/* ── Get last price for instrument by UID ── */
+export async function getLastPrice(uid: string): Promise<number> {
   try {
+    // First resolve UID to ticker+classCode via instrument info
+    const info = await getInstrumentInfo(uid);
+    if (!info.ticker || info.ticker === uid.slice(0, 8)) return 0;
+
+    // Use the full instrument cache to get classCode
+    const cached = instrumentFullCache.get(uid);
+    const classCode = cached?.classCode || "TQBR";
+    const instrumentId = `${info.ticker}_${classCode}`;
+
     const data = await prodRequest("MarketDataService/GetLastPrices", {
       instrumentId: [instrumentId],
       lastPriceType: "LAST_PRICE_EXCHANGE",

@@ -165,13 +165,31 @@ export default function TerminalPage() {
           selectedTicker={chartTicker || undefined}
           selectedName={selected?.name}
           onSelectTicker={(ticker, instrName) => {
-            // Find instrument in categories by ticker
+            // Find instrument in categories by ticker (exact or prefix match for futures)
             const all = categories.flatMap((c) => c.instruments);
             const match = all.find(
-              (i) => i.dataTicker === ticker || i.ticker === ticker
+              (i) =>
+                i.dataTicker === ticker ||
+                i.ticker === ticker ||
+                // Futures: Tinkoff returns contract like "NGM6", our DB has "NG"
+                (i.dataTicker && ticker.startsWith(i.dataTicker)) ||
+                (i.ticker && ticker.startsWith(i.ticker))
             );
             if (match) {
               setSelected(match);
+            } else {
+              // No match in DB — create virtual instrument to show chart
+              setSelected({
+                id: `virtual-${ticker}`,
+                name: instrName || ticker,
+                slug: ticker.toLowerCase(),
+                ticker: ticker,
+                exchange: "MOEX",
+                dataSource: "moex",
+                dataTicker: ticker,
+                tradingViewSymbol: null,
+                category: null,
+              });
             }
           }}
         />
