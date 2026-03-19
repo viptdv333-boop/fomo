@@ -9,4 +9,4 @@ export interface KlineData {
   volume: number;
 }
 
-export type DataSource = "moex" | "bybit" | "none";
+export type DataSource = "moex" | "none";
