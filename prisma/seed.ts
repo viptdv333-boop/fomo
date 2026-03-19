@@ -461,6 +461,26 @@ async function main() {
     console.log("Forex category and instruments deleted");
   }
 
+  // ─── Delete bonds category ──────────────────────────────────────────
+  for (const delSlug of ["bonds"]) {
+    const delCat = await prisma.instrumentCategory.findUnique({ where: { slug: delSlug } });
+    if (delCat) {
+      const delInstruments = await prisma.instrument.findMany({ where: { categoryId: delCat.id }, select: { id: true } });
+      const delIds = delInstruments.map(i => i.id);
+      if (delIds.length > 0) {
+        await prisma.ideaInstrument.deleteMany({ where: { instrumentId: { in: delIds } } });
+        const delRooms = await prisma.chatRoom.findMany({ where: { instrumentId: { in: delIds } }, select: { id: true } });
+        if (delRooms.length > 0) {
+          await prisma.chatMessage.deleteMany({ where: { roomId: { in: delRooms.map(r => r.id) } } });
+          await prisma.chatRoom.deleteMany({ where: { id: { in: delRooms.map(r => r.id) } } });
+        }
+        await prisma.instrument.deleteMany({ where: { id: { in: delIds } } });
+      }
+      await prisma.instrumentCategory.delete({ where: { id: delCat.id } });
+      console.log(`Category '${delSlug}' deleted`);
+    }
+  }
+
   // ─── Delete old categories that are being renamed/restructured ──────
   for (const oldSlug of ["stocks-us"]) {
     const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
@@ -476,7 +496,6 @@ async function main() {
     { name: "Акции РФ", slug: "stocks-ru", sortOrder: 2 },
     { name: "Товарные фьючерсы", slug: "commodities", sortOrder: 3 },
     { name: "Фьючерсы на индексы", slug: "index-futures", sortOrder: 4 },
-    { name: "Облигации", slug: "bonds", sortOrder: 5 },
   ];
 
   const cats: Record<string, string> = {};
@@ -531,10 +550,6 @@ async function main() {
     { name: "S&P 500", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SF", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SPYF", description: "Фьючерс на S&P 500 (MOEX)", categorySlug: "index-futures" },
     { name: "Биткоин (фьючерс MOEX)", slug: "btcf", ticker: "BTCF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BTCF", description: "Фьючерс на биткоин (MOEX)", categorySlug: "index-futures" },
 
-    // ══════ ОБЛИГАЦИИ (MOEX, TQOB) ══════
-    { name: "ОФЗ 26238", slug: "ofz26238", ticker: "SU26238RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26238RMFS4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26238RMFS4", description: "ОФЗ-ПД 26238 (15 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26243", slug: "ofz26243", ticker: "SU26243RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26243RMFS4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26243RMFS4", description: "ОФЗ-ПД 26243 (12 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26240", slug: "ofz26240", ticker: "SU26240RMFS0", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26240RMFS0", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26240RMFS0", description: "ОФЗ-ПД 26240 (7 лет)", categorySlug: "bonds" },
   ];
 
   const instruments: Record<string, string> = {};
