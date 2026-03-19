@@ -58,9 +58,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.status = (user as any).status;
         token.fomoId = (user as any).fomoId;
         token.picture = user.image;
+        token.refreshedAt = Date.now();
       }
-      // Refresh avatar and role from DB periodically
-      if (token.id) {
+
+      // Refresh from DB only every 5 minutes, NOT every request
+      const refreshedAt = (token.refreshedAt as number) || 0;
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (token.id && Date.now() - refreshedAt > fiveMinutes) {
         try {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id as string },
@@ -71,11 +76,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.role = fresh.role;
             token.status = fresh.status;
             token.fomoId = fresh.fomoId;
+            token.refreshedAt = Date.now();
           }
         } catch {
-          // DB query failed, keep existing token values
+          // DB query failed — keep existing token, don't invalidate session
         }
       }
+
       return token;
     },
     async session({ session, token }) {
