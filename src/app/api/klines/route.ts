@@ -147,40 +147,6 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   return { candles: [], resolvedTicker: ticker };
 }
 
-interface BybitResult {
-  candles: any[];
-  resolvedTicker: string;
-}
-
-async function fetchBybitCandles(symbol: string, interval: string, limit: number): Promise<BybitResult> {
-  try {
-    const bybitIntervals: Record<string, string> = {
-      "1": "1", "5": "5", "15": "15", "60": "60", "240": "240",
-      "D": "D", "W": "W", "M": "M",
-    };
-    const bi = bybitIntervals[interval] || "D";
-    const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bi}&limit=${limit}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return { candles: [], resolvedTicker: symbol };
-    const data = await res.json();
-    if (data.retCode !== 0 || !data.result?.list) return { candles: [], resolvedTicker: symbol };
-
-    return {
-      candles: data.result.list.reverse().map((c: string[]) => ({
-        timestamp: parseInt(c[0]),
-        open: parseFloat(c[1]),
-        high: parseFloat(c[2]),
-        low: parseFloat(c[3]),
-        close: parseFloat(c[4]),
-        volume: parseFloat(c[5]),
-      })),
-      resolvedTicker: symbol,
-    };
-  } catch {
-    return { candles: [], resolvedTicker: symbol };
-  }
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
@@ -197,10 +163,6 @@ export async function GET(request: NextRequest) {
 
   if (source === "moex") {
     const result = await fetchMoexCandles(ticker, interval, limit);
-    candles = result.candles;
-    resolvedTicker = result.resolvedTicker;
-  } else if (source === "bybit") {
-    const result = await fetchBybitCandles(ticker, interval, limit);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
   }

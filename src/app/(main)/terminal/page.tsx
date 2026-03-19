@@ -130,8 +130,8 @@ export default function TerminalPage() {
                           <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex items-center gap-1">
                             <span>{inst.ticker || "—"}</span>
                             {inst.dataSource && (
-                              <span className={`px-1 rounded ${inst.dataSource === "moex" ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600"}`}>
-                                {inst.dataSource === "moex" ? "MOEX" : "Bybit"}
+                              <span className="px-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-500">
+                                MOEX
                               </span>
                             )}
                           </div>

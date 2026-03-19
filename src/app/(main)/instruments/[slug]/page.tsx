@@ -75,7 +75,7 @@ export default function InstrumentPage() {
               )}
               {instrument.dataSource && (
                 <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-xs font-medium">
-                  {instrument.dataSource === "moex" ? "MOEX" : "Bybit"}
+                  MOEX
                 </span>
               )}
             </div>

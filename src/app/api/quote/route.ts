@@ -1,57 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Real-time quote proxy for MOEX and Bybit.
- * MOEX marketdata endpoint gives near-realtime prices (1-3 sec delay),
- * unlike the candles endpoint which has ~15 min delay.
- *
+ * Real-time quote proxy for MOEX instruments via Tinkoff Invest API.
  * Usage: /api/quote?source=moex&ticker=SBER
- *        /api/quote?source=bybit&ticker=BTCUSDT
  */
 
-// MOEX boards to try
-const MOEX_BOARDS = [
-  { engine: "stock", market: "shares", board: "TQBR" },
-  { engine: "stock", market: "bonds", board: "TQOB" },
-  { engine: "stock", market: "bonds", board: "TQCB" },
-  { engine: "currency", market: "selt", board: "CETS" },
-  { engine: "futures", market: "forts", board: "RFUD" },
-];
+const TINKOFF_URL =
+  "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
+const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
+
+const SHARE_TICKERS = new Set(["SBER", "GAZP", "LKOH", "YDEX", "ROSN"]);
 
 const FUTURES_PREFIX: Record<string, string> = {
-  // Commodities
-  BR: "BR", GOLD: "GD", SILV: "SV", PLT: "PT", PLD: "PD",
-  NG: "NG", WHEAT: "W4", COCOA: "CC", SUGAR: "SA",
+  BR: "BR",
+  GOLD: "GD",
+  SILV: "SV",
+  PLT: "PT",
+  PLD: "PD",
+  NG: "NG",
+  WHEAT: "W4",
+  COCOA: "CC",
+  SUGAR: "SA",
   CU: "CE",
-  // Currency
-  Si: "Si", Eu: "Eu", CR: "CR",
-  // Indices
-  NASD: "NA", SPYF: "SF", MIX: "MX", RTS: "RI", BTCF: "BT",
+  Si: "Si",
+  Eu: "Eu",
+  CR: "CR",
+  NASD: "NA",
+  SPYF: "SF",
+  MIX: "MX",
+  RTS: "RI",
+  BTCF: "BT",
 };
 
-// Simple contract cache (shared with klines via module scope in edge runtime)
 const contractCache = new Map<string, { contract: string; resolved: number }>();
+
+function parseQuotation(q: { units?: string; nano?: number }): number {
+  return parseInt(q.units || "0") + (q.nano || 0) / 1_000_000_000;
+}
 
 async function findActiveContract(baseTicker: string): Promise<string | null> {
   const prefix = FUTURES_PREFIX[baseTicker];
   if (!prefix) return null;
-
   const cached = contractCache.get(baseTicker);
   if (cached && Date.now() - cached.resolved < 3600_000) return cached.contract;
-
   try {
-    const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,SHORTNAME,LASTTRADEDATE`;
+    const url =
+      "https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,SHORTNAME,LASTTRADEDATE";
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     const rows = data.securities?.data;
     if (!rows) return null;
-
     const today = new Date().toISOString().slice(0, 10);
     const candidates = rows
-      .filter((r: any[]) => (r[0] as string).startsWith(prefix) && r[0] !== baseTicker && r[2] && (r[2] as string) >= today)
+      .filter(
+        (r: any[]) =>
+          (r[0] as string).startsWith(prefix) &&
+          r[0] !== baseTicker &&
+          r[2] &&
+          (r[2] as string) >= today
+      )
       .sort((a: any[], b: any[]) => (a[2] as string).localeCompare(b[2] as string));
-
     const contract = candidates.length > 0 ? (candidates[0][0] as string) : null;
     if (contract) contractCache.set(baseTicker, { contract, resolved: Date.now() });
     return contract;
@@ -72,71 +81,76 @@ interface Quote {
   ticker: string;
 }
 
-async function fetchMoexQuote(ticker: string): Promise<Quote | null> {
-  // Try each board with exact ticker
-  for (const { engine, market, board } of MOEX_BOARDS) {
-    try {
-      const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}.json?iss.meta=off&iss.only=marketdata,securities&marketdata.columns=SECID,LAST,OPEN,HIGH,LOW,VOLTODAY,UPDATETIME&securities.columns=SECID,PREVPRICE`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      const md = data.marketdata?.data?.[0];
-      if (!md || !md[1]) continue;
-
-      const price = md[1] as number;
-      const open = (md[2] as number) || price;
-      const high = (md[3] as number) || price;
-      const low = (md[4] as number) || price;
-      const volume = (md[5] as number) || 0;
-      const time = (md[6] as string) || "";
-
-      // Previous close price for change calculation
-      const sec = data.securities?.data?.[0];
-      const prevClose = sec ? (sec[1] as number) || open : open;
-      const change = price - prevClose;
-      const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
-
-      return { price, open, high, low, volume, change, changePercent, time, ticker };
-    } catch {
-      continue;
-    }
-  }
-
-  // Try as futures base ticker
-  const contract = await findActiveContract(ticker);
-  if (contract) {
-    const result = await fetchMoexQuote(contract);
-    if (result) return { ...result, ticker: contract };
-  }
-
-  return null;
+async function tinkoffRequest(endpoint: string, body: object): Promise<any> {
+  const res = await fetch(`${TINKOFF_URL}.${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TINKOFF_TOKEN}`,
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json();
 }
 
-async function fetchBybitQuote(symbol: string): Promise<Quote | null> {
+async function fetchTinkoffQuote(ticker: string): Promise<Quote | null> {
+  let resolvedTicker = ticker;
+  let classCode = "TQBR";
+
+  if (SHARE_TICKERS.has(ticker)) {
+    classCode = "TQBR";
+  } else if (FUTURES_PREFIX[ticker]) {
+    const contract = await findActiveContract(ticker);
+    if (!contract) return null;
+    resolvedTicker = contract;
+    classCode = "SPBFUT";
+  } else {
+    classCode = "SPBFUT";
+  }
+
+  const instrumentId = `${resolvedTicker}_${classCode}`;
+
   try {
-    const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.retCode !== 0) return null;
+    // Get last price (real-time)
+    const priceData = await tinkoffRequest("MarketDataService/GetLastPrices", {
+      instrumentId: [instrumentId],
+      lastPriceType: "LAST_PRICE_EXCHANGE",
+    });
+    const lp = priceData?.lastPrices?.[0];
+    if (!lp || !lp.price) return null;
+    const price = parseQuotation(lp.price);
+    const time = lp.time || new Date().toISOString();
 
-    const t = data.result?.list?.[0];
-    if (!t) return null;
+    // Get today's candle for OHLC + volume
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(0, 0, 0, 0);
 
-    const price = parseFloat(t.lastPrice);
-    const open = parseFloat(t.prevPrice24h) || price;
-    const high = parseFloat(t.highPrice24h) || price;
-    const low = parseFloat(t.lowPrice24h) || price;
-    const volume = parseFloat(t.volume24h) || 0;
+    const candleData = await tinkoffRequest("MarketDataService/GetCandles", {
+      instrumentId: instrumentId,
+      from: todayStart.toISOString(),
+      to: now.toISOString(),
+      interval: "CANDLE_INTERVAL_DAY",
+    });
+
+    let open = price;
+    let high = price;
+    let low = price;
+    let volume = 0;
+    const candles = candleData?.candles;
+    if (candles && candles.length > 0) {
+      const c = candles[candles.length - 1];
+      open = parseQuotation(c.open);
+      high = Math.max(parseQuotation(c.high), price);
+      low = Math.min(parseQuotation(c.low), price);
+      volume = parseInt(c.volume || "0");
+    }
+
     const change = price - open;
     const changePercent = open !== 0 ? (change / open) * 100 : 0;
-
-    return {
-      price, open, high, low, volume, change, changePercent,
-      time: new Date().toISOString(),
-      ticker: symbol,
-    };
+    return { price, open, high, low, volume, change, changePercent, time, ticker: resolvedTicker };
   } catch {
     return null;
   }
@@ -154,9 +168,7 @@ export async function GET(request: NextRequest) {
   let quote: Quote | null = null;
 
   if (source === "moex") {
-    quote = await fetchMoexQuote(ticker);
-  } else if (source === "bybit") {
-    quote = await fetchBybitQuote(ticker);
+    quote = await fetchTinkoffQuote(ticker);
   }
 
   if (!quote) {
