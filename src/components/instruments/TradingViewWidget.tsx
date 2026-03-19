@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export type DataSource = "moex" | "bybit" | "none";
 
@@ -12,7 +12,8 @@ interface TradingViewWidgetProps {
 }
 
 /**
- * Map our internal tickers to TradingView symbol format.
+ * Map our internal tickers to TradingView widget symbols.
+ * Uses only confirmed-working free symbols.
  */
 function getTVSymbol(ticker: string, source: DataSource): string {
   if (source === "bybit") {
@@ -21,31 +22,31 @@ function getTVSymbol(ticker: string, source: DataSource): string {
 
   if (source === "moex") {
     const map: Record<string, string> = {
-      // Commodities → international exchanges (free, real-time)
-      BR: "NYMEX:BZ1!",          // Brent crude
-      GOLD: "COMEX:GC1!",         // Gold
-      SILV: "COMEX:SI1!",         // Silver
-      NG: "NYMEX:NG1!",           // Natural gas
-      WHEAT: "CBOT:ZW1!",         // Wheat
-      PLT: "NYMEX:PL1!",          // Platinum
-      PLD: "NYMEX:PA1!",          // Palladium
-      COCOA: "ICEUS:CC1!",        // Cocoa
+      // Commodities → TVC (free, real-time, confirmed)
+      BR: "TVC:UKOIL",
+      GOLD: "TVC:GOLD",
+      SILV: "TVC:SILVER",
+      PLT: "TVC:PLATINUM",
+      PLD: "TVC:PALLADIUM",
+      NG: "NYMEX:NG1!",
+      WHEAT: "CBOT:ZW1!",
+      COCOA: "TVC:COCOA",
 
-      // Russian index futures
-      MIX: "MOEX:IMOEX",          // MOEX index
-      IMOEXF: "MOEX:IMOEX",       // MOEX index
+      // Russian index
+      MIX: "MOEX:IMOEX",
+      IMOEXF: "MOEX:IMOEX",
 
-      // US indices via MOEX futures → international
-      NASD: "NASDAQ:NDX",          // Nasdaq 100
-      SPYF: "SP:SPX",             // S&P 500
+      // US indices
+      NASD: "NASDAQ:NDX",
+      SPYF: "SP:SPX",
 
-      // Currency
-      Si: "FX:USDRUB",            // Dollar/Ruble
-      Eu: "FX:EURRUB",            // Euro/Ruble
-      CR: "FX:CNYRUB",            // Yuan/Ruble
-      USD000UTSTOM: "FX:USDRUB",
-      EUR_RUB__TOM: "FX:EURRUB",
-      CNY000UTSTOM: "FX:CNYRUB",
+      // Currency → MOEX (confirmed)
+      Si: "MOEX:USDRUB_TOM",
+      Eu: "MOEX:EURRUB_TOM",
+      CR: "MOEX:CNYRUB_TOM",
+      USD000UTSTOM: "MOEX:USDRUB_TOM",
+      EUR_RUB__TOM: "MOEX:EURRUB_TOM",
+      CNY000UTSTOM: "MOEX:CNYRUB_TOM",
     };
     if (map[ticker]) return map[ticker];
 
@@ -59,12 +60,9 @@ function getTVSymbol(ticker: string, source: DataSource): string {
 export default function TradingViewWidget({
   ticker,
   source,
-  name,
   height = 500,
 }: TradingViewWidgetProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const tvSymbol = getTVSymbol(ticker, source);
 
@@ -115,57 +113,12 @@ export default function TradingViewWidget({
     };
   }, [tvSymbol]);
 
-  // Fullscreen
-  useEffect(() => {
-    const onFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-
-  async function toggleFullscreen() {
-    if (!wrapperRef.current) return;
-    if (!document.fullscreenElement) {
-      try { await wrapperRef.current.requestFullscreen(); } catch { /* */ }
-    } else {
-      await document.exitFullscreen();
-    }
-  }
-
   return (
     <div
-      ref={wrapperRef}
-      className={`bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-700 overflow-hidden flex flex-col ${
-        isFullscreen ? "!rounded-none !border-0" : ""
-      }`}
-      style={{ height: isFullscreen ? "100vh" : height > 0 ? height : "100%" }}
+      className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-700 overflow-hidden"
+      style={{ height: height > 0 ? height : "100%" }}
     >
-      {/* Mini toolbar */}
-      <div className="flex items-center justify-between px-3 py-1 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
-        <div className="flex items-center gap-2">
-          {name && <span className="text-xs font-bold dark:text-gray-100">{name}</span>}
-          <span className="text-[10px] font-mono text-gray-400">{tvSymbol}</span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium animate-pulse">
-            LIVE
-          </span>
-        </div>
-        <button
-          onClick={toggleFullscreen}
-          className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-          title={isFullscreen ? "Выйти из полного экрана" : "Полный экран"}
-        >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d={isFullscreen
-              ? "M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"
-              : "M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"
-            } />
-          </svg>
-        </button>
-      </div>
-
-      {/* TradingView chart */}
-      <div ref={containerRef} className="flex-1 min-h-0" />
+      <div ref={containerRef} className="w-full h-full" />
     </div>
   );
 }
