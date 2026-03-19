@@ -7,14 +7,28 @@ const MOEX_INTERVALS: Record<string, number> = {
   "D": 24, "W": 7, "M": 31,
 };
 
-// MOEX boards to try in order
-const MOEX_BOARDS = [
+// MOEX boards to try in order for candles
+const MOEX_CANDLE_BOARDS = [
   { engine: "stock", market: "shares", board: "TQBR" },       // Russian shares
   { engine: "stock", market: "bonds", board: "TQOB" },        // OFZ bonds
   { engine: "stock", market: "bonds", board: "TQCB" },        // Corporate bonds
   { engine: "currency", market: "selt", board: "CETS" },      // Currency
   { engine: "futures", market: "forts", board: "RFUD" },       // Ruble futures
 ];
+
+// Futures base tickers → 2-letter prefix for contract codes on MOEX
+const FUTURES_PREFIX: Record<string, string> = {
+  "BR": "BR",        // Brent
+  "GOLD": "GD",      // Gold
+  "SILV": "SV",      // Silver
+  "NG": "NG",        // Natural gas
+  "WHEAT": "W4",     // Wheat
+  "Si": "Si",        // USD/RUB
+  "Eu": "Eu",        // EUR/RUB
+  "CR": "CR",        // CNY/RUB
+  "NASD": "NA",      // NASDAQ
+  "SPYF": "SF",      // S&P500
+};
 
 function getDateFrom(count: number, interval: string): string {
   const d = new Date();
@@ -27,33 +41,81 @@ function getDateFrom(count: number, interval: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Find nearest active futures contract for a base ticker
+async function findActiveContract(baseTicker: string): Promise<string | null> {
+  const prefix = FUTURES_PREFIX[baseTicker];
+  if (!prefix) return null;
+
+  try {
+    const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,SHORTNAME,LASTTRADEDATE`;
+    const res = await fetch(url, { next: { revalidate: 3600 } }); // cache 1h
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const rows = data.securities?.data;
+    if (!rows) return null;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const candidates = rows
+      .filter((r: any[]) => {
+        const secId = r[0] as string;
+        const expiry = r[2] as string;
+        return secId.startsWith(prefix) && secId !== baseTicker && expiry && expiry >= today;
+      })
+      .sort((a: any[], b: any[]) => (a[2] as string).localeCompare(b[2] as string));
+
+    // Return nearest active contract
+    return candidates.length > 0 ? candidates[0][0] : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseCandles(candles: any[][]) {
+  return candles.map((c: any[]) => ({
+    timestamp: new Date(c[6]).getTime(),
+    open: c[0],
+    high: c[2],
+    low: c[3],
+    close: c[1],
+    volume: c[5] || 0,
+  }));
+}
+
 async function fetchMoexCandles(ticker: string, interval: string, limit: number) {
   const moexInterval = MOEX_INTERVALS[interval] || 24;
   const from = getDateFrom(limit, interval);
 
-  for (const { engine, market, board } of MOEX_BOARDS) {
+  // 1. Try all standard boards with the exact ticker
+  for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
     try {
       const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
       const res = await fetch(url, { next: { revalidate: 300 } });
       if (!res.ok) continue;
-
       const data = await res.json();
       const candles = data.candles?.data;
-      if (!candles || candles.length === 0) continue;
-
-      // MOEX candle format: [open, close, high, low, value, volume, begin, end]
-      return candles.map((c: any[]) => ({
-        timestamp: new Date(c[6]).getTime(),
-        open: c[0],
-        high: c[2],
-        low: c[3],
-        close: c[1],
-        volume: c[5] || 0,
-      }));
+      if (candles && candles.length > 0) return parseCandles(candles);
     } catch {
       continue;
     }
   }
+
+  // 2. If exact ticker failed, it might be a futures base ticker (BR, GOLD, Si, etc.)
+  //    Try to find the active contract code
+  const activeContract = await findActiveContract(ticker);
+  if (activeContract) {
+    try {
+      const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
+      const res = await fetch(url, { next: { revalidate: 300 } });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const candles = data.candles?.data;
+      if (candles && candles.length > 0) return parseCandles(candles);
+    } catch {
+      // fall through
+    }
+  }
+
   return [];
 }
 

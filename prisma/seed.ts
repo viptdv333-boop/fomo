@@ -441,6 +441,26 @@ async function main() {
     create: { id: "singleton" },
   });
 
+  // ─── Delete Forex category and instruments ──────────────────────────
+  const forexCat = await prisma.instrumentCategory.findUnique({ where: { slug: "forex" } });
+  if (forexCat) {
+    // Delete idea-instrument links for forex instruments
+    const forexInstruments = await prisma.instrument.findMany({ where: { categoryId: forexCat.id }, select: { id: true } });
+    const forexIds = forexInstruments.map(i => i.id);
+    if (forexIds.length > 0) {
+      await prisma.ideaInstrument.deleteMany({ where: { instrumentId: { in: forexIds } } });
+      // Delete chat messages in forex instrument rooms
+      const forexRooms = await prisma.chatRoom.findMany({ where: { instrumentId: { in: forexIds } }, select: { id: true } });
+      if (forexRooms.length > 0) {
+        await prisma.chatMessage.deleteMany({ where: { roomId: { in: forexRooms.map(r => r.id) } } });
+        await prisma.chatRoom.deleteMany({ where: { id: { in: forexRooms.map(r => r.id) } } });
+      }
+      await prisma.instrument.deleteMany({ where: { id: { in: forexIds } } });
+    }
+    await prisma.instrumentCategory.delete({ where: { id: forexCat.id } });
+    console.log("Forex category and instruments deleted");
+  }
+
   // ─── Categories ──────────────────────────────────────────────────────
   const catData = [
     { name: "Криптовалюты", slug: "crypto", sortOrder: 1 },
