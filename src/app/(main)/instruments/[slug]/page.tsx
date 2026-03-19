@@ -7,11 +7,10 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
-import type { DataSource } from "@/components/instruments/TradingViewWidget";
+import type { DataSource } from "@/components/instruments/ChartWidget";
 
-// Dynamic import to avoid SSR issues
-const TradingViewWidget = dynamic(
-  () => import("@/components/instruments/TradingViewWidget"),
+const ChartWidget = dynamic(
+  () => import("@/components/instruments/ChartWidget"),
   { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
 );
 
@@ -120,7 +119,7 @@ export default function InstrumentPage() {
 
       {/* TradingView Chart */}
       {chartSource !== "none" && chartTicker && (
-        <TradingViewWidget
+        <ChartWidget
           ticker={chartTicker}
           source={chartSource}
           name={instrument.name}

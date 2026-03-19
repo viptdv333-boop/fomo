@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import type { DataSource } from "@/components/instruments/TradingViewWidget";
+import type { DataSource } from "@/components/instruments/ChartWidget";
 
-const TradingViewWidget = dynamic(
-  () => import("@/components/instruments/TradingViewWidget"),
+const ChartWidget = dynamic(
+  () => import("@/components/instruments/ChartWidget"),
   { ssr: false, loading: () => <div className="flex-1 bg-gray-100 dark:bg-gray-800 animate-pulse" /> }
 );
 
@@ -156,7 +156,7 @@ export default function TerminalPage() {
       {/* Chart area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {selected && chartSource !== "none" && chartTicker ? (
-          <TradingViewWidget
+          <ChartWidget
             key={`${selected.id}-${chartTicker}`}
             ticker={chartTicker}
             source={chartSource}
