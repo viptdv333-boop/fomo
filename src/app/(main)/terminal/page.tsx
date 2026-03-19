@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import type { DataSource } from "@/lib/marketdata";
+import type { DataSource } from "@/components/instruments/KlineChartWidget";
 
 const KlineChartWidget = dynamic(
   () => import("@/components/instruments/KlineChartWidget"),

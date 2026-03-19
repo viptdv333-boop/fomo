@@ -30,6 +30,10 @@ const FUTURES_PREFIX: Record<string, string> = {
   "SPYF": "SF",      // S&P500
 };
 
+// Cache for resolved futures contracts (base ticker → {contract, expiry})
+const contractCache = new Map<string, { contract: string; resolved: number }>();
+const CONTRACT_CACHE_TTL = 3600_000; // 1 hour
+
 function getDateFrom(count: number, interval: string): string {
   const d = new Date();
   switch (interval) {
@@ -46,9 +50,15 @@ async function findActiveContract(baseTicker: string): Promise<string | null> {
   const prefix = FUTURES_PREFIX[baseTicker];
   if (!prefix) return null;
 
+  // Check in-memory cache
+  const cached = contractCache.get(baseTicker);
+  if (cached && Date.now() - cached.resolved < CONTRACT_CACHE_TTL) {
+    return cached.contract;
+  }
+
   try {
     const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,SHORTNAME,LASTTRADEDATE`;
-    const res = await fetch(url, { next: { revalidate: 3600 } }); // cache 1h
+    const res = await fetch(url);
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -64,8 +74,11 @@ async function findActiveContract(baseTicker: string): Promise<string | null> {
       })
       .sort((a: any[], b: any[]) => (a[2] as string).localeCompare(b[2] as string));
 
-    // Return nearest active contract
-    return candidates.length > 0 ? candidates[0][0] : null;
+    const contract = candidates.length > 0 ? candidates[0][0] as string : null;
+    if (contract) {
+      contractCache.set(baseTicker, { contract, resolved: Date.now() });
+    }
+    return contract;
   } catch {
     return null;
   }
@@ -82,7 +95,12 @@ function parseCandles(candles: any[][]) {
   }));
 }
 
-async function fetchMoexCandles(ticker: string, interval: string, limit: number) {
+interface MoexResult {
+  candles: any[];
+  resolvedTicker: string;
+}
+
+async function fetchMoexCandles(ticker: string, interval: string, limit: number): Promise<MoexResult> {
   const moexInterval = MOEX_INTERVALS[interval] || 24;
   const from = getDateFrom(limit, interval);
 
@@ -90,36 +108,40 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
     try {
       const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url, { next: { revalidate: 300 } });
+      const res = await fetch(url);
       if (!res.ok) continue;
       const data = await res.json();
       const candles = data.candles?.data;
-      if (candles && candles.length > 0) return parseCandles(candles);
+      if (candles && candles.length > 0) return { candles: parseCandles(candles), resolvedTicker: ticker };
     } catch {
       continue;
     }
   }
 
-  // 2. If exact ticker failed, it might be a futures base ticker (BR, GOLD, Si, etc.)
-  //    Try to find the active contract code
+  // 2. If exact ticker failed, it might be a futures base ticker (BR, GOLD, Si, NG, etc.)
   const activeContract = await findActiveContract(ticker);
   if (activeContract) {
     try {
       const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url, { next: { revalidate: 300 } });
-      if (!res.ok) return [];
+      const res = await fetch(url);
+      if (!res.ok) return { candles: [], resolvedTicker: ticker };
       const data = await res.json();
       const candles = data.candles?.data;
-      if (candles && candles.length > 0) return parseCandles(candles);
+      if (candles && candles.length > 0) return { candles: parseCandles(candles), resolvedTicker: activeContract };
     } catch {
       // fall through
     }
   }
 
-  return [];
+  return { candles: [], resolvedTicker: ticker };
 }
 
-async function fetchBybitCandles(symbol: string, interval: string, limit: number) {
+interface BybitResult {
+  candles: any[];
+  resolvedTicker: string;
+}
+
+async function fetchBybitCandles(symbol: string, interval: string, limit: number): Promise<BybitResult> {
   try {
     const bybitIntervals: Record<string, string> = {
       "1": "1", "5": "5", "15": "15", "60": "60", "240": "240",
@@ -128,20 +150,23 @@ async function fetchBybitCandles(symbol: string, interval: string, limit: number
     const bi = bybitIntervals[interval] || "D";
     const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bi}&limit=${limit}`;
     const res = await fetch(url);
-    if (!res.ok) return [];
+    if (!res.ok) return { candles: [], resolvedTicker: symbol };
     const data = await res.json();
-    if (data.retCode !== 0 || !data.result?.list) return [];
+    if (data.retCode !== 0 || !data.result?.list) return { candles: [], resolvedTicker: symbol };
 
-    return data.result.list.reverse().map((c: string[]) => ({
-      timestamp: parseInt(c[0]),
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-      volume: parseFloat(c[5]),
-    }));
+    return {
+      candles: data.result.list.reverse().map((c: string[]) => ({
+        timestamp: parseInt(c[0]),
+        open: parseFloat(c[1]),
+        high: parseFloat(c[2]),
+        low: parseFloat(c[3]),
+        close: parseFloat(c[4]),
+        volume: parseFloat(c[5]),
+      })),
+      resolvedTicker: symbol,
+    };
   } catch {
-    return [];
+    return { candles: [], resolvedTicker: symbol };
   }
 }
 
@@ -157,14 +182,32 @@ export async function GET(request: NextRequest) {
   }
 
   let candles: any[] = [];
+  let resolvedTicker = ticker;
 
   if (source === "moex") {
-    candles = await fetchMoexCandles(ticker, interval, limit);
+    const result = await fetchMoexCandles(ticker, interval, limit);
+    candles = result.candles;
+    resolvedTicker = result.resolvedTicker;
   } else if (source === "bybit") {
-    candles = await fetchBybitCandles(ticker, interval, limit);
+    const result = await fetchBybitCandles(ticker, interval, limit);
+    candles = result.candles;
+    resolvedTicker = result.resolvedTicker;
   }
 
-  return NextResponse.json(candles, {
-    headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
-  });
+  // Return object with metadata + candles
+  // Short cache for small requests (realtime), longer for full loads
+  const cacheSeconds = limit <= 5 ? 10 : 120;
+
+  return NextResponse.json(
+    {
+      ticker: resolvedTicker,
+      source,
+      candles,
+    },
+    {
+      headers: {
+        "Cache-Control": `public, s-maxage=${cacheSeconds}, stale-while-revalidate=30`,
+      },
+    }
+  );
 }

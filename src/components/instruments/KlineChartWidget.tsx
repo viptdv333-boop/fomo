@@ -170,6 +170,12 @@ export default function KlineChartWidget({
   const [chartType, setChartType] = useState<string>("candle_solid");
   const [yAxisType, setYAxisType] = useState<string>("normal");
   const [crosshairInfo, setCrosshairInfo] = useState<string>("");
+  const [resolvedTicker, setResolvedTicker] = useState<string>(ticker);
+
+  // Reset resolved ticker when ticker prop changes
+  useEffect(() => {
+    setResolvedTicker(ticker);
+  }, [ticker]);
 
   // Close all panels
   const closeAllPanels = useCallback(() => {
@@ -179,20 +185,28 @@ export default function KlineChartWidget({
 
   // Fetch kline data
   const fetchKlines = useCallback(
-    async (limit = 500) => {
+    async (limit = 500): Promise<{ bars: any[]; resolved: string }> => {
       const res = await fetch(
         `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`
       );
-      const data: KlineItem[] = await res.json();
-      if (!Array.isArray(data)) return [];
-      return data.map((d) => ({
-        timestamp: d.timestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volume,
-      }));
+      const json = await res.json();
+
+      // New API format: { ticker, source, candles: [...] }
+      const candles: KlineItem[] = json.candles ?? json;
+      const resolved: string = json.ticker ?? ticker;
+
+      if (!Array.isArray(candles)) return { bars: [], resolved };
+      return {
+        bars: candles.map((d) => ({
+          timestamp: d.timestamp,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: d.volume,
+        })),
+        resolved,
+      };
     },
     [source, ticker, interval]
   );
@@ -204,7 +218,9 @@ export default function KlineChartWidget({
     setError("");
 
     try {
-      const bars = await fetchKlines(500);
+      const { bars, resolved } = await fetchKlines(500);
+      setResolvedTicker(resolved);
+
       if (bars.length === 0) {
         setError("Нет данных для этого инструмента");
         setLoading(false);
@@ -231,7 +247,7 @@ export default function KlineChartWidget({
     realtimeTimer.current = globalThis.setInterval(async () => {
       if (!chartInstance.current) return;
       try {
-        const bars = await fetchKlines(1);
+        const { bars } = await fetchKlines(2);
         if (bars.length > 0) {
           chartInstance.current.updateData(bars[bars.length - 1]);
         }
@@ -512,7 +528,10 @@ export default function KlineChartWidget({
             <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-white">{(name || "")[0]}</span>
             </div>
-            <span className="text-xs font-bold dark:text-gray-100">{ticker}</span>
+            <span className="text-xs font-bold dark:text-gray-100">{resolvedTicker}</span>
+            {resolvedTicker !== ticker && (
+              <span className="text-[9px] text-gray-400 font-mono">({ticker})</span>
+            )}
           </div>
         )}
 
