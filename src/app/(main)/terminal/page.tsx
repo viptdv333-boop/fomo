@@ -164,6 +164,16 @@ export default function TerminalPage() {
         <SandboxPanel
           selectedTicker={chartTicker || undefined}
           selectedName={selected?.name}
+          onSelectTicker={(ticker, instrName) => {
+            // Find instrument in categories by ticker
+            const all = categories.flatMap((c) => c.instruments);
+            const match = all.find(
+              (i) => i.dataTicker === ticker || i.ticker === ticker
+            );
+            if (match) {
+              setSelected(match);
+            }
+          }}
         />
       </div>
 

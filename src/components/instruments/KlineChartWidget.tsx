@@ -115,6 +115,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
   const chartRef = useRef<Chart | null>(null);
   const rtTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastBarTs = useRef<number>(0);
+  const lastBarRef = useRef<KLineData | null>(null);
 
   const [tf, setTf] = useState("D");
   const [chartType, setChartType] = useState("candle_solid");
@@ -192,7 +193,9 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
         return;
       }
       chart.applyNewData(data);
-      lastBarTs.current = data[data.length - 1].timestamp;
+      const lastBar = data[data.length - 1];
+      lastBarTs.current = lastBar.timestamp;
+      lastBarRef.current = { ...lastBar };
       applyIndicators(chart, mainInds, subInds);
     } catch {
       setError("Ошибка загрузки");
@@ -220,7 +223,7 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
         const curPeriod = getCurrentPeriodTimestamp(tf) * 1000; // KlineChart uses ms
 
         if (curPeriod > lastBarTs.current) {
-          // New candle
+          // New candle period started
           const newBar: KLineData = {
             timestamp: curPeriod,
             open: q.price,
@@ -230,16 +233,22 @@ export default function KlineChartWidget({ ticker, source, name, height = 500 }:
             volume: q.volume || 0,
           };
           lastBarTs.current = curPeriod;
+          lastBarRef.current = { ...newBar };
           chart.updateData(newBar);
-        } else {
-          // Update last candle — open is required by KLineData type
+        } else if (lastBarRef.current) {
+          // Update existing candle — preserve open, track high/low
+          const bar = lastBarRef.current;
+          bar.close = q.price;
+          bar.high = Math.max(bar.high, q.price);
+          bar.low = Math.min(bar.low, q.price);
+          if (q.volume) bar.volume = q.volume;
           chart.updateData({
-            timestamp: lastBarTs.current,
-            open: q.price,
-            close: q.price,
-            high: q.price,
-            low: q.price,
-            volume: q.volume || 0,
+            timestamp: bar.timestamp,
+            open: bar.open,
+            high: bar.high,
+            low: bar.low,
+            close: bar.close,
+            volume: bar.volume || 0,
           });
         }
       } catch { /* silent */ }

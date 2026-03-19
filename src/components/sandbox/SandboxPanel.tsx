@@ -51,11 +51,12 @@ interface Operation {
 interface Props {
   selectedTicker?: string;
   selectedName?: string;
+  onSelectTicker?: (ticker: string, name: string) => void;
 }
 
 type Tab = "trade" | "portfolio" | "orders" | "history";
 
-export default function SandboxPanel({ selectedTicker, selectedName }: Props) {
+export default function SandboxPanel({ selectedTicker, selectedName, onSelectTicker }: Props) {
   const [account, setAccount] = useState<SandboxAccount | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -365,7 +366,11 @@ export default function SandboxPanel({ selectedTicker, selectedName }: Props) {
                   <p className="text-xs text-gray-400 text-center py-4">Нет открытых позиций</p>
                 ) : (
                   account?.positions.map((p, i) => (
-                    <div key={i} className="flex items-center justify-between py-1.5 border-b dark:border-gray-800 last:border-0">
+                    <button
+                      key={i}
+                      onClick={() => onSelectTicker?.(p.ticker, p.name)}
+                      className="flex items-center justify-between py-1.5 border-b dark:border-gray-800 last:border-0 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition px-1 -mx-1 rounded"
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium dark:text-gray-200 truncate">{p.name || p.ticker || "—"}</div>
                         <div className="text-[10px] text-gray-400">
@@ -378,7 +383,7 @@ export default function SandboxPanel({ selectedTicker, selectedName }: Props) {
                           {p.expectedYield >= 0 ? "+" : ""}{p.expectedYield.toFixed(2)}₽
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
                 <button

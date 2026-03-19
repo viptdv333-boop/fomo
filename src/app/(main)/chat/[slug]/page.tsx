@@ -13,26 +13,6 @@ export default function InstrumentChatPage() {
     name: string;
   } | null>(null);
 
-  // Hide footer and fix height (same approach as messenger)
-  useEffect(() => {
-    const footer = document.querySelector("footer");
-    const main = document.querySelector("main.max-w-7xl") as HTMLElement;
-    if (footer) footer.style.display = "none";
-    if (main) {
-      main.style.paddingTop = "0.5rem";
-      main.style.paddingBottom = "0";
-      main.style.overflow = "hidden";
-    }
-    return () => {
-      if (footer) footer.style.display = "";
-      if (main) {
-        main.style.paddingTop = "";
-        main.style.paddingBottom = "";
-        main.style.overflow = "";
-      }
-    };
-  }, []);
-
   useEffect(() => {
     fetch("/api/instruments")
       .then((r) => r.json())
@@ -46,7 +26,7 @@ export default function InstrumentChatPage() {
 
   return (
     <AuthGuard>
-      <div className="flex gap-4" style={{ height: "calc(100dvh - 5.5rem)" }}>
+      <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
         <ChatSidebar currentSlug={params.slug as string} />
         <div className="flex-1 min-h-0">
           {currentRoom ? (
