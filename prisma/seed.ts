@@ -461,12 +461,21 @@ async function main() {
     console.log("Forex category and instruments deleted");
   }
 
+  // ─── Delete old categories that are being renamed/restructured ──────
+  for (const oldSlug of ["stocks-us"]) {
+    const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
+    if (oldCat) {
+      // Move instruments to new categories in the upsert below, don't delete them
+      console.log(`Old category ${oldSlug} found, instruments will be reassigned`);
+    }
+  }
+
   // ─── Categories ──────────────────────────────────────────────────────
   const catData = [
     { name: "Криптовалюты", slug: "crypto", sortOrder: 1 },
     { name: "Акции РФ", slug: "stocks-ru", sortOrder: 2 },
-    { name: "Акции США", slug: "stocks-us", sortOrder: 3 },
-    { name: "Сырьё", slug: "commodities", sortOrder: 4 },
+    { name: "Товарные фьючерсы", slug: "commodities", sortOrder: 3 },
+    { name: "Фьючерсы на индексы", slug: "index-futures", sortOrder: 4 },
     { name: "Облигации", slug: "bonds", sortOrder: 5 },
   ];
 
@@ -480,46 +489,52 @@ async function main() {
     cats[cat.slug] = c.id;
   }
 
-  // ─── 30 Instruments (5 per category) ────────────────────────────────
+  // ─── Instruments ─────────────────────────────────────────────────────
   const instrumentData = [
-    // Crypto (Bybit)
+    // ══════ КРИПТОВАЛЮТЫ (Bybit) ══════
     { name: "Bitcoin", slug: "btc", ticker: "BTC", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BTCUSDT", tradingViewSymbol: "BYBIT:BTCUSDT", dataSource: "bybit", dataTicker: "BTCUSDT", description: "Биткоин — первая и крупнейшая криптовалюта", categorySlug: "crypto" },
     { name: "Ethereum", slug: "eth", ticker: "ETH", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/ETHUSDT", tradingViewSymbol: "BYBIT:ETHUSDT", dataSource: "bybit", dataTicker: "ETHUSDT", description: "Эфириум — платформа смарт-контрактов", categorySlug: "crypto" },
     { name: "Solana", slug: "sol", ticker: "SOL", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/SOLUSDT", tradingViewSymbol: "BYBIT:SOLUSDT", dataSource: "bybit", dataTicker: "SOLUSDT", description: "Solana — высокопроизводительный блокчейн", categorySlug: "crypto" },
     { name: "BNB", slug: "bnb", ticker: "BNB", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/BNBUSDT", tradingViewSymbol: "BYBIT:BNBUSDT", dataSource: "bybit", dataTicker: "BNBUSDT", description: "Binance Coin — токен экосистемы Binance", categorySlug: "crypto" },
     { name: "XRP", slug: "xrp", ticker: "XRP", exchange: "Bybit", exchangeUrl: "https://www.bybit.com/trade/usdt/XRPUSDT", tradingViewSymbol: "BYBIT:XRPUSDT", dataSource: "bybit", dataTicker: "XRPUSDT", description: "Ripple — платёжная криптовалюта", categorySlug: "crypto" },
 
-    // Russian stocks (MOEX)
+    // ══════ АКЦИИ РФ (MOEX, TQBR) ══════
     { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", dataSource: "moex", dataTicker: "SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks-ru" },
     { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", dataSource: "moex", dataTicker: "GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks-ru" },
     { name: "ЛУКОЙЛ", slug: "lkoh", ticker: "LKOH", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", tradingViewSymbol: "MOEX:LKOH", dataSource: "moex", dataTicker: "LKOH", description: "ПАО ЛУКОЙЛ — нефтяная компания", categorySlug: "stocks-ru" },
     { name: "Яндекс", slug: "ydex", ticker: "YDEX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", tradingViewSymbol: "MOEX:YDEX", dataSource: "moex", dataTicker: "YDEX", description: "Яндекс — IT-гигант России", categorySlug: "stocks-ru" },
     { name: "Роснефть", slug: "rosn", ticker: "ROSN", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", tradingViewSymbol: "MOEX:ROSN", dataSource: "moex", dataTicker: "ROSN", description: "ПАО Роснефть — нефтяная компания", categorySlug: "stocks-ru" },
-    { name: "Индекс MOEX (IMOEX)", slug: "imoex", ticker: "IMOEXF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/index/IMOEX", tradingViewSymbol: "MOEX:IMOEX", dataSource: "moex", dataTicker: "IMOEXF", description: "Вечный фьючерс на индекс Мосбиржи", categorySlug: "stocks-ru" },
 
-    // US stocks / futures (MOEX)
-    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: "MOEX:SI1!", dataSource: "moex", dataTicker: "USD000UTSTOM", description: "Фьючерс на доллар/рубль", categorySlug: "stocks-us" },
-    { name: "NASDAQ 100 (NASD)", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NASD", tradingViewSymbol: "MOEX:NASD", dataSource: "moex", dataTicker: "NASD", description: "Фьючерс на индекс NASDAQ 100", categorySlug: "stocks-us" },
-    { name: "S&P 500 (SPX)", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SPYF", tradingViewSymbol: "MOEX:SPYF", dataSource: "moex", dataTicker: "SPYF", description: "Фьючерс на индекс S&P 500", categorySlug: "stocks-us" },
-    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: "MOEX:EU1!", dataSource: "moex", dataTicker: "EUR_RUB__TOM", description: "Фьючерс на евро/рубль", categorySlug: "stocks-us" },
-    { name: "Юань/Рубль (CNY)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: "MOEX:CR1!", dataSource: "moex", dataTicker: "CNY000UTSTOM", description: "Фьючерс на юань/рубль", categorySlug: "stocks-us" },
+    // ══════ ТОВАРНЫЕ ФЬЮЧЕРСЫ (MOEX FORTS, RFUD) ══════
+    // Металлы
+    { name: "Золото", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "GOLD", description: "Фьючерс на золото (MOEX)", categorySlug: "commodities" },
+    { name: "Серебро", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SILV", description: "Фьючерс на серебро (MOEX)", categorySlug: "commodities" },
+    { name: "Платина", slug: "plt", ticker: "PLT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PT", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLT", description: "Фьючерс на платину (MOEX)", categorySlug: "commodities" },
+    { name: "Палладий", slug: "pld", ticker: "PLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLD", description: "Фьючерс на палладий (MOEX)", categorySlug: "commodities" },
+    { name: "Медь", slug: "cu", ticker: "CU", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CU", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CU", description: "Фьючерс на медь (MOEX)", categorySlug: "commodities" },
+    // Энергоносители
+    { name: "Нефть Brent", slug: "br", ticker: "BR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BR", description: "Фьючерс на нефть Brent (MOEX)", categorySlug: "commodities" },
+    { name: "Природный газ", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NG", description: "Фьючерс на природный газ (MOEX)", categorySlug: "commodities" },
+    // Агро
+    { name: "Пшеница", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=W4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "WHEAT", description: "Фьючерс на пшеницу (MOEX)", categorySlug: "commodities" },
+    { name: "Сахар", slug: "sugar", ticker: "SUGAR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SUGAR", description: "Фьючерс на сахар (MOEX)", categorySlug: "commodities" },
+    { name: "Какао", slug: "cocoa", ticker: "COCOA", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CC", tradingViewSymbol: null, dataSource: "moex", dataTicker: "COCOA", description: "Фьючерс на какао (MOEX)", categorySlug: "commodities" },
+    // Валюта как товар
+    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Si", description: "Фьючерс на доллар/рубль (MOEX)", categorySlug: "commodities" },
+    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Eu", description: "Фьючерс на евро/рубль (MOEX)", categorySlug: "commodities" },
+    { name: "Юань/Рубль (CR)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CR", description: "Фьючерс на юань/рубль (MOEX)", categorySlug: "commodities" },
 
-    // Commodities (MOEX futures — dataTicker = base code, API proxy tries RFUD board)
-    { name: "Нефть Brent (BR)", slug: "br", ticker: "BR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: "MOEX:BR1!", dataSource: "moex", dataTicker: "BR", description: "Фьючерс на нефть Brent", categorySlug: "commodities" },
-    { name: "Золото (GOLD)", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: "MOEX:GOLD1!", dataSource: "moex", dataTicker: "GOLD", description: "Фьючерс на золото", categorySlug: "commodities" },
-    { name: "Серебро (SILV)", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: "MOEX:SILV1!", dataSource: "moex", dataTicker: "SILV", description: "Фьючерс на серебро", categorySlug: "commodities" },
-    { name: "Природный газ (NG)", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: "MOEX:NG1!", dataSource: "moex", dataTicker: "NG", description: "Фьючерс на природный газ", categorySlug: "commodities" },
-    { name: "Пшеница (WHEAT)", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=WH", tradingViewSymbol: "CBOT:ZW1!", dataSource: "moex", dataTicker: "WHEAT", description: "Фьючерс на пшеницу", categorySlug: "commodities" },
-    { name: "Платина (PLT)", slug: "plt", ticker: "PLT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PT", tradingViewSymbol: "MOEX:PT1!", dataSource: "moex", dataTicker: "PLT", description: "Фьючерс на платину", categorySlug: "commodities" },
-    { name: "Палладий (PLD)", slug: "pld", ticker: "PLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PD", tradingViewSymbol: "MOEX:PD1!", dataSource: "moex", dataTicker: "PLD", description: "Фьючерс на палладий", categorySlug: "commodities" },
-    { name: "Какао (COCOA)", slug: "cocoa", ticker: "COCOA", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CC", tradingViewSymbol: null, dataSource: "moex", dataTicker: "COCOA", description: "Фьючерс на какао", categorySlug: "commodities" },
+    // ══════ ФЬЮЧЕРСЫ НА ИНДЕКСЫ (MOEX FORTS) ══════
+    { name: "Индекс МосБиржи (MIX)", slug: "imoex", ticker: "MIX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=MX", tradingViewSymbol: null, dataSource: "moex", dataTicker: "MIX", description: "Вечный фьючерс на индекс МосБиржи", categorySlug: "index-futures" },
+    { name: "Индекс РТС (RTS)", slug: "rts", ticker: "RTS", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=RI", tradingViewSymbol: null, dataSource: "moex", dataTicker: "RTS", description: "Фьючерс на индекс РТС", categorySlug: "index-futures" },
+    { name: "NASDAQ 100", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NASD", description: "Фьючерс на NASDAQ 100 (MOEX)", categorySlug: "index-futures" },
+    { name: "S&P 500", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SF", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SPYF", description: "Фьючерс на S&P 500 (MOEX)", categorySlug: "index-futures" },
+    { name: "Биткоин (фьючерс MOEX)", slug: "btcf", ticker: "BTCF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BTCF", description: "Фьючерс на биткоин (MOEX)", categorySlug: "index-futures" },
 
-    // Bonds (MOEX — TQOB board)
-    { name: "ОФЗ 26238", slug: "ofz26238", ticker: "SU26238RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26238RMFS4", tradingViewSymbol: "MOEX:SU26238RMFS4", dataSource: "moex", dataTicker: "SU26238RMFS4", description: "ОФЗ-ПД 26238 (15 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26243", slug: "ofz26243", ticker: "SU26243RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26243RMFS4", tradingViewSymbol: "MOEX:SU26243RMFS4", dataSource: "moex", dataTicker: "SU26243RMFS4", description: "ОФЗ-ПД 26243 (12 лет)", categorySlug: "bonds" },
-    { name: "ОФЗ 26240", slug: "ofz26240", ticker: "SU26240RMFS0", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26240RMFS0", tradingViewSymbol: "MOEX:SU26240RMFS0", dataSource: "moex", dataTicker: "SU26240RMFS0", description: "ОФЗ-ПД 26240 (7 лет)", categorySlug: "bonds" },
-    { name: "Корпоративные облигации", slug: "corp-bonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/corp-bond.aspx", tradingViewSymbol: null, dataSource: null, dataTicker: null, description: "Корпоративные облигации на MOEX", categorySlug: "bonds" },
-    { name: "Еврооблигации", slug: "eurobonds", ticker: null, exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/listing/euro-bond.aspx", tradingViewSymbol: null, dataSource: null, dataTicker: null, description: "Еврооблигации на MOEX", categorySlug: "bonds" },
+    // ══════ ОБЛИГАЦИИ (MOEX, TQOB) ══════
+    { name: "ОФЗ 26238", slug: "ofz26238", ticker: "SU26238RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26238RMFS4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26238RMFS4", description: "ОФЗ-ПД 26238 (15 лет)", categorySlug: "bonds" },
+    { name: "ОФЗ 26243", slug: "ofz26243", ticker: "SU26243RMFS4", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26243RMFS4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26243RMFS4", description: "ОФЗ-ПД 26243 (12 лет)", categorySlug: "bonds" },
+    { name: "ОФЗ 26240", slug: "ofz26240", ticker: "SU26240RMFS0", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQOB&code=SU26240RMFS0", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SU26240RMFS0", description: "ОФЗ-ПД 26240 (7 лет)", categorySlug: "bonds" },
   ];
 
   const instruments: Record<string, string> = {};
@@ -527,6 +542,7 @@ async function main() {
     const created = await prisma.instrument.upsert({
       where: { slug: inst.slug },
       update: {
+        name: inst.name,
         ticker: inst.ticker,
         exchange: inst.exchange,
         exchangeUrl: inst.exchangeUrl,
@@ -534,6 +550,7 @@ async function main() {
         dataSource: inst.dataSource,
         dataTicker: inst.dataTicker,
         description: inst.description,
+        categoryId: cats[inst.categorySlug],
       },
       create: {
         name: inst.name,
@@ -561,7 +578,20 @@ async function main() {
     });
   }
 
-  console.log("25 instruments created with chat rooms");
+  console.log(`${instrumentData.length} instruments created with chat rooms`);
+
+  // Delete old "stocks-us" category (instruments already reassigned above)
+  const oldUsStocks = await prisma.instrumentCategory.findUnique({ where: { slug: "stocks-us" } });
+  if (oldUsStocks) {
+    // Check if any instruments still reference it
+    const remaining = await prisma.instrument.count({ where: { categoryId: oldUsStocks.id } });
+    if (remaining === 0) {
+      await prisma.instrumentCategory.delete({ where: { id: oldUsStocks.id } });
+      console.log("Old 'stocks-us' category deleted");
+    } else {
+      console.log(`Warning: ${remaining} instruments still in stocks-us`);
+    }
+  }
 
   // ─── Test Ideas ──────────────────────────────────────────────────────
   const ideaData = [

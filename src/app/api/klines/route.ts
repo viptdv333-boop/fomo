@@ -18,20 +18,29 @@ const MOEX_CANDLE_BOARDS = [
 
 // Futures base tickers → 2-letter prefix for contract codes on MOEX
 const FUTURES_PREFIX: Record<string, string> = {
+  // Commodities
   "BR": "BR",        // Brent
   "GOLD": "GD",      // Gold
   "SILV": "SV",      // Silver
-  "NG": "NG",        // Natural gas
-  "WHEAT": "W4",     // Wheat
   "PLT": "PT",       // Platinum
   "PLD": "PD",       // Palladium
+  "NG": "NG",        // Natural gas
+  "WHEAT": "W4",     // Wheat
   "COCOA": "CC",     // Cocoa
+  "SUGAR": "SA",     // Sugar
+  "CU": "CU",        // Copper
+  "ALUM": "AL",      // Aluminium
+  "NICK": "NL",      // Nickel
+  // Currency
   "Si": "Si",        // USD/RUB
   "Eu": "Eu",        // EUR/RUB
   "CR": "CR",        // CNY/RUB
-  "NASD": "NA",      // NASDAQ
-  "SPYF": "SF",      // S&P500
+  // Indices
+  "NASD": "NA",      // NASDAQ 100
+  "SPYF": "SF",      // S&P 500
   "MIX": "MX",       // MOEX Index
+  "RTS": "RI",       // RTS Index
+  "BTCF": "BA",      // Bitcoin futures MOEX
 };
 
 // Cache for resolved futures contracts (base ticker → {contract, expiry})
