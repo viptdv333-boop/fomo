@@ -91,6 +91,11 @@ export default function KlineChartWidget({
           volume: d.volume,
         }))
       );
+
+      // Force resize after data load to ensure chart fills container
+      setTimeout(() => {
+        chartInstance.current?.resize();
+      }, 50);
     } catch {
       setError("Ошибка загрузки данных");
     }
@@ -170,6 +175,11 @@ export default function KlineChartWidget({
     const volPaneId = chartInstance.current.createIndicator("VOL");
     if (volPaneId) subPaneIds.current["VOL"] = volPaneId;
 
+    // Ensure chart sizes itself correctly after mount
+    setTimeout(() => {
+      chartInstance.current?.resize();
+    }, 100);
+
     return () => {
       if (chartRef.current) {
         dispose(chartRef.current);
@@ -215,13 +225,10 @@ export default function KlineChartWidget({
     setActiveIndicators(next);
   }
 
-  // Compute effective height for chart container
-  const containerStyle = height > 0 ? { height } : { height: "100%" };
-
   return (
     <div
       className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-700 overflow-hidden flex flex-col"
-      style={height > 0 ? undefined : { height: "100%" }}
+      style={{ height: height > 0 ? height : "100%" }}
     >
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-wrap shrink-0">
@@ -317,7 +324,7 @@ export default function KlineChartWidget({
       </div>
 
       {/* Chart area */}
-      <div className="relative flex-1 min-h-0" style={containerStyle}>
+      <div className="relative flex-1 min-h-0">
         <div ref={chartRef} style={{ width: "100%", height: "100%" }} />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
