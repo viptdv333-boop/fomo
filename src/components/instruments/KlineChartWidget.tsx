@@ -186,12 +186,15 @@ export default function KlineChartWidget({
   // Fetch kline data
   const fetchKlines = useCallback(
     async (limit = 500): Promise<{ bars: any[]; resolved: string }> => {
+      // Add timestamp to bust browser/CDN cache for realtime requests
+      const ts = limit <= 5 ? `&_t=${Date.now()}` : "";
       const res = await fetch(
-        `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`
+        `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}${ts}`,
+        limit <= 5 ? { cache: "no-store" } : undefined
       );
       const json = await res.json();
 
-      // New API format: { ticker, source, candles: [...] }
+      // API returns { ticker, source, candles: [...] }
       const candles: KlineItem[] = json.candles ?? json;
       const resolved: string = json.ticker ?? ticker;
 

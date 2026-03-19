@@ -62,7 +62,7 @@ async function findActiveContract(baseTicker: string): Promise<string | null> {
 
   try {
     const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,SHORTNAME,LASTTRADEDATE`;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -112,7 +112,7 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
     try {
       const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) continue;
       const data = await res.json();
       const candles = data.candles?.data;
@@ -127,7 +127,7 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   if (activeContract) {
     try {
       const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return { candles: [], resolvedTicker: ticker };
       const data = await res.json();
       const candles = data.candles?.data;
@@ -153,7 +153,7 @@ async function fetchBybitCandles(symbol: string, interval: string, limit: number
     };
     const bi = bybitIntervals[interval] || "D";
     const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bi}&limit=${limit}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return { candles: [], resolvedTicker: symbol };
     const data = await res.json();
     if (data.retCode !== 0 || !data.result?.list) return { candles: [], resolvedTicker: symbol };
@@ -199,8 +199,11 @@ export async function GET(request: NextRequest) {
   }
 
   // Return object with metadata + candles
-  // Short cache for small requests (realtime), longer for full loads
-  const cacheSeconds = limit <= 5 ? 10 : 120;
+  // No cache for realtime (limit<=5), short cache for full loads
+  const headers: Record<string, string> =
+    limit <= 5
+      ? { "Cache-Control": "no-cache, no-store, must-revalidate" }
+      : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" };
 
   return NextResponse.json(
     {
@@ -208,10 +211,6 @@ export async function GET(request: NextRequest) {
       source,
       candles,
     },
-    {
-      headers: {
-        "Cache-Control": `public, s-maxage=${cacheSeconds}, stale-while-revalidate=30`,
-      },
-    }
+    { headers }
   );
 }
