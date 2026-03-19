@@ -2,13 +2,23 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { init, dispose, type Chart } from "klinecharts";
-import { fetchKlines, type DataSource, type KlineData } from "@/lib/marketdata";
+
+export type DataSource = "moex" | "bybit" | "none";
 
 interface KlineChartWidgetProps {
   ticker: string;
   source: DataSource;
   name?: string;
   height?: number;
+}
+
+interface KlineItem {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 }
 
 const INTERVALS = [
@@ -44,37 +54,46 @@ export default function KlineChartWidget({
 }: KlineChartWidgetProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<Chart | null>(null);
-  // Track pane IDs for sub-indicators
   const subPaneIds = useRef<Record<string, string>>({});
   const [interval, setInterval] = useState("D");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(["MA", "VOL"]));
+  const [activeIndicators, setActiveIndicators] = useState<Set<string>>(
+    new Set(["MA", "VOL"])
+  );
   const [showIndicatorPanel, setShowIndicatorPanel] = useState(false);
 
+  // Fetch data via our server-side proxy (avoids CORS)
   const loadData = useCallback(async () => {
     if (!chartInstance.current) return;
     setLoading(true);
     setError("");
 
-    const data = await fetchKlines(source, ticker, interval);
+    try {
+      const res = await fetch(
+        `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=300`
+      );
+      const data: KlineItem[] = await res.json();
 
-    if (data.length === 0) {
-      setError("Нет данных для этого инструмента");
-      setLoading(false);
-      return;
+      if (!Array.isArray(data) || data.length === 0) {
+        setError("Нет данных для этого инструмента");
+        setLoading(false);
+        return;
+      }
+
+      chartInstance.current.applyNewData(
+        data.map((d) => ({
+          timestamp: d.timestamp,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: d.volume,
+        }))
+      );
+    } catch {
+      setError("Ошибка загрузки данных");
     }
-
-    chartInstance.current.applyNewData(
-      data.map((d: KlineData) => ({
-        timestamp: d.timestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volume,
-      }))
-    );
 
     setLoading(false);
   }, [source, ticker, interval]);
@@ -89,12 +108,8 @@ export default function KlineChartWidget({
       styles: {
         grid: {
           show: true,
-          horizontal: {
-            color: isDark ? "#1f2937" : "#f3f4f6",
-          },
-          vertical: {
-            color: isDark ? "#1f2937" : "#f3f4f6",
-          },
+          horizontal: { color: isDark ? "#1f2937" : "#f3f4f6" },
+          vertical: { color: isDark ? "#1f2937" : "#f3f4f6" },
         },
         candle: {
           bar: {
@@ -115,9 +130,7 @@ export default function KlineChartWidget({
             },
           },
           tooltip: {
-            text: {
-              color: isDark ? "#d1d5db" : "#374151",
-            },
+            text: { color: isDark ? "#d1d5db" : "#374151" },
           },
         },
         indicator: {
@@ -177,13 +190,10 @@ export default function KlineChartWidget({
     const next = new Set(activeIndicators);
 
     if (next.has(ind.value)) {
-      // Remove
       next.delete(ind.value);
       if (ind.isMain) {
-        // Main indicators are on candle_pane
         chartInstance.current.removeIndicator("candle_pane", ind.value);
       } else {
-        // Sub-pane indicators — remove the whole pane
         const paneId = subPaneIds.current[ind.value];
         if (paneId) {
           chartInstance.current.removeIndicator(paneId, ind.value);
@@ -191,10 +201,11 @@ export default function KlineChartWidget({
         }
       }
     } else {
-      // Add
       next.add(ind.value);
       if (ind.isMain) {
-        chartInstance.current.createIndicator(ind.value, false, { id: "candle_pane" });
+        chartInstance.current.createIndicator(ind.value, false, {
+          id: "candle_pane",
+        });
       } else {
         const paneId = chartInstance.current.createIndicator(ind.value);
         if (paneId) subPaneIds.current[ind.value] = paneId;
@@ -204,20 +215,28 @@ export default function KlineChartWidget({
     setActiveIndicators(next);
   }
 
+  // Compute effective height for chart container
+  const containerStyle = height > 0 ? { height } : { height: "100%" };
+
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-700 overflow-hidden flex flex-col">
+    <div
+      className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-700 overflow-hidden flex flex-col"
+      style={height > 0 ? undefined : { height: "100%" }}
+    >
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-wrap">
-        {/* Name */}
+      <div className="flex items-center gap-1 px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-wrap shrink-0">
         {name && (
           <>
-            <span className="text-xs font-semibold dark:text-gray-100 mr-1">{name}</span>
-            <span className="text-[10px] font-mono text-gray-400 mr-2">{ticker}</span>
+            <span className="text-xs font-semibold dark:text-gray-100 mr-1">
+              {name}
+            </span>
+            <span className="text-[10px] font-mono text-gray-400 mr-2">
+              {ticker}
+            </span>
             <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
           </>
         )}
 
-        {/* Intervals */}
         {INTERVALS.map((tf) => (
           <button
             key={tf.value}
@@ -234,7 +253,6 @@ export default function KlineChartWidget({
 
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
 
-        {/* Indicators button */}
         <div className="relative">
           <button
             onClick={() => setShowIndicatorPanel(!showIndicatorPanel)}
@@ -249,30 +267,43 @@ export default function KlineChartWidget({
 
           {showIndicatorPanel && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowIndicatorPanel(false)} />
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowIndicatorPanel(false)}
+              />
               <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[200px]">
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">На графике</div>
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">
+                  На графике
+                </div>
                 {INDICATORS.filter((i) => i.isMain).map((ind) => (
                   <button
                     key={ind.value}
                     onClick={() => toggleIndicator(ind)}
                     className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      activeIndicators.has(ind.value) ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-400"
+                      activeIndicators.has(ind.value)
+                        ? "text-blue-600 dark:text-blue-400 font-medium"
+                        : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
-                    {activeIndicators.has(ind.value) ? "✓ " : ""}{ind.label}
+                    {activeIndicators.has(ind.value) ? "✓ " : ""}
+                    {ind.label}
                   </button>
                 ))}
-                <div className="border-t dark:border-gray-700 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">Подвальные</div>
+                <div className="border-t dark:border-gray-700 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">
+                  Подвальные
+                </div>
                 {INDICATORS.filter((i) => !i.isMain).map((ind) => (
                   <button
                     key={ind.value}
                     onClick={() => toggleIndicator(ind)}
                     className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      activeIndicators.has(ind.value) ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-400"
+                      activeIndicators.has(ind.value)
+                        ? "text-blue-600 dark:text-blue-400 font-medium"
+                        : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
-                    {activeIndicators.has(ind.value) ? "✓ " : ""}{ind.label}
+                    {activeIndicators.has(ind.value) ? "✓ " : ""}
+                    {ind.label}
                   </button>
                 ))}
               </div>
@@ -280,14 +311,13 @@ export default function KlineChartWidget({
           )}
         </div>
 
-        {/* Source badge */}
         <span className="ml-auto text-[10px] text-gray-400 font-mono">
           {source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : ""}
         </span>
       </div>
 
-      {/* Chart */}
-      <div className="relative flex-1" style={height ? { height } : { height: "100%" }}>
+      {/* Chart area */}
+      <div className="relative flex-1 min-h-0" style={containerStyle}>
         <div ref={chartRef} style={{ width: "100%", height: "100%" }} />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
