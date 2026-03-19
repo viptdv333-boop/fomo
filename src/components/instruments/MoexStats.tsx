@@ -96,14 +96,24 @@ export default function MoexStats({ slug }: MoexStatsProps) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/instruments/${slug}/moex`)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then(setData)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    let timer: ReturnType<typeof setInterval>;
+
+    function loadData() {
+      fetch(`/api/instruments/${slug}/moex`)
+        .then((r) => {
+          if (!r.ok) throw new Error();
+          return r.json();
+        })
+        .then(setData)
+        .catch(() => setError(true))
+        .finally(() => setLoading(false));
+    }
+
+    loadData();
+    // Auto-refresh every 10 seconds for live data
+    timer = setInterval(loadData, 10_000);
+
+    return () => clearInterval(timer);
   }, [slug]);
 
   if (loading) {

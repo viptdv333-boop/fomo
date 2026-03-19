@@ -240,25 +240,44 @@ export default function KlineChartWidget({
     setLoading(false);
   }, [fetchKlines]);
 
-  // Real-time update: fetch latest bar and update
+  // Real-time update via /api/quote (near-realtime, no 15min delay)
   const startRealtime = useCallback(() => {
     if (realtimeTimer.current) clearInterval(realtimeTimer.current);
 
-    // Update every 10 sec for intraday, 60 sec for daily+
-    const ms = ["1", "5", "15", "60"].includes(interval) ? 10_000 : 60_000;
+    // Poll current price every 5 sec for intraday, 15 sec for daily+
+    const ms = ["1", "5", "15", "60"].includes(interval) ? 5_000 : 15_000;
 
     realtimeTimer.current = globalThis.setInterval(async () => {
       if (!chartInstance.current) return;
       try {
-        const { bars } = await fetchKlines(2);
-        if (bars.length > 0) {
-          chartInstance.current.updateData(bars[bars.length - 1]);
-        }
+        const res = await fetch(
+          `/api/quote?source=${source}&ticker=${encodeURIComponent(ticker)}&_t=${Date.now()}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const q = await res.json();
+        if (!q.price) return;
+
+        // Get current data to find last bar's timestamp
+        const dataList = chartInstance.current.getDataList();
+        if (dataList.length === 0) return;
+
+        const lastBar = dataList[dataList.length - 1];
+
+        // Update the current (last) bar with live price
+        chartInstance.current.updateData({
+          timestamp: lastBar.timestamp,
+          open: lastBar.open,
+          high: Math.max(lastBar.high, q.price),
+          low: Math.min(lastBar.low, q.price),
+          close: q.price,
+          volume: q.volume || lastBar.volume,
+        });
       } catch {
         /* silent */
       }
     }, ms);
-  }, [interval, fetchKlines]);
+  }, [interval, source, ticker]);
 
   // Init chart
   useEffect(() => {
