@@ -11,19 +11,6 @@ interface ChartWidgetProps {
   height?: number;
 }
 
-// MOEX futures tickers that don't work on TradingView free widget
-// These need KlineChart + MOEX API (correct contracts in RUB)
-const MOEX_FUTURES = new Set([
-  "BR", "GOLD", "SILV", "NG", "WHEAT", "PLT", "PLD", "COCOA",
-  "MIX", "IMOEXF",
-]);
-
-// Determine which chart engine to use
-function useKlineChart(ticker: string, source: DataSource): boolean {
-  if (source !== "moex") return false;
-  return MOEX_FUTURES.has(ticker);
-}
-
 const TradingViewWidget = dynamic(
   () => import("./TradingViewWidget"),
   { ssr: false, loading: () => <div className="h-full bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
@@ -35,11 +22,11 @@ const KlineChartWidget = dynamic(
 );
 
 export default function ChartWidget(props: ChartWidgetProps) {
-  const needsKline = useKlineChart(props.ticker, props.source);
-
-  if (needsKline) {
+  // MOEX = всегда KlineChart (правильные тикеры MOEX в рублях)
+  // Bybit = TradingView (реалтайм крипта)
+  if (props.source === "bybit") {
     return (
-      <KlineChartWidget
+      <TradingViewWidget
         ticker={props.ticker}
         source={props.source}
         name={props.name}
@@ -49,7 +36,7 @@ export default function ChartWidget(props: ChartWidgetProps) {
   }
 
   return (
-    <TradingViewWidget
+    <KlineChartWidget
       ticker={props.ticker}
       source={props.source}
       name={props.name}
