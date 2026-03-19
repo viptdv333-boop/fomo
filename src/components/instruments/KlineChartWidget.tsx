@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { init, dispose, type Chart } from "klinecharts";
+import { init, dispose, CandleType, type Chart } from "klinecharts";
 
 export type DataSource = "moex" | "bybit" | "none";
 
@@ -46,18 +46,117 @@ const INDICATORS = [
   { label: "OBV", value: "OBV", isMain: false },
 ];
 
+// Drawing tools with SVG icon paths
 const DRAWING_TOOLS = [
-  { label: "Трендовая линия", value: "straightLine", icon: "📏" },
-  { label: "Горизонтальный уровень", value: "horizontalStraightLine", icon: "➖" },
-  { label: "Луч", value: "rayLine", icon: "↗" },
-  { label: "Отрезок", value: "segment", icon: "📐" },
-  { label: "Горизонтальный отрезок", value: "horizontalSegment", icon: "↔" },
-  { label: "Вертикальная линия", value: "verticalStraightLine", icon: "│" },
-  { label: "Ценовая линия", value: "priceLine", icon: "💰" },
-  { label: "Фибоначчи", value: "fibonacciLine", icon: "🔢" },
-  { label: "Параллельный канал", value: "parallelStraightLine", icon: "═" },
-  { label: "Ценовой канал", value: "priceChannelLine", icon: "📊" },
+  {
+    label: "Трендовая линия",
+    value: "straightLine",
+    // diagonal line icon
+    svg: "M4 20L20 4",
+  },
+  {
+    label: "Горизонтальный уровень",
+    value: "horizontalStraightLine",
+    // horizontal line icon
+    svg: "M3 12h18",
+  },
+  {
+    label: "Луч",
+    value: "rayLine",
+    // ray with arrow
+    svg: "M4 17L17 4m0 0h-6m6 0v6",
+  },
+  {
+    label: "Отрезок",
+    value: "segment",
+    // short line with endpoints
+    svg: "M6 18L18 6M6 18h0M18 6h0",
+  },
+  {
+    label: "Вертикальная линия",
+    value: "verticalStraightLine",
+    // vertical line
+    svg: "M12 3v18",
+  },
+  {
+    label: "Ценовая линия",
+    value: "priceLine",
+    // dashed horizontal with price tag
+    svg: "M3 12h12M19 9v6M17 9h4M17 15h4",
+  },
+  {
+    label: "Фибоначчи",
+    value: "fibonacciLine",
+    // fibonacci levels
+    svg: "M3 5h18M3 9h18M3 14h18M3 19h18",
+  },
+  {
+    label: "Параллельный канал",
+    value: "parallelStraightLine",
+    // two parallel lines
+    svg: "M4 8l16-4M4 20l16-4",
+  },
+  {
+    label: "Ценовой канал",
+    value: "priceChannelLine",
+    // channel with middle
+    svg: "M4 6l16 4M4 18l16-4M4 12l16 0",
+  },
 ];
+
+/* ====== SVG Icon components for toolbar ====== */
+function IconDraw({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+function IconIndicator({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="M7 16l4-6 4 4 5-8" />
+    </svg>
+  );
+}
+function IconFullscreen({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+    </svg>
+  );
+}
+function IconExitFullscreen({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+    </svg>
+  );
+}
+function IconScreenshot({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+function IconTrash({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4h8v2m-7 5v6m4-6v6M5 6l1 14h12l1-14" />
+    </svg>
+  );
+}
+function IconSettings({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </svg>
+  );
+}
 
 export default function KlineChartWidget({
   ticker,
@@ -76,9 +175,10 @@ export default function KlineChartWidget({
     new Set(["MA", "VOL"])
   );
   const [showIndicatorPanel, setShowIndicatorPanel] = useState(false);
-  const [showDrawingPanel, setShowDrawingPanel] = useState(false);
   const [activeDrawing, setActiveDrawing] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [chartType, setChartType] = useState<string>("candle_solid");
 
   // Fetch data via our server-side proxy (avoids CORS)
   const loadData = useCallback(async () => {
@@ -109,7 +209,6 @@ export default function KlineChartWidget({
         }))
       );
 
-      // Force resize after data load to ensure chart fills container
       setTimeout(() => {
         chartInstance.current?.resize();
       }, 50);
@@ -201,7 +300,6 @@ export default function KlineChartWidget({
     const volPaneId = chartInstance.current.createIndicator("VOL");
     if (volPaneId) subPaneIds.current["VOL"] = volPaneId;
 
-    // Ensure chart sizes itself correctly after mount
     setTimeout(() => {
       chartInstance.current?.resize();
     }, 100);
@@ -225,7 +323,6 @@ export default function KlineChartWidget({
     const onFsChange = () => {
       const isFull = !!document.fullscreenElement;
       setIsFullscreen(isFull);
-      // Resize chart after fullscreen transition
       setTimeout(() => {
         chartInstance.current?.resize();
       }, 200);
@@ -236,9 +333,7 @@ export default function KlineChartWidget({
 
   function toggleIndicator(ind: { value: string; isMain: boolean }) {
     if (!chartInstance.current) return;
-
     const next = new Set(activeIndicators);
-
     if (next.has(ind.value)) {
       next.delete(ind.value);
       if (ind.isMain) {
@@ -253,30 +348,23 @@ export default function KlineChartWidget({
     } else {
       next.add(ind.value);
       if (ind.isMain) {
-        chartInstance.current.createIndicator(ind.value, false, {
-          id: "candle_pane",
-        });
+        chartInstance.current.createIndicator(ind.value, false, { id: "candle_pane" });
       } else {
         const paneId = chartInstance.current.createIndicator(ind.value);
         if (paneId) subPaneIds.current[ind.value] = paneId;
       }
     }
-
     setActiveIndicators(next);
   }
 
   function selectDrawingTool(toolName: string) {
     if (!chartInstance.current) return;
-
     if (activeDrawing === toolName) {
-      // Deselect
       setActiveDrawing(null);
       return;
     }
-
     chartInstance.current.createOverlay(toolName);
     setActiveDrawing(toolName);
-    setShowDrawingPanel(false);
   }
 
   function clearAllDrawings() {
@@ -287,17 +375,40 @@ export default function KlineChartWidget({
 
   async function toggleFullscreen() {
     if (!wrapperRef.current) return;
-
     if (!document.fullscreenElement) {
       try {
         await wrapperRef.current.requestFullscreen();
       } catch {
-        // Fullscreen not supported
+        /* not supported */
       }
     } else {
       await document.exitFullscreen();
     }
   }
+
+  function takeScreenshot() {
+    if (!chartRef.current) return;
+    const canvas = chartRef.current.querySelector("canvas");
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `${ticker}_${interval}_chart.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }
+
+  function setChartStyle(type: string) {
+    if (!chartInstance.current) return;
+    setChartType(type);
+    chartInstance.current.setStyles({ candle: { type: type as CandleType } });
+    setShowSettingsPanel(false);
+  }
+
+  const CHART_TYPES = [
+    { label: "Свечи", value: "candle_solid" },
+    { label: "Свечи (полые)", value: "candle_stroke" },
+    { label: "OHLC бары", value: "ohlc" },
+    { label: "Область", value: "area" },
+  ];
 
   return (
     <div
@@ -307,25 +418,26 @@ export default function KlineChartWidget({
       }`}
       style={{ height: isFullscreen ? "100vh" : height > 0 ? height : "100%" }}
     >
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-wrap shrink-0">
+      {/* Top Toolbar */}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
+        {/* Ticker badge */}
         {name && (
-          <>
-            <span className="text-xs font-semibold dark:text-gray-100 mr-1">
-              {name}
-            </span>
-            <span className="text-[10px] font-mono text-gray-400 mr-2">
-              {ticker}
-            </span>
-            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-          </>
+          <div className="flex items-center gap-1.5 mr-1">
+            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-white">{(name || "")[0]}</span>
+            </div>
+            <span className="text-xs font-bold dark:text-gray-100">{ticker}</span>
+          </div>
         )}
 
+        <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+        {/* Timeframes */}
         {INTERVALS.map((tf) => (
           <button
             key={tf.value}
             onClick={() => setInterval(tf.value)}
-            className={`px-2 py-1 rounded text-xs font-medium transition ${
+            className={`px-1.5 py-0.5 rounded text-[11px] font-medium transition ${
               interval === tf.value
                 ? "bg-blue-600 text-white"
                 : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -337,60 +449,65 @@ export default function KlineChartWidget({
 
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
 
-        {/* Indicators dropdown */}
+        {/* Indicator button */}
         <div className="relative">
           <button
             onClick={() => {
               setShowIndicatorPanel(!showIndicatorPanel);
-              setShowDrawingPanel(false);
+              setShowSettingsPanel(false);
             }}
-            className={`px-2 py-1 rounded text-xs font-medium transition ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium transition ${
               showIndicatorPanel
                 ? "bg-blue-600 text-white"
                 : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
             }`}
           >
-            Индикаторы ({activeIndicators.size})
+            <IconIndicator className="w-3.5 h-3.5" />
+            Indicator
           </button>
-
           {showIndicatorPanel && (
             <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowIndicatorPanel(false)}
-              />
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[200px]">
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">
-                  На графике
+              <div className="fixed inset-0 z-40" onClick={() => setShowIndicatorPanel(false)} />
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-xl z-50 min-w-[200px] py-1">
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Основные
                 </div>
                 {INDICATORS.filter((i) => i.isMain).map((ind) => (
                   <button
                     key={ind.value}
                     onClick={() => toggleIndicator(ind)}
-                    className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                    className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
                       activeIndicators.has(ind.value)
                         ? "text-blue-600 dark:text-blue-400 font-medium"
                         : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
-                    {activeIndicators.has(ind.value) ? "\u2713 " : ""}
+                    <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${
+                      activeIndicators.has(ind.value) ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 dark:border-gray-600"
+                    }`}>
+                      {activeIndicators.has(ind.value) ? "\u2713" : ""}
+                    </span>
                     {ind.label}
                   </button>
                 ))}
-                <div className="border-t dark:border-gray-700 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">
+                <div className="border-t dark:border-gray-700 mt-1 pt-1 px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                   Подвальные
                 </div>
                 {INDICATORS.filter((i) => !i.isMain).map((ind) => (
                   <button
                     key={ind.value}
                     onClick={() => toggleIndicator(ind)}
-                    className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                    className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
                       activeIndicators.has(ind.value)
                         ? "text-blue-600 dark:text-blue-400 font-medium"
                         : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
-                    {activeIndicators.has(ind.value) ? "\u2713 " : ""}
+                    <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${
+                      activeIndicators.has(ind.value) ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 dark:border-gray-600"
+                    }`}>
+                      {activeIndicators.has(ind.value) ? "\u2713" : ""}
+                    </span>
                     {ind.label}
                   </button>
                 ))}
@@ -399,107 +516,142 @@ export default function KlineChartWidget({
           )}
         </div>
 
-        {/* Drawing tools dropdown */}
+        {/* Settings (chart type) */}
         <div className="relative">
           <button
             onClick={() => {
-              setShowDrawingPanel(!showDrawingPanel);
+              setShowSettingsPanel(!showSettingsPanel);
               setShowIndicatorPanel(false);
             }}
-            className={`px-2 py-1 rounded text-xs font-medium transition ${
-              showDrawingPanel || activeDrawing
+            className={`p-1 rounded transition ${
+              showSettingsPanel
                 ? "bg-blue-600 text-white"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
             }`}
-            title="Инструменты рисования"
+            title="Настройки"
           >
-            <svg className="w-3.5 h-3.5 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            {" "}Рисование
+            <IconSettings className="w-3.5 h-3.5" />
           </button>
-
-          {showDrawingPanel && (
+          {showSettingsPanel && (
             <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowDrawingPanel(false)}
-              />
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[220px]">
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase">
-                  Линии и уровни
+              <div className="fixed inset-0 z-40" onClick={() => setShowSettingsPanel(false)} />
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1">
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Тип графика
                 </div>
-                {DRAWING_TOOLS.map((tool) => (
+                {CHART_TYPES.map((ct) => (
                   <button
-                    key={tool.value}
-                    onClick={() => selectDrawingTool(tool.value)}
+                    key={ct.value}
+                    onClick={() => setChartStyle(ct.value)}
                     className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      activeDrawing === tool.value
+                      chartType === ct.value
                         ? "text-blue-600 dark:text-blue-400 font-medium"
                         : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
-                    <span className="mr-2">{tool.icon}</span>
-                    {tool.label}
+                    {chartType === ct.value ? "\u2713 " : "  "}
+                    {ct.label}
                   </button>
                 ))}
-                <div className="border-t dark:border-gray-700">
-                  <button
-                    onClick={() => {
-                      clearAllDrawings();
-                      setShowDrawingPanel(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
-                  >
-                    Удалить все рисунки
-                  </button>
-                </div>
               </div>
             </>
           )}
         </div>
 
-        {/* Right side: source + fullscreen */}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] text-gray-400 font-mono">
-            {source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : ""}
-          </span>
+        {/* Screenshot */}
+        <button
+          onClick={takeScreenshot}
+          className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          title="Скриншот"
+        >
+          <IconScreenshot className="w-3.5 h-3.5" />
+        </button>
 
-          {/* Fullscreen button */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-            title={isFullscreen ? "Выйти из полноэкранного режима" : "Полный экран"}
-          >
-            {isFullscreen ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
-              </svg>
-            )}
-          </button>
-        </div>
+        {/* Fullscreen */}
+        <button
+          onClick={toggleFullscreen}
+          className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          title={isFullscreen ? "Выйти" : "Полный экран"}
+        >
+          {isFullscreen ? (
+            <IconExitFullscreen className="w-3.5 h-3.5" />
+          ) : (
+            <IconFullscreen className="w-3.5 h-3.5" />
+          )}
+        </button>
+
+        {/* Source badge */}
+        <span className="ml-auto text-[10px] text-gray-400 font-mono">
+          {source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : ""}
+        </span>
       </div>
 
-      {/* Chart area */}
-      <div className="relative flex-1 min-h-0">
-        <div ref={chartRef} style={{ width: "100%", height: "100%" }} />
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
-            <div className="text-sm text-gray-500">Загрузка...</div>
-          </div>
-        )}
-        {error && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
-            <div className="text-center">
-              <div className="text-2xl mb-2">📊</div>
-              <div className="text-sm text-gray-500">{error}</div>
+      {/* Body: Left drawing sidebar + Chart */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left Drawing Tools Sidebar */}
+        <div className="w-9 shrink-0 border-r dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col items-center py-1.5 gap-0.5 overflow-y-auto">
+          {DRAWING_TOOLS.map((tool) => (
+            <button
+              key={tool.value}
+              onClick={() => selectDrawingTool(tool.value)}
+              className={`w-7 h-7 rounded flex items-center justify-center transition group relative ${
+                activeDrawing === tool.value
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+              title={tool.label}
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d={tool.svg} />
+              </svg>
+              {/* Tooltip */}
+              <span className="absolute left-full ml-2 px-2 py-1 text-[10px] font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+                {tool.label}
+              </span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div className="w-5 h-px bg-gray-200 dark:bg-gray-700 my-1" />
+
+          {/* Clear drawings */}
+          <button
+            onClick={clearAllDrawings}
+            className="w-7 h-7 rounded flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 transition group relative"
+            title="Удалить все рисунки"
+          >
+            <IconTrash className="w-3.5 h-3.5" />
+            <span className="absolute left-full ml-2 px-2 py-1 text-[10px] font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+              Удалить все
+            </span>
+          </button>
+        </div>
+
+        {/* Chart area */}
+        <div className="relative flex-1 min-h-0 min-w-0">
+          <div ref={chartRef} style={{ width: "100%", height: "100%" }} />
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
+              <div className="text-sm text-gray-500">Загрузка...</div>
             </div>
-          </div>
-        )}
+          )}
+          {error && !loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
+              <div className="text-center">
+                <div className="text-2xl mb-2">📊</div>
+                <div className="text-sm text-gray-500">{error}</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
