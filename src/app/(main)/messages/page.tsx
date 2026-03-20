@@ -90,7 +90,8 @@ function MessagesPage() {
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ id: string; displayName: string; avatarUrl: string | null }[]>([]);
-  const [tab, setTab] = useState<"chats" | "contacts">("chats");
+  // tab state kept for startConversation callback
+  const [tab, setTab] = useState<"chats" | "contacts">("chats"); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -607,13 +608,20 @@ function MessagesPage() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
-              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
-                {activeConv.otherUser?.avatarUrl ? (
-                  <img src={activeConv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  activeConv.otherUser?.displayName?.[0] || "?"
-                )}
-              </div>
+              {(() => {
+                const headerColors = ['bg-green-600','bg-teal-600','bg-emerald-600','bg-cyan-600','bg-amber-600','bg-rose-600','bg-violet-600','bg-indigo-600'];
+                const headerHash = (activeConv.otherUser?.displayName || "?").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+                const headerBg = headerColors[headerHash % headerColors.length];
+                return (
+                  <div className={`w-10 h-10 rounded-full ${activeConv.otherUser?.avatarUrl ? '' : headerBg} flex items-center justify-center text-white font-bold text-sm overflow-hidden`}>
+                    {activeConv.otherUser?.avatarUrl ? (
+                      <img src={activeConv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      activeConv.otherUser?.displayName?.[0] || "?"
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex flex-col">
                 <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-bold text-sm hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 leading-tight">
                   {activeConv.otherUser?.displayName || "Удалённый пользователь"}
