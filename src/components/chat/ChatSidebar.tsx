@@ -161,7 +161,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
 
   return (
     <div className="w-72 shrink-0 flex flex-col overflow-hidden">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 flex-1 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="px-4 pt-4 pb-2 shrink-0">

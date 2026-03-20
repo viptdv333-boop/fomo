@@ -196,7 +196,7 @@ export default function AuthorsPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 divide-y dark:divide-gray-800">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow divide-y dark:divide-gray-800">
           {filtered.map((author) => {
             const { profitability, successRate } = getDerivedStats(author);
             return (

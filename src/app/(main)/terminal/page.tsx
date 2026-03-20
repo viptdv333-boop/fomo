@@ -158,7 +158,7 @@ export default function TerminalPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-2">
       {/* Top instrument bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 px-4 py-2.5 flex items-center gap-4 shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-2.5 flex items-center gap-4 shrink-0">
         {/* Instrument selector */}
         <div className="relative">
           <button
@@ -306,7 +306,7 @@ export default function TerminalPage() {
                 height={0}
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800">
+              <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl shadow">
                 <div className="text-center">
                   <svg className="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                     <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
@@ -354,9 +354,9 @@ export default function TerminalPage() {
         </div>
 
         {/* Right: Watchlist only */}
-        <div className="w-72 shrink-0 flex flex-col overflow-hidden">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 flex flex-col overflow-hidden flex-1 min-h-0">
-            <div className="p-3 border-b dark:border-gray-800">
+        <div className="w-64 shrink-0 flex flex-col overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden flex-1 min-h-0">
+            <div className="p-3 border-b border-gray-100 dark:border-gray-800/50">
               <h2 className="text-sm font-semibold dark:text-gray-100 mb-2 flex items-center gap-2">
                 <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />

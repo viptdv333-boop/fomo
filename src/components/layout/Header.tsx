@@ -32,12 +32,12 @@ export default function Header() {
   const fomoId = user?.fomoId || null;
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 h-20 sm:h-24 flex items-center">
+    <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center">
         {/* Logo */}
         <Link href="/" className="flex items-center shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo.png" alt="FOMO" className="h-28 sm:h-40 w-auto" />
+          <img src="/logo-fomo.png" alt="FOMO" className="h-9 sm:h-10 w-auto" />
         </Link>
 
         {/* Desktop nav — centered */}

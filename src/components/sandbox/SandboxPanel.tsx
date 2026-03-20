@@ -190,7 +190,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
   /* ── Not logged in ── */
   if (error === "auth") {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 text-center">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 text-center">
         <div className="text-2xl mb-2">🏦</div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Войдите в аккаунт, чтобы торговать на демо-счёте
@@ -200,7 +200,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 flex flex-col overflow-hidden">
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2 border-b dark:border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
