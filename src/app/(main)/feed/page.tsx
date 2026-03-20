@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import IdeaCard from "@/components/ideas/IdeaCard";
@@ -67,7 +67,6 @@ function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
 
-  // Filter state
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [paidFilter, setPaidFilter] = useState<"all" | "free" | "paid">("all");
@@ -76,9 +75,6 @@ function FeedPage() {
   const [authorOptions, setAuthorOptions] = useState<AuthorOption[]>([]);
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
   const [authorDisplayName, setAuthorDisplayName] = useState("");
-
-  // View mode
-  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
 
   useEffect(() => {
     fetch("/api/categories?withInstruments=true")
@@ -90,7 +86,6 @@ function FeedPage() {
     loadIdeas();
   }, [selectedInstrument, page, sortBy, sortOrder, authorFilter, paidFilter]);
 
-  // Load all idea authors on mount
   useEffect(() => {
     fetch("/api/ideas/authors")
       .then((r) => r.json())
@@ -120,81 +115,86 @@ function FeedPage() {
     setLoading(false);
   }
 
-  function toggleCategory(catId: string) {
-    setExpandedCategory(expandedCategory === catId ? null : catId);
-  }
-
-  const filterBtnClass = (active: boolean) =>
-    `px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+  const pillClass = (active: boolean) =>
+    `px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
       active
-        ? "bg-green-600 text-white"
+        ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
     }`;
 
   return (
     <div>
-      {/* Filter bar — single row */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* All / Paid / Free */}
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold dark:text-gray-100 mb-1">Доска идей</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Торговые идеи от авторов FOMO</p>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 px-4 py-3 mb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Paid filters */}
           <button
             onClick={() => { setPaidFilter("all"); setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
-            className={filterBtnClass(paidFilter === "all" && !selectedInstrument)}
+            className={pillClass(paidFilter === "all" && !selectedInstrument)}
           >
             Все
           </button>
           <button
             onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "paid")}
+            className={pillClass(paidFilter === "paid")}
           >
             Платные
           </button>
           <button
             onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
-            className={filterBtnClass(paidFilter === "free")}
+            className={pillClass(paidFilter === "free")}
           >
             Бесплатные
           </button>
 
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
           {/* Sort */}
           <button
             onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
-            className={filterBtnClass(sortBy === "date" && sortOrder === "desc")}
+            className={pillClass(sortBy === "date" && sortOrder === "desc")}
           >
             Новые
           </button>
           <button
             onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
-            className={filterBtnClass(sortBy === "date" && sortOrder === "asc")}
+            className={pillClass(sortBy === "date" && sortOrder === "asc")}
           >
             Старые
           </button>
           <button
             onClick={() => { setSortBy(sortBy === "rating" ? "date" : "rating"); setSortOrder("desc"); setPage(1); }}
-            className={filterBtnClass(sortBy === "rating")}
+            className={pillClass(sortBy === "rating")}
           >
             Рейтинг
           </button>
 
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
-          {/* Categories — single button with tree dropdown */}
+          {/* Categories dropdown */}
           <div className="relative">
             <button
               onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
-              className={`${filterBtnClass(!!selectedInstrument)} ${expandedCategory === "__root" ? "ring-1 ring-green-400" : ""}`}
+              className={`${pillClass(!!selectedInstrument)} inline-flex items-center gap-1`}
             >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
+              </svg>
               {selectedInstrument
                 ? categories.flatMap((c) => c.instruments).find((i) => i.id === selectedInstrument)?.name || "Категории"
-                : "Категории"} ▾
+                : "Категории"}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
             </button>
             {expandedCategory === "__root" && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setExpandedCategory(null)} />
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[220px] max-h-80 overflow-y-auto">
-                  {/* All instruments */}
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 min-w-[220px] max-h-80 overflow-y-auto">
                   <button
                     onClick={() => { setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
                     className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
@@ -236,21 +236,25 @@ function FeedPage() {
           <div className="relative">
             <button
               onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
-              className={filterBtnClass(!!authorFilter)}
+              className={`${pillClass(!!authorFilter)} inline-flex items-center gap-1`}
             >
-              {authorFilter ? authorDisplayName : "Автор"} ▾
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
+              {authorFilter ? authorDisplayName : "Автор"}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
             </button>
             {showAuthorDropdown && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg z-50 w-56">
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 w-56">
                   <div className="p-2 border-b dark:border-gray-700">
                     <input
                       type="text"
                       placeholder="Поиск автора..."
                       value={authorSearch}
                       onChange={(e) => setAuthorSearch(e.target.value)}
-                      className="w-full px-2 py-1.5 border dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                      className="w-full px-2.5 py-1.5 border dark:border-gray-600 rounded-lg text-xs focus:ring-1 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
                       autoFocus
                     />
                   </div>
@@ -285,53 +289,46 @@ function FeedPage() {
             )}
           </div>
 
-          {/* Reset active filters */}
+          {/* Reset */}
           {(selectedInstrument || authorFilter) && (
-            <>
-              <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-              <button
-                onClick={() => { setSelectedInstrument(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                ✕ сбросить
-              </button>
-            </>
+            <button
+              onClick={() => { setSelectedInstrument(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
+              className="text-xs text-gray-400 hover:text-red-500 transition ml-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
           )}
-
-          {/* View mode — right side */}
-          <div className="ml-auto flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0">
-            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Список">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-            </button>
-            <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Абзац">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
-            </button>
-            <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-400 hover:text-gray-600"}`} title="Карточки">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Ideas list */}
+      {/* Ideas list — single vertical stack */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Загрузка...</div>
-      ) : ideas.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Нет идей</div>
-      ) : viewMode === "cards" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} compact />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-5 animate-pulse">
+              <div className="flex gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700" />
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+                </div>
+              </div>
+              <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+            </div>
           ))}
         </div>
-      ) : viewMode === "list" ? (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow divide-y dark:divide-gray-800">
-          {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} minimal />
-          ))}
+      ) : ideas.length === 0 ? (
+        <div className="text-center py-16">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p className="text-gray-500 dark:text-gray-400">Нет идей</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} />
           ))}
@@ -340,21 +337,23 @@ function FeedPage() {
 
       {/* Pagination */}
       {!loading && ideas.length > 0 && (
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex justify-center items-center gap-3 mt-8">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border dark:border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+            className="px-4 py-2 rounded-lg border dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 transition text-sm"
           >
-            ←
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <span className="px-4 py-2 text-gray-500 dark:text-gray-400">Стр. {page}</span>
+          <span className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
+            {page}
+          </span>
           <button
             onClick={() => setPage(page + 1)}
             disabled={!hasMore}
-            className="px-4 py-2 border dark:border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+            className="px-4 py-2 rounded-lg border dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 transition text-sm"
           >
-            →
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
       )}
