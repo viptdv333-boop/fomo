@@ -196,11 +196,11 @@ export default function AuthorsPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow divide-y dark:divide-gray-800">
+        <div className="flex flex-col gap-4">
           {filtered.map((author) => {
             const { profitability, successRate } = getDerivedStats(author);
             return (
-              <div key={author.id} className="flex items-start gap-4 px-5 py-5">
+              <div key={author.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-shadow px-6 py-5 flex items-start gap-4">
                 {/* Avatar */}
                 <AuthorAvatar author={author} />
 
