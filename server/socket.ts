@@ -5,7 +5,13 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Store io instance globally so API routes can access it
-const globalForIO = globalThis as unknown as { io: SocketIOServer | undefined };
+const globalForIO = globalThis as unknown as { io: SocketIOServer | undefined; onlineUsers: Map<string, number> | undefined };
+
+/** Map<userId, connectionCount> — tracks which users are currently connected */
+export function getOnlineUsers(): Map<string, number> {
+  if (!globalForIO.onlineUsers) globalForIO.onlineUsers = new Map();
+  return globalForIO.onlineUsers;
+}
 
 export function getIOInstance(): SocketIOServer | null {
   return globalForIO.io ?? null;
@@ -46,6 +52,12 @@ export function initSocket(httpServer: HTTPServer) {
 
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.data.displayName}`);
+
+    // Track online presence
+    const onlineUsers = getOnlineUsers();
+    const uid = socket.data.userId as string;
+    onlineUsers.set(uid, (onlineUsers.get(uid) || 0) + 1);
+    io.emit("user_online", uid);
 
     socket.on("join_room", async (roomId: string) => {
       const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
@@ -124,6 +136,14 @@ export function initSocket(httpServer: HTTPServer) {
 
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.data.displayName}`);
+      const online = getOnlineUsers();
+      const count = (online.get(uid) || 1) - 1;
+      if (count <= 0) {
+        online.delete(uid);
+        io.emit("user_offline", uid);
+      } else {
+        online.set(uid, count);
+      }
     });
   });
 

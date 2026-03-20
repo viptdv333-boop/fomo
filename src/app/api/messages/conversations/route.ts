@@ -23,7 +23,7 @@ export async function GET() {
           participants: {
             select: {
               user: {
-                select: { id: true, displayName: true, avatarUrl: true },
+                select: { id: true, displayName: true, avatarUrl: true, dmEnabled: true },
               },
             },
           },

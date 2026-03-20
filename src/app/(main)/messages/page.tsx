@@ -11,6 +11,7 @@ interface OtherUser {
   id: string;
   displayName: string;
   avatarUrl: string | null;
+  dmEnabled?: boolean;
 }
 
 interface LastMessage {
@@ -145,6 +146,9 @@ function MessagesPage() {
     return [];
   });
 
+  // Online presence tracking
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
@@ -155,6 +159,8 @@ function MessagesPage() {
   useEffect(() => {
     loadConversations();
     loadContacts();
+    // Fetch initial online users
+    fetch("/api/users/online").then(r => r.ok ? r.json() : []).then((ids: string[]) => setOnlineUserIds(new Set(ids))).catch(() => {});
   }, []);
 
   // Socket.IO for real-time DMs
@@ -173,7 +179,21 @@ function MessagesPage() {
     };
 
     socket.on("new_dm", handleNewDm);
-    return () => { socket.off("new_dm", handleNewDm); };
+
+    const handleUserOnline = (userId: string) => {
+      setOnlineUserIds(prev => { const next = new Set(prev); next.add(userId); return next; });
+    };
+    const handleUserOffline = (userId: string) => {
+      setOnlineUserIds(prev => { const next = new Set(prev); next.delete(userId); return next; });
+    };
+    socket.on("user_online", handleUserOnline);
+    socket.on("user_offline", handleUserOffline);
+
+    return () => {
+      socket.off("new_dm", handleNewDm);
+      socket.off("user_online", handleUserOnline);
+      socket.off("user_offline", handleUserOffline);
+    };
   }, [session?.user?.id]);
 
   // Join/leave conversation socket rooms
@@ -559,7 +579,15 @@ function MessagesPage() {
                           conv.otherUser?.displayName?.[0] || "?"
                         )}
                       </div>
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
+                      {conv.otherUser && (
+                        <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-gray-900 rounded-full ${
+                          conv.otherUser.dmEnabled === false
+                            ? "bg-red-400"
+                            : onlineUserIds.has(conv.otherUser.id)
+                            ? "bg-green-500"
+                            : "bg-gray-400"
+                        }`} />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between items-center">
@@ -626,7 +654,19 @@ function MessagesPage() {
                 <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-bold text-sm hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 leading-tight">
                   {activeConv.otherUser?.displayName || "Удалённый пользователь"}
                 </Link>
-                <span className="text-xs text-green-500">В сети</span>
+                <span className={`text-xs ${
+                  activeConv.otherUser?.dmEnabled === false
+                    ? "text-red-400"
+                    : activeConv.otherUser && onlineUserIds.has(activeConv.otherUser.id)
+                    ? "text-green-500"
+                    : "text-gray-400"
+                }`}>
+                  {activeConv.otherUser?.dmEnabled === false
+                    ? "Не беспокоить"
+                    : activeConv.otherUser && onlineUserIds.has(activeConv.otherUser.id)
+                    ? "В сети"
+                    : "Не в сети"}
+                </span>
               </div>
 
               {/* Add to contacts */}
@@ -741,7 +781,7 @@ function MessagesPage() {
                     className={`flex ${isMe ? "justify-end" : "justify-start"} group animate-[fadeIn_0.3s_ease-out]`}
                     onContextMenu={(e) => handleContextMenu(e, msg)}
                   >
-                    <div className="max-w-[75vw] sm:max-w-xs">
+                    <div className="max-w-[75vw] sm:max-w-md">
                       {/* Reply preview */}
                       {msg.replyTo && !msg.isDeleted && (
                         <div
