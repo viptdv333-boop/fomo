@@ -10,11 +10,6 @@ const ChartWidget = dynamic(
   { ssr: false, loading: () => <div className="flex-1 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-xl" /> }
 );
 
-const SandboxPanel = dynamic(
-  () => import("@/components/sandbox/SandboxPanel"),
-  { ssr: false, loading: () => <div className="h-40 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-xl" /> }
-);
-
 interface Instrument {
   id: string;
   name: string;
@@ -389,67 +384,31 @@ export default function TerminalPage() {
 
       {/* Main area: Chart+Sandbox left, Watchlist+QuickTrade right */}
       <div className="flex gap-2 flex-1 min-h-0 overflow-hidden">
-        {/* Left column: Chart + Sandbox */}
-        <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
-          {/* Chart */}
-          <div className="flex-1 min-h-0">
-            {selected && chartSource !== "none" && chartTicker ? (
-              <ChartWidget
-                key={`${selected.id}-${chartTicker}`}
-                ticker={chartTicker}
-                source={chartSource}
-                name={selected.name}
-                height={0}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl shadow">
-                <div className="text-center">
-                  <svg className="w-20 h-20 mx-auto mb-4 text-gray-200 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
-                    <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
-                  </svg>
-                  <p className="text-base font-medium text-gray-400 dark:text-gray-500">
-                    {selected ? `График ${selected.ticker || selected.dataTicker}` : "Выберите инструмент"}
-                  </p>
-                  <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
-                    {selected ? `Таймфрейм: ${timeframe}` : "из списка справа"}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sandbox trading panel — below chart */}
-          <div className="shrink-0">
-            <SandboxPanel
-              selectedTicker={chartTicker || undefined}
-              selectedName={selected?.name}
-              onSelectTicker={(ticker, instrName) => {
-                const all = categories.flatMap((c) => c.instruments);
-                const match = all.find(
-                  (i) =>
-                    i.dataTicker === ticker ||
-                    i.ticker === ticker ||
-                    (i.dataTicker && ticker.startsWith(i.dataTicker)) ||
-                    (i.ticker && ticker.startsWith(i.ticker))
-                );
-                if (match) {
-                  setSelected(match);
-                } else {
-                  setSelected({
-                    id: `virtual-${ticker}`,
-                    name: instrName || ticker,
-                    slug: ticker.toLowerCase(),
-                    ticker: ticker,
-                    exchange: "MOEX",
-                    dataSource: "moex",
-                    dataTicker: ticker,
-                    tradingViewSymbol: null,
-                    category: null,
-                  });
-                }
-              }}
+        {/* Left column: Chart only */}
+        <div className="flex-1 overflow-hidden min-w-0">
+          {selected && chartSource !== "none" && chartTicker ? (
+            <ChartWidget
+              key={`${selected.id}-${chartTicker}`}
+              ticker={chartTicker}
+              source={chartSource}
+              name={selected.name}
+              height={0}
             />
-          </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl shadow">
+              <div className="text-center">
+                <svg className="w-20 h-20 mx-auto mb-4 text-gray-200 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
+                  <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
+                </svg>
+                <p className="text-base font-medium text-gray-400 dark:text-gray-500">
+                  {selected ? `График ${selected.ticker || selected.dataTicker}` : "Выберите инструмент"}
+                </p>
+                <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
+                  {selected ? `Таймфрейм: ${timeframe}` : "из списка справа"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Watchlist + Quick Trade */}
