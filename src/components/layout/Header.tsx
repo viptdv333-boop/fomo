@@ -36,9 +36,9 @@ export default function Header() {
       <div className="w-full px-4 py-1 flex items-center">
         {/* Logo */}
         <Link href="/" className="flex flex-col items-start shrink-0">
-          <div className="w-[90px] sm:w-[120px] h-[34px] sm:h-[44px] overflow-hidden relative">
+          <div className="w-[90px] sm:w-[120px] h-[40px] sm:h-[52px] overflow-hidden relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-22%' }} />
+            <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-18%' }} />
           </div>
           <span className="text-[5.5px] sm:text-[6.5px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.12em] font-light leading-none mt-px">Find Opportunities, Make Outcomes</span>
         </Link>
