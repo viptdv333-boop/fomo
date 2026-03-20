@@ -35,10 +35,10 @@ export default function Header() {
     <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
+        <Link href="/" className="flex flex-col items-start shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo.png" alt="FOMO" className="h-14 sm:h-16 w-auto" />
-          <span className="hidden sm:block text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight font-medium">Find Opportunities,<br/>Make Outcomes</span>
+          <img src="/logo-fomo.png" alt="FOMO" className="h-10 sm:h-12 w-auto" />
+          <span className="hidden sm:block text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-widest font-medium -mt-1">Find Opportunities, Make Outcomes</span>
         </Link>
 
         {/* Desktop nav — centered */}
