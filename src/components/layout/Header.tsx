@@ -33,11 +33,12 @@ export default function Header() {
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center">
         {/* Logo */}
-        <Link href="/" className="flex items-center shrink-0">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo.png" alt="FOMO" className="h-9 sm:h-10 w-auto" />
+          <img src="/logo-fomo.png" alt="FOMO" className="h-14 sm:h-16 w-auto" />
+          <span className="hidden sm:block text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight font-medium">Find Opportunities,<br/>Make Outcomes</span>
         </Link>
 
         {/* Desktop nav — centered */}
