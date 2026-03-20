@@ -492,7 +492,7 @@ function MessagesPage() {
   return (
     <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden flex-1 min-h-0">
       {/* Sidebar — full width on mobile, fixed width on desktop */}
-      <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
+      <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r border-gray-100 dark:border-gray-800/30 flex-col`}>
         {/* Sidebar Title */}
         <div className="px-4 pt-4 pb-2">
           <h2 className="text-xl font-bold dark:text-gray-100">Сообщения</h2>
@@ -509,7 +509,7 @@ function MessagesPage() {
           </div>
         </div>
         {/* New Chat Button */}
-        <div className="px-3 py-2 border-b dark:border-gray-700">
+        <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/30">
           <button
             onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
             className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
@@ -600,7 +600,7 @@ function MessagesPage() {
         {activeConvId && activeConv ? (
           <>
             {/* Header */}
-            <div className="px-3 sm:px-6 py-3 border-b dark:border-gray-700 flex items-center gap-3">
+            <div className="px-3 sm:px-6 py-3 border-b border-gray-100 dark:border-gray-800/30 flex items-center gap-3">
               {/* Mobile back button */}
               <button
                 onClick={() => setActiveConvId(null)}
@@ -721,7 +721,7 @@ function MessagesPage() {
 
             {/* Pinned messages */}
             {messages.filter((m) => m.isPinned).length > 0 && (
-              <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b dark:border-gray-700 text-xs text-amber-700 dark:text-amber-400">
+              <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-gray-100 dark:border-gray-800/30 text-xs text-amber-700 dark:text-amber-400">
                 📌 Закреплено: {messages.filter((m) => m.isPinned).map((m) => m.text.slice(0, 40) || "📎 Файл").join(", ")}
               </div>
             )}
@@ -762,7 +762,7 @@ function MessagesPage() {
                             ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 italic"
                             : isMe
                             ? "bg-green-600 text-white rounded-br-sm"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm"
+                            : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md rounded-bl-sm"
                         } ${msg.isPinned ? "ring-1 ring-amber-400" : ""}`}
                       >
                         {!msg.isDeleted && renderFileAttachment(msg)}
@@ -869,7 +869,7 @@ function MessagesPage() {
 
             {/* Reply preview */}
             {replyTo && (
-              <div className="px-4 py-2 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
+              <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800/30 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
                 <div className="flex-1 border-l-2 border-green-500 pl-3">
                   <div className="text-xs font-medium text-green-600 dark:text-green-400">
                     {replyTo.sender.displayName}
@@ -886,7 +886,7 @@ function MessagesPage() {
 
             {/* Emoji Picker */}
             {showEmoji && (
-              <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3">
+              <div className="border-t border-gray-100 dark:border-gray-800/30 bg-white dark:bg-gray-900 px-4 py-3">
                 <div className="flex gap-2 mb-2">
                   {EMOJI_CATEGORIES.map((cat, i) => (
                     <button
@@ -917,7 +917,7 @@ function MessagesPage() {
             )}
 
             {/* Input */}
-            <form onSubmit={sendMessage} className="border-t dark:border-gray-700 px-4 py-3 flex gap-2 items-center">
+            <form onSubmit={sendMessage} className="border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex gap-2 items-center">
               {/* File upload */}
               <input
                 ref={fileInputRef}
@@ -1096,7 +1096,7 @@ function MessagesPage() {
             style={{ left: userContextMenu.x, top: userContextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500 truncate border-b dark:border-gray-700">
+            <div className="px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500 truncate border-b border-gray-100 dark:border-gray-800/30">
               {userContextMenu.userName}
             </div>
             <button

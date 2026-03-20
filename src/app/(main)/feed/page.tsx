@@ -340,7 +340,7 @@ function FeedPage() {
           ))}
         </div>
       ) : viewMode === "list" ? (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow divide-y dark:divide-gray-800">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} minimal />
           ))}

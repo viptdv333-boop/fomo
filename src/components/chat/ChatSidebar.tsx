@@ -28,6 +28,36 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   const [rooms, setRooms] = useState<ChatRoomInfo[]>([]);
   const [search, setSearch] = useState("");
 
+  // Pinned & favorites (localStorage)
+  const [pinnedRooms, setPinnedRooms] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try { return JSON.parse(localStorage.getItem("fomo-pinned-rooms") || "[]"); } catch { return []; }
+    }
+    return [];
+  });
+  const [favoriteRooms, setFavoriteRooms] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try { return JSON.parse(localStorage.getItem("fomo-favorite-rooms") || "[]"); } catch { return []; }
+    }
+    return [];
+  });
+
+  function togglePin(roomId: string) {
+    const next = pinnedRooms.includes(roomId)
+      ? pinnedRooms.filter((id) => id !== roomId)
+      : pinnedRooms.length >= 5 ? pinnedRooms : [...pinnedRooms, roomId];
+    setPinnedRooms(next);
+    localStorage.setItem("fomo-pinned-rooms", JSON.stringify(next));
+  }
+
+  function toggleFavorite(roomId: string) {
+    const next = favoriteRooms.includes(roomId)
+      ? favoriteRooms.filter((id) => id !== roomId)
+      : [...favoriteRooms, roomId];
+    setFavoriteRooms(next);
+    localStorage.setItem("fomo-favorite-rooms", JSON.stringify(next));
+  }
+
   useEffect(() => {
     loadRooms();
   }, []);
@@ -69,29 +99,48 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     return unreadMap.get(room.id) || 0;
   }
 
+  // Room context menu
+  const [roomMenu, setRoomMenu] = useState<{ roomId: string; x: number; y: number } | null>(null);
+
   const searchLower = search.toLowerCase().trim();
-  const filteredRooms = rooms.filter((r) => {
-    if (!searchLower) return true;
-    return r.name.toLowerCase().includes(searchLower);
-  });
+  const filteredRooms = rooms
+    .filter((r) => {
+      if (!searchLower) return true;
+      return r.name.toLowerCase().includes(searchLower);
+    })
+    .sort((a, b) => {
+      // Pinned first, then favorites, then rest
+      const aPin = pinnedRooms.includes(a.id) ? 0 : 1;
+      const bPin = pinnedRooms.includes(b.id) ? 0 : 1;
+      if (aPin !== bPin) return aPin - bPin;
+      const aFav = favoriteRooms.includes(a.id) ? 0 : 1;
+      const bFav = favoriteRooms.includes(b.id) ? 0 : 1;
+      if (aFav !== bFav) return aFav - bFav;
+      return 0;
+    });
 
   function renderRoom(room: ChatRoomInfo) {
     const active = isActive(room);
     const unread = getStableUnread(room);
     const description = getRoomDescription(room);
+    const isPinned = pinnedRooms.includes(room.id);
+    const isFav = favoriteRooms.includes(room.id);
 
     const content = (
       <div
         className={`
-          px-4 py-3 transition-all duration-200 cursor-pointer border-b border-gray-100 dark:border-gray-800
+          px-4 py-3 transition-all duration-200 cursor-pointer
           ${active
             ? "bg-green-50 dark:bg-green-900/20 border-l-[3px] border-l-green-500"
             : "border-l-[3px] border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
           }
         `}
+        onContextMenu={(e) => { e.preventDefault(); setRoomMenu({ roomId: room.id, x: e.clientX, y: e.clientY }); }}
       >
         {/* Room name + icons */}
         <div className="flex items-center gap-2">
+          {isPinned && <span className="text-gray-400 text-[10px] shrink-0">📌</span>}
+          {isFav && <span className="text-amber-400 shrink-0 text-xs">★</span>}
           <span className={`flex-1 truncate font-semibold text-sm ${
             active ? "text-green-700 dark:text-green-300" : "text-gray-800 dark:text-gray-200"
           }`}>
@@ -186,8 +235,8 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </div>
         </div>
 
-        {/* Flat room list */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Room list */}
+        <div className="flex-1 overflow-y-auto" onClick={() => setRoomMenu(null)}>
           {filteredRooms.length === 0 ? (
             <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
               {rooms.length === 0 ? "Загрузка..." : "Ничего не найдено"}
@@ -196,6 +245,34 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
             filteredRooms.map((room) => renderRoom(room))
           )}
         </div>
+
+        {/* Room context menu */}
+        {roomMenu && (
+          <div
+            className="fixed inset-0 z-50"
+            onClick={() => setRoomMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setRoomMenu(null); }}
+          >
+            <div
+              className="absolute bg-white dark:bg-gray-800 rounded-xl shadow-lg py-1 w-44 z-50"
+              style={{ left: roomMenu.x, top: roomMenu.y }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => { togglePin(roomMenu.roomId); setRoomMenu(null); }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
+              >
+                {pinnedRooms.includes(roomMenu.roomId) ? "📌 Открепить" : "📌 Закрепить"}
+              </button>
+              <button
+                onClick={() => { toggleFavorite(roomMenu.roomId); setRoomMenu(null); }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
+              >
+                {favoriteRooms.includes(roomMenu.roomId) ? "★ Убрать из избранного" : "☆ В избранное"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

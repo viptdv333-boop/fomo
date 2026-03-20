@@ -524,7 +524,7 @@ export default function ChannelsPage() {
                   )}
 
                   {/* Bottom row */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800/30">
                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                       <span className="flex items-center gap-1.5">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

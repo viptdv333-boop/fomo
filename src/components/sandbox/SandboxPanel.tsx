@@ -202,7 +202,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-2 border-b dark:border-gray-800 flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold dark:text-gray-100">Демо-счёт</span>
           {account && (
@@ -223,7 +223,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b dark:border-gray-800">
+      <div className="flex border-b border-gray-100 dark:border-gray-800/30">
         {([
           { key: "trade", label: "Торговля" },
           { key: "portfolio", label: "Портфель" },
@@ -369,7 +369,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                     <button
                       key={i}
                       onClick={() => onSelectTicker?.(p.ticker, p.name)}
-                      className="flex items-center justify-between py-1.5 border-b dark:border-gray-800 last:border-0 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition px-1 -mx-1 rounded"
+                      className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/30 last:border-0 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition px-1 -mx-1 rounded"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium dark:text-gray-200 truncate">{p.name || p.ticker || "—"}</div>
@@ -402,7 +402,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                   <p className="text-xs text-gray-400 text-center py-4">Нет активных ордеров</p>
                 ) : (
                   orders.map((o) => (
-                    <div key={o.orderId} className="flex items-center justify-between py-1.5 border-b dark:border-gray-800 last:border-0">
+                    <div key={o.orderId} className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/30 last:border-0">
                       <div>
                         <div className="text-xs font-mono dark:text-gray-200">{o.instrumentId?.slice(0, 12)}</div>
                         <div className="text-[10px] text-gray-400">
@@ -437,7 +437,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                   <p className="text-xs text-gray-400 text-center py-4">Нет операций</p>
                 ) : (
                   operations.slice(0, 50).map((op) => (
-                    <div key={op.id} className="flex items-center justify-between py-1 border-b dark:border-gray-800 last:border-0">
+                    <div key={op.id} className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800/30 last:border-0">
                       <div>
                         <div className="text-[11px] dark:text-gray-200">{op.description || op.type}</div>
                         <div className="text-[10px] text-gray-400">

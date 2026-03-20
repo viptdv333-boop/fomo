@@ -137,7 +137,7 @@ export default function NotificationBell() {
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-lg border dark:border-gray-700 z-50 max-h-96 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800/30">
             <h3 className="text-sm font-semibold dark:text-gray-100">
               Уведомления
             </h3>
@@ -159,7 +159,7 @@ export default function NotificationBell() {
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`px-4 py-3 border-b dark:border-gray-700 last:border-0 ${
+                  className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800/30 last:border-0 ${
                     !n.isRead
                       ? "bg-green-50/50 dark:bg-green-900/10"
                       : ""

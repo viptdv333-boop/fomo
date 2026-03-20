@@ -36,11 +36,11 @@ export default function Header() {
       <div className="w-full px-4 py-1 flex items-center">
         {/* Logo */}
         <Link href="/" className="flex flex-col items-start shrink-0">
-          <div className="w-[90px] sm:w-[120px] h-[40px] sm:h-[52px] overflow-hidden relative">
+          <div className="w-[110px] sm:w-[150px] h-[46px] sm:h-[58px] overflow-hidden relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-18%' }} />
+            <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-16%' }} />
           </div>
-          <span className="text-[5.5px] sm:text-[6.5px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.12em] font-light leading-none mt-px">Find Opportunities, Make Outcomes</span>
+          <span className="text-[6px] sm:text-[7px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] font-light leading-none -mt-0.5">Find Opportunities, Make Outcomes</span>
         </Link>
 
         {/* Desktop nav — centered */}
@@ -95,7 +95,7 @@ export default function Header() {
                 {profileOpen && (
                   <div className="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-lg border dark:border-gray-700 py-2 z-50">
                     {/* User info */}
-                    <div className="px-4 py-3 border-b dark:border-gray-700">
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800/30">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
                           {avatarUrl ? (
@@ -130,7 +130,7 @@ export default function Header() {
                       Финансы
                     </Link>
 
-                    <div className="border-t dark:border-gray-700 mt-1 pt-1">
+                    <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
                       <button
                         onClick={() => { signOut({ callbackUrl: "/" }); setProfileOpen(false); }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -173,9 +173,9 @@ export default function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
+        <div className="md:hidden border-t border-gray-100 dark:border-gray-800/30 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
           {session && (
-            <div className="flex items-center gap-3 py-2 mb-2 border-b dark:border-gray-800 pb-3">
+            <div className="flex items-center gap-3 py-2 mb-2 border-b border-gray-100 dark:border-gray-800/30 pb-3">
               <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -212,7 +212,7 @@ export default function Header() {
             </Link>
           ))}
           {session && (
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2 space-y-1">
+            <div className="border-t border-gray-100 dark:border-gray-800/30 pt-2 mt-2 space-y-1">
               <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">+ Создать идею</Link>
               <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Каналы и подписки</Link>
               <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Редактировать профиль</Link>

@@ -354,7 +354,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
       <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-900">
         {/* ── HEADER ── */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 shrink-0">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/30 px-4 py-3 shrink-0">
           <div className="flex items-center justify-between">
             {/* Left side: name + participants */}
             <div>
@@ -625,7 +625,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
         {/* ── Reply preview bar ── */}
         {replyTo && (
-          <div className="bg-green-50 dark:bg-green-900/20 border-t border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-2 shrink-0">
+          <div className="bg-green-50 dark:bg-green-900/20 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2 shrink-0">
             <div className="flex-1 min-w-0">
               <div className="text-xs text-green-600 dark:text-green-400 font-semibold">
                 Ответ для {replyTo.user.displayName}
@@ -645,7 +645,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
         {/* ── Mention suggestions ── */}
         {mentionSearch !== null && mentionUsers.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-1.5 shrink-0">
+          <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-1.5 shrink-0">
             <div className="flex flex-wrap gap-1">
               {mentionUsers.slice(0, 8).map((u) => (
                 <button
@@ -662,13 +662,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
         {/* ── INPUT AREA ── */}
         {isClosed || isArchived ? (
-          <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3 text-center text-sm text-gray-500">
+          <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 text-center text-sm text-gray-500">
             {isArchived ? "Чат в архиве" : "Чат закрыт"}
           </div>
         ) : (
           <form
             onSubmit={sendMessage}
-            className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-2 shrink-0 relative"
+            className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex items-center gap-2 shrink-0 relative"
           >
             {/* Paperclip / attach */}
             <button
@@ -705,7 +705,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
                 <div className="absolute bottom-16 left-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 w-72">
-                  <div className="flex border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex border-b border-gray-100 dark:border-gray-800/30">
                     {EMOJI_CATEGORIES.map((cat, i) => (
                       <button
                         key={cat.name}
