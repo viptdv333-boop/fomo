@@ -94,7 +94,7 @@ export default function TerminalPage() {
               placeholder="Поиск инструмента..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-1.5 border dark:border-gray-700 rounded-lg text-xs dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full px-3 py-1.5 border dark:border-gray-700 rounded-lg text-xs dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:ring-1 focus:ring-green-500"
             />
           </div>
 
@@ -124,20 +124,20 @@ export default function TerminalPage() {
                           onClick={() => { if (hasData) setSelected(inst); }}
                           className={`w-full flex items-center gap-2 px-3 py-2 text-left transition ${
                             isSelected
-                              ? "bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-500"
+                              ? "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500"
                               : hasData
                               ? "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-transparent"
                               : "opacity-40 border-l-2 border-transparent cursor-default"
                           }`}
                         >
                           <div className="flex-1 min-w-0">
-                            <div className={`text-xs font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "dark:text-gray-100"}`}>
+                            <div className={`text-xs font-medium truncate ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
                               {inst.name}
                             </div>
                             <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex items-center gap-1">
                               <span>{inst.ticker || "—"}</span>
                               {inst.dataSource && (
-                                <span className="px-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-500">
+                                <span className="px-1 rounded bg-green-50 dark:bg-green-900/20 text-green-500">
                                   MOEX
                                 </span>
                               )}
@@ -146,7 +146,7 @@ export default function TerminalPage() {
                           <Link
                             href={`/instruments/${inst.slug}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[10px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0"
+                            className="text-[10px] text-gray-400 hover:text-green-600 dark:hover:text-green-400 shrink-0"
                             title="Открыть страницу"
                           >
                             →

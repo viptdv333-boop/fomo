@@ -48,7 +48,7 @@ export default function BuySubscriptionModal({
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-900 rounded-xl p-8 text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-3">У автора нет активных каналов</p>
-          <button onClick={onClose} className="text-blue-600 text-sm hover:underline">Закрыть</button>
+          <button onClick={onClose} className="text-green-600 text-sm hover:underline">Закрыть</button>
         </div>
       </div>
     );

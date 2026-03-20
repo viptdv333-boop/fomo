@@ -106,7 +106,7 @@ export default function RegisterPage() {
   }
 
   const inputClass =
-    "w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 transition";
+    "w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 transition";
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
@@ -130,7 +130,7 @@ export default function RegisterPage() {
                 s < step
                   ? "bg-green-500 text-white"
                   : s === step
-                  ? "bg-blue-600 text-white scale-110"
+                  ? "bg-green-600 text-white scale-110"
                   : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
               }`}
             >
@@ -176,7 +176,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || !email}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? "Отправка..." : "Получить код"}
           </button>
@@ -207,7 +207,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={code.length !== 6}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             Подтвердить
           </button>
@@ -226,7 +226,7 @@ export default function RegisterPage() {
               className={`${
                 countdown > 0
                   ? "text-gray-400 dark:text-gray-500"
-                  : "text-blue-600 dark:text-blue-400 hover:underline"
+                  : "text-green-600 dark:text-green-400 hover:underline"
               }`}
             >
               {countdown > 0 ? `Повторно через ${countdown}с` : "Отправить снова"}
@@ -290,7 +290,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || !displayName || !password}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? "Регистрация..." : "Зарегистрироваться"}
           </button>
@@ -299,7 +299,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
         Уже есть аккаунт?{" "}
-        <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+        <Link href="/login" className="text-green-600 dark:text-green-400 hover:underline">
           Войти
         </Link>
       </p>

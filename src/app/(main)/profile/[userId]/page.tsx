@@ -119,7 +119,7 @@ export default function AuthorProfilePage() {
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl overflow-hidden">
+            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-2xl overflow-hidden">
               {profile.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -163,7 +163,7 @@ export default function AuthorProfilePage() {
                       router.push(`/messages?conversation=${data.id}`);
                     }
                   }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition"
                 >
                   Написать
                 </button>
@@ -173,7 +173,7 @@ export default function AuthorProfilePage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   profile.isFollowing
                     ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-green-600 text-white hover:bg-green-700"
                 }`}
               >
                 {profile.isFollowing ? "Отписаться" : "Подписаться"}
@@ -196,7 +196,7 @@ export default function AuthorProfilePage() {
             {profile.specializations.map((spec) => (
               <span
                 key={spec}
-                className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
+                className="px-2.5 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium"
               >
                 {SPECIALIZATION_LABELS[spec] || spec}
               </span>
@@ -259,14 +259,14 @@ export default function AuthorProfilePage() {
               {profile.socialLinks.telegram && (
                 <a href={profile.socialLinks.telegram.startsWith("http") ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace("@", "")}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition">
+                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition">
                   Telegram
                 </a>
               )}
               {profile.socialLinks.vk && (
                 <a href={profile.socialLinks.vk.startsWith("http") ? profile.socialLinks.vk : `https://vk.com/${profile.socialLinks.vk}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition">
+                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition">
                   VK
                 </a>
               )}
@@ -287,7 +287,7 @@ export default function AuthorProfilePage() {
               {profile.socialLinks.max && (
                 <a href={profile.socialLinks.max.startsWith("http") ? profile.socialLinks.max : `https://max.ru/${profile.socialLinks.max}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition">
+                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition">
                   MAX
                 </a>
               )}

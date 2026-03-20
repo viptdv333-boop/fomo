@@ -54,7 +54,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   if (minimal) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0">
+        <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xs shrink-0">
           {idea.author.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={idea.author.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
@@ -88,7 +88,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs overflow-hidden shrink-0">
+          <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xs overflow-hidden shrink-0">
             {idea.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -100,7 +100,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{dateStr}</span>
         </div>
         <Link href={`/ideas/${idea.id}`}>
-          <h3 className="font-semibold text-sm mb-1.5 dark:text-gray-100 hover:text-blue-600 transition line-clamp-2">
+          <h3 className="font-semibold text-sm mb-1.5 dark:text-gray-100 hover:text-green-600 transition line-clamp-2">
             {idea.title}
           </h3>
         </Link>
@@ -108,7 +108,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <div className="flex items-center justify-between mt-auto">
           <div className="flex gap-1 flex-wrap">
             {idea.instruments.slice(0, 2).map((inst) => (
-              <Link key={inst.id} href={`/instruments/${inst.slug}`} className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-[10px] hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+              <Link key={inst.id} href={`/instruments/${inst.slug}`} className="px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] hover:bg-green-100 dark:hover:bg-green-900/50 transition">
                 #{inst.name}
               </Link>
             ))}
@@ -135,7 +135,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 hover:shadow-md transition">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden">
             {idea.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -146,7 +146,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <div>
             <Link
               href={`/profile/${idea.author.id}`}
-              className="font-medium hover:text-blue-600 dark:text-gray-100 transition"
+              className="font-medium hover:text-green-600 dark:text-gray-100 transition"
             >
               {idea.author.displayName}
             </Link>
@@ -169,12 +169,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
 
       <div className="flex items-start justify-between">
         <Link href={`/ideas/${idea.id}`}>
-          <h2 className="text-lg font-semibold mb-2 dark:text-gray-100 hover:text-blue-600 transition">
+          <h2 className="text-lg font-semibold mb-2 dark:text-gray-100 hover:text-green-600 transition">
             {idea.title}
           </h2>
         </Link>
         {session?.user?.id === idea.author.id && (
-          <Link href={`/ideas/${idea.id}/edit`} className="text-gray-400 hover:text-blue-600 text-sm ml-2 shrink-0" title="Редактировать">
+          <Link href={`/ideas/${idea.id}/edit`} className="text-gray-400 hover:text-green-600 text-sm ml-2 shrink-0" title="Редактировать">
             ✎
           </Link>
         )}
@@ -188,7 +188,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             <Link
               key={inst.id}
               href={`/instruments/${inst.slug}`}
-              className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+              className="px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
               #{inst.name}
             </Link>

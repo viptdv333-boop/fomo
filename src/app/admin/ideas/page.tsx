@@ -67,7 +67,7 @@ export default function AdminIdeasPage() {
                       {idea.instruments.map((i) => (
                         <span
                           key={i.name}
-                          className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs"
+                          className="px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs"
                         >
                           {i.name}
                         </span>

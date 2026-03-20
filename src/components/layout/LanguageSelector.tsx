@@ -57,7 +57,7 @@ export default function LanguageSelector() {
                 onClick={() => setLocale(lang.code)}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 ${
                   lang.code === current
-                    ? "text-blue-600 dark:text-blue-400 font-medium"
+                    ? "text-green-600 dark:text-green-400 font-medium"
                     : "text-gray-700 dark:text-gray-300"
                 }`}
               >

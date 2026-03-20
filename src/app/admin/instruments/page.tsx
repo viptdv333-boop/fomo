@@ -108,7 +108,7 @@ export default function AdminInstrumentsPage() {
                 if (!editId) setSlug(generateSlug(e.target.value));
               }}
               required
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="Bitcoin"
             />
           </div>
@@ -119,7 +119,7 @@ export default function AdminInstrumentsPage() {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               required
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="bitcoin"
             />
           </div>
@@ -128,7 +128,7 @@ export default function AdminInstrumentsPage() {
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
             >
               <option value="">Без категории</option>
               {categories.map((cat) => (
@@ -139,7 +139,7 @@ export default function AdminInstrumentsPage() {
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+              className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
             >
               {editId ? "Сохранить" : "Добавить"}
             </button>
@@ -182,7 +182,7 @@ export default function AdminInstrumentsPage() {
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{inst.slug}</td>
                   <td className="px-4 py-3">
                     {inst.category ? (
-                      <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs">
+                      <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs">
                         {inst.category.name}
                       </span>
                     ) : (
@@ -196,7 +196,7 @@ export default function AdminInstrumentsPage() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => startEdit(inst)}
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium"
+                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 text-xs font-medium"
                       >
                         Изменить
                       </button>

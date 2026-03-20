@@ -169,7 +169,7 @@ export default function AdminRatingPage() {
           <h2 className="text-lg font-semibold dark:text-gray-100">Пороги платных идей</h2>
           <button
             onClick={addTier}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="text-green-600 hover:text-green-800 text-sm font-medium"
           >
             + Добавить порог
           </button>
@@ -226,7 +226,7 @@ export default function AdminRatingPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
         >
           {saving ? "Сохранение..." : "Сохранить"}
         </button>

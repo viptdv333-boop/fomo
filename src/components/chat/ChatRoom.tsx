@@ -210,7 +210,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
           onClick={toggleNotification}
           className={`p-1.5 rounded-lg transition text-sm ${
             notifEnabled
-              ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+              ? "text-green-600 bg-green-50 dark:bg-green-900/30"
               : "text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
           }`}
           title={notifEnabled ? "Уведомления включены" : "Уведомления выключены"}
@@ -282,7 +282,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${
                   isMe
                     ? "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400"
-                    : "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                    : "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400"
                 }`}>
                   {msg.user.displayName[0]}
                 </div>
@@ -299,8 +299,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
                 {/* Reply preview */}
                 {msg.replyTo && (
-                  <div className={`text-[11px] mb-0.5 px-2 py-1 rounded border-l-2 border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 ${isMe ? "ml-auto" : ""} max-w-fit`}>
-                    <span className="font-medium text-blue-600 dark:text-blue-400">{msg.replyTo.user.displayName}</span>
+                  <div className={`text-[11px] mb-0.5 px-2 py-1 rounded border-l-2 border-green-400 bg-green-50/50 dark:bg-green-900/20 ${isMe ? "ml-auto" : ""} max-w-fit`}>
+                    <span className="font-medium text-green-600 dark:text-green-400">{msg.replyTo.user.displayName}</span>
                     <span className="text-gray-500 dark:text-gray-400 ml-1 truncate">{msg.replyTo.text.slice(0, 60)}</span>
                   </div>
                 )}
@@ -310,13 +310,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                   <p
                     className={`text-sm inline-block px-3 py-1.5 rounded-2xl whitespace-pre-wrap break-words ${
                       isMe
-                        ? "bg-blue-600 text-white rounded-br-md"
+                        ? "bg-green-600 text-white rounded-br-md"
                         : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-bl-md"
                     }`}
                     dangerouslySetInnerHTML={{
                       __html: msg.text.replace(
                         /@(\S+)/g,
-                        '<span class="font-semibold text-blue-500 dark:text-blue-300">@$1</span>'
+                        '<span class="font-semibold text-green-500 dark:text-green-300">@$1</span>'
                       ),
                     }}
                   />
@@ -378,7 +378,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                           onClick={() => toggleReaction(msg.id, emoji)}
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs transition ${
                             myReaction
-                              ? "bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700"
+                              ? "bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700"
                               : "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
                           }`}
                         >
@@ -398,9 +398,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
       {/* Reply preview bar */}
       {replyTo && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border-t dark:border-gray-700 px-4 py-2 flex items-center gap-2 shrink-0">
+        <div className="bg-green-50 dark:bg-green-900/20 border-t dark:border-gray-700 px-4 py-2 flex items-center gap-2 shrink-0">
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
               Ответ для {replyTo.user.displayName}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{replyTo.text}</div>
@@ -422,7 +422,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
               <button
                 key={u.id}
                 onClick={() => selectMention(u.displayName)}
-                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition text-gray-700 dark:text-gray-300"
+                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-green-100 dark:hover:bg-green-900/30 transition text-gray-700 dark:text-gray-300"
               >
                 @{u.displayName}
               </button>
@@ -462,7 +462,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                       onClick={() => setEmojiCategory(i)}
                       className={`flex-1 py-2 text-xs transition ${
                         emojiCategory === i
-                          ? "text-blue-600 border-b-2 border-blue-600"
+                          ? "text-green-600 border-b-2 border-green-600"
                           : "text-gray-400 hover:text-gray-600"
                       }`}
                     >
@@ -492,12 +492,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
             value={input}
             onChange={handleInputChange}
             placeholder="Написать сообщение... (@ для упоминания)"
-            className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+            className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
           />
           <button
             type="submit"
             disabled={!input.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             →
           </button>

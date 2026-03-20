@@ -60,7 +60,7 @@ export default function IdeaPage() {
     <div className="max-w-3xl mx-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg overflow-hidden">
+          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">
             {idea.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -71,7 +71,7 @@ export default function IdeaPage() {
           <div>
             <Link
               href={`/profile/${idea.author.id}`}
-              className="font-medium text-lg hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
+              className="font-medium text-lg hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400"
             >
               {idea.author.displayName}
             </Link>
@@ -87,7 +87,7 @@ export default function IdeaPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{idea.title}</h1>
           {session?.user?.id === idea.author.id && (
-            <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
               Редактировать
             </Link>
           )}
@@ -98,7 +98,7 @@ export default function IdeaPage() {
             <Link
               key={inst.id}
               href={`/instruments/${inst.slug}`}
-              className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+              className="px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
               #{inst.name}
             </Link>
@@ -117,7 +117,7 @@ export default function IdeaPage() {
               {idea.price && (
                 <button
                   onClick={() => setShowPayModal(true)}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
                 >
                   Купить за {idea.price} ₽
                 </button>

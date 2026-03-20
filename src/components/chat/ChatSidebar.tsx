@@ -141,7 +141,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
 
     const cls = `flex items-center gap-1 ${indent ? "pl-5 pr-1" : "px-2"} py-1.5 rounded-lg text-sm transition ${
       active
-        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
+        ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-medium"
         : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
     }`;
 
@@ -186,18 +186,18 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     <div className="w-64 shrink-0 flex flex-col overflow-hidden">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow flex-1 flex flex-col overflow-hidden">
         {/* Stats bar - prominent */}
-        <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b dark:border-gray-700 shrink-0">
+        <div className="px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-b dark:border-gray-700 shrink-0">
           <div className="flex justify-between text-xs">
             <div className="text-center">
-              <div className="font-bold text-blue-700 dark:text-blue-300">{rooms.length}</div>
+              <div className="font-bold text-green-700 dark:text-green-300">{rooms.length}</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400">тем</div>
             </div>
             <div className="text-center">
-              <div className="font-bold text-blue-700 dark:text-blue-300">{totalMembers}</div>
+              <div className="font-bold text-green-700 dark:text-green-300">{totalMembers}</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400">участников</div>
             </div>
             <div className="text-center">
-              <div className="font-bold text-blue-700 dark:text-blue-300">{totalMessages}</div>
+              <div className="font-bold text-green-700 dark:text-green-300">{totalMessages}</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400">сообщений</div>
             </div>
           </div>
@@ -209,7 +209,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
             onClick={() => setTab("chats")}
             className={`flex-1 py-2 text-xs font-medium transition ${
               tab === "chats"
-                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600"
+                ? "text-green-600 dark:text-green-400 border-b-2 border-green-600"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
             }`}
           >
@@ -219,7 +219,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
             onClick={() => setTab("archive")}
             className={`flex-1 py-2 text-xs font-medium transition ${
               tab === "archive"
-                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600"
+                ? "text-green-600 dark:text-green-400 border-b-2 border-green-600"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
             }`}
           >
@@ -259,7 +259,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                       onClick={() => toggleExpand(cat.id)}
                       className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                         hasActiveRoom
-                          ? "text-blue-600 dark:text-blue-400"
+                          ? "text-green-600 dark:text-green-400"
                           : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                       }`}
                     >

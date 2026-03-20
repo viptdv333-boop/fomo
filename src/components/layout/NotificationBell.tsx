@@ -144,7 +144,7 @@ export default function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-blue-600 hover:text-blue-800 transition"
+                className="text-xs text-green-600 hover:text-green-800 transition"
               >
                 Прочитать все
               </button>
@@ -161,7 +161,7 @@ export default function NotificationBell() {
                   key={n.id}
                   className={`px-4 py-3 border-b dark:border-gray-700 last:border-0 ${
                     !n.isRead
-                      ? "bg-blue-50/50 dark:bg-blue-900/10"
+                      ? "bg-green-50/50 dark:bg-green-900/10"
                       : ""
                   }`}
                 >
@@ -192,7 +192,7 @@ export default function NotificationBell() {
                           </div>
                         </div>
                         {!n.isRead && (
-                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+                          <span className="w-2 h-2 bg-green-500 rounded-full mt-1.5 shrink-0" />
                         )}
                       </div>
                     </Link>
@@ -218,7 +218,7 @@ export default function NotificationBell() {
                         </div>
                       </div>
                       {!n.isRead && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+                        <span className="w-2 h-2 bg-green-500 rounded-full mt-1.5 shrink-0" />
                       )}
                     </div>
                   )}

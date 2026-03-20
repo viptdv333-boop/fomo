@@ -22,7 +22,7 @@ interface Channel {
 function ChannelAvatar({ ch, size = "md" }: { ch: Channel; size?: "sm" | "md" }) {
   const cls = size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
   return (
-    <div className={`${cls} rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0`}>
+    <div className={`${cls} rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0`}>
       {ch.author.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ch.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -89,7 +89,7 @@ export default function ChannelsPage() {
   const filterBtnClass = (active: boolean) =>
     `px-3 py-1.5 rounded-lg text-xs font-medium transition ${
       active
-        ? "bg-blue-600 text-white"
+        ? "bg-green-600 text-white"
         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
     }`;
 
@@ -102,7 +102,7 @@ export default function ChannelsPage() {
         {session && (
           <Link
             href="/channels/create"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
           >
             + Создать канал
           </Link>
@@ -210,7 +210,7 @@ export default function ChannelsPage() {
           {hasActiveFilters && (
             <button
               onClick={() => { setPriceFilter("all"); setRatingFilter("all"); }}
-              className="mt-3 text-sm text-blue-600 hover:underline"
+              className="mt-3 text-sm text-green-600 hover:underline"
             >
               Сбросить фильтры
             </button>
@@ -227,7 +227,7 @@ export default function ChannelsPage() {
                 <span className="text-xs text-gray-400 ml-2">{ch.author.displayName}</span>
               </div>
               <div className="flex items-center gap-4 text-xs shrink-0">
-                <span className="text-blue-600 dark:text-blue-400 font-semibold">{ch.price} ₽</span>
+                <span className="text-green-600 dark:text-green-400 font-semibold">{ch.price} ₽</span>
                 <span className="text-gray-400">{ch.subscribersCount} подп.</span>
               </div>
             </Link>
@@ -240,7 +240,7 @@ export default function ChannelsPage() {
               <div className="flex justify-center mb-2"><ChannelAvatar ch={ch} /></div>
               <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{ch.name} <span className="font-normal text-gray-400">({ch.id.slice(0, 8)})</span></div>
               <div className="text-xs text-gray-400 truncate">{ch.author.displayName}</div>
-              <div className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-2">{ch.price} ₽ / {ch.durationDays} дн.</div>
+              <div className="text-xs text-green-600 dark:text-green-400 font-semibold mt-2">{ch.price} ₽ / {ch.durationDays} дн.</div>
             </Link>
           ))}
         </div>
@@ -259,7 +259,7 @@ export default function ChannelsPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{ch.description}</p>
               )}
               <div className="flex items-center justify-between text-xs">
-                <span className="text-blue-600 dark:text-blue-400 font-semibold">{ch.price} ₽ / {ch.durationDays} дн.</span>
+                <span className="text-green-600 dark:text-green-400 font-semibold">{ch.price} ₽ / {ch.durationDays} дн.</span>
                 <span className="text-gray-400">{ch.subscribersCount} подписчиков</span>
               </div>
             </Link>

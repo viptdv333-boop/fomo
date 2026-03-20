@@ -55,7 +55,7 @@ export default function Header() {
               href={link.href}
               className={`text-sm font-medium transition ${
                 isActive(link.href)
-                  ? "text-blue-600 dark:text-blue-400"
+                  ? "text-green-600 dark:text-green-400"
                   : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               }`}
             >
@@ -77,7 +77,7 @@ export default function Header() {
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
-                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs overflow-hidden">
+                  <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xs overflow-hidden">
                     {avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -94,7 +94,7 @@ export default function Header() {
                     {/* User info */}
                     <div className="px-4 py-3 border-b dark:border-gray-700">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden shrink-0">
+                        <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
                           {avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -148,7 +148,7 @@ export default function Header() {
               )}
             </>
           ) : (
-            <Link href="/login" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+            <Link href="/login" className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition">
               Войти
             </Link>
           )}
@@ -173,7 +173,7 @@ export default function Header() {
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
           {session && (
             <div className="flex items-center gap-3 py-2 mb-2 border-b dark:border-gray-800 pb-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -201,8 +201,8 @@ export default function Header() {
               onClick={() => setMenuOpen(false)}
               className={`block py-2 text-sm ${
                 isActive(link.href)
-                  ? "text-blue-600 dark:text-blue-400 font-medium"
-                  : "text-gray-700 dark:text-gray-300 hover:text-blue-600"
+                  ? "text-green-600 dark:text-green-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:text-green-600"
               }`}
             >
               {link.label}
@@ -221,7 +221,7 @@ export default function Header() {
             </div>
           )}
           {!session && (
-            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-blue-600 font-medium">Войти</Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-green-600 font-medium">Войти</Link>
           )}
         </div>
       )}

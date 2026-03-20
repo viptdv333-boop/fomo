@@ -74,7 +74,7 @@ export default function InstrumentPage() {
                 </span>
               )}
               {instrument.dataSource && (
-                <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-xs font-medium">
+                <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded text-xs font-medium">
                   MOEX
                 </span>
               )}
@@ -108,7 +108,7 @@ export default function InstrumentPage() {
             {instrument.chatRoom && session && (
               <Link
                 href={`/chat/${instrument.chatRoom.id}`}
-                className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
                 Чат
               </Link>
@@ -139,7 +139,7 @@ export default function InstrumentPage() {
           {session && (
             <Link
               href={`/ideas/new?instrumentId=${instrument.id}`}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
             >
               Написать идею
             </Link>

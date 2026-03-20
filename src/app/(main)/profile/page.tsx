@@ -267,7 +267,7 @@ function ProfileContent() {
       {/* Avatar */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-center gap-4">
         <div
-          className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
+          className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
           onClick={() => avatarInputRef.current?.click()}
         >
           {avatarUrl ? (
@@ -289,7 +289,7 @@ function ProfileContent() {
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="text-green-600 hover:text-green-800 text-sm font-medium"
           >
             {avatarUrl ? "Изменить фото" : "Загрузить фото"}
           </button>
@@ -312,7 +312,7 @@ function ProfileContent() {
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Алексей"
             />
           </div>
@@ -322,7 +322,7 @@ function ProfileContent() {
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Иванов"
             />
           </div>
@@ -340,7 +340,7 @@ function ProfileContent() {
                 setFomoId(val);
                 setFomoIdError("");
               }}
-              className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100 font-mono"
+              className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-800 dark:text-gray-100 font-mono"
               placeholder="my_unique_id"
               maxLength={33}
             />
@@ -353,7 +353,7 @@ function ProfileContent() {
           {session?.user?.id && (
             <div className="flex items-center gap-2 mt-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Моя страница: <span className="font-mono text-blue-600 dark:text-blue-400">fomo.broker/profile/{session.user.id}</span>
+                Моя страница: <span className="font-mono text-green-600 dark:text-green-400">fomo.broker/profile/{session.user.id}</span>
               </p>
               <ShareButtons
                 url={`https://fomo.broker/profile/${session.user.id}`}
@@ -370,7 +370,7 @@ function ProfileContent() {
               type="date"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
           <div>
@@ -379,7 +379,7 @@ function ProfileContent() {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Москва"
             />
           </div>
@@ -391,7 +391,7 @@ function ProfileContent() {
             type="text"
             value={workplace}
             onChange={(e) => setWorkplace(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Компания или 'Частный трейдер'"
           />
         </div>
@@ -402,7 +402,7 @@ function ProfileContent() {
             type="text"
             value={exchangeExperience}
             onChange={(e) => setExchangeExperience(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="3 года, 10+ лет"
           />
         </div>
@@ -415,7 +415,7 @@ function ProfileContent() {
                 key={opt.value}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition ${
                   specializations.includes(opt.value)
-                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                    ? "bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300"
                     : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
               >
@@ -437,7 +437,7 @@ function ProfileContent() {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Расскажите о себе и своём опыте..."
           />
         </div>
@@ -452,7 +452,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.telegram}
                 onChange={(e) => setSocialLinks({ ...socialLinks, telegram: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="@username или ссылка"
               />
             </div>
@@ -462,7 +462,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.vk}
                 onChange={(e) => setSocialLinks({ ...socialLinks, vk: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="https://vk.com/..."
               />
             </div>
@@ -472,7 +472,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.youtube}
                 onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="https://youtube.com/..."
               />
             </div>
@@ -482,7 +482,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.whatsapp}
                 onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="+7 999 123-45-67"
               />
             </div>
@@ -492,7 +492,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.max}
                 onChange={(e) => setSocialLinks({ ...socialLinks, max: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="Ссылка на профиль"
               />
             </div>
@@ -502,7 +502,7 @@ function ProfileContent() {
                 type="text"
                 value={socialLinks.website}
                 onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="https://..."
               />
             </div>
@@ -516,7 +516,7 @@ function ProfileContent() {
             <button
               type="button"
               onClick={() => setShowEduForm(!showEduForm)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              className="text-green-600 hover:text-green-800 text-sm font-medium"
             >
               {showEduForm ? "Отмена" : "+ Добавить"}
             </button>
@@ -530,7 +530,7 @@ function ProfileContent() {
                   type="text"
                   value={eduUniversity}
                   onChange={(e) => setEduUniversity(e.target.value)}
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="МГУ им. Ломоносова"
                 />
               </div>
@@ -541,7 +541,7 @@ function ProfileContent() {
                     type="text"
                     value={eduFaculty}
                     onChange={(e) => setEduFaculty(e.target.value)}
-                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div>
@@ -550,7 +550,7 @@ function ProfileContent() {
                     type="text"
                     value={eduSpecialty}
                     onChange={(e) => setEduSpecialty(e.target.value)}
-                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
               </div>
@@ -563,13 +563,13 @@ function ProfileContent() {
                     onChange={(e) => setEduYearEnd(e.target.value)}
                     min="1950"
                     max="2050"
-                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                    className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={addEducation}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
                 >
                   Добавить
                 </button>
@@ -609,7 +609,7 @@ function ProfileContent() {
             type="text"
             value={donationCard}
             onChange={(e) => setDonationCard(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="0000 0000 0000 0000"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -624,7 +624,7 @@ function ProfileContent() {
               type="checkbox"
               checked={dmEnabled}
               onChange={(e) => setDmEnabled(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
             />
             <div>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Разрешить личные сообщения</span>
@@ -637,7 +637,7 @@ function ProfileContent() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? "Сохранение..." : "Сохранить"}
           </button>

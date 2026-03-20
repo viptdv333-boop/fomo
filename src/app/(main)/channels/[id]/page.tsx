@@ -126,7 +126,7 @@ export default function ChannelPage() {
         </p>
         <button
           onClick={() => router.push("/channels")}
-          className="text-blue-600 hover:underline text-sm"
+          className="text-green-600 hover:underline text-sm"
         >
           ← Вернуться к каналам
         </button>
@@ -147,7 +147,7 @@ export default function ChannelPage() {
       {/* Channel header */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6 mb-4">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl overflow-hidden shrink-0">
+          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xl overflow-hidden shrink-0">
             {channel.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -161,7 +161,7 @@ export default function ChannelPage() {
               {channel.name}{" "}
               <span className="text-sm font-normal text-gray-400">({channel.id.slice(0, 8)})</span>
             </h1>
-            <Link href={`/profile/${channel.author.id}`} className="text-sm text-blue-600 hover:underline">
+            <Link href={`/profile/${channel.author.id}`} className="text-sm text-green-600 hover:underline">
               {channel.author.displayName}
             </Link>
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -178,15 +178,15 @@ export default function ChannelPage() {
         )}
 
         <div className="mt-4 flex items-center gap-4 flex-wrap">
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-2">
-            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{channel.price} ₽</span>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-2">
+            <span className="text-lg font-bold text-green-600 dark:text-green-400">{channel.price} ₽</span>
             <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ {channel.durationDays} дн.</span>
           </div>
 
           {!isOwner && !isSubscribed && (
             <button
               onClick={() => setShowBuyModal(true)}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
             >
               Купить подписку
             </button>
@@ -271,7 +271,7 @@ export default function ChannelPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Доступно по подписке</p>
                       <button
                         onClick={handleBuyFromLock}
-                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition"
+                        className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700 transition"
                       >
                         Купить подписку
                       </button>
@@ -301,7 +301,7 @@ export default function ChannelPage() {
                   <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.name}</span>
                   <span className="text-xs text-gray-400 ml-1">({t.id.slice(0, 8)})</span>
                 </div>
-                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                   {t.price} ₽ / {t.durationDays} дн.
                 </span>
               </Link>
@@ -317,7 +317,7 @@ export default function ChannelPage() {
           href={`/profile/${channel.author.id}`}
           className="flex items-center gap-3 p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
         >
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
+          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
             {channel.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -329,7 +329,7 @@ export default function ChannelPage() {
             <div className="font-medium text-gray-900 dark:text-gray-100">{channel.author.displayName}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Рейтинг: {Number(channel.author.rating).toFixed(1)} ⭐</div>
           </div>
-          <span className="ml-auto text-blue-600 text-sm">Профиль →</span>
+          <span className="ml-auto text-green-600 text-sm">Профиль →</span>
         </Link>
       </div>
 

@@ -82,7 +82,7 @@ export default function AdminCategoriesPage() {
                 setSlug(generateSlug(e.target.value));
               }}
               required
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="Криптовалюты"
             />
           </div>
@@ -93,7 +93,7 @@ export default function AdminCategoriesPage() {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               required
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="crypto"
             />
           </div>
@@ -103,13 +103,13 @@ export default function AdminCategoriesPage() {
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
             />
           </div>
           <div className="flex items-end">
             <button
               type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+              className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
             >
               Добавить
             </button>

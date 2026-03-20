@@ -168,7 +168,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
         <StatCard
           label="В этом месяце"
           value={`${data.earnings.thisMonth.toLocaleString("ru")} ₽`}
-          accent="blue"
+          accent="green"
         />
         <StatCard
           label="Активных подписчиков"
@@ -360,7 +360,7 @@ function SubscriptionCard({
       <div>
         <Link
           href={`/profile/${s.authorId}`}
-          className="font-medium hover:text-blue-600 dark:text-gray-100 transition"
+          className="font-medium hover:text-green-600 dark:text-gray-100 transition"
         >
           {s.authorName}
         </Link>
@@ -447,7 +447,7 @@ function PaymentCard({
     description = (
       <Link
         href={`/ideas/${p.ideaId}`}
-        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+        className="text-green-600 dark:text-green-400 hover:underline text-sm"
       >
         {p.ideaTitle}
       </Link>
@@ -477,7 +477,7 @@ function PaymentCard({
             {counterpartyLabel}:{" "}
             <Link
               href={`/profile/${counterpartyId}`}
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition"
+              className="hover:text-green-600 dark:hover:text-green-400 transition"
             >
               {counterpartyName}
             </Link>
@@ -496,7 +496,7 @@ function PaymentCard({
           <button
             onClick={onUploadReceipt}
             disabled={uploadingReceipt}
-            className="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50"
           >
             {uploadingReceipt ? "Загрузка..." : "Загрузить квитанцию"}
           </button>
@@ -509,7 +509,7 @@ function PaymentCard({
             href={p.receiptUrl!}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-xs text-green-600 dark:text-green-400 hover:underline"
           >
             Квитанция загружена
           </a>
@@ -535,7 +535,7 @@ function PaymentCard({
             href={p.receiptUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-xs text-green-600 dark:text-green-400 hover:underline"
           >
             Просмотреть квитанцию
           </a>
@@ -631,11 +631,10 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  accent: "green" | "blue" | "purple" | "amber";
+  accent: "green" | "purple" | "amber";
 }) {
   const accentClasses = {
     green: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
     purple: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800",
     amber: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
   };

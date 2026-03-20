@@ -52,7 +52,7 @@ interface Contact {
 
 const CHAT_BACKGROUNDS = [
   { id: "default", label: "Стандартный", class: "" },
-  { id: "blue", label: "Голубой", class: "bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20" },
+  { id: "green", label: "Голубой", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
   { id: "purple", label: "Фиолетовый", class: "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20" },
   { id: "green", label: "Зелёный", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
   { id: "dark", label: "Тёмный", class: "bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-950" },
@@ -498,7 +498,7 @@ function MessagesPage() {
             onClick={() => setTab("chats")}
             className={`flex-1 py-3 text-sm font-medium transition ${
               tab === "chats"
-                ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                ? "text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
@@ -508,7 +508,7 @@ function MessagesPage() {
             onClick={() => setTab("contacts")}
             className={`flex-1 py-3 text-sm font-medium transition ${
               tab === "contacts"
-                ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                ? "text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
@@ -521,7 +521,7 @@ function MessagesPage() {
           <div className="px-3 py-2 border-b dark:border-gray-700">
             <button
               onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
-              className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+              className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
             >
               + Начать новый чат
             </button>
@@ -555,11 +555,11 @@ function MessagesPage() {
                     onClick={() => setActiveConvId(conv.id)}
                     onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName, conv.id)}
                     className={`w-full text-left px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
-                      activeConvId === conv.id ? "bg-blue-50 dark:bg-blue-900/30" : ""
+                      activeConvId === conv.id ? "bg-green-50 dark:bg-green-900/30" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
                         {conv.otherUser?.avatarUrl ? (
                           <img src={conv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -588,7 +588,7 @@ function MessagesPage() {
                         )}
                       </div>
                       {conv.unread && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-600 shrink-0"></div>
                       )}
                     </div>
                   </button>
@@ -627,7 +627,7 @@ function MessagesPage() {
                     className="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onContextMenu={(e) => handleUserContextMenu(e, c.user.id, c.user.displayName)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
                       {c.user.avatarUrl ? (
                         <img src={c.user.avatarUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -635,7 +635,7 @@ function MessagesPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400 cursor-pointer" onClick={() => startConversation(c.user.id)}>
+                      <span className="text-sm font-medium truncate hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 cursor-pointer" onClick={() => startConversation(c.user.id)}>
                         {favorites.includes(c.user.id) && <span className="text-amber-400 mr-1">★</span>}
                         {c.nickname || c.user.displayName}
                       </span>
@@ -644,7 +644,7 @@ function MessagesPage() {
                       {c.user.dmEnabled && (
                         <button
                           onClick={() => startConversation(c.user.id)}
-                          className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-2 py-1"
+                          className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 px-2 py-1"
                         >
                           Написать
                         </button>
@@ -677,14 +677,14 @@ function MessagesPage() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
                 {activeConv.otherUser?.avatarUrl ? (
                   <img src={activeConv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
                   activeConv.otherUser?.displayName?.[0] || "?"
                 )}
               </div>
-              <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-medium hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400">
+              <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-medium hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
                 {activeConv.otherUser?.displayName || "Удалённый пользователь"}
               </Link>
 
@@ -692,7 +692,7 @@ function MessagesPage() {
               {activeConv.otherUser && !contacts.find((c) => c.user.id === activeConv.otherUser!.id) && (
                 <button
                   onClick={() => addContact(activeConv.otherUser!.id)}
-                  className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                 >
                   + В контакты
                 </button>
@@ -721,7 +721,7 @@ function MessagesPage() {
                             onClick={() => selectBg(bg.id)}
                             className={`h-10 rounded-lg border-2 transition ${
                               bg.class || "bg-white dark:bg-gray-900"
-                            } ${chatBg === bg.id ? "border-blue-500" : "border-gray-200 dark:border-gray-700"}`}
+                            } ${chatBg === bg.id ? "border-green-500" : "border-gray-200 dark:border-gray-700"}`}
                             title={bg.label}
                           />
                         ))}
@@ -733,7 +733,7 @@ function MessagesPage() {
                       <span className="text-xs text-gray-600 dark:text-gray-300">Уведомления</span>
                       <button
                         onClick={toggleNotifications}
-                        className={`w-10 h-5 rounded-full transition-colors ${chatNotifications ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"} relative`}
+                        className={`w-10 h-5 rounded-full transition-colors ${chatNotifications ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"} relative`}
                       >
                         <span className={`block w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${chatNotifications ? "translate-x-5" : "translate-x-0.5"}`} />
                       </button>
@@ -751,7 +751,7 @@ function MessagesPage() {
                           step={1}
                           value={chatFontSize}
                           onChange={(e) => changeFontSize(Number(e.target.value))}
-                          className="flex-1 accent-blue-600"
+                          className="flex-1 accent-green-600"
                         />
                         <span className="text-xs text-gray-400">10</span>
                       </div>
@@ -834,7 +834,7 @@ function MessagesPage() {
                               onClick={() => reactToMessage(msg.id, emoji)}
                               className={`text-xs px-1.5 py-0.5 rounded-full border transition ${
                                 (users as string[]).includes(myId || "")
-                                  ? "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700"
+                                  ? "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700"
                                   : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                               }`}
                             >
@@ -909,8 +909,8 @@ function MessagesPage() {
             {/* Reply preview */}
             {replyTo && (
               <div className="px-4 py-2 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
-                <div className="flex-1 border-l-2 border-blue-500 pl-3">
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                <div className="flex-1 border-l-2 border-green-500 pl-3">
+                  <div className="text-xs font-medium text-green-600 dark:text-green-400">
                     {replyTo.sender.displayName}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -933,7 +933,7 @@ function MessagesPage() {
                       onClick={() => setEmojiCategory(i)}
                       className={`text-xs px-3 py-1 rounded-full transition ${
                         emojiCategory === i
-                          ? "bg-blue-600 text-white"
+                          ? "bg-green-600 text-white"
                           : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                       }`}
                     >
@@ -973,7 +973,7 @@ function MessagesPage() {
                 title="Прикрепить файл"
               >
                 {uploading ? (
-                  <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                  <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
                 ) : (
                   "📎"
                 )}
@@ -983,7 +983,7 @@ function MessagesPage() {
               <button
                 type="button"
                 onClick={() => setShowEmoji(!showEmoji)}
-                className={`text-lg shrink-0 transition ${showEmoji ? "text-blue-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                className={`text-lg shrink-0 transition ${showEmoji ? "text-green-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
                 title="Эмодзи"
               >
                 😊
@@ -994,12 +994,12 @@ function MessagesPage() {
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
                 placeholder={replyTo ? "Ответить..." : "Написать сообщение..."}
-                className="flex-1 px-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                className="flex-1 px-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
               />
               <button
                 type="submit"
                 disabled={sending || (!newText.trim() && !uploading)}
-                className="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                className="bg-green-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
               >
                 →
               </button>
@@ -1027,7 +1027,7 @@ function MessagesPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск пользователей..."
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
               autoFocus
             />
             <div className="flex-1 overflow-y-auto space-y-1">
@@ -1047,7 +1047,7 @@ function MessagesPage() {
                     onClick={() => startNewChat(user.id)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
                   >
-                    <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm shrink-0 overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm shrink-0 overflow-hidden">
                       {user.avatarUrl ? (
                         <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -1078,7 +1078,7 @@ function MessagesPage() {
               value={contactFilter}
               onChange={(e) => setContactFilter(e.target.value)}
               placeholder="Поиск по имени или ID..."
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
               autoFocus
             />
             <div className="flex-1 overflow-y-auto space-y-1">

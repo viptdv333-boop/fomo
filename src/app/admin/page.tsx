@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   }
 
   const cards = [
-    { label: "Всего пользователей", value: stats.totalUsers, color: "bg-blue-500" },
+    { label: "Всего пользователей", value: stats.totalUsers, color: "bg-green-500" },
     { label: "Ожидают одобрения", value: stats.pendingUsers, color: "bg-yellow-500" },
     { label: "Одобрены", value: stats.approvedUsers, color: "bg-green-500" },
     { label: "Заблокированы", value: stats.bannedUsers, color: "bg-red-500" },

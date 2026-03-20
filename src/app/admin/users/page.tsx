@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
             onClick={() => setFilter(s)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
               filter === s
-                ? "bg-blue-600 text-white"
+                ? "bg-green-600 text-white"
                 : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
           >
@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs overflow-hidden shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xs overflow-hidden shrink-0">
                         {user.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -160,7 +160,7 @@ export default function AdminUsersPage() {
                       <span className="font-medium">{Number(user.rating).toFixed(1)}</span>
                       <button
                         onClick={() => setRatingModal({ userId: user.id, name: user.displayName, rating: Number(user.rating) })}
-                        className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 ml-1"
+                        className="text-gray-400 hover:text-green-500 dark:hover:text-green-400 ml-1"
                         title="Изменить рейтинг"
                       >
                         ✏️
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
                       {user.status === "BANNED" && (
                         <button
                           onClick={() => adminAction(user.id, { status: "APPROVED", bannedUntil: null, banReason: null })}
-                          className="px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                          className="px-2 py-1 rounded text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
                         >
                           🔓 Разбанить
                         </button>
@@ -353,7 +353,7 @@ export default function AdminUsersPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={handleRating}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
               >
                 Применить
               </button>

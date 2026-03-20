@@ -142,7 +142,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
             placeholder="Краткий заголовок идеи"
           />
         </div>
@@ -159,7 +159,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
                 onClick={() => toggleInstrument(inst.id)}
                 className={`px-3 py-1.5 rounded-full text-sm transition ${
                   selectedInstruments.includes(inst.id)
-                    ? "bg-blue-600 text-white"
+                    ? "bg-green-600 text-white"
                     : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
               >
@@ -183,7 +183,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
             onChange={(e) => setPreview(e.target.value)}
             required
             rows={3}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
             placeholder="Краткое описание идеи, видимое всем"
           />
         </div>
@@ -197,7 +197,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
             onChange={(e) => setContent(e.target.value)}
             required
             rows={10}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
             placeholder="Детальный анализ, прогноз, обоснование..."
           />
         </div>
@@ -234,7 +234,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-4 py-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition disabled:opacity-50"
+            className="px-4 py-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition disabled:opacity-50"
           >
             {uploading ? "Загрузка..." : "+ Добавить файлы"}
           </button>
@@ -255,7 +255,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
               type="checkbox"
               checked={isPaid}
               onChange={(e) => setIsPaid(e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500"
+              className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-green-600 focus:ring-green-500"
             />
             <span className="font-medium dark:text-gray-100">Платная идея</span>
           </label>
@@ -272,7 +272,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 required
-                className="w-48 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                className="w-48 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
                 placeholder="100"
               />
             </div>
@@ -302,7 +302,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
         >
           {loading
             ? mode === "edit"

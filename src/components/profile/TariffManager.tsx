@@ -95,7 +95,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
         <h3 className="text-lg font-semibold dark:text-gray-100">Каналы</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="text-sm text-blue-600 hover:text-blue-800 transition"
+          className="text-sm text-green-600 hover:text-green-800 transition"
         >
           {showForm ? "Отмена" : "+ Новый канал"}
         </button>
@@ -157,7 +157,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
           <button
             onClick={handleCreate}
             disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {saving ? "Сохранение..." : "Создать канал"}
           </button>

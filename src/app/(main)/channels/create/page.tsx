@@ -139,7 +139,7 @@ export default function CreateChannelPage() {
             type="text"
             value={channelName}
             onChange={(e) => setChannelName(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Мой трейдинг-канал"
           />
         </div>
@@ -155,14 +155,14 @@ export default function CreateChannelPage() {
               type="text"
               value={channelId}
               onChange={(e) => handleChannelIdChange(e.target.value)}
-              className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 font-mono"
+              className="flex-1 px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 font-mono"
               placeholder="my_channel"
               maxLength={30}
             />
           </div>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Прямая ссылка: <span className="font-mono text-blue-600 dark:text-blue-400">{channelUrlDisplay}</span>
+              Прямая ссылка: <span className="font-mono text-green-600 dark:text-green-400">{channelUrlDisplay}</span>
             </p>
             {channelId && (
               <ShareButtons url={channelUrl} text={`Канал "${channelName}" на FOMO`} />
@@ -179,7 +179,7 @@ export default function CreateChannelPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Опишите, что получат подписчики канала..."
           />
         </div>
@@ -191,7 +191,7 @@ export default function CreateChannelPage() {
             <button
               type="button"
               onClick={addTariff}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-green-600 hover:text-green-800"
             >
               + Добавить тариф
             </button>
@@ -263,7 +263,7 @@ export default function CreateChannelPage() {
                           type="checkbox"
                           checked={t.paymentMethods.includes("card")}
                           onChange={() => togglePaymentMethod(i, "card")}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 text-green-600 rounded"
                         />
                         <div>
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">💳 Перевод на карту</span>
@@ -293,7 +293,7 @@ export default function CreateChannelPage() {
                           type="checkbox"
                           checked={t.paymentMethods.includes("yukassa")}
                           onChange={() => togglePaymentMethod(i, "yukassa")}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 text-green-600 rounded"
                         />
                         <div>
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🏦 ЮKassa</span>
@@ -324,7 +324,7 @@ export default function CreateChannelPage() {
                           </div>
                           <p className="text-[11px] text-gray-400">
                             Получите ключи в{" "}
-                            <a href="https://yookassa.ru/my/merchant/integration/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                            <a href="https://yookassa.ru/my/merchant/integration/api-keys" target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">
                               личном кабинете ЮKassa
                             </a>
                             . Оплата проходит автоматически.
@@ -348,7 +348,7 @@ export default function CreateChannelPage() {
         <button
           onClick={handleCreate}
           disabled={saving}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
         >
           {saving ? "Создание..." : "Создать канал"}
         </button>

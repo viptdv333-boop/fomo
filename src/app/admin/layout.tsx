@@ -20,7 +20,7 @@ export default function AdminLayout({
     <SessionProvider>
       <div className="min-h-screen flex">
         <aside className="w-64 bg-gray-900 text-white p-6">
-          <Link href="/admin" className="text-xl font-bold text-blue-400 block mb-8">
+          <Link href="/admin" className="text-xl font-bold text-green-400 block mb-8">
             FOMO Admin
           </Link>
           <nav className="space-y-2">

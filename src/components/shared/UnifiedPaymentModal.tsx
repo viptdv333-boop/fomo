@@ -283,7 +283,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               </p>
               <button
                 onClick={() => { onClose(); onSuccess?.(); router.refresh(); }}
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
               >
                 Понятно
               </button>
@@ -305,7 +305,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                       key={t.id}
                       className={`block border rounded-lg p-3 cursor-pointer transition ${
                         selectedTariff?.id === t.id
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          ? "border-green-500 bg-green-50 dark:bg-green-900/20"
                           : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                       }`}
                     >
@@ -347,7 +347,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                 {availableMethods.includes("card") && (
                   <button
                     onClick={() => handleSelectMethod("card")}
-                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition text-left"
+                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition text-left"
                   >
                     <span className="text-2xl">💳</span>
                     <div>
@@ -385,9 +385,9 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
 
               {/* Instructions */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4">
-                <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">Инструкция:</p>
-                <ol className="text-xs text-blue-700 dark:text-blue-400 space-y-0.5 list-decimal list-inside">
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">
+                <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">Инструкция:</p>
+                <ol className="text-xs text-green-700 dark:text-green-400 space-y-0.5 list-decimal list-inside">
                   <li>Скопируйте номер карты ниже</li>
                   <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"} через банковское приложение</li>
                   <li>Сделайте скриншот чека об оплате</li>
@@ -406,7 +406,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                       cardCopied
                         ? "bg-green-100 dark:bg-green-900/30 text-green-600"
-                        : "bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200"
+                        : "bg-green-100 dark:bg-green-900/30 text-green-600 hover:bg-green-200"
                     }`}
                   >
                     {cardCopied ? "✓ Скопировано" : "Копировать"}
@@ -434,7 +434,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 transition"
+                    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-green-400 transition"
                   >
                     <div className="text-2xl mb-1">📎</div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Нажмите, чтобы прикрепить скриншот</p>
@@ -448,7 +448,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <button
                 onClick={handleCardPayment}
                 disabled={submitting || !receiptFile}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
               >
                 {submitting ? "Отправка..." : "Я оплатил"}
               </button>

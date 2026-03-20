@@ -74,7 +74,7 @@ export default function SubscriptionsPage() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           }`}
         >
-          Мои подписки {subs.length > 0 && <span className="ml-1 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full">{subs.length}</span>}
+          Мои подписки {subs.length > 0 && <span className="ml-1 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">{subs.length}</span>}
         </button>
       </div>
 
@@ -87,7 +87,7 @@ export default function SubscriptionsPage() {
             </p>
             <Link
               href="/channels/create"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 ml-4"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition shrink-0 ml-4"
             >
               + Создать канал
             </Link>
@@ -114,7 +114,7 @@ export default function SubscriptionsPage() {
                     </div>
                     <Link
                       href="/channels/create"
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-sm text-green-600 dark:text-green-400 hover:underline"
                     >
                       Настроить
                     </Link>
@@ -137,7 +137,7 @@ export default function SubscriptionsPage() {
             {authorSubs.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
                 <p className="text-gray-400 dark:text-gray-500 text-sm">Вы не подписаны ни на одного автора</p>
-                <Link href="/authors" className="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">
+                <Link href="/authors" className="text-green-600 dark:text-green-400 hover:underline text-sm mt-2 inline-block">
                   Найти авторов
                 </Link>
               </div>
@@ -145,7 +145,7 @@ export default function SubscriptionsPage() {
               <div className="space-y-3">
                 {authorSubs.map((sub) => (
                   <div key={sub.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
                       {sub.author.avatarUrl ? (
                         <img src={sub.author.avatarUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -155,7 +155,7 @@ export default function SubscriptionsPage() {
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/profile/${sub.author.id}`}
-                        className="font-medium hover:text-blue-600 dark:text-gray-100"
+                        className="font-medium hover:text-green-600 dark:text-gray-100"
                       >
                         {sub.author.displayName}
                       </Link>
@@ -195,7 +195,7 @@ export default function SubscriptionsPage() {
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/profile/${sub.author.id}`}
-                        className="font-medium hover:text-blue-600 dark:text-gray-100"
+                        className="font-medium hover:text-green-600 dark:text-gray-100"
                       >
                         {sub.author.displayName}
                       </Link>

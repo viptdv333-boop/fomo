@@ -235,7 +235,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
             onClick={() => setTab(t.key)}
             className={`flex-1 py-1.5 text-[11px] font-medium transition ${
               tab === t.key
-                ? "text-blue-600 border-b-2 border-blue-600"
+                ? "text-green-600 border-b-2 border-green-600"
                 : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             }`}
           >
@@ -286,7 +286,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                           onClick={() => setOrderType("market")}
                           className={`flex-1 py-1 rounded text-[11px] font-medium ${
                             orderType === "market"
-                              ? "bg-blue-600 text-white"
+                              ? "bg-green-600 text-white"
                               : "bg-gray-100 dark:bg-gray-800 text-gray-500"
                           }`}
                         >
@@ -296,7 +296,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                           onClick={() => setOrderType("limit")}
                           className={`flex-1 py-1 rounded text-[11px] font-medium ${
                             orderType === "limit"
-                              ? "bg-blue-600 text-white"
+                              ? "bg-green-600 text-white"
                               : "bg-gray-100 dark:bg-gray-800 text-gray-500"
                           }`}
                         >
@@ -388,7 +388,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                 )}
                 <button
                   onClick={loadAccount}
-                  className="w-full py-1.5 text-[11px] text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded transition"
+                  className="w-full py-1.5 text-[11px] text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 rounded transition"
                 >
                   Обновить
                 </button>
@@ -423,7 +423,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                 )}
                 <button
                   onClick={loadOrders}
-                  className="w-full py-1.5 text-[11px] text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded transition"
+                  className="w-full py-1.5 text-[11px] text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 rounded transition"
                 >
                   Обновить
                 </button>
@@ -452,7 +452,7 @@ export default function SandboxPanel({ selectedTicker, selectedName, onSelectTic
                 )}
                 <button
                   onClick={loadOperations}
-                  className="w-full py-1.5 text-[11px] text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded transition"
+                  className="w-full py-1.5 text-[11px] text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 rounded transition"
                 >
                   Обновить
                 </button>

@@ -260,7 +260,7 @@ export default function MoexStats({ slug }: MoexStatsProps) {
               )}
               {data.low52w !== null && data.high52w !== null && data.last !== null && data.high52w > data.low52w && (
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-blue-600 rounded-full border-2 border-white dark:border-gray-900 shadow"
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-green-600 rounded-full border-2 border-white dark:border-gray-900 shadow"
                   style={{
                     left: `${Math.min(100, Math.max(0, ((data.last - data.low52w) / (data.high52w - data.low52w)) * 100))}%`,
                     transform: "translate(-50%, -50%)",

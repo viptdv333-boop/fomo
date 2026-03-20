@@ -127,7 +127,7 @@ function FeedPage() {
   const filterBtnClass = (active: boolean) =>
     `px-3 py-1.5 rounded-lg text-xs font-medium transition ${
       active
-        ? "bg-blue-600 text-white"
+        ? "bg-green-600 text-white"
         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
     }`;
 
@@ -184,7 +184,7 @@ function FeedPage() {
           <div className="relative">
             <button
               onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
-              className={`${filterBtnClass(!!selectedInstrument)} ${expandedCategory === "__root" ? "ring-1 ring-blue-400" : ""}`}
+              className={`${filterBtnClass(!!selectedInstrument)} ${expandedCategory === "__root" ? "ring-1 ring-green-400" : ""}`}
             >
               {selectedInstrument
                 ? categories.flatMap((c) => c.instruments).find((i) => i.id === selectedInstrument)?.name || "Категории"
@@ -198,7 +198,7 @@ function FeedPage() {
                   <button
                     onClick={() => { setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
                     className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      !selectedInstrument ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                      !selectedInstrument ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
                     }`}
                   >
                     Все инструменты
@@ -217,7 +217,7 @@ function FeedPage() {
                             onClick={() => { setSelectedInstrument(inst.id); setExpandedCategory(null); setPage(1); }}
                             className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
                               selectedInstrument === inst.id
-                                ? "text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-900/30"
+                                ? "text-green-700 dark:text-green-300 font-medium bg-green-50 dark:bg-green-900/30"
                                 : "text-gray-700 dark:text-gray-300"
                             }`}
                           >
@@ -250,14 +250,14 @@ function FeedPage() {
                       placeholder="Поиск автора..."
                       value={authorSearch}
                       onChange={(e) => setAuthorSearch(e.target.value)}
-                      className="w-full px-2 py-1.5 border dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                      className="w-full px-2 py-1.5 border dark:border-gray-600 rounded text-xs focus:ring-1 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
                       autoFocus
                     />
                   </div>
                   <div className="max-h-60 overflow-y-auto">
                     <button
                       onClick={() => { setAuthorFilter(""); setAuthorDisplayName(""); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
-                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!authorFilter ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!authorFilter ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
                     >
                       Все авторы
                     </button>
@@ -267,7 +267,7 @@ function FeedPage() {
                         <button
                           key={a.id}
                           onClick={() => { setAuthorFilter(a.id); setAuthorDisplayName(a.displayName); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
-                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${authorFilter === a.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${authorFilter === a.id ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
                         >
                           {a.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
