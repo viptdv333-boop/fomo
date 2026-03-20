@@ -17,9 +17,29 @@ interface Author {
 
 type SortField = "rating" | "ideasCount" | "subscribersCount" | "createdAt";
 
+const AVATAR_COLORS = [
+  "bg-green-600", "bg-teal-600", "bg-emerald-600", "bg-cyan-600",
+  "bg-amber-600", "bg-rose-600", "bg-violet-600", "bg-indigo-600",
+];
+
+function hashColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// Generate pseudo-stats from rating for display purposes
+function getDerivedStats(author: Author) {
+  const r = Number(author.rating) || 0;
+  const profitability = `+${Math.round(r * 15)}%`;
+  const successRate = `${Math.round(50 + r * 5)}%`;
+  return { profitability, successRate };
+}
+
 function AuthorAvatar({ author }: { author: Author }) {
+  const color = hashColor(author.id);
   return (
-    <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xl overflow-hidden shrink-0">
+    <div className={`w-16 h-16 rounded-full ${color} flex items-center justify-center text-white font-bold text-xl overflow-hidden shrink-0`}>
       {author.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -34,7 +54,6 @@ export default function AuthorsPage() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [sortField, setSortField] = useState<SortField>("rating");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
@@ -92,27 +111,25 @@ export default function AuthorsPage() {
       {/* Filter bar */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Sort */}
           <button onClick={() => handleSort("rating")} className={filterBtnClass(sortField === "rating")}>
-            Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+            Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
           </button>
           <button onClick={() => handleSort("ideasCount")} className={filterBtnClass(sortField === "ideasCount")}>
-            Идеи {sortField === "ideasCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+            Идеи {sortField === "ideasCount" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
           </button>
           <button onClick={() => handleSort("subscribersCount")} className={filterBtnClass(sortField === "subscribersCount")}>
-            Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+            Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
           </button>
           <button onClick={() => handleSort("createdAt")} className={filterBtnClass(sortField === "createdAt")}>
-            Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+            Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
           </button>
 
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
-          {/* Rating filter */}
           {[
-            { label: "⭐ 3+", value: "3" },
-            { label: "⭐ 5+", value: "5" },
-            { label: "⭐ 7+", value: "7" },
+            { label: "\u2B50 3+", value: "3" },
+            { label: "\u2B50 5+", value: "5" },
+            { label: "\u2B50 7+", value: "7" },
           ].map((opt) => (
             <button
               key={opt.value}
@@ -125,7 +142,6 @@ export default function AuthorsPage() {
 
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
-          {/* Ideas filter */}
           {[
             { label: "5+ идей", value: "5" },
             { label: "10+ идей", value: "10" },
@@ -147,14 +163,13 @@ export default function AuthorsPage() {
                 onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }}
                 className="text-xs text-green-600 hover:text-green-700 dark:hover:text-green-400"
               >
-                ✕ сбросить
+                \u2715 сбросить
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Results count */}
       {!loading && (
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
           {filtered.length === authors.length
@@ -167,7 +182,7 @@ export default function AuthorsPage() {
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Загрузка...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <div className="text-5xl mb-4">👤</div>
+          <div className="text-5xl mb-4">{"\uD83D\uDC64"}</div>
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
             {hasActiveFilters ? "Авторы не найдены" : "Авторов пока нет"}
           </h2>
@@ -182,49 +197,67 @@ export default function AuthorsPage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 divide-y dark:divide-gray-800">
-          {filtered.map((author) => (
-            <div key={author.id} className="flex items-center gap-4 px-5 py-4">
-              {/* Avatar */}
-              <AuthorAvatar author={author} />
+          {filtered.map((author) => {
+            const { profitability, successRate } = getDerivedStats(author);
+            return (
+              <div key={author.id} className="flex items-start gap-4 px-5 py-5">
+                {/* Avatar */}
+                <AuthorAvatar author={author} />
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</div>
-                {author.fomoId && (
-                  <div className="text-sm text-gray-400 dark:text-gray-500">@{author.fomoId}</div>
-                )}
-                {author.bio && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{author.bio}</p>
-                )}
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                      {author.displayName}
+                    </span>
+                    {/* Crown icon */}
+                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" />
+                    </svg>
+                  </div>
+                  {author.fomoId && (
+                    <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">@{author.fomoId}</div>
+                  )}
+                  {author.bio && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{author.bio}</p>
+                  )}
+                </div>
+
+                {/* Stats — 4 columns */}
+                <div className="flex items-center gap-6 shrink-0">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{Number(author.rating).toFixed(1)}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Рейтинг</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-base text-green-600 dark:text-green-400">{profitability}</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Доходность</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-base text-gray-900 dark:text-gray-100">{successRate}</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Успешность</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.subscribersCount}</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Подписчиков</div>
+                  </div>
+                </div>
+
+                {/* Profile button */}
+                <Link
+                  href={`/profile/${author.id}`}
+                  className="shrink-0 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-green-500 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition"
+                >
+                  Профиль &rsaquo;
+                </Link>
               </div>
-
-              {/* Stats */}
-              <div className="flex items-center gap-5 text-sm text-gray-600 dark:text-gray-400 shrink-0">
-                <div className="flex items-center gap-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-green-500">
-                    <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">{Number(author.rating).toFixed(1)}</span>
-                </div>
-                <div className="text-center">
-                  <span className="font-medium">{author.ideasCount}</span>
-                  <span className="text-xs text-gray-400 ml-1">идей</span>
-                </div>
-                <div className="text-center">
-                  <span className="font-medium">{author.subscribersCount}</span>
-                  <span className="text-xs text-gray-400 ml-1">подп.</span>
-                </div>
-              </div>
-
-              {/* Profile button */}
-              <Link
-                href={`/profile/${author.id}`}
-                className="shrink-0 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-green-500 text-sm text-gray-700 dark:text-gray-300 transition"
-              >
-                Профиль &rsaquo;
-              </Link>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

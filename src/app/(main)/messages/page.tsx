@@ -507,179 +507,89 @@ function MessagesPage() {
             />
           </div>
         </div>
-        {/* Tabs */}
-        <div className="flex border-b dark:border-gray-700">
+        {/* New Chat Button */}
+        <div className="px-3 py-2 border-b dark:border-gray-700">
           <button
-            onClick={() => setTab("chats")}
-            className={`flex-1 py-3 text-sm font-medium transition ${
-              tab === "chats"
-                ? "text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
+            onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
+            className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
           >
-            Чаты
-          </button>
-          <button
-            onClick={() => setTab("contacts")}
-            className={`flex-1 py-3 text-sm font-medium transition ${
-              tab === "contacts"
-                ? "text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
-          >
-            Контакты
+            + Начать новый чат
           </button>
         </div>
 
-        {/* New Chat Button — only in Chats tab */}
-        {tab === "chats" && (
-          <div className="px-3 py-2 border-b dark:border-gray-700">
-            <button
-              onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
-              className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
-            >
-              + Начать новый чат
-            </button>
-          </div>
-        )}
-
         {/* List */}
         <div className="flex-1 overflow-y-auto">
-          {tab === "chats" && (
-            <>
-              {conversations.length === 0 ? (
-                <div className="p-4 text-gray-400 dark:text-gray-500 text-sm text-center">
-                  Нет диалогов
-                </div>
-              ) : (
-                [...conversations]
-                  .sort((a, b) => {
-                    const aPin = pinnedChats.includes(a.id);
-                    const bPin = pinnedChats.includes(b.id);
-                    if (aPin && !bPin) return -1;
-                    if (!aPin && bPin) return 1;
-                    const aFav = favorites.includes(a.otherUser?.id || "");
-                    const bFav = favorites.includes(b.otherUser?.id || "");
-                    if (aFav && !bFav) return -1;
-                    if (!aFav && bFav) return 1;
-                    return 0;
-                  })
-                  .map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => setActiveConvId(conv.id)}
-                    onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName, conv.id)}
-                    className={`w-full text-left px-4 py-3 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      activeConvId === conv.id ? "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500" : "border-l-2 border-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-base overflow-hidden">
-                          {conv.otherUser?.avatarUrl ? (
-                            <img src={conv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            conv.otherUser?.displayName?.[0] || "?"
-                          )}
-                        </div>
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className={`text-sm font-bold truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
-                            {pinnedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">📌</span>}
-                            {mutedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">🔕</span>}
-                            {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
-                            {conv.otherUser?.displayName || "Удалённый пользователь"}
-                          </span>
-                          {conv.lastMessage && (
-                            <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-2 shrink-0">
-                              {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          )}
-                        </div>
-                        {conv.lastMessage && (
-                          <p className={`text-xs truncate mt-0.5 ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
-                            {conv.lastMessage.senderId === myId ? "Вы: " : ""}
-                            {conv.lastMessage.text || "📎 Файл"}
-                          </p>
+          {conversations.length === 0 ? (
+            <div className="p-4 text-gray-400 dark:text-gray-500 text-sm text-center">
+              Нет диалогов
+            </div>
+          ) : (
+            [...conversations]
+              .sort((a, b) => {
+                const aPin = pinnedChats.includes(a.id);
+                const bPin = pinnedChats.includes(b.id);
+                if (aPin && !bPin) return -1;
+                if (!aPin && bPin) return 1;
+                const aFav = favorites.includes(a.otherUser?.id || "");
+                const bFav = favorites.includes(b.otherUser?.id || "");
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+                return 0;
+              })
+              .map((conv) => {
+                const avatarColors = ['bg-green-600','bg-teal-600','bg-emerald-600','bg-cyan-600','bg-amber-600','bg-rose-600','bg-violet-600','bg-indigo-600'];
+                const colorHash = (conv.otherUser?.displayName || "?").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+                const avatarBg = avatarColors[colorHash % avatarColors.length];
+                return (
+                <button
+                  key={conv.id}
+                  onClick={() => setActiveConvId(conv.id)}
+                  onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName, conv.id)}
+                  className={`w-full text-left px-4 py-3 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                    activeConvId === conv.id ? "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500" : "border-l-2 border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <div className={`w-12 h-12 rounded-full ${conv.otherUser?.avatarUrl ? '' : avatarBg} flex items-center justify-center text-white font-bold text-base overflow-hidden`}>
+                        {conv.otherUser?.avatarUrl ? (
+                          <img src={conv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          conv.otherUser?.displayName?.[0] || "?"
                         )}
                       </div>
-                      {conv.unread && (
-                        <div className="min-w-[20px] h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
-                          1
-                        </div>
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm font-bold truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                          {pinnedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">📌</span>}
+                          {mutedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">🔕</span>}
+                          {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
+                          {conv.otherUser?.displayName || "Удалённый пользователь"}
+                        </span>
+                        {conv.lastMessage && (
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-2 shrink-0">
+                            {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                      {conv.lastMessage && (
+                        <p className={`text-xs truncate mt-0.5 ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
+                          {conv.lastMessage.senderId === myId ? "Вы: " : ""}
+                          {conv.lastMessage.text || "📎 Файл"}
+                        </p>
                       )}
                     </div>
-                  </button>
-                ))
-              )}
-            </>
-          )}
-
-          {tab === "contacts" && (
-            <>
-              <div className="px-3 py-2 border-b dark:border-gray-700">
-                <button
-                  onClick={() => { setContactFilter(""); loadDmUsers(); setShowAddContact(true); }}
-                  className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
-                >
-                  + Добавить контакт
-                </button>
-              </div>
-              {contacts.length === 0 ? (
-                <div className="p-4 text-gray-400 dark:text-gray-500 text-sm text-center">
-                  Нет контактов
-                </div>
-              ) : (
-                [...contacts]
-                  .sort((a, b) => {
-                    const aFav = favorites.includes(a.user.id);
-                    const bFav = favorites.includes(b.user.id);
-                    if (aFav && !bFav) return -1;
-                    if (!aFav && bFav) return 1;
-                    if (aFav && bFav) return (a.user.displayName || "").localeCompare(b.user.displayName || "", "ru");
-                    return 0;
-                  })
-                  .map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onContextMenu={(e) => handleUserContextMenu(e, c.user.id, c.user.displayName)}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
-                      {c.user.avatarUrl ? (
-                        <img src={c.user.avatarUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        c.user.displayName[0]
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 cursor-pointer" onClick={() => startConversation(c.user.id)}>
-                        {favorites.includes(c.user.id) && <span className="text-amber-400 mr-1">★</span>}
-                        {c.nickname || c.user.displayName}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      {c.user.dmEnabled && (
-                        <button
-                          onClick={() => startConversation(c.user.id)}
-                          className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 px-2 py-1"
-                        >
-                          Написать
-                        </button>
-                      )}
-                      <button
-                        onClick={() => removeContact(c.user.id)}
-                        className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-2 py-1"
-                      >
-                        ×
-                      </button>
-                    </div>
+                    {conv.unread && (
+                      <div className="min-w-[20px] h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
+                        1
+                      </div>
+                    )}
                   </div>
-                ))
-              )}
-            </>
+                </button>
+                );
+              })
           )}
         </div>
       </div>

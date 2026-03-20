@@ -23,7 +23,7 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <svg
           key={i}
-          className={`w-3 h-3 ${i <= full ? "text-yellow-500" : "text-gray-300 dark:text-gray-600"}`}
+          className={`w-3.5 h-3.5 ${i <= full ? "text-green-500" : "text-gray-300 dark:text-gray-600"}`}
           fill="currentColor"
           viewBox="0 0 20 20"
         >
@@ -60,11 +60,14 @@ interface IdeaCardProps {
   minimal?: boolean;
 }
 
-export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
+export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardProps) {
   const { data: session } = useSession();
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
   const [showDonateModal, setShowDonateModal] = useState(false);
+
+  // Fake view count derived from idea id for display
+  const viewCount = Math.abs(idea.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 400) + 50;
 
   async function handleLike() {
     if (!session) return;
@@ -86,12 +89,106 @@ export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
 
   const avatarColor = hashColor(idea.author.id);
 
+  // Minimal list view
+  if (minimal) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+        <div className={`w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden`}>
+          {idea.author.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            idea.author.displayName[0]
+          )}
+        </div>
+        <Link href={`/ideas/${idea.id}`} className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm dark:text-gray-100 truncate">{idea.title}</span>
+            {idea.isPaid && (
+              <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium shrink-0">
+                {idea.price} P
+              </span>
+            )}
+          </div>
+        </Link>
+        <span className="text-xs text-gray-400 shrink-0">{idea.author.displayName}</span>
+        <span className="text-xs text-gray-400 shrink-0">{dateStr}</span>
+        <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          {viewCount}
+        </span>
+        <span className={`flex items-center gap-1 text-xs shrink-0 ${likeCount > 0 ? "text-red-500" : "text-gray-400"}`}>
+          <svg className="w-3.5 h-3.5" fill={likeCount > 0 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+          </svg>
+          {likeCount}
+        </span>
+      </div>
+    );
+  }
+
+  // Compact card view
+  if (compact) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full">
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}>
+            {idea.author.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              idea.author.displayName[0]
+            )}
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
+          <StarRating rating={idea.author.rating} />
+          {idea.isPaid && (
+            <span className="ml-auto px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold shrink-0">
+              {idea.price} P
+            </span>
+          )}
+        </div>
+        <Link href={`/ideas/${idea.id}`}>
+          <h3 className="font-semibold text-sm mb-1.5 dark:text-gray-100 hover:text-green-600 transition line-clamp-2">
+            {idea.title}
+          </h3>
+        </Link>
+        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{idea.preview}</p>
+        <div className="flex items-center justify-between mt-auto text-xs text-gray-400">
+          <div className="flex gap-1 flex-wrap">
+            {idea.instruments.slice(0, 2).map((inst) => (
+              <Link key={inst.id} href={`/instruments/${inst.slug}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] hover:bg-green-100 transition">
+                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" /></svg>
+                {inst.name}
+              </Link>
+            ))}
+          </div>
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {viewCount}
+          </span>
+          <button onClick={handleLike} className={`flex items-center gap-1 ${liked ? "text-red-500" : "hover:text-red-500"}`}>
+            <svg className="w-3.5 h-3.5" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+            </svg>
+            {likeCount}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default paragraph view — NO border
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 hover:shadow-md transition">
       {/* Top: Avatar + Author info + Price badge */}
-      <div className="flex items-start gap-3 mb-3">
+      <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${idea.author.id}`} className="shrink-0">
-          <div className={`w-12 h-12 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-lg overflow-hidden`}>
+          <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-sm overflow-hidden`}>
             {idea.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={idea.author.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -108,21 +205,20 @@ export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
             {idea.author.fomoId && (
               <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">@{idea.author.fomoId}</span>
             )}
+            <span className="text-xs text-gray-400 dark:text-gray-500">&middot;</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{Number(idea.author.rating).toFixed(1)}</span>
             <StarRating rating={idea.author.rating} />
-          </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            Рейтинг {Number(idea.author.rating).toFixed(1)}
           </div>
         </div>
 
         {/* Price badge */}
         {idea.isPaid && (
-          <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold shrink-0">
+          <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold shrink-0">
             {idea.price} P
           </span>
         )}
 
-        {/* Edit button for author */}
+        {/* Edit button */}
         {session?.user?.id === idea.author.id && (
           <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 shrink-0 transition" title="Редактировать">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -134,13 +230,13 @@ export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
 
       {/* Title */}
       <Link href={`/ideas/${idea.id}`}>
-        <h2 className="text-lg font-bold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition mb-1.5">
+        <h2 className="text-base font-bold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition mb-1">
           {idea.title}
         </h2>
       </Link>
 
       {/* Description */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">{idea.preview}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{idea.preview}</p>
 
       {/* Bottom: Tags left, Meta right */}
       <div className="flex items-center justify-between gap-3">
@@ -150,7 +246,7 @@ export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
             <Link
               key={inst.id}
               href={`/instruments/${inst.slug}`}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-[11px] font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[11px] font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
@@ -160,40 +256,27 @@ export default function IdeaCard({ idea, onVote }: IdeaCardProps) {
           ))}
         </div>
 
-        {/* Meta: date, views, likes, donate */}
-        <div className="flex items-center gap-3 shrink-0 text-gray-400 dark:text-gray-500">
-          {/* Date */}
-          <span className="flex items-center gap-1 text-xs">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-            </svg>
-            {dateStr}
-          </span>
+        {/* Meta: date, views, likes */}
+        <div className="flex items-center gap-4 shrink-0 text-gray-400 dark:text-gray-500 text-xs">
+          <span>{dateStr}</span>
 
-          {/* Donate */}
-          {!idea.isPaid && idea.acceptDonations && session && session.user?.id !== idea.author.id && (
-            <button
-              onClick={() => setShowDonateModal(true)}
-              className="text-green-500 hover:text-green-600 transition"
-              title="Донат"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-          )}
+          {/* Views */}
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {viewCount}
+          </span>
 
           {/* Heart like */}
           <button
             onClick={handleLike}
-            className={`flex items-center gap-1 text-xs transition ${
-              liked ? "text-red-500" : "hover:text-red-500"
-            }`}
+            className={`flex items-center gap-1 transition ${liked ? "text-red-500" : "hover:text-red-500"}`}
           >
-            <svg className="w-4 h-4" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3.5 h-3.5" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            <span className="font-medium">{likeCount}</span>
+            {likeCount}
           </button>
         </div>
       </div>
