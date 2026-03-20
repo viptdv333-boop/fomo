@@ -492,6 +492,21 @@ function MessagesPage() {
     <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden flex-1 min-h-0">
       {/* Sidebar — full width on mobile, fixed width on desktop */}
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r dark:border-gray-700 flex-col`}>
+        {/* Sidebar Title */}
+        <div className="px-4 pt-4 pb-2">
+          <h2 className="text-xl font-bold dark:text-gray-100">Сообщения</h2>
+        </div>
+        {/* Search */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input
+              type="text"
+              placeholder="Поиск..."
+              className="w-full pl-9 pr-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            />
+          </div>
+        </div>
         {/* Tabs */}
         <div className="flex border-b dark:border-gray-700">
           <button
@@ -554,41 +569,46 @@ function MessagesPage() {
                     key={conv.id}
                     onClick={() => setActiveConvId(conv.id)}
                     onContextMenu={(e) => conv.otherUser && handleUserContextMenu(e, conv.otherUser.id, conv.otherUser.displayName, conv.id)}
-                    className={`w-full text-left px-4 py-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
-                      activeConvId === conv.id ? "bg-green-50 dark:bg-green-900/30" : ""
+                    className={`w-full text-left px-4 py-3 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                      activeConvId === conv.id ? "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500" : "border-l-2 border-transparent"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden shrink-0">
-                        {conv.otherUser?.avatarUrl ? (
-                          <img src={conv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          conv.otherUser?.displayName?.[0] || "?"
-                        )}
+                      <div className="relative shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-base overflow-hidden">
+                          {conv.otherUser?.avatarUrl ? (
+                            <img src={conv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            conv.otherUser?.displayName?.[0] || "?"
+                          )}
+                        </div>
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex justify-between items-center">
-                          <span className={`text-sm font-medium truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                          <span className={`text-sm font-bold truncate ${conv.unread ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                             {pinnedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">📌</span>}
                             {mutedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">🔕</span>}
                             {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
                             {conv.otherUser?.displayName || "Удалённый пользователь"}
                           </span>
                           {conv.lastMessage && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-2 shrink-0">
                               {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                             </span>
                           )}
                         </div>
                         {conv.lastMessage && (
-                          <p className={`text-xs truncate ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
+                          <p className={`text-xs truncate mt-0.5 ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
                             {conv.lastMessage.senderId === myId ? "Вы: " : ""}
                             {conv.lastMessage.text || "📎 Файл"}
                           </p>
                         )}
                       </div>
                       {conv.unread && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-600 shrink-0"></div>
+                        <div className="min-w-[20px] h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
+                          1
+                        </div>
                       )}
                     </div>
                   </button>
@@ -677,16 +697,19 @@ function MessagesPage() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
-              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
                 {activeConv.otherUser?.avatarUrl ? (
                   <img src={activeConv.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
                   activeConv.otherUser?.displayName?.[0] || "?"
                 )}
               </div>
-              <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-medium hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
-                {activeConv.otherUser?.displayName || "Удалённый пользователь"}
-              </Link>
+              <div className="flex flex-col">
+                <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-bold text-sm hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 leading-tight">
+                  {activeConv.otherUser?.displayName || "Удалённый пользователь"}
+                </Link>
+                <span className="text-xs text-green-500">В сети</span>
+              </div>
 
               {/* Add to contacts */}
               {activeConv.otherUser && !contacts.find((c) => c.user.id === activeConv.otherUser!.id) && (
@@ -698,8 +721,25 @@ function MessagesPage() {
                 </button>
               )}
 
+              {/* Header action icons */}
+              <div className="ml-auto flex items-center gap-1">
+                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Позвонить">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Видеозвонок">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+                </button>
+                <button
+                  onClick={() => activeConv.otherUser && toggleFavorite(activeConv.otherUser.id)}
+                  className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition ${favorites.includes(activeConv.otherUser?.id || "") ? "text-amber-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                  title="Избранное"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={favorites.includes(activeConv.otherUser?.id || "") ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
+              </div>
+
               {/* Settings gear */}
-              <div className="ml-auto relative">
+              <div className="relative">
                 <button
                   onClick={() => setShowSettings(!showSettings)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -780,7 +820,7 @@ function MessagesPage() {
                 return (
                   <div
                     key={msg.id}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
+                    className={`flex ${isMe ? "justify-end" : "justify-start"} group animate-[fadeIn_0.3s_ease-out]`}
                     onContextMenu={(e) => handleContextMenu(e, msg)}
                   >
                     <div className="max-w-[75vw] sm:max-w-xs">
@@ -789,8 +829,8 @@ function MessagesPage() {
                         <div
                           className={`text-[11px] px-3 py-1 mb-0.5 rounded-t-lg border-l-2 ${
                             isMe
-                              ? "border-red-300 bg-red-700/50 text-red-100"
-                              : "border-green-300 bg-green-700/50 text-green-100"
+                              ? "border-green-300 bg-green-700/50 text-green-100"
+                              : "border-gray-300 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300"
                           }`}
                         >
                           <span className="font-medium">{msg.replyTo.sender.displayName}</span>
@@ -803,18 +843,18 @@ function MessagesPage() {
                           msg.isDeleted
                             ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 italic"
                             : isMe
-                            ? "bg-red-600 text-white rounded-br-md"
-                            : "bg-green-600 text-white rounded-bl-md"
+                            ? "bg-green-600 text-white rounded-br-sm"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm"
                         } ${msg.isPinned ? "ring-1 ring-amber-400" : ""}`}
                       >
                         {!msg.isDeleted && renderFileAttachment(msg)}
                         {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
                         {msg.isDeleted && <p className="whitespace-pre-wrap break-words">Сообщение удалено</p>}
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className={`flex items-center gap-1 mt-1 ${isMe ? "justify-end" : ""}`}>
                           {msg.isPinned && <span className="text-[10px]">📌</span>}
                           <span
                             className={`text-[10px] ${
-                              isMe ? "text-red-200" : "text-green-200"
+                              isMe ? "text-green-200" : "text-gray-400 dark:text-gray-500"
                             }`}
                           >
                             {new Date(msg.createdAt).toLocaleTimeString("ru", {
@@ -822,6 +862,9 @@ function MessagesPage() {
                               minute: "2-digit",
                             })}
                           </span>
+                          {isMe && !msg.isDeleted && (
+                            <span className="text-[10px] text-green-200">✓✓</span>
+                          )}
                         </div>
                       </div>
 
@@ -969,24 +1012,14 @@ function MessagesPage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg shrink-0 disabled:opacity-50"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 shrink-0 disabled:opacity-50 transition"
                 title="Прикрепить файл"
               >
                 {uploading ? (
                   <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
                 ) : (
-                  "📎"
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                 )}
-              </button>
-
-              {/* Emoji toggle */}
-              <button
-                type="button"
-                onClick={() => setShowEmoji(!showEmoji)}
-                className={`text-lg shrink-0 transition ${showEmoji ? "text-green-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
-                title="Эмодзи"
-              >
-                😊
               </button>
 
               <input
@@ -994,14 +1027,25 @@ function MessagesPage() {
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
                 placeholder={replyTo ? "Ответить..." : "Написать сообщение..."}
-                className="flex-1 px-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                className="flex-1 px-4 py-2.5 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
               />
+
+              {/* Emoji toggle */}
+              <button
+                type="button"
+                onClick={() => setShowEmoji(!showEmoji)}
+                className={`p-2 shrink-0 transition ${showEmoji ? "text-green-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                title="Эмодзи"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+              </button>
+
               <button
                 type="submit"
                 disabled={sending || (!newText.trim() && !uploading)}
-                className="bg-green-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
+                className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700 transition disabled:opacity-50 shrink-0"
               >
-                →
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
               </button>
             </form>
           </>
