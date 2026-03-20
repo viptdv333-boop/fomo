@@ -40,7 +40,7 @@ export default function Header() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-30%' }} />
           </div>
-          <span className="text-[6.5px] sm:text-[7.5px] text-gray-500 dark:text-gray-400 uppercase tracking-[0.15em] font-semibold leading-none mt-px">Find Opportunities, Make Outcomes</span>
+          <span className="text-[5.5px] sm:text-[6.5px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.12em] font-light leading-none mt-px">Find Opportunities, Make Outcomes</span>
         </Link>
 
         {/* Desktop nav — centered */}
