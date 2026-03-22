@@ -93,11 +93,11 @@ export default function AuthorsPage() {
     return result;
   }, [authors, ratingFilter, ideasFilter, sortField, sortDir]);
 
-  const filterBtnClass = (active: boolean) =>
-    `px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+  const pillClass = (active: boolean) =>
+    `px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
       active
-        ? "bg-green-600 text-white"
-        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+        ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+        : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
     }`;
 
   const hasActiveFilters = ratingFilter !== "all" || ideasFilter !== "all";
@@ -108,66 +108,59 @@ export default function AuthorsPage() {
         <h1 className="text-2xl font-bold dark:text-gray-100">Авторы</h1>
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-4 py-3 mb-6">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button onClick={() => handleSort("rating")} className={filterBtnClass(sortField === "rating")}>
-            Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
+      {/* Filter bar — inline pills like Feed */}
+      <div className="flex items-center gap-2 flex-wrap mb-6">
+        <button onClick={() => handleSort("rating")} className={pillClass(sortField === "rating")}>
+          Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+        </button>
+        <button onClick={() => handleSort("ideasCount")} className={pillClass(sortField === "ideasCount")}>
+          Идеи {sortField === "ideasCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+        </button>
+        <button onClick={() => handleSort("subscribersCount")} className={pillClass(sortField === "subscribersCount")}>
+          Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+        </button>
+        <button onClick={() => handleSort("createdAt")} className={pillClass(sortField === "createdAt")}>
+          Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+        </button>
+
+        {[
+          { label: "⭐ 3+", value: "3" },
+          { label: "⭐ 5+", value: "5" },
+          { label: "⭐ 7+", value: "7" },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setRatingFilter(ratingFilter === opt.value ? "all" : opt.value)}
+            className={pillClass(ratingFilter === opt.value)}
+          >
+            {opt.label}
           </button>
-          <button onClick={() => handleSort("ideasCount")} className={filterBtnClass(sortField === "ideasCount")}>
-            Идеи {sortField === "ideasCount" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
+        ))}
+
+        {[
+          { label: "5+ идей", value: "5" },
+          { label: "10+ идей", value: "10" },
+          { label: "20+ идей", value: "20" },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setIdeasFilter(ideasFilter === opt.value ? "all" : opt.value)}
+            className={pillClass(ideasFilter === opt.value)}
+          >
+            {opt.label}
           </button>
-          <button onClick={() => handleSort("subscribersCount")} className={filterBtnClass(sortField === "subscribersCount")}>
-            Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
+        ))}
+
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }}
+            className="text-xs text-gray-400 hover:text-red-500 transition ml-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
-          <button onClick={() => handleSort("createdAt")} className={filterBtnClass(sortField === "createdAt")}>
-            Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "\u2193" : "\u2191") : ""}
-          </button>
-
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
-          {[
-            { label: "\u2B50 3+", value: "3" },
-            { label: "\u2B50 5+", value: "5" },
-            { label: "\u2B50 7+", value: "7" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setRatingFilter(ratingFilter === opt.value ? "all" : opt.value)}
-              className={filterBtnClass(ratingFilter === opt.value)}
-            >
-              {opt.label}
-            </button>
-          ))}
-
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
-          {[
-            { label: "5+ идей", value: "5" },
-            { label: "10+ идей", value: "10" },
-            { label: "20+ идей", value: "20" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setIdeasFilter(ideasFilter === opt.value ? "all" : opt.value)}
-              className={filterBtnClass(ideasFilter === opt.value)}
-            >
-              {opt.label}
-            </button>
-          ))}
-
-          {hasActiveFilters && (
-            <>
-              <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-              <button
-                onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }}
-                className="text-xs text-green-600 hover:text-green-700 dark:hover:text-green-400"
-              >
-                \u2715 сбросить
-              </button>
-            </>
-          )}
-        </div>
+        )}
       </div>
 
       {!loading && (

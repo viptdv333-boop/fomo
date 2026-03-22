@@ -98,7 +98,7 @@ export default function ChannelsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [priceFilter, setPriceFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => {
     fetch("/api/channels")
@@ -219,159 +219,70 @@ export default function ChannelsPage() {
         </p>
       </div>
 
-      {/* Search + Filters button */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          <input
-            type="text"
-            placeholder="Поиск каналов..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-150"
-          />
-        </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 shrink-0 ${
-            showFilters || hasActiveFilters
-              ? "border-gray-900 dark:border-white text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800"
-              : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-          Фильтры
-          {hasActiveFilters && (
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-          )}
-        </button>
-      </div>
-
-      {/* Expanded filters panel */}
-      {showFilters && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Сортировка:
-            </span>
-            {(
-              [
-                { label: "Подписчики", field: "subscribers" as const },
-                { label: "Цена", field: "price" as const },
-                { label: "Рейтинг", field: "rating" as const },
-              ] as const
-            ).map((s) => (
-              <button
-                key={s.field}
-                onClick={() => handleSort(s.field)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  sortField === s.field
-                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {s.label} {sortField === s.field ? (sortDir === "desc" ? "↓" : "↑") : ""}
-              </button>
-            ))}
-
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Цена:
-            </span>
-            {[
-              { label: "Все", value: "all" },
-              { label: "до 1000₽", value: "1000" },
-              { label: "до 3000₽", value: "3000" },
-              { label: "до 5000₽", value: "5000" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() =>
-                  setPriceFilter(priceFilter === opt.value && opt.value !== "all" ? "all" : opt.value)
-                }
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  priceFilter === opt.value
-                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Рейтинг:
-            </span>
-            {[
-              { label: "5+", value: "5" },
-              { label: "7+", value: "7" },
-              { label: "9+", value: "9" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setRatingFilter(ratingFilter === opt.value ? "all" : opt.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  ratingFilter === opt.value
-                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-
-            {hasActiveFilters && (
-              <button
-                onClick={() => {
-                  setPriceFilter("all");
-                  setRatingFilter("all");
-                }}
-                className="ml-auto text-xs text-red-500 hover:text-red-600 font-medium transition-all duration-150"
-              >
-                Сбросить
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Category pills */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+      {/* Filter bar — inline pills like Feed */}
+      <div className="flex items-center gap-2 flex-wrap mb-6">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.value}
             onClick={() => setActiveCategory(cat.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-150 ${
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeCategory === cat.value
-                ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
           >
             {cat.label}
           </button>
         ))}
+
+        {(
+          [
+            { label: "Подписчики", field: "subscribers" as const },
+            { label: "Цена", field: "price" as const },
+            { label: "Рейтинг", field: "rating" as const },
+          ] as const
+        ).map((s) => (
+          <button
+            key={s.field}
+            onClick={() => handleSort(s.field)}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
+              sortField === s.field
+                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            {s.label} {sortField === s.field ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          </button>
+        ))}
+
+        {[
+          { label: "до 1000₽", value: "1000" },
+          { label: "до 3000₽", value: "3000" },
+          { label: "до 5000₽", value: "5000" },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setPriceFilter(priceFilter === opt.value ? "all" : opt.value)}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
+              priceFilter === opt.value
+                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setPriceFilter("all"); setRatingFilter("all"); }}
+            className="text-xs text-gray-400 hover:text-red-500 transition ml-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Stats bar */}
