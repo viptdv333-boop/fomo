@@ -58,7 +58,7 @@ export default function AuthorsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [ideasFilter, setIdeasFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
+  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
 
   useEffect(() => {
     fetch("/api/authors")
@@ -165,6 +165,9 @@ export default function AuthorsPage() {
 
         {/* View mode — right side */}
         <div className="ml-auto flex items-center gap-0.5 shrink-0">
+          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Абзац">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
+          </button>
           <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Список">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
@@ -223,7 +226,29 @@ export default function AuthorsPage() {
               );
             })}
           </div>
+        ) : viewMode === "list" ? (
+          /* Compact list — like Feed minimal */
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
+            {filtered.map((author) => {
+              const { profitability } = getDerivedStats(author);
+              const color = hashColor(author.id);
+              return (
+                <Link key={author.id} href={`/profile/${author.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
+                  <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0`}>
+                    {author.avatarUrl ? <img src={author.avatarUrl} alt="" className="w-full h-full object-cover" /> : (author.displayName || "?")[0]}
+                  </div>
+                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.displayName}</span>
+                  <svg className="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
+                  <div className="flex-1" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">⭐ {Number(author.rating).toFixed(1)}</span>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">{profitability}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">👥 {author.subscribersCount}</span>
+                </Link>
+              );
+            })}
+          </div>
         ) : (
+          /* Paragraph — full card view (default) */
           <div className="flex flex-col gap-4">
             {filtered.map((author) => {
               const { profitability, successRate } = getDerivedStats(author);

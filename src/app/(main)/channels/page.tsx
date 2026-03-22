@@ -99,7 +99,7 @@ export default function ChannelsPage() {
   const [priceFilter, setPriceFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [showFilters] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
+  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
 
   useEffect(() => {
     fetch("/api/channels")
@@ -256,24 +256,6 @@ export default function ChannelsPage() {
           </button>
         ))}
 
-        {[
-          { label: "до 1000₽", value: "1000" },
-          { label: "до 3000₽", value: "3000" },
-          { label: "до 5000₽", value: "5000" },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setPriceFilter(priceFilter === opt.value ? "all" : opt.value)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-              priceFilter === opt.value
-                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-
         {hasActiveFilters && (
           <button
             onClick={() => { setPriceFilter("all"); setRatingFilter("all"); }}
@@ -287,6 +269,9 @@ export default function ChannelsPage() {
 
         {/* View mode — right side */}
         <div className="ml-auto flex items-center gap-0.5 shrink-0">
+          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Абзац">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
+          </button>
           <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Список">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
@@ -390,7 +375,26 @@ export default function ChannelsPage() {
               : `Найдено: ${filtered.length} из ${channels.length}`}
           </p>
 
-          {/* Channel list/grid */}
+          {/* Channel list — compact */}
+          {viewMode === "list" ? (
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
+              {filtered.map((ch) => {
+                const isSubscribed = subscribedIds.has(ch.id);
+                return (
+                  <Link key={ch.id} href={`/channels/${ch.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
+                    <ChannelAvatar ch={ch} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{ch.name}</span>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">{ch.author.displayName}</div>
+                    </div>
+                    <span className="text-xs text-gray-400">👥 {ch.subscribersCount}</span>
+                    {ch.price > 0 && <span className="text-xs text-green-600 font-medium">{ch.price} ₽</span>}
+                    {isSubscribed && <span className="text-xs text-green-500">✓</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
           <div className={viewMode === "cards" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "flex flex-col gap-4"}>
             {filtered.map((ch) => {
               const isSubscribed = subscribedIds.has(ch.id);
@@ -489,6 +493,7 @@ export default function ChannelsPage() {
               );
             })}
           </div>
+          )}
         </>
       )}
     </div>
