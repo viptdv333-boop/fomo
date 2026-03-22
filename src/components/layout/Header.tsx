@@ -47,11 +47,11 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
           {[
             { href: "/feed", label: "Доска" },
-            { href: "/terminal", label: "Терминал" },
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
             { href: "/messages", label: "Сообщения" },
+            { href: "/terminal", label: "Терминал" },
           ].map((link) => (
             <Link
               key={link.href}
@@ -192,11 +192,11 @@ export default function Header() {
           )}
           {[
             { href: "/feed", label: "Доска" },
-            { href: "/terminal", label: "Терминал" },
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
             { href: "/messages", label: "Сообщения" },
+            { href: "/terminal", label: "Терминал" },
           ].map((link) => (
             <Link
               key={link.href}
