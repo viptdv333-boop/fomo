@@ -99,6 +99,7 @@ export default function ChannelsPage() {
   const [priceFilter, setPriceFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [showFilters] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
 
   useEffect(() => {
     fetch("/api/channels")
@@ -283,6 +284,16 @@ export default function ChannelsPage() {
             </svg>
           </button>
         )}
+
+        {/* View mode — right side */}
+        <div className="ml-auto flex items-center gap-0.5 shrink-0">
+          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Список">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+          </button>
+          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Карточки">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -379,8 +390,8 @@ export default function ChannelsPage() {
               : `Найдено: ${filtered.length} из ${channels.length}`}
           </p>
 
-          {/* 2-column card grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Channel list/grid */}
+          <div className={viewMode === "cards" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "flex flex-col gap-4"}>
             {filtered.map((ch) => {
               const isSubscribed = subscribedIds.has(ch.id);
               const isToggling = togglingId === ch.id;
