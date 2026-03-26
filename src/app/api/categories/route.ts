@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
       instruments: withInstruments
         ? {
             orderBy: { name: "asc" },
-            include: { chatRoom: { select: { id: true } } },
+            include: {
+              chatRoom: { select: { id: true } },
+              exchangeRel: { select: { id: true, shortName: true, slug: true } },
+            },
           }
         : false,
       _count: { select: { instruments: true } },

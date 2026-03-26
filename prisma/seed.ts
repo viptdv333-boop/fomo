@@ -481,42 +481,45 @@ async function main() {
     }
   }
 
-  // ─── Delete crypto category ────────────────────────────────────────
-  for (const delSlug of ["crypto"]) {
-    const delCat = await prisma.instrumentCategory.findUnique({ where: { slug: delSlug } });
-    if (delCat) {
-      const delInstruments = await prisma.instrument.findMany({ where: { categoryId: delCat.id }, select: { id: true } });
-      const delIds = delInstruments.map(i => i.id);
-      if (delIds.length > 0) {
-        await prisma.ideaInstrument.deleteMany({ where: { instrumentId: { in: delIds } } });
-        const delRooms = await prisma.chatRoom.findMany({ where: { instrumentId: { in: delIds } }, select: { id: true } });
-        if (delRooms.length > 0) {
-          await prisma.chatMessage.deleteMany({ where: { roomId: { in: delRooms.map(r => r.id) } } });
-          await prisma.chatRoom.deleteMany({ where: { id: { in: delRooms.map(r => r.id) } } });
-        }
-        await prisma.instrument.deleteMany({ where: { id: { in: delIds } } });
-      }
-      await prisma.instrumentCategory.delete({ where: { id: delCat.id } });
-      console.log("Crypto category and instruments deleted");
+  // ─── Delete old categories that are being renamed/restructured ──────
+  for (const oldSlug of ["stocks-us", "stocks-ru", "commodities", "currencies", "moex-futures", "crypto"]) {
+    const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
+    if (oldCat) {
+      // Instruments will be reassigned in the upsert below
+      console.log(`Old category '${oldSlug}' found, instruments will be reassigned`);
     }
   }
 
-  // ─── Delete old categories that are being renamed/restructured ──────
-  for (const oldSlug of ["stocks-us"]) {
-    const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
-    if (oldCat) {
-      // Move instruments to new categories in the upsert below, don't delete them
-      console.log(`Old category ${oldSlug} found, instruments will be reassigned`);
-    }
+  // ─── Exchanges ─────────────────────────────────────────────────────
+  const exchangeData = [
+    { name: "Московская биржа", slug: "moex", shortName: "MOEX", country: "RU", sortOrder: 1 },
+    { name: "CME Group / NYMEX", slug: "cme", shortName: "CME", country: "US", sortOrder: 2 },
+    { name: "NYSE / NASDAQ", slug: "nyse", shortName: "NYSE", country: "US", sortOrder: 3 },
+    { name: "Hong Kong Exchange", slug: "hkex", shortName: "HKEX", country: "CN", sortOrder: 4 },
+    { name: "London Stock Exchange / ICE", slug: "lse", shortName: "LSE", country: "GB", sortOrder: 5 },
+    { name: "Спот (справочные)", slug: "spot", shortName: "SPOT", country: "SPOT", sortOrder: 6 },
+  ];
+
+  const exchanges: Record<string, string> = {};
+  for (const ex of exchangeData) {
+    const created = await prisma.exchange.upsert({
+      where: { slug: ex.slug },
+      update: { name: ex.name, shortName: ex.shortName, country: ex.country, sortOrder: ex.sortOrder },
+      create: ex,
+    });
+    exchanges[ex.slug] = created.id;
   }
+  console.log(`${exchangeData.length} exchanges created`);
 
   // ─── Categories ──────────────────────────────────────────────────────
   const catData = [
-    { name: "Криптовалюты", slug: "crypto", sortOrder: 1 },
-    { name: "Акции РФ", slug: "stocks-ru", sortOrder: 2 },
-    { name: "Сырьё", slug: "commodities", sortOrder: 3 },
-    { name: "Валюты", slug: "currencies", sortOrder: 4 },
-    { name: "Фьючерсы ММВБ", slug: "moex-futures", sortOrder: 5 },
+    { name: "Акции", slug: "stocks", sortOrder: 1 },
+    { name: "Фьючерсы на сырьё", slug: "commodity-futures", sortOrder: 2 },
+    { name: "Фьючерсы на индексы", slug: "index-futures", sortOrder: 3 },
+    { name: "Валютные фьючерсы", slug: "currency-futures", sortOrder: 4 },
+    { name: "Спот индексы", slug: "spot-indices", sortOrder: 5 },
+    { name: "Спот сырьё", slug: "spot-commodities", sortOrder: 6 },
+    { name: "Криптовалюты", slug: "crypto", sortOrder: 7 },
   ];
 
   const cats: Record<string, string> = {};
@@ -532,38 +535,106 @@ async function main() {
   // ─── Instruments ─────────────────────────────────────────────────────
   const instrumentData = [
     // ══════ КРИПТОВАЛЮТЫ ══════
-    { name: "Биткоин (фьючерс MOEX)", slug: "btcf", ticker: "BTCF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BTCF", description: "Фьючерс на биткоин (MOEX)", categorySlug: "crypto" },
+    { name: "Биткоин (фьючерс MOEX)", slug: "btcf", ticker: "BTCF", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BA", externalUrl: "https://www.moex.com/ru/contract.aspx?code=BA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BTCF", description: "Фьючерс на биткоин (MOEX)", categorySlug: "crypto", instrumentType: "crypto" },
 
     // ══════ АКЦИИ РФ (MOEX, TQBR) ══════
-    { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", dataSource: "moex", dataTicker: "SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks-ru" },
-    { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", dataSource: "moex", dataTicker: "GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks-ru" },
-    { name: "ЛУКОЙЛ", slug: "lkoh", ticker: "LKOH", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", tradingViewSymbol: "MOEX:LKOH", dataSource: "moex", dataTicker: "LKOH", description: "ПАО ЛУКОЙЛ — нефтяная компания", categorySlug: "stocks-ru" },
-    { name: "Яндекс", slug: "ydex", ticker: "YDEX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", tradingViewSymbol: "MOEX:YDEX", dataSource: "moex", dataTicker: "YDEX", description: "Яндекс — IT-гигант России", categorySlug: "stocks-ru" },
-    { name: "Роснефть", slug: "rosn", ticker: "ROSN", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", tradingViewSymbol: "MOEX:ROSN", dataSource: "moex", dataTicker: "ROSN", description: "ПАО Роснефть — нефтяная компания", categorySlug: "stocks-ru" },
+    { name: "Сбербанк", slug: "sber", ticker: "SBER", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER", tradingViewSymbol: "MOEX:SBER", dataSource: "moex", dataTicker: "SBER", description: "ПАО Сбербанк — крупнейший банк РФ", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Газпром", slug: "gazp", ticker: "GAZP", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GAZP", tradingViewSymbol: "MOEX:GAZP", dataSource: "moex", dataTicker: "GAZP", description: "ПАО Газпром — газовая монополия", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "ЛУКОЙЛ", slug: "lkoh", ticker: "LKOH", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=LKOH", tradingViewSymbol: "MOEX:LKOH", dataSource: "moex", dataTicker: "LKOH", description: "ПАО ЛУКОЙЛ — нефтяная компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Яндекс", slug: "ydex", ticker: "YDEX", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=YDEX", tradingViewSymbol: "MOEX:YDEX", dataSource: "moex", dataTicker: "YDEX", description: "Яндекс — IT-гигант России", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Роснефть", slug: "rosn", ticker: "ROSN", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ROSN", tradingViewSymbol: "MOEX:ROSN", dataSource: "moex", dataTicker: "ROSN", description: "ПАО Роснефть — нефтяная компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Норникель", slug: "gmkn", ticker: "GMKN", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GMKN", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=GMKN", tradingViewSymbol: "MOEX:GMKN", dataSource: "moex", dataTicker: "GMKN", description: "ПАО ГМК Норильский никель", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Новатэк", slug: "nvtk", ticker: "NVTK", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=NVTK", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=NVTK", tradingViewSymbol: "MOEX:NVTK", dataSource: "moex", dataTicker: "NVTK", description: "ПАО Новатэк — газовая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Полюс", slug: "plzl", ticker: "PLZL", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=PLZL", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=PLZL", tradingViewSymbol: "MOEX:PLZL", dataSource: "moex", dataTicker: "PLZL", description: "ПАО Полюс — золотодобывающая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Магнит", slug: "mgnt", ticker: "MGNT", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=MGNT", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=MGNT", tradingViewSymbol: "MOEX:MGNT", dataSource: "moex", dataTicker: "MGNT", description: "ПАО Магнит — розничная сеть", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "ВТБ", slug: "vtbr", ticker: "VTBR", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=VTBR", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=VTBR", tradingViewSymbol: "MOEX:VTBR", dataSource: "moex", dataTicker: "VTBR", description: "ПАО Банк ВТБ", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Тинькофф", slug: "tcsg", ticker: "TCSG", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=TCSG", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=TCSG", tradingViewSymbol: "MOEX:TCSG", dataSource: "moex", dataTicker: "TCSG", description: "ТКС Холдинг (Тинькофф)", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "МТС", slug: "mtss", ticker: "MTSS", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=MTSS", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=MTSS", tradingViewSymbol: "MOEX:MTSS", dataSource: "moex", dataTicker: "MTSS", description: "ПАО МТС — телекоммуникации", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Аэрофлот", slug: "aflt", ticker: "AFLT", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=AFLT", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=AFLT", tradingViewSymbol: "MOEX:AFLT", dataSource: "moex", dataTicker: "AFLT", description: "ПАО Аэрофлот — авиакомпания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Алроса", slug: "alrs", ticker: "ALRS", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ALRS", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=ALRS", tradingViewSymbol: "MOEX:ALRS", dataSource: "moex", dataTicker: "ALRS", description: "ПАО Алроса — алмазодобывающая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "НЛМК", slug: "nlmk", ticker: "NLMK", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=NLMK", externalUrl: "https://www.moex.com/ru/issue.aspx?board=TQBR&code=NLMK", tradingViewSymbol: "MOEX:NLMK", dataSource: "moex", dataTicker: "NLMK", description: "ПАО НЛМК — металлургия", categorySlug: "stocks", instrumentType: "stock" },
 
     // ══════ СЫРЬЁ (MOEX FORTS) ══════
-    { name: "Золото", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "GOLD", description: "Фьючерс на золото (MOEX)", categorySlug: "commodities" },
-    { name: "Серебро", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SILV", description: "Фьючерс на серебро (MOEX)", categorySlug: "commodities" },
-    { name: "Платина", slug: "plt", ticker: "PLT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PT", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLT", description: "Фьючерс на платину (MOEX)", categorySlug: "commodities" },
-    { name: "Палладий", slug: "pld", ticker: "PLD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLD", description: "Фьючерс на палладий (MOEX)", categorySlug: "commodities" },
-    { name: "Медь", slug: "cu", ticker: "CU", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CU", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CU", description: "Фьючерс на медь (MOEX)", categorySlug: "commodities" },
-    { name: "Нефть Brent", slug: "br", ticker: "BR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BR", description: "Фьючерс на нефть Brent (MOEX)", categorySlug: "commodities" },
-    { name: "Природный газ", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NG", description: "Фьючерс на природный газ (MOEX)", categorySlug: "commodities" },
-    { name: "Пшеница", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=W4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "WHEAT", description: "Фьючерс на пшеницу (MOEX)", categorySlug: "commodities" },
-    { name: "Сахар", slug: "sugar", ticker: "SUGAR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SUGAR", description: "Фьючерс на сахар (MOEX)", categorySlug: "commodities" },
-    { name: "Какао", slug: "cocoa", ticker: "COCOA", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CC", tradingViewSymbol: null, dataSource: "moex", dataTicker: "COCOA", description: "Фьючерс на какао (MOEX)", categorySlug: "commodities" },
+    { name: "Золото (MOEX)", slug: "gold", ticker: "GOLD", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", externalUrl: "https://www.moex.com/ru/contract.aspx?code=GOLD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "GOLD", description: "Фьючерс на золото (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Серебро (MOEX)", slug: "silv", ticker: "SILV", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", externalUrl: "https://www.moex.com/ru/contract.aspx?code=SILV", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SILV", description: "Фьючерс на серебро (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Платина (MOEX)", slug: "plt", ticker: "PLT", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PT", externalUrl: "https://www.moex.com/ru/contract.aspx?code=PT", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLT", description: "Фьючерс на платину (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Палладий (MOEX)", slug: "pld", ticker: "PLD", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=PD", externalUrl: "https://www.moex.com/ru/contract.aspx?code=PD", tradingViewSymbol: null, dataSource: "moex", dataTicker: "PLD", description: "Фьючерс на палладий (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Медь (MOEX)", slug: "cu", ticker: "CU", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CU", externalUrl: "https://www.moex.com/ru/contract.aspx?code=CU", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CU", description: "Фьючерс на медь (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Нефть Brent (MOEX)", slug: "br", ticker: "BR", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=BR", externalUrl: "https://www.moex.com/ru/contract.aspx?code=BR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "BR", description: "Фьючерс на нефть Brent (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Природный газ (MOEX)", slug: "ng", ticker: "NG", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NG", externalUrl: "https://www.moex.com/ru/contract.aspx?code=NG", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NG", description: "Фьючерс на природный газ (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Пшеница (MOEX)", slug: "wheat", ticker: "WHEAT", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=W4", externalUrl: "https://www.moex.com/ru/contract.aspx?code=W4", tradingViewSymbol: null, dataSource: "moex", dataTicker: "WHEAT", description: "Фьючерс на пшеницу (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Сахар (MOEX)", slug: "sugar", ticker: "SUGAR", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SA", externalUrl: "https://www.moex.com/ru/contract.aspx?code=SA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SUGAR", description: "Фьючерс на сахар (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Какао (MOEX)", slug: "cocoa", ticker: "COCOA", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CC", externalUrl: "https://www.moex.com/ru/contract.aspx?code=CC", tradingViewSymbol: null, dataSource: "moex", dataTicker: "COCOA", description: "Фьючерс на какао (MOEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
 
-    // ══════ ВАЛЮТЫ ══════
-    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Si", description: "Фьючерс на доллар/рубль (MOEX)", categorySlug: "currencies" },
-    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Eu", description: "Фьючерс на евро/рубль (MOEX)", categorySlug: "currencies" },
-    { name: "Юань/Рубль (CR)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CR", description: "Фьючерс на юань/рубль (MOEX)", categorySlug: "currencies" },
+    // ══════ ВАЛЮТНЫЕ ФЬЮЧЕРСЫ (MOEX) ══════
+    { name: "Доллар/Рубль (Si)", slug: "si", ticker: "Si", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Si", externalUrl: "https://www.moex.com/ru/contract.aspx?code=Si", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Si", description: "Фьючерс на доллар/рубль (MOEX)", categorySlug: "currency-futures", instrumentType: "currency" },
+    { name: "Евро/Рубль (Eu)", slug: "eu", ticker: "Eu", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", externalUrl: "https://www.moex.com/ru/contract.aspx?code=Eu", tradingViewSymbol: null, dataSource: "moex", dataTicker: "Eu", description: "Фьючерс на евро/рубль (MOEX)", categorySlug: "currency-futures", instrumentType: "currency" },
+    { name: "Юань/Рубль (CR)", slug: "cny", ticker: "CR", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=CR", externalUrl: "https://www.moex.com/ru/contract.aspx?code=CR", tradingViewSymbol: null, dataSource: "moex", dataTicker: "CR", description: "Фьючерс на юань/рубль (MOEX)", categorySlug: "currency-futures", instrumentType: "currency" },
 
-    // ══════ ФЬЮЧЕРСЫ ММВБ ══════
-    { name: "Индекс МосБиржи (MIX)", slug: "imoex", ticker: "MIX", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=MX", tradingViewSymbol: null, dataSource: "moex", dataTicker: "MIX", description: "Вечный фьючерс на индекс МосБиржи", categorySlug: "moex-futures" },
-    { name: "Индекс РТС (RTS)", slug: "rts", ticker: "RTS", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=RI", tradingViewSymbol: null, dataSource: "moex", dataTicker: "RTS", description: "Фьючерс на индекс РТС", categorySlug: "moex-futures" },
-    { name: "NASDAQ 100", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NASD", description: "Фьючерс на NASDAQ 100 (MOEX)", categorySlug: "moex-futures" },
-    { name: "S&P 500", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SF", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SPYF", description: "Фьючерс на S&P 500 (MOEX)", categorySlug: "moex-futures" },
+    // ══════ ФЬЮЧЕРСЫ НА ИНДЕКСЫ (MOEX) ══════
+    { name: "Индекс МосБиржи (MIX)", slug: "imoex", ticker: "MIX", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=MX", externalUrl: "https://www.moex.com/ru/contract.aspx?code=MX", tradingViewSymbol: null, dataSource: "moex", dataTicker: "MIX", description: "Вечный фьючерс на индекс МосБиржи", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "Индекс РТС (RTS)", slug: "rts", ticker: "RTS", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=RI", externalUrl: "https://www.moex.com/ru/contract.aspx?code=RI", tradingViewSymbol: null, dataSource: "moex", dataTicker: "RTS", description: "Фьючерс на индекс РТС", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "NASDAQ 100 (MOEX)", slug: "nasd", ticker: "NASD", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=NA", externalUrl: "https://www.moex.com/ru/contract.aspx?code=NA", tradingViewSymbol: null, dataSource: "moex", dataTicker: "NASD", description: "Фьючерс на NASDAQ 100 (MOEX)", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "S&P 500 (MOEX)", slug: "spx", ticker: "SPYF", exchange: "MOEX", exchangeSlug: "moex", exchangeUrl: "https://www.moex.com/ru/contract.aspx?code=SF", externalUrl: "https://www.moex.com/ru/contract.aspx?code=SF", tradingViewSymbol: null, dataSource: "moex", dataTicker: "SPYF", description: "Фьючерс на S&P 500 (MOEX)", categorySlug: "index-futures", instrumentType: "futures" },
 
+    // ══════ CME / NYMEX — COMMODITY FUTURES ══════
+    { name: "WTI Crude Oil", slug: "cme-cl", ticker: "CL", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.html", externalUrl: "https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.html", tradingViewSymbol: "CME:CL1!", dataSource: null, dataTicker: null, description: "WTI Crude Oil Futures (NYMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Natural Gas", slug: "cme-ng", ticker: "NG", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/energy/natural-gas/natural-gas.html", externalUrl: "https://www.cmegroup.com/markets/energy/natural-gas/natural-gas.html", tradingViewSymbol: "CME:NG1!", dataSource: null, dataTicker: null, description: "Henry Hub Natural Gas Futures (NYMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Gold (COMEX)", slug: "cme-gc", ticker: "GC", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/gold.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/gold.html", tradingViewSymbol: "CME:GC1!", dataSource: null, dataTicker: null, description: "Gold Futures (COMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Silver (COMEX)", slug: "cme-si", ticker: "SI", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/silver.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/silver.html", tradingViewSymbol: "CME:SI1!", dataSource: null, dataTicker: null, description: "Silver Futures (COMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Copper (COMEX)", slug: "cme-hg", ticker: "HG", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/base/copper.html", externalUrl: "https://www.cmegroup.com/markets/metals/base/copper.html", tradingViewSymbol: "CME:HG1!", dataSource: null, dataTicker: null, description: "Copper Futures (COMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Platinum (NYMEX)", slug: "cme-pl", ticker: "PL", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/platinum.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/platinum.html", tradingViewSymbol: "CME:PL1!", dataSource: null, dataTicker: null, description: "Platinum Futures (NYMEX)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Corn", slug: "cme-zc", ticker: "ZC", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/agriculture/grains/corn.html", externalUrl: "https://www.cmegroup.com/markets/agriculture/grains/corn.html", tradingViewSymbol: "CME:ZC1!", dataSource: null, dataTicker: null, description: "Corn Futures (CBOT)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Wheat (CBOT)", slug: "cme-zw", ticker: "ZW", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/agriculture/grains/wheat.html", externalUrl: "https://www.cmegroup.com/markets/agriculture/grains/wheat.html", tradingViewSymbol: "CME:ZW1!", dataSource: null, dataTicker: null, description: "Wheat Futures (CBOT)", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "Soybean", slug: "cme-zs", ticker: "ZS", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/agriculture/oilseeds/soybean.html", externalUrl: "https://www.cmegroup.com/markets/agriculture/oilseeds/soybean.html", tradingViewSymbol: "CME:ZS1!", dataSource: null, dataTicker: null, description: "Soybean Futures (CBOT)", categorySlug: "commodity-futures", instrumentType: "futures" },
+
+    // ══════ CME — INDEX FUTURES ══════
+    { name: "E-mini S&P 500", slug: "cme-es", ticker: "ES", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.html", externalUrl: "https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.html", tradingViewSymbol: "CME:ES1!", dataSource: null, dataTicker: null, description: "E-mini S&P 500 Futures", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "E-mini Nasdaq 100", slug: "cme-nq", ticker: "NQ", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.html", externalUrl: "https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.html", tradingViewSymbol: "CME:NQ1!", dataSource: null, dataTicker: null, description: "E-mini Nasdaq 100 Futures", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "E-mini Dow Jones", slug: "cme-ym", ticker: "YM", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/equities/dow-jones/e-mini-dow.html", externalUrl: "https://www.cmegroup.com/markets/equities/dow-jones/e-mini-dow.html", tradingViewSymbol: "CME:YM1!", dataSource: null, dataTicker: null, description: "E-mini Dow Jones Futures (CBOT)", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "E-mini Russell 2000", slug: "cme-rty", ticker: "RTY", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/equities/russell/e-mini-russell-2000.html", externalUrl: "https://www.cmegroup.com/markets/equities/russell/e-mini-russell-2000.html", tradingViewSymbol: "CME:RTY1!", dataSource: null, dataTicker: null, description: "E-mini Russell 2000 Futures", categorySlug: "index-futures", instrumentType: "futures" },
+
+    // ══════ CME — CURRENCY FUTURES ══════
+    { name: "Euro FX Futures", slug: "cme-6e", ticker: "6E", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/fx/g10/euro-fx.html", externalUrl: "https://www.cmegroup.com/markets/fx/g10/euro-fx.html", tradingViewSymbol: "CME:6E1!", dataSource: null, dataTicker: null, description: "Euro FX Futures (CME)", categorySlug: "currency-futures", instrumentType: "currency" },
+    { name: "Japanese Yen Futures", slug: "cme-6j", ticker: "6J", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/fx/g10/japanese-yen.html", externalUrl: "https://www.cmegroup.com/markets/fx/g10/japanese-yen.html", tradingViewSymbol: "CME:6J1!", dataSource: null, dataTicker: null, description: "Japanese Yen Futures (CME)", categorySlug: "currency-futures", instrumentType: "currency" },
+    { name: "US Dollar Index", slug: "cme-dx", ticker: "DX", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/fx/us-dollar/us-dollar-index.html", externalUrl: "https://www.cmegroup.com/markets/fx/us-dollar/us-dollar-index.html", tradingViewSymbol: "ICEUS:DX1!", dataSource: null, dataTicker: null, description: "US Dollar Index Futures (ICE)", categorySlug: "currency-futures", instrumentType: "currency" },
+
+    // ══════ HKEX — STOCKS ══════
+    { name: "Tencent", slug: "0700-hk", ticker: "0700", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en", tradingViewSymbol: "HKEX:0700", dataSource: null, dataTicker: null, description: "Tencent Holdings Ltd", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Alibaba", slug: "9988-hk", ticker: "9988", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=9988&sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=9988&sc_lang=en", tradingViewSymbol: "HKEX:9988", dataSource: null, dataTicker: null, description: "Alibaba Group Holding Ltd", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "JD.com", slug: "9618-hk", ticker: "9618", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=9618&sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=9618&sc_lang=en", tradingViewSymbol: "HKEX:9618", dataSource: null, dataTicker: null, description: "JD.com Inc", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Meituan", slug: "3690-hk", ticker: "3690", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=3690&sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=3690&sc_lang=en", tradingViewSymbol: "HKEX:3690", dataSource: null, dataTicker: null, description: "Meituan", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Xiaomi", slug: "1810-hk", ticker: "1810", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=1810&sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=1810&sc_lang=en", tradingViewSymbol: "HKEX:1810", dataSource: null, dataTicker: null, description: "Xiaomi Corp", categorySlug: "stocks", instrumentType: "stock" },
+
+    // ══════ HKEX — INDEX FUTURES ══════
+    { name: "Hang Seng Index Futures", slug: "hsi-fut", ticker: "HSI", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Hang-Seng-Index-Futures-and-Options?sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Hang-Seng-Index-Futures-and-Options?sc_lang=en", tradingViewSymbol: "HKEX:HSI1!", dataSource: null, dataTicker: null, description: "Hang Seng Index Futures", categorySlug: "index-futures", instrumentType: "futures" },
+    { name: "HS China Enterprises Futures", slug: "hscei-fut", ticker: "HSCEI", exchange: "HKEX", exchangeSlug: "hkex", exchangeUrl: "https://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Hang-Seng-China-Enterprises-Index-Futures-and-Options?sc_lang=en", externalUrl: "https://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Hang-Seng-China-Enterprises-Index-Futures-and-Options?sc_lang=en", tradingViewSymbol: "HKEX:HSCEI1!", dataSource: null, dataTicker: null, description: "Hang Seng China Enterprises Index Futures", categorySlug: "index-futures", instrumentType: "futures" },
+
+    // ══════ LSE / ICE — STOCKS ══════
+    { name: "Shell plc", slug: "shel-l", ticker: "SHEL", exchange: "LSE", exchangeSlug: "lse", exchangeUrl: "https://www.londonstockexchange.com/stock/SHEL/shell-plc/company-page", externalUrl: "https://www.londonstockexchange.com/stock/SHEL/shell-plc/company-page", tradingViewSymbol: "LSE:SHEL", dataSource: null, dataTicker: null, description: "Shell plc — энергетическая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "BP plc", slug: "bp-l", ticker: "BP", exchange: "LSE", exchangeSlug: "lse", exchangeUrl: "https://www.londonstockexchange.com/stock/BP./bp-plc/company-page", externalUrl: "https://www.londonstockexchange.com/stock/BP./bp-plc/company-page", tradingViewSymbol: "LSE:BP.", dataSource: null, dataTicker: null, description: "BP plc — нефтегазовая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "Rio Tinto", slug: "rio-l", ticker: "RIO", exchange: "LSE", exchangeSlug: "lse", exchangeUrl: "https://www.londonstockexchange.com/stock/RIO/rio-tinto-plc/company-page", externalUrl: "https://www.londonstockexchange.com/stock/RIO/rio-tinto-plc/company-page", tradingViewSymbol: "LSE:RIO", dataSource: null, dataTicker: null, description: "Rio Tinto plc — горнодобывающая компания", categorySlug: "stocks", instrumentType: "stock" },
+    { name: "HSBC Holdings", slug: "hsba-l", ticker: "HSBA", exchange: "LSE", exchangeSlug: "lse", exchangeUrl: "https://www.londonstockexchange.com/stock/HSBA/hsbc-holdings-plc/company-page", externalUrl: "https://www.londonstockexchange.com/stock/HSBA/hsbc-holdings-plc/company-page", tradingViewSymbol: "LSE:HSBA", dataSource: null, dataTicker: null, description: "HSBC Holdings plc — банк", categorySlug: "stocks", instrumentType: "stock" },
+
+    // ══════ ICE — COMMODITY FUTURES ══════
+    { name: "Brent Crude (ICE)", slug: "ice-brn", ticker: "BRN", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/219/Brent-Crude-Futures", externalUrl: "https://www.theice.com/products/219/Brent-Crude-Futures", tradingViewSymbol: "ICE:BRN1!", dataSource: null, dataTicker: null, description: "ICE Brent Crude Futures", categorySlug: "commodity-futures", instrumentType: "futures" },
+    { name: "ICE Gasoil", slug: "ice-gasoil", ticker: "GASOIL", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/34361119/Low-Sulphur-Gasoil-Futures", externalUrl: "https://www.theice.com/products/34361119/Low-Sulphur-Gasoil-Futures", tradingViewSymbol: "ICE:GASOIL1!", dataSource: null, dataTicker: null, description: "ICE Low Sulphur Gasoil Futures", categorySlug: "commodity-futures", instrumentType: "futures" },
+
+    // ══════ СПОТ ИНДЕКСЫ ══════
+    { name: "S&P 500 (спот)", slug: "spx-spot", ticker: "SPX", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "SP:SPX", dataSource: null, dataTicker: null, description: "Индекс S&P 500 — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "Nasdaq 100 (спот)", slug: "ndx-spot", ticker: "NDX", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "NASDAQ:NDX", dataSource: null, dataTicker: null, description: "Индекс Nasdaq 100 — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "IMOEX (спот)", slug: "imoex-spot", ticker: "IMOEX", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: "https://www.moex.com/ru/index/IMOEX", tradingViewSymbol: "MOEX:IMOEX", dataSource: null, dataTicker: null, description: "Индекс МосБиржи — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "Hang Seng (спот)", slug: "hsi-spot", ticker: "HSI", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "HSI:HSI", dataSource: null, dataTicker: null, description: "Hang Seng Index — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "FTSE 100 (спот)", slug: "ftse100-spot", ticker: "FTSE", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "FTSE:UKX", dataSource: null, dataTicker: null, description: "FTSE 100 Index — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "DAX 40 (спот)", slug: "dax-spot", ticker: "DAX", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "XETR:DAX", dataSource: null, dataTicker: null, description: "DAX 40 Index — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+    { name: "Nikkei 225 (спот)", slug: "nikkei-spot", ticker: "NI225", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:NI225", dataSource: null, dataTicker: null, description: "Nikkei 225 Index — спотовое значение", categorySlug: "spot-indices", instrumentType: "spot" },
+
+    // ══════ СПОТ СЫРЬЁ ══════
+    { name: "Brent (спот)", slug: "brent-spot", ticker: "BRENT", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:UKOIL", dataSource: null, dataTicker: null, description: "Нефть Brent — спотовая цена", categorySlug: "spot-commodities", instrumentType: "spot" },
+    { name: "WTI (спот)", slug: "wti-spot", ticker: "WTI", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:USOIL", dataSource: null, dataTicker: null, description: "Нефть WTI — спотовая цена", categorySlug: "spot-commodities", instrumentType: "spot" },
+    { name: "Золото (спот)", slug: "gold-spot", ticker: "XAUUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:GOLD", dataSource: null, dataTicker: null, description: "Золото — спотовая цена (XAU/USD)", categorySlug: "spot-commodities", instrumentType: "spot" },
+    { name: "Серебро (спот)", slug: "silver-spot", ticker: "XAGUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:SILVER", dataSource: null, dataTicker: null, description: "Серебро — спотовая цена (XAG/USD)", categorySlug: "spot-commodities", instrumentType: "spot" },
+    { name: "Природный газ (спот)", slug: "natgas-spot", ticker: "NATGAS", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:NATGAS", dataSource: null, dataTicker: null, description: "Природный газ — спотовая цена", categorySlug: "spot-commodities", instrumentType: "spot" },
   ];
 
   const instruments: Record<string, string> = {};
@@ -580,17 +651,23 @@ async function main() {
         dataTicker: inst.dataTicker,
         description: inst.description,
         categoryId: cats[inst.categorySlug],
+        exchangeId: exchanges[inst.exchangeSlug] || null,
+        externalUrl: inst.externalUrl || inst.exchangeUrl || null,
+        instrumentType: inst.instrumentType || null,
       },
       create: {
         name: inst.name,
         slug: inst.slug,
         categoryId: cats[inst.categorySlug],
+        exchangeId: exchanges[inst.exchangeSlug] || null,
         ticker: inst.ticker,
         exchange: inst.exchange,
         exchangeUrl: inst.exchangeUrl,
         tradingViewSymbol: inst.tradingViewSymbol,
         dataSource: inst.dataSource,
         dataTicker: inst.dataTicker,
+        externalUrl: inst.externalUrl || inst.exchangeUrl || null,
+        instrumentType: inst.instrumentType || null,
         description: inst.description,
       },
     });
@@ -610,7 +687,7 @@ async function main() {
   console.log(`${instrumentData.length} instruments created with chat rooms`);
 
   // Delete old categories that were renamed/restructured
-  for (const oldSlug of ["stocks-us", "index-futures"]) {
+  for (const oldSlug of ["stocks-us", "stocks-ru", "commodities", "currencies", "moex-futures"]) {
     const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
     if (oldCat) {
       const remaining = await prisma.instrument.count({ where: { categoryId: oldCat.id } });

@@ -83,6 +83,18 @@ model Education {
   @@index([userId])
 }
 
+model Exchange {
+  id        String   @id @default(cuid())
+  name      String   @unique  // "Московская биржа"
+  slug      String   @unique  // "moex"
+  shortName String             // "MOEX"
+  country   String             // "RU", "US", "CN", "GB", "SPOT"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  instruments Instrument[]
+}
+
 model InstrumentCategory {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -98,20 +110,25 @@ model Instrument {
   name              String   @unique
   slug              String   @unique
   categoryId        String?
+  exchangeId        String?
   ticker            String?
-  exchange          String?
+  exchange          String?  // legacy string field for display
   exchangeUrl       String?
   tradingViewSymbol String?
   dataSource        String?  // "moex", "bybit", or null
-  dataTicker        String?  // ticker for data API (e.g. "GAZP" for MOEX, "BTCUSDT" for Bybit)
+  dataTicker        String?  // ticker for data API
+  externalUrl       String?  // link to TradingView or Investing.com
+  instrumentType    String?  // "stock", "futures", "spot", "currency", "crypto"
   description       String?
   createdAt         DateTime @default(now())
 
-  category InstrumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  ideas    IdeaInstrument[]
-  chatRoom ChatRoom?
+  category     InstrumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  exchangeRel  Exchange?           @relation(fields: [exchangeId], references: [id], onDelete: SetNull)
+  ideas        IdeaInstrument[]
+  chatRoom     ChatRoom?
 
   @@index([categoryId])
+  @@index([exchangeId])
 }
 
 model Idea {
