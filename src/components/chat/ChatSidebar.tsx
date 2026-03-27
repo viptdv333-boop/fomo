@@ -11,8 +11,14 @@ interface ChatRoomInfo {
   isArchived: boolean;
   isClosed: boolean;
   instrumentSlug: string | null;
+  ticker: string | null;
+  instrumentType: string | null;
   categoryId: string | null;
   categoryName: string | null;
+  categorySlug: string | null;
+  exchangeName: string | null;
+  exchangeSlug: string | null;
+  exchangeShort: string | null;
   messagesCount: number;
   membersCount: number;
 }
@@ -101,6 +107,25 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
 
   // Room context menu
   const [roomMenu, setRoomMenu] = useState<{ roomId: string; x: number; y: number } | null>(null);
+
+  // Tree collapsed state
+  const [collapsedExchanges, setCollapsedExchanges] = useState<Set<string>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  function toggleExchange(slug: string) {
+    setCollapsedExchanges(prev => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      return next;
+    });
+  }
+  function toggleCategory(key: string) {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   const searchLower = search.toLowerCase().trim();
   const filteredRooms = rooms
@@ -235,14 +260,82 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </div>
         </div>
 
-        {/* Room list */}
+        {/* Room list — tree: General first, then Exchange → Category → Rooms */}
         <div className="flex-1 overflow-y-auto" onClick={() => setRoomMenu(null)}>
           {filteredRooms.length === 0 ? (
             <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
               {rooms.length === 0 ? "Загрузка..." : "Ничего не найдено"}
             </div>
           ) : (
-            filteredRooms.map((room) => renderRoom(room))
+            <>
+              {/* General & pinned rooms first */}
+              {filteredRooms.filter(r => r.isGeneral || pinnedRooms.includes(r.id)).map(room => renderRoom(room))}
+
+              {/* Grouped by exchange → category */}
+              {(() => {
+                const instrumentRooms = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id) && r.exchangeSlug);
+                const exchangeGroups = new Map<string, { name: string; short: string; rooms: ChatRoomInfo[] }>();
+                for (const room of instrumentRooms) {
+                  const key = room.exchangeSlug || "other";
+                  if (!exchangeGroups.has(key)) {
+                    exchangeGroups.set(key, { name: room.exchangeName || "Другое", short: room.exchangeShort || "?", rooms: [] });
+                  }
+                  exchangeGroups.get(key)!.rooms.push(room);
+                }
+
+                // Rooms without exchange
+                const noExchange = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id) && !r.exchangeSlug);
+                if (noExchange.length > 0) {
+                  exchangeGroups.set("other", { name: "Общие", short: "...", rooms: noExchange });
+                }
+
+                return [...exchangeGroups.entries()].map(([exSlug, exGroup]) => {
+                  const isExCollapsed = collapsedExchanges.has(exSlug);
+                  // Group rooms by category within exchange
+                  const catGroups = new Map<string, { name: string; rooms: ChatRoomInfo[] }>();
+                  for (const room of exGroup.rooms) {
+                    const catKey = room.categorySlug || "uncategorized";
+                    if (!catGroups.has(catKey)) catGroups.set(catKey, { name: room.categoryName || "Без категории", rooms: [] });
+                    catGroups.get(catKey)!.rooms.push(room);
+                  }
+
+                  return (
+                    <div key={exSlug}>
+                      <button
+                        onClick={() => toggleExchange(exSlug)}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+                      >
+                        <svg className={`w-3 h-3 transition-transform ${isExCollapsed ? "" : "rotate-90"}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M6 4l8 6-8 6V4z" />
+                        </svg>
+                        <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-[10px] font-bold">{exGroup.short}</span>
+                        {exGroup.name}
+                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{exGroup.rooms.length}</span>
+                      </button>
+                      {!isExCollapsed && [...catGroups.entries()].map(([catSlug, catGroup]) => {
+                        const catKey = `${exSlug}-${catSlug}`;
+                        const isCatCollapsed = collapsedCategories.has(catKey);
+                        return (
+                          <div key={catKey}>
+                            <button
+                              onClick={() => toggleCategory(catKey)}
+                              className="w-full flex items-center gap-2 pl-8 pr-4 py-1.5 text-[11px] font-semibold text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+                            >
+                              <svg className={`w-2.5 h-2.5 transition-transform ${isCatCollapsed ? "" : "rotate-90"}`} fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 4l8 6-8 6V4z" />
+                              </svg>
+                              {catGroup.name}
+                              <span className="ml-auto text-[10px]">{catGroup.rooms.length}</span>
+                            </button>
+                            {!isCatCollapsed && catGroup.rooms.map(room => renderRoom(room))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                });
+              })()}
+            </>
           )}
         </div>
 
