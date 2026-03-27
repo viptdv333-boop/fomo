@@ -47,6 +47,7 @@ export default function InstrumentPage() {
 
   const [instrument, setInstrument] = useState<InstrumentData | null>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function loadInstrument() {
@@ -62,8 +63,16 @@ export default function InstrumentPage() {
     setIdeas(data.data || data.ideas || (Array.isArray(data) ? data : []));
   }
 
+  async function loadContracts() {
+    const res = await fetch(`/api/instruments/${slug}/contracts`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.contracts) setContracts(data.contracts);
+    }
+  }
+
   useEffect(() => { loadInstrument(); }, [slug]);
-  useEffect(() => { if (instrument) loadIdeas(); }, [instrument?.id]);
+  useEffect(() => { if (instrument) { loadIdeas(); loadContracts(); } }, [instrument?.id]);
 
   if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
   if (!instrument) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Инструмент не найден</div>;
@@ -140,6 +149,69 @@ export default function InstrumentPage() {
 
       {/* MOEX Stats */}
       {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
+
+      {/* Active Contracts Table */}
+      {contracts.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Активные контракты</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide border-b border-gray-100 dark:border-gray-800">
+                  <th className="text-left py-2 pr-4">Контракт</th>
+                  <th className="text-right py-2 px-2">Цена</th>
+                  <th className="text-right py-2 px-2">Изм.</th>
+                  <th className="text-right py-2 px-2">Изм. %</th>
+                  <th className="text-right py-2 px-2">Макс.</th>
+                  <th className="text-right py-2 px-2">Мин.</th>
+                  <th className="text-right py-2 px-2">Объём</th>
+                  <th className="text-right py-2 px-2">Откр. инт.</th>
+                  <th className="text-right py-2 pl-2">Сделки</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracts.map((c) => (
+                  <tr key={c.secid} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
+                    <td className="py-2.5 pr-4">
+                      <div className="font-mono font-bold text-gray-900 dark:text-gray-100">{c.secid}</div>
+                      <div className="text-[10px] text-gray-400">{c.shortname}{c.lastTradeDate ? ` · до ${c.lastTradeDate}` : ""}</div>
+                    </td>
+                    <td className="text-right py-2.5 px-2 font-semibold dark:text-gray-100">
+                      {c.last != null ? c.last.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className={`text-right py-2.5 px-2 font-medium ${
+                      c.change > 0 ? "text-green-600" : c.change < 0 ? "text-red-500" : "text-gray-400"
+                    }`}>
+                      {c.change != null ? (c.change > 0 ? "+" : "") + c.change : "—"}
+                    </td>
+                    <td className={`text-right py-2.5 px-2 font-medium ${
+                      c.changePct > 0 ? "text-green-600" : c.changePct < 0 ? "text-red-500" : "text-gray-400"
+                    }`}>
+                      {c.changePct != null ? (c.changePct > 0 ? "+" : "") + c.changePct.toFixed(2) + "%" : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
+                      {c.high != null ? c.high.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
+                      {c.low != null ? c.low.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
+                      {c.volume != null ? c.volume.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
+                      {c.openInterest != null ? c.openInterest.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className="text-right py-2.5 pl-2 text-gray-600 dark:text-gray-400">
+                      {c.numTrades != null ? c.numTrades.toLocaleString("ru-RU") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-3 text-right">Данные MOEX ISS</p>
+        </div>
+      )}
 
       {/* Related Instruments */}
       {instrument.relatedInstruments && instrument.relatedInstruments.length > 0 && (
