@@ -28,7 +28,7 @@ const ideaSelect = {
   instruments: {
     select: {
       instrument: {
-        select: { id: true, name: true, slug: true },
+        select: { id: true, name: true, slug: true, ticker: true },
       },
     },
   },

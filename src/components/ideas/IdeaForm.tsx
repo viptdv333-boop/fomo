@@ -26,6 +26,7 @@ interface Attachment {
 interface IdeaFormProps {
   mode: "create" | "edit";
   ideaId?: string;
+  preselectedInstrumentId?: string;
   initialData?: {
     title: string;
     preview: string;
@@ -38,7 +39,7 @@ interface IdeaFormProps {
   };
 }
 
-export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
+export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrumentId }: IdeaFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +83,25 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
         });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Preselect instrument from URL param
+  useEffect(() => {
+    if (preselectedInstrumentId && selectedChips.length === 0) {
+      fetch(`/api/instruments`)
+        .then(r => r.json())
+        .then((all: Instrument[]) => {
+          const inst = all.find((i: Instrument) => i.id === preselectedInstrumentId);
+          if (inst) {
+            setSelectedChips([{
+              id: inst.id,
+              ticker: inst.ticker,
+              exchange: inst.exchangeRel?.shortName || "",
+              auto: false,
+            }]);
+          }
+        });
+    }
+  }, [preselectedInstrumentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced search
   const handleSearchChange = useCallback((value: string) => {

@@ -51,7 +51,7 @@ interface IdeaCardProps {
       avatarUrl: string | null;
       donationCard?: string | null;
     };
-    instruments: { id: string; name: string; slug: string }[];
+    instruments: { id: string; name: string; slug: string; ticker?: string | null }[];
     voteScore: number;
     userVote: number | null;
   };
@@ -164,7 +164,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {idea.instruments.slice(0, 2).map((inst) => (
               <Link key={inst.id} href={`/instruments/${inst.slug}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] hover:bg-green-100 transition">
                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" /></svg>
-                {inst.name}
+                #{inst.ticker || inst.name}
               </Link>
             ))}
           </div>
@@ -253,10 +253,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               href={`/instruments/${inst.slug}`}
               className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[11px] font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
-              </svg>
-              {inst.name}
+              #{inst.ticker || inst.name}
             </Link>
           ))}
         </div>
