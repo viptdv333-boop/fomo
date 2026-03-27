@@ -65,6 +65,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
   const [showDonateModal, setShowDonateModal] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSent, setReportSent] = useState(false);
 
   // Fake view count derived from idea id for display
   const viewCount = Math.abs(idea.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 400) + 50;
@@ -297,6 +300,50 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </button>
         </div>
       </div>
+
+      {/* Report button */}
+      {session && !minimal && (
+        <div className="flex justify-end mt-1">
+          <button
+            onClick={() => setShowReport(!showReport)}
+            className="text-[10px] text-gray-300 dark:text-gray-600 hover:text-red-400 transition"
+          >
+            {reportSent ? "Жалоба отправлена" : "Пожаловаться"}
+          </button>
+        </div>
+      )}
+
+      {showReport && !reportSent && (
+        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <select
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            className="w-full text-xs border dark:border-gray-700 rounded-lg px-2 py-1.5 dark:bg-gray-900 dark:text-gray-100 mb-2"
+          >
+            <option value="">Причина жалобы...</option>
+            <option value="spam">Спам</option>
+            <option value="fraud">Мошенничество</option>
+            <option value="inappropriate">Неприемлемый контент</option>
+            <option value="misleading">Вводящая в заблуждение информация</option>
+          </select>
+          <button
+            onClick={async () => {
+              if (!reportReason) return;
+              await fetch("/api/reports", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetType: "idea", targetId: idea.id, reason: reportReason }),
+              });
+              setReportSent(true);
+              setShowReport(false);
+            }}
+            disabled={!reportReason}
+            className="text-xs bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition disabled:opacity-50"
+          >
+            Отправить
+          </button>
+        </div>
+      )}
 
       {/* Donate modal */}
       {showDonateModal && (

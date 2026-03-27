@@ -71,8 +71,18 @@ function ProfileContent() {
   const [eduYearEnd, setEduYearEnd] = useState("");
   const [showEduForm, setShowEduForm] = useState(false);
   const [rating, setRating] = useState(0);
-  const initialTab = searchParams.get("tab") === "finance" ? "finance" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "finance">(initialTab);
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam === "finance" ? "finance" : tabParam === "security" ? "security" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security">(initialTab);
+
+  // Security tab state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [securityMessage, setSecurityMessage] = useState("");
+  const [securityError, setSecurityError] = useState("");
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -248,6 +258,16 @@ function ProfileContent() {
           }`}
         >
           Финансы
+        </button>
+        <button
+          onClick={() => setActiveTab("security")}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
+            activeTab === "security"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Безопасность
         </button>
       </div>
 
@@ -649,6 +669,72 @@ function ProfileContent() {
         </div>
       </form>
       </>
+      )}
+
+      {activeTab === "security" && (
+        <div className="space-y-6">
+          {/* Change Password */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">Смена пароля</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSecurityMessage(""); setSecurityError("");
+              if (newPassword !== confirmPassword) { setSecurityError("Пароли не совпадают"); return; }
+              const res = await fetch("/api/auth/change-password", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword, newPassword }),
+              });
+              const data = await res.json();
+              if (res.ok) { setSecurityMessage(data.message); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); }
+              else setSecurityError(data.error);
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Текущий пароль</label>
+                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый пароль</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Подтвердите пароль</label>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="submit" className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Сменить пароль</button>
+                {securityMessage && <span className="text-green-600 text-sm">{securityMessage}</span>}
+                {securityError && <span className="text-red-600 text-sm">{securityError}</span>}
+              </div>
+            </form>
+          </div>
+
+          {/* Change Email */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">Смена email</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Текущий: {session?.user?.email || "—"}</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSecurityMessage(""); setSecurityError("");
+              const res = await fetch("/api/auth/change-email", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ newEmail, password: emailPassword }),
+              });
+              const data = await res.json();
+              if (res.ok) { setSecurityMessage(data.message); setNewEmail(""); setEmailPassword(""); }
+              else setSecurityError(data.error);
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый email</label>
+                <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Пароль для подтверждения</label>
+                <input type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <button type="submit" className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Сменить email</button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

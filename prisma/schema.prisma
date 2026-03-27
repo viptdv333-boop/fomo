@@ -64,6 +64,7 @@ model User {
   paymentRequestsSent    PaymentRequest[] @relation("PaymentRequestBuyer")
   paymentRequestsReceived PaymentRequest[] @relation("PaymentRequestSeller")
   notifications          Notification[]
+  reports                Report[]
   tariffs                SubscriptionTariff[]
   sandboxAccount         SandboxAccount?
 
@@ -366,6 +367,24 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  targetType String   // "idea", "author", "channel"
+  targetId   String
+  reason     String
+  details    String?
+  status     String   @default("pending") // "pending", "resolved", "dismissed"
+  resolution String?  // "deleted", "banned", "dismissed"
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status])
   @@index([createdAt])
 }
 
