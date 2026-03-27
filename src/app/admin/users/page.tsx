@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 interface User {
   id: string;
@@ -17,6 +18,8 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const { data: session } = useSession();
+  const myRole = (session?.user as any)?.role;
   const [users, setUsers] = useState<User[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
@@ -31,7 +34,8 @@ export default function AdminUsersPage() {
     const params = filter !== "ALL" ? `?status=${filter}` : "";
     const res = await fetch(`/api/users${params}`);
     const data = await res.json();
-    if (Array.isArray(data)) setUsers(data.filter((u: User) => u.role !== "OWNER"));
+    // OWNER sees all users; ADMIN cannot see OWNER users
+    if (Array.isArray(data)) setUsers(myRole === "OWNER" ? data : data.filter((u: User) => u.role !== "OWNER"));
     setLoading(false);
   }
 
