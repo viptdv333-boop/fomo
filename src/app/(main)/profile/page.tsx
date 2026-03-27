@@ -397,10 +397,10 @@ function ProfileContent() {
           {session?.user?.id && (
             <div className="flex items-center gap-2 mt-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Моя страница: <span className="font-mono text-green-600 dark:text-green-400">fomo.broker/profile/{fomoId || session.user.id}</span>
+                Моя страница: <span className="font-mono text-green-600 dark:text-green-400">fomo.broker/profile/{fomoId || (session.user as any).fomoId || session.user.id}</span>
               </p>
               <ShareButtons
-                url={`https://fomo.broker/profile/${fomoId || session.user.id}`}
+                url={`https://fomo.broker/profile/${fomoId || (session.user as any).fomoId || session.user.id}`}
                 text={`${[firstName, lastName].filter(Boolean).join(" ") || displayName || "Профиль"} на FOMO`}
               />
             </div>
