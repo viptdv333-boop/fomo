@@ -47,8 +47,10 @@ export async function GET(
   const { id } = await context.params;
   const session = await auth();
 
-  const user = await prisma.user.findUnique({
-    where: { id },
+  // Try by ID first, then by fomoId
+  const isCuid = /^[a-z0-9]{20,}$/i.test(id);
+  const user = await prisma.user.findFirst({
+    where: isCuid ? { id } : { fomoId: id },
     select: {
       id: true,
       displayName: true,
