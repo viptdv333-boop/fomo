@@ -28,13 +28,6 @@ function hashColor(str: string) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-// Generate pseudo-stats from rating for display purposes
-function getDerivedStats(author: Author) {
-  const r = Number(author.rating) || 0;
-  const profitability = `+${Math.round(r * 15)}%`;
-  const successRate = `${Math.round(50 + r * 5)}%`;
-  return { profitability, successRate };
-}
 
 function AuthorAvatar({ author }: { author: Author }) {
   const color = hashColor(author.id);
@@ -185,6 +178,33 @@ export default function AuthorsPage() {
         </p>
       )}
 
+      {/* Top 3 authors */}
+      {!loading && authors.length >= 3 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {[...authors].sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3).map((author, i) => {
+            const medals = ["🥇", "🥈", "🥉"];
+            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+            return (
+              <Link key={author.id} href={`/profile/${author.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{medals[i]}</span>
+                  <AuthorAvatar author={author} />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{author.displayName}</div>
+                    {author.fomoId && <div className="text-xs text-gray-400">@{author.fomoId}</div>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span>⭐ {Number(author.rating).toFixed(1)}</span>
+                  <span>{author.ideasCount} идей</span>
+                  <span>👥 {author.subscribersCount}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Загрузка...</div>
       ) : filtered.length === 0 ? (
@@ -207,7 +227,6 @@ export default function AuthorsPage() {
         {viewMode === "cards" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((author) => {
-              const { profitability, successRate } = getDerivedStats(author);
               return (
                 <Link key={author.id} href={`/profile/${author.id}`} className="bg-white dark:bg-gray-900 rounded-2xl shadow hover:shadow-lg transition-shadow p-5 flex flex-col items-center text-center">
                   <AuthorAvatar author={author} />
@@ -216,10 +235,9 @@ export default function AuthorsPage() {
                     <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                   </div>
                   {author.fomoId && <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">@{author.fomoId}</div>}
-                  <div className="grid grid-cols-4 gap-3 w-full mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/30">
+                  <div className="grid grid-cols-3 gap-3 w-full mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/30">
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">⭐{Number(author.rating).toFixed(1)}</div><div className="text-[10px] text-gray-400">Рейтинг</div></div>
-                    <div><div className="font-semibold text-sm text-green-600 dark:text-green-400">{profitability}</div><div className="text-[10px] text-gray-400">Доход</div></div>
-                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{successRate}</div><div className="text-[10px] text-gray-400">Успех</div></div>
+                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[10px] text-gray-400">Идеи</div></div>
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.subscribersCount}</div><div className="text-[10px] text-gray-400">Подп.</div></div>
                   </div>
                 </Link>
@@ -230,7 +248,6 @@ export default function AuthorsPage() {
           /* Compact list — like Feed minimal */
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
             {filtered.map((author) => {
-              const { profitability } = getDerivedStats(author);
               const color = hashColor(author.id);
               return (
                 <Link key={author.id} href={`/profile/${author.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
@@ -241,7 +258,7 @@ export default function AuthorsPage() {
                   <svg className="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                   <div className="flex-1" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">⭐ {Number(author.rating).toFixed(1)}</span>
-                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">{profitability}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{author.ideasCount} идей</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">👥 {author.subscribersCount}</span>
                 </Link>
               );
@@ -251,7 +268,6 @@ export default function AuthorsPage() {
           /* Paragraph — full card view (default) */
           <div className="flex flex-col gap-4">
             {filtered.map((author) => {
-              const { profitability, successRate } = getDerivedStats(author);
               return (
                 <div key={author.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-shadow px-6 py-5 flex items-start gap-4">
                   <AuthorAvatar author={author} />
@@ -271,8 +287,7 @@ export default function AuthorsPage() {
                       </div>
                       <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Рейтинг</div>
                     </div>
-                    <div className="text-center"><div className="font-semibold text-base text-green-600 dark:text-green-400">{profitability}</div><div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Доходность</div></div>
-                    <div className="text-center"><div className="font-semibold text-base text-gray-900 dark:text-gray-100">{successRate}</div><div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Успешность</div></div>
+                    <div className="text-center"><div className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Идей</div></div>
                     <div className="text-center"><div className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.subscribersCount}</div><div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Подписчиков</div></div>
                   </div>
                   <Link href={`/profile/${author.id}`} className="shrink-0 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-green-500 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition">

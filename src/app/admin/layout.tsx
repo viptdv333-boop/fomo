@@ -7,6 +7,8 @@ const adminLinks = [
   { href: "/admin/ideas", label: "Идеи" },
   { href: "/admin/categories", label: "Категории" },
   { href: "/admin/instruments", label: "Инструменты" },
+  { href: "/admin/reports", label: "Жалобы" },
+  { href: "/admin/broadcast", label: "Рассылка" },
   { href: "/admin/rating", label: "Рейтинг" },
   { href: "/admin/languages", label: "Языки" },
 ];

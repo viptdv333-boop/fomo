@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
 
 interface Instrument {
@@ -308,6 +309,29 @@ function FeedPage() {
           </button>
         </div>
       </div>
+
+      {/* Top 3 ideas */}
+      {!loading && ideas.length >= 3 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
+            const medals = ["🥇", "🥈", "🥉"];
+            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+            return (
+              <Link key={idea.id} href={`/ideas/${idea.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">{medals[i]}</span>
+                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{idea.author.displayName}</span>
+                  <span>❤️ {idea.voteScore}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* Ideas */}
       {loading ? (

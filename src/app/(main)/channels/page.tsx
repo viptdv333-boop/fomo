@@ -281,56 +281,32 @@ export default function ChannelsPage() {
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-              <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{channels.length}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Всего каналов</div>
+      {/* Top 3 channels */}
+      {channels.length >= 3 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[...channels].sort((a, b) => b.subscribersCount - a.subscribersCount).slice(0, 3).map((ch, i) => {
+            const medals = ["🥇", "🥈", "🥉"];
+            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+            return (
+              <Link key={ch.id} href={`/channels/${ch.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{medals[i]}</span>
+                  <ChannelAvatar ch={ch} />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{ch.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{ch.author.displayName}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span>👥 {ch.subscribersCount}</span>
+                  <StarRating rating={ch.author.rating} />
+                  {ch.price > 0 && <span className="text-green-600 font-medium">{ch.price} ₽/мес</span>}
+                </div>
+              </Link>
+            );
+          })}
         </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-              <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{subscribedIds.size}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Ваши подписки</div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
-              <svg className="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">150+</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Идей в месяц</div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
-              <svg className="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{uniqueAuthors}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Активных авторов</div>
-        </div>
-      </div>
+      )}
 
       {/* Content */}
       {loading ? (
