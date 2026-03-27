@@ -9,6 +9,7 @@ interface Author {
   avatarUrl: string | null;
   fomoId: string | null;
   rating: number;
+  role?: string;
   ideasCount: number;
   subscribersCount: number;
   bio: string | null;
@@ -178,16 +179,22 @@ export default function AuthorsPage() {
         </p>
       )}
 
-      {/* Top 3 authors */}
-      {!loading && authors.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {[...authors].sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3).map((author, i) => {
-            const medals = ["🥇", "🥈", "🥉"];
-            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
-            return (
+      {/* Top 4: Owner + Top 3 authors */}
+      {!loading && authors.length >= 3 && (() => {
+        const owner = authors.find(a => a.role === "OWNER");
+        const top3 = [...authors].filter(a => a.role !== "OWNER").sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3);
+        const podium = owner ? [owner, ...top3] : top3;
+        const labels = owner ? ["👑 Владелец", "🥇 1 место", "🥈 2 место", "🥉 3 место"] : ["🥇 1 место", "🥈 2 место", "🥉 3 место"];
+        const bgColors = owner
+          ? ["bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800", "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"]
+          : ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {podium.map((author, i) => (
               <Link key={author.id} href={`/profile/${author.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+                <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{labels[i]}</div>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{medals[i]}</span>
                   <AuthorAvatar author={author} />
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{author.displayName}</div>
@@ -200,10 +207,10 @@ export default function AuthorsPage() {
                   <span>👥 {author.subscribersCount}</span>
                 </div>
               </Link>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Загрузка...</div>

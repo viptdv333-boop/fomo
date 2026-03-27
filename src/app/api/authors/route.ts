@@ -12,6 +12,7 @@ export async function GET() {
       avatarUrl: true,
       fomoId: true,
       rating: true,
+      role: true,
       bio: true,
       createdAt: true,
       _count: {
@@ -31,6 +32,7 @@ export async function GET() {
       avatarUrl: a.avatarUrl,
       fomoId: a.fomoId,
       rating: a.rating,
+      role: a.role,
       bio: a.bio,
       createdAt: a.createdAt,
       ideasCount: a._count.ideas,
