@@ -14,6 +14,14 @@ const ChartWidget = dynamic(
   { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
 );
 
+interface RelatedInstrument {
+  id: string;
+  name: string;
+  ticker: string | null;
+  slug: string;
+  exchangeRel?: { shortName: string } | null;
+}
+
 interface InstrumentData {
   id: string;
   name: string;
@@ -24,9 +32,12 @@ interface InstrumentData {
   tradingViewSymbol: string | null;
   dataSource: string | null;
   dataTicker: string | null;
+  externalUrl: string | null;
   description: string | null;
   category: { id: string; name: string; slug: string } | null;
+  exchangeRel: { id: string; name: string; slug: string; shortName: string } | null;
   chatRoom: { id: string; name: string } | null;
+  relatedInstruments?: RelatedInstrument[];
 }
 
 export default function InstrumentPage() {
@@ -73,9 +84,9 @@ export default function InstrumentPage() {
                   {instrument.ticker}
                 </span>
               )}
-              {instrument.dataSource && (
+              {instrument.exchangeRel && (
                 <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded text-xs font-medium">
-                  MOEX
+                  {instrument.exchangeRel.shortName}
                 </span>
               )}
             </div>
@@ -95,9 +106,9 @@ export default function InstrumentPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {instrument.exchangeUrl && (
+            {(instrument.externalUrl || instrument.exchangeUrl) && (
               <a
-                href={instrument.exchangeUrl}
+                href={instrument.externalUrl || instrument.exchangeUrl || ""}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition"
@@ -129,6 +140,34 @@ export default function InstrumentPage() {
 
       {/* MOEX Stats */}
       {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
+
+      {/* Related Instruments */}
+      {instrument.relatedInstruments && instrument.relatedInstruments.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Связанные тикеры</h2>
+          <div className="flex flex-wrap gap-2">
+            {instrument.relatedInstruments.map((rel) => (
+              <Link
+                key={rel.id}
+                href={`/instruments/${rel.slug}`}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+              >
+                <span className="font-mono font-bold text-sm text-green-600 dark:text-green-400">
+                  #{rel.ticker || rel.slug}
+                </span>
+                {rel.exchangeRel?.shortName && (
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                    {rel.exchangeRel.shortName}
+                  </span>
+                )}
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
+                  {rel.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ideas */}
       <div>
