@@ -31,7 +31,7 @@ export default function AdminUsersPage() {
     const params = filter !== "ALL" ? `?status=${filter}` : "";
     const res = await fetch(`/api/users${params}`);
     const data = await res.json();
-    if (Array.isArray(data)) setUsers(data);
+    if (Array.isArray(data)) setUsers(data.filter((u: User) => u.role !== "OWNER"));
     setLoading(false);
   }
 
@@ -86,6 +86,7 @@ export default function AdminUsersPage() {
   };
 
   const roleColors: Record<string, string> = {
+    OWNER: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
     ADMIN: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
     USER: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
   };
@@ -147,7 +148,7 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
-                      {user.role === "ADMIN" ? "Админ" : "Юзер"}
+                      {user.role === "OWNER" ? "Владелец" : user.role === "ADMIN" ? "Админ" : "Юзер"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -218,37 +219,41 @@ export default function AdminUsersPage() {
                           🔓 Разбанить
                         </button>
                       )}
-                      {/* Toggle admin */}
-                      {user.role === "USER" ? (
+                      {/* Toggle admin (not for OWNER) */}
+                      {user.role !== "OWNER" && (
+                        user.role === "USER" ? (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Назначить ${user.displayName} администратором?`)) {
+                                adminAction(user.id, { role: "ADMIN" });
+                              }
+                            }}
+                            className="px-2 py-1 rounded text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50"
+                          >
+                            👑 Назначить админом
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Снять права администратора у ${user.displayName}?`)) {
+                                adminAction(user.id, { role: "USER" });
+                              }
+                            }}
+                            className="px-2 py-1 rounded text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+                          >
+                            👤 Снять админа
+                          </button>
+                        )
+                      )}
+                      {/* Delete (not for OWNER) */}
+                      {user.role !== "OWNER" && (
                         <button
-                          onClick={() => {
-                            if (confirm(`Назначить ${user.displayName} администратором?`)) {
-                              adminAction(user.id, { role: "ADMIN" });
-                            }
-                          }}
-                          className="px-2 py-1 rounded text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50"
+                          onClick={() => deleteUser(user.id)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                         >
-                          👑 Назначить админом
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (confirm(`Снять права администратора у ${user.displayName}?`)) {
-                              adminAction(user.id, { role: "USER" });
-                            }
-                          }}
-                          className="px-2 py-1 rounded text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
-                        >
-                          👤 Снять админа
+                          🗑️ Удалить
                         </button>
                       )}
-                      {/* Delete */}
-                      <button
-                        onClick={() => deleteUser(user.id)}
-                        className="px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
-                      >
-                        🗑️ Удалить
-                      </button>
                     </div>
                   </td>
                 </tr>

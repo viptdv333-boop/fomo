@@ -7,7 +7,7 @@ export default auth((req) => {
 
   // Admin routes require ADMIN role
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    if (!user || user.role !== "ADMIN") {
+    if (!user || (user.role !== "ADMIN" && user.role !== "OWNER")) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAdmin } from "@/lib/roles";
 import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 
@@ -133,15 +134,15 @@ export async function PATCH(
 
   const { id } = await context.params;
   const body = await request.json();
-  const isAdmin = (session.user as any).role === "ADMIN";
+  const isUserAdmin = isAdmin(session.user);
   const isSelf = session.user.id === id;
 
-  if (!isAdmin && !isSelf) {
+  if (!isUserAdmin && !isSelf) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Admin actions: status, role, rating, ban
-  if (isAdmin && (body.status !== undefined || body.role !== undefined || body.ratingDelta !== undefined || body.bannedUntil !== undefined)) {
+  if (isUserAdmin && (body.status !== undefined || body.role !== undefined || body.ratingDelta !== undefined || body.bannedUntil !== undefined)) {
     const parsed = adminPatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -185,7 +186,7 @@ export async function PATCH(
   }
 
   // User editing own profile (or admin editing profile fields)
-  if (isSelf || isAdmin) {
+  if (isSelf || isUserAdmin) {
     const parsed = userPatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -269,7 +270,7 @@ export async function DELETE(
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if ((session.user as any).role !== "ADMIN") {
+  if (!isAdmin(session.user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
