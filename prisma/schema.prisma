@@ -128,9 +128,22 @@ model Instrument {
   exchangeRel  Exchange?           @relation(fields: [exchangeId], references: [id], onDelete: SetNull)
   ideas        IdeaInstrument[]
   chatRoom     ChatRoom?
+  relatedFrom  InstrumentRelation[] @relation("instrumentRelations")
+  relatedTo    InstrumentRelation[] @relation("relatedTo")
 
   @@index([categoryId])
   @@index([exchangeId])
+}
+
+model InstrumentRelation {
+  id           String @id @default(cuid())
+  instrumentId String
+  relatedId    String
+
+  instrument Instrument @relation("instrumentRelations", fields: [instrumentId], references: [id], onDelete: Cascade)
+  related    Instrument @relation("relatedTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, relatedId])
 }
 
 model Idea {

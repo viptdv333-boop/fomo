@@ -27,14 +27,24 @@ export async function GET(request: NextRequest) {
   const instrumentType = searchParams.get("type");
   const categorySlug = searchParams.get("categorySlug");
 
+  const search = searchParams.get("search");
+
   const where: Record<string, unknown> = {};
   if (exchangeSlug) where.exchangeRel = { slug: exchangeSlug };
   if (instrumentType) where.instrumentType = instrumentType;
   if (categorySlug) where.category = { slug: categorySlug };
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { ticker: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
   const instruments = await prisma.instrument.findMany({
     where,
     orderBy: { name: "asc" },
+    take: search ? 20 : undefined,
     include: {
       chatRoom: { select: { id: true } },
       category: { select: { id: true, name: true, slug: true } },

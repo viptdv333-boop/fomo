@@ -287,6 +287,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Auto-add related instruments
+  const relatedRecords = await prisma.instrumentRelation.findMany({
+    where: { instrumentId: { in: instrumentIds } },
+    select: { relatedId: true },
+  });
+  const allInstrumentIds = [...new Set([...instrumentIds, ...relatedRecords.map(r => r.relatedId)])];
+
   const idea = await prisma.idea.create({
     data: {
       title,
@@ -298,7 +305,7 @@ export async function POST(request: NextRequest) {
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       authorId: userId,
       instruments: {
-        create: instrumentIds.map((instrumentId) => ({ instrumentId })),
+        create: allInstrumentIds.map((instrumentId) => ({ instrumentId })),
       },
     },
     select: {

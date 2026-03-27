@@ -33,7 +33,11 @@ export async function GET(
     where: { slug },
     include: {
       category: { select: { id: true, name: true, slug: true } },
+      exchangeRel: { select: { id: true, name: true, slug: true, shortName: true } },
       chatRoom: { select: { id: true, name: true } },
+      relatedFrom: {
+        include: { related: { select: { id: true, name: true, ticker: true, slug: true, exchangeRel: { select: { shortName: true } } } } },
+      },
     },
   });
 
@@ -41,7 +45,11 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(instrument);
+  // Flatten related
+  const related = instrument.relatedFrom.map(r => r.related);
+  const { relatedFrom: _, ...rest } = instrument;
+
+  return NextResponse.json({ ...rest, relatedInstruments: related });
 }
 
 export async function PUT(

@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Instrument {
   id: string;
   name: string;
+  slug: string;
+  ticker: string;
+  exchangeRel?: { shortName: string };
+}
+
+interface SelectedChip {
+  id: string;
+  ticker: string;
+  exchange: string;
+  auto?: boolean;
 }
 
 interface Attachment {
@@ -31,16 +41,15 @@ interface IdeaFormProps {
 export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initialData?.title || "");
   const [preview, setPreview] = useState(initialData?.preview || "");
   const [content, setContent] = useState(initialData?.content || "");
   const [isPaid, setIsPaid] = useState(initialData?.isPaid || false);
   const [price, setPrice] = useState(initialData?.price ? String(initialData.price) : "");
   const [acceptDonations, setAcceptDonations] = useState(initialData?.acceptDonations ?? false);
-  const [selectedInstruments, setSelectedInstruments] = useState<string[]>(
-    initialData?.instrumentIds || []
-  );
+  const [selectedChips, setSelectedChips] = useState<SelectedChip[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>(
     initialData?.attachments || []
   );
@@ -48,16 +57,114 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Instrument autocomplete state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Instrument[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load initial instruments in edit mode
   useEffect(() => {
-    fetch("/api/instruments")
-      .then((r) => r.json())
-      .then(setInstruments);
+    if (initialData?.instrumentIds && initialData.instrumentIds.length > 0) {
+      fetch("/api/instruments?search=")
+        .then((r) => r.json())
+        .then((all: Instrument[]) => {
+          const chips: SelectedChip[] = all
+            .filter((inst) => initialData.instrumentIds.includes(inst.id))
+            .map((inst) => ({
+              id: inst.id,
+              ticker: inst.ticker,
+              exchange: inst.exchangeRel?.shortName || "",
+              auto: false,
+            }));
+          setSelectedChips(chips);
+        });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced search
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/instruments?search=${encodeURIComponent(value.trim())}`);
+        if (res.ok) {
+          const data: Instrument[] = await res.json();
+          setSearchResults(data);
+          setShowDropdown(true);
+        }
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
   }, []);
 
-  function toggleInstrument(id: string) {
-    setSelectedInstruments((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Select instrument from search results
+  async function selectInstrument(inst: Instrument) {
+    if (selectedChips.some((c) => c.id === inst.id)) {
+      setSearchQuery("");
+      setShowDropdown(false);
+      return;
+    }
+    const chip: SelectedChip = {
+      id: inst.id,
+      ticker: inst.ticker,
+      exchange: inst.exchangeRel?.shortName || "",
+      auto: false,
+    };
+    setSelectedChips((prev) => [...prev, chip]);
+    setSearchQuery("");
+    setShowDropdown(false);
+    searchInputRef.current?.focus();
+
+    // Fetch related instruments
+    try {
+      const res = await fetch(`/api/instruments/${inst.slug}/related`);
+      if (res.ok) {
+        const related: Instrument[] = await res.json();
+        setSelectedChips((prev) => {
+          const newChips = related
+            .filter((r) => !prev.some((c) => c.id === r.id))
+            .map((r) => ({
+              id: r.id,
+              ticker: r.ticker,
+              exchange: r.exchangeRel?.shortName || "",
+              auto: true,
+            }));
+          return [...prev, ...newChips];
+        });
+      }
+    } catch {
+      // silently ignore related fetch errors
+    }
+  }
+
+  function removeChip(id: string) {
+    setSelectedChips((prev) => prev.filter((c) => c.id !== id));
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,7 +203,7 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
       isPaid,
       price: isPaid ? Number(price) : undefined,
       acceptDonations: !isPaid ? acceptDonations : false,
-      instrumentIds: selectedInstruments,
+      instrumentIds: selectedChips.map((c) => c.id),
       attachments: attachments.length > 0 ? attachments : undefined,
     };
 
@@ -151,27 +258,103 @@ export default function IdeaForm({ mode, ideaId, initialData }: IdeaFormProps) {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Инструменты
           </label>
-          <div className="flex flex-wrap gap-2">
-            {instruments.map((inst) => (
-              <button
-                key={inst.id}
-                type="button"
-                onClick={() => toggleInstrument(inst.id)}
-                className={`px-3 py-1.5 rounded-full text-sm transition ${
-                  selectedInstruments.includes(inst.id)
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
+
+          {/* Autocomplete search */}
+          <div className="relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => {
+                if (searchResults.length > 0) setShowDropdown(true);
+              }}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+              placeholder="Поиск инструмента по тикеру или названию..."
+            />
+            {searchLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                ...
+              </div>
+            )}
+
+            {showDropdown && searchResults.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg"
               >
-                {inst.name}
-              </button>
-            ))}
-            {instruments.length === 0 && (
-              <span className="text-gray-400 dark:text-gray-500 text-sm">
-                Нет доступных инструментов
-              </span>
+                {searchResults.map((inst) => {
+                  const alreadySelected = selectedChips.some((c) => c.id === inst.id);
+                  return (
+                    <button
+                      key={inst.id}
+                      type="button"
+                      onClick={() => selectInstrument(inst)}
+                      disabled={alreadySelected}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition ${
+                        alreadySelected
+                          ? "text-gray-400 dark:text-gray-600 cursor-default"
+                          : "text-gray-800 dark:text-gray-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                      }`}
+                    >
+                      <span className="font-medium text-green-600 dark:text-green-400">
+                        #{inst.ticker}
+                      </span>
+                      {inst.exchangeRel?.shortName && (
+                        <span className="text-gray-500 dark:text-gray-400 ml-1">
+                          ({inst.exchangeRel.shortName})
+                        </span>
+                      )}
+                      <span className="text-gray-500 dark:text-gray-400"> — {inst.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {showDropdown && searchQuery.trim() && searchResults.length === 0 && !searchLoading && (
+              <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                Ничего не найдено
+              </div>
             )}
           </div>
+
+          {/* Selected instrument chips */}
+          {selectedChips.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {selectedChips.map((chip) => (
+                <span
+                  key={chip.id}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${
+                    chip.auto
+                      ? "border border-gray-400 dark:border-gray-600 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800"
+                      : "border border-green-500 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                  }`}
+                >
+                  #{chip.ticker}
+                  {chip.exchange && (
+                    <span className="opacity-70"> ({chip.exchange})</span>
+                  )}
+                  {chip.auto && (
+                    <span className="text-xs opacity-60 ml-0.5">(авто)</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeChip(chip.id)}
+                    className="ml-1 text-current opacity-50 hover:opacity-100 transition"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {selectedChips.length === 0 && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              Выберите хотя бы один инструмент
+            </p>
+          )}
         </div>
 
         <div>

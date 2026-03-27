@@ -64,6 +64,9 @@ function FeedPage() {
     searchParams.get("instrumentId") || ""
   );
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [instrumentSearch, setInstrumentSearch] = useState("");
+  const [instrumentResults, setInstrumentResults] = useState<{ id: string; name: string; ticker: string | null; slug: string; exchangeRel?: { shortName: string } | null }[]>([]);
+  const [selectedInstrumentName, setSelectedInstrumentName] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -172,7 +175,7 @@ function FeedPage() {
           Рейтинг
         </button>
 
-        {/* Categories dropdown */}
+        {/* Instrument search autocomplete */}
         <div className="relative">
           <button
             onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
@@ -181,47 +184,91 @@ function FeedPage() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
             </svg>
-            {selectedInstrument
-              ? categories.flatMap((c) => c.instruments).find((i) => i.id === selectedInstrument)?.name || "Категории"
-              : "Категории"}
+            {selectedInstrument ? selectedInstrumentName || "Инструмент" : "Инструменты"}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           {expandedCategory === "__root" && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setExpandedCategory(null)} />
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 min-w-[220px] max-h-80 overflow-y-auto">
-                <button
-                  onClick={() => { setSelectedInstrument(""); setExpandedCategory(null); setPage(1); }}
-                  className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                    !selectedInstrument ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
-                  }`}
-                >
-                  Все инструменты
-                </button>
-                {categories.map((cat) => (
-                  <div key={cat.id}>
-                    <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">
-                      {cat.name}
-                    </div>
-                    {cat.instruments.length === 0 ? (
-                      <div className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Нет инструментов</div>
+              <div className="fixed inset-0 z-40" onClick={() => { setExpandedCategory(null); setInstrumentSearch(""); setInstrumentResults([]); }} />
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 w-72">
+                <div className="p-2 border-b dark:border-gray-700">
+                  <input
+                    type="text"
+                    placeholder="Поиск: нефть, SBER, gold..."
+                    value={instrumentSearch}
+                    onChange={async (e) => {
+                      const q = e.target.value;
+                      setInstrumentSearch(q);
+                      if (q.length >= 2) {
+                        const res = await fetch(`/api/instruments?search=${encodeURIComponent(q)}`);
+                        if (res.ok) setInstrumentResults(await res.json());
+                      } else setInstrumentResults([]);
+                    }}
+                    className="w-full px-2.5 py-1.5 border dark:border-gray-600 rounded-lg text-xs focus:ring-1 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  <button
+                    onClick={() => { setSelectedInstrument(""); setSelectedInstrumentName(""); setExpandedCategory(null); setInstrumentSearch(""); setInstrumentResults([]); setPage(1); }}
+                    className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                      !selectedInstrument ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                    }`}
+                  >
+                    Все инструменты
+                  </button>
+                  {instrumentSearch.length >= 2 ? (
+                    instrumentResults.length === 0 ? (
+                      <div className="px-3 py-4 text-xs text-gray-400 text-center">Ничего не найдено</div>
                     ) : (
-                      cat.instruments.map((inst) => (
+                      instrumentResults.map((inst) => (
                         <button
                           key={inst.id}
-                          onClick={() => { setSelectedInstrument(inst.id); setExpandedCategory(null); setPage(1); }}
-                          className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                            selectedInstrument === inst.id
-                              ? "text-green-700 dark:text-green-300 font-medium bg-green-50 dark:bg-green-900/30"
-                              : "text-gray-700 dark:text-gray-300"
+                          onClick={() => {
+                            const label = `${inst.ticker || inst.name}${inst.exchangeRel?.shortName ? ` (${inst.exchangeRel.shortName})` : ""}`;
+                            setSelectedInstrument(inst.id);
+                            setSelectedInstrumentName(label);
+                            setExpandedCategory(null);
+                            setInstrumentSearch("");
+                            setInstrumentResults([]);
+                            setPage(1);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
+                            selectedInstrument === inst.id ? "text-green-600 font-medium bg-green-50 dark:bg-green-900/30" : "text-gray-700 dark:text-gray-300"
                           }`}
                         >
-                          {inst.name}
+                          <span className="font-mono font-bold text-green-600 dark:text-green-400">#{inst.ticker || "—"}</span>
+                          {inst.exchangeRel?.shortName && <span className="text-gray-400 text-[10px]">({inst.exchangeRel.shortName})</span>}
+                          <span className="truncate flex-1 text-gray-500">{inst.name}</span>
                         </button>
                       ))
-                    )}
-                  </div>
-                ))}
+                    )
+                  ) : (
+                    /* Show categories when no search */
+                    categories.map((cat) => (
+                      <div key={cat.id}>
+                        <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">{cat.name}</div>
+                        {cat.instruments.slice(0, 5).map((inst: any) => (
+                          <button
+                            key={inst.id}
+                            onClick={() => {
+                              const label = `${inst.ticker || inst.name}${inst.exchangeRel?.shortName ? ` (${inst.exchangeRel.shortName})` : ""}`;
+                              setSelectedInstrument(inst.id);
+                              setSelectedInstrumentName(label);
+                              setExpandedCategory(null);
+                              setPage(1);
+                            }}
+                            className={`w-full text-left px-4 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                              selectedInstrument === inst.id ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"
+                            }`}
+                          >
+                            <span className="font-mono font-bold">{inst.ticker || "—"}</span> {inst.name}
+                          </button>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </>
           )}
