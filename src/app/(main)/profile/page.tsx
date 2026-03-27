@@ -84,6 +84,9 @@ function ProfileContent() {
   const [securityMessage, setSecurityMessage] = useState("");
   const [securityError, setSecurityError] = useState("");
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [emailStep, setEmailStep] = useState<"form" | "code">("form");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -736,40 +739,77 @@ function ProfileContent() {
             </form>
           </div>
 
-          {/* Change Email */}
+          {/* Change Email — 2-step: send code → verify */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
             <h3 className="text-lg font-bold dark:text-gray-100 mb-4">Смена email</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Текущий: {session?.user?.email || "—"}</p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setSecurityMessage(""); setSecurityError("");
-              const res = await fetch("/api/auth/change-email", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ newEmail, password: emailPassword }),
-              });
-              const data = await res.json();
-              if (res.ok) { setSecurityMessage(data.message); setNewEmail(""); setEmailPassword(""); }
-              else setSecurityError(data.error);
-            }} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый email</label>
-                <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Текущий пароль</label>
-                <div className="relative">
-                  <input type={showPasswords["email"] ? "text" : "password"} value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className="w-full px-3 py-2 pr-10 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
-                  <button type="button" onClick={() => setShowPasswords(p => ({ ...p, email: !p.email }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    {showPasswords["email"] ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    )}
+
+            {emailStep === "form" ? (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setSecurityMessage(""); setSecurityError(""); setEmailSending(true);
+                const res = await fetch("/api/auth/change-email", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "send-code", newEmail, password: emailPassword }),
+                });
+                const data = await res.json();
+                setEmailSending(false);
+                if (res.ok) { setSecurityMessage(data.message); setEmailStep("code"); }
+                else setSecurityError(data.error);
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый email</label>
+                  <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Текущий пароль</label>
+                  <div className="relative">
+                    <input type={showPasswords["email"] ? "text" : "password"} value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className="w-full px-3 py-2 pr-10 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+                    <button type="button" onClick={() => setShowPasswords(p => ({ ...p, email: !p.email }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                      {showPasswords["email"] ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" disabled={emailSending} className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50">
+                  {emailSending ? "Отправка кода..." : "Отправить код подтверждения"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setSecurityMessage(""); setSecurityError(""); setEmailSending(true);
+                const res = await fetch("/api/auth/change-email", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "verify", newEmail, code: emailCode }),
+                });
+                const data = await res.json();
+                setEmailSending(false);
+                if (res.ok) {
+                  setSecurityMessage(data.message);
+                  setNewEmail(""); setEmailPassword(""); setEmailCode(""); setEmailStep("form");
+                } else setSecurityError(data.error);
+              }} className="space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Код отправлен на <span className="font-medium text-gray-900 dark:text-gray-100">{newEmail}</span>
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Код подтверждения</label>
+                  <input type="text" value={emailCode} onChange={(e) => setEmailCode(e.target.value)} required maxLength={6} placeholder="123456" className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 text-center text-lg tracking-widest font-mono" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <button type="submit" disabled={emailSending} className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50">
+                    {emailSending ? "Проверка..." : "Подтвердить"}
+                  </button>
+                  <button type="button" onClick={() => { setEmailStep("form"); setEmailCode(""); setSecurityError(""); }} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    Назад
                   </button>
                 </div>
-              </div>
-              <button type="submit" className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Сменить email</button>
-            </form>
+              </form>
+            )}
           </div>
         </div>
       )}
