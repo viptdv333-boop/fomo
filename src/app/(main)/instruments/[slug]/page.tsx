@@ -116,7 +116,7 @@ export default function InstrumentPage() {
                 На бирже ↗
               </a>
             )}
-            {instrument.chatRoom && session && (
+            {instrument.chatRoom && (
               <Link
                 href={`/chat/${instrument.chatRoom.id}`}
                 className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -175,14 +175,12 @@ export default function InstrumentPage() {
           <h2 className="text-lg font-semibold dark:text-gray-100">
             Идеи по {instrument.name}
           </h2>
-          {session && (
-            <Link
-              href={`/ideas/new?instrumentId=${instrument.id}`}
-              className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-            >
-              Написать идею
-            </Link>
-          )}
+          <Link
+            href={`/ideas/new?instrumentId=${instrument.id}`}
+            className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            Написать идею
+          </Link>
         </div>
 
         {ideas.length === 0 ? (
