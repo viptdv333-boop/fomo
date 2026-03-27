@@ -132,7 +132,12 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+      <p className="text-center text-sm mt-3">
+        <a href="/forgot-password" className="text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition">
+          Забыли пароль?
+        </a>
+      </p>
+      <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
         Нет аккаунта?{" "}
         <a href="/register" className="text-green-600 dark:text-green-400 hover:underline">
           Зарегистрироваться
