@@ -114,25 +114,34 @@ export default function InstrumentPage() {
               <p className="text-gray-600 dark:text-gray-400 mt-3">{instrument.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {(instrument.externalUrl || instrument.exchangeUrl) && (
               <a
                 href={instrument.externalUrl || instrument.exchangeUrl || ""}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition"
+                className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
               >
-                На бирже ↗
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></svg>
+                На бирже
               </a>
             )}
             {instrument.chatRoom && (
               <Link
                 href={`/chat/${instrument.chatRoom.id}`}
-                className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
               >
-                Чат
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                Обсудить в чате
               </Link>
             )}
+            <Link
+              href={`/ideas/new?instrumentId=${instrument.id}`}
+              className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition inline-flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 5v14m-7-7h14" /></svg>
+              Поделиться идеей
+            </Link>
           </div>
         </div>
       </div>
@@ -247,12 +256,6 @@ export default function InstrumentPage() {
           <h2 className="text-lg font-semibold dark:text-gray-100">
             Идеи по {instrument.name}
           </h2>
-          <Link
-            href={`/ideas/new?instrumentId=${instrument.id}`}
-            className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-          >
-            Написать идею
-          </Link>
         </div>
 
         {ideas.length === 0 ? (
