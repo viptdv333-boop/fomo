@@ -322,16 +322,34 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   }
                 }
 
-                // Clean display name: just the asset name in Russian, no tickers/exchanges
+                // Clean display name: Russian, no tickers/exchanges
+                const nameMap: Record<string, string> = {
+                  "E-mini S&P 500": "СНП 500", "S&P 500": "СНП 500",
+                  "E-mini Nasdaq 100": "НАСДАК 100", "NASDAQ 100": "НАСДАК 100",
+                  "E-mini Dow Jones": "Доу Джонс", "E-mini Russell 2000": "Рассел 2000",
+                  "Hang Seng": "Ханг Сенг", "Hang Seng Index Futures": "Ханг Сенг",
+                  "HS China Enterprises Futures": "Китайские компании",
+                  "DAX 40": "ДАКС 40", "FTSE 100": "ФТСЕ 100", "Nikkei 225": "Никкей 225",
+                  "IMOEX": "ММВБ", "Индекс МосБиржи": "ММВБ", "Индекс РТС": "РТС",
+                  "WTI Crude Oil": "Нефть WTI", "Natural Gas": "Газ (Генри Хаб)",
+                  "Gold": "Золото", "Silver": "Серебро", "Copper": "Медь", "Platinum": "Платина",
+                  "Corn": "Кукуруза", "Wheat": "Пшеница", "Soybean": "Соя",
+                  "ICE Brent": "Нефть Brent (ICE)", "ICE Gasoil": "Газойль",
+                  "Brent": "Нефть Brent", "WTI": "Нефть WTI", "Природный газ": "Газ",
+                  "Нефть Brent": "Нефть", "Природный газ": "Газ",
+                };
                 const simpleName = (name: string) => {
-                  return name
-                    .replace(/\s*\([^)]*\)\s*/g, "") // remove anything in parentheses
+                  // First try exact match after removing parentheses
+                  const cleaned = name.replace(/\s*\([^)]*\)\s*/g, "").trim();
+                  if (nameMap[cleaned]) return nameMap[cleaned];
+                  if (nameMap[name]) return nameMap[name];
+                  // Fallback: remove cruft
+                  return cleaned
                     .replace(/\s+фьючерс\s*/gi, "")
                     .replace(/\s+futures?\s*/gi, "")
                     .replace(/\s*plc\s*/gi, "")
                     .replace(/^ICE\s+/i, "")
                     .replace(/^E-mini\s+/i, "")
-                    .replace(/^HS\s+/i, "")
                     .trim();
                 };
 
