@@ -551,24 +551,24 @@ async function main() {
   // ─── Assets ──────────────────────────────────────────────────────────
   const assetData = [
     // Сырьевые товары
-    { name: "Нефть", slug: "oil", categorySlug: "commodities", sortOrder: 1 },
-    { name: "Газ", slug: "gas", categorySlug: "commodities", sortOrder: 2 },
-    { name: "Европейский газ", slug: "euro-gas", categorySlug: "commodities", sortOrder: 3 },
-    { name: "Какао", slug: "cocoa", categorySlug: "commodities", sortOrder: 4 },
-    { name: "Пшеница", slug: "wheat", categorySlug: "commodities", sortOrder: 5 },
-    { name: "Сахар", slug: "sugar", categorySlug: "commodities", sortOrder: 6 },
-    { name: "Кукуруза", slug: "corn", categorySlug: "commodities", sortOrder: 7 },
-    { name: "Соя", slug: "soy", categorySlug: "commodities", sortOrder: 8 },
-    { name: "Кофе", slug: "coffee", categorySlug: "commodities", sortOrder: 9 },
-    { name: "Бензин", slug: "gasoline", categorySlug: "commodities", sortOrder: 10 },
-    { name: "Апельсиновый сок", slug: "orange-juice", categorySlug: "commodities", sortOrder: 11 },
+    { name: "Нефть", slug: "oil", categorySlug: "commodities", sortOrder: 1, description: "Сырая нефть — главный энергоресурс. Brent и WTI — два основных бенчмарка" },
+    { name: "Газ", slug: "gas", categorySlug: "commodities", sortOrder: 2, description: "Природный газ Henry Hub — основной бенчмарк в США и мире" },
+    { name: "Европейский газ", slug: "euro-gas", categorySlug: "commodities", sortOrder: 3, description: "TTF (Title Transfer Facility) — европейский бенчмарк природного газа" },
+    { name: "Какао", slug: "cocoa", categorySlug: "commodities", sortOrder: 4, description: "Какао-бобы — сырьё для шоколадной промышленности. Торгуется на ICE и MOEX" },
+    { name: "Пшеница", slug: "wheat", categorySlug: "commodities", sortOrder: 5, description: "Пшеница — ключевой зерновой товар. CBOT — мировой бенчмарк" },
+    { name: "Сахар", slug: "sugar", categorySlug: "commodities", sortOrder: 6, description: "Сахар-сырец — торгуется на ICE (Sugar No. 11) и MOEX" },
+    { name: "Кукуруза", slug: "corn", categorySlug: "commodities", sortOrder: 7, description: "Кукуруза — зерновая культура. Основные торги на CBOT (CME Group)" },
+    { name: "Соя", slug: "soy", categorySlug: "commodities", sortOrder: 8, description: "Соевые бобы — масличная культура. Торгуется на CBOT" },
+    { name: "Кофе", slug: "coffee", categorySlug: "commodities", sortOrder: 9, description: "Кофе арабика — торгуется на ICE. Робуста — на London ICE" },
+    { name: "Бензин", slug: "gasoline", categorySlug: "commodities", sortOrder: 10, description: "Бензин RBOB — торгуется на NYMEX (CME Group)" },
+    { name: "Апельсиновый сок", slug: "orange-juice", categorySlug: "commodities", sortOrder: 11, description: "Замороженный концентрат апельсинового сока (FCOJ) — торгуется на ICE" },
 
     // Металлы
-    { name: "Золото", slug: "gold", categorySlug: "metals", sortOrder: 1 },
-    { name: "Серебро", slug: "silver", categorySlug: "metals", sortOrder: 2 },
-    { name: "Платина", slug: "platinum", categorySlug: "metals", sortOrder: 3 },
-    { name: "Палладий", slug: "palladium", categorySlug: "metals", sortOrder: 4 },
-    { name: "Медь", slug: "copper", categorySlug: "metals", sortOrder: 5 },
+    { name: "Золото", slug: "gold", categorySlug: "metals", sortOrder: 1, description: "Золото — главный защитный актив. COMEX (CME) — основная площадка" },
+    { name: "Серебро", slug: "silver", categorySlug: "metals", sortOrder: 2, description: "Серебро — драгоценный и промышленный металл. COMEX и MOEX" },
+    { name: "Платина", slug: "platinum", categorySlug: "metals", sortOrder: 3, description: "Платина — драгоценный металл. Используется в автокатализаторах" },
+    { name: "Палладий", slug: "palladium", categorySlug: "metals", sortOrder: 4, description: "Палладий — дефицитный металл для автопрома. MOEX и NYMEX" },
+    { name: "Медь", slug: "copper", categorySlug: "metals", sortOrder: 5, description: "Медь — промышленный металл, барометр мировой экономики. COMEX и LME" },
 
     // Акции РФ
     { name: "Сбербанк", slug: "sberbank", categorySlug: "ru-stocks", sortOrder: 1 },
@@ -645,8 +645,8 @@ async function main() {
   for (const a of assetData) {
     const created = await prisma.asset.upsert({
       where: { slug: a.slug },
-      update: { name: a.name, categoryId: cats[a.categorySlug], sortOrder: a.sortOrder },
-      create: { name: a.name, slug: a.slug, categoryId: cats[a.categorySlug], sortOrder: a.sortOrder },
+      update: { name: a.name, categoryId: cats[a.categorySlug], sortOrder: a.sortOrder, description: (a as any).description || null },
+      create: { name: a.name, slug: a.slug, categoryId: cats[a.categorySlug], sortOrder: a.sortOrder, description: (a as any).description || null },
     });
     assets[a.slug] = created.id;
 
@@ -785,6 +785,24 @@ async function main() {
     { assetSlug: "gold", name: "Золото (спот)", slug: "gold-spot", ticker: "XAUUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:GOLD", dataSource: null, dataTicker: null, description: "Золото — спотовая цена (XAU/USD)", categorySlug: "metals", instrumentType: "spot" },
     { assetSlug: "silver", name: "Серебро (спот)", slug: "silver-spot", ticker: "XAGUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:SILVER", dataSource: null, dataTicker: null, description: "Серебро — спотовая цена (XAG/USD)", categorySlug: "metals", instrumentType: "spot" },
     { assetSlug: "gas", name: "Природный газ (спот)", slug: "natgas-spot", ticker: "NATGAS", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:NATGAS", dataSource: null, dataTicker: null, description: "Природный газ — спотовая цена", categorySlug: "commodities", instrumentType: "spot" },
+
+    // Споты металлов (недостающие)
+    { assetSlug: "platinum", name: "Платина (спот)", slug: "platinum-spot", ticker: "XPTUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:PLATINUM", dataSource: null, dataTicker: null, description: "Платина — спотовая цена", categorySlug: "metals", instrumentType: "spot" },
+    { assetSlug: "palladium", name: "Палладий (спот)", slug: "palladium-spot", ticker: "XPDUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:PALLADIUM", dataSource: null, dataTicker: null, description: "Палладий — спотовая цена", categorySlug: "metals", instrumentType: "spot" },
+    { assetSlug: "copper", name: "Медь (спот)", slug: "copper-spot", ticker: "XCUUSD", exchange: "SPOT", exchangeSlug: "spot", exchangeUrl: null, externalUrl: null, tradingViewSymbol: "TVC:COPPER", dataSource: null, dataTicker: null, description: "Медь — спотовая цена", categorySlug: "metals", instrumentType: "spot" },
+
+    // CME/ICE тикеры для недостающих сырьевых
+    { assetSlug: "coffee", name: "Coffee C (ICE)", slug: "ice-kc", ticker: "KC", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/15/Coffee-C-Futures", externalUrl: "https://www.theice.com/products/15/Coffee-C-Futures", tradingViewSymbol: "ICE:KC1!", dataSource: null, dataTicker: null, description: "Coffee C Futures (ICE)", categorySlug: "commodities", instrumentType: "futures" },
+    { assetSlug: "gasoline", name: "RBOB Gasoline (NYMEX)", slug: "cme-rb", ticker: "RB", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/energy/refined-products/rbob-gasoline.html", externalUrl: "https://www.cmegroup.com/markets/energy/refined-products/rbob-gasoline.html", tradingViewSymbol: "CME:RB1!", dataSource: null, dataTicker: null, description: "RBOB Gasoline Futures (NYMEX)", categorySlug: "commodities", instrumentType: "futures" },
+    { assetSlug: "orange-juice", name: "Orange Juice (ICE)", slug: "ice-oj", ticker: "OJ", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/30/FCOJ-A-Futures", externalUrl: "https://www.theice.com/products/30/FCOJ-A-Futures", tradingViewSymbol: "ICE:OJ1!", dataSource: null, dataTicker: null, description: "Frozen Concentrated Orange Juice (ICE)", categorySlug: "commodities", instrumentType: "futures" },
+    { assetSlug: "sugar", name: "Sugar No.11 (ICE)", slug: "ice-sb", ticker: "SB", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/23/Sugar-No-11-Futures", externalUrl: "https://www.theice.com/products/23/Sugar-No-11-Futures", tradingViewSymbol: "ICE:SB1!", dataSource: null, dataTicker: null, description: "Sugar No.11 Futures (ICE)", categorySlug: "commodities", instrumentType: "futures" },
+    { assetSlug: "cocoa", name: "Cocoa (ICE)", slug: "ice-cc", ticker: "CC", exchange: "ICE", exchangeSlug: "lse", exchangeUrl: "https://www.theice.com/products/7/Cocoa-Futures", externalUrl: "https://www.theice.com/products/7/Cocoa-Futures", tradingViewSymbol: "ICE:CC1!", dataSource: null, dataTicker: null, description: "Cocoa Futures (ICE)", categorySlug: "commodities", instrumentType: "futures" },
+
+    // CME металлы (недостающие)
+    { assetSlug: "silver", name: "Silver (COMEX)", slug: "cme-si", ticker: "SI", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/silver.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/silver.html", tradingViewSymbol: "CME:SI1!", dataSource: null, dataTicker: null, description: "Silver Futures (COMEX)", categorySlug: "metals", instrumentType: "futures" },
+    { assetSlug: "platinum", name: "Platinum (NYMEX)", slug: "cme-pl", ticker: "PL", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/platinum.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/platinum.html", tradingViewSymbol: "CME:PL1!", dataSource: null, dataTicker: null, description: "Platinum Futures (NYMEX)", categorySlug: "metals", instrumentType: "futures" },
+    { assetSlug: "palladium", name: "Palladium (NYMEX)", slug: "cme-pa", ticker: "PA", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/precious/palladium.html", externalUrl: "https://www.cmegroup.com/markets/metals/precious/palladium.html", tradingViewSymbol: "CME:PA1!", dataSource: null, dataTicker: null, description: "Palladium Futures (NYMEX)", categorySlug: "metals", instrumentType: "futures" },
+    { assetSlug: "copper", name: "Copper (COMEX)", slug: "cme-hg", ticker: "HG", exchange: "CME", exchangeSlug: "cme", exchangeUrl: "https://www.cmegroup.com/markets/metals/base/copper.html", externalUrl: "https://www.cmegroup.com/markets/metals/base/copper.html", tradingViewSymbol: "CME:HG1!", dataSource: null, dataTicker: null, description: "Copper Futures (COMEX)", categorySlug: "metals", instrumentType: "futures" },
   ];
 
   const instruments: Record<string, string> = {};
