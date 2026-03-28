@@ -358,7 +358,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                           <Link
                             key={room.id}
                             href={getRoomHref(room)}
-                            onContextMenu={(e) => handleRoomContextMenu(e, room)}
+                            onContextMenu={(e) => { e.preventDefault(); setRoomMenu({ roomId: room.id, x: e.clientX, y: e.clientY }); }}
                             className={`block pl-10 pr-4 py-2 text-sm transition truncate ${
                               active
                                 ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium border-l-2 border-green-500"
