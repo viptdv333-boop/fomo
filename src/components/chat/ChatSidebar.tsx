@@ -350,12 +350,44 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   "Евро/Рубль": "Евро/Доллар", "Юань/Рубль": "Рубль/Юань",
                   "Japanese Yen": "Рубль/Доллар", "US Dollar Index": "Рубль/Доллар",
                 };
+                // Keyword-based mapping: if name contains keyword → use mapped name
+                const keywordMap: [RegExp, string][] = [
+                  // Нефть — всё в одну тему
+                  [/brent|wti|crude|нефть/i, "Нефть"],
+                  // Газ
+                  [/газ|gas|gasoil/i, "Газ"],
+                  // Металлы
+                  [/золот|gold/i, "Золото"], [/серебр|silver/i, "Серебро"],
+                  [/медь|copper/i, "Медь"], [/платин|platinum/i, "Платина"],
+                  [/палладий|palladium/i, "Палладий"],
+                  // Зерновые
+                  [/кукуруз|corn/i, "Кукуруза"], [/пшениц|wheat/i, "Пшеница"],
+                  [/соя|soy/i, "Соя"], [/сахар|sugar/i, "Сахар"], [/какао|cocoa/i, "Какао"],
+                  // Индексы
+                  [/s&p|s\&p|spx|spyf|snp/i, "S&P 500"], [/nasdaq|nasd/i, "Nasdaq 100"],
+                  [/dow\s*jones|ym\b/i, "Dow Jones"], [/russell/i, "Russell 2000"],
+                  [/hang\s*seng|hsi\b/i, "Hang Seng"], [/hscei|china.*enterpr/i, "HSCEI"],
+                  [/dax/i, "DAX 40"], [/ftse/i, "FTSE 100"], [/nikkei/i, "Nikkei 225"],
+                  [/мосбирж|imoex|индекс moex/i, "Индекс MOEX"], [/ртс|rts\b/i, "РТС"],
+                  // Валюты — только 3
+                  [/доллар.*рубл|рубл.*доллар|si\b|usd.*rub/i, "Рубль/Доллар"],
+                  [/юань.*рубл|рубл.*юань|cr\b|cny.*rub/i, "Рубль/Юань"],
+                  [/евро.*долл|euro.*fx|eur.*usd|6e\b/i, "Евро/Доллар"],
+                  [/евро.*рубл|рубл.*евро|eu\b/i, "Евро/Доллар"],
+                  [/japan|yen|6j\b/i, "Рубль/Доллар"], // merge into existing
+                  [/dollar.*index|dx\b/i, "Рубль/Доллар"], // merge into existing
+                ];
+
                 const simpleName = (name: string) => {
-                  // First try exact match after removing parentheses
                   const cleaned = name.replace(/\s*\([^)]*\)\s*/g, "").trim();
+                  // Try exact match first
                   if (nameMap[cleaned]) return nameMap[cleaned];
                   if (nameMap[name]) return nameMap[name];
-                  // Fallback: remove cruft
+                  // Try keyword match
+                  for (const [re, mapped] of keywordMap) {
+                    if (re.test(name)) return mapped;
+                  }
+                  // Fallback
                   return cleaned
                     .replace(/\s+фьючерс\s*/gi, "")
                     .replace(/\s+futures?\s*/gi, "")
