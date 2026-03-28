@@ -44,6 +44,7 @@ export default function AssetPage() {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quote, setQuote] = useState<{ price: number; open: number; high: number; low: number; volume: number; change: number; changePercent: number } | null>(null);
 
   useEffect(() => {
     fetch(`/api/assets/${slug}`)
@@ -93,6 +94,23 @@ export default function AssetPage() {
 
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
+  // Fetch live quote for main ticker
+  useEffect(() => {
+    if (!mainTicker?.dataSource || !mainTicker?.dataTicker) return;
+    const fetchQuote = () => {
+      fetch(`/api/quote?source=${mainTicker.dataSource}&ticker=${mainTicker.dataTicker}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.price) setQuote(data); })
+        .catch(() => {});
+    };
+    fetchQuote();
+    const interval = setInterval(fetchQuote, 5000);
+    return () => clearInterval(interval);
+  }, [mainTicker?.dataTicker, mainTicker?.dataSource]);
+
+  const formatNum = (n: number) => n >= 1000 ? n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) : n.toFixed(2);
+  const formatVol = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : String(Math.round(v));
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
@@ -106,9 +124,31 @@ export default function AssetPage() {
                 <Link href={`/instruments/category/${asset.category.slug}`} className="hover:text-green-600">{asset.category.name}</Link>
               )}
             </div>
-            <h1 className="text-2xl font-bold dark:text-gray-100">{asset.name}</h1>
+            <div className="flex items-baseline gap-4">
+              <h1 className="text-2xl font-bold dark:text-gray-100">{asset.name}</h1>
+              {quote && (
+                <div className="flex items-baseline gap-3">
+                  <span className="text-2xl font-bold dark:text-gray-100">{formatNum(quote.price)}</span>
+                  <span className={`text-sm font-semibold ${quote.change >= 0 ? "text-green-600" : "text-red-500"}`}>
+                    {quote.change >= 0 ? "+" : ""}{formatNum(quote.change)} ({quote.changePercent >= 0 ? "+" : ""}{quote.changePercent.toFixed(2)}%)
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* OHLC + Volume bar */}
+            {quote && (
+              <div className="flex items-center gap-5 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <span>Откр. <span className="font-medium text-gray-700 dark:text-gray-300">{formatNum(quote.open)}</span></span>
+                <span>Макс. <span className="font-medium text-green-600">{formatNum(quote.high)}</span></span>
+                <span>Мин. <span className="font-medium text-red-500">{formatNum(quote.low)}</span></span>
+                <span>Объём <span className="font-medium text-gray-700 dark:text-gray-300">{formatVol(quote.volume)}</span></span>
+                {mainTicker?.exchangeRel && (
+                  <span>Биржа <span className="font-medium text-gray-700 dark:text-gray-300">{mainTicker.exchangeRel.shortName}</span></span>
+                )}
+              </div>
+            )}
             {asset.description && (
-              <p className="text-gray-500 dark:text-gray-400 mt-2">{asset.description}</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">{asset.description}</p>
             )}
             {/* Ticker hashtags */}
             <div className="flex flex-wrap gap-1.5 mt-3">
