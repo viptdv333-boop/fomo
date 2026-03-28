@@ -126,15 +126,40 @@ export default function InstrumentPage() {
                 На бирже
               </a>
             )}
-            {instrument.chatRoom && (
-              <Link
-                href={`/chat/${instrument.slug}`}
-                className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                Обсудить в чате
-              </Link>
-            )}
+            {(() => {
+              // Map instrument to thematic chat room
+              const metalKw = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
+              const nameLower = (instrument.name || "").toLowerCase();
+              const catSlug = instrument.category?.slug || "";
+              const exSlug = instrument.exchangeRel?.slug || "";
+
+              let chatId = "general";
+              if (metalKw.some(k => nameLower.includes(k))) {
+                chatId = "chat-metals";
+              } else if (catSlug.includes("commodit") || catSlug.includes("spot-commodit")) {
+                chatId = "chat-commodities";
+              } else if (catSlug.includes("index") || catSlug.includes("spot-ind")) {
+                chatId = "chat-indices";
+              } else if (catSlug.includes("currency")) {
+                chatId = "chat-currencies";
+              } else if (catSlug.includes("crypto")) {
+                chatId = "chat-crypto";
+              } else if (catSlug === "stocks" && exSlug === "moex") {
+                chatId = "chat-ru-stocks";
+              } else if (catSlug === "stocks") {
+                chatId = "chat-us-stocks";
+              }
+
+              return (
+                <Link
+                  href={`/chat?room=${chatId}`}
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                  Обсудить в чате
+                </Link>
+              );
+            })()}
             <Link
               href={`/ideas/new?instrumentId=${instrument.id}`}
               className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition inline-flex items-center gap-1.5"

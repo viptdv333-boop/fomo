@@ -1,17 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import ChatRoom from "@/components/chat/ChatRoom";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
 
-export default function ChatPage() {
+function ChatPageInner() {
+  const searchParams = useSearchParams();
+  const roomParam = searchParams.get("room");
+
   const [currentRoom, setCurrentRoom] = useState<{ id: string; name: string; isClosed: boolean; isArchived: boolean }>({
-    id: "general",
-    name: "Общий чат",
+    id: roomParam || "general",
+    name: roomParam ? "..." : "Общий чат",
     isClosed: false,
     isArchived: false,
   });
+
+  // Load room name if opened via ?room= param
+  useEffect(() => {
+    if (roomParam && roomParam !== "general") {
+      fetch("/api/chat/rooms")
+        .then(r => r.json())
+        .then((rooms: any[]) => {
+          const found = rooms.find((r: any) => r.id === roomParam);
+          if (found) setCurrentRoom({ id: found.id, name: found.name, isClosed: found.isClosed || false, isArchived: found.isArchived || false });
+        })
+        .catch(() => {});
+    }
+  }, [roomParam]);
 
   return (
     <AuthGuard>
@@ -30,5 +47,13 @@ export default function ChatPage() {
         </div>
       </div>
     </AuthGuard>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="text-gray-500 py-12 text-center">Загрузка...</div>}>
+      <ChatPageInner />
+    </Suspense>
   );
 }
