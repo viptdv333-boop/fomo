@@ -240,13 +240,15 @@ model Subscription {
 }
 
 model ChatRoom {
-  id           String  @id @default(cuid())
-  name         String
-  instrumentId String? @unique
-  isGeneral    Boolean @default(false)
-  isArchived   Boolean @default(false)
-  isClosed     Boolean @default(false)
-  createdAt    DateTime @default(now())
+  id             String  @id @default(cuid())
+  name           String
+  instrumentId   String? @unique
+  categoryLabel  String? // thematic group label for chat sidebar ("Сырьё", "Металлы", etc.)
+  sortOrder      Int     @default(0)
+  isGeneral      Boolean @default(false)
+  isArchived     Boolean @default(false)
+  isClosed       Boolean @default(false)
+  createdAt      DateTime @default(now())
 
   instrument Instrument?  @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
   messages   ChatMessage[]
