@@ -323,20 +323,28 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 }
 
                 // Clean display name: Russian, no tickers/exchanges
+                // Map ALL instrument names to clean chat topic names
+                // Multiple instruments → same topic = deduplicated to one entry
                 const nameMap: Record<string, string> = {
-                  "E-mini S&P 500": "СНП 500", "S&P 500": "СНП 500",
-                  "E-mini Nasdaq 100": "НАСДАК 100", "NASDAQ 100": "НАСДАК 100",
-                  "E-mini Dow Jones": "Доу Джонс", "E-mini Russell 2000": "Рассел 2000",
-                  "Hang Seng": "Ханг Сенг", "Hang Seng Index Futures": "Ханг Сенг",
-                  "HS China Enterprises Futures": "Китайские компании",
-                  "DAX 40": "ДАКС 40", "FTSE 100": "ФТСЕ 100", "Nikkei 225": "Никкей 225",
-                  "IMOEX": "ММВБ", "Индекс МосБиржи": "ММВБ", "Индекс РТС": "РТС",
-                  "WTI Crude Oil": "Нефть WTI", "Natural Gas": "Газ (Генри Хаб)",
+                  // Нефть — все варианты → "Нефть"
+                  "Нефть Brent": "Нефть", "Brent Crude": "Нефть", "ICE Brent": "Нефть",
+                  "WTI Crude Oil": "Нефть", "Brent": "Нефть", "WTI": "Нефть",
+                  // Газ
+                  "Природный газ": "Газ", "Natural Gas": "Газ",
+                  // Газойль
+                  "ICE Gasoil": "Газойль",
+                  // Металлы
                   "Gold": "Золото", "Silver": "Серебро", "Copper": "Медь", "Platinum": "Платина",
+                  // Зерновые
                   "Corn": "Кукуруза", "Wheat": "Пшеница", "Soybean": "Соя",
-                  "ICE Brent": "Нефть Brent (ICE)", "ICE Gasoil": "Газойль",
-                  "Brent": "Нефть Brent", "WTI": "Нефть WTI",
-                  "Нефть Brent": "Нефть", "Природный газ": "Газ",
+                  // Индексы — латиница, без перевода
+                  "E-mini S&P 500": "S&P 500", "S&P 500": "S&P 500",
+                  "E-mini Nasdaq 100": "Nasdaq 100", "NASDAQ 100": "Nasdaq 100",
+                  "E-mini Dow Jones": "Dow Jones", "E-mini Russell 2000": "Russell 2000",
+                  "Hang Seng": "Hang Seng", "Hang Seng Index Futures": "Hang Seng",
+                  "HS China Enterprises Futures": "HSCEI",
+                  "DAX 40": "DAX 40", "FTSE 100": "FTSE 100", "Nikkei 225": "Nikkei 225",
+                  "IMOEX": "Индекс MOEX", "Индекс МосБиржи": "Индекс MOEX", "Индекс РТС": "РТС",
                 };
                 const simpleName = (name: string) => {
                   // First try exact match after removing parentheses
