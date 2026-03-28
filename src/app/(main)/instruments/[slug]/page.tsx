@@ -69,17 +69,15 @@ export default function AssetPage() {
       });
   }, [asset?.id]);
 
-  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
-  if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
+  // Compute main ticker (must be before hooks below)
+  const catSlug = asset?.category?.slug || "";
+  const instruments = asset?.instruments || [];
+  const bybitTicker = instruments.find(t => t.dataSource === "bybit" && t.dataTicker);
+  const fmpTicker = instruments.find(t => t.dataSource === "fmp" && t.dataTicker);
+  const moexTicker = instruments.find(t => t.dataSource === "moex" && t.dataTicker);
+  const spotTicker = instruments.find(t => t.instrumentType === "spot" && (t.dataSource || t.tradingViewSymbol));
 
-  // Select main ticker for chart based on category
-  const catSlug = asset.category?.slug || "";
-  const bybitTicker = asset.instruments.find(t => t.dataSource === "bybit" && t.dataTicker);
-  const fmpTicker = asset.instruments.find(t => t.dataSource === "fmp" && t.dataTicker);
-  const moexTicker = asset.instruments.find(t => t.dataSource === "moex" && t.dataTicker);
-  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && (t.dataSource || t.tradingViewSymbol));
-
-  let mainTicker: typeof asset.instruments[0] | undefined;
+  let mainTicker: typeof instruments[0] | undefined;
   if (catSlug === "crypto") {
     mainTicker = bybitTicker || fmpTicker || moexTicker;
   } else if (catSlug === "us-stocks") {
@@ -87,12 +85,9 @@ export default function AssetPage() {
   } else if (catSlug === "ru-stocks") {
     mainTicker = moexTicker;
   } else {
-    // commodities, metals, indices, currencies — prefer spot or MOEX
     mainTicker = spotTicker || moexTicker || fmpTicker;
   }
-  if (!mainTicker) mainTicker = asset.instruments.find(t => t.dataTicker) || asset.instruments[0];
-
-  const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
+  if (!mainTicker) mainTicker = instruments.find(t => t.dataTicker) || instruments[0];
 
   // Fetch live quote for main ticker
   const mainSource = mainTicker?.dataSource || "";
@@ -112,6 +107,11 @@ export default function AssetPage() {
 
   const formatNum = (n: number) => n >= 1000 ? n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) : n.toFixed(2);
   const formatVol = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : String(Math.round(v));
+
+  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
+  if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
+
+  const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
