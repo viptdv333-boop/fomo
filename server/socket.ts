@@ -1,6 +1,7 @@
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
+import { priceStreamer } from "./price-streamer";
 
 const prisma = new PrismaClient();
 
@@ -58,6 +59,28 @@ export function initSocket(httpServer: HTTPServer) {
     const uid = socket.data.userId as string;
     onlineUsers.set(uid, (onlineUsers.get(uid) || 0) + 1);
     io.emit("user_online", uid);
+
+    // Price streaming subscriptions
+    const subscribedTickers = new Set<string>();
+
+    socket.on("subscribe_prices", (tickers: string[]) => {
+      if (!Array.isArray(tickers)) return;
+      const valid = tickers.filter(t => typeof t === "string" && t.length > 0 && t.length < 20);
+      for (const ticker of valid) {
+        socket.join(`price_${ticker}`);
+        subscribedTickers.add(ticker);
+      }
+      priceStreamer.subscribe(socket.id, valid);
+    });
+
+    socket.on("unsubscribe_prices", (tickers: string[]) => {
+      if (!Array.isArray(tickers)) return;
+      for (const ticker of tickers) {
+        socket.leave(`price_${ticker}`);
+        subscribedTickers.delete(ticker);
+      }
+      priceStreamer.unsubscribe(socket.id, tickers);
+    });
 
     socket.on("join_room", async (roomId: string) => {
       const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
@@ -136,6 +159,10 @@ export function initSocket(httpServer: HTTPServer) {
 
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.data.displayName}`);
+      // Cleanup price subscriptions
+      if (subscribedTickers.size > 0) {
+        priceStreamer.unsubscribe(socket.id, [...subscribedTickers]);
+      }
       const online = getOnlineUsers();
       const count = (online.get(uid) || 1) - 1;
       if (count <= 0) {
@@ -146,6 +173,9 @@ export function initSocket(httpServer: HTTPServer) {
       }
     });
   });
+
+  // Start real-time price streaming
+  priceStreamer.start(io);
 
   return io;
 }
