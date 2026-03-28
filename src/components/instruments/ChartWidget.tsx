@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-export type DataSource = "moex" | "none";
+export type DataSource = "moex" | "fmp" | "bybit" | "none";
 
 interface ChartWidgetProps {
   ticker: string;

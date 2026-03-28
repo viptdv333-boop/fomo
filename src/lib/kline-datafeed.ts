@@ -33,6 +33,11 @@ function periodToInterval(period: Period): string {
 export class MoexDatafeed implements Datafeed {
   private _pollingTimers = new Map<string, ReturnType<typeof setInterval>>();
   private _symbolsCache: SymbolInfo[] | null = null;
+  private _source: string = "moex";
+
+  constructor(source?: string) {
+    if (source) this._source = source;
+  }
 
   private _subKey(symbol: SymbolInfo, period: Period): string {
     return `${symbol.ticker}_${period.timespan}_${period.multiplier}`;
@@ -81,7 +86,7 @@ export class MoexDatafeed implements Datafeed {
     const interval = periodToInterval(period);
     try {
       const r = await fetch(
-        `/api/klines?source=moex&ticker=${encodeURIComponent(symbol.ticker)}&interval=${interval}&limit=500`
+        `/api/klines?source=${this._source}&ticker=${encodeURIComponent(symbol.ticker)}&interval=${interval}&limit=500`
       );
       const j = await r.json();
       const c = j.candles ?? j;
@@ -118,7 +123,7 @@ export class MoexDatafeed implements Datafeed {
     const poll = async () => {
       try {
         const r = await fetch(
-          `/api/quote?source=moex&ticker=${encodeURIComponent(symbol.ticker)}&_t=${Date.now()}`,
+          `/api/quote?source=${this._source}&ticker=${encodeURIComponent(symbol.ticker)}&_t=${Date.now()}`,
           { cache: "no-store" }
         );
         if (!r.ok) return;

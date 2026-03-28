@@ -72,10 +72,11 @@ export default function AssetPage() {
   if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
 
   // Find best ticker for chart: prefer spot, then MOEX, then first with tradingViewSymbol
-  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && t.tradingViewSymbol);
+  // Priority: FMP (realtime) → spot → MOEX → any with data
+  const fmpTicker = asset.instruments.find(t => t.dataSource === "fmp" && t.dataTicker);
+  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && (t.dataSource || t.tradingViewSymbol));
   const moexTicker = asset.instruments.find(t => t.dataSource === "moex" && t.dataTicker);
-  const tvTicker = asset.instruments.find(t => t.tradingViewSymbol);
-  const mainTicker = spotTicker || moexTicker || tvTicker || asset.instruments[0];
+  const mainTicker = fmpTicker || spotTicker || moexTicker || asset.instruments.find(t => t.dataTicker) || asset.instruments[0];
 
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
@@ -124,10 +125,10 @@ export default function AssetPage() {
       {/* Main chart */}
       {mainTicker && (
         <>
-          {mainTicker.dataSource === "moex" && mainTicker.dataTicker ? (
+          {mainTicker.dataSource && mainTicker.dataTicker ? (
             <ChartWidget
               ticker={mainTicker.dataTicker}
-              source="moex"
+              source={mainTicker.dataSource as any}
               name={asset.name}
               height={500}
             />

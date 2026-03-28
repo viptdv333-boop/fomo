@@ -8,7 +8,7 @@ import "@klinecharts/pro/dist/klinecharts-pro.css";
 import { MoexDatafeed } from "@/lib/kline-datafeed";
 import { ruLocale } from "@/lib/kline-locale-ru";
 
-export type DataSource = "moex" | "none";
+export type DataSource = "moex" | "fmp" | "bybit" | "none";
 
 interface Props {
   ticker: string;
@@ -26,11 +26,11 @@ function ensureRuLocale() {
   }
 }
 
-// Shared datafeed instance (singleton)
-let sharedDatafeed: MoexDatafeed | null = null;
-function getDatafeed(): MoexDatafeed {
-  if (!sharedDatafeed) sharedDatafeed = new MoexDatafeed();
-  return sharedDatafeed;
+// Per-source datafeed instances
+const datafeedCache = new Map<string, MoexDatafeed>();
+function getDatafeed(source: string = "moex"): MoexDatafeed {
+  if (!datafeedCache.has(source)) datafeedCache.set(source, new MoexDatafeed(source));
+  return datafeedCache.get(source)!;
 }
 
 const DEFAULT_PERIODS: Period[] = [
@@ -60,11 +60,11 @@ export default function KlineChartWidget({ ticker, source, name, height }: Props
       ticker: ticker,
       name: name || ticker,
       shortName: ticker,
-      exchange: "MOEX",
-      market: "moex",
-      pricePrecision: 2,
+      exchange: source === "moex" ? "MOEX" : source === "fmp" ? "FMP" : source.toUpperCase(),
+      market: source,
+      pricePrecision: source === "fmp" ? 2 : 2,
       volumePrecision: 0,
-      priceCurrency: "rub",
+      priceCurrency: source === "moex" ? "rub" : "usd",
       type: "stock",
     };
 
@@ -73,7 +73,7 @@ export default function KlineChartWidget({ ticker, source, name, height }: Props
       symbol,
       period: { multiplier: 1, timespan: "day", text: "Д" },
       periods: DEFAULT_PERIODS,
-      datafeed: getDatafeed(),
+      datafeed: getDatafeed(source),
       theme: dark ? "dark" : "light",
       locale: "ru",
       timezone: "Europe/Moscow",
