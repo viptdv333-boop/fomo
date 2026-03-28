@@ -117,11 +117,18 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   useEffect(() => {
     if (treeInitialized || rooms.length === 0) return;
     const activeRoom = rooms.find(r => isActive(r));
-    if (activeRoom?.exchangeSlug) {
-      setOpenExchanges(new Set([activeRoom.exchangeSlug]));
-      if (activeRoom.categorySlug) {
-        setOpenCategories(new Set([`${activeRoom.exchangeSlug}-${activeRoom.categorySlug}`]));
-      }
+    if (activeRoom) {
+      // Determine which theme group this room belongs to
+      const themeKey =
+        activeRoom.instrumentType === "stock" && activeRoom.exchangeSlug === "moex" ? "ru-stocks" :
+        activeRoom.instrumentType === "stock" && (activeRoom.exchangeSlug === "nyse" || activeRoom.exchangeSlug === "cme") ? "us-stocks" :
+        activeRoom.instrumentType === "crypto" || (activeRoom.categorySlug || "").includes("crypto") ? "crypto" :
+        activeRoom.instrumentType === "currency" || (activeRoom.categorySlug || "").includes("currency") ? "currencies" :
+        (activeRoom.categorySlug || "").includes("index") || (activeRoom.categorySlug || "").includes("spot-ind") ? "indices" :
+        (activeRoom.name || "").toLowerCase().match(/золот|серебр|платин|палладий|медь|gold|silver|copper/) ? "metals" :
+        (activeRoom.categorySlug || "").includes("commodity") || (activeRoom.categorySlug || "").includes("spot-commodity") ? "commodities" :
+        activeRoom.exchangeSlug || "other";
+      setOpenExchanges(new Set([themeKey]));
     }
     setTreeInitialized(true);
   }, [rooms, treeInitialized]);
@@ -285,66 +292,70 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
               {/* General & pinned rooms first */}
               {filteredRooms.filter(r => r.isGeneral || pinnedRooms.includes(r.id)).map(room => renderRoom(room))}
 
-              {/* Grouped by exchange → category */}
+              {/* Grouped by theme */}
               {(() => {
-                const instrumentRooms = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id) && r.exchangeSlug);
-                const exchangeGroups = new Map<string, { name: string; short: string; rooms: ChatRoomInfo[] }>();
-                for (const room of instrumentRooms) {
-                  const key = room.exchangeSlug || "other";
-                  if (!exchangeGroups.has(key)) {
-                    exchangeGroups.set(key, { name: room.exchangeName || "Другое", short: room.exchangeShort || "?", rooms: [] });
+                const instrumentRooms = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id));
+
+                // Thematic grouping rules
+                const themeGroups: { key: string; label: string; emoji: string; match: (r: ChatRoomInfo) => boolean }[] = [
+                  { key: "ru-stocks", label: "РФ Акции", emoji: "🇷🇺", match: r => r.instrumentType === "stock" && r.exchangeSlug === "moex" },
+                  { key: "us-stocks", label: "США Акции", emoji: "🇺🇸", match: r => r.instrumentType === "stock" && (r.exchangeSlug === "nyse" || r.exchangeSlug === "cme") },
+                  { key: "commodities", label: "Сырьё", emoji: "🛢️", match: r => {
+                    if (r.instrumentType !== "futures" && r.instrumentType !== "spot") return false;
+                    const catSlug = r.categorySlug || "";
+                    const isMetalCat = false; // metals handled separately
+                    const metalTickers = ["GOLD", "SILV", "PLT", "PLD", "CU", "GC", "SI", "HG", "PL", "GOLD_SPOT", "SILVER_SPOT"];
+                    if (metalTickers.includes(r.name?.split(" ")[0] || "")) return false;
+                    if (catSlug.includes("commodity") || catSlug.includes("spot-commodity")) return !isMetalCat;
+                    return false;
+                  }},
+                  { key: "metals", label: "Металлы", emoji: "🥇", match: r => {
+                    const ticker = (r.name || "").toUpperCase();
+                    const metalKeywords = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
+                    return metalKeywords.some(kw => (r.name || "").toLowerCase().includes(kw));
+                  }},
+                  { key: "indices", label: "Индексы", emoji: "📊", match: r => {
+                    const catSlug = r.categorySlug || "";
+                    return catSlug.includes("index") || catSlug.includes("spot-ind");
+                  }},
+                  { key: "currencies", label: "Валюты", emoji: "💱", match: r => r.instrumentType === "currency" || (r.categorySlug || "").includes("currency") },
+                  { key: "crypto", label: "Крипта", emoji: "₿", match: r => r.instrumentType === "crypto" || (r.categorySlug || "").includes("crypto") },
+                  { key: "other-stocks", label: "Другие акции", emoji: "🌏", match: r => r.instrumentType === "stock" && r.exchangeSlug !== "moex" && r.exchangeSlug !== "nyse" && r.exchangeSlug !== "cme" },
+                ];
+
+                const grouped = new Map<string, { label: string; emoji: string; rooms: ChatRoomInfo[] }>();
+                const assigned = new Set<string>();
+
+                for (const theme of themeGroups) {
+                  const matching = instrumentRooms.filter(r => !assigned.has(r.id) && theme.match(r));
+                  if (matching.length > 0) {
+                    grouped.set(theme.key, { label: theme.label, emoji: theme.emoji, rooms: matching });
+                    matching.forEach(r => assigned.add(r.id));
                   }
-                  exchangeGroups.get(key)!.rooms.push(room);
                 }
 
-                // Rooms without exchange
-                const noExchange = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id) && !r.exchangeSlug);
-                if (noExchange.length > 0) {
-                  exchangeGroups.set("other", { name: "Общие", short: "...", rooms: noExchange });
+                // Unmatched rooms
+                const unmatched = instrumentRooms.filter(r => !assigned.has(r.id));
+                if (unmatched.length > 0) {
+                  grouped.set("other", { label: "Другое", emoji: "📁", rooms: unmatched });
                 }
 
-                return [...exchangeGroups.entries()].map(([exSlug, exGroup]) => {
-                  const isExOpen = openExchanges.has(exSlug);
-                  // Group rooms by category within exchange
-                  const catGroups = new Map<string, { name: string; rooms: ChatRoomInfo[] }>();
-                  for (const room of exGroup.rooms) {
-                    const catKey = room.categorySlug || "uncategorized";
-                    if (!catGroups.has(catKey)) catGroups.set(catKey, { name: room.categoryName || "Без категории", rooms: [] });
-                    catGroups.get(catKey)!.rooms.push(room);
-                  }
-
+                return [...grouped.entries()].map(([key, group]) => {
+                  const isOpen = openExchanges.has(key);
                   return (
-                    <div key={exSlug}>
+                    <div key={key}>
                       <button
-                        onClick={() => toggleExchange(exSlug)}
+                        onClick={() => toggleExchange(key)}
                         className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
                       >
-                        <svg className={`w-3 h-3 transition-transform ${isExOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
+                        <svg className={`w-3 h-3 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
                           <path d="M6 4l8 6-8 6V4z" />
                         </svg>
-                        <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-[10px] font-bold">{exGroup.short}</span>
-                        {exGroup.name}
-                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{exGroup.rooms.length}</span>
+                        <span className="text-sm">{group.emoji}</span>
+                        {group.label}
+                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{group.rooms.length}</span>
                       </button>
-                      {isExOpen && [...catGroups.entries()].map(([catSlug, catGroup]) => {
-                        const catKey = `${exSlug}-${catSlug}`;
-                        const isCatOpen = openCategories.has(catKey);
-                        return (
-                          <div key={catKey}>
-                            <button
-                              onClick={() => toggleCategory(catKey)}
-                              className="w-full flex items-center gap-2 pl-8 pr-4 py-1.5 text-[11px] font-semibold text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
-                            >
-                              <svg className={`w-2.5 h-2.5 transition-transform ${isCatOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M6 4l8 6-8 6V4z" />
-                              </svg>
-                              {catGroup.name}
-                              <span className="ml-auto text-[10px]">{catGroup.rooms.length}</span>
-                            </button>
-                            {isCatOpen && catGroup.rooms.map(room => renderRoom(room))}
-                          </div>
-                        );
-                      })}
+                      {isOpen && group.rooms.map(room => renderRoom(room))}
                     </div>
                   );
                 });
