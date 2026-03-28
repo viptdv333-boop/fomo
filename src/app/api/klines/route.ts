@@ -165,7 +165,7 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number) 
       const data = await res.json();
       const hist = Array.isArray(data) ? data : data?.historical || [];
       return hist.slice(0, limit).reverse().map((c: any) => ({
-        timestamp: new Date(c.date).getTime() / 1000,
+        timestamp: new Date(c.date).getTime(),
         open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
       }));
     } else {
@@ -179,7 +179,7 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number) 
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
       return arr.slice(0, limit).reverse().map((c: any) => ({
-        timestamp: new Date(c.date).getTime() / 1000,
+        timestamp: new Date(c.date).getTime(),
         open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
       }));
     }
@@ -194,19 +194,38 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
   };
   try {
     const bybitInterval = BYBIT_INTERVALS[interval] || "D";
-    const res = await fetch(
-      `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${limit}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const list = data?.result?.list || [];
-    // Bybit returns newest first, reverse for chronological order
-    return list.reverse().map((c: any[]) => ({
-      timestamp: parseInt(c[0]) / 1000,
-      open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]),
-      close: parseFloat(c[4]), volume: parseFloat(c[5]) || 0,
-    }));
+    const PAGE = 200; // Bybit max per request
+    const pages = Math.ceil(Math.min(limit, 1000) / PAGE);
+    let allCandles: any[] = [];
+    let endTime: number | undefined;
+
+    for (let i = 0; i < pages; i++) {
+      let url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${PAGE}`;
+      if (endTime) url += `&end=${endTime}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) break;
+      const data = await res.json();
+      const list = data?.result?.list || [];
+      if (list.length === 0) break;
+
+      const parsed = list.map((c: any[]) => {
+        const ts = Number(c[0]);
+        return {
+          timestamp: ts > 1e12 ? ts : ts * 1000,
+          open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]),
+          close: parseFloat(c[4]), volume: parseFloat(c[5]) || 0,
+        };
+      });
+      // list is newest-first; oldest item is last
+      allCandles = [...parsed, ...allCandles];
+      // Next page: fetch candles before the oldest one we got
+      endTime = Number(list[list.length - 1][0]) - 1;
+      if (list.length < PAGE) break; // no more data
+    }
+
+    // Sort chronologically (oldest first) and deduplicate
+    allCandles.sort((a, b) => a.timestamp - b.timestamp);
+    return allCandles;
   } catch {
     return [];
   }
