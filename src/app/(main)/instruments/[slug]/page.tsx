@@ -71,12 +71,25 @@ export default function AssetPage() {
   if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
   if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
 
-  // Find best ticker for chart: prefer spot, then MOEX, then first with tradingViewSymbol
-  // Priority: FMP (realtime) → spot → MOEX → any with data
+  // Select main ticker for chart based on category
+  const catSlug = asset.category?.slug || "";
+  const bybitTicker = asset.instruments.find(t => t.dataSource === "bybit" && t.dataTicker);
   const fmpTicker = asset.instruments.find(t => t.dataSource === "fmp" && t.dataTicker);
-  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && (t.dataSource || t.tradingViewSymbol));
   const moexTicker = asset.instruments.find(t => t.dataSource === "moex" && t.dataTicker);
-  const mainTicker = fmpTicker || spotTicker || moexTicker || asset.instruments.find(t => t.dataTicker) || asset.instruments[0];
+  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && (t.dataSource || t.tradingViewSymbol));
+
+  let mainTicker: typeof asset.instruments[0] | undefined;
+  if (catSlug === "crypto") {
+    mainTicker = bybitTicker || fmpTicker || moexTicker;
+  } else if (catSlug === "us-stocks") {
+    mainTicker = fmpTicker || moexTicker;
+  } else if (catSlug === "ru-stocks") {
+    mainTicker = moexTicker;
+  } else {
+    // commodities, metals, indices, currencies — prefer spot or MOEX
+    mainTicker = spotTicker || moexTicker || fmpTicker;
+  }
+  if (!mainTicker) mainTicker = asset.instruments.find(t => t.dataTicker) || asset.instruments[0];
 
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
