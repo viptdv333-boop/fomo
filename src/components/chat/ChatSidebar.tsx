@@ -335,7 +335,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   "Gold": "Золото", "Silver": "Серебро", "Copper": "Медь", "Platinum": "Платина",
                   "Corn": "Кукуруза", "Wheat": "Пшеница", "Soybean": "Соя",
                   "ICE Brent": "Нефть Brent (ICE)", "ICE Gasoil": "Газойль",
-                  "Brent": "Нефть Brent", "WTI": "Нефть WTI", "Природный газ": "Газ",
+                  "Brent": "Нефть Brent", "WTI": "Нефть WTI",
                   "Нефть Brent": "Нефть", "Природный газ": "Газ",
                 };
                 const simpleName = (name: string) => {
