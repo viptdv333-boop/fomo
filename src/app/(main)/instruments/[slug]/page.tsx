@@ -95,10 +95,12 @@ export default function AssetPage() {
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
   // Fetch live quote for main ticker
+  const mainSource = mainTicker?.dataSource || "";
+  const mainDataTicker = mainTicker?.dataTicker || "";
   useEffect(() => {
-    if (!mainTicker?.dataSource || !mainTicker?.dataTicker) return;
+    if (!mainSource || !mainDataTicker) return;
     const fetchQuote = () => {
-      fetch(`/api/quote?source=${mainTicker.dataSource}&ticker=${mainTicker.dataTicker}`)
+      fetch(`/api/quote?source=${mainSource}&ticker=${mainDataTicker}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data?.price) setQuote(data); })
         .catch(() => {});
@@ -106,7 +108,7 @@ export default function AssetPage() {
     fetchQuote();
     const interval = setInterval(fetchQuote, 5000);
     return () => clearInterval(interval);
-  }, [mainTicker?.dataTicker, mainTicker?.dataSource]);
+  }, [mainSource, mainDataTicker]);
 
   const formatNum = (n: number) => n >= 1000 ? n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) : n.toFixed(2);
   const formatVol = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : String(Math.round(v));
