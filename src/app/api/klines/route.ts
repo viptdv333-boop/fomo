@@ -188,7 +188,7 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number) 
   }
 }
 
-async function fetchBybitCandles(ticker: string, interval: string, limit: number) {
+async function fetchBybitCandles(ticker: string, interval: string, limit: number, toMs?: number) {
   const BYBIT_INTERVALS: Record<string, string> = {
     "1": "1", "5": "5", "15": "15", "60": "60", "240": "240", "D": "D", "W": "W", "M": "M",
   };
@@ -197,7 +197,7 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
     const PAGE = 200; // Bybit max per request
     const pages = Math.ceil(Math.min(limit, 1000) / PAGE);
     let allCandles: any[] = [];
-    let endTime: number | undefined;
+    let endTime: number | undefined = toMs;
 
     for (let i = 0; i < pages; i++) {
       let url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${PAGE}`;
@@ -237,6 +237,8 @@ export async function GET(request: NextRequest) {
   const ticker = searchParams.get("ticker") || "";
   const interval = searchParams.get("interval") || "D";
   const limit = parseInt(searchParams.get("limit") || "300");
+  const toParam = searchParams.get("to");
+  const toMs = toParam ? parseInt(toParam) : undefined;
 
   if (!ticker || !source) {
     return NextResponse.json({ error: "source and ticker required" }, { status: 400 });
@@ -252,7 +254,7 @@ export async function GET(request: NextRequest) {
   } else if (source === "fmp") {
     candles = await fetchFmpCandles(ticker, interval, limit);
   } else if (source === "bybit") {
-    candles = await fetchBybitCandles(ticker, interval, limit);
+    candles = await fetchBybitCandles(ticker, interval, limit, toMs);
   }
 
   // Return object with metadata + candles

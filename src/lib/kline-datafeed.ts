@@ -85,9 +85,11 @@ export class MoexDatafeed implements Datafeed {
   ): Promise<KLineData[]> {
     const interval = periodToInterval(period);
     try {
-      const r = await fetch(
-        `/api/klines?source=${this._source}&ticker=${encodeURIComponent(symbol.ticker)}&interval=${interval}&limit=500`
-      );
+      let url = `/api/klines?source=${this._source}&ticker=${encodeURIComponent(symbol.ticker)}&interval=${interval}&limit=500`;
+      // Pass from/to so API can paginate (timestamps in ms)
+      if (from) url += `&from=${from}`;
+      if (to) url += `&to=${to}`;
+      const r = await fetch(url);
       const j = await r.json();
       const c = j.candles ?? j;
       if (!Array.isArray(c) || c.length === 0) return [];
