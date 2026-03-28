@@ -300,19 +300,14 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 const themeGroups: { key: string; label: string; emoji: string; match: (r: ChatRoomInfo) => boolean }[] = [
                   { key: "ru-stocks", label: "РФ Акции", emoji: "🇷🇺", match: r => r.instrumentType === "stock" && r.exchangeSlug === "moex" },
                   { key: "us-stocks", label: "США Акции", emoji: "🇺🇸", match: r => r.instrumentType === "stock" && (r.exchangeSlug === "nyse" || r.exchangeSlug === "cme") },
+                  { key: "metals", label: "Металлы", emoji: "🥇", match: r => {
+                    const metalKeywords = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
+                    return metalKeywords.some(kw => (r.name || "").toLowerCase().includes(kw));
+                  }},
                   { key: "commodities", label: "Сырьё", emoji: "🛢️", match: r => {
                     if (r.instrumentType !== "futures" && r.instrumentType !== "spot") return false;
                     const catSlug = r.categorySlug || "";
-                    const isMetalCat = false; // metals handled separately
-                    const metalTickers = ["GOLD", "SILV", "PLT", "PLD", "CU", "GC", "SI", "HG", "PL", "GOLD_SPOT", "SILVER_SPOT"];
-                    if (metalTickers.includes(r.name?.split(" ")[0] || "")) return false;
-                    if (catSlug.includes("commodity") || catSlug.includes("spot-commodity")) return !isMetalCat;
-                    return false;
-                  }},
-                  { key: "metals", label: "Металлы", emoji: "🥇", match: r => {
-                    const ticker = (r.name || "").toUpperCase();
-                    const metalKeywords = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
-                    return metalKeywords.some(kw => (r.name || "").toLowerCase().includes(kw));
+                    return catSlug.includes("commodit") || catSlug.includes("spot-commodit");
                   }},
                   { key: "indices", label: "Индексы", emoji: "📊", match: r => {
                     const catSlug = r.categorySlug || "";
