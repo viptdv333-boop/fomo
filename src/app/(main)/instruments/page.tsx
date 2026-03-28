@@ -195,7 +195,7 @@ export default function InstrumentsCatalogPage() {
                       {inst.name}
                     </span>
                     <span className="text-xs font-mono font-bold text-green-600 dark:text-green-400">
-                      {inst.ticker || "—"}
+                      #{inst.ticker || "—"}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {inst.exchangeRel ? `${COUNTRY_FLAGS[inst.exchangeRel.country] || ""} ${inst.exchangeRel.shortName}` : "—"}

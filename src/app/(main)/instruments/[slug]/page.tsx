@@ -89,8 +89,8 @@ export default function InstrumentPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold dark:text-gray-100">{instrument.name}</h1>
               {instrument.ticker && (
-                <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg text-sm font-mono font-medium">
-                  {instrument.ticker}
+                <span className="px-2.5 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm font-mono font-bold">
+                  #{instrument.ticker}
                 </span>
               )}
               {instrument.exchangeRel && (
