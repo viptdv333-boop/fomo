@@ -2,83 +2,82 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
-import type { DataSource } from "@/components/instruments/ChartWidget";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
   { ssr: false, loading: () => <div className="h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" /> }
 );
 
-interface RelatedInstrument {
-  id: string;
-  name: string;
-  ticker: string | null;
-  slug: string;
-  exchangeRel?: { shortName: string } | null;
-}
-
-interface InstrumentData {
+interface Ticker {
   id: string;
   name: string;
   slug: string;
   ticker: string | null;
   exchange: string | null;
-  exchangeUrl: string | null;
   tradingViewSymbol: string | null;
   dataSource: string | null;
   dataTicker: string | null;
   externalUrl: string | null;
-  description: string | null;
-  category: { id: string; name: string; slug: string } | null;
-  exchangeRel: { id: string; name: string; slug: string; shortName: string } | null;
-  chatRoom: { id: string; name: string } | null;
-  relatedInstruments?: RelatedInstrument[];
+  exchangeUrl: string | null;
+  instrumentType: string | null;
+  exchangeRel: { id: string; name: string; shortName: string; slug: string; country: string } | null;
 }
 
-export default function InstrumentPage() {
-  const params = useParams();
-  const { data: session } = useSession();
-  const slug = params.slug as string;
+interface AssetData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  category: { id: string; name: string; slug: string } | null;
+  chatRoom: { id: string } | null;
+  instruments: Ticker[];
+}
 
-  const [instrument, setInstrument] = useState<InstrumentData | null>(null);
+const FLAGS: Record<string, string> = { RU: "🇷🇺", US: "🇺🇸", CN: "🇨🇳", GB: "🇬🇧", SPOT: "🌐", CRYPTO: "₿" };
+
+export default function AssetPage() {
+  const { slug } = useParams();
+  const [asset, setAsset] = useState<AssetData | null>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
-  const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadInstrument() {
-    const res = await fetch(`/api/instruments/${slug}`);
-    if (res.ok) setInstrument(await res.json());
-    setLoading(false);
-  }
+  useEffect(() => {
+    fetch(`/api/assets/${slug}`)
+      .then(r => { if (r.ok) return r.json(); throw new Error("not found"); })
+      .then(data => setAsset(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
 
-  async function loadIdeas() {
-    if (!instrument) return;
-    const res = await fetch(`/api/ideas?instrumentId=${instrument.id}`);
-    const data = await res.json();
-    setIdeas(data.data || data.ideas || (Array.isArray(data) ? data : []));
-  }
+  // Load ideas for all tickers of this asset
+  useEffect(() => {
+    if (!asset) return;
+    const ids = asset.instruments.map(t => t.id);
+    if (ids.length === 0) return;
+    // Fetch ideas for first ticker (main)
+    Promise.all(ids.map(id => fetch(`/api/ideas?instrumentId=${id}`).then(r => r.json())))
+      .then(results => {
+        const all = results.flatMap((r: any) => r.data || r.ideas || (Array.isArray(r) ? r : []));
+        // Deduplicate by id
+        const seen = new Set<string>();
+        setIdeas(all.filter((idea: any) => { if (seen.has(idea.id)) return false; seen.add(idea.id); return true; }));
+      });
+  }, [asset?.id]);
 
-  async function loadContracts() {
-    const res = await fetch(`/api/instruments/${slug}/contracts`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.contracts) setContracts(data.contracts);
-    }
-  }
+  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
+  if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
 
-  useEffect(() => { loadInstrument(); }, [slug]);
-  useEffect(() => { if (instrument) { loadIdeas(); loadContracts(); } }, [instrument?.id]);
+  // Find best ticker for chart: prefer spot, then MOEX, then first with tradingViewSymbol
+  const spotTicker = asset.instruments.find(t => t.instrumentType === "spot" && t.tradingViewSymbol);
+  const moexTicker = asset.instruments.find(t => t.dataSource === "moex" && t.dataTicker);
+  const tvTicker = asset.instruments.find(t => t.tradingViewSymbol);
+  const mainTicker = spotTicker || moexTicker || tvTicker || asset.instruments[0];
 
-  if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
-  if (!instrument) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Инструмент не найден</div>;
-
-  const chartTicker = instrument.dataTicker || instrument.ticker || "";
-  const chartSource = (instrument.dataSource || "none") as DataSource;
+  const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -86,169 +85,101 @@ export default function InstrumentPage() {
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold dark:text-gray-100">{instrument.name}</h1>
-              {instrument.ticker && (
-                <span className="px-2.5 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm font-mono font-bold">
-                  #{instrument.ticker}
-                </span>
-              )}
-              {instrument.exchangeRel && (
-                <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded text-xs font-medium">
-                  {instrument.exchangeRel.shortName}
-                </span>
+            <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">
+              <Link href="/instruments" className="hover:text-green-600">Каталог</Link>
+              {" / "}
+              {asset.category && (
+                <Link href={`/instruments/category/${asset.category.slug}`} className="hover:text-green-600">{asset.category.name}</Link>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {instrument.category && (
-                <span>{instrument.category.name}</span>
-              )}
-              {instrument.exchange && (
-                <>
-                  <span>·</span>
-                  <span>{instrument.exchange}</span>
-                </>
-              )}
-            </div>
-            {instrument.description && (
-              <p className="text-gray-600 dark:text-gray-400 mt-3">{instrument.description}</p>
+            <h1 className="text-2xl font-bold dark:text-gray-100">{asset.name}</h1>
+            {asset.description && (
+              <p className="text-gray-500 dark:text-gray-400 mt-2">{asset.description}</p>
             )}
+            {/* Ticker hashtags */}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {asset.instruments.map(t => (
+                <span key={t.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded text-xs font-mono font-bold">
+                  #{t.ticker}
+                  {t.exchangeRel && (
+                    <span className="text-[9px] text-gray-400 font-normal">{t.exchangeRel.shortName}</span>
+                  )}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {(instrument.externalUrl || instrument.exchangeUrl) && (
-              <a
-                href={instrument.externalUrl || instrument.exchangeUrl || ""}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></svg>
-                На бирже
-              </a>
-            )}
-            {(() => {
-              // Map instrument to thematic chat room
-              const metalKw = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
-              const nameLower = (instrument.name || "").toLowerCase();
-              const catSlug = instrument.category?.slug || "";
-              const exSlug = instrument.exchangeRel?.slug || "";
-
-              let chatId = "general";
-              if (metalKw.some(k => nameLower.includes(k))) {
-                chatId = "chat-metals";
-              } else if (catSlug.includes("commodit") || catSlug.includes("spot-commodit")) {
-                chatId = "chat-commodities";
-              } else if (catSlug.includes("index") || catSlug.includes("spot-ind")) {
-                chatId = "chat-indices";
-              } else if (catSlug.includes("currency")) {
-                chatId = "chat-currencies";
-              } else if (catSlug.includes("crypto")) {
-                chatId = "chat-crypto";
-              } else if (catSlug === "stocks" && exSlug === "moex") {
-                chatId = "chat-ru-stocks";
-              } else if (catSlug === "stocks") {
-                chatId = "chat-us-stocks";
-              }
-
-              return (
-                <Link
-                  href={`/chat?room=${chatId}`}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                  Обсудить в чате
-                </Link>
-              );
-            })()}
-            <Link
-              href={`/ideas/new?instrumentId=${instrument.id}`}
-              className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition inline-flex items-center gap-1.5"
-            >
+            <Link href={chatLink} className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+              Обсудить
+            </Link>
+            <Link href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`} className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition inline-flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 5v14m-7-7h14" /></svg>
-              Поделиться идеей
+              Опубликовать идею
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Chart: KlineChart for MOEX, TradingView embed for others */}
-      {chartSource !== "none" && chartTicker ? (
-        <ChartWidget
-          ticker={chartTicker}
-          source={chartSource}
-          name={instrument.name}
-          height={550}
-        />
-      ) : instrument.tradingViewSymbol ? (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div id="tv-chart-container" className="h-[550px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              autosize: true,
-              symbol: instrument.tradingViewSymbol,
-              interval: "D",
-              timezone: "Etc/UTC",
-              theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              style: "1",
-              locale: "ru",
-              allow_symbol_change: false,
-              hide_top_toolbar: false,
-              hide_legend: false,
-              save_image: true,
-              calendar: false,
-              support_host: "https://www.tradingview.com",
-            });
-            el.appendChild(script);
-          }} />
-        </div>
-      ) : null}
+      {/* Main chart */}
+      {mainTicker && (
+        <>
+          {mainTicker.dataSource === "moex" && mainTicker.dataTicker ? (
+            <ChartWidget
+              ticker={mainTicker.dataTicker}
+              source="moex"
+              name={asset.name}
+              height={500}
+            />
+          ) : mainTicker.tradingViewSymbol ? (
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+              <div className="h-[500px]" ref={(el) => {
+                if (!el || el.querySelector("iframe")) return;
+                const script = document.createElement("script");
+                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+                script.async = true;
+                script.innerHTML = JSON.stringify({
+                  autosize: true, symbol: mainTicker.tradingViewSymbol, interval: "D",
+                  timezone: "Etc/UTC", theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+                  style: "1", locale: "ru", allow_symbol_change: false, save_image: true,
+                });
+                el.appendChild(script);
+              }} />
+            </div>
+          ) : null}
+        </>
+      )}
 
-      {/* MOEX Stats */}
-      {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
+      {/* MOEX Stats for MOEX tickers */}
+      {moexTicker && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Technical Analysis + Timeline for all with tradingViewSymbol */}
-      {instrument.tradingViewSymbol && (
+      {/* TradingView Analysis + News */}
+      {mainTicker?.tradingViewSymbol && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Technical Analysis */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-            <div className="h-[420px]" ref={(el) => {
+            <div className="h-[400px]" ref={(el) => {
               if (!el || el.querySelector("iframe")) return;
               const script = document.createElement("script");
               script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
               script.async = true;
               script.innerHTML = JSON.stringify({
-                interval: "1D",
-                width: "100%",
-                isTransparent: true,
-                height: "100%",
-                symbol: instrument.tradingViewSymbol,
-                showIntervalTabs: true,
-                displayMode: "single",
-                locale: "ru",
+                interval: "1D", width: "100%", isTransparent: true, height: "100%",
+                symbol: mainTicker.tradingViewSymbol, showIntervalTabs: true, locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
               });
               el.appendChild(script);
             }} />
           </div>
-          {/* Timeline / News */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-            <div className="h-[420px]" ref={(el) => {
+            <div className="h-[400px]" ref={(el) => {
               if (!el || el.querySelector("iframe")) return;
               const script = document.createElement("script");
               script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
               script.async = true;
               script.innerHTML = JSON.stringify({
-                feedMode: "symbol",
-                symbol: instrument.tradingViewSymbol,
-                isTransparent: true,
-                displayMode: "regular",
-                width: "100%",
-                height: "100%",
+                feedMode: "symbol", symbol: mainTicker.tradingViewSymbol, isTransparent: true,
+                displayMode: "regular", width: "100%", height: "100%", locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-                locale: "ru",
               });
               el.appendChild(script);
             }} />
@@ -256,117 +187,64 @@ export default function InstrumentPage() {
         </div>
       )}
 
-      {/* Active Contracts Table */}
-      {contracts.length > 0 && (
+      {/* Tickers table — all exchanges */}
+      {asset.instruments.length > 1 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Активные контракты</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Тикеры на биржах</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide border-b border-gray-100 dark:border-gray-800">
-                  <th className="text-left py-2 pr-4">Контракт</th>
-                  <th className="text-right py-2 px-2">Цена</th>
-                  <th className="text-right py-2 px-2">Изм.</th>
-                  <th className="text-right py-2 px-2">Изм. %</th>
-                  <th className="text-right py-2 px-2">Макс.</th>
-                  <th className="text-right py-2 px-2">Мин.</th>
-                  <th className="text-right py-2 px-2">Объём</th>
-                  <th className="text-right py-2 px-2">Откр. инт.</th>
-                  <th className="text-right py-2 pl-2">Сделки</th>
+                  <th className="text-left py-2 pr-4">Тикер</th>
+                  <th className="text-left py-2 px-2">Биржа</th>
+                  <th className="text-left py-2 px-2">Тип</th>
+                  <th className="text-left py-2 px-2">Название</th>
+                  <th className="text-right py-2 pl-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {contracts.map((c) => (
-                  <tr key={c.secid} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
-                    <td className="py-2.5 pr-4">
-                      <div className="font-mono font-bold text-gray-900 dark:text-gray-100">{c.secid}</div>
-                      <div className="text-[10px] text-gray-400">{c.shortname}{c.lastTradeDate ? ` · до ${c.lastTradeDate}` : ""}</div>
+                {asset.instruments.map(t => (
+                  <tr key={t.id} className="border-b border-gray-50 dark:border-gray-800/30 last:border-b-0">
+                    <td className="py-3 pr-4">
+                      <span className="font-mono font-bold text-green-600 dark:text-green-400">#{t.ticker}</span>
                     </td>
-                    <td className="text-right py-2.5 px-2 font-semibold dark:text-gray-100">
-                      {c.last != null ? c.last.toLocaleString("ru-RU") : "—"}
+                    <td className="py-3 px-2">
+                      {t.exchangeRel ? (
+                        <span className="inline-flex items-center gap-1 text-xs">
+                          {FLAGS[t.exchangeRel.country] || ""} {t.exchangeRel.shortName}
+                        </span>
+                      ) : "—"}
                     </td>
-                    <td className={`text-right py-2.5 px-2 font-medium ${
-                      c.change > 0 ? "text-green-600" : c.change < 0 ? "text-red-500" : "text-gray-400"
-                    }`}>
-                      {c.change != null ? (c.change > 0 ? "+" : "") + c.change : "—"}
+                    <td className="py-3 px-2 text-xs text-gray-500">
+                      {t.instrumentType === "futures" ? "Фьючерс" : t.instrumentType === "spot" ? "Спот" : t.instrumentType === "stock" ? "Акция" : t.instrumentType || "—"}
                     </td>
-                    <td className={`text-right py-2.5 px-2 font-medium ${
-                      c.changePct > 0 ? "text-green-600" : c.changePct < 0 ? "text-red-500" : "text-gray-400"
-                    }`}>
-                      {c.changePct != null ? (c.changePct > 0 ? "+" : "") + c.changePct.toFixed(2) + "%" : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
-                      {c.high != null ? c.high.toLocaleString("ru-RU") : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
-                      {c.low != null ? c.low.toLocaleString("ru-RU") : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
-                      {c.volume != null ? c.volume.toLocaleString("ru-RU") : "—"}
-                    </td>
-                    <td className="text-right py-2.5 px-2 text-gray-600 dark:text-gray-400">
-                      {c.openInterest != null ? c.openInterest.toLocaleString("ru-RU") : "—"}
-                    </td>
-                    <td className="text-right py-2.5 pl-2 text-gray-600 dark:text-gray-400">
-                      {c.numTrades != null ? c.numTrades.toLocaleString("ru-RU") : "—"}
+                    <td className="py-3 px-2 text-gray-600 dark:text-gray-400 text-xs">{t.name}</td>
+                    <td className="py-3 pl-2 text-right">
+                      {(t.externalUrl || t.exchangeUrl) && (
+                        <a href={t.externalUrl || t.exchangeUrl || ""} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:text-green-700">
+                          На бирже →
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-3 text-right">Данные MOEX ISS</p>
-        </div>
-      )}
-
-      {/* Related Instruments */}
-      {instrument.relatedInstruments && instrument.relatedInstruments.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Связанные тикеры</h2>
-          <div className="flex flex-wrap gap-2">
-            {instrument.relatedInstruments.map((rel) => (
-              <Link
-                key={rel.id}
-                href={`/instruments/${rel.slug}`}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
-              >
-                <span className="font-mono font-bold text-sm text-green-600 dark:text-green-400">
-                  #{rel.ticker || rel.slug}
-                </span>
-                {rel.exchangeRel?.shortName && (
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                    {rel.exchangeRel.shortName}
-                  </span>
-                )}
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
-                  {rel.name}
-                </span>
-              </Link>
-            ))}
-          </div>
         </div>
       )}
 
       {/* Ideas */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold dark:text-gray-100">
-            Идеи по {instrument.name}
-          </h2>
-        </div>
-
-        {ideas.length === 0 ? (
-          <div className="text-gray-500 dark:text-gray-400 text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
-            Нет идей по этому инструменту
-          </div>
-        ) : (
+      {ideas.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Идеи по {asset.name}</h2>
           <div className="space-y-4">
             {ideas.map((idea: any) => (
-              <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} />
+              <IdeaCard key={idea.id} idea={idea} onVote={() => {}} />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

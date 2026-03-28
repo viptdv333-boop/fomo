@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
             },
           }
         : false,
-      _count: { select: { instruments: true } },
+      _count: { select: { instruments: true, assets: true } },
     },
   });
 

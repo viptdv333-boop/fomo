@@ -104,7 +104,24 @@ model InstrumentCategory {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
+  assets      Asset[]
   instruments Instrument[]
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String   @unique  // "Нефть", "Золото", "Сбербанк"
+  slug        String   @unique  // "oil", "gold", "sberbank"
+  categoryId  String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  category    InstrumentCategory @relation(fields: [categoryId], references: [id])
+  instruments Instrument[]
+  chatRoom    ChatRoom?
+
+  @@index([categoryId])
 }
 
 model Instrument {
@@ -113,19 +130,21 @@ model Instrument {
   slug              String   @unique
   categoryId        String?
   exchangeId        String?
+  assetId           String?
   ticker            String?
-  exchange          String?  // legacy string field for display
+  exchange          String?
   exchangeUrl       String?
   tradingViewSymbol String?
   dataSource        String?  // "moex", "bybit", or null
   dataTicker        String?  // ticker for data API
-  externalUrl       String?  // link to TradingView or Investing.com
+  externalUrl       String?
   instrumentType    String?  // "stock", "futures", "spot", "currency", "crypto"
   description       String?
   createdAt         DateTime @default(now())
 
   category     InstrumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   exchangeRel  Exchange?           @relation(fields: [exchangeId], references: [id], onDelete: SetNull)
+  asset        Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
   ideas        IdeaInstrument[]
   chatRoom     ChatRoom?
   relatedFrom  InstrumentRelation[] @relation("instrumentRelations")
@@ -133,6 +152,7 @@ model Instrument {
 
   @@index([categoryId])
   @@index([exchangeId])
+  @@index([assetId])
 }
 
 model InstrumentRelation {
@@ -243,7 +263,8 @@ model ChatRoom {
   id             String  @id @default(cuid())
   name           String
   instrumentId   String? @unique
-  categoryLabel  String? // thematic group label for chat sidebar ("Сырьё", "Металлы", etc.)
+  assetId        String? @unique
+  categoryLabel  String?
   sortOrder      Int     @default(0)
   isGeneral      Boolean @default(false)
   isArchived     Boolean @default(false)
@@ -251,6 +272,7 @@ model ChatRoom {
   createdAt      DateTime @default(now())
 
   instrument Instrument?  @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  asset      Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
   messages   ChatMessage[]
 }
 
