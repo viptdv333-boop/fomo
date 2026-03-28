@@ -331,8 +331,8 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   "WTI Crude Oil": "Нефть", "Brent": "Нефть", "WTI": "Нефть",
                   // Газ
                   "Природный газ": "Газ", "Natural Gas": "Газ",
-                  // Газойль
-                  "ICE Gasoil": "Газойль",
+                  // Газойль → Дизель (или скрыть)
+                  "ICE Gasoil": "Газ",
                   // Металлы
                   "Gold": "Золото", "Silver": "Серебро", "Copper": "Медь", "Platinum": "Платина",
                   // Зерновые
@@ -345,6 +345,10 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   "HS China Enterprises Futures": "HSCEI",
                   "DAX 40": "DAX 40", "FTSE 100": "FTSE 100", "Nikkei 225": "Nikkei 225",
                   "IMOEX": "Индекс MOEX", "Индекс МосБиржи": "Индекс MOEX", "Индекс РТС": "РТС",
+                  // Валюты — только 3 пары
+                  "Доллар/Рубль": "Рубль/Доллар", "Euro FX": "Евро/Доллар",
+                  "Евро/Рубль": "Евро/Доллар", "Юань/Рубль": "Рубль/Юань",
+                  "Japanese Yen": "Рубль/Доллар", "US Dollar Index": "Рубль/Доллар",
                 };
                 const simpleName = (name: string) => {
                   // First try exact match after removing parentheses
