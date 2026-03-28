@@ -281,28 +281,100 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </div>
         </div>
 
-        {/* Room list — flat: thematic rooms only (no instrument rooms) */}
+        {/* Room list — General chat + thematic categories with instrument rooms inside */}
         <div className="flex-1 overflow-y-auto" onClick={() => setRoomMenu(null)}>
-          {(() => {
-            // Thematic room IDs — only show these in sidebar
-            const thematicIds = new Set(["general", "chat-ru-stocks", "chat-us-stocks", "chat-commodities", "chat-metals", "chat-indices", "chat-currencies", "chat-crypto"]);
-            const thematicRooms = filteredRooms.filter(r => thematicIds.has(r.id));
+          {rooms.length === 0 ? (
+            <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Загрузка...</div>
+          ) : (
+            <>
+              {/* General chat */}
+              {filteredRooms.filter(r => r.isGeneral).map(room => renderRoom(room))}
 
-            if (thematicRooms.length === 0) {
-              return (
-                <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
-                  {rooms.length === 0 ? "Загрузка..." : "Ничего не найдено"}
-                </div>
-              );
-            }
+              {/* Thematic groups with instrument rooms inside */}
+              {(() => {
+                const instrumentRooms = filteredRooms.filter(r => !r.isGeneral && r.instrumentSlug);
 
-            // Show pinned first, then general, then rest in order
-            const pinned = thematicRooms.filter(r => pinnedRooms.includes(r.id));
-            const general = thematicRooms.filter(r => r.isGeneral && !pinnedRooms.includes(r.id));
-            const rest = thematicRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id));
+                const themes: { key: string; label: string; emoji: string; match: (r: ChatRoomInfo) => boolean }[] = [
+                  { key: "ru-stocks", label: "РФ Акции", emoji: "🇷🇺", match: r => r.instrumentType === "stock" && r.exchangeSlug === "moex" },
+                  { key: "us-stocks", label: "США Акции", emoji: "🇺🇸", match: r => r.instrumentType === "stock" && (r.exchangeSlug === "nyse" || r.exchangeSlug === "cme") },
+                  { key: "metals", label: "Металлы", emoji: "🥇", match: r => {
+                    const kw = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
+                    return kw.some(k => (r.name || "").toLowerCase().includes(k));
+                  }},
+                  { key: "commodities", label: "Сырьё", emoji: "🛢️", match: r => {
+                    if (r.instrumentType !== "futures" && r.instrumentType !== "spot") return false;
+                    return (r.categorySlug || "").includes("commodit") || (r.categorySlug || "").includes("spot-commodit");
+                  }},
+                  { key: "indices", label: "Индексы", emoji: "📊", match: r => (r.categorySlug || "").includes("index") || (r.categorySlug || "").includes("spot-ind") },
+                  { key: "currencies", label: "Валюты", emoji: "💱", match: r => r.instrumentType === "currency" || (r.categorySlug || "").includes("currency") },
+                  { key: "crypto", label: "Крипта", emoji: "₿", match: r => r.instrumentType === "crypto" || (r.categorySlug || "").includes("crypto") },
+                  { key: "other", label: "Другие", emoji: "🌏", match: () => true },
+                ];
 
-            return [...pinned, ...general, ...rest].map(room => renderRoom(room));
-          })()}
+                const assigned = new Set<string>();
+                const groups: { key: string; label: string; emoji: string; rooms: ChatRoomInfo[] }[] = [];
+
+                for (const theme of themes) {
+                  const matching = instrumentRooms.filter(r => !assigned.has(r.id) && theme.match(r));
+                  if (matching.length > 0) {
+                    groups.push({ ...theme, rooms: matching });
+                    matching.forEach(r => assigned.add(r.id));
+                  }
+                }
+
+                // Simple display name: remove exchange/ticker cruft
+                const simpleName = (name: string) => {
+                  return name
+                    .replace(/\s*\(MOEX\)\s*/gi, "")
+                    .replace(/\s*\(CME\)\s*/gi, "")
+                    .replace(/\s*\(NYMEX\)\s*/gi, "")
+                    .replace(/\s*\(LSE\)\s*/gi, "")
+                    .replace(/\s*\(ICE\)\s*/gi, "")
+                    .replace(/\s*\(HKEX\)\s*/gi, "")
+                    .replace(/\s*\(спот\)\s*/gi, "")
+                    .replace(/\s*\(CBOT\)\s*/gi, "")
+                    .replace(/\s+фьючерс\s*/gi, "")
+                    .trim();
+                };
+
+                return groups.map(group => {
+                  const isOpen = openExchanges.has(group.key);
+                  return (
+                    <div key={group.key}>
+                      <button
+                        onClick={() => toggleExchange(group.key)}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+                      >
+                        <svg className={`w-3 h-3 transition-transform text-gray-400 ${isOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M6 4l8 6-8 6V4z" />
+                        </svg>
+                        <span>{group.emoji}</span>
+                        <span>{group.label}</span>
+                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{group.rooms.length}</span>
+                      </button>
+                      {isOpen && group.rooms.map(room => {
+                        const active = isActive(room);
+                        return (
+                          <Link
+                            key={room.id}
+                            href={getRoomHref(room)}
+                            onContextMenu={(e) => handleRoomContextMenu(e, room)}
+                            className={`block pl-10 pr-4 py-2 text-sm transition truncate ${
+                              active
+                                ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium border-l-2 border-green-500"
+                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent"
+                            }`}
+                          >
+                            {simpleName(room.name)}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                });
+              })()}
+            </>
+          )}
         </div>
 
         {/* Room context menu */}
