@@ -281,82 +281,28 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </div>
         </div>
 
-        {/* Room list — tree: General first, then Exchange → Category → Rooms */}
+        {/* Room list — flat: thematic rooms only (no instrument rooms) */}
         <div className="flex-1 overflow-y-auto" onClick={() => setRoomMenu(null)}>
-          {filteredRooms.length === 0 ? (
-            <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
-              {rooms.length === 0 ? "Загрузка..." : "Ничего не найдено"}
-            </div>
-          ) : (
-            <>
-              {/* General & pinned rooms first */}
-              {filteredRooms.filter(r => r.isGeneral || pinnedRooms.includes(r.id)).map(room => renderRoom(room))}
+          {(() => {
+            // Thematic room IDs — only show these in sidebar
+            const thematicIds = new Set(["general", "chat-ru-stocks", "chat-us-stocks", "chat-commodities", "chat-metals", "chat-indices", "chat-currencies", "chat-crypto"]);
+            const thematicRooms = filteredRooms.filter(r => thematicIds.has(r.id));
 
-              {/* Grouped by theme */}
-              {(() => {
-                const instrumentRooms = filteredRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id));
+            if (thematicRooms.length === 0) {
+              return (
+                <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
+                  {rooms.length === 0 ? "Загрузка..." : "Ничего не найдено"}
+                </div>
+              );
+            }
 
-                // Thematic grouping rules
-                const themeGroups: { key: string; label: string; emoji: string; match: (r: ChatRoomInfo) => boolean }[] = [
-                  { key: "ru-stocks", label: "РФ Акции", emoji: "🇷🇺", match: r => r.instrumentType === "stock" && r.exchangeSlug === "moex" },
-                  { key: "us-stocks", label: "США Акции", emoji: "🇺🇸", match: r => r.instrumentType === "stock" && (r.exchangeSlug === "nyse" || r.exchangeSlug === "cme") },
-                  { key: "metals", label: "Металлы", emoji: "🥇", match: r => {
-                    const metalKeywords = ["золот", "серебр", "платин", "палладий", "медь", "gold", "silver", "platinum", "palladium", "copper"];
-                    return metalKeywords.some(kw => (r.name || "").toLowerCase().includes(kw));
-                  }},
-                  { key: "commodities", label: "Сырьё", emoji: "🛢️", match: r => {
-                    if (r.instrumentType !== "futures" && r.instrumentType !== "spot") return false;
-                    const catSlug = r.categorySlug || "";
-                    return catSlug.includes("commodit") || catSlug.includes("spot-commodit");
-                  }},
-                  { key: "indices", label: "Индексы", emoji: "📊", match: r => {
-                    const catSlug = r.categorySlug || "";
-                    return catSlug.includes("index") || catSlug.includes("spot-ind");
-                  }},
-                  { key: "currencies", label: "Валюты", emoji: "💱", match: r => r.instrumentType === "currency" || (r.categorySlug || "").includes("currency") },
-                  { key: "crypto", label: "Крипта", emoji: "₿", match: r => r.instrumentType === "crypto" || (r.categorySlug || "").includes("crypto") },
-                  { key: "other-stocks", label: "Другие акции", emoji: "🌏", match: r => r.instrumentType === "stock" && r.exchangeSlug !== "moex" && r.exchangeSlug !== "nyse" && r.exchangeSlug !== "cme" },
-                ];
+            // Show pinned first, then general, then rest in order
+            const pinned = thematicRooms.filter(r => pinnedRooms.includes(r.id));
+            const general = thematicRooms.filter(r => r.isGeneral && !pinnedRooms.includes(r.id));
+            const rest = thematicRooms.filter(r => !r.isGeneral && !pinnedRooms.includes(r.id));
 
-                const grouped = new Map<string, { label: string; emoji: string; rooms: ChatRoomInfo[] }>();
-                const assigned = new Set<string>();
-
-                for (const theme of themeGroups) {
-                  const matching = instrumentRooms.filter(r => !assigned.has(r.id) && theme.match(r));
-                  if (matching.length > 0) {
-                    grouped.set(theme.key, { label: theme.label, emoji: theme.emoji, rooms: matching });
-                    matching.forEach(r => assigned.add(r.id));
-                  }
-                }
-
-                // Unmatched rooms
-                const unmatched = instrumentRooms.filter(r => !assigned.has(r.id));
-                if (unmatched.length > 0) {
-                  grouped.set("other", { label: "Другое", emoji: "📁", rooms: unmatched });
-                }
-
-                return [...grouped.entries()].map(([key, group]) => {
-                  const isOpen = openExchanges.has(key);
-                  return (
-                    <div key={key}>
-                      <button
-                        onClick={() => toggleExchange(key)}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
-                      >
-                        <svg className={`w-3 h-3 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M6 4l8 6-8 6V4z" />
-                        </svg>
-                        <span className="text-sm">{group.emoji}</span>
-                        {group.label}
-                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{group.rooms.length}</span>
-                      </button>
-                      {isOpen && group.rooms.map(room => renderRoom(room))}
-                    </div>
-                  );
-                });
-              })()}
-            </>
-          )}
+            return [...pinned, ...general, ...rest].map(room => renderRoom(room));
+          })()}
         </div>
 
         {/* Room context menu */}

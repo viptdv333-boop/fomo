@@ -427,12 +427,25 @@ async function main() {
   }
   console.log("Tariffs created for 5 channel users");
 
-  // ─── General chat room ───────────────────────────────────────────────
-  await prisma.chatRoom.upsert({
-    where: { id: "general" },
-    update: {},
-    create: { id: "general", name: "Общий чат", isGeneral: true },
-  });
+  // ─── Chat rooms: General + Thematic ──────────────────────────────────
+  const thematicRooms = [
+    { id: "general", name: "Общий чат", isGeneral: true },
+    { id: "chat-ru-stocks", name: "РФ Акции", isGeneral: false },
+    { id: "chat-us-stocks", name: "США Акции", isGeneral: false },
+    { id: "chat-commodities", name: "Сырьё", isGeneral: false },
+    { id: "chat-metals", name: "Металлы", isGeneral: false },
+    { id: "chat-indices", name: "Индексы", isGeneral: false },
+    { id: "chat-currencies", name: "Валюты", isGeneral: false },
+    { id: "chat-crypto", name: "Крипта", isGeneral: false },
+  ];
+
+  for (const room of thematicRooms) {
+    await prisma.chatRoom.upsert({
+      where: { id: room.id },
+      update: { name: room.name },
+      create: room,
+    });
+  }
 
   // ─── Rating config ───────────────────────────────────────────────────
   await prisma.ratingConfig.upsert({
