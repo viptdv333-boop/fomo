@@ -146,18 +146,90 @@ export default function InstrumentPage() {
         </div>
       </div>
 
-      {/* TradingView Chart */}
-      {chartSource !== "none" && chartTicker && (
+      {/* Chart: KlineChart for MOEX, TradingView embed for others */}
+      {chartSource !== "none" && chartTicker ? (
         <ChartWidget
           ticker={chartTicker}
           source={chartSource}
           name={instrument.name}
           height={550}
         />
-      )}
+      ) : instrument.tradingViewSymbol ? (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+          <div id="tv-chart-container" className="h-[550px]" ref={(el) => {
+            if (!el || el.querySelector("iframe")) return;
+            const script = document.createElement("script");
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+              autosize: true,
+              symbol: instrument.tradingViewSymbol,
+              interval: "D",
+              timezone: "Etc/UTC",
+              theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+              style: "1",
+              locale: "ru",
+              allow_symbol_change: false,
+              hide_top_toolbar: false,
+              hide_legend: false,
+              save_image: true,
+              calendar: false,
+              support_host: "https://www.tradingview.com",
+            });
+            el.appendChild(script);
+          }} />
+        </div>
+      ) : null}
 
       {/* MOEX Stats */}
       {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
+
+      {/* TradingView Technical Analysis + Timeline for non-MOEX */}
+      {!instrument.dataSource && instrument.tradingViewSymbol && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Technical Analysis */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+            <div className="h-[420px]" ref={(el) => {
+              if (!el || el.querySelector("iframe")) return;
+              const script = document.createElement("script");
+              script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
+              script.async = true;
+              script.innerHTML = JSON.stringify({
+                interval: "1D",
+                width: "100%",
+                isTransparent: true,
+                height: "100%",
+                symbol: instrument.tradingViewSymbol,
+                showIntervalTabs: true,
+                displayMode: "single",
+                locale: "ru",
+                colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+              });
+              el.appendChild(script);
+            }} />
+          </div>
+          {/* Timeline / News */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+            <div className="h-[420px]" ref={(el) => {
+              if (!el || el.querySelector("iframe")) return;
+              const script = document.createElement("script");
+              script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
+              script.async = true;
+              script.innerHTML = JSON.stringify({
+                feedMode: "symbol",
+                symbol: instrument.tradingViewSymbol,
+                isTransparent: true,
+                displayMode: "regular",
+                width: "100%",
+                height: "100%",
+                colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+                locale: "ru",
+              });
+              el.appendChild(script);
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* Active Contracts Table */}
       {contracts.length > 0 && (
