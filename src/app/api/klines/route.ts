@@ -147,6 +147,71 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   return { candles: [], resolvedTicker: ticker };
 }
 
+const FMP_KEY = process.env.FMP_API_KEY || "";
+
+const FMP_INTERVALS: Record<string, string> = {
+  "1": "1min", "5": "5min", "15": "15min", "60": "1hour", "240": "4hour",
+};
+
+async function fetchFmpCandles(ticker: string, interval: string, limit: number) {
+  try {
+    if (["D", "W", "M"].includes(interval)) {
+      // Daily/weekly/monthly — use EOD endpoint
+      const res = await fetch(
+        `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${ticker}&apikey=${FMP_KEY}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const hist = Array.isArray(data) ? data : data?.historical || [];
+      return hist.slice(0, limit).reverse().map((c: any) => ({
+        timestamp: new Date(c.date).getTime() / 1000,
+        open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
+      }));
+    } else {
+      // Intraday
+      const fmpInterval = FMP_INTERVALS[interval] || "1hour";
+      const res = await fetch(
+        `https://financialmodelingprep.com/stable/historical-chart/${fmpInterval}?symbol=${ticker}&apikey=${FMP_KEY}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
+      return arr.slice(0, limit).reverse().map((c: any) => ({
+        timestamp: new Date(c.date).getTime() / 1000,
+        open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
+      }));
+    }
+  } catch {
+    return [];
+  }
+}
+
+async function fetchBybitCandles(ticker: string, interval: string, limit: number) {
+  const BYBIT_INTERVALS: Record<string, string> = {
+    "1": "1", "5": "5", "15": "15", "60": "60", "240": "240", "D": "D", "W": "W", "M": "M",
+  };
+  try {
+    const bybitInterval = BYBIT_INTERVALS[interval] || "D";
+    const res = await fetch(
+      `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${limit}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list = data?.result?.list || [];
+    // Bybit returns newest first, reverse for chronological order
+    return list.reverse().map((c: any[]) => ({
+      timestamp: parseInt(c[0]) / 1000,
+      open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]),
+      close: parseFloat(c[4]), volume: parseFloat(c[5]) || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
@@ -165,6 +230,10 @@ export async function GET(request: NextRequest) {
     const result = await fetchMoexCandles(ticker, interval, limit);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
+  } else if (source === "fmp") {
+    candles = await fetchFmpCandles(ticker, interval, limit);
+  } else if (source === "bybit") {
+    candles = await fetchBybitCandles(ticker, interval, limit);
   }
 
   // Return object with metadata + candles

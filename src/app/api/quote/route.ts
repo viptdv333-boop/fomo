@@ -156,6 +156,54 @@ async function fetchTinkoffQuote(ticker: string): Promise<Quote | null> {
   }
 }
 
+async function fetchBybitQuote(ticker: string): Promise<Quote | null> {
+  try {
+    const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${ticker}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data?.result?.list?.[0];
+    if (!item) return null;
+
+    const price = parseFloat(item.lastPrice || "0");
+    const open = parseFloat(item.prevPrice24h || "0");
+    const high = parseFloat(item.highPrice24h || "0");
+    const low = parseFloat(item.lowPrice24h || "0");
+    const volume = parseFloat(item.volume24h || "0");
+    const change = price - open;
+    const changePercent = open !== 0 ? (change / open) * 100 : 0;
+
+    return { price, open, high, low, volume, change, changePercent, time: new Date().toISOString(), ticker };
+  } catch {
+    return null;
+  }
+}
+
+const FMP_KEY = process.env.FMP_API_KEY || "";
+
+async function fetchFmpQuote(ticker: string): Promise<Quote | null> {
+  try {
+    const res = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${ticker}&apikey=${FMP_KEY}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = Array.isArray(data) ? data[0] : data;
+    if (!item || !item.price) return null;
+
+    return {
+      price: item.price,
+      open: item.open || item.price,
+      high: item.dayHigh || item.price,
+      low: item.dayLow || item.price,
+      volume: item.volume || 0,
+      change: item.change || 0,
+      changePercent: item.changesPercentage || 0,
+      time: new Date((item.timestamp || 0) * 1000).toISOString(),
+      ticker,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
@@ -169,6 +217,10 @@ export async function GET(request: NextRequest) {
 
   if (source === "moex") {
     quote = await fetchTinkoffQuote(ticker);
+  } else if (source === "bybit") {
+    quote = await fetchBybitQuote(ticker);
+  } else if (source === "fmp") {
+    quote = await fetchFmpQuote(ticker);
   }
 
   if (!quote) {
