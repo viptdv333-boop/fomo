@@ -322,23 +322,32 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   }
                 }
 
-                // Simple display name: remove exchange/ticker cruft
+                // Clean display name: just the asset name in Russian, no tickers/exchanges
                 const simpleName = (name: string) => {
                   return name
-                    .replace(/\s*\(MOEX\)\s*/gi, "")
-                    .replace(/\s*\(CME\)\s*/gi, "")
-                    .replace(/\s*\(NYMEX\)\s*/gi, "")
-                    .replace(/\s*\(LSE\)\s*/gi, "")
-                    .replace(/\s*\(ICE\)\s*/gi, "")
-                    .replace(/\s*\(HKEX\)\s*/gi, "")
-                    .replace(/\s*\(спот\)\s*/gi, "")
-                    .replace(/\s*\(CBOT\)\s*/gi, "")
+                    .replace(/\s*\([^)]*\)\s*/g, "") // remove anything in parentheses
                     .replace(/\s+фьючерс\s*/gi, "")
+                    .replace(/\s+futures?\s*/gi, "")
+                    .replace(/\s*plc\s*/gi, "")
+                    .replace(/^ICE\s+/i, "")
+                    .replace(/^E-mini\s+/i, "")
+                    .replace(/^HS\s+/i, "")
                     .trim();
+                };
+
+                // Deduplicate: if multiple rooms have the same clean name, keep only one
+                const dedup = (rooms: ChatRoomInfo[]) => {
+                  const seen = new Map<string, ChatRoomInfo>();
+                  for (const r of rooms) {
+                    const clean = simpleName(r.name).toLowerCase();
+                    if (!seen.has(clean)) seen.set(clean, r);
+                  }
+                  return [...seen.values()];
                 };
 
                 return groups.map(group => {
                   const isOpen = openExchanges.has(group.key);
+                  const uniqueRooms = dedup(group.rooms);
                   return (
                     <div key={group.key}>
                       <button
@@ -350,9 +359,9 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                         </svg>
                         <span>{group.emoji}</span>
                         <span>{group.label}</span>
-                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{group.rooms.length}</span>
+                        <span className="ml-auto text-[10px] text-gray-400 font-normal">{uniqueRooms.length}</span>
                       </button>
-                      {isOpen && group.rooms.map(room => {
+                      {isOpen && uniqueRooms.map(room => {
                         const active = isActive(room);
                         return (
                           <Link
