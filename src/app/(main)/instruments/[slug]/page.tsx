@@ -128,7 +128,7 @@ export default function InstrumentPage() {
             )}
             {instrument.chatRoom && (
               <Link
-                href={`/chat/${instrument.chatRoom.id}`}
+                href={`/chat/${instrument.slug}`}
                 className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
