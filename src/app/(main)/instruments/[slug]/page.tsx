@@ -153,8 +153,8 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Analysis + News */}
-      {mainTicker?.tradingViewSymbol && (
+      {/* TradingView Analysis + News — only for NON-MOEX instruments */}
+      {mainTicker?.tradingViewSymbol && !mainTicker.dataSource && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
             <div className="h-[400px]" ref={(el) => {
