@@ -184,8 +184,8 @@ export default function InstrumentPage() {
       {/* MOEX Stats */}
       {(instrument.exchange === "MOEX" || instrument.dataSource === "moex") && <MoexStats slug={slug} />}
 
-      {/* TradingView Technical Analysis + Timeline for non-MOEX */}
-      {!instrument.dataSource && instrument.tradingViewSymbol && (
+      {/* TradingView Technical Analysis + Timeline for all with tradingViewSymbol */}
+      {instrument.tradingViewSymbol && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Technical Analysis */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
