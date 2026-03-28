@@ -207,7 +207,7 @@ export default function AssetPage() {
       )}
 
       {/* MOEX Stats for MOEX tickers */}
-      {moexTicker && <MoexStats slug={moexTicker.slug} />}
+      {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
       {/* TradingView Analysis + News — only for NON-MOEX instruments */}
       {mainTicker?.tradingViewSymbol && !mainTicker.dataSource && (
