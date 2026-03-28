@@ -27,7 +27,7 @@ export default function CatalogPage() {
   useEffect(() => {
     fetch("/api/categories")
       .then(r => r.json())
-      .then(data => setCategories(Array.isArray(data) ? data : []))
+      .then(data => setCategories((Array.isArray(data) ? data : []).filter((c: Category) => (c._count?.assets || 0) > 0)))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

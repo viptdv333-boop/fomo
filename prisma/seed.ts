@@ -493,17 +493,15 @@ async function main() {
     }
   }
 
-  // ─── Delete old categories that are being renamed/restructured ──────
-  for (const oldSlug of ["stocks", "commodity-futures", "index-futures", "currency-futures", "spot-indices", "spot-commodities", "stocks-us", "stocks-ru", "moex-futures"]) {
-    const oldCat = await prisma.instrumentCategory.findUnique({ where: { slug: oldSlug } });
-    if (oldCat) {
-      const remaining = await prisma.instrument.count({ where: { categoryId: oldCat.id } });
-      if (remaining === 0) {
-        await prisma.instrumentCategory.delete({ where: { id: oldCat.id } });
-        console.log(`Old category '${oldSlug}' deleted`);
-      } else {
-        console.log(`Old category '${oldSlug}' found, ${remaining} instruments will be reassigned`);
-      }
+  // ─── Delete old categories ──────
+  const validSlugs = ["ru-stocks", "us-stocks", "indices", "currencies", "crypto", "commodities", "metals"];
+  const oldCats = await prisma.instrumentCategory.findMany({ where: { slug: { notIn: validSlugs } } });
+  for (const oldCat of oldCats) {
+    await prisma.instrument.updateMany({ where: { categoryId: oldCat.id }, data: { categoryId: null } });
+    const assetCount = await prisma.asset.count({ where: { categoryId: oldCat.id } });
+    if (assetCount === 0) {
+      await prisma.instrumentCategory.delete({ where: { id: oldCat.id } });
+      console.log(`Old category '${oldCat.slug}' deleted`);
     }
   }
 
