@@ -257,22 +257,20 @@ export default function AssetPage() {
               )}
             </div>
 
-            {/* Company Profile — only for stocks */}
-            {isStock && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                <div className="h-[400px]" ref={(el) => {
-                  if (!el || el.querySelector("iframe")) return;
-                  const script = document.createElement("script");
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
-                  script.async = true;
-                  script.innerHTML = JSON.stringify({
-                    symbol: tvSymbol, width: "100%", height: "100%",
-                    isTransparent: true, locale: "ru", colorTheme,
-                  });
-                  el.appendChild(script);
-                }} />
-              </div>
-            )}
+            {/* Company/Symbol Profile — for all instruments */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+              <div className="h-[400px]" ref={(el) => {
+                if (!el || el.querySelector("iframe")) return;
+                const script = document.createElement("script");
+                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
+                script.async = true;
+                script.innerHTML = JSON.stringify({
+                  symbol: tvSymbol, width: "100%", height: "100%",
+                  isTransparent: true, locale: "ru", colorTheme,
+                });
+                el.appendChild(script);
+              }} />
+            </div>
 
             {/* Heatmap — context-dependent */}
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
