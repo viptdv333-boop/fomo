@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
+import RuNews from "@/components/instruments/RuNews";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -296,17 +297,54 @@ export default function AssetPage() {
         </div>
       )}
 
+      {/* Economic Calendar + Russian News */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+          <div className="h-[500px]" ref={(el) => {
+            if (!el || el.querySelector("iframe")) return;
+            const script = document.createElement("script");
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+              width: "100%", height: "100%", locale: "ru", importanceFilter: "0,1",
+              colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+              isTransparent: true,
+            });
+            el.appendChild(script);
+          }} />
+        </div>
+        <RuNews />
+      </div>
+
       {/* Ideas */}
-      {ideas.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Идеи по {asset.name}</h2>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold dark:text-gray-100">Идеи по {asset.name}</h2>
+          <Link
+            href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`}
+            className="text-sm text-green-600 hover:text-green-700 font-medium"
+          >
+            + Написать идею
+          </Link>
+        </div>
+        {ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
               <IdeaCard key={idea.id} idea={idea} onVote={() => {}} />
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 text-center">
+            <p className="text-gray-400 dark:text-gray-500 mb-3">Пока нет идей по {asset.name}</p>
+            <Link
+              href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition"
+            >
+              Опубликовать первую идею
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
