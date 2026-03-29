@@ -72,18 +72,24 @@ interface ChatRoomProps {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
 // Instrument shortcode emojis — rendered as inline images
 const INSTRUMENT_EMOJIS = [
-  // Crypto
-  "bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "toncoin", "pepe",
-  // RU stocks
-  "sberbank", "gazprom", "lukoil", "yandex", "rosneft", "tinkoff",
-  // US stocks
-  "apple", "tesla", "nvidia", "microsoft", "amazon", "google", "meta", "netflix",
-  // Commodities & metals
-  "oil", "gas", "gold", "silver", "wheat", "coffee",
-  // Indices
-  "sp500", "nasdaq100", "moex-index",
-  // Currencies
-  "usd-rub", "eur-usd",
+  // Crypto (15)
+  "bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "cardano", "avalanche",
+  "polkadot", "chainlink", "litecoin", "polygon", "toncoin", "sui-crypto", "pepe",
+  // RU stocks (15)
+  "sberbank", "gazprom", "lukoil", "yandex", "rosneft", "norilsk-nickel", "novatek",
+  "polyus", "magnit", "vtb", "tinkoff", "mts", "aeroflot", "alrosa", "nlmk",
+  // US stocks (15)
+  "apple", "tesla", "microsoft", "amazon", "google", "nvidia", "meta", "netflix",
+  "amd", "intel", "jpmorgan", "berkshire", "visa", "coca-cola", "disney",
+  // Commodities (11)
+  "oil", "gas", "euro-gas", "cocoa", "wheat", "sugar", "corn", "soy", "coffee", "gasoline", "orange-juice",
+  // Metals (5)
+  "gold", "silver", "platinum", "palladium", "copper",
+  // Indices (11)
+  "moex-index", "rts-index", "sp500", "nasdaq100", "dow-jones", "russell2000",
+  "hang-seng", "hscei", "dax40", "ftse100", "nikkei225",
+  // Currencies (3)
+  "usd-rub", "cny-rub", "eur-usd",
 ];
 
 const EMOJI_CATEGORIES = [
