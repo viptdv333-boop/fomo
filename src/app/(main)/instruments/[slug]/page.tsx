@@ -148,7 +148,7 @@ export default function AssetPage() {
                 <span>Мин. <span className="font-medium text-red-500">{formatNum(quote.low)}</span></span>
                 <span>Объём <span className="font-medium text-gray-700 dark:text-gray-300">{formatVol(quote.volume)}</span></span>
                 {mainTicker?.exchangeRel && (
-                  <span>Биржа <span className="font-medium text-gray-700 dark:text-gray-300">{mainTicker.exchangeRel.shortName}</span></span>
+                  <span>Биржа <span className="font-semibold text-white bg-gray-600 dark:bg-gray-500 px-1.5 py-0.5 rounded text-[11px]">{mainTicker.exchangeRel.shortName}</span></span>
                 )}
               </div>
             )}
@@ -212,41 +212,25 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Analysis + News — for all instruments with tradingViewSymbol */}
+      {/* TradingView Full Technical Analysis — full width */}
       {(() => {
         const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
         return tvSymbol ? tvSymbol : null;
       })() && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-            <div className="h-[400px]" ref={(el) => {
-              if (!el || el.querySelector("iframe")) return;
-              const tvSym = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
-              const script = document.createElement("script");
-              script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
-              script.async = true;
-              script.innerHTML = JSON.stringify({
-                interval: "1D", width: "100%", isTransparent: true, height: "100%",
-                symbol: tvSym, showIntervalTabs: true, locale: "ru",
-                colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              });
-              el.appendChild(script);
-            }} />
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-            <div className="h-[400px]" ref={(el) => {
-              if (!el || el.querySelector("iframe")) return;
-              const script = document.createElement("script");
-              script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
-              script.async = true;
-              script.innerHTML = JSON.stringify({
-                feedMode: "symbol", symbol: mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, isTransparent: true,
-                displayMode: "regular", width: "100%", height: "100%", locale: "ru",
-                colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              });
-              el.appendChild(script);
-            }} />
-          </div>
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+          <div className="h-[650px]" ref={(el) => {
+            if (!el || el.querySelector("iframe")) return;
+            const tvSym = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
+            const script = document.createElement("script");
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+              interval: "1D", width: "100%", isTransparent: true, height: "100%",
+              symbol: tvSym, showIntervalTabs: true, locale: "ru",
+              colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+            });
+            el.appendChild(script);
+          }} />
         </div>
       )}
 
