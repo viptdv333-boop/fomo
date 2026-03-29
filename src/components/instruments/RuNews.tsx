@@ -9,11 +9,18 @@ interface NewsItem {
   source: string;
 }
 
+interface RuNewsProps {
+  category?: string; // crypto | stocks_ru | stocks_us | commodities | general
+  slug?: string;     // bitcoin | sberbank | oil ...
+  title?: string;
+}
+
 function timeAgo(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "только что";
   if (mins < 60) return `${mins} мин`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs} ч`;
@@ -21,22 +28,27 @@ function timeAgo(dateStr: string): string {
   return `${days} д`;
 }
 
-export default function RuNews() {
+export default function RuNews({ category = "general", slug, title }: RuNewsProps) {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/news")
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (slug) params.set("slug", slug);
+    fetch(`/api/news?${params}`)
       .then(r => r.ok ? r.json() : [])
       .then(setNews)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [category, slug]);
+
+  const heading = title || "Новости рынков";
 
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Новости рынков</h2>
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{heading}</h2>
         <div className="space-y-3">
           {[1,2,3,4,5].map(i => (
             <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
@@ -46,11 +58,18 @@ export default function RuNews() {
     );
   }
 
-  if (news.length === 0) return null;
+  if (news.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{heading}</h2>
+        <p className="text-gray-400 text-sm text-center py-8">Нет новостей</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-      <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Новости рынков</h2>
+      <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{heading}</h2>
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {news.map((item, i) => (
           <a
@@ -65,7 +84,7 @@ export default function RuNews() {
                 {item.title}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400">{item.source}</span>
+                <span className="text-xs font-medium text-green-600/70 dark:text-green-500/70">{item.source}</span>
                 {item.pubDate && (
                   <span className="text-xs text-gray-400">{timeAgo(item.pubDate)}</span>
                 )}

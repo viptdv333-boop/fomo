@@ -313,7 +313,17 @@ export default function AssetPage() {
             el.appendChild(script);
           }} />
         </div>
-        <RuNews />
+        <RuNews
+          category={
+            asset.category?.slug === "crypto" ? "crypto" :
+            asset.category?.slug === "stocks-ru" ? "stocks_ru" :
+            asset.category?.slug === "stocks-us" ? "stocks_us" :
+            ["oil", "gas", "metals", "agriculture"].includes(asset.category?.slug || "") ? "commodities" :
+            "general"
+          }
+          slug={asset.slug}
+          title={`Новости: ${asset.name}`}
+        />
       </div>
 
       {/* Ideas */}
