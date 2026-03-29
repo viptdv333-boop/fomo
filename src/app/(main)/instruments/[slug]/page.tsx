@@ -273,6 +273,77 @@ export default function AssetPage() {
                 }} />
               </div>
             )}
+
+            {/* Heatmap — context-dependent */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+              <div className="h-[500px]" ref={(el) => {
+                if (!el || el.querySelector("iframe")) return;
+                const catSlug = asset.category?.slug || "";
+                const isCrypto = catSlug === "crypto";
+                const script = document.createElement("script");
+                script.src = isCrypto
+                  ? "https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js"
+                  : "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
+                script.async = true;
+                const config: Record<string, unknown> = {
+                  width: "100%", height: "100%", locale: "ru", colorTheme,
+                  hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true,
+                  blockSize: "market_cap_calc", blockColor: "change",
+                };
+                if (isCrypto) {
+                  config.dataSource = "Crypto";
+                } else if (catSlug === "stocks-us" || catSlug === "us-stocks") {
+                  config.dataSource = "SPX500";
+                  config.grouping = "sector";
+                } else {
+                  config.dataSource = "AllRU";
+                  config.grouping = "sector";
+                }
+                script.innerHTML = JSON.stringify(config);
+                el.appendChild(script);
+              }} />
+            </div>
+
+            {/* Screener — context-dependent */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+              <div className="h-[500px]" ref={(el) => {
+                if (!el || el.querySelector("iframe")) return;
+                const catSlug = asset.category?.slug || "";
+                const isCrypto = catSlug === "crypto";
+                const script = document.createElement("script");
+                script.async = true;
+                if (isCrypto) {
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
+                  script.innerHTML = JSON.stringify({
+                    width: "100%", height: "100%", defaultColumn: "overview",
+                    screener_type: "crypto_mkt", displayCurrency: "USD",
+                    locale: "ru", colorTheme, isTransparent: true,
+                  });
+                } else if (catSlug === "stocks-us" || catSlug === "us-stocks") {
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
+                  script.innerHTML = JSON.stringify({
+                    width: "100%", height: "100%", defaultColumn: "overview",
+                    defaultScreen: "most_capitalized", market: "america", showToolbar: true,
+                    locale: "ru", colorTheme, isTransparent: true,
+                  });
+                } else if (catSlug === "commodities" || catSlug === "metals") {
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
+                  script.innerHTML = JSON.stringify({
+                    width: "100%", height: "100%", defaultColumn: "overview",
+                    defaultScreen: "general", market: "cfd", showToolbar: true,
+                    locale: "ru", colorTheme, isTransparent: true,
+                  });
+                } else {
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
+                  script.innerHTML = JSON.stringify({
+                    width: "100%", height: "100%", defaultColumn: "overview",
+                    defaultScreen: "most_capitalized", market: "russia", showToolbar: true,
+                    locale: "ru", colorTheme, isTransparent: true,
+                  });
+                }
+                el.appendChild(script);
+              }} />
+            </div>
           </>
         );
       })()}
