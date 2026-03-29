@@ -103,6 +103,7 @@ model InstrumentCategory {
   name      String   @unique
   slug      String   @unique
   sortOrder Int      @default(0)
+  isHidden  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   assets      Asset[]
@@ -177,6 +178,8 @@ model Idea {
   isPaid          Boolean  @default(false)
   price           Decimal? @db.Decimal(10, 2)
   acceptDonations Boolean  @default(false)
+  moderationStatus String  @default("published")  // published, hidden, archived
+  moderationNote   String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

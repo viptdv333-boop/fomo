@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
 import ShareButtons from "@/components/shared/ShareButtons";
+import WatchlistWidget from "@/components/profile/WatchlistWidget";
 
 const SPECIALIZATION_OPTIONS = [
   { value: "trader", label: "Трейдер" },
@@ -692,6 +693,13 @@ function ProfileContent() {
           )}
         </div>
       </form>
+
+      {/* Watchlist */}
+      {session?.user?.id && (
+        <div className="mt-6">
+          <WatchlistWidget userId={session.user.id} isOwner />
+        </div>
+      )}
       </>
       )}
 

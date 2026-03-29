@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
+import WatchlistWidget from "@/components/profile/WatchlistWidget";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   trader: "Трейдер",
@@ -301,6 +302,11 @@ export default function AuthorProfilePage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Watchlist */}
+      <div className="mb-6">
+        <WatchlistWidget userId={userId as string} />
       </div>
 
       <h2 className="text-lg font-semibold mb-4 dark:text-gray-100">Идеи автора</h2>

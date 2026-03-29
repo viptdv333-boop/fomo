@@ -58,6 +58,27 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(category, { status: 201 });
 }
 
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user || !isAdmin(session.user)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id, sortOrder, isHidden } = await request.json();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const data: any = {};
+  if (typeof sortOrder === "number") data.sortOrder = sortOrder;
+  if (typeof isHidden === "boolean") data.isHidden = isHidden;
+
+  const updated = await prisma.instrumentCategory.update({
+    where: { id },
+    data,
+  });
+
+  return NextResponse.json(updated);
+}
+
 export async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session?.user || !isAdmin(session.user)) {
