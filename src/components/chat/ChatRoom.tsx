@@ -576,7 +576,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                         <button
                           onClick={() => {
                             if (msg.user.id !== session?.user?.id) {
-                              router.push(`/messages?startWith=${msg.user.id}`);
+                              router.push(`/chat?dm=new&startWith=${msg.user.id}`);
                             }
                           }}
                           className={`font-bold text-sm ${msg.user.id !== session?.user?.id ? "text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "text-gray-900 dark:text-gray-100 cursor-default"}`}
