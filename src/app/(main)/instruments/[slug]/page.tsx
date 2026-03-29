@@ -212,27 +212,70 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Full Technical Analysis — full width */}
+      {/* TradingView Widgets Row: Tech Analysis + Fundamental Data + Company Profile */}
       {(() => {
         const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
-        return tvSymbol ? tvSymbol : null;
-      })() && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[1200px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
-            const tvSym = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              interval: "1D", width: "100%", isTransparent: true, height: "100%",
-              symbol: tvSym, showIntervalTabs: true, locale: "ru",
-              colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-            });
-            el.appendChild(script);
-          }} />
-        </div>
-      )}
+        if (!tvSymbol) return null;
+        const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+        const colorTheme = isDark ? "dark" : "light";
+        const isStock = asset.category?.slug === "stocks-ru" || asset.category?.slug === "stocks-us";
+
+        return (
+          <>
+            {/* Row 1: Tech Analysis + Financials (or Tech Analysis full for non-stocks) */}
+            <div className={`grid gap-4 ${isStock ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+              {/* Technical Analysis */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                <div className="h-[425px]" ref={(el) => {
+                  if (!el || el.querySelector("iframe")) return;
+                  const script = document.createElement("script");
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    interval: "1D", width: "100%", isTransparent: true, height: "100%",
+                    symbol: tvSymbol, showIntervalTabs: true, locale: "ru", colorTheme,
+                  });
+                  el.appendChild(script);
+                }} />
+              </div>
+
+              {/* Fundamental Data — only for stocks */}
+              {isStock && (
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                  <div className="h-[425px]" ref={(el) => {
+                    if (!el || el.querySelector("iframe")) return;
+                    const script = document.createElement("script");
+                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+                    script.async = true;
+                    script.innerHTML = JSON.stringify({
+                      symbol: tvSymbol, width: "100%", height: "100%",
+                      isTransparent: true, locale: "ru", colorTheme,
+                    });
+                    el.appendChild(script);
+                  }} />
+                </div>
+              )}
+            </div>
+
+            {/* Company Profile — only for stocks */}
+            {isStock && (
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                <div className="h-[400px]" ref={(el) => {
+                  if (!el || el.querySelector("iframe")) return;
+                  const script = document.createElement("script");
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    symbol: tvSymbol, width: "100%", height: "100%",
+                    isTransparent: true, locale: "ru", colorTheme,
+                  });
+                  el.appendChild(script);
+                }} />
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Tickers table — all exchanges */}
       {asset.instruments.length > 1 && (
