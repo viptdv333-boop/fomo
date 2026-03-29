@@ -102,39 +102,6 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* Heatmap — per category (only for stocks and crypto) */}
-      {(() => {
-        const s = slug as string;
-        const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-        const colorTheme = isDark ? "dark" : "light";
-        const isCrypto = s === "crypto";
-        const isRU = s === "ru-stocks" || s === "stocks-ru";
-        const isUS = s === "us-stocks" || s === "stocks-us";
-        // Only show heatmap for stocks and crypto — TradingView has no commodity heatmap
-        if (!isCrypto && !isRU && !isUS) return null;
-        return (
-          <div className="mb-6 bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-            <div className="h-[500px]" ref={(el) => {
-              if (!el || el.querySelector("iframe")) return;
-              const script = document.createElement("script");
-              script.src = isCrypto
-                ? "https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js"
-                : "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
-              script.async = true;
-              const cfg: Record<string, unknown> = {
-                width: "100%", height: "100%", locale: "ru", colorTheme,
-                hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true,
-                blockSize: "market_cap_calc", blockColor: "change",
-              };
-              if (isCrypto) cfg.dataSource = "Crypto";
-              else if (isUS) { cfg.dataSource = "SPX500"; cfg.grouping = "sector"; }
-              else { cfg.dataSource = "AllRU"; cfg.grouping = "sector"; }
-              script.innerHTML = JSON.stringify(cfg);
-              el.appendChild(script);
-            }} />
-          </div>
-        );
-      })()}
 
       {loading ? (
         <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-28 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />)}</div>
