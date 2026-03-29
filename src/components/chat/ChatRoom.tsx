@@ -70,12 +70,29 @@ interface ChatRoomProps {
 
 /* ── Constants ── */
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
+// Instrument shortcode emojis — rendered as inline images
+const INSTRUMENT_EMOJIS = [
+  // Crypto
+  "bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "toncoin", "pepe",
+  // RU stocks
+  "sberbank", "gazprom", "lukoil", "yandex", "rosneft", "tinkoff",
+  // US stocks
+  "apple", "tesla", "nvidia", "microsoft", "amazon", "google", "meta", "netflix",
+  // Commodities & metals
+  "oil", "gas", "gold", "silver", "wheat", "coffee",
+  // Indices
+  "sp500", "nasdaq100", "moex-index",
+  // Currencies
+  "usd-rub", "eur-usd",
+];
+
 const EMOJI_CATEGORIES = [
   { name: "Часто", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
+  { name: "Тикеры", emojis: INSTRUMENT_EMOJIS.map(s => `:${s}:`), isCustom: true },
   { name: "Лица", emojis: ["😀", "😃", "😄", "😁", "😅", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥"] },
   { name: "Жесты", emojis: ["👋", "🤚", "🖐️", "✋", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🤝", "🙏"] },
   { name: "Символы", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
-];
+] as const;
 
 /* ── SVG Icons ── */
 function IconBell({ active }: { active?: boolean }) {
@@ -510,10 +527,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                       <p
                         className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words mt-0.5 leading-relaxed"
                         dangerouslySetInnerHTML={{
-                          __html: msg.text.replace(
-                            /@(\S+)/g,
-                            '<span class="font-semibold text-green-600 dark:text-green-400">@$1</span>'
-                          ),
+                          __html: msg.text
+                            .replace(
+                              /@(\S+)/g,
+                              '<span class="font-semibold text-green-600 dark:text-green-400">@$1</span>'
+                            )
+                            .replace(
+                              /:([a-z0-9-]+):/g,
+                              '<img src="/icons/instruments/$1.svg" alt="$1" class="inline-block w-5 h-5 rounded-full align-text-bottom" />'
+                            ),
                         }}
                       />
 
@@ -722,16 +744,23 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                     ))}
                   </div>
                   <div className="grid grid-cols-8 gap-0.5 p-2 max-h-48 overflow-y-auto">
-                    {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => insertEmoji(emoji)}
-                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-lg transition"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                    {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji) => {
+                      const isCustom = typeof emoji === "string" && emoji.startsWith(":") && emoji.endsWith(":");
+                      const slug = isCustom ? emoji.slice(1, -1) : "";
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => insertEmoji(emoji)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-lg transition flex items-center justify-center"
+                          title={isCustom ? slug : undefined}
+                        >
+                          {isCustom ? (
+                            <img src={`/icons/instruments/${slug}.svg`} alt={slug} className="w-6 h-6 rounded-full" />
+                          ) : emoji}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>

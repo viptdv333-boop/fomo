@@ -6,6 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
+import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -126,7 +127,8 @@ export default function AssetPage() {
                 <Link href={`/instruments/category/${asset.category.slug}`} className="hover:text-green-600">{asset.category.name}</Link>
               )}
             </div>
-            <div className="flex items-baseline gap-4">
+            <div className="flex items-center gap-3">
+              <InstrumentLogo slug={asset.slug} name={asset.name} size={48} />
               <h1 className="text-2xl font-bold dark:text-gray-100">{asset.name}</h1>
               {quote && (
                 <div className="flex items-baseline gap-3">
@@ -209,8 +211,8 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Analysis + News — only for NON-MOEX instruments */}
-      {mainTicker?.tradingViewSymbol && !mainTicker.dataSource && (
+      {/* TradingView Analysis + News — for all instruments with tradingViewSymbol */}
+      {(instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
             <div className="h-[400px]" ref={(el) => {
@@ -220,7 +222,7 @@ export default function AssetPage() {
               script.async = true;
               script.innerHTML = JSON.stringify({
                 interval: "1D", width: "100%", isTransparent: true, height: "100%",
-                symbol: mainTicker.tradingViewSymbol, showIntervalTabs: true, locale: "ru",
+                symbol: instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, showIntervalTabs: true, locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
               });
               el.appendChild(script);
@@ -233,7 +235,7 @@ export default function AssetPage() {
               script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
               script.async = true;
               script.innerHTML = JSON.stringify({
-                feedMode: "symbol", symbol: mainTicker.tradingViewSymbol, isTransparent: true,
+                feedMode: "symbol", symbol: instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, isTransparent: true,
                 displayMode: "regular", width: "100%", height: "100%", locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
               });

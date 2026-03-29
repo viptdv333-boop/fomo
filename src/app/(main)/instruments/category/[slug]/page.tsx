@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 
 interface Ticker {
   id: string;
@@ -112,7 +113,10 @@ export default function CategoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map(asset => (
             <Link key={asset.id} href={`/instruments/${asset.slug}`} className="bg-white dark:bg-gray-900 rounded-2xl shadow hover:shadow-xl transition-shadow p-6">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 mb-2">{asset.name}</h3>
+              <div className="flex items-center gap-3 mb-2">
+                <InstrumentLogo slug={asset.slug} name={asset.name} size={36} />
+                <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{asset.name}</h3>
+              </div>
               {asset.description && <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3 mb-4">{asset.description}</p>}
               <TickerBadges tickers={asset.instruments} limit={4} />
             </Link>
@@ -122,6 +126,7 @@ export default function CategoryPage() {
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
           {filtered.map(asset => (
             <Link key={asset.id} href={`/instruments/${asset.slug}`} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
+              <InstrumentLogo slug={asset.slug} name={asset.name} size={32} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-base text-gray-900 dark:text-gray-100">{asset.name}</span>
@@ -138,7 +143,10 @@ export default function CategoryPage() {
         <div className="space-y-4">
           {filtered.map(asset => (
             <Link key={asset.id} href={`/instruments/${asset.slug}`} className="block bg-white dark:bg-gray-900 rounded-2xl shadow hover:shadow-lg transition-shadow p-6">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{asset.name}</h3>
+              <div className="flex items-center gap-3">
+                <InstrumentLogo slug={asset.slug} name={asset.name} size={36} />
+                <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{asset.name}</h3>
+              </div>
               {asset.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-3">{asset.description}</p>}
               <div className="mt-4">
                 <TickerBadges tickers={asset.instruments} />
