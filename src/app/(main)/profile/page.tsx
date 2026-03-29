@@ -695,9 +695,11 @@ function ProfileContent() {
       </form>
 
       {/* Watchlist */}
-      <div className="mt-6">
-        <WatchlistWidget />
-      </div>
+      {session?.user?.id && (
+        <div className="mt-6">
+          <WatchlistWidget userId={session.user.id} isOwner />
+        </div>
+      )}
       </>
       )}
 

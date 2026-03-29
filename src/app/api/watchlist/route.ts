@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const items = await prisma.watchlistItem.findMany({
       where: { userId: session.user.id },
-      include: { asset: { include: { category: true } } },
+      include: { asset: { include: { category: true, instruments: { select: { tradingViewSymbol: true, ticker: true, source: true }, take: 5 } } } },
       orderBy: { sortOrder: "asc" },
     });
     return NextResponse.json(items);
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   // Public watchlist for user profile
   const items = await prisma.watchlistItem.findMany({
     where: { userId },
-    include: { asset: { include: { category: true } } },
+    include: { asset: { include: { category: true, instruments: { select: { tradingViewSymbol: true, ticker: true, source: true }, take: 5 } } } },
     orderBy: { sortOrder: "asc" },
   });
   return NextResponse.json(items);
