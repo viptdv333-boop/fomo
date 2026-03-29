@@ -306,7 +306,7 @@ export default function AuthorProfilePage() {
 
       {/* Watchlist */}
       <div className="mb-6">
-        <WatchlistWidget userId={params.userId as string} />
+        <WatchlistWidget />
       </div>
 
       <h2 className="text-lg font-semibold mb-4 dark:text-gray-100">Идеи автора</h2>
