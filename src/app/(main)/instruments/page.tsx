@@ -65,66 +65,6 @@ export default function CatalogPage() {
           })}
         </div>
       )}
-      {/* TradingView Heatmap */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold dark:text-gray-100 mb-4">Карта рынка</h2>
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[500px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              exchanges: [], dataSource: "SPX500", grouping: "sector",
-              blockSize: "market_cap_basic", blockColor: "change",
-              locale: "ru", symbolUrl: "", colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true,
-              width: "100%", height: "100%",
-            });
-            el.appendChild(script);
-          }} />
-        </div>
-      </div>
-
-      {/* TradingView Crypto Heatmap */}
-      <div className="mt-6">
-        <h2 className="text-xl font-bold dark:text-gray-100 mb-4">Карта крипторынка</h2>
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[500px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              dataSource: "Crypto", blockSize: "market_cap_calc", blockColor: "change",
-              locale: "ru", symbolUrl: "", colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true,
-              width: "100%", height: "100%",
-            });
-            el.appendChild(script);
-          }} />
-        </div>
-      </div>
-
-      {/* TradingView Screener */}
-      <div className="mt-6">
-        <h2 className="text-xl font-bold dark:text-gray-100 mb-4">Скринер акций</h2>
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[500px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              width: "100%", height: "100%", defaultColumn: "overview",
-              defaultScreen: "most_capitalized", market: "russia", showToolbar: true,
-              locale: "ru", colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              isTransparent: true,
-            });
-            el.appendChild(script);
-          }} />
-        </div>
-      </div>
     </div>
   );
 }

@@ -212,18 +212,50 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView Widgets Row: Tech Analysis + Fundamental Data + Company Profile */}
+      {/* TradingView: Symbol Info + Fundamental Data + Technical Analysis */}
       {(() => {
         const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
         if (!tvSymbol) return null;
         const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
         const colorTheme = isDark ? "dark" : "light";
-        const isStock = asset.category?.slug === "stocks-ru" || asset.category?.slug === "stocks-us";
+        const isStock = asset.category?.slug === "stocks-ru" || asset.category?.slug === "stocks-us" || asset.category?.slug === "ru-stocks" || asset.category?.slug === "us-stocks";
 
         return (
           <>
-            {/* Row 1: Tech Analysis + Financials (or Tech Analysis full for non-stocks) */}
-            <div className={`grid gap-4 ${isStock ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+            {/* Symbol Info — ticker header widget */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+              <div className="h-[180px]" ref={(el) => {
+                if (!el || el.querySelector("iframe")) return;
+                const script = document.createElement("script");
+                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js";
+                script.async = true;
+                script.innerHTML = JSON.stringify({
+                  symbol: tvSymbol, width: "100%", locale: "ru",
+                  colorTheme, isTransparent: true,
+                });
+                el.appendChild(script);
+              }} />
+            </div>
+
+            {/* Fundamental Data + Technical Analysis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Fundamental Data (stocks) or Symbol Profile (crypto/other) */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                <div className="h-[425px]" ref={(el) => {
+                  if (!el || el.querySelector("iframe")) return;
+                  const script = document.createElement("script");
+                  script.src = isStock
+                    ? "https://s3.tradingview.com/external-embedding/embed-widget-financials.js"
+                    : "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    symbol: tvSymbol, width: "100%", height: "100%",
+                    isTransparent: true, locale: "ru", colorTheme,
+                  });
+                  el.appendChild(script);
+                }} />
+              </div>
+
               {/* Technical Analysis */}
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
                 <div className="h-[425px]" ref={(el) => {
@@ -238,109 +270,6 @@ export default function AssetPage() {
                   el.appendChild(script);
                 }} />
               </div>
-
-              {/* Fundamental Data — only for stocks */}
-              {isStock && (
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                  <div className="h-[425px]" ref={(el) => {
-                    if (!el || el.querySelector("iframe")) return;
-                    const script = document.createElement("script");
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: tvSymbol, width: "100%", height: "100%",
-                      isTransparent: true, locale: "ru", colorTheme,
-                    });
-                    el.appendChild(script);
-                  }} />
-                </div>
-              )}
-            </div>
-
-            {/* Company/Symbol Profile — for all instruments */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[400px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
-                const script = document.createElement("script");
-                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
-                script.async = true;
-                script.innerHTML = JSON.stringify({
-                  symbol: tvSymbol, width: "100%", height: "100%",
-                  isTransparent: true, locale: "ru", colorTheme,
-                });
-                el.appendChild(script);
-              }} />
-            </div>
-
-            {/* Heatmap — context-dependent */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[500px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
-                const catSlug = asset.category?.slug || "";
-                const isCrypto = catSlug === "crypto";
-                const script = document.createElement("script");
-                script.src = isCrypto
-                  ? "https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js"
-                  : "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
-                script.async = true;
-                const config: Record<string, unknown> = {
-                  width: "100%", height: "100%", locale: "ru", colorTheme,
-                  hasTopBar: true, isDataSetEnabled: true, isZoomEnabled: true, hasSymbolTooltip: true,
-                  blockSize: "market_cap_calc", blockColor: "change",
-                };
-                if (isCrypto) {
-                  config.dataSource = "Crypto";
-                } else if (catSlug === "stocks-us" || catSlug === "us-stocks") {
-                  config.dataSource = "SPX500";
-                  config.grouping = "sector";
-                } else {
-                  config.dataSource = "AllRU";
-                  config.grouping = "sector";
-                }
-                script.innerHTML = JSON.stringify(config);
-                el.appendChild(script);
-              }} />
-            </div>
-
-            {/* Screener — context-dependent */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[500px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
-                const catSlug = asset.category?.slug || "";
-                const isCrypto = catSlug === "crypto";
-                const script = document.createElement("script");
-                script.async = true;
-                if (isCrypto) {
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-                  script.innerHTML = JSON.stringify({
-                    width: "100%", height: "100%", defaultColumn: "overview",
-                    screener_type: "crypto_mkt", displayCurrency: "USD",
-                    locale: "ru", colorTheme, isTransparent: true,
-                  });
-                } else if (catSlug === "stocks-us" || catSlug === "us-stocks") {
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-                  script.innerHTML = JSON.stringify({
-                    width: "100%", height: "100%", defaultColumn: "overview",
-                    defaultScreen: "most_capitalized", market: "america", showToolbar: true,
-                    locale: "ru", colorTheme, isTransparent: true,
-                  });
-                } else if (catSlug === "commodities" || catSlug === "metals") {
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-                  script.innerHTML = JSON.stringify({
-                    width: "100%", height: "100%", defaultColumn: "overview",
-                    defaultScreen: "general", market: "cfd", showToolbar: true,
-                    locale: "ru", colorTheme, isTransparent: true,
-                  });
-                } else {
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-                  script.innerHTML = JSON.stringify({
-                    width: "100%", height: "100%", defaultColumn: "overview",
-                    defaultScreen: "most_capitalized", market: "russia", showToolbar: true,
-                    locale: "ru", colorTheme, isTransparent: true,
-                  });
-                }
-                el.appendChild(script);
-              }} />
             </div>
           </>
         );
