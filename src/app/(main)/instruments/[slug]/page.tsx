@@ -218,7 +218,7 @@ export default function AssetPage() {
         return tvSymbol ? tvSymbol : null;
       })() && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[650px]" ref={(el) => {
+          <div className="h-[1200px]" ref={(el) => {
             if (!el || el.querySelector("iframe")) return;
             const tvSym = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
             const script = document.createElement("script");
