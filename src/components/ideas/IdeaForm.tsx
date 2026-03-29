@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import EmojiPicker from "@/components/ui/EmojiPicker";
 
 interface Instrument {
   id: string;
@@ -44,6 +45,8 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(initialData?.title || "");
   const [preview, setPreview] = useState(initialData?.preview || "");
   const [content, setContent] = useState(initialData?.content || "");
@@ -209,6 +212,27 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
 
   function removeAttachment(index: number) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function insertEmojiAt(
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    setter: (v: string) => void,
+    current: string,
+    emoji: string
+  ) {
+    const el = ref.current;
+    if (el) {
+      const start = el.selectionStart ?? current.length;
+      const end = el.selectionEnd ?? current.length;
+      const next = current.slice(0, start) + emoji + current.slice(end);
+      setter(next);
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = start + emoji.length;
+        el.focus();
+      });
+    } else {
+      setter(current + emoji);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -378,10 +402,14 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Превью (бесплатный текст)
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Превью (бесплатный текст)
+            </label>
+            <EmojiPicker onSelect={(emoji) => insertEmojiAt(previewRef, setPreview, preview, emoji)} />
+          </div>
           <textarea
+            ref={previewRef}
             value={preview}
             onChange={(e) => setPreview(e.target.value)}
             required
@@ -392,10 +420,14 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Полный контент
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Полный контент
+            </label>
+            <EmojiPicker onSelect={(emoji) => insertEmojiAt(contentRef, setContent, content, emoji)} />
+          </div>
           <textarea
+            ref={contentRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             required
