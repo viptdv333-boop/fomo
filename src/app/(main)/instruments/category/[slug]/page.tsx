@@ -187,25 +187,6 @@ export default function CategoryPage() {
               }} />
             </div>
 
-            {/* Screener */}
-            <div className="mt-4 bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[500px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
-                const script = document.createElement("script");
-                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
-                script.async = true;
-                const cfg: Record<string, unknown> = {
-                  width: "100%", height: "100%", defaultColumn: "overview",
-                  locale: "ru", colorTheme, isTransparent: true, showToolbar: true,
-                };
-                if (isCrypto) { cfg.screener_type = "crypto_mkt"; cfg.displayCurrency = "USD"; }
-                else if (isUS) { cfg.market = "america"; cfg.defaultScreen = "most_capitalized"; }
-                else if (s === "commodities" || s === "metals") { cfg.market = "cfd"; cfg.defaultScreen = "general"; }
-                else { cfg.market = "russia"; cfg.defaultScreen = "most_capitalized"; }
-                script.innerHTML = JSON.stringify(cfg);
-                el.appendChild(script);
-              }} />
-            </div>
           </>
         );
       })()}
