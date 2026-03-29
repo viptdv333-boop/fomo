@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [banModal, setBanModal] = useState<{ userId: string; name: string } | null>(null);
   const [banDays, setBanDays] = useState("7");
   const [banReason, setBanReason] = useState("");
@@ -83,6 +84,12 @@ export default function AdminUsersPage() {
     setRatingDelta("0");
   }
 
+  const filteredUsers = users.filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.fomoId && u.fomoId.toLowerCase().includes(q));
+  });
+
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
     APPROVED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -99,20 +106,21 @@ export default function AdminUsersPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Пользователи</h1>
 
-      <div className="flex gap-2 mb-4">
-        {["ALL", "PENDING", "APPROVED", "BANNED"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-              filter === s
-                ? "bg-green-600 text-white"
-                : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
-          >
-            {s === "ALL" ? "Все" : s === "PENDING" ? "Ожидают" : s === "APPROVED" ? "Одобрены" : "Заблокированы"}
-          </button>
-        ))}
+      <div className="flex gap-3 mb-4 flex-wrap items-center">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по имени или email..."
+          className="px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 w-64" />
+        <div className="flex gap-1">
+          {["ALL", "PENDING", "APPROVED", "BANNED"].map((s) => (
+            <button key={s} onClick={() => setFilter(s)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                filter === s ? "bg-green-600 text-white"
+                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}>
+              {s === "ALL" ? "Все" : s === "PENDING" ? "Ожидают" : s === "APPROVED" ? "Одобрены" : "Заблокированы"}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-gray-400 ml-auto">{filteredUsers.length} из {users.length}</span>
       </div>
 
       {loading ? (
@@ -132,7 +140,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-700">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

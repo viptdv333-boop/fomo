@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 
 /* ── fadeIn animation ── */
@@ -191,6 +192,7 @@ function IconReply() {
 /* ── Component ── */
 export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: ChatRoomProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -571,9 +573,16 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                     <div className="flex-1 min-w-0">
                       {/* Name + time */}
                       <div className="flex items-baseline gap-2">
-                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                        <button
+                          onClick={() => {
+                            if (msg.user.id !== session?.user?.id) {
+                              router.push(`/messages?startWith=${msg.user.id}`);
+                            }
+                          }}
+                          className={`font-bold text-sm ${msg.user.id !== session?.user?.id ? "text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "text-gray-900 dark:text-gray-100 cursor-default"}`}
+                        >
                           {msg.user.displayName}
-                        </span>
+                        </button>
                         <span className="text-xs text-gray-400 dark:text-gray-500">
                           {new Date(msg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                         </span>

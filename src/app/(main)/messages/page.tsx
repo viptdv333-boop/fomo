@@ -157,10 +157,17 @@ function MessagesPage() {
   // No extra scroll hacks needed — layout handles overflow
 
   useEffect(() => {
-    loadConversations();
+    loadConversations().then(() => {
+      // Auto-start conversation if ?startWith=userId
+      const startWith = searchParams.get("startWith");
+      if (startWith && session?.user?.id && startWith !== session.user.id) {
+        startConversation(startWith);
+      }
+    });
     loadContacts();
     // Fetch initial online users
     fetch("/api/users/online").then(r => r.ok ? r.json() : []).then((ids: string[]) => setOnlineUserIds(new Set(ids))).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Socket.IO for real-time DMs

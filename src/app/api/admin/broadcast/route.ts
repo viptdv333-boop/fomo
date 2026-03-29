@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/roles";
+import { sendBroadcastEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -33,19 +34,21 @@ export async function POST(request: NextRequest) {
   }
 
   if (channel === "email") {
-    // Send emails
     let sentCount = 0;
+    let failedCount = 0;
     for (const user of users) {
       try {
-        // Use existing email sending if available, otherwise just create notifications
-        // For now, create notifications with type "email_broadcast" as a record
-        sentCount++;
+        const ok = await sendBroadcastEmail(user.email, title, body, link);
+        if (ok) sentCount++;
+        else failedCount++;
       } catch {
-        // skip failed
+        failedCount++;
       }
+      // Rate limit: small delay between emails
+      if (users.length > 10) await new Promise((r) => setTimeout(r, 100));
     }
 
-    // Also create notification records for tracking
+    // Save notification records for tracking
     await prisma.notification.createMany({
       data: users.map((u) => ({
         userId: u.id,
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      message: `Email-рассылка: ${sentCount} из ${users.length} (уведомления сохранены)`,
+      message: `Email-рассылка: отправлено ${sentCount}, ошибок ${failedCount}`,
       count: sentCount,
     });
   }
