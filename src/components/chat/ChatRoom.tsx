@@ -212,7 +212,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
     return {};
   });
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
   const notifEnabled = notifications[roomId] === true;
 
@@ -253,8 +253,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
     return Array.from(map.entries()).map(([id, displayName]) => ({ id, displayName }));
   }, [messages]);
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
+  function handleContentInput() {
+    const val = getInputText();
     setInput(val);
 
     const lastAt = val.lastIndexOf("@");
@@ -272,22 +272,33 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
   }
 
   function selectMention(userName: string) {
-    const lastAt = input.lastIndexOf("@");
-    const newInput = input.slice(0, lastAt) + `@${userName} `;
+    const el = inputRef.current;
+    if (!el) return;
+    const val = getInputText();
+    const lastAt = val.lastIndexOf("@");
+    const newInput = val.slice(0, lastAt) + `@${userName} `;
+    el.textContent = newInput;
     setInput(newInput);
     setMentionSearch(null);
     setMentionUsers([]);
-    inputRef.current?.focus();
+    // Move cursor to end
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
   }
 
   /* ── Send message ── */
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || !session?.user?.id) return;
+    const textToSend = getInputText().trim();
+    if (!textToSend || !session?.user?.id) return;
 
-    const textToSend = input;
     const replyToSend = replyTo;
     setInput("");
+    if (inputRef.current) inputRef.current.innerHTML = "";
     setReplyTo(null);
     setShowEmojiPicker(false);
 
@@ -348,8 +359,59 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
   /* ── Emoji insert ── */
   function insertEmoji(emoji: string) {
-    setInput((prev) => prev + emoji);
-    inputRef.current?.focus();
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    const isCustom = emoji.startsWith(":") && emoji.endsWith(":");
+    if (isCustom) {
+      const slug = emoji.slice(1, -1);
+      const img = document.createElement("img");
+      img.src = `/icons/instruments/${slug}.svg`;
+      img.alt = emoji;
+      img.className = "inline-block w-6 h-6 rounded-full align-middle mx-0.5";
+      img.dataset.emoji = emoji;
+      img.contentEditable = "false";
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(img);
+        range.setStartAfter(img);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        el.appendChild(img);
+      }
+    } else {
+      document.execCommand("insertText", false, emoji);
+    }
+    // Sync state
+    syncInput();
+  }
+
+  /* ── Extract text from contentEditable (convert img back to shortcodes) ── */
+  function getInputText(): string {
+    const el = inputRef.current;
+    if (!el) return "";
+    let text = "";
+    el.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        text += node.textContent || "";
+      } else if (node instanceof HTMLImageElement && node.dataset.emoji) {
+        text += node.dataset.emoji;
+      } else if (node instanceof HTMLBRElement) {
+        text += "\n";
+      } else {
+        text += (node as HTMLElement).textContent || "";
+      }
+    });
+    return text;
+  }
+
+  function syncInput() {
+    const text = getInputText();
+    setInput(text);
   }
 
   /* ── Compute like count for a message (heart reactions) ── */
@@ -709,13 +771,19 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
 
             {/* Text input wrapper */}
             <div className="flex-1 relative">
-              <input
+              <div
                 ref={inputRef}
-                type="text"
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Написать сообщение..."
-                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                contentEditable
+                suppressContentEditableWarning
+                onInput={handleContentInput}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage(e as any);
+                  }
+                }}
+                data-placeholder="Написать сообщение..."
+                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[40px] max-h-[120px] overflow-y-auto [&_img]:inline-block [&_img]:align-middle"
               />
 
               {/* Emoji button inside input */}
