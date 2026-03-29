@@ -212,17 +212,21 @@ export default function AssetPage() {
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
       {/* TradingView Analysis + News — for all instruments with tradingViewSymbol */}
-      {(instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol) && (
+      {(() => {
+        const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
+        return tvSymbol ? tvSymbol : null;
+      })() && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
             <div className="h-[400px]" ref={(el) => {
               if (!el || el.querySelector("iframe")) return;
+              const tvSym = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
               const script = document.createElement("script");
               script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
               script.async = true;
               script.innerHTML = JSON.stringify({
                 interval: "1D", width: "100%", isTransparent: true, height: "100%",
-                symbol: instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, showIntervalTabs: true, locale: "ru",
+                symbol: tvSym, showIntervalTabs: true, locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
               });
               el.appendChild(script);
@@ -235,7 +239,7 @@ export default function AssetPage() {
               script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
               script.async = true;
               script.innerHTML = JSON.stringify({
-                feedMode: "symbol", symbol: instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, isTransparent: true,
+                feedMode: "symbol", symbol: mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol, isTransparent: true,
                 displayMode: "regular", width: "100%", height: "100%", locale: "ru",
                 colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
               });
