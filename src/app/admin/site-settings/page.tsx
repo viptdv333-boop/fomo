@@ -86,6 +86,9 @@ export default function SiteSettingsPage() {
       if (res.ok) {
         const { url } = await res.json();
         setSettings({ ...settings, faviconUrl: url });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert("Ошибка загрузки: " + (err.error || res.statusText));
       }
     } finally {
       setFaviconUploading(false);
