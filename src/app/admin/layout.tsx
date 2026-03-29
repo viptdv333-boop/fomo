@@ -12,6 +12,7 @@ const adminLinks = [
   { href: "/admin/broadcast", label: "Рассылка" },
   { href: "/admin/rating", label: "Рейтинг" },
   { href: "/admin/languages", label: "Языки" },
+  { href: "/admin/site-settings", label: "Настройки сайта" },
 ];
 
 export default function AdminLayout({

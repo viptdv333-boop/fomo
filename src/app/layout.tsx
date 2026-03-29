@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
+import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 
 export const metadata: Metadata = {
   title: "FOMO — Find Opportunities, Make Outcomes",
@@ -22,7 +23,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <SiteSettingsInjector />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

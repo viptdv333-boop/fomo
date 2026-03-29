@@ -68,6 +68,7 @@ model User {
   reports                Report[]
   tariffs                SubscriptionTariff[]
   sandboxAccount         SandboxAccount?
+  watchlist              WatchlistItem[]
 
   @@index([status])
 }
@@ -120,6 +121,7 @@ model Asset {
   category    InstrumentCategory @relation(fields: [categoryId], references: [id])
   instruments Instrument[]
   chatRoom    ChatRoom?
+  watchlistItems WatchlistItem[]
 
   @@index([categoryId])
 }
@@ -475,6 +477,31 @@ model SandboxAccount {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
+  @@index([userId])
+}
+
+model SiteSettings {
+  id             String  @id @default("singleton")
+  metaTitle      String  @default("FOMO — Find Opportunities, Manage Outcomes")
+  metaDescription String? @default("Торговая платформа нового поколения")
+  faviconUrl     String?
+  headerCode     String? // HTML/JS code injected into <head>
+  footerCode     String? // HTML/JS code injected before </body>
+  headerCodePages String[] @default([]) // empty = all pages, or list of paths
+  footerCodePages String[] @default([]) // empty = all pages, or list of paths
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  assetId   String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetId])
   @@index([userId])
 }
 
