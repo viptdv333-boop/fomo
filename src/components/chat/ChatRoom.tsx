@@ -540,7 +540,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                             )
                             .replace(
                               /:([a-z0-9-]+):/g,
-                              '<img src="/icons/instruments/$1.svg" alt="$1" class="inline-block w-5 h-5 rounded-full align-text-bottom" />'
+                              '<img src="/icons/instruments/$1.svg" alt="$1" class="inline-block w-8 h-8 rounded-full align-middle mx-0.5" />'
                             ),
                         }}
                       />
@@ -762,7 +762,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                           title={isCustom ? slug : undefined}
                         >
                           {isCustom ? (
-                            <img src={`/icons/instruments/${slug}.svg`} alt={slug} className="w-6 h-6 rounded-full" />
+                            <img src={`/icons/instruments/${slug}.svg`} alt={slug} className="w-8 h-8 rounded-full" />
                           ) : emoji}
                         </button>
                       );
