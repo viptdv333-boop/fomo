@@ -13,16 +13,15 @@ export async function GET(request: NextRequest) {
     where: {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
-        { ticker: { contains: q, mode: "insensitive" } },
         { slug: { contains: q, mode: "insensitive" } },
       ],
     },
     select: {
       id: true,
       name: true,
-      ticker: true,
       slug: true,
       category: { select: { name: true, slug: true } },
+      instruments: { select: { ticker: true }, take: 1 },
     },
     take: Math.min(limit, 20),
     orderBy: { name: "asc" },
