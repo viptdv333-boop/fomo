@@ -2,6 +2,37 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Dark theme: neutral grays (no blue tint) ── */
+@theme {
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f0f0f0;
+  --color-gray-200: #e0e0e0;
+  --color-gray-300: #c0c0c0;
+  --color-gray-400: #888888;
+  --color-gray-500: #666666;
+  --color-gray-600: #444444;
+  --color-gray-700: #2a2a2a;
+  --color-gray-800: #1a1a1a;
+  --color-gray-900: #111111;
+  --color-gray-950: #0a0a0a;
+}
+
+/* ── Dark mode body gradient ── */
+.dark body {
+  background: linear-gradient(180deg, #0a0a0a 0%, #111111 40%, #0d0d0d 100%);
+  min-height: 100vh;
+}
+
+/* ── Dark card subtle glow effect ── */
+.dark .shadow {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.02);
+}
+
+/* ── Gradient shimmer on hover for cards ── */
+.dark .hover\:shadow-md:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.03);
+}
+
 /* Message fadeIn animation */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }

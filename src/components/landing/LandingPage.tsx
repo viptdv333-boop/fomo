@@ -101,7 +101,7 @@ export default function LandingPage() {
   const t = content[lang];
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? "bg-gray-900" : "bg-white"}`}>
+    <div className={`min-h-screen flex flex-col ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`} style={isDark ? { background: "linear-gradient(180deg, #0a0a0a 0%, #151515 30%, #0d0d0d 60%, #111111 100%)" } : undefined}>
       {/* Top bar */}
       <header className="w-full px-6 py-4 flex justify-end items-center gap-4 fixed top-0 left-0 right-0 z-50">
         <button
