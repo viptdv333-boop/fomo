@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface ChatRoom {
   id: string;
@@ -20,6 +23,54 @@ interface Message {
   text: string;
   createdAt: string;
   user: { id: string; displayName: string; avatarUrl: string | null };
+}
+
+/* ── Sortable Room Row ── */
+function SortableRoom({ room, onEdit, onToggle, onDelete, onViewMessages }: {
+  room: ChatRoom;
+  onEdit: () => void;
+  onToggle: (field: "isArchived" | "isClosed") => void;
+  onDelete: () => void;
+  onViewMessages: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: room.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined, position: "relative" as const };
+
+  return (
+    <div ref={setNodeRef} style={style}
+      className={`flex items-center gap-2 px-4 py-3 border-b border-gray-50 dark:border-gray-800/30 last:border-b-0 ${isDragging ? "bg-green-50 dark:bg-green-900/20 shadow-lg rounded-lg" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"}`}>
+      <span {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 select-none text-lg">⠿</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{room.name}</span>
+          {room.isGeneral && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded">Общий</span>}
+          {room.isArchived && <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">Архив</span>}
+          {room.isClosed && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-500 rounded">Закрыт</span>}
+        </div>
+        <div className="text-xs text-gray-400 mt-0.5">{room._count.messages} сообщ.</div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button onClick={onViewMessages} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">Сообщения</button>
+        <button onClick={onEdit} className="text-xs text-gray-500 hover:text-green-600">Ред.</button>
+        <button onClick={() => onToggle("isArchived")} className="text-xs text-gray-500 hover:text-amber-600">{room.isArchived ? "Вернуть" : "Архив"}</button>
+        <button onClick={() => onToggle("isClosed")} className="text-xs text-gray-500 hover:text-orange-600">{room.isClosed ? "Открыть" : "Закрыть"}</button>
+        {!room.isGeneral && <button onClick={onDelete} className="text-xs text-red-500 hover:text-red-700">Удалить</button>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Sortable Category Group ── */
+function SortableCategoryHeader({ id, label, count }: { id: string; label: string; count: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined, position: "relative" as const };
+
+  return (
+    <div ref={setNodeRef} style={style} className={`flex items-center gap-2 mb-2 ${isDragging ? "opacity-70" : ""}`}>
+      <span {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 select-none">⠿</span>
+      <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">{label} ({count})</h3>
+    </div>
+  );
 }
 
 export default function AdminChatPage() {
@@ -42,10 +93,12 @@ export default function AdminChatPage() {
   const [msgPage, setMsgPage] = useState(1);
   const [msgPages, setMsgPages] = useState(1);
 
-  // Category order management
-  const [categoryOrderMap, setCategoryOrderMap] = useState<Record<string, number>>({});
+  // Category ordering
+  const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
 
   const categories = Array.from(new Set(rooms.map((r) => r.categoryLabel).filter(Boolean))) as string[];
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const loadRooms = useCallback(async () => {
     const res = await fetch("/api/admin/chat");
@@ -55,14 +108,15 @@ export default function AdminChatPage() {
 
   useEffect(() => { loadRooms(); }, [loadRooms]);
 
-  // Build category order from rooms' min sortOrder
+  // Build category order
   useEffect(() => {
     const map: Record<string, number> = {};
     rooms.forEach((r) => {
-      const cat = r.categoryLabel || "__none__";
+      const cat = r.categoryLabel || "Общие";
       if (!(cat in map) || r.sortOrder < map[cat]) map[cat] = r.sortOrder;
     });
-    setCategoryOrderMap(map);
+    const sorted = Object.entries(map).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+    setCategoryOrder(sorted);
   }, [rooms]);
 
   async function loadMessages(roomId: string, page = 1) {
@@ -116,55 +170,59 @@ export default function AdminChatPage() {
     loadRooms();
   }
 
-  async function moveRoom(roomId: string, direction: "up" | "down") {
-    const room = rooms.find((r) => r.id === roomId);
-    if (!room) return;
-    const sameCategory = rooms.filter((r) => r.categoryLabel === room.categoryLabel).sort((a, b) => a.sortOrder - b.sortOrder);
-    const idx = sameCategory.findIndex((r) => r.id === roomId);
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sameCategory.length) return;
-    const other = sameCategory[swapIdx];
-    await Promise.all([
-      fetch("/api/admin/chat", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: room.id, sortOrder: other.sortOrder }) }),
-      fetch("/api/admin/chat", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: other.id, sortOrder: room.sortOrder }) }),
-    ]);
-    loadRooms();
+  function startEdit(room: ChatRoom) {
+    setEditingId(room.id); setFormName(room.name); setFormCategory(room.categoryLabel || ""); setFormNewCategory(""); setFormSort(room.sortOrder);
+  }
+  function cancelEdit() {
+    setEditingId(null); setFormName(""); setFormCategory(""); setFormNewCategory(""); setFormSort(0);
   }
 
-  // Move entire category up/down by shifting all rooms' sortOrder
-  async function moveCategory(catLabel: string, direction: "up" | "down") {
-    const sortedCats = Object.entries(categoryOrderMap).sort((a, b) => a[1] - b[1]).map(([k]) => k);
-    const idx = sortedCats.indexOf(catLabel);
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sortedCats.length) return;
-    const otherCat = sortedCats[swapIdx];
-
-    const catRooms = rooms.filter((r) => (r.categoryLabel || "__none__") === catLabel);
-    const otherRooms = rooms.filter((r) => (r.categoryLabel || "__none__") === otherCat);
-
-    // Swap base sortOrders: all rooms in category get offset
-    const catBase = categoryOrderMap[catLabel] ?? 0;
-    const otherBase = categoryOrderMap[otherCat] ?? 0;
-
-    const updates: Promise<Response>[] = [];
-    catRooms.forEach((r) => {
-      const newSort = otherBase + (r.sortOrder - catBase);
-      updates.push(fetch("/api/admin/chat", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.id, sortOrder: newSort }) }));
-    });
-    otherRooms.forEach((r) => {
-      const newSort = catBase + (r.sortOrder - otherBase);
-      updates.push(fetch("/api/admin/chat", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.id, sortOrder: newSort }) }));
-    });
+  // DnD: reorder rooms within a category
+  async function handleRoomDragEnd(event: DragEndEvent, catRooms: ChatRoom[]) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = catRooms.findIndex((r) => r.id === active.id);
+    const newIdx = catRooms.findIndex((r) => r.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(catRooms, oldIdx, newIdx);
+    // Update all sortOrders
+    const updates = reordered.map((r, i) =>
+      fetch("/api/admin/chat", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: r.id, sortOrder: i }),
+      })
+    );
     await Promise.all(updates);
     loadRooms();
   }
 
-  function startEdit(room: ChatRoom) {
-    setEditingId(room.id); setFormName(room.name); setFormCategory(room.categoryLabel || ""); setFormNewCategory(""); setFormSort(room.sortOrder);
-  }
+  // DnD: reorder categories
+  async function handleCategoryDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = categoryOrder.indexOf(active.id as string);
+    const newIdx = categoryOrder.indexOf(over.id as string);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(categoryOrder, oldIdx, newIdx);
+    setCategoryOrder(reordered);
 
-  function cancelEdit() {
-    setEditingId(null); setFormName(""); setFormCategory(""); setFormNewCategory(""); setFormSort(0);
+    // Reassign sortOrders: each category gets a block of 100
+    const updates: Promise<Response>[] = [];
+    reordered.forEach((catLabel, catIndex) => {
+      const catRooms = rooms.filter((r) => (r.categoryLabel || "Общие") === catLabel)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      catRooms.forEach((r, roomIdx) => {
+        const newSort = catIndex * 100 + roomIdx;
+        if (r.sortOrder !== newSort) {
+          updates.push(fetch("/api/admin/chat", {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: r.id, sortOrder: newSort }),
+          }));
+        }
+      });
+    });
+    await Promise.all(updates);
+    loadRooms();
   }
 
   // Filter & search
@@ -176,7 +234,7 @@ export default function AdminChatPage() {
     return true;
   });
 
-  // Group
+  // Group by category
   const grouped = new Map<string, ChatRoom[]>();
   filteredRooms.forEach((r) => {
     const key = r.categoryLabel || (r.isGeneral ? "Общие" : "Без категории");
@@ -185,11 +243,11 @@ export default function AdminChatPage() {
   });
   grouped.forEach((g) => g.sort((a, b) => a.sortOrder - b.sortOrder));
 
-  // Sort categories by their min sortOrder
+  // Sort groups by categoryOrder
   const sortedGroupEntries = [...grouped.entries()].sort((a, b) => {
-    const aMin = Math.min(...a[1].map((r) => r.sortOrder));
-    const bMin = Math.min(...b[1].map((r) => r.sortOrder));
-    return aMin - bMin;
+    const aIdx = categoryOrder.indexOf(a[0]);
+    const bIdx = categoryOrder.indexOf(b[0]);
+    return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
   });
 
   const inputCls = "px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100";
@@ -241,11 +299,6 @@ export default function AdminChatPage() {
                 placeholder="Название..." className={`block mt-1 w-48 ${inputCls}`} />
             </div>
           )}
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Порядок</label>
-            <input type="number" value={formSort} onChange={(e) => setFormSort(Number(e.target.value))}
-              className={`block mt-1 w-20 ${inputCls}`} />
-          </div>
           {editingId ? (
             <div className="flex gap-2">
               <button onClick={handleUpdate} className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">Сохранить</button>
@@ -257,59 +310,36 @@ export default function AdminChatPage() {
         </div>
       </div>
 
-      {/* Rooms by category */}
+      {/* Rooms by category — drag-n-drop */}
       {loading ? (
         <div className="text-center py-8 text-gray-500">Загрузка...</div>
       ) : (
-        <div className="space-y-6">
-          {sortedGroupEntries.map(([label, groupRooms], catIdx) => (
-            <div key={label}>
-              <div className="flex items-center gap-2 mb-2">
-                {/* Category sort arrows */}
-                <div className="flex gap-1">
-                  <button onClick={() => moveCategory(label, "up")} disabled={catIdx === 0}
-                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 text-xs">◀</button>
-                  <button onClick={() => moveCategory(label, "down")} disabled={catIdx === sortedGroupEntries.length - 1}
-                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 text-xs">▶</button>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">{label} ({groupRooms.length})</h3>
-              </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                {groupRooms.map((room, idx) => (
-                  <div key={room.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-50 dark:border-gray-800/30 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                    <div className="flex flex-col gap-0.5">
-                      <button onClick={() => moveRoom(room.id, "up")} disabled={idx === 0}
-                        className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 text-xs leading-none">▲</button>
-                      <button onClick={() => moveRoom(room.id, "down")} disabled={idx === groupRooms.length - 1}
-                        className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 text-xs leading-none">▼</button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{room.name}</span>
-                        {room.isGeneral && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded">Общий</span>}
-                        {room.isArchived && <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">Архив</span>}
-                        {room.isClosed && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-500 rounded">Закрыт</span>}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">{room._count.messages} сообщ.</div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => { setViewRoomId(room.id); loadMessages(room.id); }}
-                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">Сообщения</button>
-                      <button onClick={() => startEdit(room)} className="text-xs text-gray-500 hover:text-green-600">Ред.</button>
-                      <button onClick={() => handleToggle(room.id, "isArchived", room.isArchived)}
-                        className="text-xs text-gray-500 hover:text-amber-600">{room.isArchived ? "Вернуть" : "Архив"}</button>
-                      <button onClick={() => handleToggle(room.id, "isClosed", room.isClosed)}
-                        className="text-xs text-gray-500 hover:text-orange-600">{room.isClosed ? "Открыть" : "Закрыть"}</button>
-                      {!room.isGeneral && (
-                        <button onClick={() => handleDelete(room.id)} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
-                      )}
-                    </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+          <SortableContext items={categoryOrder} strategy={verticalListSortingStrategy}>
+            <div className="space-y-6">
+              {sortedGroupEntries.map(([label, groupRooms]) => (
+                <div key={label}>
+                  <SortableCategoryHeader id={label} label={label} count={groupRooms.length} />
+                  <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter}
+                      onDragEnd={(e) => handleRoomDragEnd(e, groupRooms)}>
+                      <SortableContext items={groupRooms.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                        {groupRooms.map((room) => (
+                          <SortableRoom key={room.id} room={room}
+                            onEdit={() => startEdit(room)}
+                            onToggle={(field) => handleToggle(room.id, field, room[field])}
+                            onDelete={() => handleDelete(room.id)}
+                            onViewMessages={() => { setViewRoomId(room.id); loadMessages(room.id); }}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Messages modal */}
