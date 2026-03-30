@@ -133,23 +133,25 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
             const q = quotes[`${inst.source}:${inst.dataTicker}`];
             return (
               <button key={inst.dataTicker} onClick={() => onSelect(inst)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition ${
-                  isSelected ? "bg-green-50 dark:bg-green-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition border-b border-gray-50 dark:border-gray-800/20 last:border-b-0 ${
+                  isSelected ? "bg-green-50 dark:bg-green-900/15" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
                 }`}>
-                <span className="text-base">{inst.emoji}</span>
+                <span className="text-lg shrink-0">{inst.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-bold ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
+                  <div className={`text-sm font-black tracking-tight ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
                     {inst.ticker}
                   </div>
-                  <div className="text-[10px] text-gray-400 truncate">{inst.name}</div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate leading-tight">{inst.name}</div>
                 </div>
-                {q && (
+                {q ? (
                   <div className="text-right shrink-0">
-                    <div className="text-xs font-semibold dark:text-gray-200">{fmtPrice(q.price)}</div>
-                    <div className={`text-[10px] font-medium ${q.change >= 0 ? "text-green-600" : "text-red-500"}`}>
-                      {q.change >= 0 ? "+" : ""}{q.changePercent?.toFixed(2) || "0.00"}%
+                    <div className="text-sm font-bold dark:text-gray-100 tabular-nums">{fmtPrice(q.price)}</div>
+                    <div className={`text-[10px] font-semibold tabular-nums ${q.change >= 0 ? "text-green-500" : "text-red-500"}`}>
+                      {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)} {q.changePercent?.toFixed(2)}%
                     </div>
                   </div>
+                ) : (
+                  <div className="text-[10px] text-gray-400 animate-pulse">...</div>
                 )}
               </button>
             );
@@ -265,7 +267,7 @@ export default function TerminalPage() {
       {/* Main: sidebar + chart */}
       <div className="flex gap-2 flex-1 min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-56 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
+        <div className="w-72 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
           <div className="p-2 shrink-0">
             <div className="relative">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
