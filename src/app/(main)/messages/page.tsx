@@ -517,6 +517,16 @@ function MessagesPage() {
   }
 
   return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* Tabs */}
+      <div className="flex gap-1 mb-3 shrink-0">
+        <a href="/chat" className="px-5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+          💬 Болталка
+        </a>
+        <button className="px-5 py-2 rounded-lg text-sm font-medium bg-green-600 text-white">
+          ✉️ Личные
+        </button>
+      </div>
     <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden flex-1 min-h-0">
       {/* Sidebar — full width on mobile, fixed width on desktop */}
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r border-gray-100 dark:border-gray-800/30 flex-col`}>
@@ -1197,6 +1207,7 @@ function MessagesPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

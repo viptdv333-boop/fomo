@@ -576,8 +576,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                       <div className="flex items-baseline gap-2">
                         <button
                           onClick={() => {
-                            if (msg.user.id !== session?.user?.id && onOpenDm) {
-                              onOpenDm(msg.user.id);
+                            if (msg.user.id !== session?.user?.id) {
+                              router.push(`/messages?startWith=${msg.user.id}`);
                             }
                           }}
                           className={`font-bold text-sm ${msg.user.id !== session?.user?.id ? "text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "text-gray-900 dark:text-gray-100 cursor-default"}`}
