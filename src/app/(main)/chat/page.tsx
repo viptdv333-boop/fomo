@@ -123,7 +123,13 @@ function ChatPageInner() {
             <>
               <ChatSidebar currentRoomId={currentRoom.id} onSelectRoom={(room) => setCurrentRoom(room)} />
               <div className="flex-1 min-h-0">
-                <ChatRoom roomId={currentRoom.id} roomName={currentRoom.name} isClosed={currentRoom.isClosed} isArchived={currentRoom.isArchived} />
+                <ChatRoom roomId={currentRoom.id} roomName={currentRoom.name} isClosed={currentRoom.isClosed} isArchived={currentRoom.isArchived}
+                  onOpenDm={async (userId) => {
+                    setTab("dm");
+                    await loadConversations();
+                    await startDmConversation(userId);
+                  }}
+                />
               </div>
             </>
           ) : (

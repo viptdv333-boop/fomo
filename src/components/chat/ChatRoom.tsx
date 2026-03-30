@@ -67,6 +67,7 @@ interface ChatRoomProps {
   roomName: string;
   isClosed?: boolean;
   isArchived?: boolean;
+  onOpenDm?: (userId: string) => void;
 }
 
 /* ── Constants ── */
@@ -190,7 +191,7 @@ function IconReply() {
 }
 
 /* ── Component ── */
-export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: ChatRoomProps) {
+export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm }: ChatRoomProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
@@ -575,8 +576,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived }: Cha
                       <div className="flex items-baseline gap-2">
                         <button
                           onClick={() => {
-                            if (msg.user.id !== session?.user?.id) {
-                              router.push(`/chat?dm=new&startWith=${msg.user.id}`);
+                            if (msg.user.id !== session?.user?.id && onOpenDm) {
+                              onOpenDm(msg.user.id);
                             }
                           }}
                           className={`font-bold text-sm ${msg.user.id !== session?.user?.id ? "text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "text-gray-900 dark:text-gray-100 cursor-default"}`}
