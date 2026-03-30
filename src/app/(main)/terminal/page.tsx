@@ -99,6 +99,42 @@ function CategoryIcon({ slug }: { slug?: string }) {
   );
 }
 
+/* ── Collapsible category for sidebar ── */
+function CollapsibleCategory({ category, selected, onSelect }: {
+  category: Category;
+  selected: Instrument | null;
+  onSelect: (inst: Instrument) => void;
+}) {
+  const [open, setOpen] = useState(() => {
+    return category.instruments.some((i) => i.id === selected?.id);
+  });
+
+  return (
+    <div>
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+        <svg className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+        {category.name}
+        <span className="text-[9px] text-gray-300 dark:text-gray-600 ml-auto">{category.instruments.length}</span>
+      </button>
+      {open && category.instruments.map((inst) => {
+        const isSelected = selected?.id === inst.id;
+        const hasData = inst.dataSource && inst.dataTicker;
+        return (
+          <button key={inst.id} onClick={() => { if (hasData) onSelect(inst); }}
+            className={`w-full text-left pl-5 pr-2 py-1 text-[11px] flex items-center gap-1 transition ${
+              isSelected ? "bg-green-50 dark:bg-green-900/20 text-green-600 font-bold" : hasData ? "hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300" : "opacity-30"
+            }`}>
+            <span className="font-mono font-semibold truncate">{inst.ticker || "—"}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 const TIMEFRAMES = ["1м", "5м", "15м", "4ч", "1д", "7д", "1мес"] as const;
 
 export default function TerminalPage() {
@@ -383,9 +419,50 @@ export default function TerminalPage() {
         )}
       </div>
 
-      {/* Middle area: Chart left + Watchlist right */}
+      {/* Middle area: Watchlist left (narrow) + Chart right (full width) */}
       <div className="flex gap-2 flex-1 min-h-0 overflow-hidden">
-        {/* Chart */}
+        {/* Watchlist — narrow sidebar with collapsible categories */}
+        <div className="w-48 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
+          <div className="p-2 shrink-0">
+            <div className="relative">
+              <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Поиск..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-7 pr-2 py-1 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:ring-1 focus:ring-green-500"
+              />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="text-center py-4 text-gray-400 text-xs">Загрузка...</div>
+            ) : search ? (
+              filteredInstruments.map((inst) => {
+                const isSelected = selected?.id === inst.id;
+                const hasData = inst.dataSource && inst.dataTicker;
+                return (
+                  <button key={inst.id} onClick={() => { if (hasData) setSelected(inst); }}
+                    className={`w-full text-left px-2 py-1.5 text-[11px] flex items-center gap-1.5 transition ${
+                      isSelected ? "bg-green-50 dark:bg-green-900/20 text-green-600" : hasData ? "hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300" : "opacity-40"
+                    }`}>
+                    <span className="font-mono font-bold truncate">{inst.ticker || "—"}</span>
+                    <span className="text-[9px] text-gray-400 truncate">{inst.name}</span>
+                  </button>
+                );
+              })
+            ) : (
+              filteredCategories.map((cat) => (
+                <CollapsibleCategory key={cat.id} category={cat} selected={selected} onSelect={(inst) => setSelected(inst)} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Chart — full width */}
         <div className="flex-1 overflow-hidden min-w-0">
           {selected && chartSource !== "none" && chartTicker ? (
             <ChartWidget
@@ -405,91 +482,14 @@ export default function TerminalPage() {
                   {selected ? `График ${selected.ticker || selected.dataTicker}` : "Выберите инструмент"}
                 </p>
                 <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
-                  {selected ? `Таймфрейм: ${timeframe}` : "из списка справа"}
+                  {selected ? `Таймфрейм: ${timeframe}` : "из списка слева"}
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Watchlist */}
-        <div className="w-64 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow flex flex-col overflow-hidden">
-          <div className="p-2.5 shrink-0">
-            <div className="relative">
-              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Поиск инструмента..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:ring-1 focus:ring-green-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="text-center py-8 text-gray-400 text-xs">Загрузка...</div>
-            ) : filteredInstruments.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-xs">Ничего не найдено</div>
-            ) : (
-              filteredInstruments.map((inst) => {
-                const isSelected = selected?.id === inst.id;
-                const hasData = inst.dataSource && inst.dataTicker;
-                const priceData = prices[inst.id];
-                const isFav = favorites.has(inst.id);
-
-                return (
-                  <button
-                    key={inst.id}
-                    onClick={() => { if (hasData) setSelected(inst); }}
-                    className={`w-full flex items-center gap-2 px-2.5 py-2 text-left transition group ${
-                      isSelected
-                        ? "bg-green-50 dark:bg-green-900/20"
-                        : hasData
-                        ? "hover:bg-gray-50 dark:hover:bg-gray-800"
-                        : "opacity-40 cursor-default"
-                    }`}
-                  >
-                    <CategoryIcon slug={inst.catSlug} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-xs font-bold ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
-                          {inst.ticker || inst.dataTicker || "\u2014"}
-                        </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleFavorite(inst.id); }}
-                          className={`text-[10px] shrink-0 transition ${isFav ? "text-yellow-500" : "text-transparent group-hover:text-gray-400"}`}
-                        >
-                          {isFav ? "\u2605" : "\u2606"}
-                        </button>
-                      </div>
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate leading-tight">
-                        {inst.name}
-                      </div>
-                    </div>
-                    {priceData ? (
-                      <div className="text-right shrink-0">
-                        <div className="text-xs font-semibold dark:text-gray-100">
-                          {formatPrice(priceData.price)}
-                        </div>
-                        <div className={`text-[10px] font-medium ${
-                          priceData.change > 0 ? "text-green-600" : priceData.change < 0 ? "text-red-500" : "text-gray-400"
-                        }`}>
-                          {formatChange(priceData.change)}
-                        </div>
-                      </div>
-                    ) : hasData ? (
-                      <div className="text-[10px] text-gray-300 dark:text-gray-600">...</div>
-                    ) : null}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
+        {/* Old watchlist removed — now in left sidebar */}
       </div>
 
       {/* Bottom panel: Быстрая торговля / Портфель */}
