@@ -239,71 +239,27 @@ export default function AssetPage() {
 
             {/* Fundamental Data + Technical Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Fundamental Data (stocks) or Asset Info (crypto/other) */}
-              {isStock ? (
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                  <div className="h-[425px]" ref={(el) => {
-                    if (!el || el.querySelector("iframe")) return;
-                    const script = document.createElement("script");
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: tvSymbol, width: "100%", height: "100%",
-                      isTransparent: true, locale: "ru", colorTheme,
-                    });
-                    el.appendChild(script);
-                  }} />
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden p-5 h-[425px] overflow-y-auto">
-                  <h3 className="text-lg font-semibold mb-3 dark:text-gray-100">О {asset.name}</h3>
-                  {asset.description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{asset.description}</p>}
-                  <div className="space-y-2 text-sm">
-                    {mainTicker?.exchange && (
-                      <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-gray-800">
-                        <span className="text-gray-500">Биржа</span>
-                        <span className="font-medium dark:text-gray-200">{mainTicker.exchange}</span>
-                      </div>
-                    )}
-                    {mainTicker?.ticker && (
-                      <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-gray-800">
-                        <span className="text-gray-500">Тикер</span>
-                        <span className="font-medium dark:text-gray-200">{mainTicker.ticker}</span>
-                      </div>
-                    )}
-                    {mainTicker?.instrumentType && (
-                      <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-gray-800">
-                        <span className="text-gray-500">Тип</span>
-                        <span className="font-medium dark:text-gray-200">{mainTicker.instrumentType === "crypto" ? "Криптовалюта" : mainTicker.instrumentType === "futures" ? "Фьючерс" : mainTicker.instrumentType === "spot" ? "Спот" : mainTicker.instrumentType}</span>
-                      </div>
-                    )}
-                    {asset.category && (
-                      <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-gray-800">
-                        <span className="text-gray-500">Категория</span>
-                        <span className="font-medium dark:text-gray-200">{asset.category.name}</span>
-                      </div>
-                    )}
-                    {mainTicker?.externalUrl && (
-                      <a href={mainTicker.externalUrl} target="_blank" rel="noopener noreferrer"
-                        className="inline-block mt-3 text-green-600 hover:text-green-700 text-sm font-medium">
-                        Открыть на бирже →
-                      </a>
-                    )}
-                  </div>
-                  {instruments.length > 1 && (
-                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-                      <p className="text-xs text-gray-400 mb-2">Доступен на биржах:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {instruments.map(inst => (
-                          <span key={inst.id} className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">
-                            {inst.exchange || inst.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Fundamental Data (stocks) or Symbol Profile (crypto/other) */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                <div className="h-[425px]" ref={(el) => {
+                  if (!el || el.querySelector("iframe")) return;
+                  const script = document.createElement("script");
+                  // For crypto: use BINANCE symbol for TradingView widgets (Bybit not supported by TV)
+                  const isCrypto = asset.category?.slug === "crypto";
+                  const profileSymbol = isCrypto && mainTicker?.ticker
+                    ? `BINANCE:${mainTicker.ticker}`
+                    : tvSymbol;
+                  script.src = isStock
+                    ? "https://s3.tradingview.com/external-embedding/embed-widget-financials.js"
+                    : "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    symbol: profileSymbol, width: "100%", height: "100%",
+                    isTransparent: true, locale: "ru", colorTheme,
+                  });
+                  el.appendChild(script);
+                }} />
+              </div>
 
               {/* Technical Analysis */}
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
