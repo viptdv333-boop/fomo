@@ -152,8 +152,16 @@ export default function TerminalPage() {
     fetch("/api/categories?withInstruments=true")
       .then((r) => r.json())
       .then((data: Category[]) => {
-        setCategories(data);
-        const all = data.flatMap((c) => c.instruments);
+        // Terminal: only MOEX (Tinkoff) and Bybit instruments
+        const terminalSources = new Set(["moex", "bybit"]);
+        const filtered = data
+          .map((cat) => ({
+            ...cat,
+            instruments: cat.instruments.filter((i: Instrument) => i.dataSource && terminalSources.has(i.dataSource)),
+          }))
+          .filter((cat) => cat.instruments.length > 0);
+        setCategories(filtered);
+        const all = filtered.flatMap((c) => c.instruments);
         const first = all.find((i) => i.dataSource && i.dataTicker);
         if (first) setSelected(first);
       })
