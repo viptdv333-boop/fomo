@@ -46,8 +46,8 @@ const TERMINAL_DATA: TerminalCategory[] = [
     instruments: [
       { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "🛢️" },
       { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "🔥" },
-      { ticker: "CC", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "🍫" },
-      { ticker: "KC", name: "Кофе", source: "moex", dataTicker: "COFFEE", emoji: "☕" },
+      { ticker: "COCOA", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "🍫" },
+      { ticker: "SUGAR", name: "Сахар", source: "moex", dataTicker: "SUGAR", emoji: "🍬" },
       { ticker: "WHEAT", name: "Пшеница", source: "moex", dataTicker: "WHEAT", emoji: "🌾" },
     ],
   },
