@@ -146,7 +146,7 @@ export default function TerminalPage() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showInstrumentPicker, setShowInstrumentPicker] = useState(false);
   const [timeframe, setTimeframe] = useState("15м");
-  const [bottomTab, setBottomTab] = useState<"trade" | "portfolio">("trade");
+  // bottom panel removed
 
   useEffect(() => {
     fetch("/api/categories?withInstruments=true")
@@ -492,75 +492,7 @@ export default function TerminalPage() {
         {/* Old watchlist removed — now in left sidebar */}
       </div>
 
-      {/* Bottom panel: Быстрая торговля / Портфель */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow shrink-0">
-        {/* Tab switcher */}
-        <div className="flex items-center px-4 pt-3 pb-2 gap-6">
-          <button
-            onClick={() => setBottomTab("trade")}
-            className={`text-sm font-bold pb-1 border-b-2 transition ${
-              bottomTab === "trade"
-                ? "text-gray-900 dark:text-gray-100 border-green-600"
-                : "text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-600 dark:hover:text-gray-300"
-            }`}
-          >
-            Быстрая торговля
-          </button>
-          <button
-            onClick={() => setBottomTab("portfolio")}
-            className={`text-sm font-bold pb-1 border-b-2 transition ${
-              bottomTab === "portfolio"
-                ? "text-gray-900 dark:text-gray-100 border-green-600"
-                : "text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-600 dark:hover:text-gray-300"
-            }`}
-          >
-            Портфель
-          </button>
-          <div className="flex-1" />
-          <button className="text-gray-400 hover:text-green-600 transition flex items-center gap-1 text-xs">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Настроить
-          </button>
-        </div>
-
-        {bottomTab === "trade" ? (
-          <div className="px-4 pb-4 flex items-end gap-6">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 dark:text-gray-400 text-xs">Количество</span>
-                <button className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">−</button>
-                <span className="w-10 text-center text-sm font-semibold dark:text-gray-100">1</span>
-                <button className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">+</button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 dark:text-gray-400 text-xs">Цена</span>
-                <span className="text-sm font-semibold dark:text-gray-100">{selectedPrice ? formatPrice(selectedPrice.price) : "—"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 dark:text-gray-400 text-xs">Сумма</span>
-                <span className="text-sm font-semibold dark:text-gray-100">{selectedPrice ? `${formatPrice(selectedPrice.price)} ₽` : "—"}</span>
-              </div>
-            </div>
-            <div className="flex gap-3 shrink-0">
-              <button className="px-8 py-3 bg-green-600 text-white text-sm font-bold rounded-2xl hover:bg-green-700 transition flex items-center gap-2 shadow-lg shadow-green-600/20">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                Купить
-              </button>
-              <button className="px-8 py-3 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition flex items-center gap-2 shadow-lg shadow-red-500/20">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                Продать
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="px-4 pb-4 text-sm text-gray-400 dark:text-gray-500">
-            Портфель пуст. Начните торговлю, чтобы увидеть позиции.
-          </div>
-        )}
-      </div>
+      {/* Bottom panel removed */}
     </div>
   );
 }
