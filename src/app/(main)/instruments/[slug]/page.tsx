@@ -213,61 +213,46 @@ export default function AssetPage() {
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* TradingView: Symbol Info + Fundamental Data + Technical Analysis */}
+      {/* Widgets: Fundamentals + Technical Analysis */}
       {(() => {
         const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
-        if (!tvSymbol) return null;
         const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
         const colorTheme = isDark ? "dark" : "light";
-        const isStock = asset.category?.slug === "stocks-ru" || asset.category?.slug === "stocks-us" || asset.category?.slug === "ru-stocks" || asset.category?.slug === "us-stocks";
+        const isStock = catSlug === "ru-stocks" || catSlug === "us-stocks";
+        const isCrypto = catSlug === "crypto";
+        const isCryptoTA = isCrypto && mainTicker?.ticker;
+        const taSymbol = isCryptoTA ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
 
         return (
-          <>
-            {/* Symbol Info — ticker header widget */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[180px]" ref={(el) => {
-                if (!el || el.childElementCount > 0) return;
-                const script = document.createElement("script");
-                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js";
-                script.async = true;
-                script.innerHTML = JSON.stringify({
-                  symbol: tvSymbol, width: "100%", locale: "ru",
-                  colorTheme, isTransparent: true,
-                });
-                el.appendChild(script);
-              }} />
-            </div>
+          <div className={`grid grid-cols-1 ${isStock || isCrypto ? "lg:grid-cols-2" : ""} gap-4`}>
+            {/* Fundamental Data — only for stocks */}
+            {isStock && tvSymbol && (
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                <div className="h-[425px]" ref={(el) => {
+                  if (!el || el.childElementCount > 0) return;
+                  const script = document.createElement("script");
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    symbol: tvSymbol, width: "100%", height: "100%",
+                    isTransparent: true, locale: "ru", colorTheme,
+                  });
+                  el.appendChild(script);
+                }} />
+              </div>
+            )}
 
-            {/* Fundamental Data + Technical Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Fundamental Data */}
-              {asset.category?.slug === "crypto" ? (
-                <CryptoFundamentals slug={asset.slug} />
-              ) : (
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                  <div className="h-[425px]" ref={(el) => {
-                    if (!el || el.childElementCount > 0) return;
-                    const script = document.createElement("script");
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: tvSymbol, width: "100%", height: "100%",
-                      isTransparent: true, locale: "ru", colorTheme,
-                    });
-                    el.appendChild(script);
-                  }} />
-                </div>
-              )}
+            {/* CryptoFundamentals — only for crypto */}
+            {isCrypto && <CryptoFundamentals slug={asset.slug} />}
 
-              {/* Technical Analysis */}
+            {/* Technical Analysis — for all if tvSymbol exists */}
+            {taSymbol && (
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
                 <div className="h-[425px]" ref={(el) => {
                   if (!el || el.childElementCount > 0) return;
                   const script = document.createElement("script");
                   script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                   script.async = true;
-                  const isCrypto = asset.category?.slug === "crypto";
-                  const taSymbol = isCrypto && mainTicker?.ticker ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
                   script.innerHTML = JSON.stringify({
                     interval: "1D", width: "100%", isTransparent: true, height: "100%",
                     symbol: taSymbol, showIntervalTabs: true, locale: "ru", colorTheme,
@@ -275,8 +260,8 @@ export default function AssetPage() {
                   el.appendChild(script);
                 }} />
               </div>
-            </div>
-          </>
+            )}
+          </div>
         );
       })()}
 
