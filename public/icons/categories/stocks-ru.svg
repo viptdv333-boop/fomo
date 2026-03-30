@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="30" fill="#1C1C1C"/>
+  <path d="M14 38V26l8 12V26l8 12V26l8 12V26l8 12V26" stroke="#E31E24" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="32" y="50" text-anchor="middle" fill="#E31E24" font-size="9" font-weight="700" font-family="Arial">MOEX</text>
+</svg>

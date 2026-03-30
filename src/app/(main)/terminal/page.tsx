@@ -26,12 +26,12 @@ interface TerminalCategory {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  "Акции ММВБ": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 3 3 4-5"/></svg>`,
-  "Сырьё": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M8 14l2-4h4l2 4"/><path d="M10 14v4m4-4v4"/></svg>`,
-  "Металлы": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h4m4 0h4M6 14h12"/></svg>`,
-  "Валюта": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`,
-  "Индексы": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 2 2 5-5"/><path d="M14 8h3v3"/></svg>`,
-  "Криптовалюты": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9.5 2v2m5-2v2M9.5 20v2m5-2v2"/><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M9.5 10h5m-5 4h5"/></svg>`,
+  "Акции ММВБ": "/icons/categories/stocks-ru.svg",
+  "Сырьё": "/icons/categories/commodities.svg",
+  "Металлы": "/icons/categories/metals.svg",
+  "Валюта": "/icons/categories/currencies.svg",
+  "Индексы": "/icons/categories/indices.svg",
+  "Криптовалюты": "/icons/categories/crypto.svg",
 };
 
 const TERMINAL_DATA: TerminalCategory[] = [
@@ -130,7 +130,7 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
         <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path d="M9 5l7 7-7 7" />
         </svg>
-        <span className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: CATEGORY_ICONS[cat.name] || "" }} />
+        {CATEGORY_ICONS[cat.name] && <img src={CATEGORY_ICONS[cat.name]} alt="" className="w-6 h-6 shrink-0 rounded-full" />}
         <span>{cat.name}</span>
         <span className="text-xs text-gray-400 ml-auto font-normal">{cat.instruments.length}</span>
       </button>
