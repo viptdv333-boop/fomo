@@ -50,9 +50,8 @@ export default function Header() {
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
-            { href: "/instruments", label: "Каталог" },
+            { href: "/terminal", label: "Терминал" },
             // { href: "/messages", label: "Сообщения" },
-            // { href: "/terminal", label: "Терминал" },
           ].map((link) => (
             <Link
               key={link.href}
@@ -196,9 +195,8 @@ export default function Header() {
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
-            { href: "/instruments", label: "Каталог" },
+            { href: "/terminal", label: "Терминал" },
             // { href: "/messages", label: "Сообщения" },
-            // { href: "/terminal", label: "Терминал" },
           ].map((link) => (
             <Link
               key={link.href}
