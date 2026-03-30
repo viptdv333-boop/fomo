@@ -19,7 +19,7 @@ export async function GET(
       specializations: true,
       _count: {
         select: {
-          followers: true,
+          followersReceived: true,
           ideas: true,
         },
       },
