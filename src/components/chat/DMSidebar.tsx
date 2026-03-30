@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
 
 interface Conversation {
   id: string;
-  participants: { user: { id: string; displayName: string; avatarUrl: string | null } }[];
-  messages: { text: string; createdAt: string; userId: string }[];
+  otherUser: { id: string; displayName: string; avatarUrl: string | null } | null;
+  lastMessage: { text: string; createdAt: string; senderId: string } | null;
+  unread: boolean;
   updatedAt: string;
 }
 
@@ -18,17 +18,11 @@ interface Props {
 }
 
 export default function DMSidebar({ activeConvId, onSelect, onNewChat, conversations }: Props) {
-  const { data: session } = useSession();
   const [search, setSearch] = useState("");
-
-  function getOtherUser(conv: Conversation) {
-    return conv.participants.find((p) => p.user.id !== session?.user?.id)?.user || { id: "", displayName: "Удалённый", avatarUrl: null };
-  }
 
   const filtered = conversations.filter((c) => {
     if (!search) return true;
-    const other = getOtherUser(c);
-    return other.displayName.toLowerCase().includes(search.toLowerCase());
+    return c.otherUser?.displayName?.toLowerCase().includes(search.toLowerCase());
   });
 
   return (
@@ -56,8 +50,7 @@ export default function DMSidebar({ activeConvId, onSelect, onNewChat, conversat
         {filtered.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-400">Нет диалогов</div>
         ) : filtered.map((conv) => {
-          const other = getOtherUser(conv);
-          const lastMsg = conv.messages?.[0];
+          const other = conv.otherUser || { id: "", displayName: "Удалённый", avatarUrl: null };
           const active = conv.id === activeConvId;
           return (
             <button key={conv.id} onClick={() => onSelect(conv)}
@@ -70,22 +63,27 @@ export default function DMSidebar({ activeConvId, onSelect, onNewChat, conversat
                 {other.avatarUrl ? (
                   <img src={other.avatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  other.displayName[0]?.toUpperCase()
+                  other.displayName[0]?.toUpperCase() || "?"
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{other.displayName}</span>
-                  {lastMsg && (
+                  <span className={`font-semibold text-sm truncate ${conv.unread ? "text-gray-900 dark:text-gray-100" : "text-gray-700 dark:text-gray-300"}`}>
+                    {other.displayName}
+                  </span>
+                  {conv.lastMessage && (
                     <span className="text-[10px] text-gray-400 shrink-0 ml-2">
-                      {new Date(lastMsg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   )}
                 </div>
-                {lastMsg && (
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
+                {conv.lastMessage && (
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{conv.lastMessage.text}</p>
                 )}
               </div>
+              {conv.unread && (
+                <div className="w-2.5 h-2.5 bg-green-500 rounded-full shrink-0" />
+              )}
             </button>
           );
         })}

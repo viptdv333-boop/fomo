@@ -11,8 +11,9 @@ import AuthGuard from "@/components/layout/AuthGuard";
 
 interface Conversation {
   id: string;
-  participants: { user: { id: string; displayName: string; avatarUrl: string | null } }[];
-  messages: { text: string; createdAt: string; userId: string }[];
+  otherUser: { id: string; displayName: string; avatarUrl: string | null } | null;
+  lastMessage: { text: string; createdAt: string; senderId: string } | null;
+  unread: boolean;
   updatedAt: string;
 }
 
@@ -94,12 +95,8 @@ function ChatPageInner() {
     }
   }
 
-  function getOtherUser(conv: Conversation) {
-    return conv.participants.find((p) => p.user.id !== session?.user?.id)?.user || { id: "", displayName: "Удалённый", avatarUrl: null };
-  }
-
   const activeConv = conversations.find((c) => c.id === activeConvId);
-  const activeOther = activeConv ? getOtherUser(activeConv) : null;
+  const activeOther = activeConv?.otherUser || null;
 
   return (
     <AuthGuard>
