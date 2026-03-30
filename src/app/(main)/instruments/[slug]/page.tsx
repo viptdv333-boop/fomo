@@ -194,7 +194,7 @@ export default function AssetPage() {
           ) : mainTicker.tradingViewSymbol ? (
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
               <div className="h-[500px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
+                if (!el || el.childElementCount > 0) return;
                 const script = document.createElement("script");
                 script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
                 script.async = true;
@@ -226,7 +226,7 @@ export default function AssetPage() {
             {/* Symbol Info — ticker header widget */}
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
               <div className="h-[180px]" ref={(el) => {
-                if (!el || el.querySelector("iframe")) return;
+                if (!el || el.childElementCount > 0) return;
                 const script = document.createElement("script");
                 script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js";
                 script.async = true;
@@ -246,7 +246,7 @@ export default function AssetPage() {
               ) : (
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
                   <div className="h-[425px]" ref={(el) => {
-                    if (!el || el.querySelector("iframe")) return;
+                    if (!el || el.childElementCount > 0) return;
                     const script = document.createElement("script");
                     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
                     script.async = true;
@@ -262,7 +262,7 @@ export default function AssetPage() {
               {/* Technical Analysis */}
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
                 <div className="h-[425px]" ref={(el) => {
-                  if (!el || el.querySelector("iframe")) return;
+                  if (!el || el.childElementCount > 0) return;
                   const script = document.createElement("script");
                   script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                   script.async = true;
@@ -331,7 +331,7 @@ export default function AssetPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
           <div className="h-[500px]" ref={(el) => {
-            if (!el || el.querySelector("iframe")) return;
+            if (!el || el.childElementCount > 0) return;
             const script = document.createElement("script");
             script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
             script.async = true;
