@@ -130,7 +130,7 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
         <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path d="M9 5l7 7-7 7" />
         </svg>
-        {CATEGORY_ICONS[cat.name] && <img src={CATEGORY_ICONS[cat.name]} alt="" className="w-6 h-6 shrink-0 rounded-full" />}
+        {CATEGORY_ICONS[cat.name] && <img src={CATEGORY_ICONS[cat.name]} alt="" className="w-8 h-8 shrink-0 rounded-full" />}
         <span>{cat.name}</span>
         <span className="text-xs text-gray-400 ml-auto font-normal">{cat.instruments.length}</span>
       </button>
@@ -144,7 +144,7 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition border-b border-gray-50 dark:border-gray-800/20 last:border-b-0 ${
                   isSelected ? "bg-green-50 dark:bg-green-900/15" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
                 }`}>
-                <img src={inst.emoji} alt="" className="w-6 h-6 shrink-0 rounded-full" />
+                <img src={inst.emoji} alt="" className="w-8 h-8 shrink-0 rounded-full" />
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-black tracking-tight ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
                     {inst.ticker}
