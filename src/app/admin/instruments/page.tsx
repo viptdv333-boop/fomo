@@ -50,8 +50,9 @@ const INSTRUMENT_TYPES = [
 
 const DATA_SOURCES = [
   { value: "", label: "Не выбрано" },
-  { value: "moex", label: "MOEX" },
+  { value: "moex", label: "MOEX (Tinkoff)" },
   { value: "bybit", label: "Bybit" },
+  { value: "fmp", label: "FMP" },
 ];
 
 function generateSlug(ticker: string) {
@@ -84,6 +85,10 @@ export default function AdminInstrumentsPage() {
     dataSource: "",
     dataTicker: "",
   });
+
+  // Filter state
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
   // Related instruments state
   const [relatedInstruments, setRelatedInstruments] = useState<RelatedInstrument[]>([]);
@@ -538,6 +543,34 @@ export default function AdminInstrumentsPage() {
         </div>
       )}
 
+      {/* Filter bar */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 mb-4 flex items-center gap-3 flex-wrap">
+        <input
+          value={filterSearch}
+          onChange={(e) => setFilterSearch(e.target.value)}
+          placeholder="Поиск по названию или тикеру..."
+          className="w-64 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+        />
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+        >
+          <option value="">Все категории</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-400 ml-auto">
+          {instruments.filter((i) => {
+            const q = filterSearch.toLowerCase();
+            const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.ticker?.toLowerCase().includes(q));
+            const matchCat = !filterCategory || i.categoryId === filterCategory;
+            return matchSearch && matchCat;
+          }).length} из {instruments.length}
+        </span>
+      </div>
+
       {/* Instrument List */}
       {loading ? (
         <div className="text-gray-500 dark:text-gray-400">Загрузка...</div>
@@ -567,7 +600,12 @@ export default function AdminInstrumentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-700">
-              {instruments.map((inst) => (
+              {instruments.filter((i) => {
+                const q = filterSearch.toLowerCase();
+                const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.ticker?.toLowerCase().includes(q));
+                const matchCat = !filterCategory || i.categoryId === filterCategory;
+                return matchSearch && matchCat;
+              }).map((inst) => (
                 <tr key={inst.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-4 py-3">
                     <span className="font-bold text-gray-900 dark:text-gray-100">
