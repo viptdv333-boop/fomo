@@ -295,8 +295,8 @@ export async function GET(request: NextRequest) {
       const t = n.title.toLowerCase();
       return kw.some(k => t.includes(k));
     });
-    // If found at least 3 relevant — show them, otherwise show all from category
-    if (matched.length >= 3) {
+    // Always filter if any matches found
+    if (matched.length > 0) {
       filtered = matched;
     }
   }
