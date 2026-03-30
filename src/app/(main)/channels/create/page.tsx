@@ -29,6 +29,14 @@ export default function CreateChannelPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Instrument tags (hashtags)
+  const [selectedTags, setSelectedTags] = useState<{ id: string; name: string; ticker: string | null; slug: string }[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
+  const [tagResults, setTagResults] = useState<any[]>([]);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const [tagCategories, setTagCategories] = useState<any[]>([]);
+  const [tagExpanded, setTagExpanded] = useState<Set<string>>(new Set());
+
   function addTariff() {
     setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" }]);
   }
@@ -182,6 +190,98 @@ export default function CreateChannelPage() {
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Опишите, что получат подписчики канала..."
           />
+        </div>
+
+        {/* Hashtags (instruments) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Хэштеги <span className="text-gray-400 font-normal">(до 5 инструментов)</span>
+          </label>
+          {/* Selected tags */}
+          {selectedTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {selectedTags.map((t) => (
+                <span key={t.id} className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 rounded text-xs font-mono font-bold">
+                  #{t.ticker || t.name}
+                  <button type="button" onClick={() => setSelectedTags(selectedTags.filter((x) => x.id !== t.id))}
+                    className="text-gray-400 hover:text-red-500 ml-0.5">✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+          {selectedTags.length < 5 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (tagCategories.length === 0) {
+                  const res = await fetch("/api/categories?withInstruments=true");
+                  if (res.ok) setTagCategories(await res.json());
+                }
+                setShowTagPicker(true);
+              }}
+              className="px-3 py-2 border dark:border-gray-700 rounded-lg text-sm text-gray-400 dark:text-gray-500 dark:bg-gray-800 hover:border-green-500 transition w-full text-left"
+            >
+              + Добавить инструмент...
+            </button>
+          )}
+          {/* Tag picker modal */}
+          {showTagPicker && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowTagPicker(false)}>
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                  <h3 className="font-semibold dark:text-gray-100">Выберите инструмент</h3>
+                  <button onClick={() => setShowTagPicker(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+                  <input type="text" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)}
+                    placeholder="Поиск..." className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" autoFocus />
+                </div>
+                <div className="flex-1 overflow-y-auto p-2">
+                  {tagCategories
+                    .map((cat: any) => ({
+                      ...cat,
+                      instruments: cat.instruments.filter((inst: any) => {
+                        if (!tagSearch) return true;
+                        const q = tagSearch.toLowerCase();
+                        return inst.name.toLowerCase().includes(q) || inst.ticker?.toLowerCase().includes(q);
+                      }),
+                    }))
+                    .filter((cat: any) => cat.instruments.length > 0)
+                    .map((cat: any) => {
+                      const isExp = tagExpanded.has(cat.id) || !!tagSearch;
+                      return (
+                        <div key={cat.id}>
+                          <button type="button" onClick={() => {
+                            const n = new Set(tagExpanded);
+                            if (n.has(cat.id)) n.delete(cat.id); else n.add(cat.id);
+                            setTagExpanded(n);
+                          }} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                            <svg className={`w-3 h-3 transition-transform ${isExp ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
+                            {cat.name} <span className="text-[10px] text-gray-300 ml-auto">{cat.instruments.length}</span>
+                          </button>
+                          {isExp && cat.instruments.map((inst: any) => {
+                            const already = selectedTags.some((t) => t.id === inst.id);
+                            return (
+                              <button key={inst.id} type="button" disabled={already || selectedTags.length >= 5}
+                                onClick={() => {
+                                  if (!already && selectedTags.length < 5) {
+                                    setSelectedTags([...selectedTags, { id: inst.id, name: inst.name, ticker: inst.ticker, slug: inst.slug }]);
+                                  }
+                                }}
+                                className={`w-full text-left pl-8 pr-3 py-2 text-sm transition ${already ? "text-gray-400" : "hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-gray-200"}`}>
+                                <span className="font-medium text-green-600">#{inst.ticker || inst.name}</span>
+                                <span className="text-gray-400"> — {inst.name}</span>
+                                {already && <span className="text-[10px] ml-2">✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tariffs */}

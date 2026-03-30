@@ -93,8 +93,9 @@ export default function AdminChatPage() {
   const [msgPage, setMsgPage] = useState(1);
   const [msgPages, setMsgPages] = useState(1);
 
-  // Category ordering
+  // Category ordering + filter
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState("");
 
   const categories = Array.from(new Set(rooms.map((r) => r.categoryLabel).filter(Boolean))) as string[];
 
@@ -231,6 +232,7 @@ export default function AdminChatPage() {
     if (filterStatus === "active" && (r.isArchived || r.isClosed)) return false;
     if (filterStatus === "archived" && !r.isArchived) return false;
     if (filterStatus === "closed" && !r.isClosed) return false;
+    if (filterCategory && (r.categoryLabel || "") !== filterCategory) return false;
     return true;
   });
 
@@ -269,6 +271,11 @@ export default function AdminChatPage() {
             </button>
           ))}
         </div>
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+          className={inputCls}>
+          <option value="">Все категории</option>
+          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
         <span className="text-xs text-gray-400 ml-auto">{filteredRooms.length} из {rooms.length}</span>
       </div>
 
