@@ -8,6 +8,7 @@ import MoexStats from "@/components/instruments/MoexStats";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import RuNews from "@/components/instruments/RuNews";
+import CryptoFundamentals from "@/components/instruments/CryptoFundamentals";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -240,21 +241,23 @@ export default function AssetPage() {
             {/* Fundamental Data + Technical Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Fundamental Data */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                <div className="h-[425px]" ref={(el) => {
-                  if (!el || el.querySelector("iframe")) return;
-                  const script = document.createElement("script");
-                  const isCrypto = asset.category?.slug === "crypto";
-                  const fundSymbol = isCrypto && mainTicker?.ticker ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                  script.async = true;
-                  script.innerHTML = JSON.stringify({
-                    symbol: fundSymbol, width: "100%", height: "100%",
-                    isTransparent: true, locale: "ru", colorTheme,
-                  });
-                  el.appendChild(script);
-                }} />
-              </div>
+              {asset.category?.slug === "crypto" ? (
+                <CryptoFundamentals slug={asset.slug} />
+              ) : (
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+                  <div className="h-[425px]" ref={(el) => {
+                    if (!el || el.querySelector("iframe")) return;
+                    const script = document.createElement("script");
+                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+                    script.async = true;
+                    script.innerHTML = JSON.stringify({
+                      symbol: tvSymbol, width: "100%", height: "100%",
+                      isTransparent: true, locale: "ru", colorTheme,
+                    });
+                    el.appendChild(script);
+                  }} />
+                </div>
+              )}
 
               {/* Technical Analysis */}
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
