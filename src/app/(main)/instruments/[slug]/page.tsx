@@ -277,15 +277,7 @@ export default function AssetPage() {
 
       {/* Ideas */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold dark:text-gray-100">Идеи по {asset.name}</h2>
-          <Link
-            href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`}
-            className="text-sm text-green-600 hover:text-green-700 font-medium"
-          >
-            + Написать идею
-          </Link>
-        </div>
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Идеи по {asset.name}</h2>
         {ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
