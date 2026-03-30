@@ -27,7 +27,7 @@ interface TerminalCategory {
 
 const TERMINAL_DATA: TerminalCategory[] = [
   {
-    name: "Акции ММВБ", emoji: "🇷🇺", color: "#3b82f6",
+    name: "Акции ММВБ", emoji: "", color: "#3b82f6",
     instruments: [
       { ticker: "SBER", name: "Сбербанк", source: "moex", dataTicker: "SBER", emoji: "/icons/instruments/sberbank.svg" },
       { ticker: "GAZP", name: "Газпром", source: "moex", dataTicker: "GAZP", emoji: "/icons/instruments/gazprom.svg" },
@@ -42,7 +42,7 @@ const TERMINAL_DATA: TerminalCategory[] = [
     ],
   },
   {
-    name: "Сырьё", emoji: "🛢️", color: "#f59e0b",
+    name: "Сырьё", emoji: "", color: "#f59e0b",
     instruments: [
       { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "/icons/instruments/oil.svg" },
       { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "/icons/instruments/gas.svg" },
@@ -52,7 +52,7 @@ const TERMINAL_DATA: TerminalCategory[] = [
     ],
   },
   {
-    name: "Металлы", emoji: "🥇", color: "#eab308",
+    name: "Металлы", emoji: "", color: "#eab308",
     instruments: [
       { ticker: "GOLD", name: "Золото", source: "moex", dataTicker: "GOLD", emoji: "/icons/instruments/gold.svg" },
       { ticker: "SILV", name: "Серебро", source: "moex", dataTicker: "SILV", emoji: "/icons/instruments/silver.svg" },
@@ -62,14 +62,14 @@ const TERMINAL_DATA: TerminalCategory[] = [
     ],
   },
   {
-    name: "Валюта", emoji: "💱", color: "#10b981",
+    name: "Валюта", emoji: "", color: "#10b981",
     instruments: [
       { ticker: "Si", name: "Доллар/Рубль", source: "moex", dataTicker: "Si", emoji: "/icons/instruments/usd-rub.svg" },
       { ticker: "CR", name: "Юань/Рубль", source: "moex", dataTicker: "CR", emoji: "/icons/instruments/cny-rub.svg" },
     ],
   },
   {
-    name: "Индексы", emoji: "📊", color: "#8b5cf6",
+    name: "Индексы", emoji: "", color: "#8b5cf6",
     instruments: [
       { ticker: "MIX", name: "Фьючерс ММВБ", source: "moex", dataTicker: "MIX", emoji: "/icons/instruments/moex-index.svg" },
       { ticker: "RTS", name: "Фьючерс РТС", source: "moex", dataTicker: "RTS", emoji: "/icons/instruments/rts-index.svg" },
@@ -78,7 +78,7 @@ const TERMINAL_DATA: TerminalCategory[] = [
     ],
   },
   {
-    name: "Криптовалюты", emoji: "₿", color: "#f97316",
+    name: "Криптовалюты", emoji: "", color: "#f97316",
     instruments: [
       { ticker: "BTCUSDT", name: "Bitcoin", source: "bybit", dataTicker: "BTCUSDT", emoji: "/icons/instruments/bitcoin.svg" },
       { ticker: "ETHUSDT", name: "Ethereum", source: "bybit", dataTicker: "ETHUSDT", emoji: "/icons/instruments/ethereum.svg" },
@@ -117,14 +117,14 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
   return (
     <div className="mb-1">
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg transition"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg transition"
         style={{ color: cat.color }}>
+        <div className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: cat.color, opacity: open ? 1 : 0.4 }} />
         <svg className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path d="M9 5l7 7-7 7" />
         </svg>
-        <span>{cat.emoji}</span>
         <span>{cat.name}</span>
-        <span className="text-[10px] text-gray-400 ml-auto font-normal">{cat.instruments.length}</span>
+        <span className="text-[10px] ml-auto font-normal" style={{ color: cat.color, opacity: 0.6 }}>{cat.instruments.length}</span>
       </button>
       {open && (
         <div className="ml-1">
