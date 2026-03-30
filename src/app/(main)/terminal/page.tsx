@@ -29,67 +29,67 @@ const TERMINAL_DATA: TerminalCategory[] = [
   {
     name: "Акции ММВБ", emoji: "🇷🇺", color: "#3b82f6",
     instruments: [
-      { ticker: "SBER", name: "Сбербанк", source: "moex", dataTicker: "SBER", emoji: "🏦" },
-      { ticker: "GAZP", name: "Газпром", source: "moex", dataTicker: "GAZP", emoji: "🔥" },
-      { ticker: "LKOH", name: "ЛУКОЙЛ", source: "moex", dataTicker: "LKOH", emoji: "🛢️" },
-      { ticker: "YDEX", name: "Яндекс", source: "moex", dataTicker: "YDEX", emoji: "🔍" },
-      { ticker: "ROSN", name: "Роснефть", source: "moex", dataTicker: "ROSN", emoji: "⛽" },
-      { ticker: "GMKN", name: "Норникель", source: "moex", dataTicker: "GMKN", emoji: "⚙️" },
-      { ticker: "NVTK", name: "Новатэк", source: "moex", dataTicker: "NVTK", emoji: "💨" },
-      { ticker: "VTBR", name: "ВТБ", source: "moex", dataTicker: "VTBR", emoji: "🏛️" },
-      { ticker: "TCSG", name: "Тинькофф", source: "moex", dataTicker: "TCSG", emoji: "💛" },
-      { ticker: "MGNT", name: "Магнит", source: "moex", dataTicker: "MGNT", emoji: "🛒" },
+      { ticker: "SBER", name: "Сбербанк", source: "moex", dataTicker: "SBER", emoji: "/icons/instruments/sberbank.svg" },
+      { ticker: "GAZP", name: "Газпром", source: "moex", dataTicker: "GAZP", emoji: "/icons/instruments/gazprom.svg" },
+      { ticker: "LKOH", name: "ЛУКОЙЛ", source: "moex", dataTicker: "LKOH", emoji: "/icons/instruments/lukoil.svg" },
+      { ticker: "YDEX", name: "Яндекс", source: "moex", dataTicker: "YDEX", emoji: "/icons/instruments/yandex.svg" },
+      { ticker: "ROSN", name: "Роснефть", source: "moex", dataTicker: "ROSN", emoji: "/icons/instruments/rosneft.svg" },
+      { ticker: "GMKN", name: "Норникель", source: "moex", dataTicker: "GMKN", emoji: "/icons/instruments/norilsk-nickel.svg" },
+      { ticker: "NVTK", name: "Новатэк", source: "moex", dataTicker: "NVTK", emoji: "/icons/instruments/novatek.svg" },
+      { ticker: "VTBR", name: "ВТБ", source: "moex", dataTicker: "VTBR", emoji: "/icons/instruments/vtb.svg" },
+      { ticker: "TCSG", name: "Тинькофф", source: "moex", dataTicker: "TCSG", emoji: "/icons/instruments/tinkoff.svg" },
+      { ticker: "MGNT", name: "Магнит", source: "moex", dataTicker: "MGNT", emoji: "/icons/instruments/magnit.svg" },
     ],
   },
   {
     name: "Сырьё", emoji: "🛢️", color: "#f59e0b",
     instruments: [
-      { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "🛢️" },
-      { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "🔥" },
-      { ticker: "COCOA", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "🍫" },
-      { ticker: "SUGAR", name: "Сахар", source: "moex", dataTicker: "SUGAR", emoji: "🍬" },
-      { ticker: "WHEAT", name: "Пшеница", source: "moex", dataTicker: "WHEAT", emoji: "🌾" },
+      { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "/icons/instruments/oil.svg" },
+      { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "/icons/instruments/gas.svg" },
+      { ticker: "COCOA", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "/icons/instruments/cocoa.svg" },
+      { ticker: "SUGAR", name: "Сахар", source: "moex", dataTicker: "SUGAR", emoji: "/icons/instruments/sugar.svg" },
+      { ticker: "WHEAT", name: "Пшеница", source: "moex", dataTicker: "WHEAT", emoji: "/icons/instruments/wheat.svg" },
     ],
   },
   {
     name: "Металлы", emoji: "🥇", color: "#eab308",
     instruments: [
-      { ticker: "GOLD", name: "Золото", source: "moex", dataTicker: "GOLD", emoji: "🥇" },
-      { ticker: "SILV", name: "Серебро", source: "moex", dataTicker: "SILV", emoji: "🥈" },
-      { ticker: "PLT", name: "Платина", source: "moex", dataTicker: "PLT", emoji: "⬜" },
-      { ticker: "PLD", name: "Палладий", source: "moex", dataTicker: "PLD", emoji: "🔘" },
-      { ticker: "CU", name: "Медь", source: "moex", dataTicker: "CU", emoji: "🟤" },
+      { ticker: "GOLD", name: "Золото", source: "moex", dataTicker: "GOLD", emoji: "/icons/instruments/gold.svg" },
+      { ticker: "SILV", name: "Серебро", source: "moex", dataTicker: "SILV", emoji: "/icons/instruments/silver.svg" },
+      { ticker: "PLT", name: "Платина", source: "moex", dataTicker: "PLT", emoji: "/icons/instruments/platinum.svg" },
+      { ticker: "PLD", name: "Палладий", source: "moex", dataTicker: "PLD", emoji: "/icons/instruments/palladium.svg" },
+      { ticker: "CU", name: "Медь", source: "moex", dataTicker: "CU", emoji: "/icons/instruments/copper.svg" },
     ],
   },
   {
     name: "Валюта", emoji: "💱", color: "#10b981",
     instruments: [
-      { ticker: "Si", name: "Доллар/Рубль", source: "moex", dataTicker: "Si", emoji: "💵" },
-      { ticker: "CR", name: "Юань/Рубль", source: "moex", dataTicker: "CR", emoji: "💴" },
+      { ticker: "Si", name: "Доллар/Рубль", source: "moex", dataTicker: "Si", emoji: "/icons/instruments/usd-rub.svg" },
+      { ticker: "CR", name: "Юань/Рубль", source: "moex", dataTicker: "CR", emoji: "/icons/instruments/cny-rub.svg" },
     ],
   },
   {
     name: "Индексы", emoji: "📊", color: "#8b5cf6",
     instruments: [
-      { ticker: "MIX", name: "Фьючерс ММВБ", source: "moex", dataTicker: "MIX", emoji: "🇷🇺" },
-      { ticker: "RTS", name: "Фьючерс РТС", source: "moex", dataTicker: "RTS", emoji: "📈" },
-      { ticker: "SPYF", name: "Фьючерс S&P 500", source: "moex", dataTicker: "SPYF", emoji: "🇺🇸" },
-      { ticker: "NASD", name: "Фьючерс NASDAQ", source: "moex", dataTicker: "NASD", emoji: "💻" },
+      { ticker: "MIX", name: "Фьючерс ММВБ", source: "moex", dataTicker: "MIX", emoji: "/icons/instruments/moex-index.svg" },
+      { ticker: "RTS", name: "Фьючерс РТС", source: "moex", dataTicker: "RTS", emoji: "/icons/instruments/rts-index.svg" },
+      { ticker: "SPYF", name: "Фьючерс S&P 500", source: "moex", dataTicker: "SPYF", emoji: "/icons/instruments/sp500.svg" },
+      { ticker: "NASD", name: "Фьючерс NASDAQ", source: "moex", dataTicker: "NASD", emoji: "/icons/instruments/nasdaq100.svg" },
     ],
   },
   {
     name: "Криптовалюты", emoji: "₿", color: "#f97316",
     instruments: [
-      { ticker: "BTCUSDT", name: "Bitcoin", source: "bybit", dataTicker: "BTCUSDT", emoji: "₿" },
-      { ticker: "ETHUSDT", name: "Ethereum", source: "bybit", dataTicker: "ETHUSDT", emoji: "⟠" },
-      { ticker: "SOLUSDT", name: "Solana", source: "bybit", dataTicker: "SOLUSDT", emoji: "◎" },
-      { ticker: "XRPUSDT", name: "XRP", source: "bybit", dataTicker: "XRPUSDT", emoji: "✕" },
-      { ticker: "BNBUSDT", name: "BNB", source: "bybit", dataTicker: "BNBUSDT", emoji: "🔶" },
-      { ticker: "DOGEUSDT", name: "Dogecoin", source: "bybit", dataTicker: "DOGEUSDT", emoji: "🐕" },
-      { ticker: "ADAUSDT", name: "Cardano", source: "bybit", dataTicker: "ADAUSDT", emoji: "🔵" },
-      { ticker: "AVAXUSDT", name: "Avalanche", source: "bybit", dataTicker: "AVAXUSDT", emoji: "🔺" },
-      { ticker: "TONUSDT", name: "Toncoin", source: "bybit", dataTicker: "TONUSDT", emoji: "💎" },
-      { ticker: "SUIUSDT", name: "Sui", source: "bybit", dataTicker: "SUIUSDT", emoji: "🌊" },
+      { ticker: "BTCUSDT", name: "Bitcoin", source: "bybit", dataTicker: "BTCUSDT", emoji: "/icons/instruments/bitcoin.svg" },
+      { ticker: "ETHUSDT", name: "Ethereum", source: "bybit", dataTicker: "ETHUSDT", emoji: "/icons/instruments/ethereum.svg" },
+      { ticker: "SOLUSDT", name: "Solana", source: "bybit", dataTicker: "SOLUSDT", emoji: "/icons/instruments/solana.svg" },
+      { ticker: "XRPUSDT", name: "XRP", source: "bybit", dataTicker: "XRPUSDT", emoji: "/icons/instruments/xrp.svg" },
+      { ticker: "BNBUSDT", name: "BNB", source: "bybit", dataTicker: "BNBUSDT", emoji: "/icons/instruments/bnb.svg" },
+      { ticker: "DOGEUSDT", name: "Dogecoin", source: "bybit", dataTicker: "DOGEUSDT", emoji: "/icons/instruments/dogecoin.svg" },
+      { ticker: "ADAUSDT", name: "Cardano", source: "bybit", dataTicker: "ADAUSDT", emoji: "/icons/instruments/cardano.svg" },
+      { ticker: "AVAXUSDT", name: "Avalanche", source: "bybit", dataTicker: "AVAXUSDT", emoji: "/icons/instruments/avalanche.svg" },
+      { ticker: "TONUSDT", name: "Toncoin", source: "bybit", dataTicker: "TONUSDT", emoji: "/icons/instruments/toncoin.svg" },
+      { ticker: "SUIUSDT", name: "Sui", source: "bybit", dataTicker: "SUIUSDT", emoji: "/icons/instruments/sui-crypto.svg" },
     ],
   },
 ];
@@ -136,7 +136,7 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition border-b border-gray-50 dark:border-gray-800/20 last:border-b-0 ${
                   isSelected ? "bg-green-50 dark:bg-green-900/15" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
                 }`}>
-                <span className="text-lg shrink-0">{inst.emoji}</span>
+                <img src={inst.emoji} alt="" className="w-6 h-6 shrink-0 rounded-full" />
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-black tracking-tight ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
                     {inst.ticker}
@@ -232,7 +232,7 @@ export default function TerminalPage() {
         <div className="flex items-center gap-4">
           {/* Instrument info */}
           <div className="flex items-center gap-2">
-            <span className="text-xl">{selected.emoji}</span>
+            <img src={selected.emoji} alt="" className="w-8 h-8 rounded-full" />
             <div>
               <div className="text-lg font-black dark:text-gray-100 leading-tight">{selected.ticker}</div>
               <div className="text-[11px] text-gray-400 leading-tight">{selected.name} · {selected.source === "moex" ? "MOEX" : "Bybit"}</div>
