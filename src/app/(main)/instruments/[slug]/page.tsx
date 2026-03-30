@@ -254,9 +254,9 @@ export default function AssetPage() {
         </div>
       )}
 
-      {/* Fear & Greed + Economic Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <FearGreedIndex />
+      {/* Fear & Greed (crypto only) + Economic Calendar */}
+      <div className={`grid grid-cols-1 ${catSlug === "crypto" ? "lg:grid-cols-2" : ""} gap-4`}>
+        {catSlug === "crypto" && <FearGreedIndex />}
         <EconomicCalendar country={catSlug === "ru-stocks" ? "RU" : catSlug === "us-stocks" ? "US" : undefined} />
       </div>
 
