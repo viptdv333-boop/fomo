@@ -253,14 +253,18 @@ export default function AssetPage() {
                       isTransparent: true, locale: "ru", colorTheme,
                     });
                   } else if (isCrypto) {
-                    // Crypto: use timeline widget (news + analysis from TradingView)
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
+                    // Crypto: mini chart widget
+                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
                     script.async = true;
                     script.innerHTML = JSON.stringify({
-                      feedMode: "symbol",
                       symbol: `BINANCE:${mainTicker?.ticker || "BTCUSDT"}`,
-                      isTransparent: true, displayMode: "regular",
-                      width: "100%", height: "100%", locale: "ru", colorTheme,
+                      width: "100%", height: "100%",
+                      locale: "ru", dateRange: "12M",
+                      isTransparent: true, colorTheme,
+                      trendLineColor: "rgba(41, 190, 80, 1)",
+                      underLineColor: "rgba(41, 190, 80, 0.15)",
+                      underLineBottomColor: "rgba(41, 190, 80, 0)",
+                      noTimeScale: false,
                     });
                   } else {
                     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
