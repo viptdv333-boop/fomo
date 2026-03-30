@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
 
   // Authenticated: apply filters and pagination
   const instrumentId = searchParams.get("instrumentId");
+  const instrumentSlug = searchParams.get("instrumentSlug");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const search = searchParams.get("search");
@@ -82,6 +83,10 @@ export async function GET(request: NextRequest) {
   if (instrumentId) {
     where.instruments = {
       some: { instrumentId },
+    };
+  } else if (instrumentSlug) {
+    where.instruments = {
+      some: { instrument: { slug: instrumentSlug } },
     };
   }
   if (dateFrom || dateTo) {
