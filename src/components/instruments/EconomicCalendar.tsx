@@ -42,17 +42,19 @@ function formatVal(v: number | null, unit: string | null): string {
   return v.toString() + suffix;
 }
 
-export default function EconomicCalendar() {
+export default function EconomicCalendar({ country }: { country?: string }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/economic-calendar?days=7")
+    const params = new URLSearchParams({ days: "7" });
+    if (country) params.set("country", country);
+    fetch(`/api/economic-calendar?${params}`)
       .then((r) => r.json())
       .then(setEvents)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [country]);
 
   if (loading) {
     return <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 animate-pulse h-[300px]" />;

@@ -7,6 +7,7 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 min
 
 export async function GET(request: NextRequest) {
   const days = parseInt(request.nextUrl.searchParams.get("days") || "7");
+  const countryFilter = request.nextUrl.searchParams.get("country") || "";
 
   const from = new Date();
   const to = new Date();
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const fromStr = from.toISOString().split("T")[0];
   const toStr = to.toISOString().split("T")[0];
-  const cacheKey = `${fromStr}_${toStr}`;
+  const cacheKey = `${fromStr}_${toStr}_${countryFilter}`;
 
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
@@ -29,10 +30,13 @@ export async function GET(request: NextRequest) {
     if (!res.ok) return NextResponse.json([]);
     const data = await res.json();
 
-    // Filter: only High/Medium impact, major countries
+    // Filter by country if specified, otherwise major countries + High/Medium impact
     const majorCountries = new Set(["US", "EU", "GB", "JP", "CN", "RU", "DE", "FR"]);
     const filtered = (data || [])
-      .filter((e: any) => majorCountries.has(e.country) && (e.impact === "High" || e.impact === "Medium"))
+      .filter((e: any) => {
+        if (countryFilter) return e.country === countryFilter;
+        return majorCountries.has(e.country) && (e.impact === "High" || e.impact === "Medium");
+      })
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 30);
 

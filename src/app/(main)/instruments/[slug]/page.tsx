@@ -257,17 +257,17 @@ export default function AssetPage() {
       {/* Fear & Greed + Economic Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <FearGreedIndex />
-        <EconomicCalendar />
+        <EconomicCalendar country={catSlug === "ru-stocks" ? "RU" : catSlug === "us-stocks" ? "US" : undefined} />
       </div>
 
       {/* News */}
       <div>
         <RuNews
           category={
-            asset.category?.slug === "crypto" ? "crypto" :
-            asset.category?.slug === "stocks-ru" ? "stocks_ru" :
-            asset.category?.slug === "stocks-us" ? "stocks_us" :
-            ["oil", "gas", "metals", "agriculture"].includes(asset.category?.slug || "") ? "commodities" :
+            catSlug === "crypto" ? "crypto" :
+            catSlug === "ru-stocks" ? "stocks_ru" :
+            catSlug === "us-stocks" ? "stocks_us" :
+            ["commodities", "metals", "currencies", "indices"].includes(catSlug) ? "commodities" :
             "general"
           }
           slug={asset.slug}
