@@ -61,12 +61,16 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Instrument autocomplete state
+  // Instrument picker state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Instrument[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [catalogCategories, setCatalogCategories] = useState<{ id: string; name: string; slug: string; instruments: Instrument[] }[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogExpanded, setCatalogExpanded] = useState<Set<string>>(new Set());
 
   // Load initial instruments in edit mode
   useEffect(() => {
@@ -303,17 +307,107 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             Инструменты
           </label>
 
-          {/* Autocomplete search */}
+          {/* Instrument picker button + modal */}
           <div className="relative">
+            <button
+              type="button"
+              onClick={async () => {
+                if (catalogCategories.length === 0) {
+                  const res = await fetch("/api/categories?withInstruments=true");
+                  if (res.ok) setCatalogCategories(await res.json());
+                }
+                setShowCatalog(true);
+              }}
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-left text-gray-400 dark:text-gray-500 dark:bg-gray-800 hover:border-green-500 transition"
+            >
+              Выбрать инструмент...
+            </button>
+
+            {/* Catalog modal */}
+            {showCatalog && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowCatalog(false)}>
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <h3 className="font-semibold dark:text-gray-100">Выберите инструмент</h3>
+                    <button onClick={() => setShowCatalog(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+                  </div>
+                  <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+                    <input
+                      type="text"
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      placeholder="Поиск по тикеру или названию..."
+                      className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {catalogCategories
+                      .map((cat) => ({
+                        ...cat,
+                        instruments: cat.instruments.filter((inst: Instrument) => {
+                          if (!catalogSearch) return true;
+                          const q = catalogSearch.toLowerCase();
+                          return inst.name.toLowerCase().includes(q) || (inst.ticker?.toLowerCase().includes(q));
+                        }),
+                      }))
+                      .filter((cat) => cat.instruments.length > 0)
+                      .map((cat) => {
+                        const isExpanded = catalogExpanded.has(cat.id) || !!catalogSearch;
+                        return (
+                          <div key={cat.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = new Set(catalogExpanded);
+                                if (next.has(cat.id)) next.delete(cat.id); else next.add(cat.id);
+                                setCatalogExpanded(next);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition"
+                            >
+                              <svg className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path d="M9 5l7 7-7 7" />
+                              </svg>
+                              {cat.name}
+                              <span className="text-[10px] text-gray-300 dark:text-gray-600 ml-auto">{cat.instruments.length}</span>
+                            </button>
+                            {isExpanded && cat.instruments.map((inst: Instrument) => {
+                              const alreadySelected = selectedChips.some((c) => c.id === inst.id);
+                              return (
+                                <button
+                                  key={inst.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (!alreadySelected) {
+                                      selectInstrument(inst);
+                                    }
+                                  }}
+                                  disabled={alreadySelected}
+                                  className={`w-full text-left pl-8 pr-3 py-2 text-sm transition ${
+                                    alreadySelected ? "text-gray-400 dark:text-gray-600" : "hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-gray-200"
+                                  }`}
+                                >
+                                  <span className="font-medium text-green-600 dark:text-green-400">#{inst.ticker}</span>
+                                  <span className="text-gray-500 dark:text-gray-400"> — {inst.name}</span>
+                                  {alreadySelected && <span className="text-[10px] ml-2 text-gray-400">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Legacy autocomplete — hidden, keeping search logic */}
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              onFocus={() => {
-                if (searchResults.length > 0) setShowDropdown(true);
-              }}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+              className="hidden"
               placeholder="Поиск инструмента по тикеру или названию..."
             />
             {searchLoading && (
