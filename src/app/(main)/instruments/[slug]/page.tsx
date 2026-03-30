@@ -10,6 +10,8 @@ import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import RuNews from "@/components/instruments/RuNews";
 import CryptoFundamentals from "@/components/instruments/CryptoFundamentals";
 import FmpStats from "@/components/instruments/FmpStats";
+import FearGreedIndex from "@/components/instruments/FearGreedIndex";
+import EconomicCalendar from "@/components/instruments/EconomicCalendar";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -251,6 +253,12 @@ export default function AssetPage() {
           </div>
         </div>
       )}
+
+      {/* Fear & Greed + Economic Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <FearGreedIndex />
+        <EconomicCalendar />
+      </div>
 
       {/* News */}
       <div>
