@@ -46,6 +46,8 @@ const TERMINAL_DATA: TerminalCategory[] = [
     instruments: [
       { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "🛢️" },
       { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "🔥" },
+      { ticker: "CC", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "🍫" },
+      { ticker: "KC", name: "Кофе", source: "moex", dataTicker: "COFFEE", emoji: "☕" },
       { ticker: "WHEAT", name: "Пшеница", source: "moex", dataTicker: "WHEAT", emoji: "🌾" },
     ],
   },
@@ -63,17 +65,16 @@ const TERMINAL_DATA: TerminalCategory[] = [
     name: "Валюта", emoji: "💱", color: "#10b981",
     instruments: [
       { ticker: "Si", name: "Доллар/Рубль", source: "moex", dataTicker: "Si", emoji: "💵" },
-      { ticker: "Eu", name: "Евро/Рубль", source: "moex", dataTicker: "Eu", emoji: "💶" },
       { ticker: "CR", name: "Юань/Рубль", source: "moex", dataTicker: "CR", emoji: "💴" },
     ],
   },
   {
     name: "Индексы", emoji: "📊", color: "#8b5cf6",
     instruments: [
-      { ticker: "MIX", name: "Индекс ММВБ", source: "moex", dataTicker: "MIX", emoji: "🇷🇺" },
-      { ticker: "RTS", name: "Индекс РТС", source: "moex", dataTicker: "RTS", emoji: "📈" },
-      { ticker: "SPYF", name: "S&P 500", source: "moex", dataTicker: "SPYF", emoji: "🇺🇸" },
-      { ticker: "NASD", name: "NASDAQ 100", source: "moex", dataTicker: "NASD", emoji: "💻" },
+      { ticker: "MIX", name: "Фьючерс ММВБ", source: "moex", dataTicker: "MIX", emoji: "🇷🇺" },
+      { ticker: "RTS", name: "Фьючерс РТС", source: "moex", dataTicker: "RTS", emoji: "📈" },
+      { ticker: "SPYF", name: "Фьючерс S&P 500", source: "moex", dataTicker: "SPYF", emoji: "🇺🇸" },
+      { ticker: "NASD", name: "Фьючерс NASDAQ", source: "moex", dataTicker: "NASD", emoji: "💻" },
     ],
   },
   {
