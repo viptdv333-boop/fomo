@@ -47,10 +47,10 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
           {[
             { href: "/feed", label: "Доска" },
-            { href: "/instruments", label: "Каталог" },
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
+            { href: "/instruments", label: "Каталог" },
             // { href: "/messages", label: "Сообщения" },
             // { href: "/terminal", label: "Терминал" },
           ].map((link) => (
@@ -193,10 +193,10 @@ export default function Header() {
           )}
           {[
             { href: "/feed", label: "Доска" },
-            { href: "/instruments", label: "Каталог" },
             { href: "/channels", label: "Каналы" },
             { href: "/authors", label: "Авторы" },
             { href: "/chat", label: "Болталка" },
+            { href: "/instruments", label: "Каталог" },
             // { href: "/messages", label: "Сообщения" },
             // { href: "/terminal", label: "Терминал" },
           ].map((link) => (
