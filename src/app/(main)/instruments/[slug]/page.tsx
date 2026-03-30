@@ -239,41 +239,19 @@ export default function AssetPage() {
 
             {/* Fundamental Data + Technical Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Fundamental Data (stocks) or Crypto Overview */}
+              {/* Fundamental Data */}
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
                 <div className="h-[425px]" ref={(el) => {
                   if (!el || el.querySelector("iframe")) return;
-                  const isCrypto = asset.category?.slug === "crypto";
                   const script = document.createElement("script");
-                  if (isStock) {
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: tvSymbol, width: "100%", height: "100%",
-                      isTransparent: true, locale: "ru", colorTheme,
-                    });
-                  } else if (isCrypto) {
-                    // Crypto: mini chart widget
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: `BINANCE:${mainTicker?.ticker || "BTCUSDT"}`,
-                      width: "100%", height: "100%",
-                      locale: "ru", dateRange: "12M",
-                      isTransparent: true, colorTheme,
-                      trendLineColor: "rgba(41, 190, 80, 1)",
-                      underLineColor: "rgba(41, 190, 80, 0.15)",
-                      underLineBottomColor: "rgba(41, 190, 80, 0)",
-                      noTimeScale: false,
-                    });
-                  } else {
-                    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
-                    script.async = true;
-                    script.innerHTML = JSON.stringify({
-                      symbol: tvSymbol, width: "100%", height: "100%",
-                      isTransparent: true, locale: "ru", colorTheme,
-                    });
-                  }
+                  const isCrypto = asset.category?.slug === "crypto";
+                  const fundSymbol = isCrypto && mainTicker?.ticker ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
+                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+                  script.async = true;
+                  script.innerHTML = JSON.stringify({
+                    symbol: fundSymbol, width: "100%", height: "100%",
+                    isTransparent: true, locale: "ru", colorTheme,
+                  });
                   el.appendChild(script);
                 }} />
               </div>
@@ -285,8 +263,8 @@ export default function AssetPage() {
                   const script = document.createElement("script");
                   script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                   script.async = true;
-                  const isCryptoTA = asset.category?.slug === "crypto";
-                  const taSymbol = isCryptoTA && mainTicker?.ticker ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
+                  const isCrypto = asset.category?.slug === "crypto";
+                  const taSymbol = isCrypto && mainTicker?.ticker ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
                   script.innerHTML = JSON.stringify({
                     interval: "1D", width: "100%", isTransparent: true, height: "100%",
                     symbol: taSymbol, showIntervalTabs: true, locale: "ru", colorTheme,
