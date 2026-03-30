@@ -9,6 +9,7 @@ import IdeaCard from "@/components/ideas/IdeaCard";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import RuNews from "@/components/instruments/RuNews";
 import CryptoFundamentals from "@/components/instruments/CryptoFundamentals";
+import FmpStats from "@/components/instruments/FmpStats";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -181,89 +182,28 @@ export default function AssetPage() {
         </div>
       </div>
 
-      {/* Main chart */}
-      {mainTicker && (
+      {/* Main chart — KlineChart only, no TradingView */}
+      {mainTicker && mainTicker.dataSource && mainTicker.dataTicker && (
         <>
-          {mainTicker.dataSource && mainTicker.dataTicker ? (
-            <ChartWidget
+          <ChartWidget
               ticker={mainTicker.dataTicker}
               source={mainTicker.dataSource as any}
               name={asset.name}
               height={500}
             />
-          ) : mainTicker.tradingViewSymbol ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-              <div className="h-[500px]" ref={(el) => {
-                if (!el || el.childElementCount > 0) return;
-                const script = document.createElement("script");
-                script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-                script.async = true;
-                script.innerHTML = JSON.stringify({
-                  autosize: true, symbol: mainTicker.tradingViewSymbol, interval: "D",
-                  timezone: "Etc/UTC", theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-                  style: "1", locale: "ru", allow_symbol_change: false, save_image: true,
-                });
-                el.appendChild(script);
-              }} />
-            </div>
-          ) : null}
         </>
       )}
 
       {/* MOEX Stats for MOEX tickers */}
       {moexTicker && mainTicker?.dataSource === "moex" && <MoexStats slug={moexTicker.slug} />}
 
-      {/* Widgets: Fundamentals + Technical Analysis */}
-      {(() => {
-        const tvSymbol = mainTicker?.tradingViewSymbol || instruments.find(t => t.tradingViewSymbol)?.tradingViewSymbol;
-        const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-        const colorTheme = isDark ? "dark" : "light";
-        const isStock = catSlug === "ru-stocks" || catSlug === "us-stocks";
-        const isCrypto = catSlug === "crypto";
-        const isCryptoTA = isCrypto && mainTicker?.ticker;
-        const taSymbol = isCryptoTA ? `BINANCE:${mainTicker.ticker}` : tvSymbol;
+      {/* Statistics from API — no TradingView */}
+      {catSlug === "crypto" && <CryptoFundamentals slug={asset.slug} />}
 
-        return (
-          <div className={`grid grid-cols-1 ${isStock || isCrypto ? "lg:grid-cols-2" : ""} gap-4`}>
-            {/* Fundamental Data — only for stocks */}
-            {isStock && tvSymbol && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                <div className="h-[425px]" ref={(el) => {
-                  if (!el || el.childElementCount > 0) return;
-                  const script = document.createElement("script");
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-                  script.async = true;
-                  script.innerHTML = JSON.stringify({
-                    symbol: tvSymbol, width: "100%", height: "100%",
-                    isTransparent: true, locale: "ru", colorTheme,
-                  });
-                  el.appendChild(script);
-                }} />
-              </div>
-            )}
-
-            {/* CryptoFundamentals — only for crypto */}
-            {isCrypto && <CryptoFundamentals slug={asset.slug} />}
-
-            {/* Technical Analysis — for all if tvSymbol exists */}
-            {taSymbol && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-                <div className="h-[425px]" ref={(el) => {
-                  if (!el || el.childElementCount > 0) return;
-                  const script = document.createElement("script");
-                  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
-                  script.async = true;
-                  script.innerHTML = JSON.stringify({
-                    interval: "1D", width: "100%", isTransparent: true, height: "100%",
-                    symbol: taSymbol, showIntervalTabs: true, locale: "ru", colorTheme,
-                  });
-                  el.appendChild(script);
-                }} />
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      {/* FMP key stats for US stocks */}
+      {catSlug === "us-stocks" && mainTicker?.dataTicker && (
+        <FmpStats ticker={mainTicker.dataTicker} />
+      )}
 
       {/* Tickers table — all exchanges */}
       {asset.instruments.length > 1 && (
@@ -312,22 +252,8 @@ export default function AssetPage() {
         </div>
       )}
 
-      {/* Economic Calendar + Russian News */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
-          <div className="h-[500px]" ref={(el) => {
-            if (!el || el.childElementCount > 0) return;
-            const script = document.createElement("script");
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-              width: "100%", height: "100%", locale: "ru", importanceFilter: "0,1",
-              colorTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-              isTransparent: true,
-            });
-            el.appendChild(script);
-          }} />
-        </div>
+      {/* News */}
+      <div>
         <RuNews
           category={
             asset.category?.slug === "crypto" ? "crypto" :
