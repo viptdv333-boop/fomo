@@ -443,6 +443,8 @@ model SubscriptionTariff {
   cardNumber     String?
   yukassaShopId  String?
   yukassaSecret  String?
+  avatarUrl      String?
+  instrumentIds  String[] @default([])
   createdAt      DateTime @default(now())
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)

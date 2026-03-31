@@ -102,6 +102,8 @@ export async function POST(
       cardNumber: parsed.data.cardNumber,
       yukassaShopId: parsed.data.yukassaShopId,
       yukassaSecret: parsed.data.yukassaSecret,
+      avatarUrl: (parsed.data as any).avatarUrl || null,
+      instrumentIds: (parsed.data as any).instrumentIds || [],
     },
   });
 

@@ -116,6 +116,8 @@ export default function CreateChannelPage() {
           cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() : undefined,
           yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() : undefined,
           yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() : undefined,
+          avatarUrl: avatarUrl || undefined,
+          instrumentIds: selectedTags.map((tag) => tag.id),
         }),
       });
       if (!res.ok) {
