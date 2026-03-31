@@ -4,9 +4,24 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
+interface TariffData {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  durationDays: number;
+  paymentMethods: string[];
+  cardNumber: string | null;
+  yukassaShopId: string | null;
+  yukassaSecret: string | null;
+  avatarUrl: string | null;
+  instrumentIds: string[];
+  isActive: boolean;
+}
+
 export default function EditChannelPage() {
   const params = useParams();
-  const tariffId = params.id as string;
+  const editId = params.id as string;
   const router = useRouter();
   const { data: session } = useSession();
   const user = session?.user as any;
@@ -15,16 +30,10 @@ export default function EditChannelPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [durationDays, setDurationDays] = useState("30");
+  // Channel-level (from first tariff)
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [paymentMethods, setPaymentMethods] = useState<string[]>(["card"]);
-  const [cardNumber, setCardNumber] = useState("");
-  const [isActive, setIsActive] = useState(true);
 
   // Tags
   const [selectedTags, setSelectedTags] = useState<{ id: string; name: string; ticker: string | null; slug: string }[]>([]);
@@ -33,71 +42,161 @@ export default function EditChannelPage() {
   const [tagSearch, setTagSearch] = useState("");
   const [tagExpanded, setTagExpanded] = useState<Set<string>>(new Set());
 
-  // Load tariff data
+  // All tariffs
+  const [tariffs, setTariffs] = useState<{
+    id: string | null; // null = new
+    name: string;
+    price: string;
+    durationDays: string;
+    paymentMethods: string[];
+    cardNumber: string;
+    yukassaShopId: string;
+    yukassaSecret: string;
+    isActive: boolean;
+    description: string;
+  }[]>([]);
+
+  // Channel name/description (derived from tariff name prefix)
+  const [channelName, setChannelName] = useState("");
+  const [channelDescription, setChannelDescription] = useState("");
+
   useEffect(() => {
-    if (!tariffId || !user?.id) return;
+    if (!user?.id) return;
     fetch(`/api/users/${user.id}/tariffs`)
       .then((r) => r.json())
-      .then((tariffs: any[]) => {
-        const t = tariffs.find((t: any) => t.id === tariffId);
-        if (t) {
-          setName(t.name);
-          setDescription(t.description || "");
-          setPrice(String(Number(t.price)));
-          setDurationDays(String(t.durationDays));
-          setAvatarUrl(t.avatarUrl || "");
-          setPaymentMethods(t.paymentMethods || ["card"]);
-          setCardNumber(t.cardNumber || "");
-          setIsActive(t.isActive !== false);
-          // Load instruments
-          if (t.instrumentIds?.length) {
-            fetch(`/api/instruments?ids=${t.instrumentIds.join(",")}`)
-              .then((r) => r.json())
-              .then((instruments: any[]) => {
-                if (Array.isArray(instruments)) {
-                  setSelectedTags(instruments.map((i: any) => ({ id: i.id, name: i.name, ticker: i.ticker, slug: i.slug })));
-                }
-              })
-              .catch(() => {});
-          }
+      .then((all: TariffData[]) => {
+        if (all.length === 0) { setLoading(false); return; }
+
+        // Find the tariff we're editing to get channel info
+        const main = all.find((t) => t.id === editId) || all[0];
+
+        // Parse channel name from tariff name (format: "ChannelName: TariffName")
+        const colonIdx = main.name.indexOf(":");
+        if (colonIdx > 0) {
+          setChannelName(main.name.substring(0, colonIdx).trim());
+        } else {
+          setChannelName(main.name);
         }
+        setChannelDescription(main.description || "");
+        setAvatarUrl(main.avatarUrl || "");
+
+        // Load all tariffs
+        setTariffs(all.map((t) => {
+          const tColonIdx = t.name.indexOf(":");
+          const tariffName = tColonIdx > 0 ? t.name.substring(tColonIdx + 1).trim() : t.name;
+          return {
+            id: t.id,
+            name: tariffName,
+            price: String(t.price),
+            durationDays: String(t.durationDays),
+            paymentMethods: t.paymentMethods || ["card"],
+            cardNumber: t.cardNumber || "",
+            yukassaShopId: t.yukassaShopId || "",
+            yukassaSecret: t.yukassaSecret || "",
+            isActive: t.isActive !== false,
+            description: t.description || "",
+          };
+        }));
+
+        // Load instruments
+        if (main.instrumentIds?.length) {
+          fetch(`/api/categories?withInstruments=true`)
+            .then((r) => r.json())
+            .then((cats: any[]) => {
+              const allInst = cats.flatMap((c: any) => c.instruments);
+              const tags = main.instrumentIds.map((id: string) => allInst.find((i: any) => i.id === id)).filter(Boolean);
+              setSelectedTags(tags.map((i: any) => ({ id: i.id, name: i.name, ticker: i.ticker, slug: i.slug })));
+            })
+            .catch(() => {});
+        }
+
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [tariffId, user?.id]);
+  }, [user?.id, editId]);
+
+  function addTariff() {
+    setTariffs([...tariffs, {
+      id: null, name: "", price: "", durationDays: "30",
+      paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "",
+      isActive: true, description: "",
+    }]);
+  }
+
+  function removeTariff(idx: number) {
+    setTariffs(tariffs.filter((_, i) => i !== idx));
+  }
+
+  function updateTariff(idx: number, field: string, value: any) {
+    const updated = [...tariffs];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setTariffs(updated);
+  }
 
   async function handleSave() {
     setError("");
+    if (!channelName.trim()) { setError("Укажите название канала"); return; }
     setSaving(true);
+
     try {
-      const res = await fetch(`/api/users/${user?.id}/tariffs/${tariffId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: description.trim() || null,
-          price: parseFloat(price),
-          durationDays: parseInt(durationDays) || 30,
+      // Delete removed tariffs
+      const currentIds = tariffs.filter((t) => t.id).map((t) => t.id);
+      // We don't track deleted here — user removes via removeTariff
+
+      // Update/create each tariff
+      for (const t of tariffs) {
+        const fullName = `${channelName.trim()}: ${t.name.trim() || "Базовый"}`;
+        const body = {
+          name: fullName,
+          description: channelDescription.trim() || null,
+          price: parseFloat(t.price) || 0,
+          durationDays: parseInt(t.durationDays) || 30,
+          paymentMethods: t.paymentMethods,
+          cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() || null : null,
+          yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() || null : null,
+          yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() || null : null,
           avatarUrl: avatarUrl || null,
-          instrumentIds: selectedTags.map((t) => t.id),
-          paymentMethods,
-          cardNumber: cardNumber.trim() || null,
-          isActive,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Ошибка сохранения");
-      } else {
-        router.push("/subscriptions");
+          instrumentIds: selectedTags.map((tag) => tag.id),
+          isActive: t.isActive,
+        };
+
+        if (t.id) {
+          // Update existing
+          const res = await fetch(`/api/users/${user?.id}/tariffs/${t.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) { setError("Ошибка обновления тарифа"); setSaving(false); return; }
+        } else {
+          // Create new
+          const res = await fetch(`/api/users/${user?.id}/tariffs`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) { setError("Ошибка создания тарифа"); setSaving(false); return; }
+        }
       }
+
+      router.push("/subscriptions");
     } catch {
       setError("Ошибка сети");
     }
     setSaving(false);
   }
 
+  async function handleDeleteChannel() {
+    if (!confirm("Удалить канал и все тарифы? Подписки будут отменены.")) return;
+    for (const t of tariffs) {
+      if (t.id) await fetch(`/api/users/${user?.id}/tariffs/${t.id}`, { method: "DELETE" });
+    }
+    router.push("/subscriptions");
+  }
+
   if (loading) return <div className="text-gray-400 py-12 text-center">Загрузка...</div>;
+
+  const inputCls = "w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100";
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -137,25 +236,21 @@ export default function EditChannelPage() {
           <div className="text-sm text-gray-400">Аватарка канала</div>
         </div>
 
-        {/* Name */}
+        {/* Channel name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100" />
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название канала</label>
+          <input type="text" value={channelName} onChange={(e) => setChannelName(e.target.value)} className={inputCls} />
         </div>
 
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-            className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100" />
+          <textarea value={channelDescription} onChange={(e) => setChannelDescription(e.target.value)} rows={3} className={inputCls} />
         </div>
 
         {/* Hashtags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Хэштеги <span className="text-gray-400 font-normal">(до 5)</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Хэштеги <span className="text-gray-400 font-normal">(до 5)</span></label>
           {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {selectedTags.map((t) => (
@@ -177,6 +272,7 @@ export default function EditChannelPage() {
               + Добавить инструмент...
             </button>
           )}
+          {/* Tag picker modal */}
           {showTagPicker && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowTagPicker(false)}>
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -217,48 +313,87 @@ export default function EditChannelPage() {
           )}
         </div>
 
-        {/* Price */}
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Цена (₽)</label>
-            <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100" />
+        {/* Tariffs */}
+        <div className="border-t dark:border-gray-700 pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Тарифы</h3>
+            <button type="button" onClick={addTariff} className="text-sm text-green-600 hover:text-green-700 font-medium">+ Добавить тариф</button>
           </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Срок (дней)</label>
-            <input type="number" value={durationDays} onChange={(e) => setDurationDays(e.target.value)}
-              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100" />
+
+          <div className="space-y-4">
+            {tariffs.map((t, idx) => (
+              <div key={t.id || `new-${idx}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Тариф {idx + 1}</span>
+                  {tariffs.length > 1 && (
+                    <button type="button" onClick={() => {
+                      if (t.id) {
+                        if (confirm("Удалить тариф?")) {
+                          fetch(`/api/users/${user?.id}/tariffs/${t.id}`, { method: "DELETE" });
+                          removeTariff(idx);
+                        }
+                      } else {
+                        removeTariff(idx);
+                      }
+                    }} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Название</label>
+                  <input type="text" value={t.name} onChange={(e) => updateTariff(idx, "name", e.target.value)}
+                    placeholder="Базовый" className={`mt-1 ${inputCls}`} />
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
+                    <input type="number" value={t.price} onChange={(e) => updateTariff(idx, "price", e.target.value)}
+                      className={`mt-1 ${inputCls}`} />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Срок (дней)</label>
+                    <input type="number" value={t.durationDays} onChange={(e) => updateTariff(idx, "durationDays", e.target.value)}
+                      className={`mt-1 ${inputCls}`} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Способы оплаты</label>
+                  <label className="flex items-center gap-2 mb-2">
+                    <input type="checkbox" checked={t.paymentMethods.includes("card")}
+                      onChange={(e) => updateTariff(idx, "paymentMethods", e.target.checked ? [...t.paymentMethods, "card"] : t.paymentMethods.filter((m) => m !== "card"))}
+                      className="rounded" />
+                    <span className="text-sm dark:text-gray-300">💳 Перевод на карту</span>
+                  </label>
+                  {t.paymentMethods.includes("card") && (
+                    <input type="text" value={t.cardNumber} onChange={(e) => updateTariff(idx, "cardNumber", e.target.value)}
+                      placeholder="0000 0000 0000 0000" className={`ml-6 mb-2 ${inputCls}`} />
+                  )}
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={t.paymentMethods.includes("yukassa")}
+                      onChange={(e) => updateTariff(idx, "paymentMethods", e.target.checked ? [...t.paymentMethods, "yukassa"] : t.paymentMethods.filter((m) => m !== "yukassa"))}
+                      className="rounded" />
+                    <span className="text-sm dark:text-gray-300">🏦 ЮKassa</span>
+                  </label>
+                  {t.paymentMethods.includes("yukassa") && (
+                    <div className="ml-6 mt-2 space-y-2">
+                      <input type="text" value={t.yukassaShopId} onChange={(e) => updateTariff(idx, "yukassaShopId", e.target.value)}
+                        placeholder="Shop ID" className={inputCls} />
+                      <input type="text" value={t.yukassaSecret} onChange={(e) => updateTariff(idx, "yukassaSecret", e.target.value)}
+                        placeholder="Secret Key" className={inputCls} />
+                    </div>
+                  )}
+                </div>
+
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={t.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Активен</span>
+                </label>
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Payment methods */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Способы оплаты</label>
-          <div className="space-y-3">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={paymentMethods.includes("card")}
-                onChange={(e) => setPaymentMethods(e.target.checked ? [...paymentMethods, "card"] : paymentMethods.filter((m) => m !== "card"))}
-                className="rounded" />
-              <span className="text-sm dark:text-gray-300">💳 Перевод на карту</span>
-            </label>
-            {paymentMethods.includes("card") && (
-              <input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="0000 0000 0000 0000"
-                className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 text-sm ml-6" />
-            )}
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={paymentMethods.includes("yukassa")}
-                onChange={(e) => setPaymentMethods(e.target.checked ? [...paymentMethods, "yukassa"] : paymentMethods.filter((m) => m !== "yukassa"))}
-                className="rounded" />
-              <span className="text-sm dark:text-gray-300">🏦 ЮKassa</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Active toggle */}
-        <label className="flex items-center gap-3 py-2">
-          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" />
-          <span className="text-sm text-gray-700 dark:text-gray-300">Канал активен</span>
-        </label>
 
         {error && <div className="text-sm text-red-500">{error}</div>}
 
@@ -271,13 +406,8 @@ export default function EditChannelPage() {
           Отмена
         </button>
 
-        {/* Delete */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-          <button type="button" onClick={async () => {
-            if (!confirm("Удалить канал? Все подписки будут отменены.")) return;
-            await fetch(`/api/users/${user?.id}/tariffs/${tariffId}`, { method: "DELETE" });
-            router.push("/subscriptions");
-          }} className="text-sm text-red-500 hover:text-red-700">
+          <button type="button" onClick={handleDeleteChannel} className="text-sm text-red-500 hover:text-red-700">
             Удалить канал
           </button>
         </div>
