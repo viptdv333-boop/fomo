@@ -1,14 +1,24 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ShareButtons from "@/components/shared/ShareButtons";
+
+interface SavedPaymentMethod {
+  id: string;
+  type: string;
+  label: string;
+  details: any;
+  isDefault: boolean;
+}
 
 interface TariffRow {
   name: string;
   price: string;
   durationDays: string;
+  paymentMethodId: string; // ID of saved payment method
   paymentMethods: ("card" | "yukassa")[];
   cardNumber: string;
   yukassaShopId: string;
@@ -27,8 +37,13 @@ export default function CreateChannelPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [tariffs, setTariffs] = useState<TariffRow[]>([
-    { name: "Базовый", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" },
+    { name: "Базовый", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" },
   ]);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+
+  useEffect(() => {
+    fetch("/api/payment-methods").then((r) => r.json()).then(setSavedPaymentMethods).catch(() => {});
+  }, []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,7 +56,7 @@ export default function CreateChannelPage() {
   const [tagExpanded, setTagExpanded] = useState<Set<string>>(new Set());
 
   function addTariff() {
-    setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" }]);
+    setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" }]);
   }
 
   function removeTariff(index: number) {
@@ -86,16 +101,8 @@ export default function CreateChannelPage() {
         setError(`Некорректная цена в тарифе "${t.name}"`);
         return;
       }
-      if (t.paymentMethods.length === 0) {
+      if (!t.paymentMethodId && savedPaymentMethods.length > 0) {
         setError(`Выберите способ оплаты для тарифа "${t.name}"`);
-        return;
-      }
-      if (t.paymentMethods.includes("card") && !t.cardNumber.trim()) {
-        setError(`Укажите номер карты для тарифа "${t.name}"`);
-        return;
-      }
-      if (t.paymentMethods.includes("yukassa") && (!t.yukassaShopId.trim() || !t.yukassaSecret.trim())) {
-        setError(`Укажите настройки ЮKassa для тарифа "${t.name}"`);
         return;
       }
     }
@@ -396,87 +403,45 @@ export default function CreateChannelPage() {
                   </div>
                 </div>
 
-                {/* Payment methods */}
+                {/* Payment method — pick from saved */}
                 <div className="border-t dark:border-gray-700 pt-3">
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Способы оплаты</label>
-                  <div className="space-y-3">
-                    {/* Card transfer */}
-                    <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={t.paymentMethods.includes("card")}
-                          onChange={() => togglePaymentMethod(i, "card")}
-                          className="w-4 h-4 text-green-600 rounded"
-                        />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">💳 Перевод на карту</span>
-                          <span className="text-xs text-gray-400 ml-1">(полуавтоматический)</span>
-                        </div>
-                      </label>
-                      {t.paymentMethods.includes("card") && (
-                        <div className="mt-2 ml-6">
-                          <input
-                            type="text"
-                            value={t.cardNumber}
-                            onChange={(e) => updateTariff(i, "cardNumber", e.target.value)}
-                            className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
-                            placeholder="0000 0000 0000 0000"
-                          />
-                          <p className="text-[11px] text-gray-400 mt-1">
-                            Покупатель переводит на эту карту и присылает квитанцию. Вы подтверждаете получение.
-                          </p>
-                        </div>
-                      )}
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Способ оплаты</label>
+                  {savedPaymentMethods.length === 0 ? (
+                    <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      Нет сохранённых способов оплаты.{" "}
+                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">Добавить в профиле →</Link>
                     </div>
-
-                    {/* YuKassa */}
-                    <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={t.paymentMethods.includes("yukassa")}
-                          onChange={() => togglePaymentMethod(i, "yukassa")}
-                          className="w-4 h-4 text-green-600 rounded"
-                        />
-                        <div>
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🏦 ЮKassa</span>
-                          <span className="text-xs text-gray-400 ml-1">(автоматический)</span>
-                        </div>
-                      </label>
-                      {t.paymentMethods.includes("yukassa") && (
-                        <div className="mt-2 ml-6 space-y-2">
-                          <div>
-                            <label className="block text-[11px] text-gray-400 mb-0.5">Shop ID</label>
-                            <input
-                              type="text"
-                              value={t.yukassaShopId}
-                              onChange={(e) => updateTariff(i, "yukassaShopId", e.target.value)}
-                              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
-                              placeholder="123456"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-gray-400 mb-0.5">Секретный ключ</label>
-                            <input
-                              type="password"
-                              value={t.yukassaSecret}
-                              onChange={(e) => updateTariff(i, "yukassaSecret", e.target.value)}
-                              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
-                              placeholder="live_..."
-                            />
-                          </div>
-                          <p className="text-[11px] text-gray-400">
-                            Получите ключи в{" "}
-                            <a href="https://yookassa.ru/my/merchant/integration/api-keys" target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">
-                              личном кабинете ЮKassa
-                            </a>
-                            . Оплата проходит автоматически.
-                          </p>
-                        </div>
-                      )}
+                  ) : (
+                    <div className="space-y-1.5">
+                      {savedPaymentMethods.map((m) => {
+                        const isSelected = t.paymentMethodId === m.id;
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => {
+                              updateTariff(i, "paymentMethodId", m.id);
+                              updateTariff(i, "paymentMethods", [m.type]);
+                              if (m.type === "card") updateTariff(i, "cardNumber", m.details?.cardNumber || "");
+                              if (m.type === "yukassa") {
+                                updateTariff(i, "yukassaShopId", m.details?.yukassaShopId || "");
+                                updateTariff(i, "yukassaSecret", m.details?.yukassaSecret || "");
+                              }
+                            }}
+                            className={`w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm transition border ${
+                              isSelected ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                            }`}>
+                            <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : "₿"}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium dark:text-gray-100">{m.label}</div>
+                              {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}
+                            </div>
+                            {isSelected && (
+                              <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7" /></svg>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
