@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 interface TariffData {
   id: string;
@@ -35,6 +36,9 @@ export default function EditChannelPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Saved payment methods
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<{ id: string; type: string; label: string; details: any; isDefault: boolean }[]>([]);
+
   // Tags
   const [selectedTags, setSelectedTags] = useState<{ id: string; name: string; ticker: string | null; slug: string }[]>([]);
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -48,6 +52,7 @@ export default function EditChannelPage() {
     name: string;
     price: string;
     durationDays: string;
+    paymentMethodId: string;
     paymentMethods: string[];
     cardNumber: string;
     yukassaShopId: string;
@@ -62,6 +67,7 @@ export default function EditChannelPage() {
 
   useEffect(() => {
     if (!user?.id) return;
+    fetch("/api/payment-methods").then((r) => r.json()).then(setSavedPaymentMethods).catch(() => {});
     fetch(`/api/users/${user.id}/tariffs`)
       .then((r) => r.json())
       .then((all: TariffData[]) => {
@@ -89,6 +95,7 @@ export default function EditChannelPage() {
             name: tariffName,
             price: String(t.price),
             durationDays: String(t.durationDays),
+            paymentMethodId: "",
             paymentMethods: t.paymentMethods || ["card"],
             cardNumber: t.cardNumber || "",
             yukassaShopId: t.yukassaShopId || "",
@@ -117,7 +124,7 @@ export default function EditChannelPage() {
 
   function addTariff() {
     setTariffs([...tariffs, {
-      id: null, name: "", price: "", durationDays: "30",
+      id: null, name: "", price: "", durationDays: "30", paymentMethodId: "",
       paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "",
       isActive: true, description: "",
     }]);
@@ -359,29 +366,39 @@ export default function EditChannelPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Способы оплаты</label>
-                  <label className="flex items-center gap-2 mb-2">
-                    <input type="checkbox" checked={t.paymentMethods.includes("card")}
-                      onChange={(e) => updateTariff(idx, "paymentMethods", e.target.checked ? [...t.paymentMethods, "card"] : t.paymentMethods.filter((m) => m !== "card"))}
-                      className="rounded" />
-                    <span className="text-sm dark:text-gray-300">💳 Перевод на карту</span>
-                  </label>
-                  {t.paymentMethods.includes("card") && (
-                    <input type="text" value={t.cardNumber} onChange={(e) => updateTariff(idx, "cardNumber", e.target.value)}
-                      placeholder="0000 0000 0000 0000" className={`ml-6 mb-2 ${inputCls}`} />
-                  )}
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={t.paymentMethods.includes("yukassa")}
-                      onChange={(e) => updateTariff(idx, "paymentMethods", e.target.checked ? [...t.paymentMethods, "yukassa"] : t.paymentMethods.filter((m) => m !== "yukassa"))}
-                      className="rounded" />
-                    <span className="text-sm dark:text-gray-300">🏦 ЮKassa</span>
-                  </label>
-                  {t.paymentMethods.includes("yukassa") && (
-                    <div className="ml-6 mt-2 space-y-2">
-                      <input type="text" value={t.yukassaShopId} onChange={(e) => updateTariff(idx, "yukassaShopId", e.target.value)}
-                        placeholder="Shop ID" className={inputCls} />
-                      <input type="text" value={t.yukassaSecret} onChange={(e) => updateTariff(idx, "yukassaSecret", e.target.value)}
-                        placeholder="Secret Key" className={inputCls} />
+                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Способ оплаты</label>
+                  {savedPaymentMethods.length === 0 ? (
+                    <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      Нет сохранённых способов.{" "}
+                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">Добавить →</Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {savedPaymentMethods.map((m) => {
+                        const isSelected = t.paymentMethodId === m.id;
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => {
+                              updateTariff(idx, "paymentMethodId", m.id);
+                              updateTariff(idx, "paymentMethods", [m.type]);
+                              if (m.type === "card") updateTariff(idx, "cardNumber", m.details?.cardNumber || "");
+                              if (m.type === "yukassa") {
+                                updateTariff(idx, "yukassaShopId", m.details?.yukassaShopId || "");
+                                updateTariff(idx, "yukassaSecret", m.details?.yukassaSecret || "");
+                              }
+                            }}
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left text-sm transition border ${
+                              isSelected ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                            }`}>
+                            <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : "₿"}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium dark:text-gray-100">{m.label}</div>
+                              {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}
+                            </div>
+                            {isSelected && <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7" /></svg>}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
