@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ShareButtons from "@/components/shared/ShareButtons";
@@ -23,6 +23,9 @@ export default function CreateChannelPage() {
   const [channelName, setChannelName] = useState("");
   const [channelId, setChannelId] = useState("");
   const [description, setDescription] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [tariffs, setTariffs] = useState<TariffRow[]>([
     { name: "Базовый", price: "", durationDays: "30", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" },
   ]);
@@ -138,6 +141,45 @@ export default function CreateChannelPage() {
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Создать канал</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
+        {/* Channel avatar */}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+              </div>
+            )}
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setAvatarUploading(true);
+                const fd = new FormData();
+                fd.append("file", file);
+                fd.append("type", "avatars");
+                const res = await fetch("/api/upload", { method: "POST", body: fd });
+                if (res.ok) {
+                  const { url } = await res.json();
+                  setAvatarUrl(url);
+                }
+                setAvatarUploading(false);
+              }} />
+            <button type="button" onClick={() => avatarInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center text-xs hover:bg-green-700 shadow">
+              {avatarUploading ? "..." : "+"}
+            </button>
+          </div>
+          <div className="text-sm text-gray-400">
+            Загрузите аватарку канала<br/>
+            <span className="text-xs">JPG, PNG до 2 МБ</span>
+          </div>
+        </div>
+
         {/* Channel name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
