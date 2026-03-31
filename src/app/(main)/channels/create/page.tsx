@@ -496,6 +496,13 @@ export default function CreateChannelPage() {
         >
           {saving ? "Создание..." : "Создать канал"}
         </button>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+        >
+          Отменить
+        </button>
       </div>
     </div>
   );
