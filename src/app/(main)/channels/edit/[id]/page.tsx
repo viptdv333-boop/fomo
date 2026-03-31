@@ -22,6 +22,9 @@ export default function EditChannelPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(["card"]);
+  const [cardNumber, setCardNumber] = useState("");
+  const [isActive, setIsActive] = useState(true);
 
   // Tags
   const [selectedTags, setSelectedTags] = useState<{ id: string; name: string; ticker: string | null; slug: string }[]>([]);
@@ -43,6 +46,9 @@ export default function EditChannelPage() {
           setPrice(String(Number(t.price)));
           setDurationDays(String(t.durationDays));
           setAvatarUrl(t.avatarUrl || "");
+          setPaymentMethods(t.paymentMethods || ["card"]);
+          setCardNumber(t.cardNumber || "");
+          setIsActive(t.isActive !== false);
           // Load instruments
           if (t.instrumentIds?.length) {
             fetch(`/api/instruments?ids=${t.instrumentIds.join(",")}`)
@@ -74,6 +80,9 @@ export default function EditChannelPage() {
           durationDays: parseInt(durationDays) || 30,
           avatarUrl: avatarUrl || null,
           instrumentIds: selectedTags.map((t) => t.id),
+          paymentMethods,
+          cardNumber: cardNumber.trim() || null,
+          isActive,
         }),
       });
       if (!res.ok) {
@@ -222,12 +231,56 @@ export default function EditChannelPage() {
           </div>
         </div>
 
+        {/* Payment methods */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Способы оплаты</label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={paymentMethods.includes("card")}
+                onChange={(e) => setPaymentMethods(e.target.checked ? [...paymentMethods, "card"] : paymentMethods.filter((m) => m !== "card"))}
+                className="rounded" />
+              <span className="text-sm dark:text-gray-300">💳 Перевод на карту</span>
+            </label>
+            {paymentMethods.includes("card") && (
+              <input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="0000 0000 0000 0000"
+                className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 text-sm ml-6" />
+            )}
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={paymentMethods.includes("yukassa")}
+                onChange={(e) => setPaymentMethods(e.target.checked ? [...paymentMethods, "yukassa"] : paymentMethods.filter((m) => m !== "yukassa"))}
+                className="rounded" />
+              <span className="text-sm dark:text-gray-300">🏦 ЮKassa</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Active toggle */}
+        <label className="flex items-center gap-3 py-2">
+          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" />
+          <span className="text-sm text-gray-700 dark:text-gray-300">Канал активен</span>
+        </label>
+
         {error && <div className="text-sm text-red-500">{error}</div>}
 
         <button onClick={handleSave} disabled={saving}
           className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50">
           {saving ? "Сохранение..." : "Сохранить"}
         </button>
+        <button type="button" onClick={() => router.back()}
+          className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+          Отмена
+        </button>
+
+        {/* Delete */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+          <button type="button" onClick={async () => {
+            if (!confirm("Удалить канал? Все подписки будут отменены.")) return;
+            await fetch(`/api/users/${user?.id}/tariffs/${tariffId}`, { method: "DELETE" });
+            router.push("/subscriptions");
+          }} className="text-sm text-red-500 hover:text-red-700">
+            Удалить канал
+          </button>
+        </div>
       </div>
     </div>
   );
