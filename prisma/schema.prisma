@@ -275,11 +275,13 @@ model ChatRoom {
   isGeneral      Boolean @default(false)
   isArchived     Boolean @default(false)
   isClosed       Boolean @default(false)
+  isPrivate      Boolean @default(false)
   createdAt      DateTime @default(now())
 
-  instrument Instrument?  @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
-  asset      Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  instrument Instrument?         @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  asset      Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
   messages   ChatMessage[]
+  channelTariff SubscriptionTariff?
 }
 
 model ChatMessage {
@@ -446,10 +448,12 @@ model SubscriptionTariff {
   yukassaSecret  String?
   avatarUrl      String?
   instrumentIds  String[] @default([])
+  channelRoomId  String?  @unique
   createdAt      DateTime @default(now())
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
+  channelRoom   ChatRoom?      @relation(fields: [channelRoomId], references: [id])
 
   @@index([authorId])
 }

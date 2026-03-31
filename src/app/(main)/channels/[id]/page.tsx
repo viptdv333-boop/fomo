@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
+import ChannelDiscussion from "@/components/channels/ChannelDiscussion";
 import ShareButtons from "@/components/shared/ShareButtons";
 
 interface ChannelData {
@@ -332,6 +333,13 @@ export default function ChannelPage() {
           <span className="ml-auto text-green-600 text-sm">Профиль →</span>
         </Link>
       </div>
+
+      {/* Channel discussion */}
+      {session?.user && (
+        <div className="mt-6">
+          <ChannelDiscussion tariffId={channel.id} />
+        </div>
+      )}
 
       {/* Buy modal */}
       {showBuyModal && (
