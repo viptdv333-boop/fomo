@@ -69,6 +69,7 @@ model User {
   tariffs                SubscriptionTariff[]
   sandboxAccount         SandboxAccount?
   watchlist              WatchlistItem[]
+  paymentMethods         PaymentMethod[]
 
   @@index([status])
 }
@@ -451,6 +452,20 @@ model SubscriptionTariff {
   subscriptions Subscription[]
 
   @@index([authorId])
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "card", "yukassa", "crypto"
+  label     String   // "Тинькофф *2977", "ЮKassa Магазин"
+  details   Json     // { cardNumber: "2200...", yukassaShopId: "...", yukassaSecret: "..." }
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Language {

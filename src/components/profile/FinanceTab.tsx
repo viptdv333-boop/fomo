@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import PaymentMethodsManager from "./PaymentMethodsManager";
 
 interface PaymentItem {
   id: string;
@@ -149,6 +150,9 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Payment methods */}
+      <PaymentMethodsManager />
+
       {/* Hidden file input for receipt upload */}
       <input
         ref={fileInputRef}
