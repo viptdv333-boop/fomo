@@ -113,7 +113,7 @@ export default function SubscriptionsPage() {
                       )}
                     </div>
                     <Link
-                      href="/channels/create"
+                      href={`/channels/edit/${ch.id}`}
                       className="text-sm text-green-600 dark:text-green-400 hover:underline"
                     >
                       Настроить
