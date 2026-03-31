@@ -311,28 +311,7 @@ export default function ChannelPage() {
         </div>
       )}
 
-      {/* Author link */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Об авторе</h2>
-        <Link
-          href={`/profile/${channel.author.id}`}
-          className="flex items-center gap-3 p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-        >
-          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
-            {channel.author.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              (channel.author.displayName || "?")[0]
-            )}
-          </div>
-          <div>
-            <div className="font-medium text-gray-900 dark:text-gray-100">{channel.author.displayName}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Рейтинг: {Number(channel.author.rating).toFixed(1)} ⭐</div>
-          </div>
-          <span className="ml-auto text-green-600 text-sm">Профиль →</span>
-        </Link>
-      </div>
+      {/* Author link removed — clickable in header */}
 
       {/* Channel discussion */}
       {session?.user && (
