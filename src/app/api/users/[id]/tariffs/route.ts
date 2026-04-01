@@ -42,6 +42,8 @@ const createTariffSchema = z.object({
   cardNumber: z.string().max(30).optional(),
   yukassaShopId: z.string().max(50).optional(),
   yukassaSecret: z.string().max(200).optional(),
+  avatarUrl: z.string().optional().nullable(),
+  instrumentIds: z.array(z.string()).optional(),
 });
 
 export async function POST(
@@ -102,8 +104,8 @@ export async function POST(
       cardNumber: parsed.data.cardNumber,
       yukassaShopId: parsed.data.yukassaShopId,
       yukassaSecret: parsed.data.yukassaSecret,
-      avatarUrl: (parsed.data as any).avatarUrl || null,
-      instrumentIds: (parsed.data as any).instrumentIds || [],
+      avatarUrl: parsed.data.avatarUrl || null,
+      instrumentIds: parsed.data.instrumentIds || [],
     },
   });
 

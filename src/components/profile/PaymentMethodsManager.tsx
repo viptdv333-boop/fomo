@@ -22,6 +22,39 @@ const TYPE_LABELS: Record<string, string> = {
   crypto: "Криптокошелёк",
 };
 
+function detectCardType(num: string): string {
+  const n = num.replace(/\s/g, "");
+  if (/^2[0-9]{15}$/.test(n)) return "МИР";
+  if (/^4[0-9]{12,18}$/.test(n)) return "Visa";
+  if (/^5[1-5][0-9]{14}$/.test(n)) return "Mastercard";
+  if (/^3[47][0-9]{13}$/.test(n)) return "AmEx";
+  if (/^(62|81)[0-9]{14,17}$/.test(n)) return "UnionPay";
+  return "";
+}
+
+function validateCardNumber(num: string): string | null {
+  const clean = num.replace(/[\s-]/g, "");
+  if (!/^\d+$/.test(clean)) return "Только цифры";
+  if (clean.length < 13) return "Минимум 13 цифр";
+  if (clean.length > 19) return "Максимум 19 цифр";
+  // Luhn check
+  let sum = 0;
+  let alt = false;
+  for (let i = clean.length - 1; i >= 0; i--) {
+    let d = parseInt(clean[i]);
+    if (alt) { d *= 2; if (d > 9) d -= 9; }
+    sum += d;
+    alt = !alt;
+  }
+  if (sum % 10 !== 0) return "Неверный номер карты";
+  return null;
+}
+
+function formatCardInput(val: string): string {
+  const clean = val.replace(/\D/g, "").slice(0, 19);
+  return clean.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+}
+
 export default function PaymentMethodsManager() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +67,8 @@ export default function PaymentMethodsManager() {
   const [addYukassaShopId, setAddYukassaShopId] = useState("");
   const [addYukassaSecret, setAddYukassaSecret] = useState("");
   const [saving, setSaving] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardType, setCardType] = useState("");
 
   async function loadMethods() {
     const res = await fetch("/api/payment-methods");
@@ -45,10 +80,15 @@ export default function PaymentMethodsManager() {
 
   async function handleAdd() {
     if (!addLabel.trim()) return;
+    if (addType === "card") {
+      const err = validateCardNumber(addCardNumber);
+      if (err) { setCardError(err); return; }
+    }
     setSaving(true);
 
     const details: any = {};
-    if (addType === "card") details.cardNumber = addCardNumber.trim();
+    const cleanCard = addCardNumber.replace(/\s/g, "");
+    if (addType === "card") details.cardNumber = cleanCard;
     if (addType === "yukassa") {
       details.yukassaShopId = addYukassaShopId.trim();
       details.yukassaSecret = addYukassaSecret.trim();
@@ -116,10 +156,23 @@ export default function PaymentMethodsManager() {
           </div>
           {addType === "card" && (
             <div>
-              <label className="text-xs text-gray-500 dark:text-gray-400">Номер карты</label>
-              <input type="text" value={addCardNumber} onChange={(e) => setAddCardNumber(e.target.value)}
+              <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                Номер карты
+                {cardType && <span className="text-green-600 font-medium">{cardType}</span>}
+              </label>
+              <input type="text" value={addCardNumber}
+                onChange={(e) => {
+                  const formatted = formatCardInput(e.target.value);
+                  setAddCardNumber(formatted);
+                  setCardError(null);
+                  setCardType(detectCardType(formatted));
+                }}
                 placeholder="0000 0000 0000 0000"
-                className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+                maxLength={23}
+                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 font-mono tracking-wider ${
+                  cardError ? "border-red-500" : "dark:border-gray-700"
+                }`} />
+              {cardError && <p className="text-xs text-red-500 mt-1">{cardError}</p>}
             </div>
           )}
           {addType === "yukassa" && (
