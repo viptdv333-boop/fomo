@@ -184,16 +184,14 @@ export default function AuthorsPage() {
         const owner = authors.find(a => a.role === "OWNER");
         const top3 = [...authors].filter(a => a.role !== "OWNER").sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3);
         const podium = owner ? [owner, ...top3] : top3;
-        const labels = owner ? ["👑 Владелец", "🥇 1 место", "🥈 2 место", "🥉 3 место"] : ["🥇 1 место", "🥈 2 место", "🥉 3 место"];
-        const bgColors = owner
-          ? ["bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800", "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"]
-          : ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+        const labels = owner ? ["👑 Владелец", "ТОП 1", "ТОП 2", "ТОП 3"] : ["ТОП 1", "ТОП 2", "ТОП 3"];
 
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {podium.map((author, i) => (
-              <Link key={author.id} href={`/profile/${author.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
-                <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{labels[i]}</div>
+              <Link key={author.id} href={`/profile/${author.id}`}
+                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-green-600 bg-green-50 dark:bg-green-900/20">{labels[i]}</span>
                 <div className="flex items-center gap-3">
                   <AuthorAvatar author={author} />
                   <div className="min-w-0 flex-1">

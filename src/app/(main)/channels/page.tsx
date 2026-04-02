@@ -283,14 +283,14 @@ export default function ChannelsPage() {
 
       {/* Top 3 channels */}
       {channels.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {[...channels].sort((a, b) => b.subscribersCount - a.subscribersCount).slice(0, 3).map((ch, i) => {
-            const medals = ["🥇", "🥈", "🥉"];
-            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+            const labels = ["ТОП 1", "ТОП 2", "ТОП 3"];
             return (
-              <Link key={ch.id} href={`/channels/${ch.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+              <Link key={ch.id} href={`/channels/${ch.id}`}
+                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{medals[i]}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-green-600 bg-green-50 dark:bg-green-900/20">{labels[i]}</span>
                   <ChannelAvatar ch={ch} />
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{ch.name}</div>
