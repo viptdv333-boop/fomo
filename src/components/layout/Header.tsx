@@ -212,16 +212,25 @@ export default function Header() {
             </Link>
           ))}
           {session && (
-            <div className="border-t border-gray-100 dark:border-gray-800/30 pt-2 mt-2 space-y-1">
-              <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">+ Создать идею</Link>
-              <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Каналы и подписки</Link>
-              <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Редактировать профиль</Link>
-              <Link href="/payments" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300">Финансы</Link>
+            <>
+              <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-3">
+                <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Личный кабинет</div>
+                <div className="space-y-1">
+                  <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">+ Создать идею</Link>
+                  <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Каналы и подписки</Link>
+                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Профиль</Link>
+                  <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Финансы</Link>
+                </div>
+              </div>
               {(user?.role === "ADMIN" || user?.role === "OWNER") && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">Панель управления</Link>
+                <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
+                  <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">Панель управления</Link>
+                </div>
               )}
-              <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Выйти</button>
-            </div>
+              <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
+                <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-400 hover:text-red-500">Выйти</button>
+              </div>
+            </>
           )}
           {!session && (
             <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-green-600 font-medium">Войти</Link>
