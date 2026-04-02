@@ -75,7 +75,7 @@ export default function AuthorPage() {
           <div className="flex-1">
             <h1 className="text-2xl font-bold dark:text-gray-100">{author.displayName}</h1>
             {author.fomoId && (
-              <p className="text-sm text-gray-400">@{author.fomoId}</p>
+              <p className="text-sm text-gray-400">#{author.fomoId}</p>
             )}
             {author.bio && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{author.bio}</p>

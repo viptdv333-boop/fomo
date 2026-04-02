@@ -206,7 +206,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               {idea.author.displayName}
             </Link>
             {idea.author.fomoId && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">@{idea.author.fomoId}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">#{idea.author.fomoId}</span>
             )}
             <span className="text-xs text-gray-400 dark:text-gray-500">&middot;</span>
             <span className="text-xs text-gray-400 dark:text-gray-500">{Number(idea.author.rating).toFixed(1)}</span>

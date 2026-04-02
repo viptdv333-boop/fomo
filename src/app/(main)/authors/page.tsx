@@ -189,7 +189,7 @@ export default function AuthorsPage() {
                   <AuthorAvatar author={author} />
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{author.displayName}</div>
-                    {author.fomoId && <div className="text-xs text-gray-400">@{author.fomoId}</div>}
+                    {author.fomoId && <div className="text-xs text-gray-400">#{author.fomoId}</div>}
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
@@ -232,7 +232,7 @@ export default function AuthorsPage() {
                     <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</span>
                     <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                   </div>
-                  {author.fomoId && <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">@{author.fomoId}</div>}
+                  {author.fomoId && <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">#{author.fomoId}</div>}
                   <div className="grid grid-cols-3 gap-3 w-full mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/30">
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">⭐{Number(author.rating).toFixed(1)}</div><div className="text-[10px] text-gray-400">Рейтинг</div></div>
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[10px] text-gray-400">Идеи</div></div>
@@ -274,7 +274,7 @@ export default function AuthorsPage() {
                       <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</span>
                       <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                     </div>
-                    {author.fomoId && <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">@{author.fomoId}</div>}
+                    {author.fomoId && <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">#{author.fomoId}</div>}
                     {author.bio && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{author.bio}</p>}
                   </div>
                   <div className="flex items-center gap-6 shrink-0">
