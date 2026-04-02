@@ -132,7 +132,7 @@ function FeedPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">Доска</h1>
-        <p className="text-base text-gray-500 dark:text-gray-400">Торговые идеи и аналитика от профессиональных трейдеров</p>
+        <p className="text-base text-gray-500 dark:text-gray-400">Идеи и аналитика от профессиональных трейдеров</p>
       </div>
 
       {/* Filter bar — no border, no background */}
