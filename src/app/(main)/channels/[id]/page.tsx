@@ -205,7 +205,7 @@ export default function ChannelPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Идеи канала
+            Публикации
             {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
           </h2>
           {isOwner && (
@@ -220,7 +220,7 @@ export default function ChannelPage() {
           <div className="text-center py-8 text-gray-400">Загрузка идей...</div>
         ) : ideas.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Автор пока не опубликовал платных идей в этом канале</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Пока нет публикаций</p>
           </div>
         ) : (
           <div className="space-y-3">
