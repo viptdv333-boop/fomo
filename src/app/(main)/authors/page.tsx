@@ -125,19 +125,7 @@ export default function AuthorsPage() {
           </button>
         ))}
 
-        {[
-          { label: "5+ идей", value: "5" },
-          { label: "10+ идей", value: "10" },
-          { label: "20+ идей", value: "20" },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setIdeasFilter(ideasFilter === opt.value ? "all" : opt.value)}
-            className={pillClass(ideasFilter === opt.value)}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {/* Ideas filter removed */}
 
         {hasActiveFilters && (
           <button
