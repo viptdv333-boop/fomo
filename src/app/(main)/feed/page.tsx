@@ -362,7 +362,7 @@ function FeedPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
             const labels = ["ТОП 1", "ТОП 2", "ТОП 3"];
-            const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-gray-500 bg-gray-100 dark:bg-gray-800", "text-gray-400 bg-gray-50 dark:bg-gray-800/50"];
+            const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
             return (
               <Link key={idea.id} href={`/ideas/${idea.id}`}
                 className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">
