@@ -203,10 +203,18 @@ export default function ChannelPage() {
 
       {/* Ideas section */}
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Идеи канала
-          {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Идеи канала
+            {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
+          </h2>
+          {isOwner && (
+            <Link href={`/ideas/new?channelId=${channel.id}`}
+              className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
+              + Опубликовать
+            </Link>
+          )}
+        </div>
 
         {ideasLoading ? (
           <div className="text-center py-8 text-gray-400">Загрузка идей...</div>
