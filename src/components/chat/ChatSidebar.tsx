@@ -84,7 +84,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   })).filter(cat => cat.assets.length > 0);
 
   return (
-    <div className="w-80 shrink-0 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
+    <div className="w-full md:w-80 md:shrink-0 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
       {/* Header */}
       <div className="px-4 pt-4 pb-2 shrink-0">
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Болталка</h2>

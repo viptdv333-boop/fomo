@@ -17,6 +17,7 @@ function ChatPageInner() {
     isClosed: false,
     isArchived: false,
   });
+  const [showSidebar, setShowSidebar] = useState(!roomParam); // mobile: show sidebar by default if no room selected
 
   useEffect(() => {
     if (roomParam && roomParam !== "general") {
@@ -29,6 +30,11 @@ function ChatPageInner() {
         .catch(() => {});
     }
   }, [roomParam]);
+
+  function handleSelectRoom(room: { id: string; name: string; isClosed: boolean; isArchived: boolean }) {
+    setCurrentRoom(room);
+    setShowSidebar(false); // mobile: hide sidebar, show chat
+  }
 
   return (
     <AuthGuard>
@@ -44,10 +50,19 @@ function ChatPageInner() {
           </Link>
         </div>
 
-        {/* Content */}
+        {/* Content — responsive: on mobile show either sidebar OR chat */}
         <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
-          <ChatSidebar currentRoomId={currentRoom.id} onSelectRoom={(room) => setCurrentRoom(room)} />
-          <div className="flex-1 min-h-0">
+          {/* Sidebar: always visible on desktop, toggled on mobile */}
+          <div className={`${showSidebar ? "flex" : "hidden"} md:flex`}>
+            <ChatSidebar currentRoomId={currentRoom.id} onSelectRoom={handleSelectRoom} />
+          </div>
+          {/* Chat: always visible on desktop, toggled on mobile */}
+          <div className={`${showSidebar ? "hidden" : "flex"} md:flex flex-1 min-h-0 flex-col`}>
+            {/* Mobile back button */}
+            <button onClick={() => setShowSidebar(true)} className="md:hidden flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2 hover:text-green-600">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
+              {currentRoom.name}
+            </button>
             <ChatRoom roomId={currentRoom.id} roomName={currentRoom.name} isClosed={currentRoom.isClosed} isArchived={currentRoom.isArchived} />
           </div>
         </div>
