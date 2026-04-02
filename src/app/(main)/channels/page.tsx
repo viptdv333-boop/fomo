@@ -92,6 +92,8 @@ export default function ChannelsPage() {
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [showFilters] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
+  const [instrumentFilter, setInstrumentFilter] = useState("");
+  const [showInstrumentDropdown, setShowInstrumentDropdown] = useState(false);
 
   useEffect(() => {
     fetch("/api/channels")
@@ -156,6 +158,12 @@ export default function ChannelsPage() {
       if (ratingFilter !== "all") {
         const min = parseFloat(ratingFilter);
         if (Number(ch.author.rating) < min) return false;
+      }
+
+      // Instrument filter
+      if (instrumentFilter) {
+        const instruments = (ch as any).instruments || [];
+        if (!instruments.some((inst: any) => inst.id === instrumentFilter)) return false;
       }
 
       return true;
@@ -227,6 +235,34 @@ export default function ChannelsPage() {
             {cat.label}
           </button>
         ))}
+
+        {/* Instrument filter */}
+        <div className="relative">
+          <button onClick={() => setShowInstrumentDropdown(!showInstrumentDropdown)}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1 ${instrumentFilter ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+            Инструмент
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {showInstrumentDropdown && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowInstrumentDropdown(false)} />
+              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 w-56 max-h-60 overflow-y-auto">
+                <button onClick={() => { setInstrumentFilter(""); setShowInstrumentDropdown(false); }}
+                  className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!instrumentFilter ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+                  Все инструменты
+                </button>
+                {Array.from(new Set(channels.flatMap((ch) => ((ch as any).instruments || []).map((i: any) => JSON.stringify({ id: i.id, name: i.name, ticker: i.ticker })))))
+                  .map((s) => JSON.parse(s))
+                  .map((inst: any) => (
+                    <button key={inst.id} onClick={() => { setInstrumentFilter(inst.id); setShowInstrumentDropdown(false); }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${instrumentFilter === inst.id ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+                      #{inst.ticker || inst.name}
+                    </button>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {(
           [

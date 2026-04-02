@@ -268,62 +268,7 @@ function FeedPage() {
           )}
         </div>
 
-        {/* Author dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
-            className={`${pillClass(!!authorFilter)} inline-flex items-center gap-1`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
-            </svg>
-            {authorFilter ? authorDisplayName : "Автор"}
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          {showAuthorDropdown && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 w-56">
-                <div className="p-2 border-b dark:border-gray-700">
-                  <input
-                    type="text"
-                    placeholder="Поиск автора..."
-                    value={authorSearch}
-                    onChange={(e) => setAuthorSearch(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border dark:border-gray-600 rounded-lg text-xs focus:ring-1 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-                    autoFocus
-                  />
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  <button
-                    onClick={() => { setAuthorFilter(""); setAuthorDisplayName(""); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
-                    className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!authorFilter ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
-                  >
-                    Все авторы
-                  </button>
-                  {authorOptions
-                    .filter((a) => !authorSearch || a.displayName.toLowerCase().includes(authorSearch.toLowerCase()))
-                    .map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => { setAuthorFilter(a.id); setAuthorDisplayName(a.displayName); setAuthorSearch(""); setShowAuthorDropdown(false); setPage(1); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${authorFilter === a.id ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}
-                      >
-                        {a.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={a.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-500">{a.displayName[0]}</div>
-                        )}
-                        <span className="flex-1 truncate">{a.displayName}</span>
-                        <span className="text-gray-400 text-[10px]">{a.ideasCount}</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        {/* Author filter removed */}
 
         {/* Reset */}
         {(selectedInstrument || authorFilter) && (
