@@ -28,6 +28,7 @@ interface IdeaFormProps {
   mode: "create" | "edit";
   ideaId?: string;
   preselectedInstrumentId?: string;
+  channelId?: string;
   initialData?: {
     title: string;
     preview: string;
@@ -40,7 +41,8 @@ interface IdeaFormProps {
   };
 }
 
-export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrumentId }: IdeaFormProps) {
+export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrumentId, channelId }: IdeaFormProps) {
+  const isChannelPost = !!channelId;
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -244,16 +246,17 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
     setError("");
     setLoading(true);
 
-    const body = {
+    const body: any = {
       title,
-      preview,
+      preview: isChannelPost ? title : preview,
       content,
-      isPaid,
-      price: isPaid ? Number(price) : undefined,
-      acceptDonations: !isPaid ? acceptDonations : false,
+      isPaid: isChannelPost ? true : isPaid,
+      price: isChannelPost ? 0 : (isPaid ? Number(price) : undefined),
+      acceptDonations: isChannelPost ? false : (!isPaid ? acceptDonations : false),
       instrumentIds: selectedChips.map((c) => c.id),
       attachments: attachments.length > 0 ? attachments : undefined,
     };
+    if (channelId) body.channelId = channelId;
 
     const url = mode === "edit" ? `/api/ideas/${ideaId}` : "/api/ideas";
     const method = mode === "edit" ? "PATCH" : "POST";
@@ -302,7 +305,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
           />
         </div>
 
-        <div>
+        {!isChannelPost && <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Инструменты
           </label>
@@ -493,9 +496,9 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               Выберите хотя бы один инструмент
             </p>
           )}
-        </div>
+        </div>}
 
-        <div>
+        {!isChannelPost && <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Превью (бесплатный текст)
@@ -511,7 +514,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
             placeholder="Краткое описание идеи, видимое всем"
           />
-        </div>
+        </div>}
 
         <div>
           <div className="flex items-center justify-between mb-1">
@@ -578,7 +581,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">JPG, PNG, WebP, GIF, MP4, WebM — до 10 МБ</p>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+        {!isChannelPost && <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -606,10 +609,10 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               />
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Donations toggle — only for free ideas */}
-        {!isPaid && (
+        {!isChannelPost && !isPaid && (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
