@@ -108,21 +108,14 @@ export default function AuthorsPage() {
         <button onClick={() => handleSort("rating")} className={pillClass(sortField === "rating")}>
           Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
-        <button onClick={() => handleSort("ideasCount")} className={pillClass(sortField === "ideasCount")}>
-          Идеи {sortField === "ideasCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+        <button onClick={() => handleSort("createdAt")} className={pillClass(sortField === "createdAt")}>
+          По сроку {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
         <button onClick={() => handleSort("subscribersCount")} className={pillClass(sortField === "subscribersCount")}>
-          Подписчики {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
-        </button>
-        <button onClick={() => handleSort("createdAt")} className={pillClass(sortField === "createdAt")}>
-          Дата рег. {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          Популярность {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
 
-        {[
-          { label: "⭐ 3+", value: "3" },
-          { label: "⭐ 5+", value: "5" },
-          { label: "⭐ 7+", value: "7" },
-        ].map((opt) => (
+        {([] as { label: string; value: string }[]).map((opt) => (
           <button
             key={opt.value}
             onClick={() => setRatingFilter(ratingFilter === opt.value ? "all" : opt.value)}

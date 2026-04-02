@@ -21,15 +21,7 @@ interface Channel {
   ideasCount?: number;
 }
 
-const CATEGORIES = [
-  { label: "Все", value: "all" },
-  { label: "Фьючерсы", value: "futures" },
-  { label: "Акции", value: "stocks" },
-  { label: "Крипто", value: "crypto" },
-  { label: "Валюты", value: "forex" },
-  { label: "Обучение", value: "education" },
-  { label: "VIP", value: "vip" },
-];
+const CATEGORIES: { label: string; value: string }[] = [];
 
 const AVATAR_COLORS = [
   "bg-green-500",
@@ -238,9 +230,8 @@ export default function ChannelsPage() {
 
         {(
           [
-            { label: "Подписчики", field: "subscribers" as const },
-            { label: "Цена", field: "price" as const },
             { label: "Рейтинг", field: "rating" as const },
+            { label: "Цена", field: "price" as const },
           ] as const
         ).map((s) => (
           <button
