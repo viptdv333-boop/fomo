@@ -309,7 +309,7 @@ export default function TerminalPage() {
       {/* Main: sidebar + chart */}
       <div className="flex gap-2 flex-1 min-h-0 overflow-hidden">
         {/* Sidebar — desktop only */}
-        <div className="hidden md:flex w-72 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow flex-col overflow-hidden">
+        <div className="hidden md:flex md:flex-col w-72 shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
           <div className="p-2 shrink-0">
             <div className="relative">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
