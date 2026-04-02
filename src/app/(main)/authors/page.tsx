@@ -218,7 +218,6 @@ export default function AuthorsPage() {
                   <AuthorAvatar author={author} />
                   <div className="flex items-center gap-1.5 mt-3 mb-0.5">
                     <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</span>
-                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                   </div>
                   {author.fomoId && <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">#{author.fomoId}</div>}
                   <div className="grid grid-cols-3 gap-3 w-full mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/30">
@@ -241,7 +240,6 @@ export default function AuthorsPage() {
                     {author.avatarUrl ? <img src={author.avatarUrl} alt="" className="w-full h-full object-cover" /> : (author.displayName || "?")[0]}
                   </div>
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.displayName}</span>
-                  <svg className="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
                   <div className="flex-1" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">⭐ {Number(author.rating).toFixed(1)}</span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{author.ideasCount} идей</span>
@@ -260,8 +258,7 @@ export default function AuthorsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</span>
-                      <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5z" /></svg>
-                    </div>
+                      </div>
                     {author.fomoId && <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">#{author.fomoId}</div>}
                     {author.bio && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{author.bio}</p>}
                   </div>
