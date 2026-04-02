@@ -359,14 +359,15 @@ function FeedPage() {
 
       {/* Top 3 ideas */}
       {!loading && ideas.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
-            const medals = ["🥇", "🥈", "🥉"];
-            const bgColors = ["bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700", "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"];
+            const labels = ["ТОП 1", "ТОП 2", "ТОП 3"];
+            const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-gray-500 bg-gray-100 dark:bg-gray-800", "text-gray-400 bg-gray-50 dark:bg-gray-800/50"];
             return (
-              <Link key={idea.id} href={`/ideas/${idea.id}`} className={`rounded-xl border p-4 transition hover:shadow-md ${bgColors[i]}`}>
+              <Link key={idea.id} href={`/ideas/${idea.id}`}
+                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">{medals[i]}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
