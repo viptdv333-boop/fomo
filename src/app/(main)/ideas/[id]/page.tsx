@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
+import IdeaComments from "@/components/ideas/IdeaComments";
 
 interface IdeaDetail {
   id: string;
@@ -188,6 +189,9 @@ export default function IdeaPage() {
           onSuccess={() => loadIdea()}
         />
       )}
+
+      {/* Comments */}
+      {idea && <IdeaComments ideaId={idea.id} />}
     </div>
   );
 }

@@ -70,6 +70,7 @@ model User {
   sandboxAccount         SandboxAccount?
   watchlist              WatchlistItem[]
   paymentMethods         PaymentMethod[]
+  ideaComments           IdeaComment[]
 
   @@index([status])
 }
@@ -191,9 +192,27 @@ model Idea {
   purchases       Purchase[]
   votes           IdeaVote[]
   paymentRequests PaymentRequest[]
+  comments        IdeaComment[]
 
   @@index([createdAt])
   @@index([authorId])
+}
+
+model IdeaComment {
+  id        String   @id @default(cuid())
+  ideaId    String
+  userId    String
+  text      String
+  replyToId String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  idea    Idea          @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo IdeaComment?  @relation("CommentReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies IdeaComment[] @relation("CommentReply")
+
+  @@index([ideaId, createdAt])
 }
 
 model IdeaInstrument {
