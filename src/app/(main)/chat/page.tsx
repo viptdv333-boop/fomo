@@ -6,14 +6,16 @@ import Link from "next/link";
 import ChatRoom from "@/components/chat/ChatRoom";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
+import { useT } from "@/lib/i18n/client";
 
 function ChatPageInner() {
+  const { t } = useT();
   const searchParams = useSearchParams();
   const roomParam = searchParams.get("room");
 
   const [currentRoom, setCurrentRoom] = useState<{ id: string; name: string; isClosed: boolean; isArchived: boolean }>({
     id: roomParam || "general",
-    name: roomParam ? "..." : "Общий чат",
+    name: roomParam ? "..." : "",
     isClosed: false,
     isArchived: false,
   });
@@ -42,11 +44,11 @@ function ChatPageInner() {
         {/* Tabs */}
         <div className="flex gap-1 mb-3 shrink-0">
           <button className="px-5 py-2 rounded-lg text-sm font-medium bg-green-600 text-white">
-            💬 Болталка
+            💬 {t("nav.chat")}
           </button>
           <Link href="/messages"
             className="px-5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-            ✉️ Личные
+            ✉️ {t("chat.personal")}
           </Link>
         </div>
 

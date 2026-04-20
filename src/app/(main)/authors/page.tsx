@@ -157,8 +157,8 @@ export default function AuthorsPage() {
       {!loading && (
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
           {filtered.length === authors.length
-            ? `Всего: ${authors.length}`
-            : `Найдено: ${filtered.length} из ${authors.length}`}
+            ? `${t("channels.totalCount")} ${authors.length}`
+            : `${t("channels.foundCount")} ${filtered.length} / ${authors.length}`}
         </p>
       )}
 
@@ -167,7 +167,7 @@ export default function AuthorsPage() {
         const owner = authors.find(a => a.role === "OWNER");
         const top3 = [...authors].filter(a => a.role !== "OWNER").sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 3);
         const podium = owner ? [owner, ...top3] : top3;
-        const labels = owner ? ["👑 Владелец", "ТОП 1", "ТОП 2", "ТОП 3"] : ["ТОП 1", "ТОП 2", "ТОП 3"];
+        const labels = owner ? [t("top.owner"), t("top.1"), t("top.2"), t("top.3")] : [t("top.1"), t("top.2"), t("top.3")];
 
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -184,7 +184,7 @@ export default function AuthorsPage() {
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
                   <span>⭐ {Number(author.rating).toFixed(1)}</span>
-                  <span>{author.ideasCount} идей</span>
+                  <span>{author.ideasCount} {t("authors.ideasShort")}</span>
                   <span>👥 {author.subscribersCount}</span>
                 </div>
               </Link>
@@ -202,7 +202,7 @@ export default function AuthorsPage() {
             {hasActiveFilters ? "Авторы не найдены" : "Авторов пока нет"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {hasActiveFilters ? "Попробуйте изменить фильтры" : "Здесь будут профили авторов торговых идей"}
+            {hasActiveFilters ? t("authors.changeFilters") : t("authors.empty")}
           </p>
           {hasActiveFilters && (
             <button onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }} className="mt-3 text-sm text-green-600 hover:underline">
@@ -223,9 +223,9 @@ export default function AuthorsPage() {
                   </div>
                   {author.fomoId && <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">#{author.fomoId}</div>}
                   <div className="grid grid-cols-3 gap-3 w-full mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/30">
-                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">⭐{Number(author.rating).toFixed(1)}</div><div className="text-[10px] text-gray-400">Рейтинг</div></div>
-                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[10px] text-gray-400">Идеи</div></div>
-                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.subscribersCount}</div><div className="text-[10px] text-gray-400">Подп.</div></div>
+                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">⭐{Number(author.rating).toFixed(1)}</div><div className="text-[10px] text-gray-400">{t("authors.rating")}</div></div>
+                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[10px] text-gray-400">{t("authors.ideasLabel")}</div></div>
+                    <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.subscribersCount}</div><div className="text-[10px] text-gray-400">{t("authors.subscribers")}</div></div>
                   </div>
                 </Link>
               );
@@ -244,7 +244,7 @@ export default function AuthorsPage() {
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.displayName}</span>
                   <div className="flex-1" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">⭐ {Number(author.rating).toFixed(1)}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{author.ideasCount} идей</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{author.ideasCount} {t("authors.ideasShort")}</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">👥 {author.subscribersCount}</span>
                 </Link>
               );
@@ -264,8 +264,8 @@ export default function AuthorsPage() {
                   </div>
                   <div className="flex items-center gap-4 shrink-0 text-xs text-gray-500">
                     <span>{Number(author.rating).toFixed(1)}</span>
-                    <span>{author.ideasCount} идей</span>
-                    <span className="hidden sm:inline">{author.subscribersCount} подп.</span>
+                    <span>{author.ideasCount} {t("authors.ideasShort")}</span>
+                    <span className="hidden sm:inline">{author.subscribersCount} {t("authors.subscribers")}</span>
                   </div>
                 </Link>
               );

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface SubItem {
   id: string;
@@ -27,6 +28,7 @@ interface ChannelItem {
 }
 
 export default function SubscriptionsPage() {
+  const { t } = useT();
   const { data: session } = useSession();
   const user = session?.user as any;
   const [subs, setSubs] = useState<SubItem[]>([]);
@@ -52,7 +54,7 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Каналы и подписки</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("subs.title")}</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -64,7 +66,7 @@ export default function SubscriptionsPage() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           }`}
         >
-          Мои каналы
+          {t("subs.myChannels")}
         </button>
         <button
           onClick={() => setTab("subscriptions")}
@@ -74,7 +76,7 @@ export default function SubscriptionsPage() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           }`}
         >
-          Мои подписки {subs.length > 0 && <span className="ml-1 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">{subs.length}</span>}
+          {t("subs.mySubscriptions")} {subs.length > 0 && <span className="ml-1 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">{subs.length}</span>}
         </button>
       </div>
 
@@ -83,20 +85,20 @@ export default function SubscriptionsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Создайте платный канал, чтобы монетизировать свои идеи
+              {t("subs.createToMonetize")}
             </p>
             <Link
               href="/channels/create"
               className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition shrink-0 ml-4"
             >
-              + Создать канал
+              {t("channels.create")}
             </Link>
           </div>
 
           {channels.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
               <div className="text-4xl mb-3">📺</div>
-              <p className="text-gray-500 dark:text-gray-400">У вас пока нет каналов</p>
+              <p className="text-gray-500 dark:text-gray-400">{t("subs.noChannels")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -116,7 +118,7 @@ export default function SubscriptionsPage() {
                       href={`/channels/edit/${ch.id}`}
                       className="text-sm text-green-600 dark:text-green-400 hover:underline"
                     >
-                      Настроить
+                      {t("subs.settings")}
                     </Link>
                   </div>
                 </div>
@@ -132,13 +134,13 @@ export default function SubscriptionsPage() {
           {/* Authors section (free follows) */}
           <div>
             <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-              Авторы
+              {t("subs.authors")}
             </h2>
             {authorSubs.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
-                <p className="text-gray-400 dark:text-gray-500 text-sm">Вы не подписаны ни на одного автора</p>
+                <p className="text-gray-400 dark:text-gray-500 text-sm">{t("subs.noAuthorSubs")}</p>
                 <Link href="/authors" className="text-green-600 dark:text-green-400 hover:underline text-sm mt-2 inline-block">
-                  Найти авторов
+                  {t("subs.findAuthors")}
                 </Link>
               </div>
             ) : (
@@ -160,11 +162,11 @@ export default function SubscriptionsPage() {
                         {sub.author.displayName}
                       </Link>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Рейтинг: {Number(sub.author.rating).toFixed(1)}
+                        {t("idea.rating")} {Number(sub.author.rating).toFixed(1)}
                       </div>
                     </div>
                     <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
-                      Отписаться
+                      {t("channels.unsubscribe")}
                     </button>
                   </div>
                 ))}
@@ -175,11 +177,11 @@ export default function SubscriptionsPage() {
           {/* Channels section (paid subscriptions) */}
           <div>
             <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-              Каналы
+              {t("nav.channels")}
             </h2>
             {channelSubs.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-gray-900 rounded-xl shadow">
-                <p className="text-gray-400 dark:text-gray-500 text-sm">У вас нет платных подписок на каналы</p>
+                <p className="text-gray-400 dark:text-gray-500 text-sm">{t("subs.noChannelSubs")}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -205,7 +207,7 @@ export default function SubscriptionsPage() {
                       </div>
                     </div>
                     <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
-                      Отписаться
+                      {t("channels.unsubscribe")}
                     </button>
                   </div>
                 ))}

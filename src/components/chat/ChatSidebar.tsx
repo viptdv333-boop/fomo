@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface AssetItem {
   id: string;
@@ -30,6 +31,7 @@ const CAT_EMOJIS: Record<string, string> = {
 };
 
 export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }: Props) {
+  const { t } = useT();
   useSession(); // keep session alive
   const [categories, setCategories] = useState<CategoryGroup[]>([]);
   const [openCats, setOpenCats] = useState<Set<string>>(new Set());
@@ -87,7 +89,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     <div className="w-full md:w-80 md:shrink-0 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
       {/* Header */}
       <div className="px-4 pt-4 pb-2 shrink-0">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Болталка</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{t("nav.chat")}</h2>
       </div>
 
       {/* Search */}
@@ -98,7 +100,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </svg>
           <input
             type="text"
-            placeholder="Поиск..."
+            placeholder={t("common.search")}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -109,7 +111,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
       {/* General chat */}
       <Link
         href="/chat"
-        onClick={() => onSelectRoom?.({ id: "general", name: "Общий чат", isClosed: false, isArchived: false })}
+        onClick={() => onSelectRoom?.({ id: "general", name: t("chat.generalChat"), isClosed: false, isArchived: false })}
         className={`px-4 py-3 flex items-center gap-3 transition border-l-2 ${
           !currentRoomId && !currentSlug
             ? "bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-400"
@@ -118,8 +120,8 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
       >
         <span className="text-lg">🏠</span>
         <div>
-          <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">Общий чат</div>
-          <div className="text-xs text-gray-400">Обсуждение рынков и идей</div>
+          <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{t("chat.generalChat")}</div>
+          <div className="text-xs text-gray-400">{t("chat.discussionDesc")}</div>
         </div>
       </Link>
 
