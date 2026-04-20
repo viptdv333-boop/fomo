@@ -67,6 +67,7 @@ export const ru: Record<string, string> = {
   "terminal.currencies": "Валюта",
   "terminal.indices": "Индексы",
   "terminal.crypto": "Криптовалюты",
+  "cat.stocksUs": "Акции США",
 
   // Ideas
   "idea.title": "Заголовок",
@@ -165,6 +166,7 @@ export const en: Record<string, string> = {
   "terminal.currencies": "Currencies",
   "terminal.indices": "Indices",
   "terminal.crypto": "Cryptocurrencies",
+  "cat.stocksUs": "US Stocks",
 
   "idea.title": "Title",
   "idea.preview": "Preview (free text)",
@@ -260,6 +262,7 @@ export const cn: Record<string, string> = {
   "terminal.currencies": "货币",
   "terminal.indices": "指数",
   "terminal.crypto": "加密货币",
+  "cat.stocksUs": "美股",
 
   "idea.title": "标题",
   "idea.preview": "预览（免费文本）",

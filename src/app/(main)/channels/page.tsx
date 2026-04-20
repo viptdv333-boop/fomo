@@ -314,7 +314,7 @@ export default function ChannelsPage() {
       {channels.length >= 3 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {[...channels].sort((a, b) => b.subscribersCount - a.subscribersCount).slice(0, 3).map((ch, i) => {
-            const labels = ["ТОП 1", "ТОП 2", "ТОП 3"];
+            const labels = [t("top.1"), t("top.2"), t("top.3")];
             return (
               <Link key={ch.id} href={`/channels/${ch.id}`}
                 className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">

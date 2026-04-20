@@ -25,6 +25,16 @@ interface Props {
   onSelectRoom?: (room: { id: string; name: string; isClosed: boolean; isArchived: boolean }) => void;
 }
 
+const CAT_I18N: Record<string, string> = {
+  "ru-stocks": "terminal.stocksRu",
+  "us-stocks": "cat.stocksUs",
+  indices: "terminal.indices",
+  currencies: "terminal.currencies",
+  crypto: "terminal.crypto",
+  commodities: "terminal.commodities",
+  metals: "terminal.metals",
+};
+
 const CAT_EMOJIS: Record<string, string> = {
   "ru-stocks": "🇷🇺", "us-stocks": "🇺🇸", indices: "📊", currencies: "💱",
   crypto: "₿", commodities: "🛢️", metals: "🥇",
@@ -137,7 +147,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 <path d="M6 4l8 6-8 6V4z" />
               </svg>
               <span>{CAT_EMOJIS[cat.slug] || "📁"}</span>
-              <span>{cat.name}</span>
+              <span>{CAT_I18N[cat.slug] ? t(CAT_I18N[cat.slug]) : cat.name}</span>
               <span className="ml-auto text-[10px] text-gray-400 font-normal">{cat.assets.length}</span>
             </button>
             {openCats.has(cat.slug) && cat.assets.map(asset => {
