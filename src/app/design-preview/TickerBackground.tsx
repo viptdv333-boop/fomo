@@ -22,24 +22,53 @@ export default function ChartBackground() {
     const t0 = performance.now();
 
     // ── price series (random walk with slight upward drift) ──
-    const POINTS = 360;           // visible points
-    const TICK_MS = 700;          // new tick cadence
-    const DRIFT = 0.045;          // small positive per-tick bias
-    const VOL = 1.0;              // tick volatility
+    // Line GROWS from the left edge: one new tick is appended per TICK_MS.
+    // X position is fixed per index, so earlier ticks don't slide — the line
+    // simply extends to the right until it fills the screen, then it fades
+    // and a fresh price history starts again.
+    const MAX_POINTS = 420;       // capacity = visible span at full width
+    const TICK_MS = 500;          // new tick cadence
+    const DRIFT = 0.05;           // small positive per-tick bias
+    const VOL = 1.1;              // tick volatility
+    const HOLD_FULL_MS = 2500;    // how long to linger after filling
+    const FADE_MS = 1200;         // fade duration before reset
 
     const prices: number[] = [];
     let lastPrice = 0;
     let lastTick = performance.now();
-    // seed history so chart is filled from the start
-    for (let i = 0; i < POINTS; i++) {
+    let fullAt = 0;               // timestamp when chart reached MAX_POINTS
+    let cycleAlpha = 1;           // multiplier for chart alpha during fade
+
+    // start with a single price
+    prices.push(lastPrice);
+
+    function pushTick(now: number) {
+      if (prices.length >= MAX_POINTS) {
+        if (fullAt === 0) fullAt = now;
+        return;
+      }
       lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
       prices.push(lastPrice);
     }
 
-    function pushTick() {
-      lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
-      prices.push(lastPrice);
-      if (prices.length > POINTS) prices.shift();
+    function maybeReset(now: number) {
+      if (fullAt === 0) {
+        cycleAlpha = 1;
+        return;
+      }
+      const elapsed = now - fullAt;
+      if (elapsed < HOLD_FULL_MS) {
+        cycleAlpha = 1;
+      } else if (elapsed < HOLD_FULL_MS + FADE_MS) {
+        cycleAlpha = 1 - (elapsed - HOLD_FULL_MS) / FADE_MS;
+      } else {
+        // reset — start a new growing line
+        prices.length = 0;
+        lastPrice = 0;
+        prices.push(lastPrice);
+        fullAt = 0;
+        cycleAlpha = 1;
+      }
     }
 
     // ── shadow waves ──
@@ -91,7 +120,9 @@ export default function ChartBackground() {
     }
 
     function drawChart() {
-      // auto-scale y against current visible window
+      if (prices.length < 2) return;
+
+      // auto-scale y against current history
       let min = Infinity;
       let max = -Infinity;
       for (const p of prices) {
@@ -107,29 +138,36 @@ export default function ChartBackground() {
       const bottomPad = h * 0.15;
       const plotH = h - topPad - bottomPad;
 
+      // FIXED x step — each point keeps its x position; new ticks extend right
+      const dx = w / (MAX_POINTS - 1);
+
       const points: [number, number][] = [];
       for (let i = 0; i < prices.length; i++) {
-        const x = (i / (prices.length - 1)) * w;
+        const x = i * dx;
         const norm = (prices[i] - min) / yRange;
         const y = topPad + (1 - norm) * plotH;
         points.push([x, y]);
       }
 
-      // area fill below line — very subtle
+      const aLine = 0.22 * cycleAlpha;
+      const aFill = 0.035 * cycleAlpha;
+
+      // area fill under the currently-drawn portion only
       const grad = ctx.createLinearGradient(0, topPad, 0, h);
-      grad.addColorStop(0, "rgba(230, 230, 230, 0.035)");
+      grad.addColorStop(0, `rgba(230, 230, 230, ${aFill})`);
       grad.addColorStop(1, "rgba(230, 230, 230, 0)");
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points) ctx.lineTo(x, y);
-      ctx.lineTo(w, h);
+      const lastX = points[points.length - 1][0];
+      ctx.lineTo(lastX, h);
       ctx.lineTo(0, h);
       ctx.closePath();
       ctx.fill();
 
-      // main line — dimmed so it stays in the background
-      ctx.strokeStyle = "rgba(220, 220, 220, 0.22)";
+      // main line
+      ctx.strokeStyle = `rgba(220, 220, 220, ${aLine})`;
       ctx.lineWidth = 1.1;
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -137,18 +175,18 @@ export default function ChartBackground() {
       for (const [x, y] of points) ctx.lineTo(x, y);
       ctx.stroke();
 
-      // live tick dot at right edge — soft
+      // live tick marker at the current right end
       const last = points[points.length - 1];
-      ctx.fillStyle = "rgba(230, 230, 230, 0.55)";
+      ctx.fillStyle = `rgba(230, 230, 230, ${0.6 * cycleAlpha})`;
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 2, 0, Math.PI * 2);
+      ctx.arc(last[0], last[1], 2.2, 0, Math.PI * 2);
       ctx.fill();
-      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 14);
-      glow.addColorStop(0, "rgba(230, 230, 230, 0.15)");
+      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 16);
+      glow.addColorStop(0, `rgba(230, 230, 230, ${0.18 * cycleAlpha})`);
       glow.addColorStop(1, "rgba(230, 230, 230, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 14, 0, Math.PI * 2);
+      ctx.arc(last[0], last[1], 16, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -185,11 +223,12 @@ export default function ChartBackground() {
     }
 
     function render(now: number) {
-      // tick appends
+      // tick appends — stop accumulating when full (pushTick no-ops)
       while (now - lastTick >= TICK_MS) {
-        pushTick();
+        pushTick(now);
         lastTick += TICK_MS;
       }
+      maybeReset(now);
 
       ctx.clearRect(0, 0, w, h);
       drawChart();
