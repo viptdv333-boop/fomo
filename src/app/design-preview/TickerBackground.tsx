@@ -21,53 +21,72 @@ export default function ChartBackground() {
     let dpr = 1;
     const t0 = performance.now();
 
-    // ── price series (random walk with slight upward drift) ──
-    // Line GROWS from the left edge: one new tick is appended per TICK_MS.
-    // X position is fixed per index, so earlier ticks don't slide — the line
-    // simply extends to the right until it fills the screen, then it fades
-    // and a fresh price history starts again.
-    const MAX_POINTS = 420;       // capacity = visible span at full width
-    const TICK_MS = 500;          // new tick cadence
-    const DRIFT = 0.05;           // small positive per-tick bias
-    const VOL = 1.1;              // tick volatility
-    const HOLD_FULL_MS = 2500;    // how long to linger after filling
-    const FADE_MS = 1200;         // fade duration before reset
+    // ── session config ──
+    // Every ~10s a fresh chart grows inside a randomly-placed rectangle.
+    // After the session ends, the chart fades out and a new one appears
+    // in a different location.
+    const SESSION_MS = 10000;     // total visible time per session
+    const FADE_IN_MS = 600;
+    const FADE_OUT_MS = 900;
+    const MAX_POINTS = 75;        // ticks per session
+    const TICK_MS = Math.floor((SESSION_MS - FADE_IN_MS - FADE_OUT_MS) / MAX_POINTS);
+    const DRIFT = 0.06;
+    const VOL = 1.15;
 
-    const prices: number[] = [];
+    type Region = { x: number; y: number; width: number; height: number };
+    let region: Region = pickRegion(null);
+    let sessionStart = performance.now();
+    const prices: number[] = [0];
     let lastPrice = 0;
     let lastTick = performance.now();
-    let fullAt = 0;               // timestamp when chart reached MAX_POINTS
-    let cycleAlpha = 1;           // multiplier for chart alpha during fade
+    let cycleAlpha = 1;
 
-    // start with a single price
-    prices.push(lastPrice);
+    function rand(min: number, max: number) { return min + Math.random() * (max - min); }
 
-    function pushTick(now: number) {
-      if (prices.length >= MAX_POINTS) {
-        if (fullAt === 0) fullAt = now;
-        return;
+    function pickRegion(prev: Region | null): Region {
+      // Sample a rectangle; retry a few times to avoid heavy overlap with prev.
+      const tryPick = (): Region => {
+        const rw = rand(w * 0.28, w * 0.55);
+        const rh = rand(h * 0.16, h * 0.34);
+        const rx = rand(w * 0.02, w - rw - w * 0.02);
+        const ry = rand(h * 0.05, h - rh - h * 0.05);
+        return { x: rx, y: ry, width: rw, height: rh };
+      };
+      let r = tryPick();
+      if (prev) {
+        for (let i = 0; i < 6; i++) {
+          const dx = Math.abs((r.x + r.width / 2) - (prev.x + prev.width / 2));
+          const dy = Math.abs((r.y + r.height / 2) - (prev.y + prev.height / 2));
+          if (dx > w * 0.22 || dy > h * 0.18) break;
+          r = tryPick();
+        }
       }
+      return r;
+    }
+
+    function pushTick() {
+      if (prices.length >= MAX_POINTS) return;
       lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
       prices.push(lastPrice);
     }
 
-    function maybeReset(now: number) {
-      if (fullAt === 0) {
+    function updateSession(now: number) {
+      const elapsed = now - sessionStart;
+      if (elapsed < FADE_IN_MS) {
+        cycleAlpha = elapsed / FADE_IN_MS;
+      } else if (elapsed < SESSION_MS - FADE_OUT_MS) {
         cycleAlpha = 1;
-        return;
-      }
-      const elapsed = now - fullAt;
-      if (elapsed < HOLD_FULL_MS) {
-        cycleAlpha = 1;
-      } else if (elapsed < HOLD_FULL_MS + FADE_MS) {
-        cycleAlpha = 1 - (elapsed - HOLD_FULL_MS) / FADE_MS;
+      } else if (elapsed < SESSION_MS) {
+        cycleAlpha = (SESSION_MS - elapsed) / FADE_OUT_MS;
       } else {
-        // reset — start a new growing line
+        // new session in a new location
+        region = pickRegion(region);
+        sessionStart = now;
+        lastTick = now;
         prices.length = 0;
         lastPrice = 0;
         prices.push(lastPrice);
-        fullAt = 0;
-        cycleAlpha = 1;
+        cycleAlpha = 0;
       }
     }
 
@@ -95,6 +114,8 @@ export default function ChartBackground() {
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // re-pick region so it fits the new viewport
+      region = pickRegion(null);
     }
 
     function drawGrid() {
@@ -134,41 +155,37 @@ export default function ChartBackground() {
       max += pad;
       const yRange = max - min;
 
-      const topPad = h * 0.18;
-      const bottomPad = h * 0.15;
-      const plotH = h - topPad - bottomPad;
-
-      // FIXED x step — each point keeps its x position; new ticks extend right
-      const dx = w / (MAX_POINTS - 1);
+      // fixed dx inside the region — earlier ticks keep their x
+      const dx = region.width / (MAX_POINTS - 1);
 
       const points: [number, number][] = [];
       for (let i = 0; i < prices.length; i++) {
-        const x = i * dx;
+        const x = region.x + i * dx;
         const norm = (prices[i] - min) / yRange;
-        const y = topPad + (1 - norm) * plotH;
+        const y = region.y + (1 - norm) * region.height;
         points.push([x, y]);
       }
 
-      const aLine = 0.22 * cycleAlpha;
-      const aFill = 0.035 * cycleAlpha;
+      const aLine = 0.38 * cycleAlpha;
+      const aFill = 0.05 * cycleAlpha;
 
-      // area fill under the currently-drawn portion only
-      const grad = ctx.createLinearGradient(0, topPad, 0, h);
+      // area fill below the line, contained to the region
+      const grad = ctx.createLinearGradient(0, region.y, 0, region.y + region.height);
       grad.addColorStop(0, `rgba(230, 230, 230, ${aFill})`);
       grad.addColorStop(1, "rgba(230, 230, 230, 0)");
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points) ctx.lineTo(x, y);
-      const lastX = points[points.length - 1][0];
-      ctx.lineTo(lastX, h);
-      ctx.lineTo(0, h);
+      const lastPt = points[points.length - 1];
+      ctx.lineTo(lastPt[0], region.y + region.height);
+      ctx.lineTo(points[0][0], region.y + region.height);
       ctx.closePath();
       ctx.fill();
 
       // main line
-      ctx.strokeStyle = `rgba(220, 220, 220, ${aLine})`;
-      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = `rgba(225, 225, 225, ${aLine})`;
+      ctx.lineWidth = 1.2;
       ctx.lineJoin = "round";
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
@@ -176,17 +193,16 @@ export default function ChartBackground() {
       ctx.stroke();
 
       // live tick marker at the current right end
-      const last = points[points.length - 1];
-      ctx.fillStyle = `rgba(230, 230, 230, ${0.6 * cycleAlpha})`;
+      ctx.fillStyle = `rgba(235, 235, 235, ${0.7 * cycleAlpha})`;
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 2.2, 0, Math.PI * 2);
+      ctx.arc(lastPt[0], lastPt[1], 2.4, 0, Math.PI * 2);
       ctx.fill();
-      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 16);
-      glow.addColorStop(0, `rgba(230, 230, 230, ${0.18 * cycleAlpha})`);
-      glow.addColorStop(1, "rgba(230, 230, 230, 0)");
+      const glow = ctx.createRadialGradient(lastPt[0], lastPt[1], 0, lastPt[0], lastPt[1], 18);
+      glow.addColorStop(0, `rgba(235, 235, 235, ${0.22 * cycleAlpha})`);
+      glow.addColorStop(1, "rgba(235, 235, 235, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 16, 0, Math.PI * 2);
+      ctx.arc(lastPt[0], lastPt[1], 18, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -223,12 +239,11 @@ export default function ChartBackground() {
     }
 
     function render(now: number) {
-      // tick appends — stop accumulating when full (pushTick no-ops)
+      updateSession(now);
       while (now - lastTick >= TICK_MS) {
-        pushTick(now);
+        pushTick();
         lastTick += TICK_MS;
       }
-      maybeReset(now);
 
       ctx.clearRect(0, 0, w, h);
       drawChart();
