@@ -7,11 +7,13 @@ import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
+import { useT } from "@/lib/i18n/client";
 
 export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const pathname = usePathname();
+  const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -46,11 +48,11 @@ export default function Header() {
         {/* Desktop nav — centered */}
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
           {[
-            { href: "/feed", label: "Доска" },
-            { href: "/channels", label: "Каналы" },
-            { href: "/authors", label: "Авторы" },
-            { href: "/chat", label: "Болталка" },
-            { href: "/terminal", label: "Терминал" },
+            { href: "/feed", label: t("nav.feed") },
+            { href: "/channels", label: t("nav.channels") },
+            { href: "/authors", label: t("nav.authors") },
+            { href: "/chat", label: t("nav.chat") },
+            { href: "/terminal", label: t("nav.terminal") },
             // { href: "/messages", label: "Сообщения" },
           ].map((link) => (
             <Link
@@ -88,7 +90,7 @@ export default function Header() {
                       user?.name?.[0] || "?"
                     )}
                   </div>
-                  <span>Профиль</span>
+                  <span>{t("profile.profile")}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
 
@@ -115,19 +117,19 @@ export default function Header() {
                     {/* Menu items — each goes to a DIFFERENT page/action */}
                     <Link href="/ideas/new" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                      Создать идею
+                      {t("profile.createIdea")}
                     </Link>
                     <Link href="/subscriptions" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-                      Каналы и подписки
+                      {t("profile.subscriptions")}
                     </Link>
                     <Link href="/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      Редактировать профиль
+                      {t("profile.profile")}
                     </Link>
                     <Link href="/payments" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                      Финансы
+                      {t("profile.finance")}
                     </Link>
 
                     <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
@@ -136,7 +138,7 @@ export default function Header() {
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                        Выйти
+                        {t("profile.logout")}
                       </button>
                     </div>
                   </div>
@@ -152,7 +154,7 @@ export default function Header() {
             </>
           ) : (
             <Link href="/login" className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition">
-              Войти
+              {t("nav.login")}
             </Link>
           )}
         </div>
@@ -191,11 +193,11 @@ export default function Header() {
             </div>
           )}
           {[
-            { href: "/feed", label: "Доска" },
-            { href: "/channels", label: "Каналы" },
-            { href: "/authors", label: "Авторы" },
-            { href: "/chat", label: "Болталка" },
-            { href: "/terminal", label: "Терминал" },
+            { href: "/feed", label: t("nav.feed") },
+            { href: "/channels", label: t("nav.channels") },
+            { href: "/authors", label: t("nav.authors") },
+            { href: "/chat", label: t("nav.chat") },
+            { href: "/terminal", label: t("nav.terminal") },
             // { href: "/messages", label: "Сообщения" },
           ].map((link) => (
             <Link
@@ -214,17 +216,17 @@ export default function Header() {
           {session && (
             <>
               <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-3">
-                <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Личный кабинет</div>
+                <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{t("profile.cabinet")}</div>
                 <div className="space-y-1">
-                  <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">+ Создать идею</Link>
-                  <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Каналы и подписки</Link>
-                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Профиль</Link>
-                  <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">Финансы</Link>
+                  <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.createIdea")}</Link>
+                  <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.subscriptions")}</Link>
+                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.profile")}</Link>
+                  <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.finance")}</Link>
                 </div>
               </div>
               {(user?.role === "ADMIN" || user?.role === "OWNER") && (
                 <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
-                  <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">Панель управления</Link>
+                  <Link href="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-red-600 font-medium">{t("profile.admin")}</Link>
                 </div>
               )}
               <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">

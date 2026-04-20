@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
+import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import { prisma } from "@/lib/prisma";
 
@@ -39,8 +40,10 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
-          <SiteSettingsInjector />
-          {children}
+          <I18nProvider>
+            <SiteSettingsInjector />
+            {children}
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

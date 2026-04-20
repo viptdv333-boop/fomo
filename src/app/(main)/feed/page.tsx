@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
+import { useT } from "@/lib/i18n/client";
 
 interface Instrument {
   id: string;
@@ -58,6 +59,7 @@ export default function FeedPageWrapper() {
 function FeedPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const { t } = useT();
   const [ideas, setIdeas] = useState<IdeaData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedInstrument, setSelectedInstrument] = useState<string>(
@@ -131,8 +133,8 @@ function FeedPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">Доска</h1>
-        <p className="text-base text-gray-500 dark:text-gray-400">Идеи и аналитика от профессиональных трейдеров</p>
+        <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">{t("feed.title")}</h1>
+        <p className="text-base text-gray-500 dark:text-gray-400">{t("feed.subtitle")}</p>
       </div>
 
       {/* Filter bar — no border, no background */}
@@ -142,13 +144,13 @@ function FeedPage() {
           onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
           className={pillClass(paidFilter === "paid")}
         >
-          Платные
+          {t("feed.paid")}
         </button>
         <button
           onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
           className={pillClass(paidFilter === "free")}
         >
-          Бесплатные
+          {t("feed.free")}
         </button>
         <button
           onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
