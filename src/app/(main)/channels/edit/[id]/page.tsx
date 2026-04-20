@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface TariffData {
   id: string;
@@ -21,6 +22,7 @@ interface TariffData {
 }
 
 export default function EditChannelPage() {
+  const { t } = useT();
   const params = useParams();
   const editId = params.id as string;
   const router = useRouter();
@@ -201,13 +203,13 @@ export default function EditChannelPage() {
     router.push("/subscriptions");
   }
 
-  if (loading) return <div className="text-gray-400 py-12 text-center">Загрузка...</div>;
+  if (loading) return <div className="text-gray-400 py-12 text-center">...</div>;
 
   const inputCls = "w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100";
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Настройки канала</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("channels.settings")}</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
         {/* Avatar */}
@@ -240,24 +242,24 @@ export default function EditChannelPage() {
               {avatarUploading ? "..." : "✎"}
             </button>
           </div>
-          <div className="text-sm text-gray-400">Аватарка канала</div>
+          <div className="text-sm text-gray-400">{t("channels.avatar")}</div>
         </div>
 
         {/* Channel name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название канала</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.nameLabel")}</label>
           <input type="text" value={channelName} onChange={(e) => setChannelName(e.target.value)} className={inputCls} />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.description")}</label>
           <textarea value={channelDescription} onChange={(e) => setChannelDescription(e.target.value)} rows={3} className={inputCls} />
         </div>
 
         {/* Hashtags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Хэштеги <span className="text-gray-400 font-normal">(до 5)</span></label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.hashtags")} <span className="text-gray-400 font-normal">(≤5)</span></label>
           {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {selectedTags.map((t) => (
@@ -276,7 +278,7 @@ export default function EditChannelPage() {
               }
               setShowTagPicker(true);
             }} className="px-3 py-2 border dark:border-gray-700 rounded-lg text-sm text-gray-400 dark:bg-gray-800 hover:border-green-500 transition w-full text-left">
-              + Добавить инструмент...
+              {t("channels.addInstrument")}
             </button>
           )}
           {/* Tag picker modal */}
@@ -284,11 +286,11 @@ export default function EditChannelPage() {
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowTagPicker(false)}>
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                  <h3 className="font-semibold dark:text-gray-100">Выберите инструмент</h3>
+                  <h3 className="font-semibold dark:text-gray-100">{t("channels.selectInstrument")}</h3>
                   <button onClick={() => setShowTagPicker(false)} className="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
                 <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
-                  <input type="text" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Поиск..."
+                  <input type="text" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder={t("common.search")}
                     className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" autoFocus />
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
@@ -323,15 +325,15 @@ export default function EditChannelPage() {
         {/* Tariffs */}
         <div className="border-t dark:border-gray-700 pt-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Тарифы</h3>
-            <button type="button" onClick={addTariff} className="text-sm text-green-600 hover:text-green-700 font-medium">+ Добавить тариф</button>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("channels.tariffs")}</h3>
+            <button type="button" onClick={addTariff} className="text-sm text-green-600 hover:text-green-700 font-medium">{t("channels.addTariff")}</button>
           </div>
 
           <div className="space-y-4">
             {tariffs.map((t, idx) => (
               <div key={t.id || `new-${idx}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Тариф {idx + 1}</span>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("channels.tariff")} {idx + 1}</span>
                   {tariffs.length > 1 && (
                     <button type="button" onClick={() => {
                       if (t.id) {
@@ -347,30 +349,30 @@ export default function EditChannelPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400">Название</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.name")}</label>
                   <input type="text" value={t.name} onChange={(e) => updateTariff(idx, "name", e.target.value)}
                     placeholder="Базовый" className={`mt-1 ${inputCls}`} />
                 </div>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.price_rub")}</label>
                     <input type="number" value={t.price} onChange={(e) => updateTariff(idx, "price", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-gray-500 dark:text-gray-400">Срок (дней)</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.duration")}</label>
                     <input type="number" value={t.durationDays} onChange={(e) => updateTariff(idx, "durationDays", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Способ оплаты</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t("channels.paymentMethod")}</label>
                   {savedPaymentMethods.length === 0 ? (
                     <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      Нет сохранённых способов.{" "}
-                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">Добавить →</Link>
+                      {t("channels.noPaymentMethods")}.{" "}
+                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">{t("channels.addInProfile")} →</Link>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -405,7 +407,7 @@ export default function EditChannelPage() {
 
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={t.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Активен</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t("channels.active")}</span>
                 </label>
               </div>
             ))}
@@ -416,16 +418,16 @@ export default function EditChannelPage() {
 
         <button onClick={handleSave} disabled={saving}
           className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50">
-          {saving ? "Сохранение..." : "Сохранить"}
+          {saving ? t("channels.saving") : t("common.save")}
         </button>
         <button type="button" onClick={() => router.back()}
           className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-          Отмена
+          {t("common.cancel")}
         </button>
 
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
           <button type="button" onClick={handleDeleteChannel} className="text-sm text-red-500 hover:text-red-700">
-            Удалить канал
+            {t("channels.delete")}
           </button>
         </div>
       </div>

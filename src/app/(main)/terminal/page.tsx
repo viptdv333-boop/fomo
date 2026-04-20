@@ -3,6 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { DataSource } from "@/components/instruments/ChartWidget";
+import { useT } from "@/lib/i18n/client";
+
+const CATEGORY_I18N: Record<string, string> = {
+  "Акции ММВБ": "terminal.stocksRu",
+  "Сырьё": "terminal.commodities",
+  "Металлы": "terminal.metals",
+  "Валюта": "terminal.currencies",
+  "Индексы": "terminal.indices",
+  "Криптовалюты": "terminal.crypto",
+};
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -114,11 +124,12 @@ interface QuoteData {
 }
 
 /* ── Collapsible category ── */
-function CategorySection({ cat, selected, onSelect, quotes }: {
+function CategorySection({ cat, selected, onSelect, quotes, tFn }: {
   cat: TerminalCategory;
   selected: TerminalInstrument | null;
   onSelect: (inst: TerminalInstrument) => void;
   quotes: Record<string, QuoteData>;
+  tFn?: (key: string) => string;
 }) {
   const hasSelected = cat.instruments.some((i) => i.dataTicker === selected?.dataTicker);
   const [open, setOpen] = useState(hasSelected);
@@ -131,7 +142,7 @@ function CategorySection({ cat, selected, onSelect, quotes }: {
           <path d="M9 5l7 7-7 7" />
         </svg>
         {CATEGORY_ICONS[cat.name] && <img src={CATEGORY_ICONS[cat.name]} alt="" className="w-8 h-8 shrink-0 rounded-full" />}
-        <span>{cat.name}</span>
+        <span>{tFn ? tFn(CATEGORY_I18N[cat.name] || cat.name) : cat.name}</span>
         <span className="text-xs text-gray-400 ml-auto font-normal">{cat.instruments.length}</span>
       </button>
       {open && (
@@ -185,6 +196,7 @@ function fmtVol(v: number): string {
 }
 
 export default function TerminalPage() {
+  const { t } = useT();
   const [selected, setSelected] = useState<TerminalInstrument>(TERMINAL_DATA[0].instruments[0]);
   const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
   const [search, setSearch] = useState("");
@@ -272,7 +284,7 @@ export default function TerminalPage() {
               </div>
             </div>
           ) : (
-            <div className="text-sm text-gray-400 animate-pulse">Загрузка...</div>
+            <div className="text-sm text-gray-400 animate-pulse">...</div>
           )}
         </div>
       </div>
@@ -293,13 +305,13 @@ export default function TerminalPage() {
                 <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                 </svg>
-                <input type="text" placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)}
+                <input type="text" placeholder={t("terminal.search")} value={search} onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-8 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs dark:bg-gray-800 dark:text-gray-100 focus:ring-1 focus:ring-green-500" />
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-1">
               {filteredCategories.map((cat) => (
-                <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={(inst) => { setSelected(inst); setMobileMenuOpen(false); }} quotes={quotes} />
+                <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={(inst) => { setSelected(inst); setMobileMenuOpen(false); }} quotes={quotes} tFn={t} />
               ))}
             </div>
           </div>
@@ -315,13 +327,13 @@ export default function TerminalPage() {
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
               </svg>
-              <input type="text" placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)}
+              <input type="text" placeholder={t("terminal.search")} value={search} onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-8 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs dark:bg-gray-800 dark:text-gray-100 focus:ring-1 focus:ring-green-500" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-1">
             {filteredCategories.map((cat) => (
-              <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={setSelected} quotes={quotes} />
+              <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={setSelected} quotes={quotes} tFn={t} />
             ))}
           </div>
         </div>

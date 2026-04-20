@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
+import { useT } from "@/lib/i18n/client";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -192,6 +193,7 @@ function IconReply() {
 
 /* ── Component ── */
 export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm }: ChatRoomProps) {
+  const { t } = useT();
   const { data: session } = useSession();
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
@@ -540,7 +542,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 px-4 py-4 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-gray-400 dark:text-gray-500 py-12 text-sm">
-              Нет сообщений. Начните общение!
+              {t("chat.notFound")}
             </div>
           )}
 
@@ -792,7 +794,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                     sendMessage(e as any);
                   }
                 }}
-                data-placeholder="Написать сообщение..."
+                data-placeholder={t("chat.writeMessage")}
                 className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[40px] max-h-[120px] overflow-y-auto [&_img]:inline-block [&_img]:align-middle"
               />
 
