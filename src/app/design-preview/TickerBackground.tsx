@@ -115,10 +115,10 @@ export default function ChartBackground() {
         points.push([x, y]);
       }
 
-      // area fill below line
+      // area fill below line — very subtle
       const grad = ctx.createLinearGradient(0, topPad, 0, h);
-      grad.addColorStop(0, "rgba(230, 230, 235, 0.10)");
-      grad.addColorStop(1, "rgba(230, 230, 235, 0)");
+      grad.addColorStop(0, "rgba(230, 230, 230, 0.035)");
+      grad.addColorStop(1, "rgba(230, 230, 230, 0)");
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
@@ -128,28 +128,27 @@ export default function ChartBackground() {
       ctx.closePath();
       ctx.fill();
 
-      // main line
-      ctx.strokeStyle = "rgba(235, 235, 240, 0.65)";
-      ctx.lineWidth = 1.4;
+      // main line — dimmed so it stays in the background
+      ctx.strokeStyle = "rgba(220, 220, 220, 0.22)";
+      ctx.lineWidth = 1.1;
       ctx.lineJoin = "round";
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points) ctx.lineTo(x, y);
       ctx.stroke();
 
-      // live tick dot at right edge
+      // live tick dot at right edge — soft
       const last = points[points.length - 1];
-      ctx.fillStyle = "rgba(245, 245, 250, 0.95)";
+      ctx.fillStyle = "rgba(230, 230, 230, 0.55)";
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 2.8, 0, Math.PI * 2);
+      ctx.arc(last[0], last[1], 2, 0, Math.PI * 2);
       ctx.fill();
-      // soft glow
-      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 18);
-      glow.addColorStop(0, "rgba(245, 245, 250, 0.35)");
-      glow.addColorStop(1, "rgba(245, 245, 250, 0)");
+      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 14);
+      glow.addColorStop(0, "rgba(230, 230, 230, 0.15)");
+      glow.addColorStop(1, "rgba(230, 230, 230, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(last[0], last[1], 18, 0, Math.PI * 2);
+      ctx.arc(last[0], last[1], 14, 0, Math.PI * 2);
       ctx.fill();
     }
 
