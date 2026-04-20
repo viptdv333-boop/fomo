@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface Channel {
   id: string;
@@ -78,6 +79,7 @@ function ChannelAvatar({ ch }: { ch: Channel }) {
 
 export default function ChannelsPage() {
   const { data: session } = useSession();
+  const { t } = useT();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,13 +207,13 @@ export default function ChannelsPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Каналы</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("channels.title")}</h1>
           {session && (
             <Link
               href="/channels/create"
               className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-all duration-150"
             >
-              + Создать канал
+              {t("channels.create")}
             </Link>
           )}
         </div>

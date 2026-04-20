@@ -10,7 +10,7 @@ export const ru: Record<string, string> = {
 
   // Profile menu
   "profile.cabinet": "Личный кабинет",
-  "profile.createIdea": "+ Создать идею",
+  "profile.createIdea": "Создать идею",
   "profile.subscriptions": "Каналы и подписки",
   "profile.profile": "Профиль",
   "profile.finance": "Финансы",
@@ -113,7 +113,7 @@ export const en: Record<string, string> = {
   "nav.login": "Log in",
 
   "profile.cabinet": "Account",
-  "profile.createIdea": "+ Create idea",
+  "profile.createIdea": "Create idea",
   "profile.subscriptions": "Channels & Subscriptions",
   "profile.profile": "Profile",
   "profile.finance": "Finance",
@@ -208,7 +208,7 @@ export const cn: Record<string, string> = {
   "nav.login": "登录",
 
   "profile.cabinet": "个人中心",
-  "profile.createIdea": "+ 创建想法",
+  "profile.createIdea": "创建想法",
   "profile.subscriptions": "频道和订阅",
   "profile.profile": "个人资料",
   "profile.finance": "财务",

@@ -16,6 +16,14 @@ export default function Header() {
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [hiddenPages, setHiddenPages] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/site-settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.hiddenPages) setHiddenPages(data.hiddenPages); })
+      .catch(() => {});
+  }, []);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -54,7 +62,7 @@ export default function Header() {
             { href: "/chat", label: t("nav.chat") },
             { href: "/terminal", label: t("nav.terminal") },
             // { href: "/messages", label: "Сообщения" },
-          ].map((link) => (
+          ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -199,7 +207,7 @@ export default function Header() {
             { href: "/chat", label: t("nav.chat") },
             { href: "/terminal", label: t("nav.terminal") },
             // { href: "/messages", label: "Сообщения" },
-          ].map((link) => (
+          ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link
               key={link.href}
               href={link.href}

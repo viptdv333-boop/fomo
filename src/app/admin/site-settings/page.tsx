@@ -10,7 +10,16 @@ interface Settings {
   footerCode: string | null;
   headerCodePages: string[];
   footerCodePages: string[];
+  hiddenPages: string[];
 }
+
+const NAV_PAGES = [
+  { slug: "feed", label: "Доска" },
+  { slug: "channels", label: "Каналы" },
+  { slug: "authors", label: "Авторы" },
+  { slug: "chat", label: "Болталка" },
+  { slug: "terminal", label: "Терминал" },
+];
 
 function PageList({
   pages,
@@ -293,6 +302,35 @@ export default function SiteSettingsPage() {
               />
             </>
           )}
+        </div>
+
+        {/* Page visibility */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Видимость страниц</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Отключите страницы которые не должны показываться в меню сайта</p>
+          <div className="space-y-2">
+            {NAV_PAGES.map((page) => {
+              const hidden = (settings.hiddenPages || []).includes(page.slug);
+              return (
+                <label key={page.slug} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!hidden}
+                    onChange={(e) => {
+                      const current = settings.hiddenPages || [];
+                      const next = e.target.checked
+                        ? current.filter((s) => s !== page.slug)
+                        : [...current, page.slug];
+                      setSettings({ ...settings, hiddenPages: next });
+                    }}
+                    className="rounded"
+                  />
+                  <span className="text-sm dark:text-gray-200">{page.label}</span>
+                  <span className="text-xs text-gray-400 font-mono">/{page.slug}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         {/* Save */}

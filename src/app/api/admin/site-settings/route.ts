@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { metaTitle, metaDescription, faviconUrl, headerCode, footerCode, headerCodePages, footerCodePages } = body;
+  const { metaTitle, metaDescription, faviconUrl, headerCode, footerCode, headerCodePages, footerCodePages, hiddenPages } = body;
 
   const settings = await prisma.siteSettings.upsert({
     where: { id: "singleton" },
@@ -40,6 +40,7 @@ export async function PUT(request: NextRequest) {
       footerCode,
       headerCodePages: headerCodePages || [],
       footerCodePages: footerCodePages || [],
+      hiddenPages: hiddenPages || [],
     },
     update: {
       ...(metaTitle !== undefined && { metaTitle }),
@@ -49,6 +50,7 @@ export async function PUT(request: NextRequest) {
       ...(footerCode !== undefined && { footerCode }),
       ...(headerCodePages !== undefined && { headerCodePages }),
       ...(footerCodePages !== undefined && { footerCodePages }),
+      ...(hiddenPages !== undefined && { hiddenPages }),
     },
   });
 

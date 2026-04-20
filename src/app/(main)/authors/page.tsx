@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface Author {
   id: string;
@@ -45,6 +46,7 @@ function AuthorAvatar({ author }: { author: Author }) {
 }
 
 export default function AuthorsPage() {
+  const { t } = useT();
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,19 +102,19 @@ export default function AuthorsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold dark:text-gray-100">Авторы</h1>
+        <h1 className="text-2xl font-bold dark:text-gray-100">{t("authors.title")}</h1>
       </div>
 
       {/* Filter bar — inline pills like Feed */}
       <div className="flex items-center gap-2 flex-wrap mb-6">
         <button onClick={() => handleSort("rating")} className={pillClass(sortField === "rating")}>
-          Рейтинг {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          {t("authors.rating")} {sortField === "rating" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
         <button onClick={() => handleSort("createdAt")} className={pillClass(sortField === "createdAt")}>
-          По сроку {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          {t("authors.byDate")} {sortField === "createdAt" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
         <button onClick={() => handleSort("subscribersCount")} className={pillClass(sortField === "subscribersCount")}>
-          Популярность {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+          {t("authors.popularity")} {sortField === "subscribersCount" ? (sortDir === "desc" ? "↓" : "↑") : ""}
         </button>
 
         {([] as { label: string; value: string }[]).map((opt) => (

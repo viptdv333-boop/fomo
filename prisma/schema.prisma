@@ -532,6 +532,7 @@ model SiteSettings {
   footerCode     String? // HTML/JS code injected before </body>
   headerCodePages String[] @default([]) // empty = all pages, or list of paths
   footerCodePages String[] @default([]) // empty = all pages, or list of paths
+  hiddenPages     String[] @default([]) // hide from main nav: feed, channels, authors, chat, terminal
 }
 
 model WatchlistItem {

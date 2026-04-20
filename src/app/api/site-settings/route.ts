@@ -14,6 +14,7 @@ export async function GET() {
     footerCode: settings.footerCode,
     headerCodePages: settings.headerCodePages,
     footerCodePages: settings.footerCodePages,
+    hiddenPages: (settings as any).hiddenPages || [],
   }, {
     headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
   });
