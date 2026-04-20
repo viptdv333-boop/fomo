@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface WatchlistAsset {
   id: string;
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function WatchlistWidget({ userId, isOwner = false }: Props) {
+  const { t } = useT();
   const [items, setItems] = useState<WatchlistAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,7 +71,7 @@ export default function WatchlistWidget({ userId, isOwner = false }: Props) {
       width: "100%",
       height: Math.max(400, symbols.length * 50 + 200),
       tabs: [{
-        title: "Список наблюдения",
+        title: t("watch.title"),
         symbols: symbols.map(([name, s]) => ({ s, d: name })),
         originalTitle: "Watchlist",
       }],
@@ -118,16 +120,16 @@ export default function WatchlistWidget({ userId, isOwner = false }: Props) {
       <div className="p-4 border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            👁 Список наблюдения
+            👁 {t("watch.title")}
           </h3>
-          <span className="text-xs text-gray-400">{items.length} шт.</span>
+          <span className="text-xs text-gray-400">{items.length} {t("watch.count")}</span>
         </div>
 
         {/* Add instrument (owner only) */}
         {isOwner && (
           <div className="relative">
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="+ Добавить инструмент..."
+              placeholder={t("watch.add")}
               className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100" />
             {searching && <div className="absolute right-3 top-2.5 text-xs text-gray-400">...</div>}
             {searchResults.length > 0 && (
@@ -146,10 +148,10 @@ export default function WatchlistWidget({ userId, isOwner = false }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400 text-center py-8">Загрузка...</div>
+        <div className="text-sm text-gray-400 text-center py-8">...</div>
       ) : items.length === 0 ? (
         <div className="text-sm text-gray-400 text-center py-8">
-          {isOwner ? "Добавьте инструменты для отслеживания" : "Список пуст"}
+          {isOwner ? t("watch.addHelp") : t("watch.empty")}
         </div>
       ) : (
         <>

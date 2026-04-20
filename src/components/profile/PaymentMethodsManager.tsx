@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface PaymentMethod {
   id: string;
@@ -56,6 +57,7 @@ function formatCardInput(val: string): string {
 }
 
 export default function PaymentMethodsManager() {
+  const { t } = useT();
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -129,10 +131,10 @@ export default function PaymentMethodsManager() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Способы оплаты</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t("pm.title")}</h3>
         <button onClick={() => setShowAdd(!showAdd)}
           className="text-sm text-green-600 hover:text-green-700 font-medium">
-          {showAdd ? "Отмена" : "+ Добавить"}
+          {showAdd ? t("common.cancel") : t("pm.add")}
         </button>
       </div>
 
@@ -140,7 +142,7 @@ export default function PaymentMethodsManager() {
       {showAdd && (
         <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Тип</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.type")}</label>
             <select value={addType} onChange={(e) => setAddType(e.target.value)}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100">
               <option value="card">💳 Банковская карта</option>
@@ -149,7 +151,7 @@ export default function PaymentMethodsManager() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Название (для вас)</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.label")}</label>
             <input type="text" value={addLabel} onChange={(e) => setAddLabel(e.target.value)}
               placeholder="Тинькофф, Сбер, ЮMoney..."
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
@@ -157,7 +159,7 @@ export default function PaymentMethodsManager() {
           {addType === "card" && (
             <div>
               <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                Номер карты
+                {t("pm.cardNumber")}
                 {cardType && <span className="text-green-600 font-medium">{cardType}</span>}
               </label>
               <input type="text" value={addCardNumber}
@@ -191,16 +193,16 @@ export default function PaymentMethodsManager() {
           )}
           <button onClick={handleAdd} disabled={saving || !addLabel.trim()}
             className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">
-            {saving ? "..." : "Сохранить"}
+            {saving ? "..." : t("common.save")}
           </button>
         </div>
       )}
 
       {/* List */}
       {loading ? (
-        <div className="text-sm text-gray-400 py-4 text-center">Загрузка...</div>
+        <div className="text-sm text-gray-400 py-4 text-center">...</div>
       ) : methods.length === 0 ? (
-        <div className="text-sm text-gray-400 py-4 text-center">Нет сохранённых способов оплаты</div>
+        <div className="text-sm text-gray-400 py-4 text-center">{t("pm.noMethods")}</div>
       ) : (
         <div className="space-y-2">
           {methods.map((m) => (
@@ -209,7 +211,7 @@ export default function PaymentMethodsManager() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium dark:text-gray-100 flex items-center gap-2">
                   {m.label}
-                  {m.isDefault && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded">По умолч.</span>}
+                  {m.isDefault && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded">{t("pm.default")}</span>}
                 </div>
                 <div className="text-xs text-gray-400">
                   {TYPE_LABELS[m.type] || m.type}
@@ -218,9 +220,9 @@ export default function PaymentMethodsManager() {
               </div>
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
                 {!m.isDefault && (
-                  <button onClick={() => handleSetDefault(m.id)} className="text-xs text-green-600 hover:text-green-700">По умолч.</button>
+                  <button onClick={() => handleSetDefault(m.id)} className="text-xs text-green-600 hover:text-green-700">{t("pm.default")}</button>
                 )}
-                <button onClick={() => handleDelete(m.id)} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                <button onClick={() => handleDelete(m.id)} className="text-xs text-red-500 hover:text-red-700">{t("common.delete")}</button>
               </div>
             </div>
           ))}

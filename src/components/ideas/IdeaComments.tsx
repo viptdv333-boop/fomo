@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useT } from "@/lib/i18n/client";
 
 interface Comment {
   id: string;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function IdeaComments({ ideaId }: Props) {
+  const { t } = useT();
   const { data: session } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState("");
@@ -55,14 +57,14 @@ export default function IdeaComments({ ideaId }: Props) {
     <div className="mt-4">
       <div className="flex items-center gap-2 mb-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          💬 Обсуждение
+          💬 {t("idea.comments")}
         </h4>
         <span className="text-xs text-gray-400">{comments.length}</span>
       </div>
 
       {/* Comments */}
       {loading ? (
-        <div className="text-xs text-gray-400 py-2">Загрузка...</div>
+        <div className="text-xs text-gray-400 py-2">...</div>
       ) : comments.length > 0 ? (
         <div className="space-y-2 mb-3">
           {comments.map((c) => (
@@ -88,11 +90,11 @@ export default function IdeaComments({ ideaId }: Props) {
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   {session?.user && (
                     <button onClick={() => { setReplyTo(c); inputRef.current?.focus(); }}
-                      className="text-[10px] text-gray-400 hover:text-green-600">Ответить</button>
+                      className="text-[10px] text-gray-400 hover:text-green-600">{t("idea.reply")}</button>
                   )}
                   {(session?.user?.id === c.user.id || (session?.user as any)?.role === "ADMIN") && (
                     <button onClick={() => handleDelete(c.id)}
-                      className="text-[10px] text-gray-400 hover:text-red-500">Удалить</button>
+                      className="text-[10px] text-gray-400 hover:text-red-500">{t("common.delete")}</button>
                   )}
                 </div>
               </div>
@@ -114,14 +116,14 @@ export default function IdeaComments({ ideaId }: Props) {
             <input ref={inputRef} type="text" value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
-              placeholder="Написать комментарий..."
+              placeholder={t("idea.writeComment")}
               className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
             <button onClick={handleSend} disabled={sending || !input.trim()}
               className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">→</button>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-gray-400">Войдите, чтобы комментировать</p>
+        <p className="text-xs text-gray-400">{t("nav.login")}</p>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
+import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
   "bg-green-600", "bg-teal-600", "bg-emerald-600", "bg-cyan-600",
@@ -61,6 +62,7 @@ interface IdeaCardProps {
 }
 
 export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardProps) {
+  const { t } = useT();
   const { data: session } = useSession();
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
@@ -290,7 +292,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             onClick={() => setShowReport(!showReport)}
             className="text-[10px] text-gray-300 dark:text-gray-600 hover:text-red-400 transition"
           >
-            {reportSent ? "Жалоба отправлена" : "Пожаловаться"}
+            {reportSent ? t("report.sent") : t("report.button")}
           </button>
         </div>
       )}

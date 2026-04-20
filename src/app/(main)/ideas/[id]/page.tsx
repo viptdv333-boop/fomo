@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import IdeaComments from "@/components/ideas/IdeaComments";
+import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
   id: string;
@@ -30,6 +31,7 @@ interface IdeaDetail {
 }
 
 export default function IdeaPage() {
+  const { t } = useT();
   const params = useParams();
   const { data: session } = useSession();
   const [idea, setIdea] = useState<IdeaDetail | null>(null);
@@ -54,8 +56,8 @@ export default function IdeaPage() {
     loadIdea();
   }
 
-  if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
-  if (!idea) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Идея не найдена</div>;
+  if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">...</div>;
+  if (!idea) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">{t("idea.notFound")}</div>;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -77,7 +79,7 @@ export default function IdeaPage() {
               {idea.author.displayName}
             </Link>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Рейтинг: {Number(idea.author.rating).toFixed(1)} ·{" "}
+              {t("idea.rating")} {Number(idea.author.rating).toFixed(1)} ·{" "}
               {new Date(idea.createdAt).toLocaleDateString("ru", {
                 day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
               })}
@@ -89,7 +91,7 @@ export default function IdeaPage() {
           <h1 className="text-2xl font-bold">{idea.title}</h1>
           {session?.user?.id === idea.author.id && (
             <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
-              Редактировать
+              {t("common.edit")}
             </Link>
           )}
         </div>
@@ -112,7 +114,7 @@ export default function IdeaPage() {
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
             <div className="text-4xl mb-3">🔒</div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Полный контент доступен после оплаты
+              {t("idea.fullContentLocked")}
             </p>
             <div className="flex gap-3 justify-center">
               {idea.price && (
@@ -120,7 +122,7 @@ export default function IdeaPage() {
                   onClick={() => setShowPayModal(true)}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
                 >
-                  Купить за {idea.price} ₽
+                  {t("idea.buyFor")} {idea.price} ₽
                 </button>
               )}
             </div>
@@ -153,7 +155,7 @@ export default function IdeaPage() {
                   : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-green-600"
               }`}
             >
-              ▲ Нравится
+              {t("idea.like")}
             </button>
             <span className={`text-lg font-bold ${
               idea.voteScore > 0 ? "text-green-600" : idea.voteScore < 0 ? "text-red-600" : "text-gray-400"
@@ -168,7 +170,7 @@ export default function IdeaPage() {
                   : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-600"
               }`}
             >
-              ▼ Не нравится
+              {t("idea.dislike")}
             </button>
           </div>
         )}
