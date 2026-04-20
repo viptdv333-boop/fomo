@@ -30,8 +30,10 @@ export default function ChartBackground() {
     const FADE_OUT_MS = 900;
     const MAX_POINTS = 75;        // ticks per session
     const TICK_MS = Math.floor((SESSION_MS - FADE_IN_MS - FADE_OUT_MS) / MAX_POINTS);
-    const DRIFT = 0.06;
+    const DRIFT_ABS = 0.12;       // magnitude of per-session drift (signed)
     const VOL = 1.15;
+
+    let sessionDrift = (Math.random() - 0.5) * 2 * DRIFT_ABS; // random up/down each session
 
     type Region = { x: number; y: number; width: number; height: number };
     let region: Region = pickRegion(null);
@@ -66,7 +68,7 @@ export default function ChartBackground() {
 
     function pushTick() {
       if (prices.length >= MAX_POINTS) return;
-      lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
+      lastPrice += sessionDrift + (Math.random() - 0.5) * VOL;
       prices.push(lastPrice);
     }
 
@@ -79,13 +81,14 @@ export default function ChartBackground() {
       } else if (elapsed < SESSION_MS) {
         cycleAlpha = (SESSION_MS - elapsed) / FADE_OUT_MS;
       } else {
-        // new session in a new location
+        // new session in a new location, fresh random drift direction
         region = pickRegion(region);
         sessionStart = now;
         lastTick = now;
         prices.length = 0;
         lastPrice = 0;
         prices.push(lastPrice);
+        sessionDrift = (Math.random() - 0.5) * 2 * DRIFT_ABS;
         cycleAlpha = 0;
       }
     }
