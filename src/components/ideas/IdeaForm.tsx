@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmojiPicker from "@/components/ui/EmojiPicker";
+import { useT } from "@/lib/i18n/client";
 
 interface Instrument {
   id: string;
@@ -42,6 +43,7 @@ interface IdeaFormProps {
 }
 
 export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrumentId, channelId }: IdeaFormProps) {
+  const { t } = useT();
   const isChannelPost = !!channelId;
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -293,7 +295,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Заголовок
+            {t("idea.title")}
           </label>
           <input
             type="text"
@@ -301,13 +303,13 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             onChange={(e) => setTitle(e.target.value)}
             required
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-            placeholder="Краткий заголовок идеи"
+            placeholder={t("idea.titlePlaceholder")}
           />
         </div>
 
         {!isChannelPost && <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Инструменты
+            {t("feed.instruments")}
           </label>
 
           {/* Instrument picker button + modal */}
@@ -323,7 +325,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               }}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-left text-gray-400 dark:text-gray-500 dark:bg-gray-800 hover:border-green-500 transition"
             >
-              Выбрать инструмент...
+              {t("idea.selectInstrument")}
             </button>
 
             {/* Catalog modal */}
@@ -493,7 +495,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
 
           {selectedChips.length === 0 && (
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-              Выберите хотя бы один инструмент
+              {t("idea.atLeastOneInstrument")}
             </p>
           )}
         </div>}
@@ -501,7 +503,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
         {!isChannelPost && <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Превью (бесплатный текст)
+              {t("idea.preview")}
             </label>
             <EmojiPicker onSelect={(emoji) => insertEmojiAt(previewRef, setPreview, preview, emoji)} />
           </div>
@@ -512,14 +514,14 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             required
             rows={3}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-            placeholder="Краткое описание идеи, видимое всем"
+            placeholder={t("idea.previewPlaceholder")}
           />
         </div>}
 
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Полный контент
+              {t("idea.content")}
             </label>
             <EmojiPicker onSelect={(emoji) => insertEmojiAt(contentRef, setContent, content, emoji)} />
           </div>
@@ -530,14 +532,14 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             required
             rows={10}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-            placeholder="Детальный анализ, прогноз, обоснование..."
+            placeholder={t("idea.contentPlaceholder")}
           />
         </div>
 
         {/* Attachments */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Вложения (фото/видео)
+            {t("idea.attachmentsLabel")}
           </label>
 
           {attachments.length > 0 && (
@@ -568,7 +570,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             disabled={uploading}
             className="px-4 py-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition disabled:opacity-50"
           >
-            {uploading ? "Загрузка..." : "+ Добавить файлы"}
+            {uploading ? "..." : t("idea.addFiles")}
           </button>
           <input
             ref={fileInputRef}
@@ -589,13 +591,13 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               onChange={(e) => setIsPaid(e.target.checked)}
               className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-green-600 focus:ring-green-500"
             />
-            <span className="font-medium dark:text-gray-100">Платная идея</span>
+            <span className="font-medium dark:text-gray-100">{t("idea.paid")}</span>
           </label>
 
           {isPaid && (
             <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Цена (₽)
+                {t("idea.priceRub")}
               </label>
               <input
                 type="number"
@@ -622,9 +624,9 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                 className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-green-600 focus:ring-green-500"
               />
               <div>
-                <span className="font-medium dark:text-gray-100">Принимать донаты</span>
+                <span className="font-medium dark:text-gray-100">{t("idea.acceptDonations")}</span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Читатели смогут отправить вам благодарность за идею. Настройте карту для донатов в профиле.
+                  {t("idea.acceptDonationsDesc")}
                 </p>
               </div>
             </label>
@@ -641,8 +643,8 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               ? "Сохранение..."
               : "Публикация..."
             : mode === "edit"
-            ? "Сохранить изменения"
-            : "Опубликовать"}
+            ? t("idea.save")
+            : t("idea.publish")}
         </button>
       </form>
     </>

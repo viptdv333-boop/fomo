@@ -7,6 +7,7 @@ import Link from "next/link";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import ChannelDiscussion from "@/components/channels/ChannelDiscussion";
 import ShareButtons from "@/components/shared/ShareButtons";
+import { useT } from "@/lib/i18n/client";
 
 interface ChannelData {
   id: string;
@@ -35,6 +36,7 @@ interface IdeaData {
 }
 
 export default function ChannelPage() {
+  const { t } = useT();
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -110,7 +112,7 @@ export default function ChannelPage() {
   if (loading) {
     return (
       <div className="text-center py-16 text-gray-500 dark:text-gray-400">
-        Загрузка...
+        ...
       </div>
     );
   }
@@ -120,16 +122,13 @@ export default function ChannelPage() {
       <div className="text-center py-16">
         <div className="text-5xl mb-4">📡</div>
         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Канал не найден
+          {t("channels.notFound")}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Возможно, канал был удалён или ссылка некорректна.
-        </p>
         <button
           onClick={() => router.push("/channels")}
           className="text-green-600 hover:underline text-sm"
         >
-          ← Вернуться к каналам
+          {t("channels.backToChannels")}
         </button>
       </div>
     );
@@ -142,7 +141,7 @@ export default function ChannelPage() {
         onClick={() => router.push("/channels")}
         className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4 inline-flex items-center gap-1"
       >
-        ← Все каналы
+        {t("channels.allChannels")}
       </button>
 
       {/* Channel header */}
@@ -167,7 +166,7 @@ export default function ChannelPage() {
             </Link>
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
               <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
-              <span>👥 {channel.subscribersCount} подписчиков</span>
+              <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
             </div>
           </div>
 
@@ -189,7 +188,7 @@ export default function ChannelPage() {
               onClick={() => setShowBuyModal(true)}
               className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
             >
-              Купить подписку
+              {t("channels.buySubscription")}
             </button>
           )}
           {isSubscribed && (
@@ -205,22 +204,22 @@ export default function ChannelPage() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Публикации
+            {t("channels.publications")}
             {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
           </h2>
           {isOwner && (
             <Link href={`/ideas/new?channelId=${channel.id}`}
               className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
-              + Опубликовать
+              {t("channels.publish")}
             </Link>
           )}
         </div>
 
         {ideasLoading ? (
-          <div className="text-center py-8 text-gray-400">Загрузка идей...</div>
+          <div className="text-center py-8 text-gray-400">...</div>
         ) : ideas.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Пока нет публикаций</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">{t("channels.noPublications")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -277,12 +276,12 @@ export default function ChannelPage() {
                     {/* Lock overlay */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 dark:bg-gray-900/60">
                       <div className="text-3xl mb-2">🔒</div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Доступно по подписке</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t("channels.availableBySubscription")}</p>
                       <button
                         onClick={handleBuyFromLock}
                         className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700 transition"
                       >
-                        Купить подписку
+                        {t("channels.buySubscription")}
                       </button>
                     </div>
                   </div>
@@ -297,7 +296,7 @@ export default function ChannelPage() {
       {otherTariffs.length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6 mb-4">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Другие каналы автора
+            {t("channels.otherAuthor")}
           </h2>
           <div className="space-y-2">
             {otherTariffs.map((t) => (

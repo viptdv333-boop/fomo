@@ -421,6 +421,51 @@ Object.assign(ru, {
   "profile.contactUser": "Написать",
   "profile.age": "Возраст:",
   "profile.workLabel": "Работа:",
+  "idea.titlePlaceholder": "Краткий заголовок идеи",
+  "idea.selectInstrument": "Выбрать инструмент...",
+  "idea.atLeastOneInstrument": "Выберите хотя бы один инструмент",
+  "idea.previewPlaceholder": "Краткое описание идеи, видимое всем",
+  "idea.contentPlaceholder": "Детальный анализ, прогноз, обоснование...",
+  "idea.attachmentsLabel": "Вложения (фото/видео)",
+  "idea.addFiles": "Добавить файлы",
+  "idea.fileFormats": "JPG, PNG, WebP, GIF, MP4, WebM — до 10 МБ",
+  "idea.acceptDonations": "Принимать донаты",
+  "idea.acceptDonationsDesc": "Читатели смогут отправить вам благодарность за идею. Настройте карту для донатов в профиле.",
+  "idea.priceRub": "Цена (₽)",
+  "idea.pricePlaceholder": "100",
+  "idea.save": "Сохранить изменения",
+});
+
+Object.assign(en, {
+  "idea.titlePlaceholder": "Short idea title",
+  "idea.selectInstrument": "Select instrument...",
+  "idea.atLeastOneInstrument": "Select at least one instrument",
+  "idea.previewPlaceholder": "Short description visible to everyone",
+  "idea.contentPlaceholder": "Detailed analysis, forecast, reasoning...",
+  "idea.attachmentsLabel": "Attachments (photo/video)",
+  "idea.addFiles": "Add files",
+  "idea.fileFormats": "JPG, PNG, WebP, GIF, MP4, WebM — up to 10 MB",
+  "idea.acceptDonations": "Accept donations",
+  "idea.acceptDonationsDesc": "Readers can send you a thank you for your idea. Configure the donation card in your profile.",
+  "idea.priceRub": "Price (RUB)",
+  "idea.pricePlaceholder": "100",
+  "idea.save": "Save changes",
+});
+
+Object.assign(cn, {
+  "idea.titlePlaceholder": "简短的想法标题",
+  "idea.selectInstrument": "选择工具...",
+  "idea.atLeastOneInstrument": "至少选择一个工具",
+  "idea.previewPlaceholder": "所有人可见的简短描述",
+  "idea.contentPlaceholder": "详细分析、预测、理由...",
+  "idea.attachmentsLabel": "附件（照片/视频）",
+  "idea.addFiles": "添加文件",
+  "idea.fileFormats": "JPG, PNG, WebP, GIF, MP4, WebM — 最大 10 MB",
+  "idea.acceptDonations": "接受打赏",
+  "idea.acceptDonationsDesc": "读者可以向您发送感谢。请在个人资料中设置打赏卡。",
+  "idea.priceRub": "价格 (卢布)",
+  "idea.pricePlaceholder": "100",
+  "idea.save": "保存更改",
 });
 
 Object.assign(en, {

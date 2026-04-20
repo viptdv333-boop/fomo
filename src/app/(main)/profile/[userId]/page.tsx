@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
+import { useT } from "@/lib/i18n/client";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   trader: "Трейдер",
@@ -63,6 +64,7 @@ function calcAge(birthDate: string): number {
 }
 
 export default function AuthorProfilePage() {
+  const { t } = useT();
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -110,8 +112,8 @@ export default function AuthorProfilePage() {
     }
   }
 
-  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
-  if (!profile) return <div className="text-gray-500 py-12 text-center">Пользователь не найден</div>;
+  if (loading) return <div className="text-gray-500 py-12 text-center">...</div>;
+  if (!profile) return <div className="text-gray-500 py-12 text-center">{t("authors.notFound")}</div>;
 
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
 
@@ -137,11 +139,11 @@ export default function AuthorProfilePage() {
                 <div className="text-gray-600 dark:text-gray-400 text-sm">{fullName}</div>
               )}
               <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                <span>Рейтинг: <strong className="text-gray-700 dark:text-gray-300">{Number(profile.rating).toFixed(1)}</strong></span>
+                <span>{t("idea.rating")} <strong className="text-gray-700 dark:text-gray-300">{Number(profile.rating).toFixed(1)}</strong></span>
                 <span>·</span>
-                <span>{profile.followerCount} подписчиков</span>
+                <span>{profile.followerCount} {t("channels.subscribers")}</span>
                 <span>·</span>
-                <span>{profile.ideaCount} идей</span>
+                <span>{profile.ideaCount} {t("authors.ideasShort")}</span>
               </div>
               {profile.bio && (
                 <p className="text-gray-600 dark:text-gray-400 mt-2">{profile.bio}</p>
@@ -166,7 +168,7 @@ export default function AuthorProfilePage() {
                   }}
                   className="px-4 py-2 rounded-lg text-sm font-medium border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition"
                 >
-                  Написать
+                  {t("profile.contactUser")}
                 </button>
               )}
               <button
@@ -177,14 +179,14 @@ export default function AuthorProfilePage() {
                     : "bg-green-600 text-white hover:bg-green-700"
                 }`}
               >
-                {profile.isFollowing ? "Отписаться" : "Подписаться"}
+                {profile.isFollowing ? t("channels.unsubscribe") : t("channels.subscribe")}
               </button>
               {hasTariffs && (
                 <button
                   onClick={() => setShowBuyModal(true)}
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition"
                 >
-                  Купить подписку
+                  {t("channels.buySubscription")}
                 </button>
               )}
             </div>
@@ -210,25 +212,25 @@ export default function AuthorProfilePage() {
           <div className="mt-4 pt-4 border-t dark:border-gray-700 grid grid-cols-2 gap-3 text-sm">
             {profile.city && (
               <div>
-                <span className="text-gray-500 dark:text-gray-400">Город: </span>
+                <span className="text-gray-500 dark:text-gray-400">{t("profile.city")}: </span>
                 <span className="text-gray-700 dark:text-gray-300">{profile.city}</span>
               </div>
             )}
             {profile.birthDate && (
               <div>
-                <span className="text-gray-500 dark:text-gray-400">Возраст: </span>
+                <span className="text-gray-500 dark:text-gray-400">{t("profile.age")} </span>
                 <span className="text-gray-700 dark:text-gray-300">{calcAge(profile.birthDate)} лет</span>
               </div>
             )}
             {profile.workplace && (
               <div>
-                <span className="text-gray-500 dark:text-gray-400">Работа: </span>
+                <span className="text-gray-500 dark:text-gray-400">{t("profile.workLabel")} </span>
                 <span className="text-gray-700 dark:text-gray-300">{profile.workplace}</span>
               </div>
             )}
             {profile.exchangeExperience && (
               <div>
-                <span className="text-gray-500 dark:text-gray-400">Опыт на бирже: </span>
+                <span className="text-gray-500 dark:text-gray-400">{t("profile.exchangeExp")}: </span>
                 <span className="text-gray-700 dark:text-gray-300">{profile.exchangeExperience}</span>
               </div>
             )}
@@ -238,7 +240,7 @@ export default function AuthorProfilePage() {
         {/* Education */}
         {profile.education && profile.education.length > 0 && (
           <div className="mt-4 pt-4 border-t dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">Образование</h3>
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">{t("profile.education")}</h3>
             <div className="space-y-2">
               {profile.education.map((edu) => (
                 <div key={edu.id} className="text-sm">
@@ -255,7 +257,7 @@ export default function AuthorProfilePage() {
         {/* Social links */}
         {profile.socialLinks && Object.values(profile.socialLinks).some(Boolean) && (
           <div className="mt-4 pt-4 border-t dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">Соцсети</h3>
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">{t("profile.socials")}</h3>
             <div className="flex flex-wrap gap-2">
               {profile.socialLinks.telegram && (
                 <a href={profile.socialLinks.telegram.startsWith("http") ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace("@", "")}`}
@@ -309,9 +311,9 @@ export default function AuthorProfilePage() {
         <WatchlistWidget userId={params.userId as string} />
       </div>
 
-      <h2 className="text-lg font-semibold mb-4 dark:text-gray-100">Идеи автора</h2>
+      <h2 className="text-lg font-semibold mb-4 dark:text-gray-100">{t("authors.ideasLabel")}</h2>
       {ideas.length === 0 ? (
-        <div className="text-gray-500 dark:text-gray-400 text-center py-8">Нет идей</div>
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8">{t("authors.empty")}</div>
       ) : (
         <div className="space-y-4">
           {ideas.map((idea: any) => (

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
 
 interface SavedPaymentMethod {
@@ -26,6 +27,7 @@ interface TariffRow {
 }
 
 export default function CreateChannelPage() {
+  const { t } = useT();
   const { data: session } = useSession();
   const router = useRouter();
   const user = session?.user as any;
@@ -147,7 +149,7 @@ export default function CreateChannelPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Создать канал</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("channels.create")}</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
         {/* Channel avatar */}
@@ -184,15 +186,15 @@ export default function CreateChannelPage() {
             </button>
           </div>
           <div className="text-sm text-gray-400">
-            Загрузите аватарку канала<br/>
-            <span className="text-xs">JPG, PNG до 2 МБ</span>
+            {t("channels.avatar")}<br/>
+            <span className="text-xs">JPG, PNG / 2 MB</span>
           </div>
         </div>
 
         {/* Channel name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Название канала
+            {t("channels.nameLabel")}
           </label>
           <input
             type="text"
@@ -206,7 +208,7 @@ export default function CreateChannelPage() {
         {/* Channel ID */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            ID канала
+            {t("channels.idLabel")}
           </label>
           <div className="flex items-center gap-2">
             <span className="text-gray-400 dark:text-gray-500 text-sm font-mono">#</span>
@@ -232,7 +234,7 @@ export default function CreateChannelPage() {
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Описание
+            {t("channels.description")}
           </label>
           <textarea
             value={description}
@@ -246,7 +248,7 @@ export default function CreateChannelPage() {
         {/* Hashtags (instruments) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Хэштеги <span className="text-gray-400 font-normal">(до 5 инструментов)</span>
+            {t("channels.hashtags")} <span className="text-gray-400 font-normal">(≤5)</span>
           </label>
           {/* Selected tags */}
           {selectedTags.length > 0 && (
@@ -272,7 +274,7 @@ export default function CreateChannelPage() {
               }}
               className="px-3 py-2 border dark:border-gray-700 rounded-lg text-sm text-gray-400 dark:text-gray-500 dark:bg-gray-800 hover:border-green-500 transition w-full text-left"
             >
-              + Добавить инструмент...
+              {t("channels.addInstrument")}
             </button>
           )}
           {/* Tag picker modal */}
@@ -280,12 +282,12 @@ export default function CreateChannelPage() {
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowTagPicker(false)}>
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                  <h3 className="font-semibold dark:text-gray-100">Выберите инструмент</h3>
+                  <h3 className="font-semibold dark:text-gray-100">{t("channels.selectInstrument")}</h3>
                   <button onClick={() => setShowTagPicker(false)} className="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
                 <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
                   <input type="text" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)}
-                    placeholder="Поиск..." className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" autoFocus />
+                    placeholder={t("common.search")} className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" autoFocus />
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
                   {tagCategories
@@ -338,13 +340,13 @@ export default function CreateChannelPage() {
         {/* Tariffs */}
         <div className="border-t dark:border-gray-700 pt-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Тарифы</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("channels.tariffs")}</h3>
             <button
               type="button"
               onClick={addTariff}
               className="text-sm text-green-600 hover:text-green-800"
             >
-              + Добавить тариф
+              {t("channels.addTariff")}
             </button>
           </div>
 
@@ -356,7 +358,7 @@ export default function CreateChannelPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Тариф {i + 1}
+                    {t("channels.tariff")} {i + 1}
                   </span>
                   {tariffs.length > 1 && (
                     <button
@@ -370,7 +372,7 @@ export default function CreateChannelPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Название</label>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.name")}</label>
                   <input
                     type="text"
                     value={t.name}
@@ -382,7 +384,7 @@ export default function CreateChannelPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Цена (₽)</label>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.price_rub")}</label>
                     <input
                       type="number"
                       value={t.price}
@@ -392,7 +394,7 @@ export default function CreateChannelPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Срок (дней)</label>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.duration")}</label>
                     <input
                       type="number"
                       value={t.durationDays}
@@ -405,11 +407,11 @@ export default function CreateChannelPage() {
 
                 {/* Payment method — pick from saved */}
                 <div className="border-t dark:border-gray-700 pt-3">
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Способ оплаты</label>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">{t("channels.paymentMethod")}</label>
                   {savedPaymentMethods.length === 0 ? (
                     <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      Нет сохранённых способов оплаты.{" "}
-                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">Добавить в профиле →</Link>
+                      {t("channels.noPaymentMethods")}.{" "}
+                      <Link href="/profile?tab=finance" className="text-green-600 hover:underline">{t("channels.addInProfile")} →</Link>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -459,14 +461,14 @@ export default function CreateChannelPage() {
           disabled={saving}
           className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
         >
-          {saving ? "Создание..." : "Создать канал"}
+          {saving ? t("channels.creating") : t("channels.create")}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
           className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
         >
-          Отменить
+          {t("common.cancel")}
         </button>
       </div>
     </div>

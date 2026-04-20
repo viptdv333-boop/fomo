@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
+import { useT } from "@/lib/i18n/client";
 
 interface Instrument {
   id: string;
@@ -23,6 +24,7 @@ interface Channel {
 }
 
 export default function FeedByInstrumentPage() {
+  const { t } = useT();
   const params = useParams();
   const slug = params.slug as string;
 
@@ -73,7 +75,7 @@ export default function FeedByInstrumentPage() {
       <div className="mb-6">
         {category && (
           <div className="text-sm text-gray-400 mb-1">
-            <Link href="/feed" className="hover:text-green-600">Доска</Link>
+            <Link href="/feed" className="hover:text-green-600">{t("feed.title")}</Link>
             {" / "}
             <span>{category.name}</span>
           </div>
@@ -87,7 +89,7 @@ export default function FeedByInstrumentPage() {
       {/* Channels with this instrument */}
       {channels.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-3">Каналы</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-3">{t("nav.channels")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {channels.map((ch) => (
               <Link key={ch.id} href={`/channels/${ch.id}`}
@@ -117,11 +119,11 @@ export default function FeedByInstrumentPage() {
       {/* Ideas */}
       <div>
         <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">
-          Идеи по #{ticker}
+{t("authors.ideasLabel")} #{ticker}
           {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
         </h2>
         {loading ? (
-          <div className="text-gray-400 py-8 text-center">Загрузка...</div>
+          <div className="text-gray-400 py-8 text-center">...</div>
         ) : ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
@@ -130,10 +132,10 @@ export default function FeedByInstrumentPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 text-center">
-            <p className="text-gray-400 dark:text-gray-500 mb-3">Пока нет идей по #{ticker}</p>
+            <p className="text-gray-400 dark:text-gray-500 mb-3">{t("feed.noIdeas")} #{ticker}</p>
             <Link href={`/ideas/new?instrumentSlug=${slug}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition">
-              Опубликовать первую идею
+              {t("channels.publish")}
             </Link>
           </div>
         )}

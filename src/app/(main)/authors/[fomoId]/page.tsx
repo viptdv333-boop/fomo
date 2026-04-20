@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
+import { useT } from "@/lib/i18n/client";
 
 interface Author {
   id: string;
@@ -22,6 +23,7 @@ const SPEC_LABELS: Record<string, string> = {
 };
 
 export default function AuthorPage() {
+  const { t } = useT();
   const params = useParams();
   const fomoId = params.fomoId as string;
 
@@ -57,8 +59,8 @@ export default function AuthorPage() {
       .catch(() => setLoading(false));
   }, [fomoId]);
 
-  if (loading) return <div className="text-gray-400 py-12 text-center">Загрузка...</div>;
-  if (!author) return <div className="text-gray-400 py-12 text-center">Автор не найден</div>;
+  if (loading) return <div className="text-gray-400 py-12 text-center">...</div>;
+  if (!author) return <div className="text-gray-400 py-12 text-center">{t("authors.notFound")}</div>;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -93,7 +95,7 @@ export default function AuthorPage() {
               {author._count && (
                 <>
                   <span>{author._count.ideas} идей</span>
-                  <span>{author._count.followers} подписчиков</span>
+                  <span>{author._count.followers} {t("channels.subscribers")}</span>
                 </>
               )}
               <span>Рейтинг: {author.rating?.toFixed(1) || "0"}</span>
@@ -105,14 +107,14 @@ export default function AuthorPage() {
       {/* Author's channels */}
       {channels.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-3">Каналы</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-3">{t("nav.channels")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {channels.map((ch: any) => (
               <Link key={ch.id} href={`/channels/${ch.id}`}
                 className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition">
                 <div className="font-medium text-sm dark:text-gray-100">{ch.name}</div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {ch._count?.subscriptions || 0} подписчиков · {ch.price > 0 ? `${ch.price} ₽` : "Бесплатный"}
+                  {ch._count?.subscriptions || 0} {t("channels.subscribers")} · {ch.price > 0 ? `${ch.price} ₽` : t("feed.free")}
                 </div>
               </Link>
             ))}
@@ -122,7 +124,7 @@ export default function AuthorPage() {
 
       {/* Author's ideas */}
       <div>
-        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Идеи</h2>
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{t("authors.ideasLabel")}</h2>
         {ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
@@ -131,7 +133,7 @@ export default function AuthorPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 text-center text-gray-400">
-            Пока нет идей
+            {t("authors.empty")}
           </div>
         )}
       </div>
