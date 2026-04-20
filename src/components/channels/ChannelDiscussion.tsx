@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useT } from "@/lib/i18n/client";
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function ChannelDiscussion({ tariffId }: Props) {
+  const { t } = useT();
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
@@ -96,13 +98,13 @@ export default function ChannelDiscussion({ tariffId }: Props) {
     loadMessages();
   }
 
-  if (loading) return <div className="text-gray-400 text-center py-8">Загрузка обсуждения...</div>;
+  if (loading) return <div className="text-gray-400 text-center py-8">...</div>;
 
   if (accessDenied) {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 text-center">
-        <div className="text-gray-400 mb-2">🔒 Обсуждение доступно только подписчикам</div>
-        <p className="text-sm text-gray-500">Оформите подписку чтобы участвовать в обсуждении канала</p>
+        <div className="text-gray-400 mb-2">🔒 {t("channels.availableBySubscription")}</div>
+        <p className="text-sm text-gray-500">{t("channels.buySubscription")}</p>
       </div>
     );
   }
@@ -115,10 +117,10 @@ export default function ChannelDiscussion({ tariffId }: Props) {
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
         <h3 className="font-semibold text-sm dark:text-gray-100">
-          💬 Обсуждение
-          <span className="text-xs text-gray-400 font-normal ml-2">{messages.filter((m) => !m.isDeleted).length} сообщ.</span>
+          💬 {t("idea.comments")}
+          <span className="text-xs text-gray-400 font-normal ml-2">{messages.filter((m) => !m.isDeleted).length}</span>
         </h3>
-        {isAuthor && <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">Автор</span>}
+        {isAuthor && <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">{t("top.owner").replace("👑 ", "")}</span>}
       </div>
 
       {/* Pinned messages */}
@@ -199,7 +201,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-          placeholder="Написать сообщение..."
+          placeholder={t("chat.writeMessage")}
           className="flex-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
         />
         <button onClick={handleSend} disabled={sending || !input.trim()}

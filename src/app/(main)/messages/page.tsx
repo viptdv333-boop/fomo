@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { getSocket } from "@/lib/socket";
+import { useT } from "@/lib/i18n/client";
 
 interface OtherUser {
   id: string;
@@ -70,7 +71,7 @@ const EMOJI_CATEGORIES = [
 export default function MessagesPageWrapper() {
   return (
     <AuthGuard>
-      <Suspense fallback={<div className="text-gray-500 py-12 text-center">Загрузка...</div>}>
+      <Suspense fallback={<div className="text-gray-500 py-12 text-center">...</div>}>
         <MessagesPage />
       </Suspense>
     </AuthGuard>
@@ -78,6 +79,7 @@ export default function MessagesPageWrapper() {
 }
 
 function MessagesPage() {
+  const { t } = useT();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -532,7 +534,7 @@ function MessagesPage() {
       <div className={`${activeConvId ? "hidden md:flex" : "flex"} w-full md:w-80 border-r border-gray-100 dark:border-gray-800/30 flex-col`}>
         {/* Sidebar Title */}
         <div className="px-4 pt-4 pb-2">
-          <h2 className="text-xl font-bold dark:text-gray-100">Сообщения</h2>
+          <h2 className="text-xl font-bold dark:text-gray-100">{t("msg.title")}</h2>
         </div>
         {/* Search */}
         <div className="px-4 pb-3">
@@ -540,7 +542,7 @@ function MessagesPage() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input
               type="text"
-              placeholder="Поиск..."
+              placeholder={t("common.search")}
               className="w-full pl-9 pr-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
             />
           </div>
@@ -551,7 +553,7 @@ function MessagesPage() {
             onClick={() => { setShowNewChat(true); loadAllChatUsers(); }}
             className="w-full py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
           >
-            + Начать новый чат
+            {t("msg.newChat")}
           </button>
         </div>
 
@@ -559,7 +561,7 @@ function MessagesPage() {
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
             <div className="p-4 text-gray-400 dark:text-gray-500 text-sm text-center">
-              Нет диалогов
+              {t("msg.noDialogs")}
             </div>
           ) : (
             [...conversations]
@@ -612,7 +614,7 @@ function MessagesPage() {
                           {pinnedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">📌</span>}
                           {mutedChats.includes(conv.id) && <span className="text-gray-400 mr-1 text-[10px]">🔕</span>}
                           {favorites.includes(conv.otherUser?.id || "") && <span className="text-amber-400 mr-1">★</span>}
-                          {conv.otherUser?.displayName || "Удалённый пользователь"}
+                          {conv.otherUser?.displayName || t("msg.deletedUser")}
                         </span>
                         {conv.lastMessage && (
                           <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-2 shrink-0">
@@ -669,7 +671,7 @@ function MessagesPage() {
               })()}
               <div className="flex flex-col">
                 <Link href={`/profile/${activeConv.otherUser?.id}`} className="font-bold text-sm hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400 leading-tight">
-                  {activeConv.otherUser?.displayName || "Удалённый пользователь"}
+                  {activeConv.otherUser?.displayName || t("msg.deletedUser")}
                 </Link>
                 <span className={`text-xs ${
                   activeConv.otherUser?.dmEnabled === false
@@ -824,7 +826,7 @@ function MessagesPage() {
                       >
                         {!msg.isDeleted && renderFileAttachment(msg)}
                         {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
-                        {msg.isDeleted && <p className="whitespace-pre-wrap break-words">Сообщение удалено</p>}
+                        {msg.isDeleted && <p className="whitespace-pre-wrap break-words">{t("msg.deleted")}</p>}
                         <div className={`flex items-center gap-1 mt-1 ${isMe ? "justify-end" : ""}`}>
                           {msg.isPinned && <span className="text-[10px]">📌</span>}
                           <span
@@ -893,32 +895,32 @@ function MessagesPage() {
                   onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
-                  ↩ Ответить
+                  ↩ {t("msg.reply")}
                 </button>
                 <button
                   onClick={() => { navigator.clipboard.writeText(contextMenu.msg.text); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
-                  📋 Копировать
+                  📋 {t("msg.copy")}
                 </button>
                 <button
                   onClick={() => { setNewText(`> ${contextMenu.msg.sender.displayName}: ${contextMenu.msg.text}\n\n`); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
-                  💬 Цитировать
+                  💬 {t("msg.quote")}
                 </button>
                 <button
                   onClick={() => { pinMessage(contextMenu.msg.id); setContextMenu(null); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
                 >
-                  {contextMenu.msg.isPinned ? "📌 Открепить" : "📌 Закрепить"}
+                  {contextMenu.msg.isPinned ? `📌 ${t("msg.unpin")}` : `📌 ${t("msg.pin")}`}
                 </button>
                 {contextMenu.msg.senderId === myId && !contextMenu.msg.isDeleted && (
                   <button
                     onClick={() => { deleteMessage(contextMenu.msg.id); setContextMenu(null); }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    🗑 Удалить
+                    🗑 {t("msg.delete")}
                   </button>
                 )}
               </div>
@@ -988,7 +990,7 @@ function MessagesPage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 shrink-0 disabled:opacity-50 transition"
-                title="Прикрепить файл"
+                title={t("msg.attachFile")}
               >
                 {uploading ? (
                   <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
@@ -1001,7 +1003,7 @@ function MessagesPage() {
                 type="text"
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
-                placeholder={replyTo ? "Ответить..." : "Написать сообщение..."}
+                placeholder={replyTo ? t("msg.replyTo") : t("msg.writeMessage")}
                 className="flex-1 px-4 py-2.5 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
               />
 
@@ -1036,7 +1038,7 @@ function MessagesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowNewChat(false); setAllChatUsers([]); }}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-96 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold dark:text-gray-100">Новый чат</h3>
+              <h3 className="text-lg font-bold dark:text-gray-100">{t("msg.newChatTitle")}</h3>
               <button onClick={() => { setShowNewChat(false); setAllChatUsers([]); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                 ✕
               </button>
@@ -1045,7 +1047,7 @@ function MessagesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск пользователей..."
+              placeholder={t("msg.searchUsers")}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
               autoFocus
             />
@@ -1055,7 +1057,7 @@ function MessagesPage() {
                   searchQuery.length === 0 || u.displayName.toLowerCase().includes(searchQuery.toLowerCase())
                 );
                 if (allChatUsers.length === 0) {
-                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Загрузка...</p>;
+                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">...</p>;
                 }
                 if (filtered.length === 0) {
                   return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Никого не найдено</p>;
@@ -1096,7 +1098,7 @@ function MessagesPage() {
               type="text"
               value={contactFilter}
               onChange={(e) => setContactFilter(e.target.value)}
-              placeholder="Поиск по имени или ID..."
+              placeholder={t("msg.searchByName")}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 mb-3"
               autoFocus
             />
@@ -1173,9 +1175,9 @@ function MessagesPage() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
                 >
                   {pinnedChats.includes(userContextMenu.convId) ? (
-                    <>📌 Открепить</>
+                    <>📌 {t("msg.unpin")}</>
                   ) : (
-                    <>📌 Закрепить{pinnedChats.length >= 5 ? " (макс. 5)" : ""}</>
+                    <>📌 {t("msg.pin")}{pinnedChats.length >= 5 ? ` (${t("msg.max5")})` : ""}</>
                   )}
                 </button>
                 <button
@@ -1195,14 +1197,14 @@ function MessagesPage() {
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-500 dark:text-red-400 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-              Удалить
+              {t("msg.delete")}
             </button>
             <button
               onClick={() => { /* TODO: block user */ setUserContextMenu(null); }}
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
-              Заблокировать
+              {t("msg.block")}
             </button>
           </div>
         </div>
