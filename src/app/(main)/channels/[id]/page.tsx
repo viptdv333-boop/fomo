@@ -170,7 +170,7 @@ export default function ChannelPage() {
             </div>
           </div>
 
-          <ShareButtons url={`https://fomo.broker/channels/${channel.id}`} text={`${channel.name} — канал на FOMO`} />
+          <ShareButtons url={`https://fomo.spot/channels/${channel.id}`} text={`${channel.name} — канал на FOMO`} />
         </div>
 
         {channel.description && (

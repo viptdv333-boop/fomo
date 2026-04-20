@@ -5,7 +5,7 @@ import { createNotification } from "@/lib/notifications";
 /**
  * POST /api/yukassa/webhook
  * YuKassa sends notifications here when payment status changes.
- * Configure this URL in YuKassa dashboard: https://fomo.broker/api/yukassa/webhook
+ * Configure this URL in YuKassa dashboard: https://fomo.spot/api/yukassa/webhook
  */
 export async function POST(req: NextRequest) {
   let body: any;

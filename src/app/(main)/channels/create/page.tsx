@@ -144,8 +144,8 @@ export default function CreateChannelPage() {
     }
   }
 
-  const channelUrl = channelId ? `https://fomo.broker/channels/${channelId}` : "";
-  const channelUrlDisplay = channelId ? `fomo.broker/channels/${channelId}` : "fomo.broker/channels/...";
+  const channelUrl = channelId ? `https://fomo.spot/channels/${channelId}` : "";
+  const channelUrlDisplay = channelId ? `fomo.spot/channels/${channelId}` : "fomo.spot/channels/...";
 
   return (
     <div className="max-w-2xl mx-auto">

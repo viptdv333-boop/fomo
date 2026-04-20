@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       secretKey: tariff.yukassaSecret,
       amount: Number(tariff.price),
       description: `Подписка "${tariff.name}" — ${seller?.displayName || "Автор"}`,
-      returnUrl: `https://fomo.broker/subscriptions?payment=success`,
+      returnUrl: `${process.env.NEXTAUTH_URL || "https://fomo.spot"}/subscriptions?payment=success`,
       metadata: {
         paymentRequestId: paymentRequest.id,
         tariffId: tariff.id,

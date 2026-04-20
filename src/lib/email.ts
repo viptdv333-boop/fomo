@@ -1,5 +1,6 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.broker>";
+const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://fomo.spot";
 
 export async function sendVerificationCode(email: string, code: string) {
   if (!RESEND_API_KEY) {
@@ -44,7 +45,7 @@ export async function sendBroadcastEmail(email: string, title: string, body: str
   }
 
   const linkHtml = link
-    ? `<p style="text-align: center; margin-top: 24px;"><a href="${link.startsWith("http") ? link : "https://fomo.broker" + link}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Перейти</a></p>`
+    ? `<p style="text-align: center; margin-top: 24px;"><a href="${link.startsWith("http") ? link : BASE_URL + link}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Перейти</a></p>`
     : "";
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -65,7 +66,7 @@ export async function sendBroadcastEmail(email: string, title: string, body: str
           ${linkHtml}
           <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;" />
           <p style="text-align: center; color: #999; font-size: 11px; margin-top: 16px;">
-            Вы получили это письмо, потому что зарегистрированы на <a href="https://fomo.broker" style="color: #16a34a;">fomo.broker</a>
+            Вы получили это письмо, потому что зарегистрированы на <a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>
           </p>
         </div>
       `,

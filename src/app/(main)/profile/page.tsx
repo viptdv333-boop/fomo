@@ -403,7 +403,7 @@ function ProfileContent() {
                 {t("profile.myPage")} <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/profile/{fomoId || (session.user as any).fomoId || session.user.id}</span>
               </p>
               <ShareButtons
-                url={`https://fomo.broker/profile/${fomoId || (session.user as any).fomoId || session.user.id}`}
+                url={`https://fomo.spot/profile/${fomoId || (session.user as any).fomoId || session.user.id}`}
                 text={`${[firstName, lastName].filter(Boolean).join(" ") || displayName || "Профиль"} на FOMO`}
               />
             </div>
