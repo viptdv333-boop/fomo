@@ -190,7 +190,7 @@ function FeedPage() {
                 <div className="p-2 border-b dark:border-gray-700">
                   <input
                     type="text"
-                    placeholder="Поиск: нефть, SBER, gold..."
+                    placeholder={t("common.search")}
                     value={instrumentSearch}
                     onChange={async (e) => {
                       const q = e.target.value;
@@ -243,7 +243,7 @@ function FeedPage() {
                     /* Show categories when no search */
                     categories.map((cat) => (
                       <div key={cat.id}>
-                        <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">{cat.name}</div>
+                        <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">{(() => { const k = `cat.${cat.slug}`; const v = t(k); return v === k ? cat.name : v; })()}</div>
                         {cat.instruments.slice(0, 5).map((inst: any) => (
                           <button
                             key={inst.id}
