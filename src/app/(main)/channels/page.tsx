@@ -329,7 +329,7 @@ export default function ChannelsPage() {
                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
                   <span>👥 {ch.subscribersCount}</span>
                   <StarRating rating={ch.author.rating} />
-                  {ch.price > 0 && <span className="text-green-600 font-medium">{ch.price} ₽/мес</span>}
+                  {ch.price > 0 && <span className="text-green-600 font-medium">{ch.price} {t("channels.perMonth")}</span>}
                 </div>
               </Link>
             );
@@ -428,7 +428,7 @@ export default function ChannelsPage() {
                     </div>
                     {ch.price > 0 && (
                       <span className="shrink-0 ml-3 px-3 py-1 rounded-full text-sm font-medium text-green-600 border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 whitespace-nowrap">
-                        {ch.price} ₽/мес
+                        {ch.price} {t("channels.perMonth")}
                       </span>
                     )}
                   </div>
