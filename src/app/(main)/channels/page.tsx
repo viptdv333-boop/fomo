@@ -218,7 +218,7 @@ export default function ChannelsPage() {
           )}
         </div>
         <p className="text-gray-500 dark:text-gray-400">
-          Подпишитесь на каналы профессиональных трейдеров
+          {t("channels.subtitle")}
         </p>
       </div>
 
@@ -242,7 +242,7 @@ export default function ChannelsPage() {
         <div className="relative">
           <button onClick={() => setShowInstrumentDropdown(!showInstrumentDropdown)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1 ${instrumentFilter ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-            Инструмент
+            {t("channels.instrument")}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           {showInstrumentDropdown && (
@@ -251,7 +251,7 @@ export default function ChannelsPage() {
               <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-lg z-50 w-56 max-h-60 overflow-y-auto">
                 <button onClick={() => { setInstrumentFilter(""); setShowInstrumentDropdown(false); }}
                   className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${!instrumentFilter ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
-                  Все инструменты
+                  {t("channels.allInstruments")}
                 </button>
                 {Array.from(new Set(channels.flatMap((ch) => ((ch as any).instruments || []).map((i: any) => JSON.stringify({ id: i.id, name: i.name, ticker: i.ticker })))))
                   .map((s) => JSON.parse(s))
@@ -268,8 +268,8 @@ export default function ChannelsPage() {
 
         {(
           [
-            { label: "Рейтинг", field: "rating" as const },
-            { label: "Цена", field: "price" as const },
+            { label: t("authors.rating"), field: "rating" as const },
+            { label: t("channels.price"), field: "price" as const },
           ] as const
         ).map((s) => (
           <button
@@ -351,12 +351,12 @@ export default function ChannelsPage() {
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            {hasActiveFilters || searchQuery ? "Каналы не найдены" : "Каналов пока нет"}
+            {hasActiveFilters || searchQuery ? t("channels.notFoundResult") : t("channels.empty")}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
             {hasActiveFilters || searchQuery
-              ? "Попробуйте изменить фильтры или поисковый запрос"
-              : "Здесь будут платные каналы авторов с эксклюзивной аналитикой и торговыми сигналами."}
+              ? t("authors.changeFilters")
+              : t("channels.emptyHelp")}
           </p>
           {(hasActiveFilters || searchQuery) && (
             <button
@@ -367,7 +367,7 @@ export default function ChannelsPage() {
               }}
               className="mt-3 text-sm text-green-600 hover:text-green-700 font-medium transition-all duration-150"
             >
-              Сбросить все фильтры
+              {t("channels.resetFilters")}
             </button>
           )}
         </div>
@@ -376,8 +376,8 @@ export default function ChannelsPage() {
           {/* Results count */}
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
             {filtered.length === channels.length
-              ? `Всего: ${channels.length}`
-              : `Найдено: ${filtered.length} из ${channels.length}`}
+              ? `${t("channels.totalCount")} ${channels.length}`
+              : `${t("channels.foundCount")} ${filtered.length} / ${channels.length}`}
           </p>
 
           {/* Channel list — compact */}
@@ -486,10 +486,10 @@ export default function ChannelsPage() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            Подписан
+                            {t("channels.subscribed")}
                           </span>
                         ) : (
-                          "Подписаться"
+                          t("channels.subscribe")
                         )}
                       </button>
                     )}
