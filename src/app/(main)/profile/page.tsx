@@ -7,6 +7,7 @@ import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
 import ShareButtons from "@/components/shared/ShareButtons";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
+import { useT } from "@/lib/i18n/client";
 
 const SPECIALIZATION_OPTIONS = [
   { value: "trader", label: "Трейдер" },
@@ -33,6 +34,7 @@ export default function MyProfilePage() {
 }
 
 function ProfileContent() {
+  const { t } = useT();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [displayName, setDisplayName] = useState("");
@@ -240,7 +242,7 @@ function ProfileContent() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">Мой профиль</h1>
+      <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">{t("profile.title")}</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -252,7 +254,7 @@ function ProfileContent() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          Профиль
+          {t("profile.profile")}
         </button>
         <button
           onClick={() => setActiveTab("finance")}
@@ -262,7 +264,7 @@ function ProfileContent() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          Финансы
+          {t("profile.finance")}
         </button>
         <button
           onClick={() => setActiveTab("security")}
@@ -272,7 +274,7 @@ function ProfileContent() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          Безопасность
+          {t("profile.security")}
         </button>
       </div>
 
@@ -332,7 +334,7 @@ function ProfileContent() {
       <form onSubmit={handleSave} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Имя</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.firstName")}</label>
             <input
               type="text"
               value={firstName}
@@ -342,7 +344,7 @@ function ProfileContent() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Фамилия</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.lastName")}</label>
             <input
               type="text"
               value={lastName}
@@ -355,7 +357,7 @@ function ProfileContent() {
 
         {/* Email — read-only, change on Security tab */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.email")}</label>
           <div className="flex items-center gap-2">
             <input
               type="email"
@@ -368,13 +370,13 @@ function ProfileContent() {
               onClick={() => setActiveTab("security")}
               className="text-xs text-green-600 hover:text-green-700 whitespace-nowrap shrink-0"
             >
-              Изменить
+              {t("profile.change")}
             </button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">FOMO ID</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.fomoId")}</label>
           <div className="flex items-center gap-2">
             <span className="text-gray-400 dark:text-gray-500 text-lg font-mono">#</span>
             <input
@@ -398,7 +400,7 @@ function ProfileContent() {
           {session?.user?.id && (
             <div className="flex items-center gap-2 mt-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Моя страница: <span className="font-mono text-green-600 dark:text-green-400">fomo.broker/profile/{fomoId || (session.user as any).fomoId || session.user.id}</span>
+                {t("profile.myPage")} <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/profile/{fomoId || (session.user as any).fomoId || session.user.id}</span>
               </p>
               <ShareButtons
                 url={`https://fomo.broker/profile/${fomoId || (session.user as any).fomoId || session.user.id}`}
@@ -410,7 +412,7 @@ function ProfileContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Дата рождения</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.birthDate")}</label>
             <input
               type="date"
               value={birthDate}
@@ -419,7 +421,7 @@ function ProfileContent() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Город</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.city")}</label>
             <input
               type="text"
               value={city}
@@ -431,7 +433,7 @@ function ProfileContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Место работы</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.workplace")}</label>
           <input
             type="text"
             value={workplace}
@@ -442,7 +444,7 @@ function ProfileContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Опыт на бирже</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.exchangeExp")}</label>
           <input
             type="text"
             value={exchangeExperience}
@@ -453,7 +455,7 @@ function ProfileContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Специализация</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t("profile.specialization")}</label>
           <div className="flex flex-wrap gap-2">
             {SPECIALIZATION_OPTIONS.map((opt) => (
               <label
@@ -477,7 +479,7 @@ function ProfileContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">О себе</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.bio")}</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -489,7 +491,7 @@ function ProfileContent() {
 
         {/* Social links */}
         <div className="border-t dark:border-gray-700 pt-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Соцсети и мессенджеры</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("profile.socials")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telegram</label>
@@ -542,7 +544,7 @@ function ProfileContent() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Сайт</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("profile.website")}</label>
               <input
                 type="text"
                 value={socialLinks.website}
@@ -557,20 +559,20 @@ function ProfileContent() {
         {/* Education section */}
         <div className="border-t dark:border-gray-700 pt-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Образование</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t("profile.education")}</h3>
             <button
               type="button"
               onClick={() => setShowEduForm(!showEduForm)}
               className="text-green-600 hover:text-green-800 text-sm font-medium"
             >
-              {showEduForm ? "Отмена" : "+ Добавить"}
+              {showEduForm ? t("common.cancel") : t("profile.addEducation")}
             </button>
           </div>
 
           {showEduForm && (
             <div className="border dark:border-gray-700 rounded-lg p-4 mb-3 bg-gray-50 dark:bg-gray-800 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ВУЗ *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.university")} *</label>
                 <input
                   type="text"
                   value={eduUniversity}
@@ -581,7 +583,7 @@ function ProfileContent() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Факультет</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.faculty")}</label>
                   <input
                     type="text"
                     value={eduFaculty}
@@ -590,7 +592,7 @@ function ProfileContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Специальность</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.specialty")}</label>
                   <input
                     type="text"
                     value={eduSpecialty}
@@ -601,7 +603,7 @@ function ProfileContent() {
               </div>
               <div className="flex items-end gap-3">
                 <div className="w-32">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Год окончания</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.yearEnd")}</label>
                   <input
                     type="number"
                     value={eduYearEnd}
@@ -616,14 +618,14 @@ function ProfileContent() {
                   onClick={addEducation}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
                 >
-                  Добавить
+                  {t("profile.addEducation")}
                 </button>
               </div>
             </div>
           )}
 
           {education.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Нет записей об образовании</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">{t("profile.noEducation")}</p>
           ) : (
             <div className="space-y-3">
               {education.map((edu) => (
@@ -649,7 +651,7 @@ function ProfileContent() {
 
         {/* Donation card */}
         <div className="border-t dark:border-gray-700 pt-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Карта для донатов</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("profile.donationCard")}</h3>
           <input
             type="text"
             value={donationCard}
@@ -672,7 +674,7 @@ function ProfileContent() {
               className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
             />
             <div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Разрешить личные сообщения</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("profile.allowDMs")}</span>
               <p className="text-xs text-gray-500 dark:text-gray-400">Другие пользователи смогут писать вам в мессенджер</p>
             </div>
           </label>
@@ -684,7 +686,7 @@ function ProfileContent() {
             disabled={loading}
             className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
-            {loading ? "Сохранение..." : "Сохранить"}
+            {loading ? t("channels.saving") : t("common.save")}
           </button>
           {message && (
             <span className={message.includes("Ошибка") ? "text-red-600" : "text-green-600"}>
@@ -707,7 +709,7 @@ function ProfileContent() {
         <div className="space-y-6">
           {/* Change Password */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">Смена пароля</h3>
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">{t("profile.changePassword")}</h3>
             <form onSubmit={async (e) => {
               e.preventDefault();
               setSecurityMessage(""); setSecurityError("");
@@ -721,9 +723,9 @@ function ProfileContent() {
               else setSecurityError(data.error);
             }} className="space-y-4">
               {[
-                { key: "cur", label: "Текущий пароль", value: currentPassword, set: setCurrentPassword, required: true },
-                { key: "new", label: "Новый пароль", value: newPassword, set: setNewPassword, required: true, minLength: 6 },
-                { key: "conf", label: "Подтвердите пароль", value: confirmPassword, set: setConfirmPassword, required: true },
+                { key: "cur", label: t("profile.currentPassword"), value: currentPassword, set: setCurrentPassword, required: true },
+                { key: "new", label: t("profile.newPassword"), value: newPassword, set: setNewPassword, required: true, minLength: 6 },
+                { key: "conf", label: t("profile.confirmPassword"), value: confirmPassword, set: setConfirmPassword, required: true },
               ].map((f) => (
                 <div key={f.key}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{f.label}</label>
@@ -740,7 +742,7 @@ function ProfileContent() {
                 </div>
               ))}
               <div className="flex items-center gap-3">
-                <button type="submit" className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Сменить пароль</button>
+                <button type="submit" className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">{t("profile.changePassword")}</button>
                 {securityMessage && <span className="text-green-600 text-sm">{securityMessage}</span>}
                 {securityError && <span className="text-red-600 text-sm">{securityError}</span>}
               </div>
@@ -749,8 +751,8 @@ function ProfileContent() {
 
           {/* Change Email — 2-step: send code → verify */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">Смена email</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Текущий: {session?.user?.email || "—"}</p>
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">{t("profile.changeEmail")}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t("profile.email")}: {session?.user?.email || "—"}</p>
 
             {emailStep === "form" ? (
               <form onSubmit={async (e) => {
@@ -766,11 +768,11 @@ function ProfileContent() {
                 else setSecurityError(data.error);
               }} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.newEmail")}</label>
                   <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Текущий пароль</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.currentPassword")}</label>
                   <div className="relative">
                     <input type={showPasswords["email"] ? "text" : "password"} value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className="w-full px-3 py-2 pr-10 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
                     <button type="button" onClick={() => setShowPasswords(p => ({ ...p, email: !p.email }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -783,7 +785,7 @@ function ProfileContent() {
                   </div>
                 </div>
                 <button type="submit" disabled={emailSending} className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50">
-                  {emailSending ? "Отправка кода..." : "Отправить код подтверждения"}
+                  {emailSending ? "..." : t("profile.sendCode")}
                 </button>
               </form>
             ) : (
@@ -805,12 +807,12 @@ function ProfileContent() {
                   Код отправлен на <span className="font-medium text-gray-900 dark:text-gray-100">{newEmail}</span>
                 </p>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Код подтверждения</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.code")}</label>
                   <input type="text" value={emailCode} onChange={(e) => setEmailCode(e.target.value)} required maxLength={6} placeholder="123456" className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 text-center text-lg tracking-widest font-mono" />
                 </div>
                 <div className="flex items-center gap-3">
                   <button type="submit" disabled={emailSending} className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50">
-                    {emailSending ? "Проверка..." : "Подтвердить"}
+                    {emailSending ? "..." : t("profile.confirm")}
                   </button>
                   <button type="button" onClick={() => { setEmailStep("form"); setEmailCode(""); setSecurityError(""); }} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                     Назад
