@@ -189,6 +189,16 @@ export default function PaymentMethodsManager() {
                 <input type="text" value={addYukassaSecret} onChange={(e) => setAddYukassaSecret(e.target.value)}
                   className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
               </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs text-blue-900 dark:text-blue-200">
+                <div className="font-semibold mb-1">⚙️ Настройте webhook в ЮКассе</div>
+                <div className="mb-2">В личном кабинете ЮКассы → <b>Интеграция → HTTP-уведомления</b> добавьте URL:</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded font-mono text-[11px] break-all">https://fomo.spot/api/yukassa/webhook</code>
+                  <button type="button" onClick={() => navigator.clipboard?.writeText("https://fomo.spot/api/yukassa/webhook")}
+                    className="text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap">Копировать</button>
+                </div>
+                <div className="mt-2">Включите события: <code>payment.succeeded</code>, <code>payment.canceled</code>.</div>
+              </div>
             </>
           )}
           <button onClick={handleAdd} disabled={saving || !addLabel.trim()}
