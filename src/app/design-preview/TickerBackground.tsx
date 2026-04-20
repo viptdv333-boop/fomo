@@ -3,10 +3,11 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Chart background — a few continuous light-grey price lines drawn on a
- * dark-grey gradient. A slow "visibility wave" sweeps across the screen:
- * a bright moving head trails a fading tail, so the chart keeps revealing
- * and dissolving in different areas. Inspired by the Claude interface.
+ * Live growing price chart + moving shadow waves that partially obscure it.
+ * - A new price tick is appended every ~700ms; the chart scrolls left.
+ * - Slight positive drift so the line tends upward over time.
+ * - Several dark "wave shadows" drift horizontally at different speeds and
+ *   layer over the chart, hiding fragments of it.
  */
 export default function ChartBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -20,6 +21,42 @@ export default function ChartBackground() {
     let dpr = 1;
     const t0 = performance.now();
 
+    // ── price series (random walk with slight upward drift) ──
+    const POINTS = 360;           // visible points
+    const TICK_MS = 700;          // new tick cadence
+    const DRIFT = 0.045;          // small positive per-tick bias
+    const VOL = 1.0;              // tick volatility
+
+    const prices: number[] = [];
+    let lastPrice = 0;
+    let lastTick = performance.now();
+    // seed history so chart is filled from the start
+    for (let i = 0; i < POINTS; i++) {
+      lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
+      prices.push(lastPrice);
+    }
+
+    function pushTick() {
+      lastPrice += DRIFT + (Math.random() - 0.5) * VOL;
+      prices.push(lastPrice);
+      if (prices.length > POINTS) prices.shift();
+    }
+
+    // ── shadow waves ──
+    type Shadow = {
+      widthFrac: number;   // width as fraction of screen
+      cx: number;          // center x (px, updated each frame)
+      speed: number;       // px/sec
+      alpha: number;       // max darken alpha
+      seedY: number;       // phase for vertical wobble
+    };
+    const shadows: Shadow[] = [
+      { widthFrac: 0.32, cx: -400, speed: 22, alpha: 0.55, seedY: 0.3 },
+      { widthFrac: 0.22, cx: 200,  speed: 14, alpha: 0.45, seedY: 1.7 },
+      { widthFrac: 0.45, cx: 900,  speed: 28, alpha: 0.60, seedY: 2.9 },
+      { widthFrac: 0.18, cx: 1400, speed: 18, alpha: 0.50, seedY: 4.1 },
+    ];
+
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = window.innerWidth;
@@ -31,139 +68,21 @@ export default function ChartBackground() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // Layered sine curve — gives a believable price-like shape
-    function wave(x: number, seed: number): number {
-      return (
-        Math.sin(x * 0.0032 + seed) * 0.55 +
-        Math.sin(x * 0.0011 - seed * 1.7) * 0.30 +
-        Math.sin(x * 0.0075 + seed * 2.3) * 0.15
-      );
-    }
-
-    type Sweep = {
-      y: number;        // baseline (fraction of h)
-      amp: number;      // amplitude (fraction of h)
-      seed: number;
-      speed: number;    // head speed, px/sec
-      headOffset: number; // initial x offset (px)
-      trail: number;    // visible tail length (px)
-      headLead: number; // short fade ahead of the head (px)
-      thickness: number;
-      alphaScale: number;
-    };
-
-    const sweeps: Sweep[] = [
-      { y: 0.30, amp: 0.10, seed: 1.2, speed: 42,  headOffset: -200, trail: 620, headLead: 70, thickness: 1.3, alphaScale: 0.55 },
-      { y: 0.58, amp: 0.18, seed: 4.7, speed: 34,  headOffset: -900, trail: 780, headLead: 90, thickness: 1.4, alphaScale: 0.65 },
-      { y: 0.78, amp: 0.09, seed: 9.1, speed: 48,  headOffset: -1500, trail: 540, headLead: 60, thickness: 1.2, alphaScale: 0.45 },
-    ];
-
-    // Visibility of point x given head position hx and sweep params.
-    // Fade-in briefly ahead of the head, full bright at the head,
-    // smooth fade-out over `trail` behind it.
-    function visibility(x: number, hx: number, trail: number, lead: number): number {
-      const dx = hx - x;
-      if (dx < -lead) return 0;              // too far ahead
-      if (dx > trail) return 0;               // already gone
-      if (dx < 0) {
-        // ahead of head — short fade-in
-        return 1 - Math.min(1, -dx / lead);
-      }
-      // behind head — long fade-out (ease-out)
-      const k = dx / trail;
-      return Math.pow(1 - k, 1.8);
-    }
-
-    function drawSweep(s: Sweep, now: number) {
-      const baseY = h * s.y;
-      const amp = h * s.amp;
-      // Head position wraps across a total span a bit wider than screen
-      const span = w + s.trail + 200;
-      const rawHx = s.headOffset + (s.speed * (now - t0)) / 1000;
-      const hx = ((rawHx % span) + span) % span - s.trail; // can go negative so tail exits cleanly
-
-      const step = 3;
-      type Pt = { x: number; y: number; a: number };
-      const pts: Pt[] = [];
-      for (let x = -5; x <= w + 5; x += step) {
-        const a = visibility(x, hx, s.trail, s.headLead) * s.alphaScale;
-        const y = baseY + wave(x, s.seed) * amp;
-        pts.push({ x, y, a });
-      }
-
-      // stroke line in short segments so each keeps its own alpha
-      ctx.lineWidth = s.thickness;
-      ctx.lineCap = "round";
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[i - 1];
-        const p1 = pts[i];
-        const a = (p0.a + p1.a) / 2;
-        if (a <= 0.005) continue;
-        ctx.strokeStyle = `rgba(235, 235, 240, ${a})`;
-        ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.stroke();
-      }
-
-      // soft area fill under the visible portion — subtle glow
-      ctx.beginPath();
-      let started = false;
-      let firstX = 0;
-      for (const p of pts) {
-        if (p.a > 0.02) {
-          if (!started) {
-            ctx.moveTo(p.x, p.y);
-            firstX = p.x;
-            started = true;
-          } else {
-            ctx.lineTo(p.x, p.y);
-          }
-        }
-      }
-      if (started) {
-        const last = pts[pts.length - 1];
-        ctx.lineTo(last.x, h);
-        ctx.lineTo(firstX, h);
-        ctx.closePath();
-        const g = ctx.createLinearGradient(0, baseY - amp, 0, h);
-        g.addColorStop(0, `rgba(230, 230, 235, ${0.06 * s.alphaScale})`);
-        g.addColorStop(1, "rgba(230, 230, 235, 0)");
-        ctx.fillStyle = g;
-        ctx.fill();
-      }
-
-      // bright head dot
-      // find visible head (closest x to hx)
-      if (hx >= -5 && hx <= w + 5) {
-        const y = baseY + wave(hx, s.seed) * amp;
-        const headAlpha = 0.9 * s.alphaScale;
-        ctx.fillStyle = `rgba(245, 245, 250, ${headAlpha})`;
-        ctx.beginPath();
-        ctx.arc(hx, y, 2.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
     function drawGrid() {
-      // static faint grid on the backdrop
       ctx.lineWidth = 1;
       const rows = 8;
       for (let i = 1; i < rows; i++) {
         const y = (h / rows) * i;
-        ctx.strokeStyle =
-          i === Math.floor(rows / 2)
-            ? "rgba(220, 220, 225, 0.06)"
-            : "rgba(220, 220, 225, 0.03)";
+        ctx.strokeStyle = "rgba(220, 220, 225, 0.025)";
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
         ctx.stroke();
       }
       const cols = 14;
-      ctx.strokeStyle = "rgba(220, 220, 225, 0.025)";
       for (let i = 1; i < cols; i++) {
         const x = (w / cols) * i;
+        ctx.strokeStyle = "rgba(220, 220, 225, 0.02)";
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, h);
@@ -171,10 +90,111 @@ export default function ChartBackground() {
       }
     }
 
+    function drawChart() {
+      // auto-scale y against current visible window
+      let min = Infinity;
+      let max = -Infinity;
+      for (const p of prices) {
+        if (p < min) min = p;
+        if (p > max) max = p;
+      }
+      const pad = (max - min) * 0.12 || 1;
+      min -= pad;
+      max += pad;
+      const yRange = max - min;
+
+      const topPad = h * 0.18;
+      const bottomPad = h * 0.15;
+      const plotH = h - topPad - bottomPad;
+
+      const points: [number, number][] = [];
+      for (let i = 0; i < prices.length; i++) {
+        const x = (i / (prices.length - 1)) * w;
+        const norm = (prices[i] - min) / yRange;
+        const y = topPad + (1 - norm) * plotH;
+        points.push([x, y]);
+      }
+
+      // area fill below line
+      const grad = ctx.createLinearGradient(0, topPad, 0, h);
+      grad.addColorStop(0, "rgba(230, 230, 235, 0.10)");
+      grad.addColorStop(1, "rgba(230, 230, 235, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (const [x, y] of points) ctx.lineTo(x, y);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // main line
+      ctx.strokeStyle = "rgba(235, 235, 240, 0.65)";
+      ctx.lineWidth = 1.4;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (const [x, y] of points) ctx.lineTo(x, y);
+      ctx.stroke();
+
+      // live tick dot at right edge
+      const last = points[points.length - 1];
+      ctx.fillStyle = "rgba(245, 245, 250, 0.95)";
+      ctx.beginPath();
+      ctx.arc(last[0], last[1], 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      // soft glow
+      const glow = ctx.createRadialGradient(last[0], last[1], 0, last[0], last[1], 18);
+      glow.addColorStop(0, "rgba(245, 245, 250, 0.35)");
+      glow.addColorStop(1, "rgba(245, 245, 250, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(last[0], last[1], 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawShadows(now: number) {
+      for (const s of shadows) {
+        const totalSpan = w + w * s.widthFrac * 2;
+        const rawCx = s.cx + (s.speed * (now - t0)) / 1000;
+        const cx = ((rawCx + w * s.widthFrac) % totalSpan) - w * s.widthFrac;
+
+        const halfW = (w * s.widthFrac) / 2;
+        const left = cx - halfW * 2;
+        const right = cx + halfW * 2;
+
+        // vertical center wobbles slightly so shadow isn't a flat vertical band
+        const yWobble = Math.sin((now / 3500) + s.seedY) * h * 0.08;
+        const cy = h * 0.5 + yWobble;
+
+        // gaussian-ish horizontal blob using radial gradient — wide ellipse
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfW * 2.2);
+        grad.addColorStop(0, `rgba(8, 8, 8, ${s.alpha})`);
+        grad.addColorStop(0.55, `rgba(8, 8, 8, ${s.alpha * 0.55})`);
+        grad.addColorStop(1, "rgba(8, 8, 8, 0)");
+        ctx.fillStyle = grad;
+        // draw as ellipse (tall): scale vertically to cover full height
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(1, Math.max(2.2, h / (halfW * 2.2)));
+        ctx.beginPath();
+        ctx.arc(0, 0, halfW * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        void left; void right;
+      }
+    }
+
     function render(now: number) {
+      // tick appends
+      while (now - lastTick >= TICK_MS) {
+        pushTick();
+        lastTick += TICK_MS;
+      }
+
       ctx.clearRect(0, 0, w, h);
-      drawGrid();
-      for (const s of sweeps) drawSweep(s, now);
+      drawChart();
+      drawShadows(now);
       raf = requestAnimationFrame(render);
     }
 
@@ -189,13 +209,12 @@ export default function ChartBackground() {
 
   return (
     <>
-      {/* dark gradient backdrop */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at 50% 30%, #1a1a22 0%, #101014 55%, #08080a 100%)",
+            "radial-gradient(ellipse at 50% 30%, #1d1d1d 0%, #121212 55%, #080808 100%)",
         }}
       />
       <canvas
