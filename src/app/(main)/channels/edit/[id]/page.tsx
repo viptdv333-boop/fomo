@@ -330,39 +330,39 @@ export default function EditChannelPage() {
           </div>
 
           <div className="space-y-4">
-            {tariffs.map((t, idx) => (
-              <div key={t.id || `new-${idx}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+            {tariffs.map((tr, idx) => (
+              <div key={tr.id || `new-${idx}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("channels.tariff")} {idx + 1}</span>
                   {tariffs.length > 1 && (
                     <button type="button" onClick={() => {
-                      if (t.id) {
-                        if (confirm("Удалить тариф?")) {
-                          fetch(`/api/users/${user?.id}/tariffs/${t.id}`, { method: "DELETE" });
+                      if (tr.id) {
+                        if (confirm(t("channels.deleteTariffConfirm"))) {
+                          fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, { method: "DELETE" });
                           removeTariff(idx);
                         }
                       } else {
                         removeTariff(idx);
                       }
-                    }} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                    }} className="text-xs text-red-500 hover:text-red-700">{t("common.delete")}</button>
                   )}
                 </div>
 
                 <div>
                   <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.name")}</label>
-                  <input type="text" value={t.name} onChange={(e) => updateTariff(idx, "name", e.target.value)}
-                    placeholder="Базовый" className={`mt-1 ${inputCls}`} />
+                  <input type="text" value={tr.name} onChange={(e) => updateTariff(idx, "name", e.target.value)}
+                    placeholder="Base" className={`mt-1 ${inputCls}`} />
                 </div>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.price_rub")}</label>
-                    <input type="number" value={t.price} onChange={(e) => updateTariff(idx, "price", e.target.value)}
+                    <input type="number" value={tr.price} onChange={(e) => updateTariff(idx, "price", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
                   </div>
                   <div className="flex-1">
                     <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.duration")}</label>
-                    <input type="number" value={t.durationDays} onChange={(e) => updateTariff(idx, "durationDays", e.target.value)}
+                    <input type="number" value={tr.durationDays} onChange={(e) => updateTariff(idx, "durationDays", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export default function EditChannelPage() {
                   ) : (
                     <div className="space-y-1.5">
                       {savedPaymentMethods.map((m) => {
-                        const isSelected = t.paymentMethodId === m.id;
+                        const isSelected = tr.paymentMethodId === m.id;
                         return (
                           <button key={m.id} type="button"
                             onClick={() => {
@@ -406,7 +406,7 @@ export default function EditChannelPage() {
                 </div>
 
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={t.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
+                  <input type="checkbox" checked={tr.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">{t("channels.active")}</span>
                 </label>
               </div>

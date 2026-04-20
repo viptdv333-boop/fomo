@@ -351,7 +351,7 @@ export default function CreateChannelPage() {
           </div>
 
           <div className="space-y-4">
-            {tariffs.map((t, i) => (
+            {tariffs.map((tr, i) => (
               <div
                 key={i}
                 className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3"
@@ -366,7 +366,7 @@ export default function CreateChannelPage() {
                       onClick={() => removeTariff(i)}
                       className="text-xs text-red-500 hover:text-red-700"
                     >
-                      Удалить
+                      {t("common.delete")}
                     </button>
                   )}
                 </div>
@@ -375,10 +375,10 @@ export default function CreateChannelPage() {
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.name")}</label>
                   <input
                     type="text"
-                    value={t.name}
+                    value={tr.name}
                     onChange={(e) => updateTariff(i, "name", e.target.value)}
                     className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
-                    placeholder="Базовый / Премиум / VIP"
+                    placeholder="Base / Premium / VIP"
                   />
                 </div>
 
@@ -387,7 +387,7 @@ export default function CreateChannelPage() {
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.price_rub")}</label>
                     <input
                       type="number"
-                      value={t.price}
+                      value={tr.price}
                       onChange={(e) => updateTariff(i, "price", e.target.value)}
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                       placeholder="500"
@@ -397,7 +397,7 @@ export default function CreateChannelPage() {
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.duration")}</label>
                     <input
                       type="number"
-                      value={t.durationDays}
+                      value={tr.durationDays}
                       onChange={(e) => updateTariff(i, "durationDays", e.target.value)}
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                       placeholder="30"
@@ -416,7 +416,7 @@ export default function CreateChannelPage() {
                   ) : (
                     <div className="space-y-1.5">
                       {savedPaymentMethods.map((m) => {
-                        const isSelected = t.paymentMethodId === m.id;
+                        const isSelected = tr.paymentMethodId === m.id;
                         return (
                           <button key={m.id} type="button"
                             onClick={() => {
