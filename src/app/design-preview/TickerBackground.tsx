@@ -25,10 +25,10 @@ export default function ChartBackground() {
     // Every ~10s a fresh chart grows inside a randomly-placed rectangle.
     // After the session ends, the chart fades out and a new one appears
     // in a different location.
-    const SESSION_MS = 10000;     // total visible time per session
-    const FADE_IN_MS = 600;
-    const FADE_OUT_MS = 900;
-    const MAX_POINTS = 75;        // ticks per session
+    const SESSION_MS = 40000;     // total visible time per session (4× slower)
+    const FADE_IN_MS = 2200;
+    const FADE_OUT_MS = 3200;
+    const MAX_POINTS = 120;       // ticks per session
     const TICK_MS = Math.floor((SESSION_MS - FADE_IN_MS - FADE_OUT_MS) / MAX_POINTS);
     const DRIFT_ABS = 0.12;       // magnitude of per-session drift (signed)
     const VOL = 1.15;
@@ -169,8 +169,14 @@ export default function ChartBackground() {
         points.push([x, y]);
       }
 
-      const aLine = 0.38 * cycleAlpha;
-      const aFill = 0.05 * cycleAlpha;
+      const aLine = 0.14 * cycleAlpha;
+      const aFill = 0.02 * cycleAlpha;
+
+      // everything in this block is blurred so the chart reads as background
+      ctx.save();
+      ctx.filter = "blur(2.2px)";
+
+      const lastPt = points[points.length - 1];
 
       // area fill below the line, contained to the region
       const grad = ctx.createLinearGradient(0, region.y, 0, region.y + region.height);
@@ -180,33 +186,27 @@ export default function ChartBackground() {
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points) ctx.lineTo(x, y);
-      const lastPt = points[points.length - 1];
       ctx.lineTo(lastPt[0], region.y + region.height);
       ctx.lineTo(points[0][0], region.y + region.height);
       ctx.closePath();
       ctx.fill();
 
-      // main line
-      ctx.strokeStyle = `rgba(225, 225, 225, ${aLine})`;
-      ctx.lineWidth = 1.2;
+      // main line — paler + slightly thicker to read well through the blur
+      ctx.strokeStyle = `rgba(210, 210, 210, ${aLine})`;
+      ctx.lineWidth = 1.4;
       ctx.lineJoin = "round";
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points) ctx.lineTo(x, y);
       ctx.stroke();
 
-      // live tick marker at the current right end
-      ctx.fillStyle = `rgba(235, 235, 235, ${0.7 * cycleAlpha})`;
+      // live tick dot — dim
+      ctx.fillStyle = `rgba(225, 225, 225, ${0.28 * cycleAlpha})`;
       ctx.beginPath();
-      ctx.arc(lastPt[0], lastPt[1], 2.4, 0, Math.PI * 2);
+      ctx.arc(lastPt[0], lastPt[1], 2.2, 0, Math.PI * 2);
       ctx.fill();
-      const glow = ctx.createRadialGradient(lastPt[0], lastPt[1], 0, lastPt[0], lastPt[1], 18);
-      glow.addColorStop(0, `rgba(235, 235, 235, ${0.22 * cycleAlpha})`);
-      glow.addColorStop(1, "rgba(235, 235, 235, 0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(lastPt[0], lastPt[1], 18, 0, Math.PI * 2);
-      ctx.fill();
+
+      ctx.restore();
     }
 
     function drawShadows(now: number) {
