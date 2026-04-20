@@ -156,19 +156,19 @@ function FeedPage() {
           onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
           className={pillClass(sortBy === "date" && sortOrder === "desc")}
         >
-          Новые
+          {t("feed.new")}
         </button>
         <button
           onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
           className={pillClass(sortBy === "date" && sortOrder === "asc")}
         >
-          Старые
+          {t("feed.old")}
         </button>
         <button
           onClick={() => { setSortBy(sortBy === "rating" ? "date" : "rating"); setSortOrder("desc"); setPage(1); }}
           className={pillClass(sortBy === "rating")}
         >
-          Рейтинг
+          {t("feed.rating")}
         </button>
 
         {/* Instrument search autocomplete */}
@@ -180,7 +180,7 @@ function FeedPage() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
             </svg>
-            {selectedInstrument ? selectedInstrumentName || "Инструмент" : "Инструменты"}
+            {selectedInstrument ? selectedInstrumentName || t("channels.instrument") : t("feed.instruments")}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           {expandedCategory === "__root" && (
@@ -211,7 +211,7 @@ function FeedPage() {
                       !selectedInstrument ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
                     }`}
                   >
-                    Все инструменты
+                    {t("feed.allInstruments")}
                   </button>
                   {instrumentSearch.length >= 2 ? (
                     instrumentResults.length === 0 ? (
