@@ -25,10 +25,10 @@ export default function ChartBackground() {
     // Every ~10s a fresh chart grows inside a randomly-placed rectangle.
     // After the session ends, the chart fades out and a new one appears
     // in a different location.
-    const SESSION_MS = 40000;     // total visible time per session (4× slower)
-    const FADE_IN_MS = 2200;
-    const FADE_OUT_MS = 3200;
-    const MAX_POINTS = 120;       // ticks per session
+    const SESSION_MS = 10000;     // total visible time per session
+    const FADE_IN_MS = 800;
+    const FADE_OUT_MS = 1200;
+    const MAX_POINTS = 22;        // ticks per session (slower formation)
     const TICK_MS = Math.floor((SESSION_MS - FADE_IN_MS - FADE_OUT_MS) / MAX_POINTS);
     const DRIFT_ABS = 0.12;       // magnitude of per-session drift (signed)
     const VOL = 1.15;
@@ -102,10 +102,10 @@ export default function ChartBackground() {
       seedY: number;       // phase for vertical wobble
     };
     const shadows: Shadow[] = [
-      { widthFrac: 0.32, cx: -400, speed: 22, alpha: 0.55, seedY: 0.3 },
-      { widthFrac: 0.22, cx: 200,  speed: 14, alpha: 0.45, seedY: 1.7 },
-      { widthFrac: 0.45, cx: 900,  speed: 28, alpha: 0.60, seedY: 2.9 },
-      { widthFrac: 0.18, cx: 1400, speed: 18, alpha: 0.50, seedY: 4.1 },
+      { widthFrac: 0.32, cx: -400, speed: 5.5, alpha: 0.55, seedY: 0.3 },
+      { widthFrac: 0.22, cx: 200,  speed: 3.5, alpha: 0.45, seedY: 1.7 },
+      { widthFrac: 0.45, cx: 900,  speed: 7.0, alpha: 0.60, seedY: 2.9 },
+      { widthFrac: 0.18, cx: 1400, speed: 4.5, alpha: 0.50, seedY: 4.1 },
     ];
 
     function resize() {
