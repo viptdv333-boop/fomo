@@ -5,10 +5,28 @@ import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import { prisma } from "@/lib/prisma";
 
-export const metadata: Metadata = {
-  title: "FOMO — Find Opportunities, Make Outcomes",
-  description: "Платформа для публикации и обсуждения торговых идей",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let settings: {
+    metaTitle?: string;
+    metaDescription?: string | null;
+    faviconUrl?: string | null;
+  } | null = null;
+  try {
+    settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
+  } catch {
+    // DB unreachable — fall through to defaults
+  }
+  const favicon = settings?.faviconUrl || "/logo-fomo.png";
+  return {
+    title: settings?.metaTitle || "FOMO — Find Opportunities, Make Outcomes",
+    description: settings?.metaDescription || "Платформа для публикации и обсуждения торговых идей",
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+  };
+}
 
 async function getHeaderCode(): Promise<string | null> {
   try {
