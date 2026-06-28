@@ -132,9 +132,22 @@ function FeedPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">{t("feed.title")}</h1>
-        <p className="text-base text-gray-500 dark:text-gray-400">{t("feed.subtitle")}</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">{t("feed.title")}</h1>
+          <p className="text-base text-gray-500 dark:text-gray-400">{t("feed.subtitle")}</p>
+        </div>
+        {session?.user && (
+          <Link
+            href="/ideas/new"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors shadow-sm shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            {t("profile.createIdea")}
+          </Link>
+        )}
       </div>
 
       {/* Filter bar — no border, no background */}
