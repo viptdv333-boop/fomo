@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
@@ -34,6 +34,8 @@ export default function IdeaContent() {
   const { t } = useT();
   const params = useParams();
   const { data: session } = useSession();
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
   const [idea, setIdea] = useState<IdeaDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -90,9 +92,28 @@ export default function IdeaContent() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{idea.title}</h1>
           {session?.user?.id === idea.author.id && (
-            <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
-              {t("common.edit")}
-            </Link>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
+                {t("common.edit")}
+              </Link>
+              <button
+                onClick={async () => {
+                  if (!confirm("Удалить идею безвозвратно?")) return;
+                  setDeleting(true);
+                  const res = await fetch(`/api/ideas/${idea.id}`, { method: "DELETE" });
+                  if (res.ok) {
+                    router.push("/profile?tab=ideas");
+                  } else {
+                    setDeleting(false);
+                    alert("Не удалось удалить идею");
+                  }
+                }}
+                disabled={deleting}
+                className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+              >
+                {deleting ? "Удаление..." : t("common.delete")}
+              </button>
+            </div>
           )}
         </div>
 

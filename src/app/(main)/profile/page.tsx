@@ -7,6 +7,7 @@ import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
 import ShareButtons from "@/components/shared/ShareButtons";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
+import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
 
 const SPECIALIZATION_OPTIONS = [
@@ -75,8 +76,13 @@ function ProfileContent() {
   const [showEduForm, setShowEduForm] = useState(false);
   const [rating, setRating] = useState(0);
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "finance" ? "finance" : tabParam === "security" ? "security" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security">(initialTab);
+  const initialTab =
+    tabParam === "finance" ? "finance" :
+    tabParam === "security" ? "security" :
+    tabParam === "ideas" ? "ideas" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security" | "ideas">(initialTab);
+  const [myIdeas, setMyIdeas] = useState<any[]>([]);
+  const [myIdeasLoading, setMyIdeasLoading] = useState(true);
 
   // Security tab state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -126,6 +132,22 @@ function ProfileContent() {
         });
     }
   }, [session]);
+
+  async function loadMyIdeas() {
+    if (!session?.user?.id) return;
+    setMyIdeasLoading(true);
+    try {
+      const res = await fetch(`/api/ideas?authorId=${session.user.id}`);
+      const data = await res.json();
+      setMyIdeas(data.data || data.ideas || (Array.isArray(data) ? data : []));
+    } finally {
+      setMyIdeasLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadMyIdeas();
+  }, [session?.user?.id]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -267,6 +289,16 @@ function ProfileContent() {
           {t("profile.finance")}
         </button>
         <button
+          onClick={() => setActiveTab("ideas")}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
+            activeTab === "ideas"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          {t("profile.ideas")}
+        </button>
+        <button
           onClick={() => setActiveTab("security")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
             activeTab === "security"
@@ -277,6 +309,24 @@ function ProfileContent() {
           {t("profile.security")}
         </button>
       </div>
+
+      {activeTab === "ideas" && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6">
+          {myIdeasLoading ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">Загрузка...</div>
+          ) : myIdeas.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              Пока нет опубликованных идей
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {myIdeas.map((idea: any) => (
+                <IdeaCard key={idea.id} idea={idea} onVote={loadMyIdeas} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === "finance" && session?.user?.id && (
         <div className="space-y-6">

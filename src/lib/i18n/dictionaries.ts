@@ -14,6 +14,7 @@ export const ru: Record<string, string> = {
   "profile.subscriptions": "Каналы и подписки",
   "profile.profile": "Профиль",
   "profile.finance": "Финансы",
+  "profile.ideas": "Мои идеи",
   "profile.admin": "Панель управления",
   "profile.logout": "Выйти",
 
@@ -126,6 +127,7 @@ export const en: Record<string, string> = {
   "profile.subscriptions": "Channels & Subscriptions",
   "profile.profile": "Profile",
   "profile.finance": "Finance",
+  "profile.ideas": "My ideas",
   "profile.admin": "Admin Panel",
   "profile.logout": "Log out",
 
@@ -230,6 +232,7 @@ export const cn: Record<string, string> = {
   "profile.subscriptions": "频道和订阅",
   "profile.profile": "个人资料",
   "profile.finance": "财务",
+  "profile.ideas": "我的想法",
   "profile.admin": "管理面板",
   "profile.logout": "退出",
 
