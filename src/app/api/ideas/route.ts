@@ -29,7 +29,13 @@ const ideaSelect = {
   instruments: {
     select: {
       instrument: {
-        select: { id: true, name: true, slug: true, ticker: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          ticker: true,
+          asset: { select: { slug: true, name: true } },
+        },
       },
     },
   },
@@ -71,6 +77,7 @@ export async function GET(request: NextRequest) {
   // Authenticated: apply filters and pagination
   const instrumentId = searchParams.get("instrumentId");
   const instrumentSlug = searchParams.get("instrumentSlug");
+  const assetSlug = searchParams.get("assetSlug");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const search = searchParams.get("search");
@@ -85,6 +92,12 @@ export async function GET(request: NextRequest) {
   if (instrumentId) {
     where.instruments = {
       some: { instrumentId },
+    };
+  } else if (assetSlug) {
+    // Match any instrument tied to this Asset — collapses all exchange-specific
+    // instruments (e.g. NG@CME + NG@MOEX + NATGAS) into a single "Газ" filter.
+    where.instruments = {
+      some: { instrument: { asset: { slug: assetSlug } } },
     };
   } else if (instrumentSlug) {
     where.instruments = {

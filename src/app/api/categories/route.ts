@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
             include: {
               chatRoom: { select: { id: true } },
               exchangeRel: { select: { id: true, shortName: true, slug: true } },
+              asset: { select: { id: true, name: true, slug: true } },
             },
           }
         : false,

@@ -46,20 +46,30 @@ export default function FeedByInstrumentPage() {
       })
       .catch(() => {});
 
-    // Load ideas by instrument slug — /api/ideas returns a plain array
-    // for anonymous users and { data: [...], page, total } for logged-in
-    // ones. Normalise before setState so .map() can't crash on an object.
-    fetch(`/api/ideas?instrumentSlug=${slug}&limit=50`)
-      .then((r) => r.json())
-      .then((data) => {
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.data)
-            ? data.data
-            : [];
-        setIdeas(list);
-      })
-      .catch(() => setIdeas([]));
+    // Try asset slug first — one URL like /feed/oil collapses ideas from
+    // all exchange-specific instruments of that asset. Fall back to the
+    // legacy instrument-slug filter if nothing matches.
+    const normalise = (data: any) =>
+      Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+    (async () => {
+      try {
+        const assetRes = await fetch(`/api/ideas?assetSlug=${slug}&limit=50`);
+        const assetList = normalise(await assetRes.json());
+        if (assetList.length > 0) {
+          setIdeas(assetList);
+          return;
+        }
+        const instRes = await fetch(`/api/ideas?instrumentSlug=${slug}&limit=50`);
+        setIdeas(normalise(await instRes.json()));
+      } catch {
+        setIdeas([]);
+      }
+    })();
 
     // Load channels that have this instrument in tags
     fetch(`/api/channels?instrumentSlug=${slug}`)

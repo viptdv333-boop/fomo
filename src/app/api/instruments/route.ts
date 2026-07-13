@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
       chatRoom: { select: { id: true } },
       category: { select: { id: true, name: true, slug: true } },
       exchangeRel: { select: { id: true, name: true, slug: true, shortName: true, country: true } },
+      asset: { select: { id: true, name: true, slug: true } },
     },
   });
 

@@ -53,7 +53,13 @@ interface IdeaCardProps {
       avatarUrl: string | null;
       donationCard?: string | null;
     };
-    instruments: { id: string; name: string; slug: string; ticker?: string | null }[];
+    instruments: {
+      id: string;
+      name: string;
+      slug: string;
+      ticker?: string | null;
+      asset?: { slug: string; name: string } | null;
+    }[];
     voteScore: number;
     userVote: number | null;
   };
@@ -86,6 +92,18 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     });
     onVote?.();
   }
+
+  // Collapse multiple exchange-specific instruments of the same asset
+  // (e.g. NG@CME + NG@MOEX + NATGAS) into a single "Газ" tag.
+  const uniqInstruments = (() => {
+    const seen = new Set<string>();
+    return idea.instruments.filter((inst) => {
+      const key = inst.asset?.slug ?? `name:${inst.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
 
   const dateStr = new Date(idea.createdAt).toLocaleString("ru", {
     day: "numeric",
@@ -166,10 +184,10 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{idea.preview}</p>
         <div className="flex items-center justify-between mt-auto text-xs text-gray-400">
           <div className="flex gap-1 flex-wrap">
-            {idea.instruments.slice(0, 2).map((inst) => (
-              <Link key={inst.id} href={`/feed/${inst.slug}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] hover:bg-green-100 transition">
+            {uniqInstruments.slice(0, 2).map((inst) => (
+              <Link key={inst.id} href={`/feed/${inst.asset?.slug || inst.slug}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] hover:bg-green-100 transition">
                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" /></svg>
-                #{inst.ticker || inst.name}
+                #{inst.asset?.name || inst.name}
               </Link>
             ))}
           </div>
@@ -252,13 +270,13 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
       <div className="flex items-center justify-between gap-3">
         {/* Instrument tags */}
         <div className="flex gap-1.5 flex-wrap min-w-0">
-          {idea.instruments.map((inst) => (
+          {uniqInstruments.map((inst) => (
             <Link
               key={inst.id}
-              href={`/feed/${inst.slug}`}
+              href={`/feed/${inst.asset?.slug || inst.slug}`}
               className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[11px] font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
-              #{inst.ticker || inst.name}
+              #{inst.asset?.name || inst.name}
             </Link>
           ))}
         </div>

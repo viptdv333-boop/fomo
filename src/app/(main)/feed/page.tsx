@@ -65,9 +65,12 @@ function FeedPage() {
   const [selectedInstrument, setSelectedInstrument] = useState<string>(
     searchParams.get("instrumentId") || ""
   );
+  const [selectedAssetSlug, setSelectedAssetSlug] = useState<string>(
+    searchParams.get("assetSlug") || ""
+  );
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [instrumentSearch, setInstrumentSearch] = useState("");
-  const [instrumentResults, setInstrumentResults] = useState<{ id: string; name: string; ticker: string | null; slug: string; exchangeRel?: { shortName: string } | null }[]>([]);
+  const [instrumentResults, setInstrumentResults] = useState<{ id: string; name: string; ticker: string | null; slug: string; exchangeRel?: { shortName: string } | null; asset?: { id: string; name: string; slug: string } | null }[]>([]);
   const [selectedInstrumentName, setSelectedInstrumentName] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,7 @@ function FeedPage() {
 
   useEffect(() => {
     loadIdeas();
-  }, [selectedInstrument, page, sortBy, sortOrder, authorFilter, paidFilter]);
+  }, [selectedInstrument, selectedAssetSlug, page, sortBy, sortOrder, authorFilter, paidFilter]);
 
   useEffect(() => {
     fetch("/api/ideas/authors")
@@ -107,7 +110,8 @@ function FeedPage() {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "50");
-    if (selectedInstrument) params.set("instrumentId", selectedInstrument);
+    if (selectedAssetSlug) params.set("assetSlug", selectedAssetSlug);
+    else if (selectedInstrument) params.set("instrumentId", selectedInstrument);
     if (sortBy !== "date") params.set("sortBy", sortBy);
     if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     if (authorFilter) params.set("authorId", authorFilter);
@@ -188,12 +192,12 @@ function FeedPage() {
         <div className="relative">
           <button
             onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
-            className={`${pillClass(!!selectedInstrument)} inline-flex items-center gap-1`}
+            className={`${pillClass(!!selectedInstrument || !!selectedAssetSlug)} inline-flex items-center gap-1`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
             </svg>
-            {selectedInstrument ? selectedInstrumentName || t("channels.instrument") : t("feed.instruments")}
+            {(selectedInstrument || selectedAssetSlug) ? selectedInstrumentName || t("channels.instrument") : t("feed.instruments")}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           {expandedCategory === "__root" && (
@@ -219,63 +223,104 @@ function FeedPage() {
                 </div>
                 <div className="max-h-60 overflow-y-auto">
                   <button
-                    onClick={() => { setSelectedInstrument(""); setSelectedInstrumentName(""); setExpandedCategory(null); setInstrumentSearch(""); setInstrumentResults([]); setPage(1); }}
+                    onClick={() => { setSelectedInstrument(""); setSelectedAssetSlug(""); setSelectedInstrumentName(""); setExpandedCategory(null); setInstrumentSearch(""); setInstrumentResults([]); setPage(1); }}
                     className={`block w-full text-left px-3 py-2 text-xs border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                      !selectedInstrument ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
+                      !selectedInstrument && !selectedAssetSlug ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-700 dark:text-gray-300"
                     }`}
                   >
                     {t("feed.allInstruments")}
                   </button>
                   {instrumentSearch.length >= 2 ? (
-                    instrumentResults.length === 0 ? (
-                      <div className="px-3 py-4 text-xs text-gray-400 text-center">Ничего не найдено</div>
-                    ) : (
-                      instrumentResults.map((inst) => (
-                        <button
-                          key={inst.id}
-                          onClick={() => {
-                            const label = `${inst.ticker || inst.name}${inst.exchangeRel?.shortName ? ` (${inst.exchangeRel.shortName})` : ""}`;
-                            setSelectedInstrument(inst.id);
-                            setSelectedInstrumentName(label);
-                            setExpandedCategory(null);
-                            setInstrumentSearch("");
-                            setInstrumentResults([]);
-                            setPage(1);
-                          }}
-                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
-                            selectedInstrument === inst.id ? "text-green-600 font-medium bg-green-50 dark:bg-green-900/30" : "text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          <span className="font-mono font-bold text-green-600 dark:text-green-400">#{inst.ticker || "—"}</span>
-                          {inst.exchangeRel?.shortName && <span className="text-gray-400 text-[10px]">({inst.exchangeRel.shortName})</span>}
-                          <span className="truncate flex-1 text-gray-500">{inst.name}</span>
-                        </button>
-                      ))
-                    )
+                    (() => {
+                      // Group by asset.slug (or name if no asset) so different
+                      // exchanges of the same asset collapse to one row.
+                      const groups = new Map<string, typeof instrumentResults[number]>();
+                      for (const inst of instrumentResults) {
+                        const key = inst.asset?.slug ?? `name:${inst.name}`;
+                        if (!groups.has(key)) groups.set(key, inst);
+                      }
+                      const list = Array.from(groups.values());
+                      return list.length === 0 ? (
+                        <div className="px-3 py-4 text-xs text-gray-400 text-center">Ничего не найдено</div>
+                      ) : (
+                        list.map((inst) => {
+                          const isAsset = !!inst.asset;
+                          const selected = isAsset
+                            ? selectedAssetSlug === inst.asset!.slug
+                            : selectedInstrument === inst.id;
+                          return (
+                            <button
+                              key={inst.asset?.slug ?? inst.id}
+                              onClick={() => {
+                                if (isAsset) {
+                                  setSelectedAssetSlug(inst.asset!.slug);
+                                  setSelectedInstrument("");
+                                } else {
+                                  setSelectedInstrument(inst.id);
+                                  setSelectedAssetSlug("");
+                                }
+                                setSelectedInstrumentName(inst.name);
+                                setExpandedCategory(null);
+                                setInstrumentSearch("");
+                                setInstrumentResults([]);
+                                setPage(1);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
+                                selected ? "text-green-600 font-medium bg-green-50 dark:bg-green-900/30" : "text-gray-700 dark:text-gray-300"
+                              }`}
+                            >
+                              <span className="truncate flex-1">{inst.name}</span>
+                            </button>
+                          );
+                        })
+                      );
+                    })()
                   ) : (
                     /* Show categories when no search */
-                    categories.map((cat) => (
-                      <div key={cat.id}>
-                        <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">{(() => { const k = `cat.${cat.slug}`; const v = t(k); return v === k ? cat.name : v; })()}</div>
-                        {cat.instruments.slice(0, 5).map((inst: any) => (
-                          <button
-                            key={inst.id}
-                            onClick={() => {
-                              const label = `${inst.ticker || inst.name}${inst.exchangeRel?.shortName ? ` (${inst.exchangeRel.shortName})` : ""}`;
-                              setSelectedInstrument(inst.id);
-                              setSelectedInstrumentName(label);
-                              setExpandedCategory(null);
-                              setPage(1);
-                            }}
-                            className={`w-full text-left px-4 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                              selectedInstrument === inst.id ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"
-                            }`}
-                          >
-                            <span className="font-mono font-bold">{inst.ticker || "—"}</span> {inst.name}
-                          </button>
-                        ))}
-                      </div>
-                    ))
+                    categories.map((cat) => {
+                      // Dedup by asset.slug (fallback: name) so each asset
+                      // appears once per category.
+                      const seen = new Set<string>();
+                      const uniq = cat.instruments.filter((inst: any) => {
+                        const key = inst.asset?.slug ?? `name:${inst.name}`;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                      });
+                      return (
+                        <div key={cat.id}>
+                          <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">{(() => { const k = `cat.${cat.slug}`; const v = t(k); return v === k ? cat.name : v; })()}</div>
+                          {uniq.slice(0, 5).map((inst: any) => {
+                            const isAsset = !!inst.asset;
+                            const selected = isAsset
+                              ? selectedAssetSlug === inst.asset.slug
+                              : selectedInstrument === inst.id;
+                            return (
+                              <button
+                                key={inst.asset?.slug ?? inst.id}
+                                onClick={() => {
+                                  if (isAsset) {
+                                    setSelectedAssetSlug(inst.asset.slug);
+                                    setSelectedInstrument("");
+                                  } else {
+                                    setSelectedInstrument(inst.id);
+                                    setSelectedAssetSlug("");
+                                  }
+                                  setSelectedInstrumentName(inst.name);
+                                  setExpandedCategory(null);
+                                  setPage(1);
+                                }}
+                                className={`w-full text-left px-4 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                                  selected ? "text-green-600 font-medium" : "text-gray-700 dark:text-gray-300"
+                                }`}
+                              >
+                                {inst.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -286,9 +331,9 @@ function FeedPage() {
         {/* Author filter removed */}
 
         {/* Reset */}
-        {(selectedInstrument || authorFilter) && (
+        {(selectedInstrument || selectedAssetSlug || authorFilter) && (
           <button
-            onClick={() => { setSelectedInstrument(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
+            onClick={() => { setSelectedInstrument(""); setSelectedAssetSlug(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
             className="text-xs text-gray-400 hover:text-red-500 transition ml-1"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
