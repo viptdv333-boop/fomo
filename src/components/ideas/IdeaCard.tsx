@@ -87,9 +87,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     onVote?.();
   }
 
-  const dateStr = new Date(idea.createdAt).toLocaleDateString("ru", {
+  const dateStr = new Date(idea.createdAt).toLocaleString("ru", {
     day: "numeric",
     month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Moscow",
   });
 
   const avatarColor = hashColor(idea.author.id);

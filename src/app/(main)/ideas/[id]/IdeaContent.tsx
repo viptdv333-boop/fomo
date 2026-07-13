@@ -98,9 +98,10 @@ export default function IdeaContent() {
             </Link>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {t("idea.rating")} {Number(idea.author.rating).toFixed(1)} ·{" "}
-              {new Date(idea.createdAt).toLocaleDateString("ru", {
+              {new Date(idea.createdAt).toLocaleString("ru", {
                 day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-              })}
+                timeZone: "Europe/Moscow",
+              })} МСК
             </div>
           </div>
         </div>
