@@ -49,15 +49,9 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: "FOMO" }],
     creator: "FOMO",
     publisher: "FOMO",
-    alternates: {
-      canonical: SITE_URL,
-      languages: {
-        ru: SITE_URL,
-        en: SITE_URL,
-        "zh-CN": SITE_URL,
-        "x-default": SITE_URL,
-      },
-    },
+    // NOTE: no `alternates.canonical` here — Next merges root metadata into
+    // every child page, so a global canonical would tag /feed, /channels, etc.
+    // as duplicates of the home page. Each route sets its own canonical.
     icons: {
       icon: favicon,
       shortcut: favicon,
@@ -68,7 +62,8 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "FOMO",
       title,
       description,
-      url: SITE_URL,
+      // No `url` here — Next merges root metadata into child pages, so a
+      // global og:url would tag every route as sharing the same URL.
       locale: "ru_RU",
       alternateLocale: ["en_US", "zh_CN"],
       images: [
