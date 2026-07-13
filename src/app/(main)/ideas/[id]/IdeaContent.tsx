@@ -17,6 +17,7 @@ interface IdeaDetail {
   price: number | null;
   locked?: boolean;
   attachments?: unknown;
+  viewCount?: number;
   createdAt: string;
   author: {
     id: string;
@@ -47,6 +48,21 @@ export default function IdeaContent() {
   }
 
   useEffect(() => { loadIdea(); }, [params.id]);
+
+  // Register a view once per idea per browser session (survives refresh
+  // for a short window). Uses sessionStorage so refreshes don't inflate
+  // the counter, but a real return visit in a new tab/session counts.
+  useEffect(() => {
+    if (!params.id || typeof window === "undefined") return;
+    const key = `idea-view:${params.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Storage may be disabled — best-effort dedup only.
+    }
+    fetch(`/api/ideas/${params.id}/view`, { method: "POST" }).catch(() => {});
+  }, [params.id]);
 
   async function handleVote(value: number) {
     if (!session) return;

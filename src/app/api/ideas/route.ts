@@ -14,6 +14,7 @@ const ideaSelect = {
   isPaid: true,
   price: true,
   acceptDonations: true,
+  viewCount: true,
   createdAt: true,
   author: {
     select: {
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
         isPaid: idea.isPaid,
         price: idea.price,
         acceptDonations: idea.acceptDonations,
+        viewCount: idea.viewCount,
         createdAt: idea.createdAt,
         author: idea.author,
         instruments: idea.instruments.map((ii) => ii.instrument),
@@ -149,6 +151,7 @@ export async function GET(request: NextRequest) {
       isPaid: idea.isPaid,
       price: idea.price,
       acceptDonations: idea.acceptDonations,
+      viewCount: idea.viewCount,
       createdAt: idea.createdAt,
       author: idea.author,
       instruments: idea.instruments.map((ii) => ii.instrument),

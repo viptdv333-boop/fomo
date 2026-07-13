@@ -43,6 +43,7 @@ interface IdeaCardProps {
     isPaid: boolean;
     price: number | null;
     acceptDonations?: boolean;
+    viewCount?: number;
     createdAt: string;
     author: {
       id: string;
@@ -71,8 +72,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [reportReason, setReportReason] = useState("");
   const [reportSent, setReportSent] = useState(false);
 
-  // Fake view count derived from idea id for display
-  const viewCount = Math.abs(idea.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 400) + 50;
+  const viewCount = idea.viewCount ?? 0;
 
   async function handleLike() {
     if (!session) return;
