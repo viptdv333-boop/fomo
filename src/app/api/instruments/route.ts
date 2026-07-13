@@ -44,13 +44,39 @@ export async function GET(request: NextRequest) {
   const instruments = await prisma.instrument.findMany({
     where,
     orderBy: { name: "asc" },
-    take: search ? 20 : undefined,
+    // When searching, pull a wider pool so relevance sort has room to pick
+    // the best matches. Without a search we keep the caller-controlled
+    // pagination (undefined = all rows).
+    take: search ? 100 : undefined,
     include: {
       chatRoom: { select: { id: true } },
       category: { select: { id: true, name: true, slug: true } },
       exchangeRel: { select: { id: true, name: true, slug: true, shortName: true, country: true } },
     },
   });
+
+  // Relevance-rank search results so an exact ticker match ("NG" for "ng")
+  // wins over anything that just happens to contain "ng" in its description
+  // ("Hong Kong Exchange", etc.). Only kicks in when ?search= is set.
+  if (search) {
+    const q = search.toLowerCase();
+    const scored = instruments.map((inst) => {
+      const ticker = (inst.ticker || "").toLowerCase();
+      const name = inst.name.toLowerCase();
+      const desc = (inst.description || "").toLowerCase();
+      let score = 0;
+      if (ticker === q) score += 1000;
+      else if (ticker.startsWith(q)) score += 500;
+      else if (ticker.includes(q)) score += 100;
+      if (name === q) score += 200;
+      else if (name.startsWith(q)) score += 80;
+      else if (name.includes(q)) score += 20;
+      if (desc.includes(q)) score += 1;
+      return { inst, score };
+    });
+    scored.sort((a, b) => b.score - a.score || a.inst.name.localeCompare(b.inst.name));
+    return NextResponse.json(scored.slice(0, 20).map((s) => s.inst));
+  }
 
   return NextResponse.json(instruments);
 }
