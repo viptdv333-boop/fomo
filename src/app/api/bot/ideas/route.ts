@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
-import { recalculateRating } from "@/lib/rating";
-import { notifyFollowers } from "@/lib/notifications";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
 // без браузерной NextAuth-сессии. Только БЕСПЛАТНЫЕ идеи от заранее известного
 // автора — эндпоинт намеренно не даёт управлять isPaid/price/authorId извне.
+// Намеренно НЕ трогает рейтинг/уведомления/подписчиков — это автоматика, а не
+// органическая публикация автора, никаких побочных эффектов на аккаунт быть не должно.
 const MIKHAIL_USER_ID = "cmmteunjn0004csaotp2lnb4a"; // аккаунт «Михаил», /profile/cmmteunjn0004csaotp2lnb4a
 
 function checkToken(request: NextRequest): boolean {
@@ -69,26 +69,6 @@ export async function POST(request: NextRequest) {
     },
     select: { id: true, title: true, createdAt: true },
   });
-
-  await prisma.user.update({
-    where: { id: MIKHAIL_USER_ID },
-    data: { lastPublishedAt: new Date() },
-  });
-  await recalculateRating(MIKHAIL_USER_ID);
-
-  const author = await prisma.user.findUnique({
-    where: { id: MIKHAIL_USER_ID },
-    select: { displayName: true },
-  });
-  if (author) {
-    await notifyFollowers(
-      MIKHAIL_USER_ID,
-      "new_idea",
-      `${author.displayName} опубликовал новую идею`,
-      title,
-      `/ideas/${idea.id}`
-    );
-  }
 
   return NextResponse.json(
     { ...idea, matchedInstruments: instruments.length, url: `/ideas/${idea.id}` },
