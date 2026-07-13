@@ -5,6 +5,9 @@ import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import { prisma } from "@/lib/prisma";
 
+const SITE_URL = "https://fomo.spot";
+const OG_IMAGE = "/logo-fomo.png";
+
 export async function generateMetadata(): Promise<Metadata> {
   let settings: {
     metaTitle?: string;
@@ -16,14 +19,88 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // DB unreachable — fall through to defaults
   }
-  const favicon = settings?.faviconUrl || "/logo-fomo.png";
+  const favicon = settings?.faviconUrl || OG_IMAGE;
+  const title = settings?.metaTitle || "FOMO — Find Opportunities, Make Outcomes";
+  const description =
+    settings?.metaDescription ||
+    "Торговые идеи и аналитика от профессиональных трейдеров. Читайте прогнозы, публикуйте свои идеи, подписывайтесь на авторов.";
+
   return {
-    title: settings?.metaTitle || "FOMO — Find Opportunities, Make Outcomes",
-    description: settings?.metaDescription || "Платформа для публикации и обсуждения торговых идей",
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: "%s — FOMO",
+    },
+    description,
+    applicationName: "FOMO",
+    keywords: [
+      "торговые идеи",
+      "аналитика рынка",
+      "трейдинг",
+      "прогнозы акций",
+      "фьючерсы MOEX",
+      "крипта",
+      "инвестиции",
+      "подписки на трейдеров",
+      "FOMO",
+      "trading ideas",
+      "market analysis",
+    ],
+    authors: [{ name: "FOMO" }],
+    creator: "FOMO",
+    publisher: "FOMO",
+    alternates: {
+      canonical: SITE_URL,
+      languages: {
+        ru: SITE_URL,
+        en: SITE_URL,
+        "zh-CN": SITE_URL,
+        "x-default": SITE_URL,
+      },
+    },
     icons: {
       icon: favicon,
       shortcut: favicon,
       apple: favicon,
+    },
+    openGraph: {
+      type: "website",
+      siteName: "FOMO",
+      title,
+      description,
+      url: SITE_URL,
+      locale: "ru_RU",
+      alternateLocale: ["en_US", "zh_CN"],
+      images: [
+        {
+          url: OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: "FOMO — Find Opportunities, Make Outcomes",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [OG_IMAGE],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
     },
   };
 }
