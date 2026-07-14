@@ -157,14 +157,32 @@ function ProfileContent() {
 
   async function deleteAllIdeas() {
     if (myIdeas.length === 0) return;
-    if (!confirm(`Удалить ВСЕ ${myIdeas.length} идей безвозвратно?`)) return;
-    const results = await Promise.allSettled(
-      myIdeas.map((i) => fetch(`/api/ideas/${i.id}`, { method: "DELETE" }))
-    );
-    const failed = results.filter(
-      (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)
-    ).length;
-    if (failed > 0) alert(`Не удалось удалить ${failed} из ${myIdeas.length} идей.`);
+    const total = myIdeas.length;
+    if (!confirm(`Удалить ВСЕ ${total} идей безвозвратно?`)) return;
+
+    // Run sequentially — parallel deletes were silently failing (likely
+    // NextAuth session race or DB connection pool). Serial is slower but
+    // reliable, and lets us surface the first failure with a clear message.
+    let ok = 0;
+    let firstError = "";
+    for (const idea of [...myIdeas]) {
+      try {
+        const res = await fetch(`/api/ideas/${idea.id}`, { method: "DELETE" });
+        if (res.ok) {
+          ok++;
+          setMyIdeas((prev) => prev.filter((i) => i.id !== idea.id));
+        } else if (!firstError) {
+          const body = await res.text().catch(() => "");
+          firstError = `HTTP ${res.status} ${body.slice(0, 120)}`;
+        }
+      } catch (e) {
+        if (!firstError) firstError = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    if (ok < total) {
+      alert(`Удалено ${ok} из ${total}. Первая ошибка: ${firstError || "неизвестна"}`);
+    }
     loadMyIdeas();
   }
 
