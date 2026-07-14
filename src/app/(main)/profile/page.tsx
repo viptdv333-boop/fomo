@@ -145,6 +145,29 @@ function ProfileContent() {
     }
   }
 
+  async function deleteIdea(id: string) {
+    if (!confirm("Удалить идею безвозвратно?")) return;
+    const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setMyIdeas((prev) => prev.filter((i) => i.id !== id));
+    } else {
+      alert("Не удалось удалить идею");
+    }
+  }
+
+  async function deleteAllIdeas() {
+    if (myIdeas.length === 0) return;
+    if (!confirm(`Удалить ВСЕ ${myIdeas.length} идей безвозвратно?`)) return;
+    const results = await Promise.allSettled(
+      myIdeas.map((i) => fetch(`/api/ideas/${i.id}`, { method: "DELETE" }))
+    );
+    const failed = results.filter(
+      (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)
+    ).length;
+    if (failed > 0) alert(`Не удалось удалить ${failed} из ${myIdeas.length} идей.`);
+    loadMyIdeas();
+  }
+
   useEffect(() => {
     loadMyIdeas();
   }, [session?.user?.id]);
@@ -320,8 +343,33 @@ function ProfileContent() {
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {myIdeas.length} {myIdeas.length === 1 ? "идея" : myIdeas.length < 5 ? "идеи" : "идей"}
+                </span>
+                <button
+                  onClick={deleteAllIdeas}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3" />
+                  </svg>
+                  Удалить все
+                </button>
+              </div>
               {myIdeas.map((idea: any) => (
-                <IdeaCard key={idea.id} idea={idea} onVote={loadMyIdeas} />
+                <div key={idea.id} className="relative group">
+                  <button
+                    onClick={() => deleteIdea(idea.id)}
+                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-red-600 hover:border-red-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    title="Удалить идею"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <IdeaCard idea={idea} onVote={loadMyIdeas} />
+                </div>
               ))}
             </div>
           )}
