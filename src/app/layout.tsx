@@ -1,9 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
+import PWARegister from "@/components/PWARegister";
 import { prisma } from "@/lib/prisma";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 const SITE_URL = "https://fomo.spot";
 const OG_IMAGE = "/logo-fomo.png";
@@ -97,6 +108,12 @@ export async function generateMetadata(): Promise<Metadata> {
       address: false,
       telephone: false,
     },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "FOMO",
+    },
   };
 }
 
@@ -132,6 +149,7 @@ export default async function RootLayout({
         <ThemeProvider>
           <I18nProvider>
             <SiteSettingsInjector />
+            <PWARegister />
             {children}
           </I18nProvider>
         </ThemeProvider>
