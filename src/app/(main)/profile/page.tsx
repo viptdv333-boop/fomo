@@ -133,13 +133,32 @@ function ProfileContent() {
     }
   }, [session]);
 
+  // Fetch every page — /api/ideas is paginated (limit=100 max), so a single
+  // request would only ever return the first chunk.
+  async function fetchAllMyIdeas(): Promise<any[]> {
+    if (!session?.user?.id) return [];
+    const all: any[] = [];
+    for (let page = 1; page < 200; page++) {
+      const res = await fetch(`/api/ideas?authorId=${session.user.id}&page=${page}&limit=100`);
+      if (!res.ok) break;
+      const data = await res.json();
+      const chunk =
+        data?.data ??
+        data?.ideas ??
+        (Array.isArray(data) ? data : []);
+      if (chunk.length === 0) break;
+      all.push(...chunk);
+      const totalPages = data?.totalPages ?? 1;
+      if (page >= totalPages) break;
+    }
+    return all;
+  }
+
   async function loadMyIdeas() {
     if (!session?.user?.id) return;
     setMyIdeasLoading(true);
     try {
-      const res = await fetch(`/api/ideas?authorId=${session.user.id}`);
-      const data = await res.json();
-      setMyIdeas(data.data || data.ideas || (Array.isArray(data) ? data : []));
+      setMyIdeas(await fetchAllMyIdeas());
     } finally {
       setMyIdeasLoading(false);
     }
@@ -156,8 +175,11 @@ function ProfileContent() {
   }
 
   async function deleteAllIdeas() {
-    if (myIdeas.length === 0) return;
-    const total = myIdeas.length;
+    // Refetch across all pages first — myIdeas only holds what's visible
+    // right now, so we would miss anything past the first page otherwise.
+    const everything = await fetchAllMyIdeas();
+    const total = everything.length;
+    if (total === 0) return;
     if (!confirm(`Удалить ВСЕ ${total} идей безвозвратно?`)) return;
 
     // Run sequentially — parallel deletes were silently failing (likely
@@ -165,7 +187,7 @@ function ProfileContent() {
     // reliable, and lets us surface the first failure with a clear message.
     let ok = 0;
     let firstError = "";
-    for (const idea of [...myIdeas]) {
+    for (const idea of everything) {
       try {
         const res = await fetch(`/api/ideas/${idea.id}`, { method: "DELETE" });
         if (res.ok) {
