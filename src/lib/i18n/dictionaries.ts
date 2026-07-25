@@ -31,7 +31,7 @@ export const ru: Record<string, string> = {
   "feed.noIdeas": "Идей пока нет",
 
   // Channels
-  "channels.title": "Каналы",
+  "channels.title": "Каналы трейдеров и торговые сигналы",
   "channels.subtitle": "Платные авторские каналы с аналитикой",
   "channels.instrument": "Инструмент",
   "channels.allInstruments": "Все инструменты",
@@ -47,7 +47,7 @@ export const ru: Record<string, string> = {
   "channels.discussion": "Общее обсуждение",
 
   // Authors
-  "authors.title": "Авторы",
+  "authors.title": "Трейдеры и аналитики",
   "authors.rating": "Рейтинг",
   "authors.byDate": "По сроку",
   "authors.popularity": "Популярность",
@@ -142,7 +142,7 @@ export const en: Record<string, string> = {
   "feed.allInstruments": "All instruments",
   "feed.noIdeas": "No ideas yet",
 
-  "channels.title": "Channels",
+  "channels.title": "Trader Channels & Signals",
   "channels.subtitle": "Premium author channels with analytics",
   "channels.instrument": "Instrument",
   "channels.allInstruments": "All instruments",
@@ -157,7 +157,7 @@ export const en: Record<string, string> = {
   "channels.noPublications": "No publications yet",
   "channels.discussion": "General discussion",
 
-  "authors.title": "Authors",
+  "authors.title": "Traders & Analysts",
   "authors.rating": "Rating",
   "authors.byDate": "By date",
   "authors.popularity": "Popularity",
@@ -247,7 +247,7 @@ export const cn: Record<string, string> = {
   "feed.allInstruments": "所有工具",
   "feed.noIdeas": "暂无想法",
 
-  "channels.title": "频道",
+  "channels.title": "交易员频道与信号",
   "channels.subtitle": "高级作者频道与分析",
   "channels.instrument": "工具",
   "channels.allInstruments": "所有工具",
@@ -262,7 +262,7 @@ export const cn: Record<string, string> = {
   "channels.noPublications": "暂无发布",
   "channels.discussion": "综合讨论",
 
-  "authors.title": "作者",
+  "authors.title": "交易员与分析师",
   "authors.rating": "评分",
   "authors.byDate": "按日期",
   "authors.popularity": "人气",
@@ -335,7 +335,7 @@ Object.assign(ru, {
   "channels.availableBySubscription": "Доступно по подписке",
   "channels.buySubscription": "Купить подписку",
   "channels.otherAuthor": "Другие каналы автора",
-  "channels.subtitle": "Подпишитесь на каналы профессиональных трейдеров",
+  "channels.subtitle": "Подпишитесь на каналы профессиональных трейдеров: торговые сигналы, аналитика и разборы сделок по акциям, фьючерсам и криптовалюте",
   "channels.notFoundResult": "Каналы не найдены",
   "channels.empty": "Каналов пока нет",
   "channels.emptyHelp": "Здесь будут платные каналы авторов с эксклюзивной аналитикой и торговыми сигналами",
@@ -756,7 +756,7 @@ Object.assign(en, {
   "channels.availableBySubscription": "Available by subscription",
   "channels.buySubscription": "Buy subscription",
   "channels.otherAuthor": "Other channels by author",
-  "channels.subtitle": "Subscribe to channels of professional traders",
+  "channels.subtitle": "Subscribe to professional traders: trading signals, market analysis and trade breakdowns for stocks, futures and crypto",
   "channels.notFoundResult": "No channels found",
   "channels.empty": "No channels yet",
   "channels.emptyHelp": "Premium channels with exclusive analytics and trading signals will appear here",

@@ -101,8 +101,11 @@ export default function AuthorsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold dark:text-gray-100">{t("authors.title")}</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Рейтинг профессиональных трейдеров и инвестиционных аналитиков по доходности идей и опыту на бирже
+        </p>
       </div>
 
       {/* Filter bar — inline pills like Feed */}

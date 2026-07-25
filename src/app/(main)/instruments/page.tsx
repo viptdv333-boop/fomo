@@ -42,8 +42,12 @@ export default function CatalogPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold dark:text-gray-100">Каталог</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Инструменты и тикеры мировых бирж</p>
+        <h1 className="text-3xl font-bold dark:text-gray-100">
+          Акции, фьючерсы и криптовалюта
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Котировки, графики и торговые идеи по инструментам МосБиржи, мировых бирж и криптовалютного рынка
+        </p>
       </div>
 
       {/* Filter bar */}
