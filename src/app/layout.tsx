@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import PWARegister from "@/components/PWARegister";
+import YandexMetrika from "@/components/YandexMetrika";
 import { prisma } from "@/lib/prisma";
 
 export const viewport: Viewport = {
@@ -170,6 +171,7 @@ export default async function RootLayout({
           <I18nProvider>
             <SiteSettingsInjector />
             <PWARegister />
+            <YandexMetrika />
             {children}
           </I18nProvider>
         </ThemeProvider>
