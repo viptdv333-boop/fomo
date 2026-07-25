@@ -2,22 +2,23 @@
 // MetadataRoute.Robots cannot express Yandex's Clean-param directive.
 const BASE = "https://fomo.spot";
 
-// Private / functional areas that must never reach the index.
+// Functional areas with no search value. Written without a trailing slash on
+// purpose: "/messages/" only blocked the subtree, so Googlebot crawled the bare
+// /messages anyway.
+//
+// The account and auth areas (/profile, /messages, /payments, /subscriptions,
+// /login, /register, /forgot-password) are NOT listed here on purpose. Google
+// already discovered them, and a robots.txt block would stop it reading the
+// noindex those routes now send — leaving them stuck in the report. Blocked
+// crawling and noindex are mutually exclusive; noindex is what actually removes
+// a URL Google already knows about.
 const DISALLOW = [
   "/api/",
-  "/admin/",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/profile",
-  "/profile/",
-  "/messages/",
-  "/payments/",
-  "/subscriptions/",
+  "/admin",
   "/ideas/new",
   "/ideas/*/edit",
   "/channels/create",
-  "/channels/edit/",
+  "/channels/edit",
   "/design-preview",
   "/*?*page=",
 ];
