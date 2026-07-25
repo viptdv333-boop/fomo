@@ -325,6 +325,13 @@ model ChatMessage {
 
 model RatingConfig {
   id                    String  @id @default("singleton")
+  // Every author starts here. Without it the formula summed to 0 for a new
+  // author and clamped to the floor of 1.0, so publishing a first idea
+  // visibly *dropped* their rating.
+  baseRating            Decimal @default(3.0) @db.Decimal(5, 3)
+  // Reward for publishing, capped so ratings can't be farmed by volume.
+  ideaWeight            Decimal @default(0.05) @db.Decimal(5, 3)
+  ideaBonusCap          Decimal @default(2.0) @db.Decimal(5, 3)
   subscriberWeight      Decimal @default(0.3) @db.Decimal(5, 3)
   likeWeight            Decimal @default(0.1) @db.Decimal(5, 3)
   dislikeWeight         Decimal @default(0.15) @db.Decimal(5, 3)

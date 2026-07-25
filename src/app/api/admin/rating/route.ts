@@ -11,6 +11,9 @@ const paidTierSchema = z.object({
 });
 
 const updateRatingConfigSchema = z.object({
+  baseRating: z.number().min(1).max(10).optional(),
+  ideaWeight: z.number().min(0).max(10).optional(),
+  ideaBonusCap: z.number().min(0).max(10).optional(),
   subscriberWeight: z.number().min(0).max(10).optional(),
   likeWeight: z.number().min(0).max(10).optional(),
   dislikeWeight: z.number().min(0).max(10).optional(),

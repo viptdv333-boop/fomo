@@ -9,6 +9,9 @@ interface PaidTier {
 }
 
 interface RatingConfigData {
+  baseRating: number;
+  ideaWeight: number;
+  ideaBonusCap: number;
   subscriberWeight: number;
   likeWeight: number;
   dislikeWeight: number;
@@ -28,6 +31,9 @@ export default function AdminRatingPage() {
       .then((data) => {
         setConfig({
           ...data,
+          baseRating: Number(data.baseRating),
+          ideaWeight: Number(data.ideaWeight),
+          ideaBonusCap: Number(data.ideaBonusCap),
           subscriberWeight: Number(data.subscriberWeight),
           likeWeight: Number(data.likeWeight),
           dislikeWeight: Number(data.dislikeWeight),
@@ -88,7 +94,55 @@ export default function AdminRatingPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 dark:text-gray-100">Веса формулы</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Рейтинг = базовый + бонус за идеи (не выше лимита) + подписчики×вес + лайки×вес
+          − дизлайки×вес − дни простоя×штраф. Итог ограничен диапазоном 1–10.
+        </p>
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Базовый рейтинг
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={config.baseRating}
+              onChange={(e) =>
+                setConfig({ ...config, baseRating: Number(e.target.value) })
+              }
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+            />
+            <p className="text-xs text-gray-400 mt-1">Стартовое значение для нового автора</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Вес опубликованной идеи
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={config.ideaWeight}
+              onChange={(e) =>
+                setConfig({ ...config, ideaWeight: Number(e.target.value) })
+              }
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Лимит бонуса за идеи
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={config.ideaBonusCap}
+              onChange={(e) =>
+                setConfig({ ...config, ideaBonusCap: Number(e.target.value) })
+              }
+              className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+            />
+            <p className="text-xs text-gray-400 mt-1">Защита от накрутки количеством</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Вес подписчиков

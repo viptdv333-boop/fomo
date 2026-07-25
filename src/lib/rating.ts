@@ -18,7 +18,7 @@ export async function recalculateRating(userId: string): Promise<number> {
     throw new Error("User not found");
   }
 
-  const [followerCount, likesAgg, dislikesAgg] = await Promise.all([
+  const [followerCount, likesAgg, dislikesAgg, ideaCount] = await Promise.all([
     prisma.follow.count({ where: { authorId: userId } }),
     prisma.ideaVote.aggregate({
       where: { idea: { authorId: userId }, value: 1 },
@@ -27,6 +27,9 @@ export async function recalculateRating(userId: string): Promise<number> {
     prisma.ideaVote.aggregate({
       where: { idea: { authorId: userId }, value: -1 },
       _sum: { value: true },
+    }),
+    prisma.idea.count({
+      where: { authorId: userId, moderationStatus: "published" },
     }),
   ]);
 
@@ -41,7 +44,16 @@ export async function recalculateRating(userId: string): Promise<number> {
     inactivityDays = Math.max(0, daysSincePublish - config.inactivityThresholdDays);
   }
 
+  // Publishing must never lower the rating: start from a base and add a
+  // capped bonus for published ideas, then apply engagement on top.
+  const ideaBonus = Math.min(
+    ideaCount * Number(config.ideaWeight),
+    Number(config.ideaBonusCap)
+  );
+
   const raw =
+    Number(config.baseRating) +
+    ideaBonus +
     followerCount * Number(config.subscriberWeight) +
     likes * Number(config.likeWeight) -
     dislikes * Number(config.dislikeWeight) -
