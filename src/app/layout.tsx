@@ -19,6 +19,16 @@ export const viewport: Viewport = {
 const SITE_URL = "https://fomo.spot";
 const OG_IMAGE = "/logo-fomo.png";
 
+// Keyword-led title/description. Russian search engines weight the leading
+// words of <title> heavily, so the brand goes last.
+const DEFAULT_TITLE = "Торговые идеи и аналитика фондового рынка — FOMO";
+const DEFAULT_DESCRIPTION =
+  "Торговые идеи и прогнозы от трейдеров: акции, фьючерсы МосБиржи, криптовалюта, форекс. Технический анализ, сигналы, подписки на авторов. Публикуйте свои идеи.";
+
+// Yandex.Webmaster site ownership. Duplicated as /public/yandex_<code>.html
+// so either verification method works.
+const YANDEX_VERIFICATION = "a48bd2f2875b90f7";
+
 export async function generateMetadata(): Promise<Metadata> {
   let settings: {
     metaTitle?: string;
@@ -31,10 +41,8 @@ export async function generateMetadata(): Promise<Metadata> {
     // DB unreachable — fall through to defaults
   }
   const favicon = settings?.faviconUrl || OG_IMAGE;
-  const title = settings?.metaTitle || "FOMO — Find Opportunities, Make Outcomes";
-  const description =
-    settings?.metaDescription ||
-    "Торговые идеи и аналитика от профессиональных трейдеров. Читайте прогнозы, публикуйте свои идеи, подписывайтесь на авторов.";
+  const title = settings?.metaTitle || DEFAULT_TITLE;
+  const description = settings?.metaDescription || DEFAULT_DESCRIPTION;
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -45,18 +53,30 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     applicationName: "FOMO",
     keywords: [
+      // RU — mid/low frequency, the ones that actually convert
       "торговые идеи",
-      "аналитика рынка",
+      "торговые идеи мосбиржа",
+      "инвестиционные идеи",
+      "аналитика фондового рынка",
+      "прогнозы по акциям",
+      "технический анализ акций",
+      "торговые сигналы",
+      "фьючерсы МосБиржи",
       "трейдинг",
-      "прогнозы акций",
-      "фьючерсы MOEX",
-      "крипта",
-      "инвестиции",
-      "подписки на трейдеров",
-      "FOMO",
+      "инвестиции в акции",
+      "подписка на трейдера",
+      "социальная сеть для трейдеров",
+      "прогноз индекса МосБиржи",
+      "криптовалюта аналитика",
+      // EN
       "trading ideas",
-      "market analysis",
+      "stock market analysis",
+      "trading signals",
+      "social trading network",
     ],
+    verification: {
+      yandex: YANDEX_VERIFICATION,
+    },
     authors: [{ name: "FOMO" }],
     creator: "FOMO",
     publisher: "FOMO",

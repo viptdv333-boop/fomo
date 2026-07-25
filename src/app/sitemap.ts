@@ -17,7 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const entries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
-    url: `${BASE}${r.path}`,
+    // Home is emitted without a trailing slash so it matches the canonical
+    // Next renders from metadataBase ("https://fomo.spot").
+    url: r.path === "/" ? BASE : `${BASE}${r.path}`,
     lastModified: now,
     changeFrequency: r.changeFrequency,
     priority: r.priority,

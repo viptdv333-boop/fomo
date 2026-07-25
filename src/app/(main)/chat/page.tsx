@@ -74,9 +74,16 @@ function ChatPageInner() {
 }
 
 export default function ChatPage() {
+  // The heading sits outside <Suspense> so crawlers see it — ChatPageInner
+  // uses useSearchParams() and is therefore excluded from SSR.
   return (
-    <Suspense fallback={<div className="text-gray-500 py-12 text-center">Загрузка...</div>}>
-      <ChatPageInner />
-    </Suspense>
+    <>
+      <h1 className="sr-only">
+        Чат трейдеров: обсуждение акций, фьючерсов и криптовалют в реальном времени
+      </h1>
+      <Suspense fallback={<div className="text-gray-500 py-12 text-center">Загрузка...</div>}>
+        <ChatPageInner />
+      </Suspense>
+    </>
   );
 }

@@ -65,7 +65,8 @@ export default function LandingPage() {
   const content = {
     ru: {
       tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
-      welcome: "Платформа для публикации и обсуждения торговых идей. Читайте аналитику, делитесь прогнозами, зарабатывайте на подписках.",
+      h1: "Торговые идеи и аналитика фондового рынка",
+      welcome: "Платформа для публикации и обсуждения торговых идей: акции, фьючерсы МосБиржи, криптовалюта и форекс. Читайте технический анализ и прогнозы от трейдеров, делитесь своими идеями и зарабатывайте на подписках.",
       login: "Войти",
       register: "Зарегистрироваться",
       continue: "Продолжить без регистрации",
@@ -76,7 +77,8 @@ export default function LandingPage() {
     },
     en: {
       tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
-      welcome: "A platform for publishing and discussing trading ideas. Read analytics, share forecasts, earn from subscriptions.",
+      h1: "Trading Ideas and Stock Market Analysis",
+      welcome: "A social platform for publishing and discussing trading ideas: stocks, futures, crypto and forex. Read technical analysis and market forecasts from traders, share your own ideas and earn from subscriptions.",
       login: "Sign In",
       register: "Sign Up",
       continue: "Continue without registration",
@@ -87,6 +89,7 @@ export default function LandingPage() {
     },
     cn: {
       tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
+      h1: "交易想法与股市分析",
       welcome: "\u53D1\u5E03\u548C\u8BA8\u8BBA\u4EA4\u6613\u60F3\u6CD5\u7684\u5E73\u53F0\u3002\u9605\u8BFB\u5206\u6790\uFF0C\u5206\u4EAB\u9884\u6D4B\uFF0C\u901A\u8FC7\u8BA2\u9605\u8D5A\u53D6\u6536\u5165\u3002",
       login: "\u767B\u5F55",
       register: "\u6CE8\u518C",
@@ -139,6 +142,13 @@ export default function LandingPage() {
 
         {/* Welcome text */}
         <div className={`welcome-text max-w-xl text-center mb-6 ${textVisible ? "visible" : ""}`}>
+          <h1
+            className={`text-xl sm:text-2xl font-semibold mb-3 leading-snug ${
+              isDark ? "text-gray-100" : "text-gray-900"
+            }`}
+          >
+            {t.h1}
+          </h1>
           <p className={`text-base leading-relaxed ${isDark ? "text-gray-300" : "text-gray-700"}`}>
             {t.welcome}
           </p>

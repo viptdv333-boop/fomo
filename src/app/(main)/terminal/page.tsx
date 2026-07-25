@@ -248,6 +248,11 @@ export default function TerminalPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-2">
+      {/* Screen-reader/crawler heading — the terminal is a full-bleed app
+          shell, so a visible <h1> would break the layout. */}
+      <h1 className="sr-only">
+        Торговый терминал: онлайн-графики акций, фьючерсов МосБиржи и криптовалют
+      </h1>
       {/* Top bar: ticker info + price */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-3 md:px-4 py-2.5 shrink-0">
         <div className="flex items-center gap-2 md:gap-4">
