@@ -1,3 +1,5 @@
+import { randomInt } from "crypto";
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
 const BASE_URL = process.env.NEXTAUTH_URL || "https://fomo.spot";
@@ -81,6 +83,11 @@ export async function sendBroadcastEmail(email: string, title: string, body: str
   return true;
 }
 
+/**
+ * Math.random() is not a secret generator: V8's PRNG state can be recovered
+ * from a modest run of outputs, and an attacker can farm those by requesting
+ * codes to their own addresses. crypto.randomInt is drawn from the OS CSPRNG.
+ */
 export function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }

@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-2.5 pr-10 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:outline-none"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">

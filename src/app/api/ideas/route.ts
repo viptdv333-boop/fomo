@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
 import { notifyFollowers } from "@/lib/notifications";
+import { rateLimit } from "@/lib/rate-limit";
 
 // ---------- GET: List ideas ----------
 
@@ -239,6 +240,25 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  // Free ideas had no ceiling at all — one account could flood the whole feed.
+  // Paid ones are additionally capped by the rating tiers below.
+  const postLimit = await rateLimit(`idea:${userId}`, 10, 60 * 60 * 1000);
+  if (!postLimit.allowed) {
+    return NextResponse.json(
+      { error: "Слишком часто. Публиковать можно не больше 10 идей в час" },
+      { status: 429 }
+    );
+  }
+
+  // Bans take effect now, not whenever the session token next refreshes.
+  const poster = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { status: true },
+  });
+  if (!poster || poster.status === "BANNED") {
+    return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
+  }
 
   // If paid idea, check rating tiers and weekly limit
   if (isPaid) {

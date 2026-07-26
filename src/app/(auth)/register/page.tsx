@@ -270,9 +270,9 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className={`${inputClass} pr-10`}
-                placeholder="Минимум 6 символов"
+                placeholder="Минимум 8 символов"
               />
               <button
                 type="button"

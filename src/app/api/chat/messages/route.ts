@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
+import { rateLimit } from "@/lib/rate-limit";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -55,6 +56,24 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+  }
+
+  // Chats were open at any rate a script could manage. 20 a minute is far above
+  // human conversation and far below what makes a room unusable.
+  const flood = await rateLimit(`chat:${session.user.id}`, 20, 60 * 1000);
+  if (!flood.allowed) {
+    return NextResponse.json(
+      { error: "Слишком много сообщений. Подождите немного" },
+      { status: 429 }
+    );
+  }
+
+  const sender = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { status: true },
+  });
+  if (!sender || sender.status === "BANNED") {
+    return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
   }
 
   // Check if room is closed

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendVerificationCode, generateCode } from "@/lib/email";
+import { consumeCode } from "@/lib/verification";
 
 // Step 1: POST with { action: "send-code", newEmail, password }
 // Step 2: POST with { action: "verify", newEmail, code }
@@ -85,25 +86,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Введите код" }, { status: 400 });
     }
 
-    const verification = await prisma.emailVerification.findFirst({
-      where: {
-        email: newEmail,
-        code,
-        used: false,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!verification) {
-      return NextResponse.json({ error: "Неверный или просроченный код" }, { status: 400 });
+    // Counts wrong guesses and burns the code after the cap — the bare lookup
+    // that used to be here allowed unlimited attempts.
+    const check = await consumeCode(newEmail, code);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: check.status });
     }
-
-    // Mark code as used
-    await prisma.emailVerification.update({
-      where: { id: verification.id },
-      data: { used: true },
-    });
 
     // Update email
     await prisma.user.update({

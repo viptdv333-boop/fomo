@@ -34,6 +34,10 @@ model User {
   rating             Decimal   @default(1.0) @db.Decimal(4, 2)
   /// Manual admin adjustment, kept apart from `rating` so recalculation can't wipe it.
   ratingBonus        Decimal   @default(0) @db.Decimal(4, 2)
+  /// Bumped whenever the password changes. Sessions carrying an older value are
+  /// rejected, so changing the password actually evicts a stolen session
+  /// instead of leaving it valid for the rest of its 30 days.
+  sessionVersion     Int       @default(0)
   subscriptionPrice  Decimal?  @db.Decimal(10, 2)
   lastPublishedAt    DateTime?
   firstName          String?
@@ -565,7 +569,22 @@ model EmailVerification {
   code      String
   expiresAt DateTime
   used      Boolean  @default(false)
+  /// Wrong guesses against this code. The code dies once it hits the cap, so a
+  /// six-digit secret can't be ground down inside its 15-minute lifetime.
+  attempts  Int      @default(0)
   createdAt DateTime @default(now())
 
   @@index([email, code])
+}
+
+/// Generic fixed-window counter for anything that must not be hammered:
+/// logins, code guesses, registrations per IP, posting frequency.
+/// Postgres rather than Redis on purpose — one less service to run, and the
+/// volumes here are nowhere near where that trade-off flips.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
