@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
+import SmartCaptcha from "@/components/SmartCaptcha";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1); // 1=email, 2=code, 3=details
@@ -15,6 +16,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
   const codeRef = useRef<HTMLInputElement>(null);
 
   // Countdown timer for resend
@@ -36,11 +38,14 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, captchaToken }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Ошибка отправки кода");
+        // A token is single-use; make the visitor solve it again on retry.
+        setCaptchaToken("");
+        window.smartCaptcha?.reset();
         setLoading(false);
         return;
       }
@@ -173,6 +178,7 @@ export default function RegisterPage() {
               autoFocus
             />
           </div>
+          <SmartCaptcha onToken={setCaptchaToken} />
           <button
             type="submit"
             disabled={loading || !email}

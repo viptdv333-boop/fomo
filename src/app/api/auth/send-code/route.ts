@@ -3,18 +3,30 @@ import { prisma } from "@/lib/prisma";
 import { sendVerificationCode, generateCode } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { normalizeEmail, isDisposableEmail } from "@/lib/account-security";
+import { verifyCaptcha } from "@/lib/captcha";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
+    const { email, captchaToken } = await req.json();
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
     }
 
+    const ip = clientIp(req);
+
+    // The gate that costs an attacker effort per account rather than per
+    // thousand. No-op until the SmartCaptcha keys are set.
+    if (!(await verifyCaptcha(captchaToken, ip))) {
+      return NextResponse.json(
+        { error: "Подтвердите, что вы не робот" },
+        { status: 400 }
+      );
+    }
+
     // Per-IP cap. The per-email limit below did nothing against a bot that
     // simply cycles addresses — one Gmail account yields unlimited aliases.
-    const ipLimit = await rateLimit(`signup:ip:${clientIp(req)}`, 5, 60 * 60 * 1000);
+    const ipLimit = await rateLimit(`signup:ip:${ip}`, 5, 60 * 60 * 1000);
     if (!ipLimit.allowed) {
       return NextResponse.json(
         { error: "Слишком много регистраций с этого адреса. Попробуйте позже" },
