@@ -3,19 +3,21 @@
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
-const CLIENT_KEY = process.env.NEXT_PUBLIC_SMARTCAPTCHA_CLIENT_KEY;
+const SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY;
 
 declare global {
   interface Window {
-    smartCaptcha?: {
+    hcaptcha?: {
       render: (
         container: HTMLElement | string,
         params: {
           sitekey: string;
           callback?: (token: string) => void;
           "expired-callback"?: () => void;
+          "error-callback"?: () => void;
+          theme?: "light" | "dark";
           hl?: string;
-          invisible?: boolean;
+          size?: "normal" | "compact" | "invisible";
         }
       ) => string;
       execute: (widgetId?: string) => void;
@@ -30,35 +32,36 @@ interface Props {
 }
 
 /**
- * Yandex SmartCaptcha widget.
+ * hCaptcha widget.
  *
- * Renders nothing when no client key is configured, so the form still works on
- * a machine without the keys — the server side degrades the same way.
+ * Renders nothing when no site key is configured, so the form still works on a
+ * machine without the keys — the server side degrades the same way.
  */
-export default function SmartCaptcha({ onToken }: Props) {
+export default function Captcha({ onToken }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
 
   useEffect(() => {
-    if (!CLIENT_KEY || !scriptReady || !containerRef.current) return;
+    if (!SITE_KEY || !scriptReady || !containerRef.current) return;
     if (widgetId.current !== null) return;
-    if (!window.smartCaptcha) return;
+    if (!window.hcaptcha) return;
 
-    widgetId.current = window.smartCaptcha.render(containerRef.current, {
-      sitekey: CLIENT_KEY,
+    widgetId.current = window.hcaptcha.render(containerRef.current, {
+      sitekey: SITE_KEY,
       hl: "ru",
       callback: (token) => onToken(token),
       "expired-callback": () => onToken(""),
+      "error-callback": () => onToken(""),
     });
   }, [scriptReady, onToken]);
 
-  if (!CLIENT_KEY) return null;
+  if (!SITE_KEY) return null;
 
   return (
     <>
       <Script
-        src="https://smartcaptcha.yandexcloud.net/captcha.js"
+        src="https://js.hcaptcha.com/1/api.js?render=explicit"
         strategy="afterInteractive"
         onReady={() => setScriptReady(true)}
       />

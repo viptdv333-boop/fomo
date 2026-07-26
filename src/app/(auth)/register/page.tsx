@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
-import SmartCaptcha from "@/components/SmartCaptcha";
+import Captcha from "@/components/Captcha";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1); // 1=email, 2=code, 3=details
@@ -45,7 +45,7 @@ export default function RegisterPage() {
         setError(data.error || "Ошибка отправки кода");
         // A token is single-use; make the visitor solve it again on retry.
         setCaptchaToken("");
-        window.smartCaptcha?.reset();
+        window.hcaptcha?.reset();
         setLoading(false);
         return;
       }
@@ -178,7 +178,7 @@ export default function RegisterPage() {
               autoFocus
             />
           </div>
-          <SmartCaptcha onToken={setCaptchaToken} />
+          <Captcha onToken={setCaptchaToken} />
           <button
             type="submit"
             disabled={loading || !email}
