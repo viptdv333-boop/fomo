@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API.
@@ -9,7 +10,35 @@ const TINKOFF_URL =
   "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
 const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
 
-const SHARE_TICKERS = new Set(["SBER", "GAZP", "LKOH", "YDEX", "ROSN"]);
+/**
+ * Which MOEX tickers are shares (board TQBR) rather than futures (SPBFUT).
+ * This used to be a hardcoded set of five; every other share fell through to
+ * the futures branch and returned no quote, so importing the full TQBR board
+ * would have left ~250 instruments silently priceless. Read it from the
+ * catalogue instead and cache it — the catalogue is the source of truth.
+ */
+const SHARE_TICKER_TTL_MS = 10 * 60 * 1000;
+let shareTickers: Set<string> | null = null;
+let shareTickersAt = 0;
+
+async function getShareTickers(): Promise<Set<string>> {
+  if (shareTickers && Date.now() - shareTickersAt < SHARE_TICKER_TTL_MS) {
+    return shareTickers;
+  }
+  try {
+    const rows = await prisma.instrument.findMany({
+      where: { dataSource: "moex", instrumentType: "stock", dataTicker: { not: null } },
+      select: { dataTicker: true },
+    });
+    shareTickers = new Set(rows.map((r) => r.dataTicker!));
+    shareTickersAt = Date.now();
+  } catch {
+    // DB unreachable — keep whatever we had rather than misclassifying
+    // everything as a futures contract.
+    shareTickers = shareTickers ?? new Set();
+  }
+  return shareTickers;
+}
 
 const FUTURES_PREFIX: Record<string, string> = {
   BR: "BR",
@@ -99,7 +128,7 @@ async function fetchTinkoffQuote(ticker: string): Promise<Quote | null> {
   let resolvedTicker = ticker;
   let classCode = "TQBR";
 
-  if (SHARE_TICKERS.has(ticker)) {
+  if ((await getShareTickers()).has(ticker)) {
     classCode = "TQBR";
   } else if (FUTURES_PREFIX[ticker]) {
     const contract = await findActiveContract(ticker);
