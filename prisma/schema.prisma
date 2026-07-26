@@ -32,6 +32,8 @@ model User {
   bannedUntil        DateTime?
   banReason          String?
   rating             Decimal   @default(1.0) @db.Decimal(4, 2)
+  /// Manual admin adjustment, kept apart from `rating` so recalculation can't wipe it.
+  ratingBonus        Decimal   @default(0) @db.Decimal(4, 2)
   subscriptionPrice  Decimal?  @db.Decimal(10, 2)
   lastPublishedAt    DateTime?
   firstName          String?

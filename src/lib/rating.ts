@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 
+export const MAX_RATING = 10;
+const MIN_RATING = 1;
+
 export async function recalculateRating(userId: string): Promise<number> {
   const config = await prisma.ratingConfig.findFirst({
     where: { id: "singleton" },
@@ -11,11 +14,22 @@ export async function recalculateRating(userId: string): Promise<number> {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { lastPublishedAt: true },
+    select: { lastPublishedAt: true, role: true, ratingBonus: true },
   });
 
   if (!user) {
     throw new Error("User not found");
+  }
+
+  // The platform owner is pinned to the maximum. Every rating gate on the site
+  // (paid ideas, paid tariffs) reads this value, and the owner must never be
+  // locked out of their own platform by their own formula.
+  if (user.role === "OWNER") {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { rating: MAX_RATING },
+    });
+    return MAX_RATING;
   }
 
   const [followerCount, likesAgg, dislikesAgg, ideaCount] = await Promise.all([
@@ -54,12 +68,15 @@ export async function recalculateRating(userId: string): Promise<number> {
   const raw =
     Number(config.baseRating) +
     ideaBonus +
+    // Manual admin adjustment. Lives in its own column because writing it into
+    // `rating` meant the next publish/vote/follow recalculated it away.
+    Number(user.ratingBonus) +
     followerCount * Number(config.subscriberWeight) +
     likes * Number(config.likeWeight) -
     dislikes * Number(config.dislikeWeight) -
     inactivityDays * Number(config.inactivityPenalty);
 
-  const rating = Math.min(10, Math.max(1, raw));
+  const rating = Math.min(MAX_RATING, Math.max(MIN_RATING, raw));
   const rounded = Math.round(rating * 100) / 100;
 
   await prisma.user.update({

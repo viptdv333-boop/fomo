@@ -262,9 +262,13 @@ export async function POST(request: NextRequest) {
     const tiers = config.paidTiers as unknown as PaidTier[];
     const authorRating = Number(author.rating);
 
-    const tier = tiers.find(
-      (t) => authorRating >= t.min && authorRating < t.max
-    );
+    // Highest tier the author has reached. A plain `rating >= min && < max`
+    // scan left rating 10 matching nothing (the top tier ends at 10), which
+    // locked the maximum-rated authors out of paid ideas entirely.
+    const tier = [...tiers]
+      .sort((a, b) => a.min - b.min)
+      .filter((t) => authorRating >= t.min)
+      .pop();
 
     if (!tier || tier.maxPaid === 0) {
       return NextResponse.json(

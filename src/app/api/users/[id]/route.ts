@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/roles";
 import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
+import { recalculateRating } from "@/lib/rating";
 
 const adminPatchSchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "BANNED"]).optional(),
@@ -168,18 +169,25 @@ export async function PATCH(
     if (parsed.data.banReason !== undefined) {
       data.banReason = parsed.data.banReason;
     }
+    // Accumulate into ratingBonus rather than rating: writing straight to
+    // `rating` used to be undone by the next recalculation (publish, vote or
+    // follow), so a manually granted rating silently collapsed back.
     if (parsed.data.ratingDelta !== undefined) {
-      const current = await prisma.user.findUnique({ where: { id }, select: { rating: true } });
+      const current = await prisma.user.findUnique({ where: { id }, select: { ratingBonus: true } });
       if (current) {
-        const newRating = Math.max(0, Math.min(99.99, Number(current.rating) + parsed.data.ratingDelta));
-        data.rating = newRating;
+        data.ratingBonus = Math.max(-10, Math.min(10, Number(current.ratingBonus) + parsed.data.ratingDelta));
       }
     }
 
-    const updated = await prisma.user.update({
+    await prisma.user.update({ where: { id }, data });
+
+    if (data.ratingBonus !== undefined || parsed.data.role !== undefined) {
+      await recalculateRating(id);
+    }
+
+    const updated = await prisma.user.findUnique({
       where: { id },
-      data,
-      select: { id: true, status: true, role: true, rating: true, bannedUntil: true, banReason: true },
+      select: { id: true, status: true, role: true, rating: true, ratingBonus: true, bannedUntil: true, banReason: true },
     });
 
     return NextResponse.json(updated);

@@ -26,12 +26,32 @@ async function main() {
   console.log(`  inactivity=${config.inactivityPenalty}/day after ${config.inactivityThresholdDays}d\n`);
 
   const users = await prisma.user.findMany({
-    select: { id: true, displayName: true, rating: true, lastPublishedAt: true },
+    select: {
+      id: true,
+      displayName: true,
+      rating: true,
+      lastPublishedAt: true,
+      role: true,
+      ratingBonus: true,
+    },
     orderBy: { displayName: "asc" },
   });
 
   let changed = 0;
   for (const u of users) {
+    // The owner is pinned to the maximum — see src/lib/rating.ts.
+    if (u.role === "OWNER") {
+      const prev = Number(u.rating);
+      if (prev !== 10) {
+        changed++;
+        console.log(`  ${u.displayName.padEnd(24)} ${String(prev).padStart(6)} ->     10   (OWNER)`);
+        if (!DRY_RUN) {
+          await prisma.user.update({ where: { id: u.id }, data: { rating: 10 } });
+        }
+      }
+      continue;
+    }
+
     const [followerCount, likesAgg, dislikesAgg, ideaCount] = await Promise.all([
       prisma.follow.count({ where: { authorId: u.id } }),
       prisma.ideaVote.aggregate({
