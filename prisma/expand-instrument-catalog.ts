@@ -67,7 +67,11 @@ async function fetchMoexShares(): Promise<MoexRow[]> {
     .filter((r) => SHARE_SECTYPES.has(r.secType));
 }
 
-// Top-20 crypto by market cap that the catalogue was still missing.
+// Crypto the catalogue was missing, bringing it to the top 30 by market cap.
+// Stablecoins (USDT, USDC, DAI) are deliberately absent: they sit high in any
+// capitalisation table but nobody publishes a trading idea on them.
+// Wrapped assets (WBTC) are skipped for the same reason — they would just
+// duplicate the underlying coin.
 const CRYPTO = [
   { coin: "TRON", slug: "tron", ticker: "TRXUSDT", note: "Блокчейн для стейблкоинов и переводов USDT" },
   { coin: "Bitcoin Cash", slug: "bitcoin-cash", ticker: "BCHUSDT", note: "Форк Bitcoin с увеличенным размером блока" },
@@ -76,6 +80,14 @@ const CRYPTO = [
   { coin: "NEAR Protocol", slug: "near", ticker: "NEARUSDT", note: "Шардированный L1 с низкими комиссиями" },
   { coin: "Hedera", slug: "hedera", ticker: "HBARUSDT", note: "Корпоративный DLT на хешграфе" },
   { coin: "Uniswap", slug: "uniswap", ticker: "UNIUSDT", note: "Крупнейшая децентрализованная биржа" },
+  { coin: "Aave", slug: "aave", ticker: "AAVEUSDT", note: "Крупнейший протокол кредитования в DeFi" },
+  { coin: "Cosmos", slug: "cosmos", ticker: "ATOMUSDT", note: "Экосистема связанных между собой блокчейнов" },
+  { coin: "Ethereum Classic", slug: "ethereum-classic", ticker: "ETCUSDT", note: "Исходная цепь Ethereum, сохранившая proof-of-work" },
+  { coin: "Aptos", slug: "aptos", ticker: "APTUSDT", note: "L1 от бывшей команды Diem на языке Move" },
+  { coin: "Arbitrum", slug: "arbitrum", ticker: "ARBUSDT", note: "Крупнейшее L2-решение для Ethereum" },
+  { coin: "Internet Computer", slug: "internet-computer", ticker: "ICPUSDT", note: "Блокчейн для размещения приложений целиком в сети" },
+  { coin: "Filecoin", slug: "filecoin", ticker: "FILUSDT", note: "Децентрализованное хранение данных" },
+  { coin: "Render", slug: "render", ticker: "RENDERUSDT", note: "Распределённые вычисления для графики и ИИ" },
 ];
 
 // Top-20 US stocks by market cap that the catalogue was still missing.
