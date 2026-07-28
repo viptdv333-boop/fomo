@@ -70,6 +70,7 @@ export default function LandingPage() {
       login: "Войти",
       register: "Зарегистрироваться",
       continue: "Продолжить без регистрации",
+      howTo: "Как это работает",
       participants: "Участников",
       ideas: "Идей",
       instruments: "Инструментов",
@@ -82,6 +83,7 @@ export default function LandingPage() {
       login: "Sign In",
       register: "Sign Up",
       continue: "Continue without registration",
+      howTo: "How it works",
       participants: "Members",
       ideas: "Ideas",
       instruments: "Instruments",
@@ -94,6 +96,7 @@ export default function LandingPage() {
       login: "\u767B\u5F55",
       register: "\u6CE8\u518C",
       continue: "\u65E0\u9700\u6CE8\u518C\u7EE7\u7EED",
+      howTo: "\u4F7F\u7528\u6307\u5357",
       participants: "\u53C2\u4E0E\u8005",
       ideas: "\u60F3\u6CD5",
       instruments: "\u5DE5\u5177",
@@ -178,8 +181,8 @@ export default function LandingPage() {
           </a>
         </div>
 
-        {/* Continue without registration */}
-        <div className={`continue-link mt-5 ${loginVisible ? "visible" : ""}`}>
+        {/* Continue without registration + knowledge base */}
+        <div className={`continue-link mt-5 flex items-center gap-5 ${loginVisible ? "visible" : ""}`}>
           <a
             href="/feed"
             className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
@@ -189,6 +192,16 @@ export default function LandingPage() {
             }`}
           >
             {t.continue}
+          </a>
+          <a
+            href="/help"
+            className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
+              isDark
+                ? "text-gray-400 hover:text-white"
+                : "text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {t.howTo}
           </a>
         </div>
 

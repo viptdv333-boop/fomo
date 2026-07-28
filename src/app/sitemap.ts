@@ -11,6 +11,9 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/instruments", priority: 0.7, changeFrequency: "daily" },
   { path: "/terminal", priority: 0.6, changeFrequency: "daily" },
   { path: "/chat", priority: 0.5, changeFrequency: "weekly" },
+  // Knowledge base: answers the "how do I sell forecasts" queries and carries
+  // FAQPage markup, so it earns a high priority despite rarely changing.
+  { path: "/help", priority: 0.8, changeFrequency: "monthly" },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
