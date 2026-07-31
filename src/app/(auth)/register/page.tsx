@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
 
   // Countdown timer for resend
@@ -293,23 +294,33 @@ export default function RegisterPage() {
               </button>
             </div>
           </div>
+          <label className="flex items-start gap-2.5 text-[13px] text-gray-600 dark:text-gray-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 w-4 h-4 shrink-0 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
+            />
+            <span>
+              Я принимаю{" "}
+              <a href="/terms" target="_blank" className="text-green-600 underline hover:text-green-700">
+                условия использования
+              </a>{" "}
+              и{" "}
+              <a href="/privacy" target="_blank" className="text-green-600 underline hover:text-green-700">
+                политику обработки данных
+              </a>
+              . Мне понятно, что площадка не участвует в расчётах между пользователями и не несёт
+              ответственности за их результат.
+            </span>
+          </label>
           <button
             type="submit"
-            disabled={loading || !displayName || !password}
+            disabled={loading || !displayName || !password || !termsAccepted}
             className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? "Регистрация..." : "Зарегистрироваться"}
           </button>
-          <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
-            Регистрируясь, вы принимаете{" "}
-            <a href="/terms" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">
-              условия использования
-            </a>{" "}
-            и{" "}
-            <a href="/privacy" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">
-              политику обработки данных
-            </a>
-          </p>
         </form>
       )}
 
