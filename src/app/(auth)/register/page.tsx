@@ -300,6 +300,16 @@ export default function RegisterPage() {
           >
             {loading ? "Регистрация..." : "Зарегистрироваться"}
           </button>
+          <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
+            Регистрируясь, вы принимаете{" "}
+            <a href="/terms" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+              условия использования
+            </a>{" "}
+            и{" "}
+            <a href="/privacy" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+              политику обработки данных
+            </a>
+          </p>
         </form>
       )}
 

@@ -6,6 +6,7 @@ import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import PWARegister from "@/components/PWARegister";
 import YandexMetrika from "@/components/YandexMetrika";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import CookieBanner from "@/components/CookieBanner";
 import { prisma } from "@/lib/prisma";
 
 export const viewport: Viewport = {
@@ -175,6 +176,7 @@ export default async function RootLayout({
             <YandexMetrika />
             <GoogleAnalytics />
             {children}
+            <CookieBanner />
           </I18nProvider>
         </ThemeProvider>
       </body>

@@ -224,6 +224,10 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className={`landing-footer w-full py-6 text-center text-xs ${loginVisible ? "visible" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+        <div className="flex items-center justify-center gap-4 mb-1.5">
+          <a href="/privacy" className="hover:underline">Конфиденциальность</a>
+          <a href="/terms" className="hover:underline">Условия использования</a>
+        </div>
         {t.copyright}
       </footer>
     </div>
