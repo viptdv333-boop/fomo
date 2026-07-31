@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 // GET — list comments for an idea
 export async function GET(
@@ -48,6 +49,46 @@ export async function POST(
       user: { select: { id: true, displayName: true, avatarUrl: true } },
     },
   });
+
+  // Notify the idea's author and — separately, so a reply doesn't get lost in
+  // a busy thread — whoever's comment this one replies to. Never notify
+  // yourself: commenting on your own idea, or replying to your own comment,
+  // shouldn't ping you about your own action.
+  const preview = comment.text.length > 80 ? comment.text.slice(0, 80) + "…" : comment.text;
+  const authorName = comment.user.displayName;
+  const notified = new Set<string>([session.user.id]);
+
+  const idea = await prisma.idea.findUnique({
+    where: { id: ideaId },
+    select: { authorId: true, title: true },
+  });
+  if (idea && !notified.has(idea.authorId)) {
+    notified.add(idea.authorId);
+    await createNotification({
+      userId: idea.authorId,
+      type: "new_comment",
+      title: `${authorName} прокомментировал вашу идею`,
+      body: preview,
+      link: `/ideas/${ideaId}`,
+    });
+  }
+
+  if (replyToId) {
+    const parent = await prisma.ideaComment.findUnique({
+      where: { id: replyToId },
+      select: { userId: true },
+    });
+    if (parent && !notified.has(parent.userId)) {
+      notified.add(parent.userId);
+      await createNotification({
+        userId: parent.userId,
+        type: "comment_reply",
+        title: `${authorName} ответил на ваш комментарий`,
+        body: preview,
+        link: `/ideas/${ideaId}`,
+      });
+    }
+  }
 
   return NextResponse.json(comment, { status: 201 });
 }

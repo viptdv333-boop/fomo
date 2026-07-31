@@ -98,12 +98,44 @@ export default function NotificationBell() {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }
 
+  // Clicking a single notification only ever navigated and closed the
+  // dropdown — nothing marked it read, so the badge outlived every read
+  // notification until someone happened to hit "Прочитать все". This is what
+  // that click was missing.
+  async function markOneRead(id: string, wasRead: boolean) {
+    if (wasRead) return;
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setUnreadCount((prev) => {
+      const next = Math.max(0, prev - 1);
+      prevUnreadRef.current = next;
+      return next;
+    });
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [id] }),
+    });
+  }
+
+  // Opening the panel is itself an acknowledgment for anything already
+  // showing — matches how the bell reads to a user ("I opened it, it's
+  // handled") without waiting for them to find the separate button.
+  function handleToggle() {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next && unreadCount > 0) markAllRead();
+      return next;
+    });
+  }
+
   function getIcon(type: string) {
     switch (type) {
       case "new_message": return "💬";
       case "chat_mention": return "📢";
       case "new_follower": return "👤";
       case "new_idea": return "💡";
+      case "new_comment": return "🗨️";
+      case "comment_reply": return "↩️";
       case "payment": return "💰";
       default: return "🔔";
     }
@@ -112,7 +144,7 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
       >
         <svg
@@ -168,7 +200,10 @@ export default function NotificationBell() {
                   {n.link ? (
                     <Link
                       href={n.link}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        setOpen(false);
+                        markOneRead(n.id, n.isRead);
+                      }}
                       className="block"
                     >
                       <div className="flex items-start gap-2">
@@ -197,7 +232,10 @@ export default function NotificationBell() {
                       </div>
                     </Link>
                   ) : (
-                    <div className="flex items-start gap-2">
+                    <button
+                      onClick={() => markOneRead(n.id, n.isRead)}
+                      className="flex items-start gap-2 w-full text-left"
+                    >
                       <span className="text-base mt-0.5">{getIcon(n.type)}</span>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium dark:text-gray-200">
@@ -220,7 +258,7 @@ export default function NotificationBell() {
                       {!n.isRead && (
                         <span className="w-2 h-2 bg-green-500 rounded-full mt-1.5 shrink-0" />
                       )}
-                    </div>
+                    </button>
                   )}
                 </div>
               ))
