@@ -49,33 +49,13 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   const { searchParams } = new URL(request.url);
 
-  // Unauthenticated: return 5 most recent ideas, no filters
-  if (!session?.user) {
-    const ideas = await prisma.idea.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      select: ideaSelect,
-    });
-
-    return NextResponse.json(
-      ideas.map((idea) => ({
-        id: idea.id,
-        title: idea.title,
-        preview: idea.preview,
-        isPaid: idea.isPaid,
-        price: idea.price,
-        acceptDonations: idea.acceptDonations,
-        viewCount: idea.viewCount,
-        createdAt: idea.createdAt,
-        author: idea.author,
-        instruments: idea.instruments.map((ii) => ii.instrument),
-        voteScore: idea.votes.reduce((sum, v) => sum + v.value, 0),
-        userVote: null,
-      }))
-    );
-  }
-
-  // Authenticated: apply filters and pagination
+  // Filters, sorting and pagination apply the same way whether or not the
+  // visitor is logged in. Guests used to get an unconditional 5 most-recent
+  // ideas with every query param silently ignored — isPaid, instrumentId,
+  // search, sortBy, page, all of it — so the paid/free toggle (and the entire
+  // feed for anyone browsing via "Продолжить без регистрации") did nothing
+  // for a guest. The only thing that legitimately differs per session is
+  // userVote, which is null with no userId to match against.
   const instrumentId = searchParams.get("instrumentId");
   const instrumentSlug = searchParams.get("instrumentSlug");
   const assetSlug = searchParams.get("assetSlug");
@@ -155,7 +135,7 @@ export async function GET(request: NextRequest) {
     prisma.idea.count({ where }),
   ]);
 
-  const userId = session.user.id;
+  const userId = session?.user?.id;
 
   return NextResponse.json({
     data: ideas.map((idea) => ({
@@ -170,7 +150,7 @@ export async function GET(request: NextRequest) {
       author: idea.author,
       instruments: idea.instruments.map((ii) => ii.instrument),
       voteScore: idea.votes.reduce((sum, v) => sum + v.value, 0),
-      userVote: idea.votes.find((v) => v.userId === userId)?.value ?? null,
+      userVote: userId ? idea.votes.find((v) => v.userId === userId)?.value ?? null : null,
     })),
     page,
     limit,
