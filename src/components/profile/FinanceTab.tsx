@@ -194,9 +194,10 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
           </h3>
           <div className="space-y-2">
             {data.tariffs.map((t) => (
-              <div
+              <Link
                 key={t.id}
-                className="flex items-center justify-between bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3"
+                href={`/channels/${t.id}`}
+                className="flex items-center justify-between bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 hover:border-green-400 dark:hover:border-green-500 transition"
               >
                 <div>
                   <span className="font-medium dark:text-gray-100">{t.name}</span>
@@ -207,7 +208,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {t.subscriberCount} подписчиков
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
