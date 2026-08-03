@@ -22,7 +22,7 @@ interface SubItem {
 interface ChannelItem {
   id: string;
   name: string;
-  monthlyPrice: number;
+  price: number;
   description: string | null;
   durationDays?: number;
 }
@@ -105,18 +105,18 @@ export default function SubscriptionsPage() {
               {channels.map((ch) => (
                 <div key={ch.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium dark:text-gray-100">{ch.name}</div>
+                    <Link href={`/channels/${ch.id}`} className="min-w-0 group">
+                      <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">{ch.name}</div>
                       <div className="text-sm text-green-600 font-semibold mt-0.5">
-                        {Number(ch.monthlyPrice)} ₽ / {ch.durationDays || 30} дн.
+                        {Number(ch.price)} ₽ / {ch.durationDays || 30} дн.
                       </div>
                       {ch.description && (
                         <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
                       )}
-                    </div>
+                    </Link>
                     <Link
                       href={`/channels/edit/${ch.id}`}
-                      className="text-sm text-green-600 dark:text-green-400 hover:underline"
+                      className="text-sm text-green-600 dark:text-green-400 hover:underline shrink-0 ml-4"
                     >
                       {t("subs.settings")}
                     </Link>
