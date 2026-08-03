@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 
 interface Channel {
   id: string;
@@ -85,7 +86,7 @@ export default function ChannelsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [subscribedIds, setSubscribedIds] = useState<Set<string>>(new Set());
-  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [buyChannel, setBuyChannel] = useState<Channel | null>(null);
 
   // Existing filters preserved
   const [sortField, setSortField] = useState<"price" | "subscribers" | "rating">("subscribers");
@@ -115,28 +116,11 @@ export default function ChannelsPage() {
     }
   }
 
-  function handleToggleSubscribe(e: React.MouseEvent, channelId: string) {
+  function handleSubscribeClick(e: React.MouseEvent, ch: Channel) {
     e.preventDefault();
     e.stopPropagation();
-    if (!session || togglingId) return;
-    setTogglingId(channelId);
-    const isSubscribed = subscribedIds.has(channelId);
-
-    fetch(`/api/channels/${channelId}/${isSubscribed ? "unsubscribe" : "subscribe"}`, {
-      method: "POST",
-    })
-      .then((r) => {
-        if (r.ok) {
-          setSubscribedIds((prev) => {
-            const next = new Set(prev);
-            if (isSubscribed) next.delete(channelId);
-            else next.add(channelId);
-            return next;
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setTogglingId(null));
+    if (!session) return;
+    setBuyChannel(ch);
   }
 
   const filtered = useMemo(() => {
@@ -403,7 +387,6 @@ export default function ChannelsPage() {
           <div className={viewMode === "cards" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "flex flex-col gap-4"}>
             {filtered.map((ch) => {
               const isSubscribed = subscribedIds.has(ch.id);
-              const isToggling = togglingId === ch.id;
               const ideasCount = ch.ideasCount ?? Math.floor(Number(ch.author.rating) * 3 + ch.subscribersCount * 0.1);
 
               return (
@@ -473,13 +456,12 @@ export default function ChannelsPage() {
 
                     {session && (
                       <button
-                        onClick={(e) => handleToggleSubscribe(e, ch.id)}
-                        disabled={isToggling}
+                        onClick={(e) => handleSubscribeClick(e, ch)}
                         className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                           isSubscribed
                             ? "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                             : "bg-green-600 text-white hover:bg-green-700"
-                        } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+                        }`}
                       >
                         {isSubscribed ? (
                           <span className="flex items-center gap-1.5">
@@ -500,6 +482,15 @@ export default function ChannelsPage() {
           </div>
           )}
         </>
+      )}
+
+      {buyChannel && (
+        <BuySubscriptionModal
+          authorId={buyChannel.author.id}
+          authorName={buyChannel.author.displayName}
+          preselectedTariffId={buyChannel.id}
+          onClose={() => setBuyChannel(null)}
+        />
       )}
     </div>
   );
