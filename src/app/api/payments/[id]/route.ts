@@ -72,6 +72,18 @@ export async function PATCH(
           status: "completed",
         },
       });
+
+      const idea = await prisma.idea.findUnique({
+        where: { id: paymentRequest.ideaId },
+        select: { title: true },
+      });
+      await createNotification({
+        userId: paymentRequest.buyerId,
+        type: "payment",
+        title: "Покупка идеи подтверждена",
+        body: idea ? `«${idea.title}» — доступ открыт` : "Доступ открыт",
+        link: `/ideas/${paymentRequest.ideaId}`,
+      });
     } else if (paymentRequest.subscriptionType === "monthly" || paymentRequest.subscriptionType === "tariff") {
       let durationDays = 30;
       let tariffId: string | null = null;

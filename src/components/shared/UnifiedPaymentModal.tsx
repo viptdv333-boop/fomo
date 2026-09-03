@@ -49,6 +49,11 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
+  // Idea purchase: payment request is created up front (on method select) so we
+  // can show the seller's real card number, not just at receipt-upload time
+  const [ideaPayment, setIdeaPayment] = useState<{ id: string; sellerCard: string | null } | null>(null);
+  const [loadingIdeaPayment, setLoadingIdeaPayment] = useState(false);
+
   // Donation amount (free-form)
   const [donationAmount, setDonationAmount] = useState("");
 
@@ -94,7 +99,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   const cardNumber = (() => {
     switch (purpose.type) {
       case "donation": return purpose.donationCard || null;
-      case "idea": return null; // will be set after payment request
+      case "idea": return ideaPayment?.sellerCard || null;
       case "subscription": return selectedTariff?.cardNumber || null;
       case "course": return null;
     }
@@ -146,6 +151,28 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
 
   async function handleSelectMethod(method: PaymentMethod) {
     setPaymentMethod(method);
+
+    if (method === "card" && purpose.type === "idea" && !ideaPayment) {
+      setLoadingIdeaPayment(true);
+      setError("");
+      try {
+        const res = await fetch("/api/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ideaId: purpose.ideaId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Ошибка оплаты");
+        if (!data.paymentRequest?.id) throw new Error("Ошибка оплаты");
+        setIdeaPayment({ id: data.paymentRequest.id, sellerCard: data.sellerCard || null });
+      } catch (err: any) {
+        setError(err.message || "Ошибка оплаты");
+        setLoadingIdeaPayment(false);
+        return;
+      }
+      setLoadingIdeaPayment(false);
+    }
+
     setStep("pay");
   }
 
@@ -161,14 +188,19 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
       let paymentId: string | null = null;
 
       if (purpose.type === "idea") {
-        const res = await fetch("/api/payments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ideaId: purpose.ideaId }),
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        const data = await res.json();
-        paymentId = data.paymentRequest?.id;
+        if (ideaPayment?.id) {
+          paymentId = ideaPayment.id;
+        } else {
+          // Fallback in case the request wasn't created on method-select
+          const res = await fetch("/api/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ideaId: purpose.ideaId }),
+          });
+          if (!res.ok) throw new Error((await res.json()).error);
+          const data = await res.json();
+          paymentId = data.paymentRequest?.id;
+        }
       } else if (purpose.type === "subscription" && selectedTariff) {
         const res = await fetch("/api/payments", {
           method: "POST",
@@ -343,18 +375,21 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
 
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Выберите способ оплаты</p>
 
+              {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+
               <div className="space-y-2">
                 {availableMethods.includes("card") && (
                   <button
                     onClick={() => handleSelectMethod("card")}
-                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition text-left"
+                    disabled={loadingIdeaPayment}
+                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition text-left disabled:opacity-50"
                   >
                     <span className="text-2xl">💳</span>
                     <div>
                       <div className="font-medium text-sm dark:text-gray-100">Перевод на карту</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">Перевод через банковское приложение или СБП</div>
                     </div>
-                    <span className="ml-auto text-gray-400">→</span>
+                    <span className="ml-auto text-gray-400">{loadingIdeaPayment ? "..." : "→"}</span>
                   </button>
                 )}
                 {availableMethods.includes("yukassa") && (
