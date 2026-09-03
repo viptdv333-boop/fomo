@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TariffManager from "@/components/profile/TariffManager";
 import FinanceTab from "@/components/profile/FinanceTab";
+import RoomsTab from "@/components/profile/RoomsTab";
 import ShareButtons from "@/components/shared/ShareButtons";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
 import IdeaCard from "@/components/ideas/IdeaCard";
@@ -79,8 +80,9 @@ function ProfileContent() {
   const initialTab =
     tabParam === "finance" ? "finance" :
     tabParam === "security" ? "security" :
-    tabParam === "ideas" ? "ideas" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security" | "ideas">(initialTab);
+    tabParam === "ideas" ? "ideas" :
+    tabParam === "rooms" ? "rooms" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security" | "ideas" | "rooms">(initialTab);
   const [myIdeas, setMyIdeas] = useState<any[]>([]);
   const [myIdeasLoading, setMyIdeasLoading] = useState(true);
 
@@ -362,6 +364,16 @@ function ProfileContent() {
           {t("profile.ideas")}
         </button>
         <button
+          onClick={() => setActiveTab("rooms")}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
+            activeTab === "rooms"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Комнаты
+        </button>
+        <button
           onClick={() => setActiveTab("security")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
             activeTab === "security"
@@ -424,6 +436,12 @@ function ProfileContent() {
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
             <TariffManager userId={session.user.id} rating={rating} />
           </div>
+        </div>
+      )}
+
+      {activeTab === "rooms" && session?.user?.id && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
+          <RoomsTab />
         </div>
       )}
 

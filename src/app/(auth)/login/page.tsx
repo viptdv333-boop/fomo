@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Plain window.location instead of useSearchParams so this page doesn't
+  // need a Suspense boundary just to support a post-login redirect target.
+  const [callbackUrl, setCallbackUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cb = new URLSearchParams(window.location.search).get("callbackUrl");
+    if (cb && cb.startsWith("/")) setCallbackUrl(cb);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,7 +54,7 @@ export default function LoginPage() {
       localStorage.removeItem("fomo-remember");
     }
 
-    router.push("/feed");
+    router.push(callbackUrl || "/feed");
     router.refresh();
   }
 
@@ -139,7 +147,10 @@ export default function LoginPage() {
       </p>
       <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
         Нет аккаунта?{" "}
-        <a href="/register" className="text-green-600 dark:text-green-400 hover:underline">
+        <a
+          href={callbackUrl ? `/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/register"}
+          className="text-green-600 dark:text-green-400 hover:underline"
+        >
           Зарегистрироваться
         </a>
       </p>

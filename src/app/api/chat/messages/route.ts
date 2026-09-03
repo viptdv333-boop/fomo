@@ -18,6 +18,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "roomId required" }, { status: 400 });
   }
 
+  // User-created private rooms (ownerId set) require membership. General/topic
+  // rooms and paid-channel rooms (ownerId null either way) stay as they were.
+  const room = await prisma.chatRoom.findUnique({ where: { id: roomId }, select: { ownerId: true } });
+  if (room?.ownerId) {
+    const membership = await prisma.chatRoomMember.findUnique({
+      where: { roomId_userId: { roomId, userId: session.user.id! } },
+    });
+    if (!membership) return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
   const messages = await prisma.chatMessage.findMany({
     where: { roomId, isDeleted: false },
     include: {
@@ -87,6 +97,12 @@ export async function POST(req: NextRequest) {
   if (room.isArchived) {
     return NextResponse.json({ error: "Chat is archived" }, { status: 403 });
   }
+  if (room.ownerId) {
+    const membership = await prisma.chatRoomMember.findUnique({
+      where: { roomId_userId: { roomId: room.id, userId: session.user.id! } },
+    });
+    if (!membership) return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
 
   const message = await prisma.chatMessage.create({
     data: {
@@ -133,13 +149,14 @@ export async function POST(req: NextRequest) {
     });
 
     const senderName = message.user.displayName;
+    const mentionLink = room.ownerId ? `/rooms/${room.id}` : "/chat";
     for (const u of mentionedUsers) {
       await createNotification({
         userId: u.id,
         type: "chat_mention",
         title: `${senderName} упомянул вас в болталке`,
         body: text.length > 80 ? text.slice(0, 80) + "…" : text,
-        link: "/chat",
+        link: mentionLink,
       });
     }
   }

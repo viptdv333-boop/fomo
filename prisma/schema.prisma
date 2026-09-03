@@ -77,6 +77,8 @@ model User {
   watchlist              WatchlistItem[]
   paymentMethods         PaymentMethod[]
   ideaComments           IdeaComment[]
+  ownedRooms             ChatRoom[]       @relation("RoomOwner")
+  roomMemberships        ChatRoomMember[]
 
   @@index([status])
 }
@@ -294,6 +296,7 @@ model Subscription {
 model ChatRoom {
   id             String  @id @default(cuid())
   name           String
+  description    String?
   instrumentId   String? @unique
   assetId        String? @unique
   categoryLabel  String?
@@ -304,10 +307,39 @@ model ChatRoom {
   isPrivate      Boolean @default(false)
   createdAt      DateTime @default(now())
 
+  /// Set only on user-created private rooms (see ChatRoomMember). Paid-channel
+  /// chat rooms are also isPrivate=true but keep ownerId null — their access
+  /// is derived from Subscription, not membership, and stays untouched.
+  ownerId      String?
+  /// Bearer secret for the join-by-link flow — CSPRNG, never the room's own
+  /// (predictable) cuid. Only set together with ownerId.
+  inviteToken  String? @unique
+
+  owner      User?               @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   instrument Instrument?         @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
   asset      Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
   messages   ChatMessage[]
+  members    ChatRoomMember[]
   channelTariff SubscriptionTariff?
+
+  @@index([ownerId])
+}
+
+/// Membership for user-created private rooms (ChatRoom.ownerId != null).
+/// Paid-channel and general/topic rooms don't use this — their access checks
+/// go through Subscription or are open to everyone, respectively.
+model ChatRoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  role     String   @default("member") // "owner" | "member"
+  joinedAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
 }
 
 model ChatMessage {

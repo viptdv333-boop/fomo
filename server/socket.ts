@@ -85,6 +85,14 @@ export function initSocket(httpServer: HTTPServer) {
     socket.on("join_room", async (roomId: string) => {
       const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
       if (!room) return;
+      // User-created private rooms require membership; other room types
+      // (general/topic, paid-channel) keep their existing open-by-id behavior.
+      if (room.ownerId) {
+        const membership = await prisma.chatRoomMember.findUnique({
+          where: { roomId_userId: { roomId, userId: socket.data.userId } },
+        });
+        if (!membership) return;
+      }
       socket.join(roomId);
     });
 

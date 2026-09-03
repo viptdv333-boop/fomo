@@ -95,10 +95,12 @@ export default function RegisterPage() {
         password,
         redirect: false,
       });
+      const cb = new URLSearchParams(window.location.search).get("callbackUrl");
+      const dest = cb && cb.startsWith("/") ? cb : "/profile";
       if (result?.ok) {
-        window.location.href = "/profile";
+        window.location.href = dest;
       } else {
-        window.location.href = "/login";
+        window.location.href = `/login${cb ? `?callbackUrl=${encodeURIComponent(cb)}` : ""}`;
       }
     } catch {
       setError("Ошибка сети");
