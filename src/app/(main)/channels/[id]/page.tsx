@@ -135,7 +135,7 @@ export default function ChannelPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Back */}
       <button
         onClick={() => router.push("/channels")}
