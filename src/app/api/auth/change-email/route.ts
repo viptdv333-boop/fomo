@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         email: newEmail,
         code: verCode,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        purpose: "change_email",
       },
     });
 
@@ -88,15 +89,18 @@ export async function POST(request: NextRequest) {
 
     // Counts wrong guesses and burns the code after the cap — the bare lookup
     // that used to be here allowed unlimited attempts.
-    const check = await consumeCode(newEmail, code);
+    const check = await consumeCode(newEmail, code, "change_email");
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }
 
-    // Update email
+    // Update email. sessionVersion bump evicts every other session — without
+    // it, a hijacked/idle session could change the login email and every
+    // other active session (including the attacker's, if that's who did this)
+    // would simply keep working.
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { email: newEmail },
+      data: { email: newEmail, sessionVersion: { increment: 1 } },
     });
 
     return NextResponse.json({ message: "Email успешно изменён! Перезайдите для обновления сессии." });

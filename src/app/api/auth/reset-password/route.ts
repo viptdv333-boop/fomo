@@ -44,7 +44,12 @@ export async function POST(request: NextRequest) {
 
     const verCode = generateCode();
     await prisma.emailVerification.create({
-      data: { email, code: verCode, expiresAt: new Date(Date.now() + 15 * 60 * 1000) },
+      data: {
+        email,
+        code: verCode,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        purpose: "reset_password",
+      },
     });
 
     try {
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: strength.error }, { status: 400 });
     }
 
-    const check = await consumeCode(email, code);
+    const check = await consumeCode(email, code, "reset_password");
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }

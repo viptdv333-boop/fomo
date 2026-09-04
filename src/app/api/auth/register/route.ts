@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // Counts the guess and burns the code after too many misses, instead of the
     // old bare lookup that let a six-digit secret be ground down for free.
-    const check = await consumeCode(data.email, data.code);
+    const check = await consumeCode(data.email, data.code, "register");
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }

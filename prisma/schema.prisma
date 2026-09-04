@@ -604,6 +604,11 @@ model EmailVerification {
   /// Wrong guesses against this code. The code dies once it hits the cap, so a
   /// six-digit secret can't be ground down inside its 15-minute lifetime.
   attempts  Int      @default(0)
+  /// Which flow minted this code ("register" | "reset_password" |
+  /// "change_email"). consumeCode() requires an exact match so a code can't be
+  /// walked from one flow into another — each route used to enforce that only
+  /// by accident, via its own unrelated pre-checks.
+  purpose   String   @default("register")
   createdAt DateTime @default(now())
 
   @@index([email, code])
