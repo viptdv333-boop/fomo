@@ -152,18 +152,18 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
             <button
               onClick={() => setShowCreateRoom(true)}
               title="Создать приватную группу"
-              className="text-green-600 hover:text-green-800 text-sm leading-none w-5 h-5 flex items-center justify-center"
+              className="text-green-600 hover:text-white hover:bg-green-600 text-lg font-bold leading-none w-6 h-6 rounded-full flex items-center justify-center transition"
             >
               +
             </button>
           </div>
           {privateRooms.length === 0 ? (
-            <Link
-              href="/profile?tab=rooms"
-              className="block text-xs text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+            <button
+              onClick={() => setShowCreateRoom(true)}
+              className="w-full text-xs font-medium text-green-600 hover:text-white border border-green-600 hover:bg-green-600 rounded-lg py-1.5 transition"
             >
-              Пока нет своих групп — создайте
-            </Link>
+              + Создать
+            </button>
           ) : (
             <div className="space-y-0.5">
               {privateRooms.map((room) => (
