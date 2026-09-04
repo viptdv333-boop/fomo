@@ -37,7 +37,7 @@ export default function MyProfilePage() {
 
 function ProfileContent() {
   const { t } = useT();
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const searchParams = useSearchParams();
   const [displayName, setDisplayName] = useState("");
   const [fomoId, setFomoId] = useState("");
@@ -244,6 +244,9 @@ function ProfileContent() {
     setLoading(false);
     if (res.ok) {
       setMessage("Профиль обновлён");
+      // Header/menu read displayName, fomoId etc. off the session, which the
+      // JWT only re-reads from the DB every 5 min — force it now.
+      await updateSession();
     } else {
       setMessage("Ошибка сохранения");
     }
@@ -313,6 +316,7 @@ function ProfileContent() {
           if (patchRes.ok) {
             // Keep showing local preview (blob URL) — it's already visible
             // Server URL will be used on next page load
+            await updateSession();
           }
         }
       } else {

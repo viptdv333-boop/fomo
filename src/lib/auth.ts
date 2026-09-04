@@ -72,7 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
@@ -83,11 +83,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.refreshedAt = Date.now();
       }
 
-      // Refresh from DB only every 5 minutes, NOT every request
+      // Refresh from DB every 5 minutes, or immediately when the client calls
+      // useSession().update() after changing avatar/fomoId/etc — otherwise
+      // profile edits sit stale in the header/menu for up to 5 minutes.
       const refreshedAt = (token.refreshedAt as number) || 0;
       const fiveMinutes = 5 * 60 * 1000;
 
-      if (token.id && Date.now() - refreshedAt > fiveMinutes) {
+      if (token.id && (trigger === "update" || Date.now() - refreshedAt > fiveMinutes)) {
         try {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id as string },
