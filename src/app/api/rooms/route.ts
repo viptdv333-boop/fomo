@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = createRoomSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Укажите название комнаты" }, { status: 400 });
+    return NextResponse.json({ error: "Укажите название группы" }, { status: 400 });
   }
 
   const inviteToken = randomBytes(16).toString("base64url");

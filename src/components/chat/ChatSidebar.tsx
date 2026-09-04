@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import CreateRoomModal from "./CreateRoomModal";
 
 interface AssetItem {
   id: string;
@@ -17,6 +19,13 @@ interface CategoryGroup {
   slug: string;
   name: string;
   assets: AssetItem[];
+}
+
+interface PrivateRoom {
+  id: string;
+  name: string;
+  membersCount: number;
+  isOwner: boolean;
 }
 
 interface Props {
@@ -42,10 +51,25 @@ const CAT_EMOJIS: Record<string, string> = {
 
 export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }: Props) {
   const { t } = useT();
-  useSession(); // keep session alive
+  const { data: session } = useSession();
+  const router = useRouter();
   const [categories, setCategories] = useState<CategoryGroup[]>([]);
   const [openCats, setOpenCats] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [privateRooms, setPrivateRooms] = useState<PrivateRoom[]>([]);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
+
+  function loadPrivateRooms() {
+    if (!session?.user?.id) return;
+    fetch("/api/rooms")
+      .then((r) => r.json())
+      .then((data) => setPrivateRooms(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    loadPrivateRooms();
+  }, [session?.user?.id]);
 
   useEffect(() => {
     fetch("/api/assets")
@@ -117,6 +141,56 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           />
         </div>
       </div>
+
+      {/* Private groups — free, invite-link only, created by any user */}
+      {session?.user?.id && (
+        <div className="px-4 pb-2 shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Приватные группы
+            </span>
+            <button
+              onClick={() => setShowCreateRoom(true)}
+              title="Создать приватную группу"
+              className="text-green-600 hover:text-green-800 text-sm leading-none w-5 h-5 flex items-center justify-center"
+            >
+              +
+            </button>
+          </div>
+          {privateRooms.length === 0 ? (
+            <Link
+              href="/profile?tab=rooms"
+              className="block text-xs text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+            >
+              Пока нет своих групп — создайте
+            </Link>
+          ) : (
+            <div className="space-y-0.5">
+              {privateRooms.map((room) => (
+                <Link
+                  key={room.id}
+                  href={`/rooms/${room.id}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition truncate"
+                >
+                  <span className="shrink-0">🔒</span>
+                  <span className="truncate">{room.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCreateRoom && (
+        <CreateRoomModal
+          onClose={() => setShowCreateRoom(false)}
+          onCreated={(room) => {
+            setShowCreateRoom(false);
+            loadPrivateRooms();
+            router.push(`/rooms/${room.id}`);
+          }}
+        />
+      )}
 
       {/* General chat */}
       <Link

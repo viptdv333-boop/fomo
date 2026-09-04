@@ -42,7 +42,7 @@ export default function RoomPage() {
   }, [roomId]);
 
   async function handleDelete() {
-    if (!room || !confirm("Удалить комнату вместе со всей историей сообщений? Это необратимо.")) return;
+    if (!room || !confirm("Удалить приватную группу вместе со всей историей сообщений? Это необратимо.")) return;
     await fetch(`/api/rooms/${roomId}`, { method: "DELETE" });
     router.push("/profile?tab=rooms");
   }
@@ -57,10 +57,10 @@ export default function RoomPage() {
         <div className="text-4xl mb-3">🔒</div>
         <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Нет доступа</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Эта комната закрыта — попросите у владельца ссылку-приглашение.
+          Эта группа закрыта — попросите у владельца ссылку-приглашение.
         </p>
         <Link href="/profile?tab=rooms" className="text-green-600 hover:underline text-sm">
-          К моим комнатам
+          К моим приватным группам
         </Link>
       </div>
     );
@@ -69,9 +69,9 @@ export default function RoomPage() {
   if (error === "notfound" || !room) {
     return (
       <div className="max-w-md mx-auto text-center py-16">
-        <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Комната не найдена</h1>
+        <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Группа не найдена</h1>
         <Link href="/profile?tab=rooms" className="text-green-600 hover:underline text-sm">
-          К моим комнатам
+          К моим приватным группам
         </Link>
       </div>
     );
@@ -111,7 +111,7 @@ export default function RoomPage() {
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
           <ShareButtons
             url={`${SITE_URL}/rooms/join/${room.inviteToken}`}
-            text={`Приглашаю в комнату «${room.name}» на FOMO`}
+            text={`Приглашаю в приватную группу «${room.name}» на FOMO`}
           />
         </div>
       )}

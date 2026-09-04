@@ -14,10 +14,10 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const membership = await prisma.chatRoomMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.user.id } },
   });
-  if (!membership) return NextResponse.json({ error: "Вы не участник этой комнаты" }, { status: 404 });
+  if (!membership) return NextResponse.json({ error: "Вы не участник этой группы" }, { status: 404 });
   if (membership.role === "owner") {
     return NextResponse.json(
-      { error: "Владелец не может выйти из комнаты — удалите её вместо этого" },
+      { error: "Владелец не может выйти из группы — удалите её вместо этого" },
       { status: 400 }
     );
   }

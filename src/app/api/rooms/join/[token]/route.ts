@@ -73,7 +73,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     await createNotification({
       userId: room.ownerId,
       type: "room_join",
-      title: `${joiner?.displayName || "Пользователь"} присоединился к комнате «${room.name}»`,
+      title: `${joiner?.displayName || "Пользователь"} присоединился к приватной группе «${room.name}»`,
       link: `/rooms/${room.id}`,
     });
   }

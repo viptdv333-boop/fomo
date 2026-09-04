@@ -63,7 +63,7 @@ export default function JoinRoomPage() {
         <div className="text-4xl mb-3">🔒</div>
         <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Нужно войти</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Чтобы присоединиться к комнате по приглашению, сначала войдите или зарегистрируйтесь.
+          Чтобы присоединиться к приватной группе по приглашению, сначала войдите или зарегистрируйтесь.
         </p>
         <div className="flex items-center justify-center gap-3">
           <Link
@@ -88,7 +88,7 @@ export default function JoinRoomPage() {
       <div className="max-w-sm mx-auto text-center py-16">
         <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Ссылка недействительна</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Возможно, комната была удалена или ссылка введена неверно.
+          Возможно, приватная группа была удалена или ссылка введена неверно.
         </p>
       </div>
     );
@@ -97,12 +97,12 @@ export default function JoinRoomPage() {
   if (preview.alreadyMember) {
     return (
       <div className="max-w-sm mx-auto text-center py-16">
-        <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Вы уже в этой комнате</h1>
+        <h1 className="text-lg font-semibold mb-2 dark:text-gray-100">Вы уже в этой группе</h1>
         <Link
           href={`/rooms/${preview.id}`}
           className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
         >
-          Открыть комнату
+          Открыть группу
         </Link>
       </div>
     );

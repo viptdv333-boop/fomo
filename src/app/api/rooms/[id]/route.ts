@@ -52,7 +52,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const room = await prisma.chatRoom.findUnique({ where: { id }, select: { ownerId: true } });
   if (!room || !room.ownerId) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (room.ownerId !== session.user.id) {
-    return NextResponse.json({ error: "Только владелец может удалить комнату" }, { status: 403 });
+    return NextResponse.json({ error: "Только владелец может удалить группу" }, { status: 403 });
   }
 
   await prisma.chatRoom.delete({ where: { id } });
