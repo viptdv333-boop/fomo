@@ -176,6 +176,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="off"
               className={inputClass}
               placeholder="your@email.com"
               autoFocus

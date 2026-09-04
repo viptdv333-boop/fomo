@@ -52,6 +52,16 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.user.findUnique({
       where: { email: data.email },
     });
+    // Only an abandoned signup (PENDING — never finished/approved) is safe to
+    // let a new registration attempt overwrite. An APPROVED or BANNED account
+    // is a real, already-owned account: silently resetting its password here
+    // would be an account-takeover bug, not a "resume signup" convenience.
+    if (existing && existing.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Пользователь с таким email уже существует" },
+        { status: 400 }
+      );
+    }
     const normalized = normalizeEmail(data.email);
     const approved = await prisma.user.findMany({
       where: { status: "APPROVED" },
