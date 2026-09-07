@@ -366,8 +366,19 @@ function FeedPage() {
         </div>
       </div>
 
-      {/* Top 3 ideas */}
-      {!loading && ideas.length >= 3 && (
+      {/* Top 3 ideas — skeleton reserves the same space while loading so this
+          block doesn't pop in and shift everything below it (CLS). */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-1" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : ideas.length >= 3 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
             const labels = [t("top.1"), t("top.2"), t("top.3")];
