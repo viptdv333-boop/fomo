@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
+import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -114,6 +115,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   });
 
   const avatarColor = hashColor(idea.author.id);
+  const isNew = isRecentlyPublished(idea.createdAt);
 
   // Minimal list view
   if (minimal) {
@@ -130,6 +132,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <Link href={`/ideas/${idea.id}`} className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm dark:text-gray-100 truncate">{idea.title}</span>
+            {isNew && <NewBadge className="shrink-0" />}
             {idea.isPaid && (
               <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium shrink-0">
                 {idea.price} ₽
@@ -170,6 +173,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
           <StarRating rating={idea.author.rating} />
+          {isNew && <NewBadge />}
           {idea.isPaid && (
             <span className="ml-auto px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold shrink-0">
               {idea.price} ₽
@@ -257,11 +261,14 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
       </div>
 
       {/* Title */}
-      <Link href={`/ideas/${idea.id}`}>
-        <h2 className="text-base font-bold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition mb-1">
-          {idea.title}
-        </h2>
-      </Link>
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <Link href={`/ideas/${idea.id}`} className="min-w-0">
+          <h2 className="text-base font-bold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition">
+            {idea.title}
+          </h2>
+        </Link>
+        {isNew && <NewBadge className="shrink-0" />}
+      </div>
 
       {/* Description */}
       <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{idea.preview}</p>

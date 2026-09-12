@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import IdeaComments from "@/components/ideas/IdeaComments";
+import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
@@ -107,7 +108,10 @@ export default function IdeaContent() {
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">{idea.title}</h1>
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h1 className="text-2xl font-bold">{idea.title}</h1>
+            {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
+          </div>
           {session?.user?.id === idea.author.id && (
             <div className="flex items-center gap-3 shrink-0">
               <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
+import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 
 interface Instrument {
@@ -389,6 +390,7 @@ function FeedPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
+                  {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
                 <div className="flex items-center justify-between text-xs text-gray-400">
