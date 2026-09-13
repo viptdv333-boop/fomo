@@ -26,6 +26,29 @@ interface ChannelItem {
   description: string | null;
   durationDays?: number;
   avatarUrl?: string | null;
+  subscriberCount?: number;
+}
+
+interface FollowerItem {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  fomoId: string | null;
+  rating: number;
+  followedAt: string;
+}
+
+interface ChannelSubscriberItem {
+  id: string;
+  subscriberId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  fomoId: string | null;
+  monthlyPrice: number;
+  status: string;
+  isActive: boolean;
+  startDate: string;
+  endDate: string;
 }
 
 export default function SubscriptionsPage() {
@@ -34,19 +57,41 @@ export default function SubscriptionsPage() {
   const user = session?.user as any;
   const [subs, setSubs] = useState<SubItem[]>([]);
   const [channels, setChannels] = useState<ChannelItem[]>([]);
+  const [followers, setFollowers] = useState<FollowerItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"channels" | "subscriptions">("channels");
+  const [tab, setTab] = useState<"channels" | "subscriptions" | "followers">("channels");
+  const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null);
+  const [channelSubscribers, setChannelSubscribers] = useState<Record<string, ChannelSubscriberItem[]>>({});
+  const [subscribersLoading, setSubscribersLoading] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) return;
     Promise.all([
       fetch("/api/subscriptions").then((r) => r.json()),
-      user?.id ? fetch(`/api/users/${user.id}/tariffs`).then((r) => r.json()).catch(() => []) : Promise.resolve([]),
-    ]).then(([subsData, channelsData]) => {
+      fetch(`/api/users/${user.id}/tariffs`).then((r) => r.json()).catch(() => []),
+      fetch(`/api/users/${user.id}/followers`).then((r) => r.json()).catch(() => []),
+    ]).then(([subsData, channelsData, followersData]) => {
       setSubs(Array.isArray(subsData) ? subsData : []);
       setChannels(Array.isArray(channelsData) ? channelsData : []);
+      setFollowers(Array.isArray(followersData) ? followersData : []);
       setLoading(false);
     });
   }, [user?.id]);
+
+  async function toggleChannelSubscribers(channelId: string) {
+    if (expandedChannelId === channelId) {
+      setExpandedChannelId(null);
+      return;
+    }
+    setExpandedChannelId(channelId);
+    if (!channelSubscribers[channelId] && user?.id) {
+      setSubscribersLoading(channelId);
+      const res = await fetch(`/api/users/${user.id}/tariffs/${channelId}/subscribers`);
+      const data = await res.json().catch(() => []);
+      setChannelSubscribers((prev) => ({ ...prev, [channelId]: Array.isArray(data) ? data : [] }));
+      setSubscribersLoading(null);
+    }
+  }
 
   if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
 
@@ -78,6 +123,16 @@ export default function SubscriptionsPage() {
           }`}
         >
           {t("subs.mySubscriptions")} {subs.length > 0 && <span className="ml-1 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">{subs.length}</span>}
+        </button>
+        <button
+          onClick={() => setTab("followers")}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition ${
+            tab === "followers"
+              ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          }`}
+        >
+          {t("subs.myFollowers")} {followers.length > 0 && <span className="ml-1 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">{followers.length}</span>}
         </button>
       </div>
 
@@ -131,6 +186,51 @@ export default function SubscriptionsPage() {
                       {t("subs.settings")}
                     </Link>
                   </div>
+
+                  <button
+                    onClick={() => toggleChannelSubscribers(ch.id)}
+                    className="mt-3 text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1"
+                  >
+                    <svg className={`w-3.5 h-3.5 transition-transform ${expandedChannelId === ch.id ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    {t("subs.channelSubscribers")}
+                    {typeof ch.subscriberCount === "number" && (
+                      <span className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">{ch.subscriberCount}</span>
+                    )}
+                  </button>
+
+                  {expandedChannelId === ch.id && (
+                    <div className="mt-3 border-t dark:border-gray-800 pt-3 space-y-2">
+                      {subscribersLoading === ch.id ? (
+                        <p className="text-sm text-gray-400 dark:text-gray-500">Загрузка...</p>
+                      ) : (channelSubscribers[ch.id]?.length || 0) === 0 ? (
+                        <p className="text-sm text-gray-400 dark:text-gray-500">{t("subs.noChannelSubscribers")}</p>
+                      ) : (
+                        channelSubscribers[ch.id].map((s) => (
+                          <div key={s.id} className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0 text-xs">
+                              {s.avatarUrl ? (
+                                <img src={s.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                s.displayName[0]?.toUpperCase()
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <Link href={`/profile/${s.subscriberId}`} className="text-sm font-medium hover:text-green-600 dark:text-gray-100">
+                                {s.displayName}
+                              </Link>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {s.isActive
+                                  ? `${t("subs.subscriberUntil")} ${new Date(s.endDate).toLocaleDateString("ru")}`
+                                  : t("subs.subscriberInactive")}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -224,6 +324,42 @@ export default function SubscriptionsPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Followers tab */}
+      {tab === "followers" && (
+        <div>
+          {followers.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl shadow">
+              <p className="text-gray-500 dark:text-gray-400">{t("subs.noFollowers")}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {followers.map((f) => (
+                <div key={f.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
+                    {f.avatarUrl ? (
+                      <img src={f.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      f.displayName[0]?.toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/profile/${f.id}`}
+                      className="font-medium hover:text-green-600 dark:text-gray-100"
+                    >
+                      {f.displayName}
+                    </Link>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {t("subs.followedSince")} {new Date(f.followedAt).toLocaleDateString("ru")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

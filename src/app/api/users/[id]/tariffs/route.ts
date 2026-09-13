@@ -13,6 +13,7 @@ export async function GET(
   const tariffs = await prisma.subscriptionTariff.findMany({
     where: { authorId: id, isActive: true },
     orderBy: { price: "asc" },
+    include: { _count: { select: { subscriptions: true } } },
   });
 
   // Hide sensitive YuKassa credentials from public API
@@ -30,6 +31,7 @@ export async function GET(
     avatarUrl: t.avatarUrl,
     instrumentIds: t.instrumentIds,
     createdAt: t.createdAt,
+    subscriberCount: t._count.subscriptions,
   }));
 
   return NextResponse.json(safeTariffs);
