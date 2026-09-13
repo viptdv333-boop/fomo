@@ -38,6 +38,8 @@ export async function GET(
       attachments: true,
       updatedAt: true,
       authorId: true,
+      tariffId: true,
+      tariff: { select: { id: true, name: true } },
       author: {
         select: {
           id: true,
@@ -82,7 +84,10 @@ export async function GET(
       // Author can always see their own content
       includeContent = true;
     } else {
-      // Check purchase or active subscription
+      // Check purchase or active subscription.
+      // Пост канала (tariffId, 13.09.2026) открывает подписка на ЭТОТ канал —
+      // или старая подписка на автора без тарифа. Старую платную идею без
+      // канала, как и раньше, открывает любая активная подписка на автора.
       const [purchase, subscription] = await Promise.all([
         prisma.purchase.findUnique({
           where: {
@@ -95,6 +100,9 @@ export async function GET(
             authorId: idea.authorId,
             status: "active",
             endDate: { gt: new Date() },
+            ...(idea.tariffId
+              ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] }
+              : {}),
           },
         }),
       ]);
@@ -115,6 +123,7 @@ export async function GET(
     ...(locked ? { locked: true } : {}),
     isPaid: idea.isPaid,
     price: idea.price,
+    channel: idea.tariff ? { id: idea.tariff.id, name: idea.tariff.name } : null,
     viewCount: idea.viewCount,
     attachments: idea.attachments,
     createdAt: idea.createdAt,

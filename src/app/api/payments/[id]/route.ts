@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { grantSubscription } from "@/lib/subscriptions";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -101,29 +102,14 @@ export async function PATCH(
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + durationDays);
 
-      await prisma.subscription.upsert({
-        where: {
-          subscriberId_authorId: {
-            subscriberId: paymentRequest.buyerId,
-            authorId: paymentRequest.sellerId,
-          },
-        },
-        update: {
-          status: "active",
-          startDate: new Date(),
-          endDate,
-          monthlyPrice: paymentRequest.amount,
-          tariffId,
-          durationDays,
-        },
-        create: {
-          subscriberId: paymentRequest.buyerId,
-          authorId: paymentRequest.sellerId,
-          monthlyPrice: paymentRequest.amount,
-          endDate,
-          tariffId,
-          durationDays,
-        },
+      // Подписка на канал (13.09.2026): своя запись на каждый канал автора.
+      await grantSubscription({
+        subscriberId: paymentRequest.buyerId,
+        authorId: paymentRequest.sellerId,
+        tariffId,
+        monthlyPrice: paymentRequest.amount,
+        endDate,
+        durationDays,
       });
 
       // Auto-DM: create conversation and send welcome message

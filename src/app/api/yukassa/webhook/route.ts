@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { grantSubscription } from "@/lib/subscriptions";
 
 /**
  * POST /api/yukassa/webhook
@@ -78,29 +79,14 @@ async function handlePaymentSucceeded(payment: any) {
   const endDate = new Date();
   endDate.setDate(endDate.getDate() + durationDays);
 
-  await prisma.subscription.upsert({
-    where: {
-      subscriberId_authorId: {
-        subscriberId: paymentRequest.buyerId,
-        authorId: paymentRequest.sellerId,
-      },
-    },
-    update: {
-      status: "active",
-      startDate: new Date(),
-      endDate,
-      monthlyPrice: paymentRequest.amount,
-      tariffId: tariffId || null,
-      durationDays,
-    },
-    create: {
-      subscriberId: paymentRequest.buyerId,
-      authorId: paymentRequest.sellerId,
-      monthlyPrice: paymentRequest.amount,
-      endDate,
-      tariffId: tariffId || null,
-      durationDays,
-    },
+  // Подписка на канал (13.09.2026): своя запись на каждый канал автора.
+  await grantSubscription({
+    subscriberId: paymentRequest.buyerId,
+    authorId: paymentRequest.sellerId,
+    tariffId: tariffId || null,
+    monthlyPrice: paymentRequest.amount,
+    endDate,
+    durationDays,
   });
 
   // Auto-DM: welcome message
