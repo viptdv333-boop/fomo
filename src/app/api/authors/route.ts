@@ -18,7 +18,7 @@ export async function GET() {
       _count: {
         select: {
           ideas: true,
-          subscriptionsReceived: true,
+          followersReceived: true,
         },
       },
     },
@@ -36,7 +36,7 @@ export async function GET() {
       bio: a.bio,
       createdAt: a.createdAt,
       ideasCount: a._count.ideas,
-      subscribersCount: a._count.subscriptionsReceived,
+      subscribersCount: a._count.followersReceived,
     }))
   );
 }
