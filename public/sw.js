@@ -1,5 +1,5 @@
 // FOMO service worker — bump CACHE version to force clients to drop old assets.
-const CACHE = "fomo-v1";
+const CACHE = "fomo-v2";
 const PRECACHE = ["/", "/logo-fomo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -15,6 +15,43 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
       await self.clients.claim();
+    })()
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = { title: "FOMO", body: "" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    if (event.data) data.body = event.data.text();
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "FOMO", {
+      body: data.body || "",
+      icon: "/logo-fomo.png",
+      badge: "/logo-fomo.png",
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const existing = clientsList.find((c) => new URL(c.url).pathname === new URL(url, self.location.origin).pathname);
+      if (existing) return existing.focus();
+      const matchingOrigin = clientsList.find((c) => c.url.startsWith(self.location.origin));
+      if (matchingOrigin) {
+        await matchingOrigin.focus();
+        return matchingOrigin.navigate(url);
+      }
+      return self.clients.openWindow(url);
     })()
   );
 });

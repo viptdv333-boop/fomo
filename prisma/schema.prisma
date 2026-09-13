@@ -81,6 +81,7 @@ model User {
   ideaComments           IdeaComment[]
   ownedRooms             ChatRoom[]       @relation("RoomOwner")
   roomMemberships        ChatRoomMember[]
+  pushSubscriptions      PushSubscription[]
 
   @@index([status])
 }
@@ -481,6 +482,24 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([createdAt])
+}
+
+/// A browser/device's Web Push subscription (one row per installed PWA / browser).
+/// endpoint is unique per device — resubscribing (e.g. after clearing storage)
+/// creates a new endpoint, so old rows are pruned lazily when a push to them
+/// comes back 404/410 (see src/lib/push.ts).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Report {

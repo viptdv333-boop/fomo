@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendPushToUser } from "@/lib/push";
 
 // Access the global IO instance set by server/socket.ts
 const globalForIO = globalThis as unknown as { io: any };
@@ -29,6 +30,7 @@ export async function createNotification({
     data: { userId, type, title, body, link },
   });
   emitNotification(userId);
+  sendPushToUser(userId, { title, body, url: link }).catch(() => {});
   return notification;
 }
 
@@ -59,5 +61,6 @@ export async function notifyFollowers(
   // Emit to all followers
   for (const f of followers) {
     emitNotification(f.followerId);
+    sendPushToUser(f.followerId, { title, body, url: link }).catch(() => {});
   }
 }

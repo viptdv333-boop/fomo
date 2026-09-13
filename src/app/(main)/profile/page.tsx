@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TariffManager from "@/components/profile/TariffManager";
+import { isPushSupported, getExistingPushSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
 import FinanceTab from "@/components/profile/FinanceTab";
 import RoomsTab from "@/components/profile/RoomsTab";
 import ShareButtons from "@/components/shared/ShareButtons";
@@ -53,6 +54,10 @@ function ProfileContent() {
   const [specializations, setSpecializations] = useState<string[]>([]);
   const [education, setEducation] = useState<EducationRecord[]>([]);
   const [dmEnabled, setDmEnabled] = useState(true);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState("");
   const [paymentCard, setPaymentCard] = useState("");
   const [donationCard, setDonationCard] = useState("");
   const [sbpQrUrl, setSbpQrUrl] = useState<string | null>(null);
@@ -217,6 +222,34 @@ function ProfileContent() {
   useEffect(() => {
     loadMyIdeas();
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    setPushSupported(true);
+    getExistingPushSubscription().then((sub) => setPushEnabled(Boolean(sub)));
+  }, []);
+
+  async function handleTogglePush() {
+    setPushError("");
+    setPushBusy(true);
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush();
+        setPushEnabled(false);
+      } else {
+        const result = await subscribeToPush();
+        if (result.ok) {
+          setPushEnabled(true);
+        } else if (result.error === "denied") {
+          setPushError("Уведомления заблокированы в настройках браузера/телефона");
+        } else {
+          setPushError("Не удалось включить уведомления");
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -935,6 +968,26 @@ function ProfileContent() {
             </div>
           </label>
         </div>
+
+        {/* Push notifications toggle */}
+        {pushSupported && (
+          <div className="border-t dark:border-gray-700 pt-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pushEnabled}
+                disabled={pushBusy}
+                onChange={handleTogglePush}
+                className="w-4 h-4 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("profile.pushNotifications")}</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("profile.pushNotificationsDesc")}</p>
+                {pushError && <p className="text-xs text-red-500 mt-1">{pushError}</p>}
+              </div>
+            </label>
+          </div>
+        )}
 
         <div className="flex items-center gap-4 pt-2">
           <button
