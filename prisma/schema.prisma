@@ -199,15 +199,21 @@ model Idea {
 
   attachments Json?
 
+  /// Пост закрытого канала (13.09.2026): виден в канале, открывается подпиской
+  /// на этот канал. null — обычная идея (бесплатная или продаваемая поштучно).
+  tariffId        String?
+
   author          User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
   instruments     IdeaInstrument[]
   purchases       Purchase[]
   votes           IdeaVote[]
   paymentRequests PaymentRequest[]
   comments        IdeaComment[]
+  tariff          SubscriptionTariff? @relation(fields: [tariffId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([authorId])
+  @@index([tariffId])
 }
 
 model IdeaComment {
@@ -293,7 +299,12 @@ model Subscription {
   author     User                @relation("Author", fields: [authorId], references: [id], onDelete: Cascade)
   tariff     SubscriptionTariff? @relation(fields: [tariffId], references: [id], onDelete: SetNull)
 
-  @@unique([subscriberId, authorId])
+  /// Подписка — на канал (tariffId), не на автора целиком (13.09.2026): у одного
+  /// автора у читателя может быть несколько каналов. Уникальный ключ не вводим —
+  /// деплой делает `prisma db push`, и новый unique остановил бы запуск.
+  /// Поиск и выдача — src/lib/subscriptions.ts.
+  @@index([subscriberId, authorId])
+  @@index([subscriberId, tariffId])
 }
 
 model ChatRoom {
@@ -541,6 +552,7 @@ model SubscriptionTariff {
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
   channelRoom   ChatRoom?      @relation(fields: [channelRoomId], references: [id])
+  ideas         Idea[]
 
   @@index([authorId])
 }

@@ -16,6 +16,8 @@ interface IdeaDetail {
   content?: string;
   isPaid: boolean;
   price: number | null;
+  /** Пост закрытого канала (13.09.2026) — открывается подпиской на канал. */
+  channel?: { id: string; name: string } | null;
   locked?: boolean;
   attachments?: unknown;
   viewCount?: number;
@@ -159,6 +161,14 @@ export default function IdeaContent() {
               {t("idea.fullContentLocked")}
             </p>
             <div className="flex gap-3 justify-center">
+              {idea.channel && (
+                <Link
+                  href={`/channels/${idea.channel.id}`}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                >
+                  Подписаться на канал «{idea.channel.name}»
+                </Link>
+              )}
               {idea.price && (
                 <button
                   onClick={() => setShowPayModal(true)}

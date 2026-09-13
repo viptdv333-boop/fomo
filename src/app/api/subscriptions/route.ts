@@ -41,6 +41,8 @@ export async function GET() {
     ...paidSubs.map((s) => ({
       id: s.id,
       type: "paid" as const,
+      // канал подписки (13.09.2026); null — старая подписка на автора целиком
+      tariffId: s.tariffId,
       monthlyPrice: s.monthlyPrice,
       startDate: s.startDate,
       endDate: s.endDate,
@@ -49,6 +51,7 @@ export async function GET() {
     ...follows.map((f) => ({
       id: f.id,
       type: "free" as const,
+      tariffId: null,
       monthlyPrice: 0,
       startDate: f.createdAt,
       endDate: null,

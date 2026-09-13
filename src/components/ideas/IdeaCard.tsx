@@ -136,7 +136,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {isNew && <NewBadge className="shrink-0" />}
             {idea.isPaid && (
               <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium shrink-0">
-                {idea.price} ₽
+                {idea.price ? `${idea.price} ₽` : "🔒 канал"}
               </span>
             )}
           </div>
@@ -177,7 +177,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           {isNew && <NewBadge />}
           {idea.isPaid && (
             <span className="ml-auto px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold shrink-0">
-              {idea.price} ₽
+              {idea.price ? `${idea.price} ₽` : "🔒 канал"}
             </span>
           )}
         </div>
@@ -246,7 +246,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <div className="flex items-center gap-2 shrink-0">
           {idea.isPaid && (
             <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold">
-              {idea.price} ₽
+              {idea.price ? `${idea.price} ₽` : "🔒 канал"}
             </span>
           )}
         </div>

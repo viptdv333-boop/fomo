@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { findActiveSubscription } from "@/lib/subscriptions";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -90,11 +91,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
     }
 
-    // Check existing active subscription
-    const existing = await prisma.subscription.findUnique({
-      where: { subscriberId_authorId: { subscriberId: userId, authorId: tariff.authorId } },
-    });
-    if (existing && existing.status === "active" && existing.endDate > new Date()) {
+    // Check existing active subscription — на ЭТОТ канал (13.09.2026)
+    const existing = await findActiveSubscription(userId, tariff.authorId, tariff.id);
+    if (existing) {
       return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
     }
 
@@ -157,11 +156,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
     }
 
-    // Check existing active subscription
-    const existing = await prisma.subscription.findUnique({
-      where: { subscriberId_authorId: { subscriberId: userId, authorId: author.id } },
-    });
-    if (existing && existing.status === "active" && existing.endDate > new Date()) {
+    // Check existing active subscription — старая подписка на автора без тарифа
+    const existing = await findActiveSubscription(userId, author.id, null);
+    if (existing) {
       return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
     }
 

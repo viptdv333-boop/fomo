@@ -17,6 +17,7 @@ const ideaSelect = {
   acceptDonations: true,
   viewCount: true,
   createdAt: true,
+  tariffId: true,
   author: {
     select: {
       id: true,
@@ -102,6 +103,32 @@ export async function GET(request: NextRequest) {
     where.authorId = authorId;
   }
 
+  // Посты закрытых каналов (Idea.tariffId, 13.09.2026) живут в своём канале.
+  // channelId — лента канала: его посты плюс старые платные идеи автора без
+  // канала (до 13.09 канал показывал все платные идеи автора — их не прячем).
+  // Без channelId и authorId это общая лента: постов каналов в ней нет.
+  // Профиль автора (authorId) показывает всё, закрытое остаётся закрытым.
+  const channelId = searchParams.get("channelId");
+  if (channelId) {
+    const tariff = await prisma.subscriptionTariff.findUnique({
+      where: { id: channelId },
+      select: { authorId: true },
+    });
+    if (!tariff) {
+      return NextResponse.json({ data: [], page, limit, total: 0, totalPages: 0 });
+    }
+    where.AND = [
+      {
+        OR: [
+          { tariffId: channelId },
+          { authorId: tariff.authorId, isPaid: true, tariffId: null },
+        ],
+      },
+    ];
+  } else if (!authorId) {
+    where.tariffId = null;
+  }
+
   // Paid/free filter
   const isPaidParam = searchParams.get("isPaid");
   if (isPaidParam === "true") {
@@ -148,6 +175,7 @@ export async function GET(request: NextRequest) {
       acceptDonations: idea.acceptDonations,
       viewCount: idea.viewCount,
       createdAt: idea.createdAt,
+      channelId: idea.tariffId,
       author: idea.author,
       instruments: idea.instruments.map((ii) => ii.instrument),
       voteScore: idea.votes.reduce((sum, v) => sum + v.value, 0),
@@ -172,10 +200,13 @@ const createIdeaSchema = z.object({
   preview: z.string().min(1).max(1000),
   content: z.string().min(1),
   isPaid: z.boolean(),
-  price: z.number().positive().optional(),
+  // 0 присылает форма поста в канал: у поста канала нет цены, его открывает
+  // подписка. Для обычной платной идеи цена > 0 проверяется ниже.
+  price: z.number().nonnegative().optional(),
   acceptDonations: z.boolean().optional(),
   instrumentIds: z.array(z.string()).min(1),
   attachments: z.array(attachmentSchema).optional(),
+  channelId: z.string().optional(),
 });
 
 interface PaidTier {
@@ -211,9 +242,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments } = parsed.data;
+  const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments, channelId } = parsed.data;
 
-  if (isPaid && (price === undefined || price <= 0)) {
+  if (isPaid && !channelId && (price === undefined || price <= 0)) {
     return NextResponse.json(
       { error: "Price is required for paid ideas" },
       { status: 400 }
@@ -221,6 +252,24 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  // Пост в канал (13.09.2026): канал обязан принадлежать автору поста. Такой
+  // пост — не продаваемая идея: он платный (закрыт), без цены и без лимитов
+  // платных идей по рейтингу — его открывает подписка на канал.
+  let tariffId: string | null = null;
+  if (channelId) {
+    const tariff = await prisma.subscriptionTariff.findUnique({
+      where: { id: channelId },
+      select: { id: true, authorId: true },
+    });
+    if (!tariff || tariff.authorId !== userId) {
+      return NextResponse.json(
+        { error: "Канал не найден или принадлежит другому автору" },
+        { status: 403 }
+      );
+    }
+    tariffId = tariff.id;
+  }
 
   // Free ideas had no ceiling at all — one account could flood the whole feed.
   // Paid ones are additionally capped by the rating tiers below.
@@ -241,8 +290,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
   }
 
-  // If paid idea, check rating tiers and weekly limit
-  if (isPaid) {
+  // If paid idea, check rating tiers and weekly limit (посты канала — не продажа)
+  if (isPaid && !tariffId) {
     const author = await prisma.user.findUnique({
       where: { id: userId },
       select: { rating: true },
@@ -325,11 +374,12 @@ export async function POST(request: NextRequest) {
       title,
       preview,
       content,
-      isPaid,
-      price: isPaid ? price : null,
-      acceptDonations: !isPaid ? (acceptDonations ?? false) : false,
+      isPaid: tariffId ? true : isPaid,
+      price: tariffId ? null : (isPaid ? price : null),
+      acceptDonations: !tariffId && !isPaid ? (acceptDonations ?? false) : false,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       authorId: userId,
+      tariffId,
       instruments: {
         create: allInstrumentIds.map((instrumentId) => ({ instrumentId })),
       },
@@ -341,6 +391,7 @@ export async function POST(request: NextRequest) {
       isPaid: true,
       price: true,
       createdAt: true,
+      tariffId: true,
     },
   });
 
@@ -357,7 +408,8 @@ export async function POST(request: NextRequest) {
     where: { id: userId },
     select: { displayName: true },
   });
-  if (author) {
+  // Пост канала — для подписчиков канала, не для всех фолловеров автора.
+  if (author && !tariffId) {
     await notifyFollowers(
       userId,
       "new_idea",
