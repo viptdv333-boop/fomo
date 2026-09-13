@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 // ===== Universal payment types =====
 export type PaymentPurpose =
-  | { type: "donation"; authorId: string; authorName: string; donationCard?: string | null }
+  | { type: "donation"; authorId: string; authorName: string; donationCard?: string | null; donationQrUrl?: string | null }
   | { type: "idea"; ideaId: string; ideaTitle: string; price: number; authorId: string; authorName: string }
   | { type: "subscription"; tariff: TariffOption; authorId: string; authorName: string }
   | { type: "course"; courseId: string; courseTitle: string; price: number; authorId: string; authorName: string };
@@ -18,6 +18,7 @@ export interface TariffOption {
   durationDays: number;
   paymentMethods: string[];
   cardNumber?: string | null;
+  sbpQrUrl?: string | null;
 }
 
 interface UnifiedPaymentModalProps {
@@ -26,7 +27,7 @@ interface UnifiedPaymentModalProps {
   onSuccess?: () => void;
 }
 
-type PaymentMethod = "card" | "yukassa";
+type PaymentMethod = "card" | "yukassa" | "sbp";
 type Step = "method" | "pay" | "success";
 
 export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: UnifiedPaymentModalProps) {
@@ -51,7 +52,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
 
   // Idea purchase: payment request is created up front (on method select) so we
   // can show the seller's real card number, not just at receipt-upload time
-  const [ideaPayment, setIdeaPayment] = useState<{ id: string; sellerCard: string | null } | null>(null);
+  const [ideaPayment, setIdeaPayment] = useState<{ id: string; sellerCard: string | null; sellerQrUrl: string | null } | null>(null);
   const [loadingIdeaPayment, setLoadingIdeaPayment] = useState(false);
 
   // Donation amount (free-form)
@@ -105,14 +106,23 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
     }
   })();
 
+  const qrUrl = (() => {
+    switch (purpose.type) {
+      case "donation": return purpose.donationQrUrl || null;
+      case "idea": return ideaPayment?.sellerQrUrl || null;
+      case "subscription": return selectedTariff?.sbpQrUrl || null;
+      case "course": return null;
+    }
+  })();
+
   // Available methods
   const availableMethods: PaymentMethod[] = (() => {
     if (purpose.type === "subscription" && selectedTariff) {
       const m = selectedTariff.paymentMethods || ["card"];
-      return m.filter((x): x is PaymentMethod => x === "card" || x === "yukassa");
+      return m.filter((x): x is PaymentMethod => x === "card" || x === "yukassa" || x === "sbp");
     }
-    // For now, only card for other types
-    return ["card"];
+    // Donation/idea/course are manual bank transfers — always offer both.
+    return ["card", "sbp"];
   })();
 
   // ===== Actions =====
@@ -152,7 +162,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   async function handleSelectMethod(method: PaymentMethod) {
     setPaymentMethod(method);
 
-    if (method === "card" && purpose.type === "idea" && !ideaPayment) {
+    if ((method === "card" || method === "sbp") && purpose.type === "idea" && !ideaPayment) {
       setLoadingIdeaPayment(true);
       setError("");
       try {
@@ -164,7 +174,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Ошибка оплаты");
         if (!data.paymentRequest?.id) throw new Error("Ошибка оплаты");
-        setIdeaPayment({ id: data.paymentRequest.id, sellerCard: data.sellerCard || null });
+        setIdeaPayment({ id: data.paymentRequest.id, sellerCard: data.sellerCard || null, sellerQrUrl: data.sellerQrUrl || null });
       } catch (err: any) {
         setError(err.message || "Ошибка оплаты");
         setLoadingIdeaPayment(false);
@@ -387,9 +397,23 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     <span className="text-2xl">💳</span>
                     <div>
                       <div className="font-medium text-sm dark:text-gray-100">Перевод на карту</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Перевод через банковское приложение или СБП</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">По номеру карты через банковское приложение</div>
                     </div>
-                    <span className="ml-auto text-gray-400">{loadingIdeaPayment ? "..." : "→"}</span>
+                    <span className="ml-auto text-gray-400">{loadingIdeaPayment && paymentMethod === "card" ? "..." : "→"}</span>
+                  </button>
+                )}
+                {availableMethods.includes("sbp") && (
+                  <button
+                    onClick={() => handleSelectMethod("sbp")}
+                    disabled={loadingIdeaPayment}
+                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition text-left disabled:opacity-50"
+                  >
+                    <span className="text-2xl">🔳</span>
+                    <div>
+                      <div className="font-medium text-sm dark:text-gray-100">Оплата по QR-коду (СБП)</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Отсканируйте QR в приложении банка</div>
+                    </div>
+                    <span className="ml-auto text-gray-400">{loadingIdeaPayment && paymentMethod === "sbp" ? "..." : "→"}</span>
                   </button>
                 )}
                 {availableMethods.includes("yukassa") && (
@@ -410,8 +434,8 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
             </>
           )}
 
-          {/* ===== STEP 2: Card payment ===== */}
-          {step === "pay" && paymentMethod === "card" && (
+          {/* ===== STEP 2: Card / SBP QR payment ===== */}
+          {step === "pay" && (paymentMethod === "card" || paymentMethod === "sbp") && (
             <>
               <button onClick={() => setStep("method")} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 mb-3 inline-flex items-center gap-1">
                 ← Назад
@@ -423,15 +447,39 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">
                 <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">Инструкция:</p>
                 <ol className="text-xs text-green-700 dark:text-green-400 space-y-0.5 list-decimal list-inside">
-                  <li>Скопируйте номер карты ниже</li>
-                  <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"} через банковское приложение</li>
-                  <li>Сделайте скриншот чека об оплате</li>
-                  <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                  {paymentMethod === "sbp" ? (
+                    <>
+                      <li>Откройте приложение вашего банка → «Оплата по QR» / СБП</li>
+                      <li>Отсканируйте QR-код ниже</li>
+                      <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"}</li>
+                      <li>Сделайте скриншот чека об оплате</li>
+                      <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Скопируйте номер карты ниже</li>
+                      <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"} через банковское приложение</li>
+                      <li>Сделайте скриншот чека об оплате</li>
+                      <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                    </>
+                  )}
                 </ol>
               </div>
 
-              {/* Card number */}
-              {cardNumber ? (
+              {/* Payment details: card number or SBP QR code */}
+              {paymentMethod === "sbp" ? (
+                qrUrl ? (
+                  <div className="flex flex-col items-center bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrUrl} alt="QR-код СБП" className="w-48 h-48 object-contain" />
+                    <p className="text-xs text-gray-400 mt-2">Наведите камеру банковского приложения на QR-код</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+                    QR-код не указан. Уточните у автора.
+                  </p>
+                )
+              ) : cardNumber ? (
                 <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg px-4 py-3 mb-4">
                   <span className="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-wider flex-1">
                     {cardNumber}

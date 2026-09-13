@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "file and type required" }, { status: 400 });
   }
 
-  if (!["avatars", "ideas", "receipts", "messages"].includes(type)) {
+  if (!["avatars", "ideas", "receipts", "messages", "payment-qr"].includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
 
   try {
     const result = await saveUploadedFile(
       file,
-      type as "avatars" | "ideas" | "receipts" | "messages",
+      type as "avatars" | "ideas" | "receipts" | "messages" | "payment-qr",
       session.user.id!
     );
     console.log(`[api/upload] Success: ${result.url}`);

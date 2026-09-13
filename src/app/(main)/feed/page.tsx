@@ -36,6 +36,7 @@ interface IdeaData {
     rating: number;
     avatarUrl: string | null;
     donationCard?: string | null;
+    sbpQrUrl?: string | null;
   };
   instruments: { id: string; name: string; slug: string }[];
   voteScore: number;

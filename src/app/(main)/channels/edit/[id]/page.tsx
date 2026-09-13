@@ -14,6 +14,7 @@ interface TariffData {
   durationDays: number;
   paymentMethods: string[];
   cardNumber: string | null;
+  sbpQrUrl: string | null;
   yukassaShopId: string | null;
   yukassaSecret: string | null;
   avatarUrl: string | null;
@@ -57,6 +58,7 @@ export default function EditChannelPage() {
     paymentMethodId: string;
     paymentMethods: string[];
     cardNumber: string;
+    sbpQrUrl: string;
     yukassaShopId: string;
     yukassaSecret: string;
     isActive: boolean;
@@ -100,6 +102,7 @@ export default function EditChannelPage() {
             paymentMethodId: "",
             paymentMethods: t.paymentMethods || ["card"],
             cardNumber: t.cardNumber || "",
+            sbpQrUrl: t.sbpQrUrl || "",
             yukassaShopId: t.yukassaShopId || "",
             yukassaSecret: t.yukassaSecret || "",
             isActive: t.isActive !== false,
@@ -127,7 +130,7 @@ export default function EditChannelPage() {
   function addTariff() {
     setTariffs([...tariffs, {
       id: null, name: "", price: "", durationDays: "30", paymentMethodId: "",
-      paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "",
+      paymentMethods: ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "",
       isActive: true, description: "",
     }]);
   }
@@ -162,6 +165,7 @@ export default function EditChannelPage() {
           durationDays: parseInt(t.durationDays) || 30,
           paymentMethods: t.paymentMethods,
           cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() || null : null,
+          sbpQrUrl: t.paymentMethods.includes("sbp") ? t.sbpQrUrl.trim() || null : null,
           yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() || null : null,
           yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() || null : null,
           avatarUrl: avatarUrl || null,
@@ -384,6 +388,7 @@ export default function EditChannelPage() {
                               updateTariff(idx, "paymentMethodId", m.id);
                               updateTariff(idx, "paymentMethods", [m.type]);
                               if (m.type === "card") updateTariff(idx, "cardNumber", m.details?.cardNumber || "");
+                              if (m.type === "sbp") updateTariff(idx, "sbpQrUrl", m.details?.qrImageUrl || "");
                               if (m.type === "yukassa") {
                                 updateTariff(idx, "yukassaShopId", m.details?.yukassaShopId || "");
                                 updateTariff(idx, "yukassaSecret", m.details?.yukassaSecret || "");
@@ -392,7 +397,11 @@ export default function EditChannelPage() {
                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left text-sm transition border ${
                               isSelected ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                             }`}>
-                            <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : "₿"}</span>
+                            {m.type === "sbp" && m.details?.qrImageUrl ? (
+                              <img src={m.details.qrImageUrl} alt="QR" className="w-7 h-7 rounded object-contain bg-white border dark:border-gray-700 shrink-0" />
+                            ) : (
+                              <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : m.type === "sbp" ? "🔳" : "₿"}</span>
+                            )}
                             <div className="flex-1 min-w-0">
                               <div className="font-medium dark:text-gray-100">{m.label}</div>
                               {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}

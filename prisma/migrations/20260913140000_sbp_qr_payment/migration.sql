@@ -1,0 +1,5 @@
+ALTER TABLE "User"
+  ADD COLUMN IF NOT EXISTS "sbpQrUrl" TEXT;
+
+ALTER TABLE "SubscriptionTariff"
+  ADD COLUMN IF NOT EXISTS "sbpQrUrl" TEXT;

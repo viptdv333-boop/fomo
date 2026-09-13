@@ -15,12 +15,14 @@ const TYPE_ICONS: Record<string, string> = {
   card: "💳",
   yukassa: "🏦",
   crypto: "₿",
+  sbp: "🔳",
 };
 
 const TYPE_LABELS: Record<string, string> = {
   card: "Банковская карта",
   yukassa: "ЮKassa",
   crypto: "Криптокошелёк",
+  sbp: "СБП (QR-код)",
 };
 
 function detectCardType(num: string): string {
@@ -68,6 +70,8 @@ export default function PaymentMethodsManager() {
   const [addCardNumber, setAddCardNumber] = useState("");
   const [addYukassaShopId, setAddYukassaShopId] = useState("");
   const [addYukassaSecret, setAddYukassaSecret] = useState("");
+  const [addQrImageUrl, setAddQrImageUrl] = useState("");
+  const [qrUploading, setQrUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardType, setCardType] = useState("");
@@ -95,6 +99,10 @@ export default function PaymentMethodsManager() {
       details.yukassaShopId = addYukassaShopId.trim();
       details.yukassaSecret = addYukassaSecret.trim();
     }
+    if (addType === "sbp") {
+      if (!addQrImageUrl) { setSaving(false); return; }
+      details.qrImageUrl = addQrImageUrl;
+    }
 
     await fetch("/api/payment-methods", {
       method: "POST",
@@ -107,10 +115,25 @@ export default function PaymentMethodsManager() {
       }),
     });
 
-    setAddLabel(""); setAddCardNumber(""); setAddYukassaShopId(""); setAddYukassaSecret("");
+    setAddLabel(""); setAddCardNumber(""); setAddYukassaShopId(""); setAddYukassaSecret(""); setAddQrImageUrl("");
     setShowAdd(false);
     setSaving(false);
     loadMethods();
+  }
+
+  async function handleQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setQrUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("type", "payment-qr");
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.url) setAddQrImageUrl(data.url);
+    }
+    setQrUploading(false);
   }
 
   async function handleDelete(id: string) {
@@ -146,6 +169,7 @@ export default function PaymentMethodsManager() {
             <select value={addType} onChange={(e) => setAddType(e.target.value)}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100">
               <option value="card">💳 Банковская карта</option>
+              <option value="sbp">🔳 СБП (QR-код)</option>
               <option value="yukassa">🏦 ЮKassa</option>
               <option value="crypto">₿ Крипто</option>
             </select>
@@ -177,6 +201,25 @@ export default function PaymentMethodsManager() {
               {cardError && <p className="text-xs text-red-500 mt-1">{cardError}</p>}
             </div>
           )}
+          {addType === "sbp" && (
+            <div>
+              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">QR-код СБП</label>
+              {addQrImageUrl ? (
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={addQrImageUrl} alt="QR" className="w-16 h-16 rounded-lg border dark:border-gray-700 object-contain bg-white" />
+                  <button type="button" onClick={() => setAddQrImageUrl("")} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                </div>
+              ) : (
+                <label className="block w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-green-400 transition">
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrUpload} />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {qrUploading ? "Загрузка..." : "Нажмите, чтобы загрузить QR-код"}
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
           {addType === "yukassa" && (
             <>
               <div>
@@ -201,7 +244,7 @@ export default function PaymentMethodsManager() {
               </div>
             </>
           )}
-          <button onClick={handleAdd} disabled={saving || !addLabel.trim()}
+          <button onClick={handleAdd} disabled={saving || !addLabel.trim() || (addType === "sbp" && !addQrImageUrl)}
             className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">
             {saving ? "..." : t("common.save")}
           </button>
@@ -217,7 +260,12 @@ export default function PaymentMethodsManager() {
         <div className="space-y-2">
           {methods.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg group">
-              <span className="text-lg">{TYPE_ICONS[m.type] || "💳"}</span>
+              {m.type === "sbp" && m.details?.qrImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.details.qrImageUrl} alt="QR" className="w-9 h-9 rounded object-contain bg-white border dark:border-gray-700 shrink-0" />
+              ) : (
+                <span className="text-lg">{TYPE_ICONS[m.type] || "💳"}</span>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium dark:text-gray-100 flex items-center gap-2">
                   {m.label}

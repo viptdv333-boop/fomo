@@ -53,6 +53,7 @@ interface IdeaCardProps {
       rating: number;
       avatarUrl: string | null;
       donationCard?: string | null;
+      sbpQrUrl?: string | null;
     };
     instruments: {
       id: string;
@@ -365,6 +366,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             authorId: idea.author.id,
             authorName: idea.author.displayName,
             donationCard: idea.author.donationCard,
+            donationQrUrl: idea.author.sbpQrUrl,
           }}
           onClose={() => setShowDonateModal(false)}
         />

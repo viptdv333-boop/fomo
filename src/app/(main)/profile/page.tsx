@@ -55,6 +55,9 @@ function ProfileContent() {
   const [dmEnabled, setDmEnabled] = useState(true);
   const [paymentCard, setPaymentCard] = useState("");
   const [donationCard, setDonationCard] = useState("");
+  const [sbpQrUrl, setSbpQrUrl] = useState<string | null>(null);
+  const [sbpQrUploading, setSbpQrUploading] = useState(false);
+  const sbpQrInputRef = useRef<HTMLInputElement>(null);
   const [socialLinks, setSocialLinks] = useState({
     telegram: "",
     vk: "",
@@ -120,6 +123,7 @@ function ProfileContent() {
           setDmEnabled(data.dmEnabled ?? true);
           setPaymentCard(data.paymentCard || "");
           setDonationCard(data.donationCard || "");
+          setSbpQrUrl(data.sbpQrUrl || null);
           setRating(Number(data.rating) || 0);
           if (data.socialLinks) {
             setSocialLinks({
@@ -237,6 +241,7 @@ function ProfileContent() {
         dmEnabled,
         paymentCard: paymentCard || null,
         donationCard: donationCard || null,
+        sbpQrUrl: sbpQrUrl || null,
         socialLinks: Object.values(socialLinks).some(Boolean) ? socialLinks : null,
       }),
     });
@@ -329,6 +334,47 @@ function ProfileContent() {
       setMessage("Ошибка загрузки аватара");
     }
     setAvatarUploading(false);
+  }
+
+  async function handleSbpQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSbpQrUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "payment-qr");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          const patchRes = await fetch(`/api/users/${session?.user?.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sbpQrUrl: data.url }),
+          });
+          if (patchRes.ok) setSbpQrUrl(data.url);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setMessage("Ошибка загрузки QR-кода: " + (err.error || "неизвестная ошибка"));
+      }
+    } catch (err) {
+      console.error("SBP QR upload error:", err);
+      setMessage("Ошибка загрузки QR-кода");
+    }
+    setSbpQrUploading(false);
+    if (sbpQrInputRef.current) sbpQrInputRef.current.value = "";
+  }
+
+  async function handleRemoveSbpQr() {
+    if (!confirm("Удалить QR-код СБП?")) return;
+    const res = await fetch(`/api/users/${session?.user?.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sbpQrUrl: null }),
+    });
+    if (res.ok) setSbpQrUrl(null);
   }
 
   return (
@@ -822,6 +868,56 @@ function ProfileContent() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Укажите номер карты для получения донатов от читателей ваших бесплатных идей
           </p>
+        </div>
+
+        {/* SBP QR code */}
+        <div className="border-t dark:border-gray-700 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">QR-код СБП</h3>
+          <div className="flex items-center gap-4">
+            {sbpQrUrl ? (
+              <div className="relative shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sbpQrUrl} alt="QR-код СБП" className="w-24 h-24 rounded-lg border dark:border-gray-700 object-contain bg-white" />
+                <button
+                  type="button"
+                  onClick={handleRemoveSbpQr}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                  title="Удалить"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => sbpQrInputRef.current?.click()}
+                className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400 shrink-0 cursor-pointer hover:border-green-500 transition"
+              >
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5h3.75v3.75H3.75V4.5zM16.5 4.5h3.75v3.75H16.5V4.5zM3.75 15.75h3.75v3.75H3.75v-3.75zM12 4.5h.008v.008H12V4.5zM12 9.75h.008v.008H12V9.75zM16.5 12h3.75v3.75H16.5V12zM12 15.75h.008v.008H12v-3.75zM16.5 19.5h3.75v.008H16.5V19.5zM12 19.5h.008v.008H12V19.5z" />
+                </svg>
+              </div>
+            )}
+            <div>
+              <button
+                type="button"
+                onClick={() => sbpQrInputRef.current?.click()}
+                disabled={sbpQrUploading}
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
+              >
+                {sbpQrUploading ? "Загрузка..." : sbpQrUrl ? "Заменить QR-код" : "Загрузить QR-код"}
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Загрузите свой личный QR-код СБП из банковского приложения — покупатели смогут отсканировать его и перевести деньги напрямую вам
+              </p>
+            </div>
+          </div>
+          <input
+            ref={sbpQrInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleSbpQrUpload}
+            className="hidden"
+          />
         </div>
 
         {/* DM toggle */}

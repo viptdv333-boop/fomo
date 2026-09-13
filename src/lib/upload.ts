@@ -3,13 +3,14 @@ import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-type UploadType = "avatars" | "ideas" | "receipts" | "messages";
+type UploadType = "avatars" | "ideas" | "receipts" | "messages" | "payment-qr";
 
 const SIZE_LIMITS: Record<UploadType, number> = {
   avatars: 5 * 1024 * 1024, // 5MB
   ideas: 10 * 1024 * 1024, // 10MB
   receipts: 5 * 1024 * 1024, // 5MB
   messages: 15 * 1024 * 1024, // 15MB
+  "payment-qr": 5 * 1024 * 1024, // 5MB
 };
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -48,6 +49,9 @@ export async function saveUploadedFile(
   if (type === "receipts" && !isImage) {
     throw new Error("Only images allowed for receipts");
   }
+  if (type === "payment-qr" && !isImage) {
+    throw new Error("Only images allowed for payment QR codes");
+  }
   if (type === "ideas" && !isImage && !isVideo && !isAudio) {
     throw new Error("Only media files allowed (photo/video/audio)");
   }
@@ -63,27 +67,44 @@ export async function saveUploadedFile(
     try {
       console.log(`[upload] Processing image: ${file.name} (${buffer.length} bytes, type: ${file.type})`);
       let processed: Buffer;
+      let ext = "jpg";
+      // Flatten onto white before JPEG: JPEG has no alpha channel, so a
+      // transparent PNG (very common for avatars/logos) would otherwise get
+      // its transparent areas silently composited onto black by sharp.
       if (type === "avatars") {
         processed = await sharp(buffer)
           .rotate()
           .resize(200, 200, { fit: "cover" })
+          .flatten({ background: "#ffffff" })
           .jpeg({ quality: 85 })
           .toBuffer();
       } else if (type === "messages") {
         processed = await sharp(buffer)
           .rotate()
           .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+          .flatten({ background: "#ffffff" })
           .jpeg({ quality: 85 })
+          .toBuffer();
+      } else if (type === "payment-qr") {
+        // PNG, not JPEG: QR codes need crisp, lossless edges to stay
+        // scannable — JPEG compression artifacts can break fine modules.
+        ext = "png";
+        processed = await sharp(buffer)
+          .rotate()
+          .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+          .flatten({ background: "#ffffff" })
+          .png({ compressionLevel: 9 })
           .toBuffer();
       } else {
         processed = await sharp(buffer)
           .rotate()
           .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+          .flatten({ background: "#ffffff" })
           .jpeg({ quality: 85 })
           .toBuffer();
       }
 
-      const filename = `${uuid}.jpg`;
+      const filename = `${uuid}.${ext}`;
       const fullPath = path.join(dir, filename);
       await writeFile(fullPath, processed);
       console.log(`[upload] OK: ${fullPath} (${processed.length} bytes)`);

@@ -50,6 +50,8 @@ model User {
   dmEnabled          Boolean   @default(true)
   paymentCard        String?
   donationCard       String?
+  /// URL of an uploaded personal SBP (СБП) QR code image, scanned by buyers to pay directly.
+  sbpQrUrl           String?
   socialLinks        Json?
   locale             String    @default("ru")
   createdAt          DateTime  @default(now())
@@ -509,6 +511,7 @@ model SubscriptionTariff {
   isActive       Boolean  @default(true)
   paymentMethods String[] @default(["card"])
   cardNumber     String?
+  sbpQrUrl       String?
   yukassaShopId  String?
   yukassaSecret  String?
   avatarUrl      String?
@@ -526,9 +529,9 @@ model SubscriptionTariff {
 model PaymentMethod {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // "card", "yukassa", "crypto"
-  label     String   // "Тинькофф *2977", "ЮKassa Магазин"
-  details   Json     // { cardNumber: "2200...", yukassaShopId: "...", yukassaSecret: "..." }
+  type      String   // "card", "yukassa", "crypto", "sbp"
+  label     String   // "Тинькофф *2977", "ЮKassa Магазин", "СБП"
+  details   Json     // { cardNumber, yukassaShopId, yukassaSecret, qrImageUrl }
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
 

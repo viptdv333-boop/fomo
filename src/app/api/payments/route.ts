@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (body.ideaId && body.type !== "subscription") {
     const idea = await prisma.idea.findUnique({
       where: { id: body.ideaId },
-      include: { author: { select: { id: true, paymentCard: true, displayName: true } } },
+      include: { author: { select: { id: true, paymentCard: true, sbpQrUrl: true, displayName: true } } },
     });
     if (!idea || !idea.isPaid || !idea.price) {
       return NextResponse.json({ error: "Идея не найдена или бесплатная" }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         paymentRequest: existingRequest,
         sellerCard: idea.author.paymentCard,
+        sellerQrUrl: idea.author.sbpQrUrl,
         sellerName: idea.author.displayName,
       });
     }
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       paymentRequest,
       sellerCard: idea.author.paymentCard,
+      sellerQrUrl: idea.author.sbpQrUrl,
       sellerName: idea.author.displayName,
     });
   }
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
   if (body.sellerId && body.subscriptionType === "tariff" && body.tariffId) {
     const tariff = await prisma.subscriptionTariff.findUnique({
       where: { id: body.tariffId },
-      include: { author: { select: { id: true, displayName: true, paymentCard: true } } },
+      include: { author: { select: { id: true, displayName: true, paymentCard: true, sbpQrUrl: true } } },
     });
 
     if (!tariff || !tariff.isActive) {
@@ -104,6 +106,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         paymentRequest: existingRequest,
         sellerCard: tariff.cardNumber || tariff.author.paymentCard,
+        sellerQrUrl: tariff.sbpQrUrl || tariff.author.sbpQrUrl,
         sellerName: tariff.author.displayName,
       });
     }
@@ -135,6 +138,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       paymentRequest,
       sellerCard: tariff.cardNumber || tariff.author.paymentCard,
+      sellerQrUrl: tariff.sbpQrUrl || tariff.author.sbpQrUrl,
       sellerName: tariff.author.displayName,
     });
   }
@@ -143,7 +147,7 @@ export async function POST(req: NextRequest) {
   if (body.authorId && body.type === "subscription") {
     const author = await prisma.user.findUnique({
       where: { id: body.authorId },
-      select: { id: true, subscriptionPrice: true, paymentCard: true, displayName: true },
+      select: { id: true, subscriptionPrice: true, paymentCard: true, sbpQrUrl: true, displayName: true },
     });
     if (!author || !author.subscriptionPrice) {
       return NextResponse.json({ error: "Автор не найден или подписка не настроена" }, { status: 400 });
@@ -169,6 +173,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         paymentRequest: existingRequest,
         sellerCard: author.paymentCard,
+        sellerQrUrl: author.sbpQrUrl,
         sellerName: author.displayName,
       });
     }
@@ -185,6 +190,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       paymentRequest,
       sellerCard: author.paymentCard,
+      sellerQrUrl: author.sbpQrUrl,
       sellerName: author.displayName,
     });
   }

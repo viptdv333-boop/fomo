@@ -25,6 +25,7 @@ const ideaSelect = {
       rating: true,
       avatarUrl: true,
       donationCard: true,
+      sbpQrUrl: true,
     },
   },
   instruments: {

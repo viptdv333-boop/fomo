@@ -26,6 +26,7 @@ export async function GET(
     isActive: t.isActive,
     paymentMethods: t.paymentMethods,
     cardNumber: t.cardNumber,
+    sbpQrUrl: t.sbpQrUrl,
     createdAt: t.createdAt,
   }));
 
@@ -38,8 +39,9 @@ const createTariffSchema = z.object({
   description: z.string().max(500).optional(),
   price: z.number().positive(),
   durationDays: z.number().int().min(1).max(365),
-  paymentMethods: z.array(z.enum(["card", "yukassa"])).optional(),
+  paymentMethods: z.array(z.enum(["card", "yukassa", "sbp"])).optional(),
   cardNumber: z.string().max(30).optional(),
+  sbpQrUrl: z.string().max(500).nullable().optional(),
   yukassaShopId: z.string().max(50).optional(),
   yukassaSecret: z.string().max(200).optional(),
   avatarUrl: z.string().optional().nullable(),
@@ -102,6 +104,7 @@ export async function POST(
       durationDays: parsed.data.durationDays,
       paymentMethods: parsed.data.paymentMethods || ["card"],
       cardNumber: parsed.data.cardNumber,
+      sbpQrUrl: parsed.data.sbpQrUrl,
       yukassaShopId: parsed.data.yukassaShopId,
       yukassaSecret: parsed.data.yukassaSecret,
       avatarUrl: parsed.data.avatarUrl || null,

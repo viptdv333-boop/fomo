@@ -29,6 +29,7 @@ export async function PATCH(
   if (body.isActive !== undefined) data.isActive = body.isActive;
   if (body.paymentMethods !== undefined) data.paymentMethods = body.paymentMethods;
   if (body.cardNumber !== undefined) data.cardNumber = body.cardNumber;
+  if (body.sbpQrUrl !== undefined) data.sbpQrUrl = body.sbpQrUrl;
 
   const updated = await prisma.subscriptionTariff.update({
     where: { id: tariffId },
