@@ -45,7 +45,7 @@ export async function PATCH(
       type: "payment",
       title: `${buyer?.displayName || "Покупатель"} отправил квитанцию`,
       body: `Сумма: ${paymentRequest.amount} ₽`,
-      link: `/profile/${paymentRequest.sellerId}`,
+      link: `/profile?tab=finance`,
     });
 
     return NextResponse.json(updated);

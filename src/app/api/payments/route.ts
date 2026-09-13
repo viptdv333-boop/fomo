@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       type: "payment",
       title: `${buyer?.displayName || "Покупатель"} хочет купить идею`,
       body: `${idea.title} — ${idea.price} ₽`,
-      link: `/profile/${idea.authorId}`,
+      link: `/profile?tab=finance`,
     });
 
     return NextResponse.json({
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       type: "payment",
       title: `${buyer?.displayName || "Покупатель"} подал заявку на подписку`,
       body: `${tariff.name} — ${Number(tariff.price)} ₽`,
-      link: `/profile/${tariff.authorId}`,
+      link: `/profile?tab=finance`,
     });
 
     return NextResponse.json({
