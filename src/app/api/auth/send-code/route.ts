@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const ip = clientIp(req);
 
     // The gate that costs an attacker effort per account rather than per
-    // thousand. No-op until the SmartCaptcha keys are set.
+    // thousand. No-op until the Turnstile keys are set.
     if (!(await verifyCaptcha(captchaToken, ip))) {
       return NextResponse.json(
         { error: "Подтвердите, что вы не робот" },

@@ -3,11 +3,11 @@
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
-const SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY;
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 declare global {
   interface Window {
-    hcaptcha?: {
+    turnstile?: {
       render: (
         container: HTMLElement | string,
         params: {
@@ -15,12 +15,11 @@ declare global {
           callback?: (token: string) => void;
           "expired-callback"?: () => void;
           "error-callback"?: () => void;
-          theme?: "light" | "dark";
-          hl?: string;
-          size?: "normal" | "compact" | "invisible";
+          theme?: "light" | "dark" | "auto";
+          language?: string;
+          size?: "normal" | "compact" | "flexible";
         }
       ) => string;
-      execute: (widgetId?: string) => void;
       reset: (widgetId?: string) => void;
     };
   }
@@ -32,10 +31,10 @@ interface Props {
 }
 
 /**
- * hCaptcha widget.
+ * Cloudflare Turnstile widget.
  *
- * Renders nothing when no site key is configured, so the form still works on a
- * machine without the keys — the server side degrades the same way.
+ * Renders nothing when no site key is configured, so the form still works on
+ * a machine without the keys — the server side degrades the same way.
  */
 export default function Captcha({ onToken }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,11 +44,11 @@ export default function Captcha({ onToken }: Props) {
   useEffect(() => {
     if (!SITE_KEY || !scriptReady || !containerRef.current) return;
     if (widgetId.current !== null) return;
-    if (!window.hcaptcha) return;
+    if (!window.turnstile) return;
 
-    widgetId.current = window.hcaptcha.render(containerRef.current, {
+    widgetId.current = window.turnstile.render(containerRef.current, {
       sitekey: SITE_KEY,
-      hl: "ru",
+      language: "ru",
       callback: (token) => onToken(token),
       "expired-callback": () => onToken(""),
       "error-callback": () => onToken(""),
@@ -61,7 +60,7 @@ export default function Captcha({ onToken }: Props) {
   return (
     <>
       <Script
-        src="https://js.hcaptcha.com/1/api.js?render=explicit"
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
         onReady={() => setScriptReady(true)}
       />

@@ -46,7 +46,7 @@ export default function RegisterPage() {
         setError(data.error || "Ошибка отправки кода");
         // A token is single-use; make the visitor solve it again on retry.
         setCaptchaToken("");
-        window.hcaptcha?.reset();
+        window.turnstile?.reset();
         setLoading(false);
         return;
       }
