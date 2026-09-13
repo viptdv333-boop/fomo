@@ -82,9 +82,12 @@ export default function ChannelPage() {
         .then((r) => r.json())
         .then((subs) => {
           if (Array.isArray(subs)) {
+            // Подписка на ЭТОТ канал или старая подписка на автора без тарифа
+            // (13.09.2026: подписки теперь по каналам, а не на автора целиком).
             const hasSub = subs.some(
-              (s: { type: string; author: { id: string } }) =>
-                s.author.id === channel.author.id && s.type === "paid"
+              (s: { type: string; tariffId?: string | null; author: { id: string } }) =>
+                s.author.id === channel.author.id && s.type === "paid" &&
+                (!s.tariffId || s.tariffId === channel.id)
             );
             setIsSubscribed(hasSub);
           }
@@ -92,8 +95,8 @@ export default function ChannelPage() {
         .catch(() => {});
     }
 
-    // Load author's paid ideas
-    fetch(`/api/ideas?authorId=${channel.author.id}&isPaid=true&limit=50`)
+    // Посты этого канала + старые платные идеи автора без канала (13.09.2026)
+    fetch(`/api/ideas?channelId=${channel.id}&limit=50`)
       .then((r) => r.json())
       .then((data) => {
         const list = data.data || data.ideas || (Array.isArray(data) ? data : []);

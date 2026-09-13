@@ -1,34 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
+import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
-// без браузерной NextAuth-сессии. Только БЕСПЛАТНЫЕ идеи от заранее известного
-// автора — эндпоинт намеренно не даёт управлять isPaid/price/authorId извне.
+// без браузерной NextAuth-сессии, автор зафиксирован (bot-auth.ts) — эндпоинт
+// намеренно не даёт управлять isPaid/price/authorId извне.
 // Намеренно НЕ трогает рейтинг/уведомления/подписчиков — это автоматика, а не
 // органическая публикация автора, никаких побочных эффектов на аккаунт быть не должно.
-const MIKHAIL_USER_ID = "cmmteunjn0004csaotp2lnb4a"; // аккаунт «Михаил», /profile/cmmteunjn0004csaotp2lnb4a
-
-function checkToken(request: NextRequest): boolean {
-  const expected = process.env.FOMO_BOT_TOKEN;
-  if (!expected) return false;
-  const got = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const a = Buffer.from(got);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
+//
+// КАНАЛЫ (13.09.2026): channelId — публикация в закрытый канал бота-автора.
+// Такой пост закрыт (isPaid), без цены, открывается подпиской на канал и в
+// общей ленте не показывается. Канал не найден, чужой или выключен — ОТКАЗ:
+// тихо опубликовать в общую ленту вместо канала нельзя, платный текст ушёл бы
+// в открытый доступ. Ответ эхом возвращает channelId — терминал сверяет его.
+// Без channelId — прежнее поведение: бесплатная идея в общей ленте.
 
 const createBotIdeaSchema = z.object({
   title: z.string().min(1).max(300),
   preview: z.string().min(1).max(1000),
   content: z.string().min(1),
   instrumentSlugs: z.array(z.string()).optional(),
+  channelId: z.string().min(1).optional(),
 });
 
 export async function POST(request: NextRequest) {
-  if (!checkToken(request)) {
+  if (!checkBotToken(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -46,7 +43,22 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { title, preview, content, instrumentSlugs } = parsed.data;
+  const { title, preview, content, instrumentSlugs, channelId } = parsed.data;
+
+  let tariffId: string | null = null;
+  if (channelId) {
+    const tariff = await prisma.subscriptionTariff.findUnique({
+      where: { id: channelId },
+      select: { id: true, authorId: true, isActive: true },
+    });
+    if (!tariff || tariff.authorId !== BOT_AUTHOR_ID) {
+      return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+    }
+    if (!tariff.isActive) {
+      return NextResponse.json({ error: "Channel is not active" }, { status: 400 });
+    }
+    tariffId = tariff.id;
+  }
 
   const instruments = instrumentSlugs?.length
     ? await prisma.instrument.findMany({
@@ -60,18 +72,25 @@ export async function POST(request: NextRequest) {
       title,
       preview,
       content,
-      isPaid: false,
+      isPaid: tariffId !== null,
       acceptDonations: false,
-      authorId: MIKHAIL_USER_ID,
+      authorId: BOT_AUTHOR_ID,
+      tariffId,
       instruments: {
         create: instruments.map((i) => ({ instrumentId: i.id })),
       },
     },
-    select: { id: true, title: true, createdAt: true },
+    select: { id: true, title: true, createdAt: true, tariffId: true },
   });
 
+  const { tariffId: savedChannelId, ...rest } = idea;
   return NextResponse.json(
-    { ...idea, matchedInstruments: instruments.length, url: `/ideas/${idea.id}` },
+    {
+      ...rest,
+      channelId: savedChannelId,
+      matchedInstruments: instruments.length,
+      url: `/ideas/${idea.id}`,
+    },
     { status: 201 }
   );
 }
