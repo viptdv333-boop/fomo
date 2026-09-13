@@ -25,6 +25,7 @@ interface ChannelItem {
   price: number;
   description: string | null;
   durationDays?: number;
+  avatarUrl?: string | null;
 }
 
 export default function SubscriptionsPage() {
@@ -104,19 +105,28 @@ export default function SubscriptionsPage() {
             <div className="space-y-3">
               {channels.map((ch) => (
                 <div key={ch.id} className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
-                  <div className="flex items-center justify-between">
-                    <Link href={`/channels/${ch.id}`} className="min-w-0 group">
-                      <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">{ch.name}</div>
-                      <div className="text-sm text-green-600 font-semibold mt-0.5">
-                        {Number(ch.price)} ₽ / {ch.durationDays || 30} дн.
+                  <div className="flex items-center justify-between gap-3">
+                    <Link href={`/channels/${ch.id}`} className="min-w-0 group flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold overflow-hidden shrink-0">
+                        {ch.avatarUrl ? (
+                          <img src={ch.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          ch.name[0]?.toUpperCase()
+                        )}
                       </div>
-                      {ch.description && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
-                      )}
+                      <div className="min-w-0">
+                        <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">{ch.name}</div>
+                        <div className="text-sm text-green-600 font-semibold mt-0.5">
+                          {Number(ch.price)} ₽ / {ch.durationDays || 30} дн.
+                        </div>
+                        {ch.description && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
+                        )}
+                      </div>
                     </Link>
                     <Link
                       href={`/channels/edit/${ch.id}`}
-                      className="text-sm text-green-600 dark:text-green-400 hover:underline shrink-0 ml-4"
+                      className="text-sm text-green-600 dark:text-green-400 hover:underline shrink-0"
                     >
                       {t("subs.settings")}
                     </Link>

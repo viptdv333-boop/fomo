@@ -13,6 +13,7 @@ interface Channel {
   price: number;
   durationDays: number;
   subscribersCount: number;
+  avatarUrl?: string | null;
   author: {
     id: string;
     displayName: string;
@@ -68,9 +69,9 @@ function ChannelAvatar({ ch }: { ch: Channel }) {
     <div
       className={`w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0`}
     >
-      {ch.author.avatarUrl ? (
+      {ch.avatarUrl || ch.author.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={ch.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+        <img src={ch.avatarUrl || ch.author.avatarUrl!} alt="" className="w-full h-full object-cover" />
       ) : (
         ch.author.displayName[0]?.toUpperCase()
       )}

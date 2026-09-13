@@ -27,6 +27,8 @@ export async function GET(
     paymentMethods: t.paymentMethods,
     cardNumber: t.cardNumber,
     sbpQrUrl: t.sbpQrUrl,
+    avatarUrl: t.avatarUrl,
+    instrumentIds: t.instrumentIds,
     createdAt: t.createdAt,
   }));
 

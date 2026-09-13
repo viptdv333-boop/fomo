@@ -16,6 +16,7 @@ interface ChannelData {
   price: number;
   durationDays: number;
   subscribersCount: number;
+  avatarUrl?: string | null;
   author: {
     id: string;
     displayName: string;
@@ -148,9 +149,9 @@ export default function ChannelPage() {
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-6 mb-4">
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-xl overflow-hidden shrink-0">
-            {channel.author.avatarUrl ? (
+            {channel.avatarUrl || channel.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={channel.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+              <img src={channel.avatarUrl || channel.author.avatarUrl!} alt="" className="w-full h-full object-cover" />
             ) : (
               (channel.author.displayName || "?")[0]
             )}

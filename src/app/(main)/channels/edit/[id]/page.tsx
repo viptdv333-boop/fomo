@@ -55,7 +55,6 @@ export default function EditChannelPage() {
     name: string;
     price: string;
     durationDays: string;
-    paymentMethodId: string;
     paymentMethods: string[];
     cardNumber: string;
     sbpQrUrl: string;
@@ -99,7 +98,6 @@ export default function EditChannelPage() {
             name: tariffName,
             price: String(t.price),
             durationDays: String(t.durationDays),
-            paymentMethodId: "",
             paymentMethods: t.paymentMethods || ["card"],
             cardNumber: t.cardNumber || "",
             sbpQrUrl: t.sbpQrUrl || "",
@@ -129,7 +127,7 @@ export default function EditChannelPage() {
 
   function addTariff() {
     setTariffs([...tariffs, {
-      id: null, name: "", price: "", durationDays: "30", paymentMethodId: "",
+      id: null, name: "", price: "", durationDays: "30",
       paymentMethods: ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "",
       isActive: true, description: "",
     }]);
@@ -372,7 +370,9 @@ export default function EditChannelPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t("channels.paymentMethod")}</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+                    {t("channels.paymentMethod")} <span className="font-normal text-gray-400">(можно выбрать несколько — подписчик увидит их все)</span>
+                  </label>
                   {savedPaymentMethods.length === 0 ? (
                     <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
                       {t("channels.noPaymentMethods")}.{" "}
@@ -381,12 +381,15 @@ export default function EditChannelPage() {
                   ) : (
                     <div className="space-y-1.5">
                       {savedPaymentMethods.map((m) => {
-                        const isSelected = tr.paymentMethodId === m.id;
+                        const isChecked = tr.paymentMethods.includes(m.type);
                         return (
                           <button key={m.id} type="button"
                             onClick={() => {
-                              updateTariff(idx, "paymentMethodId", m.id);
-                              updateTariff(idx, "paymentMethods", [m.type]);
+                              if (isChecked) {
+                                updateTariff(idx, "paymentMethods", tr.paymentMethods.filter((x) => x !== m.type));
+                                return;
+                              }
+                              updateTariff(idx, "paymentMethods", [...tr.paymentMethods, m.type]);
                               if (m.type === "card") updateTariff(idx, "cardNumber", m.details?.cardNumber || "");
                               if (m.type === "sbp") updateTariff(idx, "sbpQrUrl", m.details?.qrImageUrl || "");
                               if (m.type === "yukassa") {
@@ -395,8 +398,13 @@ export default function EditChannelPage() {
                               }
                             }}
                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left text-sm transition border ${
-                              isSelected ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                              isChecked ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                             }`}>
+                            <span className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center ${
+                              isChecked ? "bg-green-600 border-green-600" : "border-gray-300 dark:border-gray-600"
+                            }`}>
+                              {isChecked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M5 13l4 4L19 7" /></svg>}
+                            </span>
                             {m.type === "sbp" && m.details?.qrImageUrl ? (
                               <img src={m.details.qrImageUrl} alt="QR" className="w-7 h-7 rounded object-contain bg-white border dark:border-gray-700 shrink-0" />
                             ) : (
@@ -406,7 +414,6 @@ export default function EditChannelPage() {
                               <div className="font-medium dark:text-gray-100">{m.label}</div>
                               {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}
                             </div>
-                            {isSelected && <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7" /></svg>}
                           </button>
                         );
                       })}
