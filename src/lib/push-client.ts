@@ -67,6 +67,27 @@ export async function subscribeToPush(): Promise<{ ok: boolean; error?: string }
   return { ok: true };
 }
 
+// Called on every app load for logged-in users. Three states to cover:
+// browser already subscribed — re-POST to the server, because the DB row can
+// be gone while the browser still holds the subscription (cleanup after a
+// transient 404/410, or the original POST failed) and the endpoint upserts
+// by endpoint so this is idempotent; no subscription + permission not yet
+// decided — subscribeToPush() shows the native prompt; permission denied —
+// subscribeToPush() no-ops without any prompt.
+export async function ensurePushSubscription(): Promise<void> {
+  if (!isPushSupported()) return;
+  const existing = await getExistingPushSubscription().catch(() => null);
+  if (existing) {
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(existing.toJSON()),
+    }).catch(() => {});
+    return;
+  }
+  await subscribeToPush().catch(() => {});
+}
+
 export async function unsubscribeFromPush(): Promise<void> {
   const subscription = await getExistingPushSubscription();
   if (!subscription) return;

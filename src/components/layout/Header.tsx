@@ -8,7 +8,7 @@ import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
-import { isPushSupported, subscribeToPush } from "@/lib/push-client";
+import { ensurePushSubscription } from "@/lib/push-client";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -27,16 +27,12 @@ export default function Header() {
       .catch(() => {});
   }, []);
 
-  // Push notifications used to be opt-in behind a toggle buried in profile
-  // settings — almost nobody found it, so almost nobody got notifications.
-  // Ask once automatically for any logged-in user who hasn't been asked yet
-  // (Notification.permission === "default"); a prior grant/denial is left
-  // untouched, and requestPermission() itself only ever shows the native
-  // prompt when no decision has been made yet.
+  // Push used to be opt-in behind a toggle buried in profile settings, so
+  // almost nobody was subscribed. Now every logged-in user is (re)subscribed
+  // automatically on load — see ensurePushSubscription for the state matrix.
   useEffect(() => {
-    if (!userId || !isPushSupported()) return;
-    if (Notification.permission !== "default") return;
-    subscribeToPush().catch(() => {});
+    if (!userId) return;
+    ensurePushSubscription();
   }, [userId]);
   const profileRef = useRef<HTMLDivElement>(null);
 
