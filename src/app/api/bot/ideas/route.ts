@@ -16,6 +16,17 @@ import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 // в открытый доступ. Ответ эхом возвращает channelId — терминал сверяет его.
 // Без channelId — прежнее поведение: бесплатная идея в общей ленте.
 
+// FOMO's own instrument slugs encode exchange + ticker (e.g. "ice-kc" for
+// ICE coffee), which a trading bot has no reason to know — it naturally
+// sends the plain commodity name or ticker instead, and the exact-match
+// lookup below silently tags nothing. Scoped to instruments listed on
+// exactly one exchange; anything traded on several (oil, gas, gold, sugar,
+// cocoa, wheat...) stays exact-match-only rather than guessing which
+// contract the bot meant.
+const INSTRUMENT_ALIASES: Record<string, string> = {
+  coffee: "ice-kc",
+};
+
 const createBotIdeaSchema = z.object({
   title: z.string().min(1).max(300),
   preview: z.string().min(1).max(1000),
@@ -60,9 +71,18 @@ export async function POST(request: NextRequest) {
     tariffId = tariff.id;
   }
 
-  const instruments = instrumentSlugs?.length
+  const resolvedSlugs = instrumentSlugs?.map(
+    (s) => INSTRUMENT_ALIASES[s.toLowerCase()] || s
+  );
+
+  const instruments = resolvedSlugs?.length
     ? await prisma.instrument.findMany({
-        where: { slug: { in: instrumentSlugs } },
+        where: {
+          OR: [
+            { slug: { in: resolvedSlugs, mode: "insensitive" } },
+            { ticker: { in: resolvedSlugs, mode: "insensitive" } },
+          ],
+        },
         select: { id: true },
       })
     : [];
