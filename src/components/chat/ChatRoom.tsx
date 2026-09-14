@@ -252,6 +252,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string; fileType: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -341,13 +342,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     const textToSend = getInputText().trim();
-    if (!textToSend || !session?.user?.id) return;
+    if ((!textToSend && !pendingAttachment) || !session?.user?.id) return;
 
     const replyToSend = replyTo;
+    const attachmentToSend = pendingAttachment;
     setInput("");
     if (inputRef.current) inputRef.current.innerHTML = "";
     setReplyTo(null);
     setShowEmojiPicker(false);
+    setPendingAttachment(null);
 
     try {
       const res = await fetch("/api/chat/messages", {
@@ -356,6 +359,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         body: JSON.stringify({
           roomId,
           text: textToSend,
+          fileUrl: attachmentToSend?.url,
+          fileName: attachmentToSend?.name,
+          fileType: attachmentToSend?.fileType,
           replyToId: replyToSend?.id || undefined,
         }),
       });
@@ -383,24 +389,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
       if (!uploadRes.ok) throw new Error("Upload failed");
       const { url, name, fileType } = await uploadRes.json();
-
-      const res = await fetch("/api/chat/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          roomId,
-          text: "",
-          fileUrl: url,
-          fileName: name,
-          fileType,
-          replyToId: replyTo?.id || undefined,
-        }),
-      });
-      if (res.ok) {
-        const msg = await res.json();
-        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
-        setReplyTo(null);
-      }
+      // Attach as a draft — actually sending it (with whatever caption the
+      // user types) is a separate step via the send button/Enter, matching
+      // every other messenger instead of firing off the instant the file
+      // picker closes.
+      setPendingAttachment({ url, name, fileType });
+      inputRef.current?.focus();
     } catch {
       alert("Не удалось загрузить файл");
     } finally {
@@ -930,6 +924,27 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
           <div ref={bottomRef} />
         </div>
 
+        {/* ── Pending attachment preview ── */}
+        {pendingAttachment && (
+          <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2 shrink-0">
+            {pendingAttachment.fileType === "image" ? (
+              <img src={pendingAttachment.url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+            ) : (
+              <span className="shrink-0 text-gray-400"><IconPaperclip /></span>
+            )}
+            <div className="flex-1 min-w-0 text-sm text-gray-600 dark:text-gray-300 truncate">{pendingAttachment.name}</div>
+            <button
+              onClick={() => setPendingAttachment(null)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 p-1"
+              title="Убрать вложение"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* ── Reply preview bar ── */}
         {replyTo && (
           <div className="bg-green-50 dark:bg-green-900/20 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2 shrink-0">
@@ -1086,7 +1101,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             {/* Send button */}
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() && !pendingAttachment}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-700 transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 shrink-0"
             >
               <IconSend />
