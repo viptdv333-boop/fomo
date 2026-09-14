@@ -19,7 +19,21 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function reportPush(stage, detail) {
+  return fetch("/api/push/beacon", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage, detail }),
+  }).catch(() => {});
+}
+
 self.addEventListener("push", (event) => {
+  // Diagnostic beacon: fires the instant the browser hands the SW a push
+  // event, before any parsing/display is attempted — lets the server tell
+  // "push never reached this device" apart from "it arrived but showing it
+  // failed", which is otherwise invisible from outside the browser.
+  event.waitUntil(reportPush("received", event.data ? "has-data" : "no-data"));
+
   let data = { title: "FOMO", body: "" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
@@ -28,12 +42,15 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "FOMO", {
-      body: data.body || "",
-      icon: "/logo-fomo.png",
-      badge: "/logo-fomo.png",
-      data: { url: data.url || "/" },
-    })
+    self.registration
+      .showNotification(data.title || "FOMO", {
+        body: data.body || "",
+        icon: "/logo-fomo.png",
+        badge: "/logo-fomo.png",
+        data: { url: data.url || "/" },
+      })
+      .then(() => reportPush("shown"))
+      .catch((err) => reportPush("error", String(err)))
   );
 });
 
