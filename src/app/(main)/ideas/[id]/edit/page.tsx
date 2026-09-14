@@ -59,7 +59,7 @@ export default function EditIdeaPage() {
   if (!initialData) return null;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6">Редактирование идеи</h1>
       <IdeaForm mode="edit" ideaId={params.id as string} initialData={initialData} />
     </div>

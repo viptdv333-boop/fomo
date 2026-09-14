@@ -411,7 +411,7 @@ function ProfileContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">{t("profile.title")}</h1>
 
       {/* Tabs */}

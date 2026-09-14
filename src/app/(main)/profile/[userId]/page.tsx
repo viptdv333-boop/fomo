@@ -118,7 +118,7 @@ export default function AuthorProfilePage() {
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl w-full mx-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">

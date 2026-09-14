@@ -12,7 +12,7 @@ function NewIdeaContent() {
   const channelId = searchParams.get("channelId") || undefined;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{channelId ? t("idea.channelPost") : t("idea.newTitle")}</h1>
       <IdeaForm mode="create" preselectedInstrumentId={instrumentId} channelId={channelId} />
     </div>

@@ -148,7 +148,7 @@ export default function CreateChannelPage() {
   const channelUrlDisplay = channelId ? `fomo.spot/channels/${channelId}` : "fomo.spot/channels/...";
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("channels.create")}</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">

@@ -40,7 +40,7 @@ export default function CatalogPage() {
     : categories;
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl w-full mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold dark:text-gray-100">
           Акции, фьючерсы и криптовалюта

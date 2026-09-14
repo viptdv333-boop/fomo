@@ -120,7 +120,7 @@ export default function AssetPage() {
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl w-full mx-auto space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
         <div className="flex items-start justify-between">

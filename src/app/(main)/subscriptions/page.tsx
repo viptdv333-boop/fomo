@@ -99,7 +99,7 @@ export default function SubscriptionsPage() {
   const channelSubs = subs.filter((s) => s.type === "paid");
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("subs.title")}</h1>
 
       {/* Tabs */}

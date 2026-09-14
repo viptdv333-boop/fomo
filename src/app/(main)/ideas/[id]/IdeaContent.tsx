@@ -89,7 +89,7 @@ export default function IdeaContent() {
   if (!idea) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">{t("idea.notFound")}</div>;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl w-full mx-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">

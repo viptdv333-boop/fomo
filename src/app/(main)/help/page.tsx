@@ -150,7 +150,7 @@ export default function HelpPage() {
         }}
       />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl w-full mx-auto px-4 py-8">
         <header className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">
             Как пользоваться FOMO

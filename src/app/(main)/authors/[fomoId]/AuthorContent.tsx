@@ -63,7 +63,7 @@ export default function AuthorContent() {
   if (!author) return <div className="text-gray-400 py-12 text-center">{t("authors.notFound")}</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl w-full mx-auto">
       {/* Author header */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-6">
         <div className="flex items-start gap-4">
