@@ -40,7 +40,15 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
             endpoint: sub.endpoint,
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
-          body
+          body,
+          {
+            // Defaults are fine in principle, but were never verified against
+            // a real delivery failure — pin them explicitly so a future
+            // diagnosis isn't second-guessing what the library assumed.
+            TTL: 60 * 60 * 24, // retry delivery for up to a day
+            urgency: "high",
+            vapidDetails: { subject: SUBJECT, publicKey: PUBLIC_KEY!, privateKey: PRIVATE_KEY! },
+          }
         );
       } catch (err: any) {
         if (err?.statusCode === 404 || err?.statusCode === 410) {
