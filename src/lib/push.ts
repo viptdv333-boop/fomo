@@ -22,7 +22,10 @@ interface PushPayload {
 /// cleared) makes the push service respond 404/410, at which point we prune
 /// that row so it stops being retried on every future notification.
 export async function sendPushToUser(userId: string, payload: PushPayload) {
-  if (!PUSH_ENABLED) return;
+  if (!PUSH_ENABLED) {
+    console.error("[push] VAPID keys not configured — skipping send");
+    return;
+  }
 
   const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
   if (subscriptions.length === 0) return;
@@ -42,6 +45,11 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
       } catch (err: any) {
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+        } else {
+          console.error(
+            `[push] send failed for subscription ${sub.id} (status ${err?.statusCode}):`,
+            err?.body || err?.message || err
+          );
         }
       }
     })

@@ -61,9 +61,12 @@ export async function POST(req: NextRequest) {
     .object({
       roomId: z.string(),
       text: z.string().max(2000),
-      fileUrl: z.string().optional(),
-      fileName: z.string().optional(),
-      fileType: z.string().optional(),
+      // Only ever set from an /api/upload response, never user-typed — restrict
+      // to that endpoint's own relative path shape so a client can't smuggle a
+      // javascript:/data: URL in as an "attachment" link for other viewers to click.
+      fileUrl: z.string().regex(/^\/uploads\//).optional(),
+      fileName: z.string().max(255).optional(),
+      fileType: z.enum(["image", "video", "audio", "document"]).optional(),
       replyToId: z.string().optional(),
     })
     .refine((data) => data.text.trim().length > 0 || data.fileUrl, {
