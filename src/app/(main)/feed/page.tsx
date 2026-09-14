@@ -62,10 +62,10 @@ export default function FeedPageWrapper() {
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">
-            Доска идей
+            Большая доска
           </h1>
           <p className="text-base text-gray-500 dark:text-gray-400">
-            Идеи, аналитика и обучение по акциям, фьючерсам МосБиржи, криптовалюте и форексу — полезно и опытным трейдерам, и тем, кто только начинает
+            Идеи. Аналитика. Обучение. Не ИИР!
           </p>
         </div>
         {session?.user && (
