@@ -243,9 +243,15 @@ function ProfileContent() {
         } else if (result.error === "denied") {
           setPushError("Уведомления заблокированы в настройках браузера/телефона");
         } else {
-          setPushError("Не удалось включить уведомления");
+          // Surface the real cause instead of a generic message — this is
+          // the one place a failed browser-side push registration (e.g. the
+          // push service being unreachable) previously vanished with zero
+          // feedback and left the toggle's state ambiguous.
+          setPushError(`Не удалось включить уведомления (${result.error || "неизвестная ошибка"})`);
         }
       }
+    } catch (err) {
+      setPushError(`Не удалось включить уведомления (${err instanceof Error ? err.message : String(err)})`);
     } finally {
       setPushBusy(false);
     }

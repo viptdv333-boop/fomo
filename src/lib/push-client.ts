@@ -31,20 +31,37 @@ export async function subscribeToPush(): Promise<{ ok: boolean; error?: string }
   if (permission !== "granted") return { ok: false, error: "denied" };
 
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY!),
-  });
 
-  const res = await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(subscription.toJSON()),
-  });
+  let subscription: PushSubscription;
+  try {
+    // The one call in this flow with no browser-chrome fallback if it fails
+    // silently: pushManager.subscribe() talks to the browser's own push
+    // registration service (Google's for Chrome) over the network, and a
+    // rejection here used to propagate uncaught out of the caller, leaving
+    // the toggle's on/off state stuck with zero feedback about why.
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY!),
+    });
+  } catch (err) {
+    return { ok: false, error: `subscribe:${err instanceof Error ? err.name + ":" + err.message : String(err)}` };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription.toJSON()),
+    });
+  } catch (err) {
+    await subscription.unsubscribe().catch(() => {});
+    return { ok: false, error: `network:${err instanceof Error ? err.message : String(err)}` };
+  }
 
   if (!res.ok) {
     await subscription.unsubscribe().catch(() => {});
-    return { ok: false, error: "server" };
+    return { ok: false, error: `server:${res.status}` };
   }
 
   return { ok: true };
