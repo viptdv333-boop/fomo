@@ -555,15 +555,19 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     const el = inputRef.current;
     if (!el) return "";
     let text = "";
-    el.childNodes.forEach((node) => {
+    el.childNodes.forEach((node, i) => {
       if (node.nodeType === Node.TEXT_NODE) {
         text += node.textContent || "";
       } else if (node instanceof HTMLImageElement && node.dataset.emoji) {
         text += node.dataset.emoji;
       } else if (node instanceof HTMLBRElement) {
         text += "\n";
-      } else {
-        text += (node as HTMLElement).textContent || "";
+      } else if (node instanceof HTMLElement) {
+        // Multi-line paste lands as one <div>/<p> per line rather than
+        // text nodes joined by <br> — without a separator here every
+        // pasted line ran together as a single word.
+        if (i > 0 && (node.tagName === "DIV" || node.tagName === "P")) text += "\n";
+        text += node.textContent || "";
       }
     });
     return text;
@@ -1002,6 +1006,19 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleContentInput}
+                onPaste={(e) => {
+                  // Default paste drops the clipboard's rich HTML into the
+                  // contentEditable — from some sources (Word, Docs, other
+                  // chat apps) that lands as deeply nested elements/comment
+                  // nodes getInputText() doesn't walk the same way it does
+                  // typed text, so the composer looked non-empty but the send
+                  // button (bound to synced state) stayed disabled. Force
+                  // plain text instead, then sync immediately.
+                  e.preventDefault();
+                  const text = e.clipboardData.getData("text/plain");
+                  document.execCommand("insertText", false, text);
+                  syncInput();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
