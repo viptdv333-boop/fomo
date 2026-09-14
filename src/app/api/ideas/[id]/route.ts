@@ -9,9 +9,21 @@ const ideaPatchSchema = z.object({
   content: z.string().min(1).optional(),
   isPaid: z.boolean().optional(),
   price: z.number().min(1).optional(),
+  acceptDonations: z.boolean().optional(),
   instrumentIds: z.array(z.string()).optional(),
   attachments: z.array(z.object({ url: z.string(), name: z.string() })).optional(),
 });
+
+// Cuts at the nearest word boundary so a paid idea's free teaser never ends
+// mid-word. `max` is a target, not a hard cap — the boundary search can land
+// slightly under it.
+function truncateAtWord(s: string, max: number): string {
+  const flat = s.trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + "…";
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -33,6 +45,7 @@ export async function GET(
       content: true,
       isPaid: true,
       price: true,
+      acceptDonations: true,
       viewCount: true,
       createdAt: true,
       attachments: true,
@@ -47,6 +60,8 @@ export async function GET(
           rating: true,
           avatarUrl: true,
           bio: true,
+          donationCard: true,
+          sbpQrUrl: true,
         },
       },
       instruments: {
@@ -115,14 +130,26 @@ export async function GET(
     }
   }
 
+  // Locked-content teaser: a paid board idea (no channel) shows its first
+  // ~200 characters plus a blurred continuation before the paywall; a
+  // channel post shows nothing at all — access is gated by the channel
+  // subscription alone, not by a taste of the content.
+  let previewText: string | null = null;
+  let blurText: string | null = null;
+  if (locked && !idea.tariffId) {
+    previewText = truncateAtWord(idea.content, 200);
+    blurText = idea.content.slice(previewText.replace(/…$/, "").length, previewText.replace(/…$/, "").length + 400) || null;
+  }
+
   return NextResponse.json({
     id: idea.id,
     title: idea.title,
     preview: idea.preview,
     ...(includeContent && !locked ? { content: idea.content } : {}),
-    ...(locked ? { locked: true } : {}),
+    ...(locked ? { locked: true, previewText, blurText } : {}),
     isPaid: idea.isPaid,
     price: idea.price,
+    acceptDonations: idea.acceptDonations,
     channel: idea.tariff ? { id: idea.tariff.id, name: idea.tariff.name } : null,
     viewCount: idea.viewCount,
     attachments: idea.attachments,
@@ -179,6 +206,7 @@ export async function PATCH(
   if (parsed.data.content !== undefined) data.content = parsed.data.content;
   if (parsed.data.isPaid !== undefined) data.isPaid = parsed.data.isPaid;
   if (parsed.data.price !== undefined) data.price = parsed.data.price;
+  if (parsed.data.acceptDonations !== undefined) data.acceptDonations = parsed.data.acceptDonations;
   if (parsed.data.attachments !== undefined) data.attachments = parsed.data.attachments;
 
   // Handle instruments update in a transaction

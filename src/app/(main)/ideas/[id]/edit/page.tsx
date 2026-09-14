@@ -15,6 +15,7 @@ export default function EditIdeaPage() {
     content: string;
     isPaid: boolean;
     price: number | null;
+    acceptDonations: boolean;
     instrumentIds: string[];
     attachments?: { url: string; name: string }[];
   } | null>(null);
@@ -44,6 +45,7 @@ export default function EditIdeaPage() {
         content: data.content || "",
         isPaid: data.isPaid,
         price: data.price,
+        acceptDonations: data.acceptDonations || false,
         instrumentIds: data.instruments.map((i: any) => i.id),
         attachments: data.attachments || [],
       });

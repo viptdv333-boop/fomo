@@ -81,6 +81,10 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [reportSent, setReportSent] = useState(false);
 
   const viewCount = idea.viewCount ?? 0;
+  const canDonate =
+    Boolean(idea.acceptDonations) &&
+    session?.user?.id !== idea.author.id &&
+    Boolean(idea.author.donationCard || idea.author.sbpQrUrl);
 
   async function handleLike() {
     if (!session) return;
@@ -311,6 +315,15 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             </svg>
             {likeCount}
           </button>
+
+          {canDonate && (
+            <button
+              onClick={() => setShowDonateModal(true)}
+              className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+            >
+              ☕ {t("idea.donate")}
+            </button>
+          )}
         </div>
       </div>
 

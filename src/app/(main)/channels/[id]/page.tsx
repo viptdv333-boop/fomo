@@ -253,7 +253,6 @@ export default function ChannelPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{idea.preview}</p>
                       </div>
                       {idea.price && (
                         <span className="text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded shrink-0">

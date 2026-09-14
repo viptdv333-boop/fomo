@@ -16,9 +16,14 @@ interface IdeaDetail {
   content?: string;
   isPaid: boolean;
   price: number | null;
+  acceptDonations?: boolean;
   /** Пост закрытого канала (13.09.2026) — открывается подпиской на канал. */
   channel?: { id: string; name: string } | null;
   locked?: boolean;
+  /** Только для платной идеи без канала: первые ~200 символов контента. */
+  previewText?: string | null;
+  /** Ещё до ~400 символов, показываются размытыми для эффекта блюра. */
+  blurText?: string | null;
   attachments?: unknown;
   viewCount?: number;
   createdAt: string;
@@ -28,6 +33,8 @@ interface IdeaDetail {
     rating: number;
     avatarUrl: string | null;
     subscriptionPrice: number | null;
+    donationCard?: string | null;
+    sbpQrUrl?: string | null;
   };
   instruments: { id: string; name: string; slug: string }[];
   voteScore: number;
@@ -43,6 +50,7 @@ export default function IdeaContent() {
   const [idea, setIdea] = useState<IdeaDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showDonateModal, setShowDonateModal] = useState(false);
 
   async function loadIdea() {
     const res = await fetch(`/api/ideas/${params.id}`);
@@ -152,33 +160,45 @@ export default function IdeaContent() {
           ))}
         </div>
 
-        <div className="text-gray-600 dark:text-gray-400 mb-6 whitespace-pre-wrap">{idea.preview}</div>
-
         {idea.locked ? (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
-            <div className="text-4xl mb-3">🔒</div>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {t("idea.fullContentLocked")}
-            </p>
-            <div className="flex gap-3 justify-center">
-              {idea.channel && (
-                <Link
-                  href={`/channels/${idea.channel.id}`}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
-                >
-                  Подписаться на канал «{idea.channel.name}»
-                </Link>
-              )}
-              {idea.price && (
-                <button
-                  onClick={() => setShowPayModal(true)}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
-                >
-                  {t("idea.buyFor")} {idea.price} ₽
-                </button>
-              )}
+          idea.previewText ? (
+            // Платная идея без канала: 200 символов контента + блюр-заглушка + оплата
+            <div>
+              <p className="whitespace-pre-wrap dark:text-gray-100 mb-1">{idea.previewText}</p>
+              <div className="relative h-40 overflow-hidden -mt-1">
+                {idea.blurText && (
+                  <p className="whitespace-pre-wrap blur-sm select-none pointer-events-none text-gray-400 dark:text-gray-600">
+                    {idea.blurText}
+                  </p>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-transparent via-white/80 dark:via-gray-900/80 to-white dark:to-gray-900">
+                  <button
+                    onClick={() => setShowPayModal(true)}
+                    className="mt-10 bg-green-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-green-700 transition shadow-lg"
+                  >
+                    {t("idea.buyFor")} {idea.price} ₽
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
+              <div className="text-4xl mb-3">🔒</div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {t("idea.fullContentLocked")}
+              </p>
+              <div className="flex gap-3 justify-center">
+                {idea.channel && (
+                  <Link
+                    href={`/channels/${idea.channel.id}`}
+                    className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                  >
+                    Подписаться на канал «{idea.channel.name}»
+                  </Link>
+                )}
+              </div>
+            </div>
+          )
         ) : idea.content ? (
           <>
             <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100">{idea.content}</div>
@@ -224,6 +244,17 @@ export default function IdeaContent() {
             >
               {t("idea.dislike")}
             </button>
+
+            {idea.acceptDonations &&
+              session.user?.id !== idea.author.id &&
+              (idea.author.donationCard || idea.author.sbpQrUrl) && (
+                <button
+                  onClick={() => setShowDonateModal(true)}
+                  className="ml-auto px-3 py-1.5 rounded-lg text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 transition font-medium"
+                >
+                  ☕ {t("idea.donate")}
+                </button>
+              )}
           </div>
         )}
       </div>
@@ -241,6 +272,20 @@ export default function IdeaContent() {
           }}
           onClose={() => setShowPayModal(false)}
           onSuccess={() => loadIdea()}
+        />
+      )}
+
+      {/* Donate modal */}
+      {showDonateModal && (
+        <UnifiedPaymentModal
+          purpose={{
+            type: "donation",
+            authorId: idea.author.id,
+            authorName: idea.author.displayName,
+            donationCard: idea.author.donationCard,
+            donationQrUrl: idea.author.sbpQrUrl,
+          }}
+          onClose={() => setShowDonateModal(false)}
         />
       )}
 
