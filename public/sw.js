@@ -1,5 +1,5 @@
 // FOMO service worker — bump CACHE version to force clients to drop old assets.
-const CACHE = "fomo-v2";
+const CACHE = "fomo-v3";
 const PRECACHE = ["/", "/logo-fomo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -45,8 +45,19 @@ self.addEventListener("push", (event) => {
     self.registration
       .showNotification(data.title || "FOMO", {
         body: data.body || "",
-        icon: "/logo-fomo.png",
-        badge: "/logo-fomo.png",
+        // The old icon/badge (logo-fomo.png, 1536x1024 — the wide banner
+        // logo, not an icon) resolved fine as a JS Promise but is exactly
+        // the shape Android's badge renderer is strict about: it expects a
+        // small square it can force through a monochrome alpha mask, and a
+        // large non-square source can make that step fail *after* the
+        // Promise has already settled — invisible to any JS-side check,
+        // including a beacon that only watches the Promise. icon-192.png is
+        // a real 192x192 render of the same logo; badge is dropped rather
+        // than guessed at, since Android already falls back to the app's
+        // own launcher icon when it's absent.
+        icon: "/icon-192.png",
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
         data: { url: data.url || "/" },
       })
       .then(() => reportPush("shown"))
