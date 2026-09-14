@@ -361,9 +361,13 @@ model ChatMessage {
   roomId    String
   userId    String
   text      String
+  fileUrl   String?
+  fileName  String?
+  fileType  String?
   replyToId String?
   isPinned  Boolean  @default(false)
   isDeleted Boolean  @default(false)
+  isEdited  Boolean  @default(false)
   reactions Json?
   createdAt DateTime @default(now())
 

@@ -57,11 +57,18 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const schema = z.object({
-    roomId: z.string(),
-    text: z.string().min(1).max(2000),
-    replyToId: z.string().optional(),
-  });
+  const schema = z
+    .object({
+      roomId: z.string(),
+      text: z.string().max(2000),
+      fileUrl: z.string().optional(),
+      fileName: z.string().optional(),
+      fileType: z.string().optional(),
+      replyToId: z.string().optional(),
+    })
+    .refine((data) => data.text.trim().length > 0 || data.fileUrl, {
+      message: "Message text or file required",
+    });
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -109,6 +116,9 @@ export async function POST(req: NextRequest) {
       roomId: parsed.data.roomId,
       userId: session.user.id!,
       text: parsed.data.text,
+      fileUrl: parsed.data.fileUrl || null,
+      fileName: parsed.data.fileName || null,
+      fileType: parsed.data.fileType || null,
       replyToId: parsed.data.replyToId || null,
     },
     include: {
