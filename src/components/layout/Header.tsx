@@ -8,10 +8,12 @@ import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
+import { isPushSupported, subscribeToPush } from "@/lib/push-client";
 
 export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
+  const userId = user?.id;
   const pathname = usePathname();
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,6 +26,18 @@ export default function Header() {
       .then((data) => { if (data?.hiddenPages) setHiddenPages(data.hiddenPages); })
       .catch(() => {});
   }, []);
+
+  // Push notifications used to be opt-in behind a toggle buried in profile
+  // settings — almost nobody found it, so almost nobody got notifications.
+  // Ask once automatically for any logged-in user who hasn't been asked yet
+  // (Notification.permission === "default"); a prior grant/denial is left
+  // untouched, and requestPermission() itself only ever shows the native
+  // prompt when no decision has been made yet.
+  useEffect(() => {
+    if (!userId || !isPushSupported()) return;
+    if (Notification.permission !== "default") return;
+    subscribeToPush().catch(() => {});
+  }, [userId]);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
