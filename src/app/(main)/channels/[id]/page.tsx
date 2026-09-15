@@ -51,6 +51,19 @@ export default function ChannelPage() {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteIdea = useCallback(async (id: string) => {
+    if (!confirm("Удалить идею безвозвратно?")) return;
+    setDeletingId(id);
+    const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setIdeas((prev) => prev.filter((i) => i.id !== id));
+    } else {
+      alert("Не удалось удалить идею");
+    }
+    setDeletingId(null);
+  }, []);
 
   // Load channel data
   useEffect(() => {
@@ -244,11 +257,28 @@ export default function ChannelPage() {
           <div className="space-y-3">
             {ideas.map((idea) => (
               <div key={idea.id} className="relative">
+                {isOwner && (
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-3 bg-white/90 dark:bg-gray-900/90 rounded-lg px-2 py-1">
+                    <Link
+                      href={`/ideas/${idea.id}/edit`}
+                      className="text-xs text-green-600 hover:text-green-800 font-medium"
+                    >
+                      {t("common.edit")}
+                    </Link>
+                    <button
+                      onClick={() => deleteIdea(idea.id)}
+                      disabled={deletingId === idea.id}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+                    >
+                      {deletingId === idea.id ? "..." : t("common.delete")}
+                    </button>
+                  </div>
+                )}
                 {canView ? (
                   /* Unlocked idea card */
                   <Link
                     href={`/ideas/${idea.id}`}
-                    className="block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition"
+                    className={`block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition ${isOwner ? "pr-32" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
