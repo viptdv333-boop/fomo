@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
-import IdeaComments from "@/components/ideas/IdeaComments";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 
@@ -299,8 +298,20 @@ export default function IdeaContent() {
         />
       )}
 
-      {/* Comments */}
-      {idea && <IdeaComments ideaId={idea.id} />}
+      {/* Discuss — deep-links into the болталка room for the idea's instrument
+          instead of a separate comment thread, so discussion lives in one
+          place per instrument rather than being split across every idea. */}
+      {idea && (
+        <Link
+          href={idea.instruments[0] ? `/chat/${idea.instruments[0].slug}` : "/chat"}
+          className="mt-4 flex items-center justify-center gap-2 bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 text-green-600 dark:text-green-400 font-medium hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.17 0-2.29-.2-3.31-.56L3 21l1.56-4.69C3.57 15.09 3 13.6 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          {t("idea.discussInChat")}
+        </Link>
+      )}
     </div>
   );
 }

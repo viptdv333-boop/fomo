@@ -88,6 +88,7 @@ export const ru: Record<string, string> = {
   "idea.edit": "Редактировать",
   "idea.delete": "Удалить",
   "idea.comments": "Обсуждение",
+  "idea.discussInChat": "Обсудить в болталке",
   "idea.writeComment": "Написать комментарий...",
   "idea.reply": "Ответить",
 
@@ -195,6 +196,7 @@ export const en: Record<string, string> = {
   "idea.edit": "Edit",
   "idea.delete": "Delete",
   "idea.comments": "Discussion",
+  "idea.discussInChat": "Discuss in chat",
   "idea.writeComment": "Write a comment...",
   "idea.reply": "Reply",
 
@@ -300,6 +302,7 @@ export const cn: Record<string, string> = {
   "idea.edit": "编辑",
   "idea.delete": "删除",
   "idea.comments": "讨论",
+  "idea.discussInChat": "在聊天室讨论",
   "idea.writeComment": "写评论...",
   "idea.reply": "回复",
 
