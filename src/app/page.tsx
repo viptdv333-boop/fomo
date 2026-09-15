@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LandingPage from "@/components/landing/LandingPage";
+import PwaBanners from "@/components/layout/PwaBanners";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,7 @@ export default async function HomePage() {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         }}
       />
+      <PwaBanners />
       <LandingPage />
     </>
   );
