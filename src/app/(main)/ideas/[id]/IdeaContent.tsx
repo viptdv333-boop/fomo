@@ -90,6 +90,16 @@ export default function IdeaContent() {
 
   return (
     <div className="max-w-3xl w-full mx-auto">
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="flex items-center gap-1 mb-4 text-sm text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path d="M15 19l-7-7 7-7" />
+        </svg>
+        {t("common.back")}
+      </button>
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">
