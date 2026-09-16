@@ -9,6 +9,7 @@ import ShareButtons from "@/components/shared/ShareButtons";
 
 interface TariffData {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   price: number;
@@ -68,6 +69,9 @@ export default function EditChannelPage() {
   // Channel name/description (derived from tariff name prefix)
   const [channelName, setChannelName] = useState("");
   const [channelDescription, setChannelDescription] = useState("");
+  const [mainTariffId, setMainTariffId] = useState<string | null>(null);
+  const [channelSlug, setChannelSlug] = useState("");
+  const [slugError, setSlugError] = useState("");
 
   useEffect(() => {
     if (!user?.id) return;
@@ -79,6 +83,8 @@ export default function EditChannelPage() {
 
         // Find the tariff we're editing to get channel info
         const main = all.find((t) => t.id === editId) || all[0];
+        setMainTariffId(main.id);
+        setChannelSlug(main.slug || "");
 
         // Parse channel name from tariff name (format: "ChannelName: TariffName")
         const colonIdx = main.name.indexOf(":");
@@ -153,7 +159,12 @@ export default function EditChannelPage() {
 
   async function handleSave() {
     setError("");
+    setSlugError("");
     if (!channelName.trim()) { setError("Укажите название канала"); return; }
+    if (channelSlug && (channelSlug.length < 7 || channelSlug.length > 33)) {
+      setSlugError("ID: от 7 до 33 символов");
+      return;
+    }
     setSaving(true);
 
     try {
@@ -177,6 +188,7 @@ export default function EditChannelPage() {
           avatarUrl: avatarUrl || null,
           instrumentIds: selectedTags.map((tag) => tag.id),
           isActive: t.isActive,
+          ...(t.id === mainTariffId ? { slug: channelSlug.trim() || null } : {}),
         };
 
         if (t.id) {
@@ -186,7 +198,16 @@ export default function EditChannelPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
-          if (!res.ok) { setError("Ошибка обновления тарифа"); setSaving(false); return; }
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            if (t.id === mainTariffId && data?.error) {
+              setSlugError(data.error);
+            } else {
+              setError(data?.error || "Ошибка обновления тарифа");
+            }
+            setSaving(false);
+            return;
+          }
         } else {
           // Create new
           const res = await fetch(`/api/users/${user?.id}/tariffs`, {
@@ -259,14 +280,35 @@ export default function EditChannelPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.nameLabel")}</label>
           <input type="text" value={channelName} onChange={(e) => setChannelName(e.target.value)} className={inputCls} />
+        </div>
+
+        {/* Custom channel ID */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID канала</label>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 dark:text-gray-500 text-lg font-mono">#</span>
+            <input
+              type="text"
+              value={channelSlug}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^a-zA-Z0-9_!?$%]/g, "").slice(0, 33);
+                setChannelSlug(val);
+                setSlugError("");
+              }}
+              placeholder={editId.slice(0, 8)}
+              className={inputCls}
+            />
+          </div>
+          {slugError && <p className="text-xs text-red-500 mt-1">{slugError}</p>}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Латинские буквы, цифры и символы _ ! ? $ % — от 7 до 33 символов. Пусто — используется стандартный ID.
+          </p>
           <div className="flex items-center gap-2 mt-2">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              ID <span className="font-mono text-green-600 dark:text-green-400">{editId.slice(0, 8)}</span>
-              {" · "}
-              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{editId}</span>
+              fomo.spot/channels/<span className="font-mono text-green-600 dark:text-green-400">{channelSlug || editId}</span>
             </p>
             <ShareButtons
-              url={`https://fomo.spot/channels/${editId}`}
+              url={`https://fomo.spot/channels/${channelSlug || editId}`}
               text={`${channelName || "Канал"} на FOMO`}
             />
           </div>

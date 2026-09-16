@@ -551,6 +551,9 @@ model SubscriptionTariff {
   avatarUrl      String?
   instrumentIds  String[] @default([])
   channelRoomId  String?  @unique
+  /// Custom short public id, e.g. "nevrotrader" — same charset/length rules
+  /// as User.fomoId (see lib/fomoId.ts). Null falls back to the raw cuid.
+  slug           String?  @unique
   createdAt      DateTime @default(now())
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)

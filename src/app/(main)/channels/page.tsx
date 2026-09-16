@@ -388,7 +388,7 @@ export default function ChannelsPage() {
           <div className={viewMode === "cards" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "flex flex-col gap-4"}>
             {filtered.map((ch) => {
               const isSubscribed = subscribedIds.has(ch.id);
-              const ideasCount = ch.ideasCount ?? Math.floor(Number(ch.author.rating) * 3 + ch.subscribersCount * 0.1);
+              const ideasCount = ch.ideasCount ?? 0;
 
               return (
                 <Link

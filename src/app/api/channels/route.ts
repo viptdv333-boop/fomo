@@ -15,7 +15,10 @@ export async function GET() {
           },
         },
         _count: {
-          select: { subscriptions: true },
+          select: {
+            subscriptions: true,
+            ideas: { where: { moderationStatus: "published" } },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -34,11 +37,13 @@ export async function GET() {
     return NextResponse.json(
       tariffs.map((t) => ({
         id: t.id,
+        slug: (t as any).slug || null,
         name: t.name,
         description: t.description,
         price: Number(t.price),
         durationDays: t.durationDays,
         subscribersCount: t._count.subscriptions,
+        ideasCount: t._count.ideas,
         author: t.author,
         avatarUrl: (t as any).avatarUrl || null,
         instruments: ((t as any).instrumentIds || []).map((id: string) => instMap.get(id)).filter(Boolean),

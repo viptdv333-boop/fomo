@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isValidCustomFomoId } from "@/lib/fomoId";
 
 export async function PATCH(
   request: NextRequest,
@@ -30,6 +31,25 @@ export async function PATCH(
   if (body.paymentMethods !== undefined) data.paymentMethods = body.paymentMethods;
   if (body.cardNumber !== undefined) data.cardNumber = body.cardNumber;
   if (body.sbpQrUrl !== undefined) data.sbpQrUrl = body.sbpQrUrl;
+
+  if (body.slug !== undefined) {
+    const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+    if (slug === "") {
+      data.slug = null;
+    } else {
+      if (!isValidCustomFomoId(slug)) {
+        return NextResponse.json(
+          { error: "ID: латинские буквы, цифры и символы _ ! ? $ %, от 7 до 33 символов" },
+          { status: 400 }
+        );
+      }
+      const existing = await prisma.subscriptionTariff.findUnique({ where: { slug } });
+      if (existing && existing.id !== tariffId) {
+        return NextResponse.json({ error: "Этот ID уже занят" }, { status: 400 });
+      }
+      data.slug = slug;
+    }
+  }
 
   const updated = await prisma.subscriptionTariff.update({
     where: { id: tariffId },

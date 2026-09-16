@@ -11,6 +11,7 @@ import { useT } from "@/lib/i18n/client";
 
 interface ChannelData {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   price: number;
@@ -70,7 +71,7 @@ export default function ChannelPage() {
     fetch("/api/channels")
       .then((r) => r.json())
       .then((data: ChannelData[]) => {
-        const found = data.find((ch) => ch.id === channelId);
+        const found = data.find((ch) => ch.id === channelId || ch.slug === channelId);
         if (found) {
           setChannel(found);
           const others = data.filter(
@@ -185,13 +186,13 @@ export default function ChannelPage() {
               <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              ID <span className="font-mono text-green-600 dark:text-green-400">{channel.id.slice(0, 8)}</span>
+              ID <span className="font-mono text-green-600 dark:text-green-400">{channel.slug || channel.id.slice(0, 8)}</span>
               {" · "}
-              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.id}</span>
+              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.slug || channel.id}</span>
             </p>
           </div>
 
-          <ShareButtons url={`https://fomo.spot/channels/${channel.id}`} text={`${channel.name} — канал на FOMO`} />
+          <ShareButtons url={`https://fomo.spot/channels/${channel.slug || channel.id}`} text={`${channel.name} — канал на FOMO`} />
         </div>
 
         {channel.description && (

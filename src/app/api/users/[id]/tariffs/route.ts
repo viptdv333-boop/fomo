@@ -20,6 +20,7 @@ export async function GET(
   const safeTariffs = tariffs.map((t) => ({
     id: t.id,
     authorId: t.authorId,
+    slug: t.slug,
     name: t.name,
     description: t.description,
     price: t.price,
