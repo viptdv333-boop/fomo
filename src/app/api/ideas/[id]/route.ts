@@ -186,7 +186,7 @@ export async function PATCH(
 
   const idea = await prisma.idea.findUnique({
     where: { id },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, moderationStatus: true },
   });
 
   if (!idea) {
@@ -207,6 +207,19 @@ export async function PATCH(
       { error: "Invalid input", details: parsed.error.issues },
       { status: 400 }
     );
+  }
+
+  // An admin-hidden idea (policy moderation) can't be self-published or
+  // self-archived back out of "hidden" by its author — only an admin can
+  // move it out of that state. The schema already keeps "hidden" itself
+  // out of reach for non-admins; this closes the other half, leaving the
+  // idea's own way out of "hidden".
+  if (
+    !isAdmin &&
+    idea.moderationStatus === "hidden" &&
+    parsed.data.moderationStatus !== undefined
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const data: Record<string, unknown> = {};
