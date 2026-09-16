@@ -18,6 +18,7 @@ const ideaSelect = {
   viewCount: true,
   createdAt: true,
   tariffId: true,
+  moderationStatus: true,
   author: {
     select: {
       id: true,
@@ -103,6 +104,18 @@ export async function GET(request: NextRequest) {
     where.authorId = authorId;
   }
 
+  // Archived ideas (author self-declutter) are excluded from every normal
+  // feed view — a dedicated filter opts into seeing only those instead. The
+  // one exception is an author browsing their own idea list (profile "Мои
+  // идеи"), which needs every status visible so they can find and unarchive.
+  const statusParam = searchParams.get("status");
+  const isOwnIdeaList = Boolean(authorId) && authorId === session?.user?.id;
+  if (statusParam === "archived") {
+    where.moderationStatus = "archived";
+  } else if (!isOwnIdeaList) {
+    where.moderationStatus = "published";
+  }
+
   // Посты закрытых каналов (Idea.tariffId, 13.09.2026) живут в своём канале.
   // channelId — лента канала: его посты плюс старые платные идеи автора без
   // канала (до 13.09 канал показывал все платные идеи автора — их не прячем).
@@ -175,6 +188,7 @@ export async function GET(request: NextRequest) {
       acceptDonations: idea.acceptDonations,
       viewCount: idea.viewCount,
       createdAt: idea.createdAt,
+      moderationStatus: idea.moderationStatus,
       channelId: idea.tariffId,
       author: idea.author,
       instruments: idea.instruments.map((ii) => ii.instrument),

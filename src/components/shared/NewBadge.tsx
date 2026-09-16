@@ -16,3 +16,13 @@ export default function NewBadge({ className = "" }: { className?: string }) {
     </span>
   );
 }
+
+export function ArchivedBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white bg-gray-400 dark:bg-gray-600 shadow-sm ${className}`}
+    >
+      Архив
+    </span>
+  );
+}

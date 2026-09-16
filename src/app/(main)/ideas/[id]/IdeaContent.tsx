@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
-import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
+import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import Watermark from "@/components/shared/Watermark";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { useT } from "@/lib/i18n/client";
@@ -28,6 +28,7 @@ interface IdeaDetail {
   attachments?: unknown;
   viewCount?: number;
   createdAt: string;
+  moderationStatus?: string;
   author: {
     id: string;
     displayName: string;
@@ -52,6 +53,20 @@ export default function IdeaContent() {
   const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  async function toggleArchive() {
+    if (!idea) return;
+    setArchiving(true);
+    const next = idea.moderationStatus === "archived" ? "published" : "archived";
+    const res = await fetch(`/api/ideas/${idea.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moderationStatus: next }),
+    });
+    if (res.ok) setIdea({ ...idea, moderationStatus: next });
+    setArchiving(false);
+  }
 
   async function loadIdea() {
     const res = await fetch(`/api/ideas/${params.id}`);
@@ -137,12 +152,20 @@ export default function IdeaContent() {
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <h1 className="text-2xl font-bold">{idea.title}</h1>
             {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
+            {idea.moderationStatus === "archived" && <ArchivedBadge className="shrink-0" />}
           </div>
           {session?.user?.id === idea.author.id && (
             <div className="flex items-center gap-3 shrink-0">
               <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
                 {t("common.edit")}
               </Link>
+              <button
+                onClick={toggleArchive}
+                disabled={archiving}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium disabled:opacity-50"
+              >
+                {idea.moderationStatus === "archived" ? t("idea.unarchive") : t("idea.archive")}
+              </button>
               <button
                 onClick={async () => {
                   if (!confirm("Удалить идею безвозвратно?")) return;

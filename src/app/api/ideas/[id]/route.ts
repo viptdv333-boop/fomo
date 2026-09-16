@@ -12,6 +12,10 @@ const ideaPatchSchema = z.object({
   acceptDonations: z.boolean().optional(),
   instrumentIds: z.array(z.string()).optional(),
   attachments: z.array(z.object({ url: z.string(), name: z.string() })).optional(),
+  // Authors can only toggle published <-> archived (self-serve declutter);
+  // "hidden" stays admin-only moderation, enforced below since zod alone
+  // can't see who's calling.
+  moderationStatus: z.enum(["published", "archived"]).optional(),
 });
 
 // Cuts at the nearest word boundary so a paid idea's free teaser never ends
@@ -52,6 +56,7 @@ export async function GET(
       updatedAt: true,
       authorId: true,
       tariffId: true,
+      moderationStatus: true,
       tariff: { select: { id: true, name: true } },
       author: {
         select: {
@@ -155,6 +160,7 @@ export async function GET(
     attachments: idea.attachments,
     createdAt: idea.createdAt,
     updatedAt: idea.updatedAt,
+    moderationStatus: idea.moderationStatus,
     author: idea.author,
     instruments: idea.instruments.map((ii) => ii.instrument),
     voteScore,
@@ -208,6 +214,7 @@ export async function PATCH(
   if (parsed.data.price !== undefined) data.price = parsed.data.price;
   if (parsed.data.acceptDonations !== undefined) data.acceptDonations = parsed.data.acceptDonations;
   if (parsed.data.attachments !== undefined) data.attachments = parsed.data.attachments;
+  if (parsed.data.moderationStatus !== undefined) data.moderationStatus = parsed.data.moderationStatus;
 
   // Handle instruments update in a transaction
   if (parsed.data.instrumentIds !== undefined) {

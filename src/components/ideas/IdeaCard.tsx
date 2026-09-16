@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
-import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
+import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import ShareButtons from "@/components/shared/ShareButtons";
 import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
@@ -48,6 +48,7 @@ interface IdeaCardProps {
     acceptDonations?: boolean;
     viewCount?: number;
     createdAt: string;
+    moderationStatus?: string;
     author: {
       id: string;
       displayName: string;
@@ -81,12 +82,29 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSent, setReportSent] = useState(false);
+  const [isArchived, setIsArchived] = useState(idea.moderationStatus === "archived");
+  const [archiving, setArchiving] = useState(false);
 
   const viewCount = idea.viewCount ?? 0;
   const canDonate =
     Boolean(idea.acceptDonations) &&
     session?.user?.id !== idea.author.id &&
     Boolean(idea.author.donationCard || idea.author.sbpQrUrl);
+
+  async function toggleArchive() {
+    setArchiving(true);
+    const next = isArchived ? "published" : "archived";
+    const res = await fetch(`/api/ideas/${idea.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moderationStatus: next }),
+    });
+    if (res.ok) {
+      setIsArchived(next === "archived");
+      onVote?.();
+    }
+    setArchiving(false);
+  }
 
   async function handleLike() {
     if (!session) return;
@@ -144,6 +162,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm dark:text-gray-100 truncate">{idea.title}</span>
             {isNew && <NewBadge className="shrink-0" />}
+            {isArchived && <ArchivedBadge className="shrink-0" />}
             {idea.isPaid && (
               <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium shrink-0">
                 {idea.price ? `${idea.price} ₽` : "🔒 канал"}
@@ -191,6 +210,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
           <StarRating rating={idea.author.rating} />
           {isNew && <NewBadge />}
+          {isArchived && <ArchivedBadge />}
           {idea.isPaid && (
             <span className="ml-auto px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold shrink-0">
               {idea.price ? `${idea.price} ₽` : "🔒 канал"}
@@ -272,13 +292,25 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           )}
         </div>
 
-        {/* Edit button */}
+        {/* Edit / archive buttons */}
         {session?.user?.id === idea.author.id && (
-          <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 shrink-0 transition" title="Редактировать">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition" title="Редактировать">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </Link>
+            <button
+              onClick={toggleArchive}
+              disabled={archiving}
+              className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition disabled:opacity-50"
+              title={isArchived ? t("idea.unarchive") : t("idea.archive")}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8M10 12h4" />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
 
@@ -290,6 +322,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </h2>
         </Link>
         {isNew && <NewBadge className="shrink-0" />}
+        {isArchived && <ArchivedBadge className="shrink-0" />}
       </div>
 
       {/* Description */}

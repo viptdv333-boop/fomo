@@ -29,6 +29,7 @@ interface IdeaData {
   price: number | null;
   acceptDonations?: boolean;
   createdAt: string;
+  moderationStatus?: string;
   author: {
     id: string;
     displayName: string;
@@ -110,6 +111,7 @@ function FeedPage() {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [paidFilter, setPaidFilter] = useState<"all" | "free" | "paid">("all");
+  const [showArchived, setShowArchived] = useState(false);
   const [authorFilter, setAuthorFilter] = useState("");
   const [authorSearch, setAuthorSearch] = useState("");
   const [authorOptions, setAuthorOptions] = useState<AuthorOption[]>([]);
@@ -125,7 +127,7 @@ function FeedPage() {
 
   useEffect(() => {
     loadIdeas();
-  }, [selectedInstrument, selectedAssetSlug, page, sortBy, sortOrder, authorFilter, paidFilter]);
+  }, [selectedInstrument, selectedAssetSlug, page, sortBy, sortOrder, authorFilter, paidFilter, showArchived]);
 
   useEffect(() => {
     fetch("/api/ideas/authors")
@@ -148,6 +150,7 @@ function FeedPage() {
     if (authorFilter) params.set("authorId", authorFilter);
     if (paidFilter === "free") params.set("isPaid", "false");
     if (paidFilter === "paid") params.set("isPaid", "true");
+    if (showArchived) params.set("status", "archived");
 
     const res = await fetch(`/api/ideas?${params}`);
     const data = await res.json();
@@ -180,6 +183,12 @@ function FeedPage() {
           className={pillClass(paidFilter === "free")}
         >
           {t("feed.free")}
+        </button>
+        <button
+          onClick={() => { setShowArchived((v) => !v); setPage(1); }}
+          className={pillClass(showArchived)}
+        >
+          {t("feed.archived")}
         </button>
         <button
           onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
