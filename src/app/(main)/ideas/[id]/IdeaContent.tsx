@@ -9,6 +9,7 @@ import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/share
 import Watermark from "@/components/shared/Watermark";
 import ShareButtons from "@/components/shared/ShareButtons";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
+import IdeaComments from "@/components/ideas/IdeaComments";
 import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
@@ -347,6 +348,9 @@ export default function IdeaContent() {
           {t("idea.discussInChat")}
         </Link>
       )}
+
+      {/* Comments */}
+      {idea && <IdeaComments ideaId={idea.id} />}
     </div>
   );
 }

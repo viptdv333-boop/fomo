@@ -367,8 +367,18 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         </div>
       </div>
 
-      {/* Bottom row: donate, share, report */}
-      <div className="flex items-center justify-end gap-3 mt-1">
+      {/* Bottom row: discuss (left), donate/share/report (right) */}
+      <div className="flex items-center justify-between gap-3 mt-1">
+        <Link
+          href={idea.instruments[0] ? `/chat/${idea.instruments[0].slug}` : "/chat"}
+          className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.17 0-2.29-.2-3.31-.56L3 21l1.56-4.69C3.57 15.09 3 13.6 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          {t("idea.discussInChat")}
+        </Link>
+        <div className="flex items-center gap-3">
         {canDonate && (
           <button
             onClick={() => setShowDonateModal(true)}
@@ -386,6 +396,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {reportSent ? t("report.sent") : t("report.button")}
           </button>
         )}
+        </div>
       </div>
 
       {showReport && !reportSent && (
