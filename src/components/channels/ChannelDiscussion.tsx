@@ -32,7 +32,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Check access and get roomId
@@ -72,7 +72,12 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   }, [roomId, loadMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // scrollIntoView bubbles up through every scrollable ancestor, including
+    // the page itself — on a long channel page (especially on mobile, with
+    // no fixed-height chat panel) that meant opening the page jumped straight
+    // to this embedded discussion box. Scroll only this box's own scrollbar.
+    const box = messagesBoxRef.current;
+    if (box) box.scrollTop = box.scrollHeight;
   }, [messages]);
 
   async function handleSend() {
@@ -135,7 +140,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
       )}
 
       {/* Messages */}
-      <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
+      <div ref={messagesBoxRef} className="max-h-[400px] overflow-y-auto p-4 space-y-3">
         {messages.filter((m) => !m.isDeleted).length === 0 ? (
           <div className="text-gray-400 text-center py-8 text-sm">Начните обсуждение</div>
         ) : (
@@ -181,7 +186,6 @@ export default function ChannelDiscussion({ tariffId }: Props) {
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Reply indicator */}

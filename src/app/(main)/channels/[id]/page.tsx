@@ -37,6 +37,16 @@ interface IdeaData {
   instruments: { id: string; name: string; slug: string }[];
 }
 
+interface SubscriberData {
+  id: string;
+  subscriberId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  fomoId: string | null;
+  isActive: boolean;
+  endDate: string;
+}
+
 export default function ChannelPage() {
   const { t } = useT();
   const params = useParams();
@@ -53,6 +63,23 @@ export default function ChannelPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showSubscribers, setShowSubscribers] = useState(false);
+  const [subscribers, setSubscribers] = useState<SubscriberData[]>([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
+
+  const openSubscribers = useCallback(async () => {
+    if (!channel) return;
+    setShowSubscribers(true);
+    setSubscribersLoading(true);
+    const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`);
+    if (res.ok) setSubscribers(await res.json());
+    setSubscribersLoading(false);
+  }, [channel]);
+
+  function daysLeft(endDate: string) {
+    const ms = new Date(endDate).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  }
 
   const deleteIdea = useCallback(async (id: string) => {
     if (!confirm("Удалить идею безвозвратно?")) return;
@@ -183,7 +210,13 @@ export default function ChannelPage() {
             </Link>
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
               <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
-              <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
+              {isOwner ? (
+                <button onClick={openSubscribers} className="hover:text-green-600 dark:hover:text-green-400 hover:underline">
+                  👥 {channel.subscribersCount} {t("channels.subscribers")}
+                </button>
+              ) : (
+                <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
+              )}
             </div>
             <div className="flex items-center gap-2 mt-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -387,6 +420,59 @@ export default function ChannelPage() {
           authorName={channel.author.displayName}
           onClose={() => setShowBuyModal(false)}
         />
+      )}
+
+      {/* Subscribers modal (owner only) */}
+      {showSubscribers && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSubscribers(false)}>
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-lg w-full max-w-md max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b dark:border-gray-800 flex items-center justify-between shrink-0">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t("channels.subscribers")}</h3>
+              <button onClick={() => setShowSubscribers(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto p-2">
+              {subscribersLoading ? (
+                <div className="text-sm text-gray-400 text-center py-8">...</div>
+              ) : subscribers.length === 0 ? (
+                <div className="text-sm text-gray-400 text-center py-8">{t("subs.noChannelSubscribers")}</div>
+              ) : (
+                subscribers.map((s) => (
+                  <Link
+                    key={s.id}
+                    href={`/profile/${s.subscriberId}`}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-sm overflow-hidden shrink-0">
+                      {s.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        s.displayName[0]
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{s.displayName}</div>
+                      {s.isActive ? (
+                        <div className="text-xs text-gray-400">
+                          {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString("ru-RU")} ({daysLeft(s.endDate)} дн.)
+                        </div>
+                      ) : (
+                        <div className="text-xs text-red-400">{t("subs.subscriberInactive")}</div>
+                      )}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
