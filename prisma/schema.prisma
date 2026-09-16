@@ -222,6 +222,7 @@ model IdeaComment {
   ideaId    String
   userId    String
   text      String
+  fileUrl   String?
   replyToId String?
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())

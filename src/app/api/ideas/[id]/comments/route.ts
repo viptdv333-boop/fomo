@@ -34,15 +34,21 @@ export async function POST(
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: ideaId } = await params;
-  const { text, replyToId } = await request.json();
+  const { text, replyToId, fileUrl } = await request.json();
 
-  if (!text?.trim()) return NextResponse.json({ error: "Text required" }, { status: 400 });
+  if (!text?.trim() && !fileUrl) {
+    return NextResponse.json({ error: "Text or file required" }, { status: 400 });
+  }
+  if (fileUrl !== undefined && fileUrl !== null && !/^\/uploads\//.test(fileUrl)) {
+    return NextResponse.json({ error: "Invalid fileUrl" }, { status: 400 });
+  }
 
   const comment = await prisma.ideaComment.create({
     data: {
       ideaId,
       userId: session.user.id,
-      text: text.trim(),
+      text: (text || "").trim(),
+      fileUrl: fileUrl || null,
       replyToId: replyToId || null,
     },
     include: {

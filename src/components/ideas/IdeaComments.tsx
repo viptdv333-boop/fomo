@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n/client";
 interface Comment {
   id: string;
   text: string;
+  fileUrl?: string | null;
   createdAt: string;
   user: { id: string; displayName: string; avatarUrl: string | null };
   replyTo?: { id: string; text: string; user: { displayName: string } } | null;
@@ -24,7 +25,10 @@ export default function IdeaComments({ ideaId }: Props) {
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadComments = useCallback(async () => {
     const res = await fetch(`/api/ideas/${ideaId}/comments`);
@@ -34,16 +38,35 @@ export default function IdeaComments({ ideaId }: Props) {
 
   useEffect(() => { loadComments(); }, [loadComments]);
 
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", "messages");
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (res.ok) {
+      const data = await res.json();
+      setPendingFile({ url: data.url, name: data.name });
+    } else {
+      alert("Не удалось загрузить файл");
+    }
+    setUploading(false);
+  }
+
   async function handleSend() {
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && !pendingFile) || sending) return;
     setSending(true);
     await fetch(`/api/ideas/${ideaId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: input.trim(), replyToId: replyTo?.id }),
+      body: JSON.stringify({ text: input.trim(), replyToId: replyTo?.id, fileUrl: pendingFile?.url }),
     });
     setInput("");
     setReplyTo(null);
+    setPendingFile(null);
     setSending(false);
     loadComments();
   }
@@ -86,7 +109,12 @@ export default function IdeaComments({ ideaId }: Props) {
                     {c.replyTo.user.displayName}: {c.replyTo.text.slice(0, 50)}
                   </div>
                 )}
-                <p className="text-sm text-gray-700 dark:text-gray-300">{c.text}</p>
+                {c.text && <p className="text-sm text-gray-700 dark:text-gray-300">{c.text}</p>}
+                {c.fileUrl && (
+                  <a href={c.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={c.fileUrl} alt="" className="mt-1 max-w-[200px] max-h-[200px] rounded-lg object-cover" />
+                  </a>
+                )}
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   {session?.user && (
                     <button onClick={() => { setReplyTo(c); inputRef.current?.focus(); }}
@@ -112,13 +140,29 @@ export default function IdeaComments({ ideaId }: Props) {
               <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-red-500 ml-1">✕</button>
             </div>
           )}
+          {pendingFile && (
+            <div className="flex items-center gap-2 mb-1 bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-1">
+              <img src={pendingFile.url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">{pendingFile.name}</span>
+              <button onClick={() => setPendingFile(null)} className="text-gray-400 hover:text-red-500 text-xs shrink-0">✕</button>
+            </div>
+          )}
           <div className="flex gap-2">
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Прикрепить фото"
+              className="px-2.5 py-1.5 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50"
+            >
+              {uploading ? "…" : "📎"}
+            </button>
             <input ref={inputRef} type="text" value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
               placeholder={t("idea.writeComment")}
               className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
-            <button onClick={handleSend} disabled={sending || !input.trim()}
+            <button onClick={handleSend} disabled={sending || (!input.trim() && !pendingFile)}
               className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">→</button>
           </div>
         </div>
