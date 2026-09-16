@@ -105,8 +105,8 @@ export default function IdeaComments({ ideaId }: Props) {
                   <span className="text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
                 {c.replyTo && (
-                  <div className="text-[10px] text-gray-400 border-l-2 border-green-400 pl-1.5 my-0.5 truncate">
-                    {c.replyTo.user.displayName}: {c.replyTo.text.slice(0, 50)}
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 border-l-2 border-green-400 pl-1.5 my-0.5 truncate">
+                    ↩ <span className="font-semibold">{c.replyTo.user.displayName}</span>: {c.replyTo.text.slice(0, 50)}
                   </div>
                 )}
                 {c.text && <p className="text-sm text-gray-700 dark:text-gray-300">{c.text}</p>}
@@ -115,10 +115,13 @@ export default function IdeaComments({ ideaId }: Props) {
                     <img src={c.fileUrl} alt="" className="mt-1 max-w-[200px] max-h-[200px] rounded-lg object-cover" />
                   </a>
                 )}
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                {/* Always visible (not hover-only) — hover reveals nothing on
+                    touch devices, which made replying effectively undiscoverable
+                    on mobile. */}
+                <div className="flex gap-2 mt-0.5">
                   {session?.user && (
-                    <button onClick={() => { setReplyTo(c); inputRef.current?.focus(); }}
-                      className="text-[10px] text-gray-400 hover:text-green-600">{t("idea.reply")}</button>
+                    <button onClick={() => { setReplyTo(c); setInput(`@${c.user.displayName}, `); inputRef.current?.focus(); }}
+                      className="text-[10px] text-gray-400 hover:text-green-600 font-medium">↩ {t("idea.reply")}</button>
                   )}
                   {(session?.user?.id === c.user.id || (session?.user as any)?.role === "ADMIN") && (
                     <button onClick={() => handleDelete(c.id)}
@@ -135,9 +138,9 @@ export default function IdeaComments({ ideaId }: Props) {
       {session?.user ? (
         <div>
           {replyTo && (
-            <div className="flex items-center gap-1 text-[10px] text-gray-400 mb-1">
-              ↩ {replyTo.user.displayName}
-              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-red-500 ml-1">✕</button>
+            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1 bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-1">
+              ↩ {t("idea.reply")}: <span className="font-semibold">{replyTo.user.displayName}</span>
+              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-red-500 ml-auto">✕</button>
             </div>
           )}
           {pendingFile && (
