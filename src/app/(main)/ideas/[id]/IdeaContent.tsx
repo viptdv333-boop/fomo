@@ -210,7 +210,13 @@ export default function IdeaContent() {
           )
         ) : idea.content ? (
           <>
-            <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100">{idea.content}</div>
+            <div
+              className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100 select-none"
+              onCopy={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              {idea.content}
+            </div>
             {idea.attachments && (idea.attachments as any[]).length > 0 && (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {(idea.attachments as any[]).map((att: any, i: number) =>
