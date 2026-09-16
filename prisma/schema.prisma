@@ -82,6 +82,7 @@ model User {
   ownedRooms             ChatRoom[]       @relation("RoomOwner")
   roomMemberships        ChatRoomMember[]
   pushSubscriptions      PushSubscription[]
+  favoriteRooms          ChatRoomFavorite[]
 
   @@index([status])
 }
@@ -334,9 +335,25 @@ model ChatRoom {
   asset      Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
   messages   ChatMessage[]
   members    ChatRoomMember[]
+  favoritedBy ChatRoomFavorite[]
   channelTariff SubscriptionTariff?
 
   @@index([ownerId])
+}
+
+/// A room a user starred in болталка for quick access — separate from
+/// ChatRoomMember (which is actual membership in private rooms).
+model ChatRoomFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String
+  createdAt DateTime @default(now())
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([userId])
 }
 
 /// Membership for user-created private rooms (ChatRoom.ownerId != null).

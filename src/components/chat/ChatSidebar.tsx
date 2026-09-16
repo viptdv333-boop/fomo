@@ -28,6 +28,13 @@ interface PrivateRoom {
   isOwner: boolean;
 }
 
+interface FavoriteRoom {
+  roomId: string;
+  name: string;
+  isPrivate: boolean;
+  assetSlug: string | null;
+}
+
 interface Props {
   currentSlug?: string;
   currentRoomId?: string;
@@ -58,6 +65,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   const [search, setSearch] = useState("");
   const [privateRooms, setPrivateRooms] = useState<PrivateRoom[]>([]);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [favorites, setFavorites] = useState<Map<string, FavoriteRoom>>(new Map());
 
   function loadPrivateRooms() {
     if (!session?.user?.id) return;
@@ -67,9 +75,40 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
       .catch(() => {});
   }
 
+  function loadFavorites() {
+    if (!session?.user?.id) return;
+    fetch("/api/chat/favorites")
+      .then((r) => r.json())
+      .then((data: FavoriteRoom[]) => {
+        if (Array.isArray(data)) setFavorites(new Map(data.map((f) => [f.roomId, f])));
+      })
+      .catch(() => {});
+  }
+
   useEffect(() => {
     loadPrivateRooms();
+    loadFavorites();
   }, [session?.user?.id]);
+
+  async function toggleFavorite(e: React.MouseEvent, room: FavoriteRoom) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (favorites.has(room.roomId)) {
+      setFavorites((prev) => {
+        const next = new Map(prev);
+        next.delete(room.roomId);
+        return next;
+      });
+      await fetch(`/api/chat/favorites?roomId=${room.roomId}`, { method: "DELETE" }).catch(() => {});
+    } else {
+      setFavorites((prev) => new Map(prev).set(room.roomId, room));
+      await fetch("/api/chat/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: room.roomId }),
+      }).catch(() => {});
+    }
+  }
 
   useEffect(() => {
     fetch("/api/assets")
@@ -173,7 +212,14 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition truncate"
                 >
                   <span className="shrink-0">🔒</span>
-                  <span className="truncate">{room.name}</span>
+                  <span className="truncate flex-1">{room.name}</span>
+                  <button
+                    onClick={(e) => toggleFavorite(e, { roomId: room.id, name: room.name, isPrivate: true, assetSlug: null })}
+                    className={`shrink-0 ${favorites.has(room.id) ? "text-yellow-500" : "text-gray-300 hover:text-yellow-500 dark:text-gray-600"}`}
+                    title="В избранное"
+                  >
+                    {favorites.has(room.id) ? "★" : "☆"}
+                  </button>
                 </Link>
               ))}
             </div>
@@ -227,23 +273,67 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
             {openCats.has(cat.slug) && cat.assets.map(asset => {
               const active = isActive(asset);
               const href = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
+              const isFav = asset.chatRoom ? favorites.has(asset.chatRoom.id) : false;
               return (
                 <Link
                   key={asset.id}
                   href={href}
                   onClick={() => handleClick(asset)}
-                  className={`block pl-10 pr-4 py-2 text-sm transition truncate ${
+                  className={`flex items-center gap-2 pl-10 pr-4 py-2 text-sm transition truncate ${
                     active
                       ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium border-l-2 border-green-500"
                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent"
                   }`}
                 >
-                  {asset.name}
+                  <span className="truncate flex-1">{asset.name}</span>
+                  {asset.chatRoom && (
+                    <button
+                      onClick={(e) => toggleFavorite(e, { roomId: asset.chatRoom!.id, name: asset.name, isPrivate: false, assetSlug: asset.slug })}
+                      className={`shrink-0 ${isFav ? "text-yellow-500" : "text-gray-300 hover:text-yellow-500 dark:text-gray-600"}`}
+                      title="В избранное"
+                    >
+                      {isFav ? "★" : "☆"}
+                    </button>
+                  )}
                 </Link>
               );
             })}
           </div>
         ))}
+
+        {/* Favorites — starred chats, for quick access regardless of category */}
+        {favorites.size > 0 && (
+          <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2">
+            <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Избранное
+            </div>
+            {[...favorites.values()].map((f) => {
+              const href = f.isPrivate ? `/rooms/${f.roomId}` : `/chat?room=${f.roomId}`;
+              const active = currentRoomId === f.roomId;
+              return (
+                <Link
+                  key={f.roomId}
+                  href={href}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition truncate ${
+                    active
+                      ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium border-l-2 border-green-500"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent"
+                  }`}
+                >
+                  <span className="shrink-0 text-yellow-500">★</span>
+                  <span className="truncate flex-1">{f.name}</span>
+                  <button
+                    onClick={(e) => toggleFavorite(e, f)}
+                    className="shrink-0 text-gray-300 hover:text-red-500 dark:text-gray-600"
+                    title="Убрать из избранного"
+                  >
+                    ✕
+                  </button>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
