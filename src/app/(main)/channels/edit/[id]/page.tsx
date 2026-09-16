@@ -138,9 +138,16 @@ export default function EditChannelPage() {
   }
 
   function updateTariff(idx: number, field: string, value: any) {
-    const updated = [...tariffs];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setTariffs(updated);
+    // Functional form: a payment-method checkbox click fires several of
+    // these in one handler (paymentMethods, then cardNumber/sbpQrUrl/
+    // yukassa fields) — reading from the `tariffs` closure meant every call
+    // after the first started over from the same stale array and clobbered
+    // the ones before it, so only the LAST field in a click ever stuck.
+    setTariffs((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
   }
 
   async function handleSave() {

@@ -254,6 +254,13 @@ export default function TerminalPage() {
       <h1 className="sr-only">
         Торговый терминал: онлайн-графики акций, фьючерсов МосБиржи и криптовалют
       </h1>
+      {/* In-development notice */}
+      <div className="shrink-0 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-amber-800 dark:text-amber-200 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-100 dark:from-amber-900/30 dark:via-yellow-900/20 dark:to-amber-900/30 border border-amber-200 dark:border-amber-800/50">
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 3.75a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v2.25h3.75a.75.75 0 01.6 1.2l-2.1 2.8 2.1 2.8a.75.75 0 01-.6 1.2h-3.75v9a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75v-9H6.75a.75.75 0 01-.6-1.2l2.1-2.8-2.1-2.8a.75.75 0 01.6-1.2h3.75V3.75z" />
+        </svg>
+        Терминал в разработке — возможны неточности и изменения
+      </div>
       {/* Top bar: ticker info + price */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-3 md:px-4 py-2.5 shrink-0">
         <div className="flex items-center gap-2 md:gap-4">

@@ -66,9 +66,12 @@ export default function CreateChannelPage() {
   }
 
   function updateTariff(index: number, field: keyof TariffRow, value: any) {
-    const updated = [...tariffs];
-    updated[index] = { ...updated[index], [field]: value };
-    setTariffs(updated);
+    // Functional form — see the same fix in channels/edit/[id]/page.tsx for why.
+    setTariffs((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   }
 
   function togglePaymentMethod(index: number, method: "card" | "yukassa") {
