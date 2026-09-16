@@ -72,7 +72,10 @@ export async function GET(
       instruments: {
         select: {
           instrument: {
-            select: { id: true, name: true, slug: true },
+            select: {
+              id: true, name: true, slug: true,
+              asset: { select: { slug: true, name: true } },
+            },
           },
         },
       },
