@@ -5,9 +5,11 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
+import ShareButtons from "@/components/shared/ShareButtons";
 
 interface Channel {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   price: number;
@@ -408,6 +410,18 @@ export default function ChannelsPage() {
                           {ch.author.displayName}
                         </div>
                         <StarRating rating={ch.author.rating} />
+                        <div
+                          className="flex items-center gap-1.5 mt-1"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        >
+                          <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                            ID <span className="font-mono text-green-600 dark:text-green-400">{ch.slug || ch.id.slice(0, 8)}</span>
+                          </span>
+                          <ShareButtons
+                            url={`https://fomo.spot/channels/${ch.slug || ch.id}`}
+                            text={`${ch.name} — канал на FOMO`}
+                          />
+                        </div>
                       </div>
                     </div>
                     {ch.price > 0 && (

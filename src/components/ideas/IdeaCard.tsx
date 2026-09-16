@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
+import ShareButtons from "@/components/shared/ShareButtons";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -159,6 +160,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </svg>
           {likeCount}
         </span>
+        <ShareButtons url={`https://fomo.spot/ideas/${idea.id}`} text={idea.title} />
       </div>
     );
   }
@@ -315,29 +317,29 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             </svg>
             {likeCount}
           </button>
-
-          {canDonate && (
-            <button
-              onClick={() => setShowDonateModal(true)}
-              className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
-            >
-              ☕ {t("idea.donate")}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Report button */}
-      {session && !minimal && (
-        <div className="flex justify-end mt-1">
+      {/* Bottom row: donate, share, report */}
+      <div className="flex items-center justify-end gap-3 mt-1">
+        {canDonate && (
+          <button
+            onClick={() => setShowDonateModal(true)}
+            className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
+            ☕ {t("idea.donate")}
+          </button>
+        )}
+        <ShareButtons url={`https://fomo.spot/ideas/${idea.id}`} text={idea.title} />
+        {session && (
           <button
             onClick={() => setShowReport(!showReport)}
             className="text-[10px] text-gray-300 dark:text-gray-600 hover:text-red-400 transition"
           >
             {reportSent ? t("report.sent") : t("report.button")}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {showReport && !reportSent && (
         <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
