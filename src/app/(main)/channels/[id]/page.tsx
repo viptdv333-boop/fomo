@@ -317,7 +317,9 @@ export default function ChannelPage() {
                   /* Unlocked idea card */
                   <Link
                     href={`/ideas/${idea.id}`}
-                    className={`block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition ${isOwner ? "pr-32" : ""}`}
+                    className={`block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${isOwner ? "pr-32" : ""}`}
+                    onCopy={(e) => e.preventDefault()}
+                    onContextMenu={(e) => e.preventDefault()}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">

@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
+import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
@@ -99,7 +100,12 @@ export default function IdeaContent() {
         </svg>
         {t("common.back")}
       </button>
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8">
+      <div
+        className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-8 select-none"
+        onCopy={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <Watermark url={`fomo.spot/ideas/${idea.id}`} />
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">
             {idea.author.avatarUrl ? (
@@ -210,13 +216,7 @@ export default function IdeaContent() {
           )
         ) : idea.content ? (
           <>
-            <div
-              className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100 select-none"
-              onCopy={(e) => e.preventDefault()}
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              {idea.content}
-            </div>
+            <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100">{idea.content}</div>
             {idea.attachments && (idea.attachments as any[]).length > 0 && (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {(idea.attachments as any[]).map((att: any, i: number) =>

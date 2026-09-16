@@ -6,6 +6,7 @@ import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import ShareButtons from "@/components/shared/ShareButtons";
+import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -126,7 +127,11 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   // Minimal list view
   if (minimal) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+      <div
+        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition select-none"
+        onCopy={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <div className={`w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden`}>
           {idea.author.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -168,7 +173,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   // Compact card view
   if (compact) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full">
+      <div
+        className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full select-none"
+        onCopy={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <Watermark url={`fomo.spot/ideas/${idea.id}`} />
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}>
             {idea.author.avatarUrl ? (
@@ -221,7 +231,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
 
   // Default paragraph view — NO border
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 hover:shadow-md transition">
+    <div
+      className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-6 hover:shadow-md transition select-none"
+      onCopy={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <Watermark url={`fomo.spot/ideas/${idea.id}`} />
       {/* Top: Avatar + Author info + Price badge */}
       <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${idea.author.id}`} className="shrink-0">

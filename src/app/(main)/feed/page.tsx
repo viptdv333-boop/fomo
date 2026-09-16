@@ -387,7 +387,10 @@ function FeedPage() {
             const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
             return (
               <Link key={idea.id} href={`/ideas/${idea.id}`}
-                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md">
+                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
+                onCopy={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
