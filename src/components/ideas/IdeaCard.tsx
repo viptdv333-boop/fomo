@@ -178,7 +178,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <Watermark url={`fomo.spot/ideas/${idea.id}`} />
+        <Watermark />
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}>
             {idea.author.avatarUrl ? (
@@ -236,7 +236,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
       onCopy={(e) => e.preventDefault()}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Watermark url={`fomo.spot/ideas/${idea.id}`} />
+      <Watermark />
       {/* Top: Avatar + Author info + Price badge */}
       <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${idea.author.id}`} className="shrink-0">

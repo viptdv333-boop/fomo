@@ -7,6 +7,7 @@ import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import Watermark from "@/components/shared/Watermark";
+import ShareButtons from "@/components/shared/ShareButtons";
 import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
@@ -105,7 +106,7 @@ export default function IdeaContent() {
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <Watermark url={`fomo.spot/ideas/${idea.id}`} />
+        <Watermark />
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">
             {idea.author.avatarUrl ? (
@@ -260,16 +261,19 @@ export default function IdeaContent() {
               {t("idea.dislike")}
             </button>
 
-            {idea.acceptDonations &&
-              session.user?.id !== idea.author.id &&
-              (idea.author.donationCard || idea.author.sbpQrUrl) && (
-                <button
-                  onClick={() => setShowDonateModal(true)}
-                  className="ml-auto px-3 py-1.5 rounded-lg text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 transition font-medium"
-                >
-                  ☕ {t("idea.donate")}
-                </button>
-              )}
+            <div className="ml-auto flex items-center gap-2">
+              {idea.acceptDonations &&
+                session.user?.id !== idea.author.id &&
+                (idea.author.donationCard || idea.author.sbpQrUrl) && (
+                  <button
+                    onClick={() => setShowDonateModal(true)}
+                    className="px-3 py-1.5 rounded-lg text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 transition font-medium"
+                  >
+                    ☕ {t("idea.donate")}
+                  </button>
+                )}
+              <ShareButtons url={`https://fomo.spot/ideas/${idea.id}`} text={idea.title} />
+            </div>
           </div>
         )}
       </div>
