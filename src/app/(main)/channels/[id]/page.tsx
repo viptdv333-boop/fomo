@@ -185,14 +185,15 @@ export default function ChannelPage() {
               <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
               <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              ID <span className="font-mono text-green-600 dark:text-green-400">{channel.slug || channel.id.slice(0, 8)}</span>
-              {" · "}
-              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.slug || channel.id}</span>
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                ID <span className="font-mono text-green-600 dark:text-green-400">{channel.slug || channel.id.slice(0, 8)}</span>
+                {" · "}
+                <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.slug || channel.id}</span>
+              </p>
+              <ShareButtons url={`https://fomo.spot/channels/${channel.slug || channel.id}`} text={`${channel.name} — канал на FOMO`} />
+            </div>
           </div>
-
-          <ShareButtons url={`https://fomo.spot/channels/${channel.slug || channel.id}`} text={`${channel.name} — канал на FOMO`} />
         </div>
 
         {channel.description && (
