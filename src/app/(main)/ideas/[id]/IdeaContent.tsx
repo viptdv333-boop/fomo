@@ -150,9 +150,11 @@ export default function IdeaContent() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h1 className="text-2xl font-bold">{idea.title}</h1>
+        {/* На телефоне кнопки автора уходят под заголовок: в одной строке
+            они сжимали заголовок в столбик по слову. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+          <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1 basis-[16rem]">
+            <h1 className="text-2xl font-bold break-words min-w-0">{idea.title}</h1>
             {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
             {idea.moderationStatus === "archived" && <ArchivedBadge className="shrink-0" />}
           </div>
