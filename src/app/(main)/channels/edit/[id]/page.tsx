@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import ShareButtons from "@/components/shared/ShareButtons";
 
 interface TariffData {
   id: string;
@@ -258,6 +259,17 @@ export default function EditChannelPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.nameLabel")}</label>
           <input type="text" value={channelName} onChange={(e) => setChannelName(e.target.value)} className={inputCls} />
+          <div className="flex items-center gap-2 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              ID <span className="font-mono text-green-600 dark:text-green-400">{editId.slice(0, 8)}</span>
+              {" · "}
+              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{editId}</span>
+            </p>
+            <ShareButtons
+              url={`https://fomo.spot/channels/${editId}`}
+              text={`${channelName || "Канал"} на FOMO`}
+            />
+          </div>
         </div>
 
         {/* Description */}

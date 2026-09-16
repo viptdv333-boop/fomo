@@ -116,7 +116,7 @@ export default function WatchlistWidget({ userId, isOwner = false }: Props) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow">
       <div className="p-4 border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -171,8 +171,10 @@ export default function WatchlistWidget({ userId, isOwner = false }: Props) {
             </div>
           )}
 
-          {/* TradingView widget */}
-          <div ref={tvRef} />
+          {/* TradingView widget — clipped separately so it doesn't force
+              overflow-hidden on the whole card, which used to clip the
+              absolutely-positioned search dropdown above. */}
+          <div className="overflow-hidden rounded-b-xl" ref={tvRef} />
         </>
       )}
     </div>

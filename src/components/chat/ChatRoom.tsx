@@ -746,11 +746,11 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
                       {/* Reply preview */}
                       {msg.replyTo && (
-                        <div className="mt-1 mb-1 pl-3 border-l-2 border-green-400 bg-green-50/50 dark:bg-green-900/20 rounded-r py-1 pr-2 max-w-fit">
+                        <div className="mt-1 mb-1 pl-3 border-l-2 border-green-400 bg-green-50/50 dark:bg-green-900/20 rounded-r py-1 pr-2 max-w-full">
                           <span className="text-xs font-semibold text-green-600 dark:text-green-400">
                             {msg.replyTo.user.displayName}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1.5 truncate">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1.5 break-words">
                             {msg.replyTo.text.slice(0, 80)}
                           </span>
                         </div>
@@ -952,7 +952,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
               <div className="text-xs text-green-600 dark:text-green-400 font-semibold">
                 Ответ для {replyTo.user.displayName}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{replyTo.text}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 break-words">{replyTo.text}</div>
             </div>
             <button
               onClick={() => setReplyTo(null)}

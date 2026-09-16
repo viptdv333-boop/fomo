@@ -175,8 +175,7 @@ export default function ChannelPage() {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {channel.name}{" "}
-              <span className="text-sm font-normal text-gray-400">({channel.id.slice(0, 8)})</span>
+              {channel.name}
             </h1>
             <Link href={`/profile/${channel.author.id}`} className="text-sm text-green-600 hover:underline">
               {channel.author.displayName}
@@ -185,6 +184,11 @@ export default function ChannelPage() {
               <span>⭐ {Number(channel.author.rating).toFixed(1)}</span>
               <span>👥 {channel.subscribersCount} {t("channels.subscribers")}</span>
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              ID <span className="font-mono text-green-600 dark:text-green-400">{channel.id.slice(0, 8)}</span>
+              {" · "}
+              <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.id}</span>
+            </p>
           </div>
 
           <ShareButtons url={`https://fomo.spot/channels/${channel.id}`} text={`${channel.name} — канал на FOMO`} />
@@ -355,7 +359,6 @@ export default function ChannelPage() {
               >
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.name}</span>
-                  <span className="text-xs text-gray-400 ml-1">({t.id.slice(0, 8)})</span>
                 </div>
                 <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                   {t.price} ₽ / {t.durationDays} дн.
