@@ -8,6 +8,7 @@ import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import Watermark from "@/components/shared/Watermark";
 import ShareButtons from "@/components/shared/ShareButtons";
+import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import { useT } from "@/lib/i18n/client";
 
 interface IdeaDetail {
@@ -38,7 +39,7 @@ interface IdeaDetail {
     donationCard?: string | null;
     sbpQrUrl?: string | null;
   };
-  instruments: { id: string; name: string; slug: string }[];
+  instruments: { id: string; name: string; slug: string; asset?: { slug: string; name: string } | null }[];
   voteScore: number;
   userVote: number | null;
 }
@@ -192,9 +193,10 @@ export default function IdeaContent() {
             <Link
               key={inst.id}
               href={`/instruments/${inst.slug}`}
-              className="px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition"
             >
-              #{inst.name}
+              <InstrumentLogo slug={inst.asset?.slug || inst.slug} name={inst.asset?.name || inst.name} size={16} />
+              {inst.name}
             </Link>
           ))}
         </div>
