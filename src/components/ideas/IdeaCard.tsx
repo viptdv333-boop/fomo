@@ -6,7 +6,6 @@ import { useState } from "react";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import ShareButtons from "@/components/shared/ShareButtons";
-import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -197,7 +196,6 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <Watermark />
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}>
             {idea.author.avatarUrl ? (
@@ -256,7 +254,6 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
       onCopy={(e) => e.preventDefault()}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Watermark />
       {/* Top: Avatar + Author info + Price badge */}
       <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${idea.author.id}`} className="shrink-0">
