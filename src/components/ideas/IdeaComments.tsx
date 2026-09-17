@@ -8,6 +8,7 @@ interface Comment {
   id: string;
   text: string;
   fileUrl?: string | null;
+  reactions?: Record<string, string[]> | null;
   createdAt: string;
   user: { id: string; displayName: string; avatarUrl: string | null };
   replyTo?: { id: string; text: string; user: { displayName: string } } | null;
@@ -76,6 +77,19 @@ export default function IdeaComments({ ideaId }: Props) {
     loadComments();
   }
 
+  async function toggleReaction(commentId: string, emoji: "❤️" | "👎") {
+    if (!session?.user) return;
+    const res = await fetch("/api/ideas/comments/reactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commentId, emoji }),
+    });
+    if (res.ok) {
+      const { reactions } = await res.json();
+      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, reactions } : c)));
+    }
+  }
+
   return (
     <div className="mt-4">
       <div className="flex items-center gap-2 mb-3">
@@ -118,7 +132,32 @@ export default function IdeaComments({ ideaId }: Props) {
                 {/* Always visible (not hover-only) — hover reveals nothing on
                     touch devices, which made replying effectively undiscoverable
                     on mobile. */}
-                <div className="flex gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5">
+                  {(() => {
+                    const reactions = c.reactions || {};
+                    const likeIds = reactions["❤️"] || [];
+                    const dislikeIds = reactions["👎"] || [];
+                    const myLike = likeIds.includes(session?.user?.id || "");
+                    const myDislike = dislikeIds.includes(session?.user?.id || "");
+                    return (
+                      <>
+                        <button
+                          onClick={() => toggleReaction(c.id, "❤️")}
+                          disabled={!session?.user}
+                          className={`flex items-center gap-0.5 text-[10px] font-medium transition ${myLike ? "text-red-500" : "text-gray-400 hover:text-red-400"}`}
+                        >
+                          {myLike ? "❤️" : "🤍"} {likeIds.length > 0 && likeIds.length}
+                        </button>
+                        <button
+                          onClick={() => toggleReaction(c.id, "👎")}
+                          disabled={!session?.user}
+                          className={`flex items-center gap-0.5 text-[10px] font-medium transition ${myDislike ? "text-blue-500" : "text-gray-400 hover:text-blue-400"}`}
+                        >
+                          👎 {dislikeIds.length > 0 && dislikeIds.length}
+                        </button>
+                      </>
+                    );
+                  })()}
                   {session?.user && (
                     <button onClick={() => { setReplyTo(c); setInput(`@${c.user.displayName}, `); inputRef.current?.focus(); }}
                       className="text-[10px] text-gray-400 hover:text-green-600 font-medium">↩ {t("idea.reply")}</button>

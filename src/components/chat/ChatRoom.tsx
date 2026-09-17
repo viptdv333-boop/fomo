@@ -88,7 +88,9 @@ interface ChatRoomProps {
 }
 
 /* ── Constants ── */
-const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
+// ❤️ and 👎 have dedicated Like/Dislike buttons on every message — kept out
+// of the quick picker so there's exactly one way to react with each.
+const QUICK_REACTIONS = ["👍", "😂", "🔥", "😮", "🎉", "😢"];
 // Instrument shortcode emojis — rendered as inline images
 const INSTRUMENT_EMOJIS = [
   // Crypto (15)

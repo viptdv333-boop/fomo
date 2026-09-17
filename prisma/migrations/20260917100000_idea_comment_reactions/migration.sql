@@ -1,0 +1,1 @@
+ALTER TABLE "IdeaComment" ADD COLUMN IF NOT EXISTS "reactions" JSONB;

@@ -32,7 +32,16 @@ export async function recalculateRating(userId: string): Promise<number> {
     return MAX_RATING;
   }
 
-  const [followerCount, likesAgg, dislikesAgg, ideaCount, commentLikesRows, commentDislikesRows] = await Promise.all([
+  const [
+    followerCount,
+    likesAgg,
+    dislikesAgg,
+    ideaCount,
+    chatLikeRows,
+    chatDislikeRows,
+    ideaCommentLikeRows,
+    ideaCommentDislikeRows,
+  ] = await Promise.all([
     prisma.follow.count({ where: { authorId: userId } }),
     prisma.ideaVote.aggregate({
       where: { idea: { authorId: userId }, value: 1 },
@@ -57,12 +66,22 @@ export async function recalculateRating(userId: string): Promise<number> {
       FROM "ChatMessage"
       WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '👎'
     `,
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COALESCE(SUM(jsonb_array_length(reactions->'❤️')), 0)::bigint AS count
+      FROM "IdeaComment"
+      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '❤️'
+    `,
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COALESCE(SUM(jsonb_array_length(reactions->'👎')), 0)::bigint AS count
+      FROM "IdeaComment"
+      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '👎'
+    `,
   ]);
 
   const likes = likesAgg._sum.value ?? 0;
   const dislikes = Math.abs(dislikesAgg._sum.value ?? 0);
-  const commentLikes = Number(commentLikesRows[0]?.count ?? 0);
-  const commentDislikes = Number(commentDislikesRows[0]?.count ?? 0);
+  const commentLikes = Number(chatLikeRows[0]?.count ?? 0) + Number(ideaCommentLikeRows[0]?.count ?? 0);
+  const commentDislikes = Number(chatDislikeRows[0]?.count ?? 0) + Number(ideaCommentDislikeRows[0]?.count ?? 0);
 
   let inactivityDays = 0;
   if (user.lastPublishedAt) {

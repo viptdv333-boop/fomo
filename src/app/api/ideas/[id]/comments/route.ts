@@ -12,7 +12,12 @@ export async function GET(
 
   const comments = await prisma.ideaComment.findMany({
     where: { ideaId, isDeleted: false },
-    include: {
+    select: {
+      id: true,
+      text: true,
+      fileUrl: true,
+      reactions: true,
+      createdAt: true,
       user: { select: { id: true, displayName: true, avatarUrl: true } },
       replyTo: {
         select: { id: true, text: true, user: { select: { displayName: true } } },

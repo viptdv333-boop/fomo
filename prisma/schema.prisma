@@ -225,6 +225,7 @@ model IdeaComment {
   fileUrl   String?
   replyToId String?
   isDeleted Boolean  @default(false)
+  reactions Json?
   createdAt DateTime @default(now())
 
   idea    Idea          @relation(fields: [ideaId], references: [id], onDelete: Cascade)
