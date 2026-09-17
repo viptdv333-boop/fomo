@@ -45,15 +45,53 @@ const FUTURES_PREFIX: Record<string, string> = {
 const contractCache = new Map<string, { contract: string; resolved: number }>();
 const CONTRACT_CACHE_TTL = 3600_000; // 1 hour
 
-function getDateFrom(count: number, interval: string): string {
-  const d = new Date();
+// `anchorMs` is "now" for a live/initial load, or the chart's requested
+// `to` timestamp when paging further back into history — without it every
+// history request resolved to the same "now − N bars" window, so scrolling
+// back just re-fetched and re-drew the same recent chunk (looked like the
+// chart repeating/tiling itself).
+function getDateFrom(count: number, interval: string, anchorMs?: number): string {
+  const d = anchorMs ? new Date(anchorMs) : new Date();
   switch (interval) {
     case "M": d.setMonth(d.getMonth() - count); break;
     case "W": d.setDate(d.getDate() - count * 7); break;
     case "D": d.setDate(d.getDate() - count); break;
-    default: d.setDate(d.getDate() - 7); break;
+    default: d.setDate(d.getDate() - Math.max(7, Math.ceil((count * 5) / 300))); break;
   }
   return d.toISOString().slice(0, 10);
+}
+
+// MOEX ISS paginates candles.json in pages of up to 500 rows via `start`
+// (row offset). Loop until a short/empty page signals the end of what's
+// available in the [from, till] window, then dedupe by timestamp — the
+// same defensive merge the reference terminal-3 project uses whenever it
+// combines pages, so a retried/overlapping page can never double a bar.
+async function fetchIssCandlesPage(
+  url: string,
+  moexInterval: number,
+  from: string,
+  till?: string
+): Promise<any[][]> {
+  const rows: any[][] = [];
+  let start = 0;
+  for (let page = 0; page < 20; page++) {
+    const params = new URLSearchParams({
+      interval: String(moexInterval),
+      from,
+      start: String(start),
+      "iss.meta": "off",
+    });
+    if (till) params.set("till", till);
+    const res = await fetch(`${url}?${params}`, { cache: "no-store" });
+    if (!res.ok) break;
+    const data = await res.json();
+    const batch: any[][] = data.candles?.data;
+    if (!batch || batch.length === 0) break;
+    rows.push(...batch);
+    if (batch.length < 500) break;
+    start += batch.length;
+  }
+  return rows;
 }
 
 // Find nearest active futures contract for a base ticker
@@ -106,24 +144,48 @@ function parseCandles(candles: any[][]) {
   }));
 }
 
+function toDateStr(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+// Filter to the requested window, dedupe by timestamp (keep-last — cheap
+// insurance against ISS's day-granularity `till` overlapping an adjacent
+// request), then trim to the most recent `limit` bars within that window.
+function finalizeMoexCandles(rawRows: any[][], toMs: number | undefined, limit: number) {
+  let parsed = parseCandles(rawRows);
+  if (toMs !== undefined) {
+    parsed = parsed.filter((c) => c.timestamp <= toMs);
+  }
+  const byTs = new Map<number, (typeof parsed)[number]>();
+  for (const c of parsed) byTs.set(c.timestamp, c);
+  return Array.from(byTs.values())
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-limit);
+}
+
 interface MoexResult {
   candles: any[];
   resolvedTicker: string;
 }
 
-async function fetchMoexCandles(ticker: string, interval: string, limit: number): Promise<MoexResult> {
+async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs?: number): Promise<MoexResult> {
   const moexInterval = MOEX_INTERVALS[interval] || 24;
-  const from = getDateFrom(limit, interval);
+  const from = getDateFrom(limit, interval, toMs);
+  // Live/initial load: omit `till` so today's still-forming candle isn't
+  // excluded. Scroll-back load: bound `till` to toMs's calendar day — ISS's
+  // `till` is date-granularity only, so this is a broad net; the exact
+  // `timestamp <= toMs` cut happens in finalizeMoexCandles.
+  const till = toMs !== undefined ? toDateStr(toMs) : undefined;
 
   // 1. Try all standard boards with the exact ticker
   for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
     try {
-      const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const candles = data.candles?.data;
-      if (candles && candles.length > 0) return { candles: parseCandles(candles), resolvedTicker: ticker };
+      const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json`;
+      const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
+      if (rows.length > 0) {
+        const candles = finalizeMoexCandles(rows, toMs, limit);
+        if (candles.length > 0) return { candles, resolvedTicker: ticker };
+      }
     } catch {
       continue;
     }
@@ -133,12 +195,12 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number)
   const activeContract = await findActiveContract(ticker);
   if (activeContract) {
     try {
-      const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json?interval=${moexInterval}&from=${from}&iss.meta=off`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) return { candles: [], resolvedTicker: ticker };
-      const data = await res.json();
-      const candles = data.candles?.data;
-      if (candles && candles.length > 0) return { candles: parseCandles(candles), resolvedTicker: activeContract };
+      const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json`;
+      const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
+      if (rows.length > 0) {
+        const candles = finalizeMoexCandles(rows, toMs, limit);
+        if (candles.length > 0) return { candles, resolvedTicker: activeContract };
+      }
     } catch {
       // fall through
     }
@@ -153,7 +215,7 @@ const FMP_INTERVALS: Record<string, string> = {
   "1": "1min", "5": "5min", "15": "15min", "60": "1hour", "240": "4hour",
 };
 
-async function fetchFmpCandles(ticker: string, interval: string, limit: number) {
+async function fetchFmpCandles(ticker: string, interval: string, limit: number, toMs?: number) {
   try {
     if (["D", "W", "M"].includes(interval)) {
       // Daily/weekly/monthly — use EOD endpoint
@@ -164,10 +226,15 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number) 
       if (!res.ok) return [];
       const data = await res.json();
       const hist = Array.isArray(data) ? data : data?.historical || [];
-      return hist.slice(0, limit).reverse().map((c: any) => ({
+      // hist is newest-first — filter to the requested window before
+      // slicing, instead of always taking the newest `limit` regardless of
+      // what window the chart actually asked for.
+      const mapped = hist.map((c: any) => ({
         timestamp: new Date(c.date).getTime(),
         open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
       }));
+      const windowed = toMs !== undefined ? mapped.filter((c: any) => c.timestamp <= toMs) : mapped;
+      return windowed.slice(0, limit).reverse();
     } else {
       // Intraday
       const fmpInterval = FMP_INTERVALS[interval] || "1hour";
@@ -178,10 +245,12 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number) 
       if (!res.ok) return [];
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
-      return arr.slice(0, limit).reverse().map((c: any) => ({
+      const mapped = arr.map((c: any) => ({
         timestamp: new Date(c.date).getTime(),
         open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
       }));
+      const windowed = toMs !== undefined ? mapped.filter((c: any) => c.timestamp <= toMs) : mapped;
+      return windowed.slice(0, limit).reverse();
     }
   } catch {
     return [];
@@ -248,11 +317,11 @@ export async function GET(request: NextRequest) {
   let resolvedTicker = ticker;
 
   if (source === "moex") {
-    const result = await fetchMoexCandles(ticker, interval, limit);
+    const result = await fetchMoexCandles(ticker, interval, limit, toMs);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
   } else if (source === "fmp") {
-    candles = await fetchFmpCandles(ticker, interval, limit);
+    candles = await fetchFmpCandles(ticker, interval, limit, toMs);
   } else if (source === "bybit") {
     candles = await fetchBybitCandles(ticker, interval, limit, toMs);
   }
