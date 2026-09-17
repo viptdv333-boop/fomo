@@ -8,6 +8,8 @@ import { useT } from "@/lib/i18n/client";
 interface SubItem {
   id: string;
   type: "paid" | "free";
+  tariffId: string | null;
+  telegramNotify: boolean;
   monthlyPrice: number;
   startDate: string;
   endDate: string | null;
@@ -63,6 +65,8 @@ export default function SubscriptionsPage() {
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null);
   const [channelSubscribers, setChannelSubscribers] = useState<Record<string, ChannelSubscriberItem[]>>({});
   const [subscribersLoading, setSubscribersLoading] = useState<string | null>(null);
+  const [telegramVerified, setTelegramVerified] = useState(false);
+  const [telegramBusyId, setTelegramBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -70,13 +74,40 @@ export default function SubscriptionsPage() {
       fetch("/api/subscriptions").then((r) => r.json()),
       fetch(`/api/users/${user.id}/tariffs`).then((r) => r.json()).catch(() => []),
       fetch(`/api/users/${user.id}/followers`).then((r) => r.json()).catch(() => []),
-    ]).then(([subsData, channelsData, followersData]) => {
+      fetch("/api/telegram/account").then((r) => r.json()).catch(() => null),
+    ]).then(([subsData, channelsData, followersData, telegramData]) => {
       setSubs(Array.isArray(subsData) ? subsData : []);
       setChannels(Array.isArray(channelsData) ? channelsData : []);
       setFollowers(Array.isArray(followersData) ? followersData : []);
+      setTelegramVerified(Boolean(telegramData?.verified));
       setLoading(false);
     });
   }, [user?.id]);
+
+  async function toggleTelegram(sub: SubItem) {
+    if (!sub.tariffId) return;
+    if (!telegramVerified && !sub.telegramNotify) {
+      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      return;
+    }
+    setTelegramBusyId(sub.id);
+    const enabled = !sub.telegramNotify;
+    try {
+      const res = await fetch(`/api/subscriptions/${sub.id}/telegram`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось изменить настройку");
+        return;
+      }
+      setSubs((prev) => prev.map((s) => (s.id === sub.id ? { ...s, telegramNotify: enabled } : s)));
+    } finally {
+      setTelegramBusyId(null);
+    }
+  }
 
   async function toggleChannelSubscribers(channelId: string) {
     if (expandedChannelId === channelId) {
@@ -316,6 +347,19 @@ export default function SubscriptionsPage() {
                         {sub.endDate && <> · До {new Date(sub.endDate).toLocaleDateString("ru")}</>}
                       </div>
                     </div>
+                    <label
+                      className="flex items-center gap-1.5 shrink-0 text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
+                      title={telegramVerified ? "Пересылать сообщения канала в Telegram" : "Сначала подключите бота в профиле"}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={sub.telegramNotify}
+                        disabled={telegramBusyId === sub.id}
+                        onChange={() => toggleTelegram(sub)}
+                        className="w-3.5 h-3.5 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
+                      />
+                      Telegram
+                    </label>
                     <button className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0">
                       {t("channels.unsubscribe")}
                     </button>

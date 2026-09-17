@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
+import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
 // без браузерной NextAuth-сессии, автор зафиксирован (bot-auth.ts) — эндпоинт
 // намеренно не даёт управлять isPaid/price/authorId извне.
-// Намеренно НЕ трогает рейтинг/уведомления/подписчиков — это автоматика, а не
-// органическая публикация автора, никаких побочных эффектов на аккаунт быть не должно.
+// Намеренно НЕ трогает рейтинг/подписчиков/фолловер-уведомления — это
+// автоматика, а не органическая публикация автора, никаких побочных эффектов
+// на аккаунт быть не должно. Исключение (17.09.2026): подписчики канала САМИ
+// включают пересылку сетапов в свой Telegram-бот — это их собственная
+// настройка, не влияющая на аккаунт бота-автора, поэтому здесь она
+// выполняется всегда, когда пост уходит в закрытый канал (tariffId).
 //
 // КАНАЛЫ (13.09.2026): channelId — публикация в закрытый канал бота-автора.
 // Такой пост закрыт (isPaid), без цены, открывается подпиской на канал и в
@@ -102,6 +107,13 @@ export async function POST(request: NextRequest) {
     },
     select: { id: true, title: true, createdAt: true, tariffId: true },
   });
+
+  if (tariffId) {
+    await notifyChannelTelegramSubscribers(
+      tariffId,
+      `🔔 Новый сетап: <b>${escapeTelegramHtml(title)}</b>\n${escapeTelegramHtml(preview)}\n\nhttps://fomo.spot/ideas/${idea.id}`
+    ).catch(() => {});
+  }
 
   const { tariffId: savedChannelId, ...rest } = idea;
   return NextResponse.json(

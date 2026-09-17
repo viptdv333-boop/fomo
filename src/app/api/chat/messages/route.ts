@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
+import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -142,6 +143,21 @@ export async function POST(req: NextRequest) {
   const io = globalForIO.io;
   if (io) {
     io.to(parsed.data.roomId).emit("new_message", message);
+  }
+
+  // Paid-channel chat rooms (ChatRoom.channelTariff set) forward every
+  // message — owner's manual trade/order updates included — to subscribers
+  // who opted into Telegram forwarding for that channel.
+  const channelTariff = await prisma.subscriptionTariff.findFirst({
+    where: { channelRoomId: parsed.data.roomId },
+    select: { id: true },
+  });
+  if (channelTariff) {
+    const senderName = message.user.displayName;
+    await notifyChannelTelegramSubscribers(
+      channelTariff.id,
+      `💬 <b>${escapeTelegramHtml(senderName)}</b>: ${escapeTelegramHtml(parsed.data.text)}`
+    ).catch(() => {});
   }
 
   // Check for @mentions

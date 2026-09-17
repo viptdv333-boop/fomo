@@ -83,8 +83,28 @@ model User {
   roomMemberships        ChatRoomMember[]
   pushSubscriptions      PushSubscription[]
   favoriteRooms          ChatRoomFavorite[]
+  telegramAccount        TelegramAccount?
 
   @@index([status])
+}
+
+/// Пользователь подключает СВОЕГО Telegram-бота (сделан через @BotFather) —
+/// один бот на аккаунт, переиспользуется для пересылки любых оплаченных
+/// каналов, на которые включена пересылка (Subscription.telegramNotify).
+/// chatId находим автоматически через getUpdates после того как пользователь
+/// один раз напишет своему боту — см. src/lib/telegram.ts.
+model TelegramAccount {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  botToken    String
+  botUsername String?
+  chatId      String?
+  verifiedAt  DateTime?
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Education {
@@ -297,6 +317,9 @@ model Subscription {
   createdAt    DateTime @default(now())
   tariffId     String?
   durationDays Int?
+  /// Подписчик включил пересылку сообщений этого канала в свой Telegram-бот
+  /// (требует настроенного User.telegramAccount с уже найденным chatId).
+  telegramNotify Boolean @default(false)
 
   subscriber User                @relation("Subscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
   author     User                @relation("Author", fields: [authorId], references: [id], onDelete: Cascade)

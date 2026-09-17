@@ -9,6 +9,7 @@ import FinanceTab from "@/components/profile/FinanceTab";
 import RoomsTab from "@/components/profile/RoomsTab";
 import ShareButtons from "@/components/shared/ShareButtons";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
+import TelegramBotSettings from "@/components/profile/TelegramBotSettings";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
 
@@ -994,6 +995,8 @@ function ProfileContent() {
             </label>
           </div>
         )}
+
+        <TelegramBotSettings />
 
         <div className="flex items-center gap-4 pt-2">
           <button

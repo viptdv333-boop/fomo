@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
 import { notifyFollowers } from "@/lib/notifications";
+import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
 import { rateLimit } from "@/lib/rate-limit";
 
 // ---------- GET: List ideas ----------
@@ -431,6 +432,11 @@ export async function POST(request: NextRequest) {
       title,
       `/ideas/${idea.id}`
     );
+  } else if (tariffId) {
+    await notifyChannelTelegramSubscribers(
+      tariffId,
+      `🔔 Новый сетап: <b>${escapeTelegramHtml(title)}</b>\n${escapeTelegramHtml(preview)}\n\nhttps://fomo.spot/ideas/${idea.id}`
+    ).catch(() => {});
   }
 
   return NextResponse.json(idea, { status: 201 });

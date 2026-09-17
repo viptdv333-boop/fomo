@@ -43,6 +43,7 @@ export async function GET() {
       type: "paid" as const,
       // канал подписки (13.09.2026); null — старая подписка на автора целиком
       tariffId: s.tariffId,
+      telegramNotify: s.telegramNotify,
       monthlyPrice: s.monthlyPrice,
       startDate: s.startDate,
       endDate: s.endDate,
@@ -52,6 +53,7 @@ export async function GET() {
       id: f.id,
       type: "free" as const,
       tariffId: null,
+      telegramNotify: false,
       monthlyPrice: 0,
       startDate: f.createdAt,
       endDate: null,
