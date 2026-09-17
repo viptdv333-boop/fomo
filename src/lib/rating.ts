@@ -67,9 +67,9 @@ export async function recalculateRating(userId: string): Promise<number> {
       WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '👎'
     `,
     prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COALESCE(SUM(jsonb_array_length(reactions->'❤️')), 0)::bigint AS count
+      SELECT COALESCE(SUM(jsonb_array_length(reactions->'👍')), 0)::bigint AS count
       FROM "IdeaComment"
-      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '❤️'
+      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '👍'
     `,
     prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COALESCE(SUM(jsonb_array_length(reactions->'👎')), 0)::bigint AS count

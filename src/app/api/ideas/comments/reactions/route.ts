@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { commentId, emoji } = await req.json();
-  if (!commentId || (emoji !== "❤️" && emoji !== "👎")) {
-    return NextResponse.json({ error: "commentId and emoji (❤️ or 👎) required" }, { status: 400 });
+  if (!commentId || (emoji !== "👍" && emoji !== "👎")) {
+    return NextResponse.json({ error: "commentId and emoji (👍 or 👎) required" }, { status: 400 });
   }
 
   const userId = session.user.id!;

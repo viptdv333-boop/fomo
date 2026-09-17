@@ -77,7 +77,7 @@ export default function IdeaComments({ ideaId }: Props) {
     loadComments();
   }
 
-  async function toggleReaction(commentId: string, emoji: "❤️" | "👎") {
+  async function toggleReaction(commentId: string, emoji: "👍" | "👎") {
     if (!session?.user) return;
     const res = await fetch("/api/ideas/comments/reactions", {
       method: "POST",
@@ -135,18 +135,18 @@ export default function IdeaComments({ ideaId }: Props) {
                 <div className="flex items-center gap-2 mt-0.5">
                   {(() => {
                     const reactions = c.reactions || {};
-                    const likeIds = reactions["❤️"] || [];
+                    const likeIds = reactions["👍"] || [];
                     const dislikeIds = reactions["👎"] || [];
                     const myLike = likeIds.includes(session?.user?.id || "");
                     const myDislike = dislikeIds.includes(session?.user?.id || "");
                     return (
                       <>
                         <button
-                          onClick={() => toggleReaction(c.id, "❤️")}
+                          onClick={() => toggleReaction(c.id, "👍")}
                           disabled={!session?.user}
-                          className={`flex items-center gap-0.5 text-[10px] font-medium transition ${myLike ? "text-red-500" : "text-gray-400 hover:text-red-400"}`}
+                          className={`flex items-center gap-0.5 text-[10px] font-medium transition ${myLike ? "text-green-600" : "text-gray-400 hover:text-green-500"}`}
                         >
-                          {myLike ? "❤️" : "🤍"} {likeIds.length > 0 && likeIds.length}
+                          👍 {likeIds.length > 0 && likeIds.length}
                         </button>
                         <button
                           onClick={() => toggleReaction(c.id, "👎")}

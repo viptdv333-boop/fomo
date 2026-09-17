@@ -88,9 +88,7 @@ interface ChatRoomProps {
 }
 
 /* ── Constants ── */
-// ❤️ and 👎 have dedicated Like/Dislike buttons on every message — kept out
-// of the quick picker so there's exactly one way to react with each.
-const QUICK_REACTIONS = ["👍", "😂", "🔥", "😮", "🎉", "😢"];
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
 // Instrument shortcode emojis — rendered as inline images
 const INSTRUMENT_EMOJIS = [
   // Crypto (15)
@@ -174,21 +172,6 @@ function IconSend() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
       <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-    </svg>
-  );
-}
-
-function IconHeart({ filled }: { filled?: boolean }) {
-  if (filled) {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-      </svg>
-    );
-  }
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
     </svg>
   );
 }
@@ -574,27 +557,6 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     setInput(text);
   }
 
-  /* ── Compute like count for a message (heart reactions) ── */
-  function getLikeCount(msg: Message): number {
-    const reactions = msg.reactions || {};
-    return (reactions["❤️"] || []).length;
-  }
-
-  function hasMyLike(msg: Message): boolean {
-    const reactions = msg.reactions || {};
-    return (reactions["❤️"] || []).includes(session?.user?.id || "");
-  }
-
-  function getDislikeCount(msg: Message): number {
-    const reactions = msg.reactions || {};
-    return (reactions["👎"] || []).length;
-  }
-
-  function hasMyDislike(msg: Message): boolean {
-    const reactions = msg.reactions || {};
-    return (reactions["👎"] || []).includes(session?.user?.id || "");
-  }
-
   /* ── Reply count (messages that reply to this one) ── */
   function getReplyCount(msgId: string): number {
     return messages.filter((m) => m.replyToId === msgId).length;
@@ -715,10 +677,6 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             {messages.map((msg) => {
               const isHovered = hoveredMsg === msg.id;
               const reactions = msg.reactions || {};
-              const likeCount = getLikeCount(msg);
-              const myLike = hasMyLike(msg);
-              const dislikeCount = getDislikeCount(msg);
-              const myDislike = hasMyDislike(msg);
               const replyCount = getReplyCount(msg.id);
               const avatarColor = getAvatarColor(msg.user.displayName);
 
@@ -812,53 +770,23 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                         </>
                       )}
 
-                      {/* Like + Reply row */}
-                      {!msg.isDeleted && (
-                      <div className="flex items-center gap-4 mt-1.5">
-                        {/* Heart / Like */}
-                        <button
-                          onClick={() => toggleReaction(msg.id, "❤️")}
-                          className={`flex items-center gap-1 text-xs transition ${
-                            myLike
-                              ? "text-red-500"
-                              : "text-gray-400 hover:text-red-400"
-                          }`}
-                        >
-                          <IconHeart filled={myLike} />
-                          {likeCount > 0 && <span>{likeCount}</span>}
-                        </button>
-
-                        {/* Dislike */}
-                        <button
-                          onClick={() => toggleReaction(msg.id, "👎")}
-                          className={`flex items-center gap-1 text-xs transition ${
-                            myDislike
-                              ? "text-blue-500"
-                              : "text-gray-400 hover:text-blue-400"
-                          }`}
-                        >
-                          <span className="text-sm leading-none">👎</span>
-                          {dislikeCount > 0 && <span>{dislikeCount}</span>}
-                        </button>
-
-                        {/* Comment / replies */}
-                        <button
-                          onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
-                        >
-                          <IconComment />
-                          {replyCount > 0 && (
+                      {/* Reply count, when there are any — reply itself happens via the hover toolbar's reply icon */}
+                      {!msg.isDeleted && replyCount > 0 && (
+                        <div className="mt-1.5">
+                          <button
+                            onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                          >
+                            <IconComment />
                             <span>{replyCount} ответ{replyCount === 1 ? "" : replyCount < 5 ? "а" : "ов"}</span>
-                          )}
-                        </button>
-                      </div>
+                          </button>
+                        </div>
                       )}
 
-                      {/* Emoji reactions (non-heart, non-dislike — those two get dedicated buttons above) */}
-                      {!msg.isDeleted && Object.keys(reactions).filter((e) => e !== "❤️" && e !== "👎").length > 0 && (
+                      {/* Emoji reactions — heart/dislike (fed into reputation) and everything else share one pill list, added via the hover toolbar's reaction picker */}
+                      {!msg.isDeleted && Object.keys(reactions).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {Object.entries(reactions)
-                            .filter(([emoji]) => emoji !== "❤️" && emoji !== "👎")
                             .map(([emoji, userIds]) => {
                               const myReaction = userIds.includes(session?.user?.id || "");
                               return (
