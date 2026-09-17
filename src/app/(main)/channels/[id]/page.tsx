@@ -24,6 +24,7 @@ interface ChannelData {
     avatarUrl: string | null;
     rating: number;
   };
+  authorTelegramNotify?: boolean;
 }
 
 interface IdeaData {
@@ -66,6 +67,8 @@ export default function ChannelPage() {
   const [showSubscribers, setShowSubscribers] = useState(false);
   const [subscribers, setSubscribers] = useState<SubscriberData[]>([]);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [telegramVerified, setTelegramVerified] = useState(false);
+  const [telegramBusy, setTelegramBusy] = useState(false);
 
   const openSubscribers = useCallback(async () => {
     if (!channel) return;
@@ -75,6 +78,31 @@ export default function ChannelPage() {
     if (res.ok) setSubscribers(await res.json());
     setSubscribersLoading(false);
   }, [channel]);
+
+  async function toggleAuthorTelegram() {
+    if (!channel) return;
+    if (!telegramVerified && !channel.authorTelegramNotify) {
+      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      return;
+    }
+    const enabled = !channel.authorTelegramNotify;
+    setTelegramBusy(true);
+    try {
+      const res = await fetch(`/api/channels/${channel.id}/telegram`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось изменить настройку");
+        return;
+      }
+      setChannel((prev) => (prev ? { ...prev, authorTelegramNotify: enabled } : prev));
+    } finally {
+      setTelegramBusy(false);
+    }
+  }
 
   function daysLeft(endDate: string) {
     const ms = new Date(endDate).getTime() - Date.now();
@@ -117,6 +145,13 @@ export default function ChannelPage() {
 
     const owner = session?.user?.id === channel.author.id;
     setIsOwner(owner);
+
+    if (owner) {
+      fetch("/api/telegram/account")
+        .then((r) => r.json())
+        .then((data) => setTelegramVerified(Boolean(data?.verified)))
+        .catch(() => {});
+    }
 
     // Check subscription
     if (session?.user?.id && !owner) {
@@ -255,6 +290,19 @@ export default function ChannelPage() {
           {isOwner && (
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">Это ваш канал</span>
+              <label
+                className="flex items-center gap-1.5 text-sm text-gray-400 cursor-pointer"
+                title={telegramVerified ? "Получать копию сетапов и сообщений канала в свой Telegram" : "Сначала подключите бота в профиле"}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(channel.authorTelegramNotify)}
+                  disabled={telegramBusy}
+                  onChange={toggleAuthorTelegram}
+                  className="w-3.5 h-3.5 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
+                />
+                Telegram
+              </label>
               <Link
                 href={`/channels/edit/${channel.id}`}
                 className="text-sm text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition flex items-center gap-1"

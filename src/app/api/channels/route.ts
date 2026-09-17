@@ -46,6 +46,7 @@ export async function GET() {
         ideasCount: t._count.ideas,
         author: t.author,
         avatarUrl: (t as any).avatarUrl || null,
+        authorTelegramNotify: (t as any).authorTelegramNotify || false,
         instruments: ((t as any).instrumentIds || []).map((id: string) => instMap.get(id)).filter(Boolean),
       }))
     );

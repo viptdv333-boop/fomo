@@ -78,36 +78,41 @@ export async function sendTelegramMessage(botToken: string, chatId: string, text
 /// channel's discussion) to every active subscriber who opted in and has a
 /// verified bot. Best-effort per recipient, mirroring src/lib/push.ts: one
 /// subscriber's dead/blocked bot never blocks delivery to the others.
+async function deliverToUser(userId: string, text: string): Promise<void> {
+  const acc = await prisma.telegramAccount.findUnique({ where: { userId } });
+  if (!acc?.chatId) return;
+
+  const result = await sendTelegramMessage(acc.botToken, acc.chatId, text);
+  if (result.ok) {
+    if (acc.lastError) {
+      await prisma.telegramAccount.update({ where: { userId }, data: { lastError: null } }).catch(() => {});
+    }
+  } else {
+    // Bot blocked/deleted by the user, or token revoked — record it so the
+    // profile UI can surface "reconnect your bot" instead of silently
+    // never delivering again.
+    await prisma.telegramAccount.update({ where: { userId }, data: { lastError: result.error || "Unknown error" } }).catch(() => {});
+  }
+}
+
 export async function notifyChannelTelegramSubscribers(tariffId: string, text: string): Promise<void> {
-  const subs = await prisma.subscription.findMany({
-    where: {
-      tariffId,
-      status: "active",
-      endDate: { gt: new Date() },
-      telegramNotify: true,
-    },
+  const tariff = await prisma.subscriptionTariff.findUnique({
+    where: { id: tariffId },
     select: {
-      subscriberId: true,
-      subscriber: { select: { telegramAccount: true } },
+      authorId: true,
+      authorTelegramNotify: true,
+      subscriptions: {
+        where: { status: "active", endDate: { gt: new Date() }, telegramNotify: true },
+        select: { subscriberId: true },
+      },
     },
   });
+  if (!tariff) return;
 
-  await Promise.all(
-    subs.map(async ({ subscriberId, subscriber }) => {
-      const acc = subscriber.telegramAccount;
-      if (!acc?.chatId) return;
+  const recipientIds = tariff.subscriptions.map((s) => s.subscriberId);
+  // Владелец получает копию своих же сообщений отдельным флагом — он не
+  // подписчик собственного канала, поэтому не попадает в список выше.
+  if (tariff.authorTelegramNotify) recipientIds.push(tariff.authorId);
 
-      const result = await sendTelegramMessage(acc.botToken, acc.chatId, text);
-      if (result.ok) {
-        if (acc.lastError) {
-          await prisma.telegramAccount.update({ where: { userId: subscriberId }, data: { lastError: null } }).catch(() => {});
-        }
-      } else {
-        // Bot blocked/deleted by the user, or token revoked — record it so the
-        // profile UI can surface "reconnect your bot" instead of silently
-        // never delivering again.
-        await prisma.telegramAccount.update({ where: { userId: subscriberId }, data: { lastError: result.error || "Unknown error" } }).catch(() => {});
-      }
-    })
-  );
+  await Promise.all(recipientIds.map((userId) => deliverToUser(userId, text)));
 }

@@ -602,6 +602,9 @@ model SubscriptionTariff {
   /// as User.fomoId (see lib/fomoId.ts). Null falls back to the raw cuid.
   slug           String?  @unique
   createdAt      DateTime @default(now())
+  /// Владелец канала сам подключил пересылку своих же сетапов/сообщений в
+  /// свой Telegram-бот (требует настроенного User.telegramAccount).
+  authorTelegramNotify Boolean @default(false)
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
