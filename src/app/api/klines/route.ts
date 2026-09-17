@@ -3,8 +3,22 @@ import { NextRequest, NextResponse } from "next/server";
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
 const MOEX_INTERVALS: Record<string, number> = {
-  "1": 1, "5": 5, "15": 15, "60": 60, "240": 60,
+  "1": 1, "10": 10, "60": 60,
   "D": 24, "W": 7, "M": 31,
+};
+
+// MOEX ISS has no native 5m/15m/4h candles — like terminal-3 (a reference
+// project by the same author), synthesize them by resampling the nearest
+// native interval it does support (1m for 5m/15m, 60m for 4h) with plain
+// OHLCV aggregation (open=first, high=max, low=min, close=last,
+// volume=sum). terminal-3 also has a session-anchored variant of the 4h
+// resample to match TradingView's exact bar geometry for its signal bot —
+// that precision isn't needed for a display chart, so this uses simple
+// calendar-aligned buckets instead.
+const MOEX_SYNTHESIZE: Record<string, { native: string; bucketMs: number }> = {
+  "5": { native: "1", bucketMs: 5 * 60_000 },
+  "15": { native: "1", bucketMs: 15 * 60_000 },
+  "240": { native: "60", bucketMs: 4 * 3_600_000 },
 };
 
 // MOEX boards to try in order for candles
@@ -61,6 +75,12 @@ function getDateFrom(count: number, interval: string, anchorMs?: number): string
   return d.toISOString().slice(0, 10);
 }
 
+function dateFromDays(days: number, anchorMs?: number): string {
+  const d = anchorMs ? new Date(anchorMs) : new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 // MOEX ISS paginates candles.json in pages of up to 500 rows via `start`
 // (row offset). Loop until a short/empty page signals the end of what's
 // available in the [from, till] window, then dedupe by timestamp — the
@@ -74,7 +94,7 @@ async function fetchIssCandlesPage(
 ): Promise<any[][]> {
   const rows: any[][] = [];
   let start = 0;
-  for (let page = 0; page < 20; page++) {
+  for (let page = 0; page < 30; page++) {
     const params = new URLSearchParams({
       interval: String(moexInterval),
       from,
@@ -148,19 +168,51 @@ function toDateStr(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-// Filter to the requested window, dedupe by timestamp (keep-last — cheap
-// insurance against ISS's day-granularity `till` overlapping an adjacent
-// request), then trim to the most recent `limit` bars within that window.
-function finalizeMoexCandles(rawRows: any[][], toMs: number | undefined, limit: number) {
+// Filter to the requested window and dedupe by timestamp (keep-last —
+// cheap insurance against ISS's day-granularity `till` overlapping an
+// adjacent request). Returns ascending, untrimmed — trimming to `limit`
+// happens after synthesis (below), since aggregation must run first.
+function filterAndDedupe(rawRows: any[][], toMs: number | undefined) {
   let parsed = parseCandles(rawRows);
   if (toMs !== undefined) {
     parsed = parsed.filter((c) => c.timestamp <= toMs);
   }
   const byTs = new Map<number, (typeof parsed)[number]>();
   for (const c of parsed) byTs.set(c.timestamp, c);
-  return Array.from(byTs.values())
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .slice(-limit);
+  return Array.from(byTs.values()).sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// Groups native-granularity candles (must be ascending) into fixed-size
+// buckets and reduces each with plain OHLCV aggregation — the same
+// open/high/low/close/volume rule terminal-3 uses when it resamples 1m
+// candles into 5m/15m bars (or 1H into 4H).
+function aggregateCandles(candles: ReturnType<typeof filterAndDedupe>, bucketMs: number) {
+  const buckets = new Map<number, (typeof candles)[number]>();
+  for (const c of candles) {
+    const bucketTs = Math.floor(c.timestamp / bucketMs) * bucketMs;
+    const b = buckets.get(bucketTs);
+    if (!b) {
+      buckets.set(bucketTs, { timestamp: bucketTs, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume });
+    } else {
+      b.high = Math.max(b.high, c.high);
+      b.low = Math.min(b.low, c.low);
+      b.close = c.close; // candles arrive in ascending order, so the last write is the true close
+      b.volume += c.volume;
+    }
+  }
+  return Array.from(buckets.values()).sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// How many calendar days of native-granularity history to request in order
+// to synthesize `limit` bars of a coarser interval. Capped (not simply
+// `limit * multiplier` days of history) so a 24h-traded futures contract
+// can never fill the ISS pagination cap with only the oldest slice of the
+// window and never reach `till`/now — 1440 (a full day of 1-minute bars)
+// is the safe density to size the cap against.
+function synthDaysNeeded(limit: number, nativeIntervalMinutes: number, bucketMs: number): number {
+  const multiplier = bucketMs / (nativeIntervalMinutes * 60_000);
+  const rawLimit = Math.min(limit * multiplier, 3000);
+  return Math.max(3, Math.ceil((rawLimit * nativeIntervalMinutes) / 1440));
 }
 
 interface MoexResult {
@@ -169,13 +221,24 @@ interface MoexResult {
 }
 
 async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs?: number): Promise<MoexResult> {
-  const moexInterval = MOEX_INTERVALS[interval] || 24;
-  const from = getDateFrom(limit, interval, toMs);
+  const synth = MOEX_SYNTHESIZE[interval];
+  const fetchInterval = synth ? synth.native : interval;
+  const moexInterval = MOEX_INTERVALS[fetchInterval] || 24;
+
+  const from = synth
+    ? dateFromDays(synthDaysNeeded(limit, MOEX_INTERVALS[fetchInterval], synth.bucketMs), toMs)
+    : getDateFrom(limit, interval, toMs);
   // Live/initial load: omit `till` so today's still-forming candle isn't
   // excluded. Scroll-back load: bound `till` to toMs's calendar day — ISS's
   // `till` is date-granularity only, so this is a broad net; the exact
-  // `timestamp <= toMs` cut happens in finalizeMoexCandles.
+  // `timestamp <= toMs` cut happens below.
   const till = toMs !== undefined ? toDateStr(toMs) : undefined;
+
+  function finalize(rawRows: any[][]) {
+    let candles = filterAndDedupe(rawRows, toMs);
+    if (synth) candles = aggregateCandles(candles, synth.bucketMs);
+    return candles.slice(-limit);
+  }
 
   // 1. Try all standard boards with the exact ticker
   for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
@@ -183,7 +246,7 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
       const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json`;
       const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
       if (rows.length > 0) {
-        const candles = finalizeMoexCandles(rows, toMs, limit);
+        const candles = finalize(rows);
         if (candles.length > 0) return { candles, resolvedTicker: ticker };
       }
     } catch {
@@ -198,7 +261,7 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
       const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json`;
       const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
       if (rows.length > 0) {
-        const candles = finalizeMoexCandles(rows, toMs, limit);
+        const candles = finalize(rows);
         if (candles.length > 0) return { candles, resolvedTicker: activeContract };
       }
     } catch {
