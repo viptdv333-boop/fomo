@@ -215,10 +215,10 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   <span className="truncate flex-1">{room.name}</span>
                   <button
                     onClick={(e) => toggleFavorite(e, { roomId: room.id, name: room.name, isPrivate: true, assetSlug: null })}
-                    className={`shrink-0 ${favorites.has(room.id) ? "text-yellow-500" : "text-gray-300 hover:text-yellow-500 dark:text-gray-600"}`}
+                    className="shrink-0"
                     title="В избранное"
                   >
-                    {favorites.has(room.id) ? "★" : "☆"}
+                    <StarIcon filled={favorites.has(room.id)} />
                   </button>
                 </Link>
               ))}
@@ -289,10 +289,10 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   {asset.chatRoom && (
                     <button
                       onClick={(e) => toggleFavorite(e, { roomId: asset.chatRoom!.id, name: asset.name, isPrivate: false, assetSlug: asset.slug })}
-                      className={`shrink-0 ${isFav ? "text-yellow-500" : "text-gray-300 hover:text-yellow-500 dark:text-gray-600"}`}
+                      className="shrink-0"
                       title="В избранное"
                     >
-                      {isFav ? "★" : "☆"}
+                      <StarIcon filled={isFav} />
                     </button>
                   )}
                 </Link>
@@ -301,13 +301,17 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
           </div>
         ))}
 
-        {/* Favorites — starred chats, for quick access regardless of category */}
-        {favorites.size > 0 && (
-          <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2">
-            <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Избранное
+        {/* Favorites — starred chats, for quick access regardless of category. Always shown at the bottom of the topic list. */}
+        <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2 pb-2">
+          <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Избранное
+          </div>
+          {favorites.size === 0 ? (
+            <div className="px-4 py-1 text-xs text-gray-400 dark:text-gray-500">
+              Нажмите ☆ рядом с чатом, чтобы добавить
             </div>
-            {[...favorites.values()].map((f) => {
+          ) : (
+            [...favorites.values()].map((f) => {
               const href = f.isPrivate ? `/rooms/${f.roomId}` : `/chat?room=${f.roomId}`;
               const active = currentRoomId === f.roomId;
               return (
@@ -331,10 +335,27 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   </button>
                 </Link>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="w-4 h-4"
+      fill={filled ? "#eab308" : "none"}
+      stroke="#eab308"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinejoin="round"
+        d="M10 2.5l2.35 4.76 5.25.76-3.8 3.7.9 5.23L10 14.5l-4.7 2.45.9-5.23-3.8-3.7 5.25-.76L10 2.5z"
+      />
+    </svg>
   );
 }
