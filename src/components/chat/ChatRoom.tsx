@@ -583,6 +583,16 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     return (reactions["❤️"] || []).includes(session?.user?.id || "");
   }
 
+  function getDislikeCount(msg: Message): number {
+    const reactions = msg.reactions || {};
+    return (reactions["👎"] || []).length;
+  }
+
+  function hasMyDislike(msg: Message): boolean {
+    const reactions = msg.reactions || {};
+    return (reactions["👎"] || []).includes(session?.user?.id || "");
+  }
+
   /* ── Reply count (messages that reply to this one) ── */
   function getReplyCount(msgId: string): number {
     return messages.filter((m) => m.replyToId === msgId).length;
@@ -705,6 +715,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
               const reactions = msg.reactions || {};
               const likeCount = getLikeCount(msg);
               const myLike = hasMyLike(msg);
+              const dislikeCount = getDislikeCount(msg);
+              const myDislike = hasMyDislike(msg);
               const replyCount = getReplyCount(msg.id);
               const avatarColor = getAvatarColor(msg.user.displayName);
 
@@ -814,6 +826,19 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                           {likeCount > 0 && <span>{likeCount}</span>}
                         </button>
 
+                        {/* Dislike */}
+                        <button
+                          onClick={() => toggleReaction(msg.id, "👎")}
+                          className={`flex items-center gap-1 text-xs transition ${
+                            myDislike
+                              ? "text-blue-500"
+                              : "text-gray-400 hover:text-blue-400"
+                          }`}
+                        >
+                          <span className="text-sm leading-none">👎</span>
+                          {dislikeCount > 0 && <span>{dislikeCount}</span>}
+                        </button>
+
                         {/* Comment / replies */}
                         <button
                           onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
@@ -827,11 +852,11 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                       </div>
                       )}
 
-                      {/* Emoji reactions (non-heart) */}
-                      {!msg.isDeleted && Object.keys(reactions).filter((e) => e !== "❤️").length > 0 && (
+                      {/* Emoji reactions (non-heart, non-dislike — those two get dedicated buttons above) */}
+                      {!msg.isDeleted && Object.keys(reactions).filter((e) => e !== "❤️" && e !== "👎").length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {Object.entries(reactions)
-                            .filter(([emoji]) => emoji !== "❤️")
+                            .filter(([emoji]) => emoji !== "❤️" && emoji !== "👎")
                             .map(([emoji, userIds]) => {
                               const myReaction = userIds.includes(session?.user?.id || "");
                               return (

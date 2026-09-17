@@ -409,6 +409,11 @@ model RatingConfig {
   subscriberWeight      Decimal @default(0.3) @db.Decimal(5, 3)
   likeWeight            Decimal @default(0.1) @db.Decimal(5, 3)
   dislikeWeight         Decimal @default(0.15) @db.Decimal(5, 3)
+  // Болталка reactions (❤️/👎 on ChatMessage) — smaller weight than idea
+  // votes since a chat message costs nothing to post and reactions are one
+  // tap, both far cheaper to farm than an actual idea vote.
+  commentLikeWeight     Decimal @default(0.02) @db.Decimal(5, 3)
+  commentDislikeWeight  Decimal @default(0.03) @db.Decimal(5, 3)
   inactivityPenalty     Decimal @default(0.05) @db.Decimal(5, 3)
   inactivityThresholdDays Int   @default(7)
   paidTiers             Json    @default("[{\"min\":0,\"max\":3,\"maxPaid\":0},{\"min\":3,\"max\":5,\"maxPaid\":3},{\"min\":5,\"max\":7,\"maxPaid\":10},{\"min\":7,\"max\":10,\"maxPaid\":-1}]")

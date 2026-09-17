@@ -32,7 +32,7 @@ export async function recalculateRating(userId: string): Promise<number> {
     return MAX_RATING;
   }
 
-  const [followerCount, likesAgg, dislikesAgg, ideaCount] = await Promise.all([
+  const [followerCount, likesAgg, dislikesAgg, ideaCount, commentLikesRows, commentDislikesRows] = await Promise.all([
     prisma.follow.count({ where: { authorId: userId } }),
     prisma.ideaVote.aggregate({
       where: { idea: { authorId: userId }, value: 1 },
@@ -45,10 +45,24 @@ export async function recalculateRating(userId: string): Promise<number> {
     prisma.idea.count({
       where: { authorId: userId, moderationStatus: "published" },
     }),
+    // reactions is a JSON map { emoji: [userId, ...] } — Prisma can't
+    // aggregate into a JSON array, so count with raw jsonb_array_length.
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COALESCE(SUM(jsonb_array_length(reactions->'❤️')), 0)::bigint AS count
+      FROM "ChatMessage"
+      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '❤️'
+    `,
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COALESCE(SUM(jsonb_array_length(reactions->'👎')), 0)::bigint AS count
+      FROM "ChatMessage"
+      WHERE "userId" = ${userId} AND "isDeleted" = false AND reactions ? '👎'
+    `,
   ]);
 
   const likes = likesAgg._sum.value ?? 0;
   const dislikes = Math.abs(dislikesAgg._sum.value ?? 0);
+  const commentLikes = Number(commentLikesRows[0]?.count ?? 0);
+  const commentDislikes = Number(commentDislikesRows[0]?.count ?? 0);
 
   let inactivityDays = 0;
   if (user.lastPublishedAt) {
@@ -73,7 +87,9 @@ export async function recalculateRating(userId: string): Promise<number> {
     Number(user.ratingBonus) +
     followerCount * Number(config.subscriberWeight) +
     likes * Number(config.likeWeight) -
-    dislikes * Number(config.dislikeWeight) -
+    dislikes * Number(config.dislikeWeight) +
+    commentLikes * Number(config.commentLikeWeight) -
+    commentDislikes * Number(config.commentDislikeWeight) -
     inactivityDays * Number(config.inactivityPenalty);
 
   const rating = Math.min(MAX_RATING, Math.max(MIN_RATING, raw));
