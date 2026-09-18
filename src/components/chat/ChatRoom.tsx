@@ -245,6 +245,20 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const notifEnabled = notifications[roomId] === true;
 
   /* ── Data fetching & socket ── */
+  // ChatSidebar's own unread-count fetch runs independently (mount + 20s
+  // poll) and has no way to know when a mark-as-read here actually lands —
+  // without this event, the badge could sit stale until the next poll,
+  // making it look like "unread" never clears even right after reading.
+  function markRoomRead() {
+    fetch("/api/chat/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId }),
+    })
+      .then((r) => { if (r.ok) window.dispatchEvent(new CustomEvent("chat:room-read", { detail: { roomId } })); })
+      .catch(() => {});
+  }
+
   useEffect(() => {
     fetch(`/api/chat/messages?roomId=${roomId}`)
       .then((r) => r.json())
@@ -252,13 +266,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         if (Array.isArray(data)) setMessages(data);
       });
     setReplyTo(null);
-    if (session?.user) {
-      fetch("/api/chat/read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
-      }).catch(() => {});
-    }
+    if (session?.user) markRoomRead();
   }, [roomId, session?.user]);
 
   useEffect(() => {
@@ -271,13 +279,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
       // Room is actively open — a message arriving live shouldn't count as
       // unread once the user navigates elsewhere and back.
-      if (msg.user?.id !== session.user!.id) {
-        fetch("/api/chat/read", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId }),
-        }).catch(() => {});
-      }
+      if (msg.user?.id !== session.user!.id) markRoomRead();
     });
 
     socket.on("message_updated", (msg: Message) => {

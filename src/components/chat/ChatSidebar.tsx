@@ -106,13 +106,19 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     return () => clearInterval(interval);
   }, [session?.user?.id]);
 
-  // Opening a room marks it read server-side almost immediately (ChatRoom's
-  // own effect) — zero it optimistically here too so the badge doesn't sit
-  // stale until the next poll.
+  // ChatRoom marks a room read independently of this component's own
+  // mount/poll cycle — without this, the two race on page load (whichever
+  // finishes first "wins"), so the badge could show a stale pre-read count
+  // for up to 20s even though the room really was just read. ChatRoom
+  // dispatches this only after its own POST actually succeeds.
   useEffect(() => {
-    if (!currentRoomId) return;
-    setUnread((prev) => (prev[currentRoomId] ? { ...prev, [currentRoomId]: 0 } : prev));
-  }, [currentRoomId]);
+    function onRoomRead(e: Event) {
+      const roomId = (e as CustomEvent<{ roomId: string }>).detail?.roomId;
+      if (roomId) setUnread((prev) => (prev[roomId] ? { ...prev, [roomId]: 0 } : prev));
+    }
+    window.addEventListener("chat:room-read", onRoomRead);
+    return () => window.removeEventListener("chat:room-read", onRoomRead);
+  }, []);
 
   async function toggleFavorite(e: React.MouseEvent, room: FavoriteRoom) {
     e.preventDefault();
