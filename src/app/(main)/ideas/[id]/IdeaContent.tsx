@@ -7,6 +7,7 @@ import Link from "next/link";
 import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import ShareButtons from "@/components/shared/ShareButtons";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import IdeaComments from "@/components/ideas/IdeaComments";
 import { useT } from "@/lib/i18n/client";
@@ -250,8 +251,7 @@ export default function IdeaContent() {
                   att.url.endsWith(".mp4") || att.url.endsWith(".webm") ? (
                     <video key={i} src={att.url} controls className="rounded-lg w-full" />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={att.url} alt={att.name} className="rounded-lg w-full" />
+                    <ImageLightbox key={i} src={att.url} alt={att.name} className="rounded-lg w-full" />
                   )
                 )}
               </div>
