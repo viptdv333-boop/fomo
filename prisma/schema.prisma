@@ -83,6 +83,7 @@ model User {
   roomMemberships        ChatRoomMember[]
   pushSubscriptions      PushSubscription[]
   favoriteRooms          ChatRoomFavorite[]
+  roomReads              ChatRoomRead[]
   telegramAccount        TelegramAccount?
 
   @@index([status])
@@ -361,6 +362,7 @@ model ChatRoom {
   messages   ChatMessage[]
   members    ChatRoomMember[]
   favoritedBy ChatRoomFavorite[]
+  reads       ChatRoomRead[]
   channelTariff SubscriptionTariff?
 
   @@index([ownerId])
@@ -373,6 +375,21 @@ model ChatRoomFavorite {
   userId    String
   roomId    String
   createdAt DateTime @default(now())
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([userId])
+}
+
+/// Per-user read cursor for a room — a message is "unread" if its createdAt
+/// is after this row's lastReadAt (or the room has no row here at all).
+model ChatRoomRead {
+  id         String   @id @default(cuid())
+  userId     String
+  roomId     String
+  lastReadAt DateTime @default(now())
 
   user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)

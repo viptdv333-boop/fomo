@@ -66,6 +66,19 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   const [privateRooms, setPrivateRooms] = useState<PrivateRoom[]>([]);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [favorites, setFavorites] = useState<Map<string, FavoriteRoom>>(new Map());
+  const [unread, setUnread] = useState<Record<string, number>>({});
+  const [generalRoomId, setGeneralRoomId] = useState<string | null>(null);
+
+  function loadUnread() {
+    if (!session?.user?.id) return;
+    fetch("/api/chat/unread")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.counts) setUnread(data.counts);
+        if (data?.generalRoomId) setGeneralRoomId(data.generalRoomId);
+      })
+      .catch(() => {});
+  }
 
   function loadPrivateRooms() {
     if (!session?.user?.id) return;
@@ -88,7 +101,18 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
   useEffect(() => {
     loadPrivateRooms();
     loadFavorites();
+    loadUnread();
+    const interval = setInterval(loadUnread, 20000);
+    return () => clearInterval(interval);
   }, [session?.user?.id]);
+
+  // Opening a room marks it read server-side almost immediately (ChatRoom's
+  // own effect) — zero it optimistically here too so the badge doesn't sit
+  // stale until the next poll.
+  useEffect(() => {
+    if (!currentRoomId) return;
+    setUnread((prev) => (prev[currentRoomId] ? { ...prev, [currentRoomId]: 0 } : prev));
+  }, [currentRoomId]);
 
   async function toggleFavorite(e: React.MouseEvent, room: FavoriteRoom) {
     e.preventDefault();
@@ -213,6 +237,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 >
                   <span className="shrink-0">🔒</span>
                   <span className="truncate flex-1">{room.name}</span>
+                  <UnreadBadge count={unread[room.id] || 0} />
                   <button
                     onClick={(e) => toggleFavorite(e, { roomId: room.id, name: room.name, isPrivate: true, assetSlug: null })}
                     className="shrink-0"
@@ -249,15 +274,18 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         }`}
       >
         <span className="text-lg">🏠</span>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{t("chat.generalChat")}</div>
           <div className="text-xs text-gray-400">{t("chat.discussionDesc")}</div>
         </div>
+        {generalRoomId && <UnreadBadge count={unread[generalRoomId] || 0} />}
       </Link>
 
       {/* Categories → Assets */}
       <div className="flex-1 overflow-y-auto">
-        {filteredCats.map(cat => (
+        {filteredCats.map(cat => {
+          const catUnread = cat.assets.reduce((sum, a) => sum + (a.chatRoom ? unread[a.chatRoom.id] || 0 : 0), 0);
+          return (
           <div key={cat.slug}>
             <button
               onClick={() => toggleCat(cat.slug)}
@@ -268,6 +296,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
               </svg>
               <span>{CAT_EMOJIS[cat.slug] || "📁"}</span>
               <span>{CAT_I18N[cat.slug] ? t(CAT_I18N[cat.slug]) : cat.name}</span>
+              {!openCats.has(cat.slug) && <UnreadBadge count={catUnread} />}
               <span className="ml-auto text-[10px] text-gray-400 font-normal">{cat.assets.length}</span>
             </button>
             {openCats.has(cat.slug) && cat.assets.map(asset => {
@@ -286,6 +315,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   }`}
                 >
                   <span className="truncate flex-1">{asset.name}</span>
+                  {asset.chatRoom && <UnreadBadge count={unread[asset.chatRoom.id] || 0} />}
                   {asset.chatRoom && (
                     <button
                       onClick={(e) => toggleFavorite(e, { roomId: asset.chatRoom!.id, name: asset.name, isPrivate: false, assetSlug: asset.slug })}
@@ -299,7 +329,8 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
               );
             })}
           </div>
-        ))}
+          );
+        })}
 
         {/* Favorites — starred chats, for quick access regardless of category. Always shown at the bottom of the topic list. */}
         <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2 pb-2">
@@ -326,6 +357,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 >
                   <span className="shrink-0 text-yellow-500">★</span>
                   <span className="truncate flex-1">{f.name}</span>
+                  <UnreadBadge count={unread[f.roomId] || 0} />
                   <button
                     onClick={(e) => toggleFavorite(e, f)}
                     className="shrink-0 text-gray-300 hover:text-red-500 dark:text-gray-600"
@@ -340,6 +372,15 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         </div>
       </div>
     </div>
+  );
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">
+      {count > 99 ? "99+" : count}
+    </span>
   );
 }
 

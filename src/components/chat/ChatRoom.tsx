@@ -252,7 +252,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         if (Array.isArray(data)) setMessages(data);
       });
     setReplyTo(null);
-  }, [roomId]);
+    if (session?.user) {
+      fetch("/api/chat/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      }).catch(() => {});
+    }
+  }, [roomId, session?.user]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -262,6 +269,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
     socket.on("new_message", (msg: Message) => {
       setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      // Room is actively open — a message arriving live shouldn't count as
+      // unread once the user navigates elsewhere and back.
+      if (msg.user?.id !== session.user!.id) {
+        fetch("/api/chat/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId }),
+        }).catch(() => {});
+      }
     });
 
     socket.on("message_updated", (msg: Message) => {
