@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
+import InstallAppButton from "@/components/shared/InstallAppButton";
 
 function useCountUp(end: number, duration: number = 1500, start: boolean = false) {
   const [count, setCount] = useState(0);
@@ -203,6 +204,15 @@ export default function LandingPage() {
           >
             {t.howTo}
           </a>
+        </div>
+
+        {/* Install app */}
+        <div className={`mt-5 ${loginVisible ? "visible" : ""}`}>
+          <InstallAppButton
+            className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
+              isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-800"
+            }`}
+          />
         </div>
 
         {/* Stats with animated counters */}

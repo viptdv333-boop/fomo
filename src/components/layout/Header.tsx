@@ -9,6 +9,7 @@ import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
 import { ensurePushSubscription } from "@/lib/push-client";
+import InstallAppButton from "@/components/shared/InstallAppButton";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -153,6 +154,7 @@ export default function Header() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                       {t("profile.finance")}
                     </Link>
+                    <InstallAppButton variant="menuItem" onNavigate={() => setProfileOpen(false)} />
 
                     <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
                       <button
@@ -245,6 +247,11 @@ export default function Header() {
                   <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.subscriptions")}</Link>
                   <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.profile")}</Link>
                   <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.finance")}</Link>
+                  <InstallAppButton
+                    variant="menuItem"
+                    onNavigate={() => setMenuOpen(false)}
+                    className="block w-full text-left py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600"
+                  />
                 </div>
               </div>
               {(user?.role === "ADMIN" || user?.role === "OWNER") && (
