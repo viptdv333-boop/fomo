@@ -133,6 +133,27 @@ export default function ChannelPage() {
     }
   }
 
+  async function removeSubscriber(subscriptionId: string, name: string) {
+    if (!channel) return;
+    if (!confirm(`Удалить «${name}» из канала? Доступ закроется сразу, деньги не возвращаются.`)) return;
+    setExtending(true);
+    try {
+      const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Не удалось удалить подписчика");
+        return;
+      }
+      await openSubscribers();
+    } finally {
+      setExtending(false);
+    }
+  }
+
   function daysLeft(endDate: string) {
     const ms = new Date(endDate).getTime() - Date.now();
     return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
@@ -572,6 +593,16 @@ export default function ChannelPage() {
                     >
                       +{addDays || 0} дн.
                     </button>
+                    {s.isActive && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeSubscriber(s.id, s.displayName); }}
+                        disabled={extending}
+                        title="Удалить из канала"
+                        className="shrink-0 px-2 py-1 text-xs rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
+                      >
+                        Удалить
+                      </button>
+                    )}
                   </Link>
                 ))
               )}

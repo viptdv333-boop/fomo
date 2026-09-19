@@ -16,7 +16,7 @@ export async function GET(
     where: { id: tariffId },
     include: {
       subscriptions: {
-        where: { subscriberId: session.user.id, status: "active" },
+        where: { subscriberId: session.user.id, status: "active", endDate: { gt: new Date() } },
         take: 1,
       },
     },

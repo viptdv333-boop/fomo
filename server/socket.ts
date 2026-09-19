@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
+import { canAccessRoom } from "../src/lib/channel-access";
 
 const prisma = new PrismaClient();
 
@@ -93,6 +94,7 @@ export function initSocket(httpServer: HTTPServer) {
         });
         if (!membership) return;
       }
+      if (!(await canAccessRoom(prisma, roomId, socket.data.userId))) return;
       socket.join(roomId);
     });
 

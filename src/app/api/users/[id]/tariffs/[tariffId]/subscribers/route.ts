@@ -110,3 +110,49 @@ export async function POST(
 
   return NextResponse.json({ ok: true, updated: targets.length, days });
 }
+
+// DELETE — owner removes a subscriber from the channel: the subscription is
+// cancelled and its term cut to now, which closes access to paid ideas and
+// (via canAccessRoom) the channel chat immediately. No money is returned —
+// refunds are handled outside the platform.
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; tariffId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id, tariffId } = await params;
+  if (session.user.id !== id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
+  if (!tariff || tariff.authorId !== id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const { subscriptionId } = await request.json().catch(() => ({}));
+  if (typeof subscriptionId !== "string") {
+    return NextResponse.json({ error: "subscriptionId required" }, { status: 400 });
+  }
+
+  const sub = await prisma.subscription.findFirst({
+    where: { id: subscriptionId, tariffId },
+    select: { id: true, subscriberId: true },
+  });
+  if (!sub) return NextResponse.json({ error: "Подписчик не найден" }, { status: 404 });
+
+  await prisma.subscription.update({
+    where: { id: sub.id },
+    data: { status: "cancelled", endDate: new Date(), telegramNotify: false },
+  });
+
+  await createNotification({
+    userId: sub.subscriberId,
+    type: "subscription_removed",
+    title: "Автор закрыл вам доступ к каналу",
+    body: tariff.name,
+    link: `/channels/${tariff.slug || tariff.id}`,
+  }).catch(() => {});
+
+  return NextResponse.json({ ok: true });
+}

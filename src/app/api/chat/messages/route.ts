@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
+import { canAccessRoom } from "@/lib/channel-access";
 import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
 
 const globalForIO = globalThis as unknown as { io: any };
@@ -27,6 +28,10 @@ export async function GET(req: NextRequest) {
       where: { roomId_userId: { roomId, userId: session.user.id! } },
     });
     if (!membership) return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
+  if (!(await canAccessRoom(prisma, roomId, session.user.id!))) {
+    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
   }
 
   const messages = await prisma.chatMessage.findMany({
@@ -113,6 +118,9 @@ export async function POST(req: NextRequest) {
       where: { roomId_userId: { roomId: room.id, userId: session.user.id! } },
     });
     if (!membership) return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+  if (!(await canAccessRoom(prisma, room.id, session.user.id!))) {
+    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
   }
 
   const message = await prisma.chatMessage.create({
