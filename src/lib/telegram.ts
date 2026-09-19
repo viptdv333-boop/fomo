@@ -21,8 +21,21 @@ interface TelegramApiResult<T> {
   description?: string;
 }
 
+// Same idea as terminal-3's tg_publish.tg_proxies(): an HTTP proxy used ONLY
+// for Telegram (not process-wide, so MOEX/Tinkoff keep going direct). On this
+// server it's the local Xray→VLESS proxy, e.g. http://127.0.0.1:10809.
+const PROXY = process.env.TELEGRAM_PROXY || "";
+
+async function tgFetch(url: string, init: RequestInit & { signal: AbortSignal }): Promise<Response> {
+  if (!PROXY) return fetch(url, init);
+  const { ProxyAgent, fetch: undiciFetch } = await import("undici");
+  proxyAgent ??= new ProxyAgent(PROXY);
+  return (await undiciFetch(url, { ...(init as any), dispatcher: proxyAgent })) as unknown as Response;
+}
+let proxyAgent: import("undici").ProxyAgent | undefined;
+
 async function call<T>(botToken: string, method: string, body?: object): Promise<TelegramApiResult<T>> {
-  const res = await fetch(`${API}/bot${botToken}/${method}`, {
+  const res = await tgFetch(`${API}/bot${botToken}/${method}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
