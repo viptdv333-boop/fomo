@@ -88,6 +88,15 @@ export default function TelegramBotSettings() {
         Подключите своего бота (через @BotFather), чтобы получать в нём сообщения из оплаченных каналов, на которые включите пересылку.
       </p>
 
+      {!status.verified && (
+        <ol className="list-decimal list-inside space-y-0.5 mb-3 text-xs text-gray-600 dark:text-gray-400">
+          <li className={status.connected ? "line-through opacity-60" : ""}>
+            Введите токен бота и нажмите «Сохранить»
+          </li>
+          <li>Отправьте боту любое сообщение в Telegram и нажмите «Подтвердить»</li>
+        </ol>
+      )}
+
       {status.connected && (
         <div className="flex items-center gap-2 mb-2 text-sm">
           <span className={status.verified ? "text-green-600" : "text-amber-500"}>
