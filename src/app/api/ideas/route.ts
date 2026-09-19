@@ -219,7 +219,9 @@ const createIdeaSchema = z.object({
   // подписка. Для обычной платной идеи цена > 0 проверяется ниже.
   price: z.number().nonnegative().optional(),
   acceptDonations: z.boolean().optional(),
-  instrumentIds: z.array(z.string()).min(1),
+  // Форма поста в канал не показывает выбор инструмента — для канала список
+  // может быть пустым, для обычной идеи нужен хотя бы один (проверка ниже).
+  instrumentIds: z.array(z.string()),
   attachments: z.array(attachmentSchema).optional(),
   channelId: z.string().optional(),
 });
@@ -258,6 +260,10 @@ export async function POST(request: NextRequest) {
   }
 
   const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments, channelId } = parsed.data;
+
+  if (!channelId && instrumentIds.length === 0) {
+    return NextResponse.json({ error: "Выберите хотя бы один инструмент" }, { status: 400 });
+  }
 
   if (isPaid && !channelId && (price === undefined || price <= 0)) {
     return NextResponse.json(
