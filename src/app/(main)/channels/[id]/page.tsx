@@ -65,6 +65,8 @@ export default function ChannelPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSubscribers, setShowSubscribers] = useState(false);
+  const [addDays, setAddDays] = useState("30");
+  const [extending, setExtending] = useState(false);
   const [subscribers, setSubscribers] = useState<SubscriberData[]>([]);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
   const [telegramVerified, setTelegramVerified] = useState(false);
@@ -101,6 +103,33 @@ export default function ChannelPage() {
       setChannel((prev) => (prev ? { ...prev, authorTelegramNotify: enabled } : prev));
     } finally {
       setTelegramBusy(false);
+    }
+  }
+
+  // No subscriptionId → every currently-active subscriber of this channel.
+  async function grantDays(subscriptionId?: string) {
+    if (!channel) return;
+    const days = Number(addDays);
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      alert("Укажите число дней от 1 до 3650");
+      return;
+    }
+    if (!subscriptionId && !confirm(`Добавить ${days} дн. всем активным подписчикам (${subscribers.filter((s) => s.isActive).length})?`)) return;
+    setExtending(true);
+    try {
+      const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days, subscriptionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось добавить дни");
+        return;
+      }
+      await openSubscribers();
+    } finally {
+      setExtending(false);
     }
   }
 
@@ -487,6 +516,24 @@ export default function ChannelPage() {
                 </svg>
               </button>
             </div>
+            <div className="p-3 border-b dark:border-gray-800 shrink-0 flex items-center gap-2 text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Добавить дней:</span>
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                value={addDays}
+                onChange={(e) => setAddDays(e.target.value)}
+                className="w-20 px-2 py-1 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100"
+              />
+              <button
+                onClick={() => grantDays()}
+                disabled={extending}
+                className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                Всем активным
+              </button>
+            </div>
             <div className="overflow-y-auto p-2">
               {subscribersLoading ? (
                 <div className="text-sm text-gray-400 text-center py-8">...</div>
@@ -517,6 +564,14 @@ export default function ChannelPage() {
                         <div className="text-xs text-red-400">{t("subs.subscriberInactive")}</div>
                       )}
                     </div>
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); grantDays(s.id); }}
+                      disabled={extending}
+                      title={`Добавить ${addDays || 0} дн. этому подписчику`}
+                      className="shrink-0 px-2 py-1 text-xs rounded-lg border border-green-600 text-green-600 hover:bg-green-600 hover:text-white transition disabled:opacity-50"
+                    >
+                      +{addDays || 0} дн.
+                    </button>
                   </Link>
                 ))
               )}
