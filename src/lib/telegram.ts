@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
-const API = "https://api.telegram.org";
+// api.telegram.org is blocked from Russian hosting (the VPS is in Moscow), so
+// every call goes through TELEGRAM_API_BASE — a relay outside Russia that
+// forwards /bot<token>/<method> to Telegram (e.g. a Cloudflare Worker).
+// TELEGRAM_RELAY_SECRET, if set, is sent as x-relay-secret so the relay can
+// refuse strangers. Unset → talks to Telegram directly (works outside RU).
+const API = (process.env.TELEGRAM_API_BASE || "https://api.telegram.org").replace(/\/+$/, "");
+const RELAY_SECRET = process.env.TELEGRAM_RELAY_SECRET || "";
 
 /// sendMessage is always called with parse_mode: "HTML" — any user/bot-authored
 /// text interpolated into a message must be escaped first, or a stray `<`/`&`
@@ -18,9 +24,15 @@ interface TelegramApiResult<T> {
 async function call<T>(botToken: string, method: string, body?: object): Promise<TelegramApiResult<T>> {
   const res = await fetch(`${API}/bot${botToken}/${method}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(RELAY_SECRET ? { "x-relay-secret": RELAY_SECRET } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    // Without a cap a blocked route hangs the profile page's "Сохранить"
+    // for minutes instead of failing fast.
+    signal: AbortSignal.timeout(10000),
   });
   return res.json();
 }
@@ -34,7 +46,7 @@ export async function verifyBotToken(botToken: string): Promise<{ ok: true; user
     }
     return { ok: true, username: data.result.username };
   } catch {
-    return { ok: false, error: "Не удалось связаться с Telegram" };
+    return { ok: false, error: "Сервер не может достучаться до Telegram — сообщите администратору" };
   }
 }
 
@@ -55,7 +67,7 @@ export async function resolveChatId(botToken: string): Promise<{ ok: true; chatI
     const last = withMessage[withMessage.length - 1];
     return { ok: true, chatId: String(last.message!.chat.id) };
   } catch {
-    return { ok: false, error: "Не удалось связаться с Telegram" };
+    return { ok: false, error: "Сервер не может достучаться до Telegram — сообщите администратору" };
   }
 }
 
