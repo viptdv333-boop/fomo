@@ -11,8 +11,17 @@ interface Message {
   isPinned: boolean;
   isDeleted: boolean;
   createdAt: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
   user: { id: string; displayName: string; avatarUrl: string | null };
   replyTo?: { id: string; text: string; user: { displayName: string } } | null;
+}
+
+interface PendingFile {
+  url: string;
+  name: string;
+  fileType: string;
 }
 
 interface Props {
@@ -35,6 +44,9 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   const [sending, setSending] = useState(false);
   const messagesBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
 
   // Check access and get roomId
   useEffect(() => {
@@ -81,16 +93,49 @@ export default function ChannelDiscussion({ tariffId }: Props) {
     if (box) box.scrollTop = box.scrollHeight;
   }, [messages]);
 
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "messages");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Не удалось загрузить файл");
+        return;
+      }
+      setPendingFile({ url: data.url, name: data.name, fileType: data.fileType });
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleSend() {
-    if (!input.trim() || !roomId || sending) return;
+    if ((!input.trim() && !pendingFile) || !roomId || sending) return;
     setSending(true);
-    await fetch("/api/chat/messages", {
+    const res = await fetch("/api/chat/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId, text: input.trim(), replyToId: replyTo?.id }),
+      body: JSON.stringify({
+        roomId,
+        text: input.trim(),
+        replyToId: replyTo?.id,
+        fileUrl: pendingFile?.url,
+        fileName: pendingFile?.name,
+        fileType: pendingFile?.fileType,
+      }),
     });
-    setInput("");
-    setReplyTo(null);
+    if (res.ok) {
+      setInput("");
+      setReplyTo(null);
+      setPendingFile(null);
+    } else {
+      alert("Не удалось отправить сообщение");
+    }
     setSending(false);
     loadMessages();
   }
@@ -165,7 +210,21 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                     {msg.replyTo.user.displayName}: {msg.replyTo.text.slice(0, 60)}
                   </div>
                 )}
-                <p className="text-sm text-gray-700 dark:text-gray-300 break-words">{msg.text}</p>
+                {msg.text && <p className="text-sm text-gray-700 dark:text-gray-300 break-words">{msg.text}</p>}
+                {msg.fileUrl && msg.fileType === "video" && (
+                  <video src={msg.fileUrl} controls className="mt-1 max-w-full sm:max-w-[320px] max-h-[240px] rounded-lg" />
+                )}
+                {msg.fileUrl && msg.fileType === "image" && (
+                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={msg.fileUrl} alt={msg.fileName || ""} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
+                  </a>
+                )}
+                {msg.fileUrl && msg.fileType !== "video" && msg.fileType !== "image" && (
+                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1 text-xs text-green-600 hover:underline">
+                    📄 {msg.fileName || "Файл"}
+                  </a>
+                )}
                 {/* Actions */}
                 <div className="flex gap-2 mt-0.5 opacity-0 group-hover:opacity-100 transition">
                   <button onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
@@ -194,8 +253,37 @@ export default function ChannelDiscussion({ tariffId }: Props) {
         </div>
       )}
 
+      {/* Pending attachment */}
+      {pendingFile && (
+        <div className="px-4 py-1.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2 text-xs">
+          {pendingFile.fileType === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={pendingFile.url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+          ) : (
+            <span className="shrink-0">{pendingFile.fileType === "video" ? "🎬" : "📄"}</span>
+          )}
+          <span className="text-gray-500 truncate flex-1">{pendingFile.name}</span>
+          <button onClick={() => setPendingFile(null)} className="text-gray-400 hover:text-red-500 shrink-0">✕</button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          title="Прикрепить фото или видео (до 15 МБ)"
+          className="px-3 py-2 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50 transition"
+        >
+          {uploading ? "…" : "📎"}
+        </button>
         <input
           ref={inputRef}
           type="text"
@@ -205,7 +293,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
           placeholder={t("chat.writeMessage")}
           className="flex-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
         />
-        <button onClick={handleSend} disabled={sending || !input.trim()}
+        <button onClick={handleSend} disabled={sending || uploading || (!input.trim() && !pendingFile)}
           className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition">
           →
         </button>

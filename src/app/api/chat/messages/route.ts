@@ -162,9 +162,12 @@ export async function POST(req: NextRequest) {
   });
   if (channelTariff) {
     const senderName = message.user.displayName;
+    const attachmentLabel =
+      parsed.data.fileType === "image" ? "🖼 фото" : parsed.data.fileType === "video" ? "🎬 видео" : parsed.data.fileUrl ? "📎 файл" : "";
+    const body = [escapeTelegramHtml(parsed.data.text), attachmentLabel].filter(Boolean).join(" ");
     await notifyChannelTelegramSubscribers(
       channelTariff.id,
-      `💬 <b>${escapeTelegramHtml(senderName)}</b>: ${escapeTelegramHtml(parsed.data.text)}`
+      `💬 <b>${escapeTelegramHtml(senderName)}</b>: ${body}`
     ).catch(() => {});
   }
 
