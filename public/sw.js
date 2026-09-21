@@ -1,5 +1,5 @@
 // FOMO service worker — bump CACHE version to force clients to drop old assets.
-const CACHE = "fomo-v3";
+const CACHE = "fomo-v4";
 const PRECACHE = ["/", "/logo-fomo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

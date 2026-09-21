@@ -10,6 +10,7 @@ import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
 import { ensurePushSubscription } from "@/lib/push-client";
 import InstallAppButton from "@/components/shared/InstallAppButton";
+import UpdateAppButton from "@/components/shared/UpdateAppButton";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -155,6 +156,7 @@ export default function Header() {
                       {t("profile.finance")}
                     </Link>
                     <InstallAppButton variant="menuItem" onNavigate={() => setProfileOpen(false)} />
+                    <UpdateAppButton onNavigate={() => setProfileOpen(false)} />
 
                     <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
                       <button
@@ -249,6 +251,10 @@ export default function Header() {
                   <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.finance")}</Link>
                   <InstallAppButton
                     variant="menuItem"
+                    onNavigate={() => setMenuOpen(false)}
+                    className="block w-full text-left py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600"
+                  />
+                  <UpdateAppButton
                     onNavigate={() => setMenuOpen(false)}
                     className="block w-full text-left py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600"
                   />
