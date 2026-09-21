@@ -72,6 +72,59 @@ export default function ChannelPage() {
   const [subscribersLoading, setSubscribersLoading] = useState(false);
   const [telegramVerified, setTelegramVerified] = useState(false);
   const [telegramBusy, setTelegramBusy] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [candQuery, setCandQuery] = useState("");
+  const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
+  const [candLoading, setCandLoading] = useState(false);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+
+  // Site users the owner can add for free (debounced search while the picker is open).
+  useEffect(() => {
+    if (!showAdd || !channel) return;
+    let cancelled = false;
+    setCandLoading(true);
+    const timer = setTimeout(async () => {
+      const res = await fetch(
+        `/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers/candidates?q=${encodeURIComponent(candQuery)}`
+      );
+      if (!cancelled) {
+        setCandidates(res.ok ? await res.json() : []);
+        setCandLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [showAdd, candQuery, channel]);
+
+  async function addMember() {
+    if (!channel || !pickedId) return;
+    const days = Number(addDays);
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      alert("Укажите число дней от 1 до 3650");
+      return;
+    }
+    setExtending(true);
+    try {
+      const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: pickedId, days }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Не удалось добавить участника");
+        return;
+      }
+      setShowAdd(false);
+      setPickedId(null);
+      setCandQuery("");
+      await openSubscribers();
+    } finally {
+      setExtending(false);
+    }
+  }
 
   const openSubscribers = useCallback(async () => {
     if (!channel) return;
@@ -556,7 +609,71 @@ export default function ChannelPage() {
               >
                 Всем активным
               </button>
+              <button
+                onClick={() => { setShowAdd((v) => !v); setPickedId(null); setCandQuery(""); }}
+                className="ml-auto px-3 py-1 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition"
+              >
+                {showAdd ? "Назад" : "+ Добавить участника"}
+              </button>
             </div>
+            {showAdd ? (
+              <div className="flex flex-col min-h-0">
+                <div className="p-3 border-b dark:border-gray-800 shrink-0">
+                  <input
+                    type="text"
+                    value={candQuery}
+                    onChange={(e) => setCandQuery(e.target.value)}
+                    placeholder="Поиск по имени или ID"
+                    className="w-full px-3 py-1.5 text-sm border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Выберите пользователя — он получит доступ к каналу на {addDays || 0} дн. без оплаты.
+                  </p>
+                </div>
+                <div className="overflow-y-auto p-2 flex-1">
+                  {candLoading ? (
+                    <div className="text-sm text-gray-400 text-center py-8">...</div>
+                  ) : candidates.length === 0 ? (
+                    <div className="text-sm text-gray-400 text-center py-8">Никого не найдено</div>
+                  ) : (
+                    candidates.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setPickedId(u.id)}
+                        className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition ${
+                          pickedId === u.id
+                            ? "bg-green-50 dark:bg-green-900/30 ring-1 ring-green-600"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-sm overflow-hidden shrink-0">
+                          {u.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={u.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            u.displayName[0]
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{u.displayName}</div>
+                          {u.fomoId && <div className="text-xs text-gray-400 font-mono">#{u.fomoId}</div>}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 border-t dark:border-gray-800 shrink-0">
+                  <button
+                    onClick={addMember}
+                    disabled={!pickedId || extending}
+                    className="w-full px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Добавить
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="overflow-y-auto p-2">
               {subscribersLoading ? (
                 <div className="text-sm text-gray-400 text-center py-8">...</div>
@@ -609,6 +726,7 @@ export default function ChannelPage() {
                 ))
               )}
             </div>
+            )}
           </div>
         </div>
       )}
