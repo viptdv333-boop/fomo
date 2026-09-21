@@ -72,6 +72,8 @@ export default function ChannelPage() {
   const [subscribersLoading, setSubscribersLoading] = useState(false);
   const [telegramVerified, setTelegramVerified] = useState(false);
   const [telegramBusy, setTelegramBusy] = useState(false);
+  // The viewer's own subscription to this channel (for their Telegram toggle).
+  const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; telegramNotify: boolean } | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [candQuery, setCandQuery] = useState("");
   const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
@@ -155,6 +157,31 @@ export default function ChannelPage() {
         return;
       }
       setChannel((prev) => (prev ? { ...prev, authorTelegramNotify: enabled } : prev));
+    } finally {
+      setTelegramBusy(false);
+    }
+  }
+
+  async function toggleMyTelegram() {
+    if (!mySub) return;
+    if (!telegramVerified && !mySub.telegramNotify) {
+      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      return;
+    }
+    const enabled = !mySub.telegramNotify;
+    setTelegramBusy(true);
+    try {
+      const res = await fetch(`/api/subscriptions/${mySub.id}/telegram`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Не удалось изменить настройку");
+        return;
+      }
+      setMySub({ ...mySub, telegramNotify: enabled });
     } finally {
       setTelegramBusy(false);
     }
@@ -250,7 +277,7 @@ export default function ChannelPage() {
     const owner = session?.user?.id === channel.author.id;
     setIsOwner(owner);
 
-    if (owner) {
+    if (session?.user?.id) {
       fetch("/api/telegram/account")
         .then((r) => r.json())
         .then((data) => setTelegramVerified(Boolean(data?.verified)))
@@ -265,12 +292,13 @@ export default function ChannelPage() {
           if (Array.isArray(subs)) {
             // Подписка на ЭТОТ канал или старая подписка на автора без тарифа
             // (13.09.2026: подписки теперь по каналам, а не на автора целиком).
-            const hasSub = subs.some(
+            const mine = subs.find(
               (s: { type: string; tariffId?: string | null; author: { id: string } }) =>
                 s.author.id === channel.author.id && s.type === "paid" &&
                 (!s.tariffId || s.tariffId === channel.id)
             );
-            setIsSubscribed(hasSub);
+            setIsSubscribed(Boolean(mine));
+            setMySub(mine ? { id: mine.id, tariffId: mine.tariffId ?? null, telegramNotify: Boolean(mine.telegramNotify) } : null);
           }
         })
         .catch(() => {});
@@ -390,6 +418,28 @@ export default function ChannelPage() {
             <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg text-sm font-medium">
               ✓ Вы подписаны
             </span>
+          )}
+          {isSubscribed && mySub?.tariffId && (
+            <div className="flex items-center gap-2">
+              <label
+                className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
+                title="Получать сетапы и сообщения канала в свой Telegram-бот"
+              >
+                <input
+                  type="checkbox"
+                  checked={mySub.telegramNotify}
+                  disabled={telegramBusy}
+                  onChange={toggleMyTelegram}
+                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
+                />
+                ✈️ Получать в Telegram
+              </label>
+              {!telegramVerified && (
+                <Link href="/profile" className="text-xs text-green-600 hover:underline">
+                  Подключить бота
+                </Link>
+              )}
+            </div>
           )}
           {isOwner && (
             <div className="flex items-center gap-3">
