@@ -124,8 +124,8 @@ export default function IdeaContent() {
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* Paid-channel post: FOMO logo watermark behind the content */}
-        {idea.channel && !idea.locked && <Watermark />}
+        {/* FOMO logo watermark on every idea page (open content only) */}
+        {!idea.locked && <Watermark />}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg overflow-hidden">
             {idea.author.avatarUrl ? (
