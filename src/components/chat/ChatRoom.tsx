@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
+import { formatMessageTime } from "@/lib/format-message-time";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -730,7 +731,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                           {msg.user.displayName}
                         </button>
                         <span className="text-xs text-gray-400 dark:text-gray-500">
-                          {new Date(msg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                          {formatMessageTime(msg.createdAt)}
                         </span>
                       </div>
 

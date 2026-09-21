@@ -47,6 +47,9 @@ const ideaSelect = {
   votes: {
     select: { value: true, userId: true },
   },
+  _count: {
+    select: { comments: { where: { isDeleted: false } } },
+  },
 };
 
 export async function GET(request: NextRequest) {
@@ -188,6 +191,7 @@ export async function GET(request: NextRequest) {
       price: idea.price,
       acceptDonations: idea.acceptDonations,
       viewCount: idea.viewCount,
+      commentCount: idea._count.comments,
       createdAt: idea.createdAt,
       moderationStatus: idea.moderationStatus,
       channelId: idea.tariffId,

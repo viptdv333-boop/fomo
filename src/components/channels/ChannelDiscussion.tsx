@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
+import { formatMessageTime } from "@/lib/format-message-time";
 
 interface Message {
   id: string;
@@ -156,7 +157,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold dark:text-gray-100">{msg.user.displayName}</span>
-                  <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-[10px] text-gray-400">{formatMessageTime(msg.createdAt)}</span>
                   {msg.isPinned && <span className="text-[10px] text-yellow-500">📌</span>}
                 </div>
                 {msg.replyTo && (

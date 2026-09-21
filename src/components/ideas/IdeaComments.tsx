@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
+import { formatMessageTime } from "@/lib/format-message-time";
 
 interface Comment {
   id: string;
@@ -90,8 +91,16 @@ export default function IdeaComments({ ideaId }: Props) {
     }
   }
 
+  // Cards link here with #comments; the page renders the comments after a
+  // fetch, so the browser's own anchor scroll has nothing to land on yet.
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined" && window.location.hash === "#comments") {
+      document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [loading]);
+
   return (
-    <div className="mt-4">
+    <div className="mt-4" id="comments">
       <div className="flex items-center gap-2 mb-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           💬 {t("idea.comments")}
@@ -116,7 +125,7 @@ export default function IdeaComments({ ideaId }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-semibold dark:text-gray-200">{c.user.displayName}</span>
-                  <span className="text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-[10px] text-gray-400">{formatMessageTime(c.createdAt)}</span>
                 </div>
                 {c.replyTo && (
                   <div className="text-[10px] text-gray-500 dark:text-gray-400 border-l-2 border-green-400 pl-1.5 my-0.5 truncate">

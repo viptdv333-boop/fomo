@@ -48,6 +48,7 @@ interface IdeaCardProps {
     price: number | null;
     acceptDonations?: boolean;
     viewCount?: number;
+    commentCount?: number;
     createdAt: string;
     moderationStatus?: string;
     author: {
@@ -87,6 +88,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [archiving, setArchiving] = useState(false);
 
   const viewCount = idea.viewCount ?? 0;
+  const commentCount = idea.commentCount ?? 0;
   const canDonate =
     Boolean(idea.acceptDonations) &&
     session?.user?.id !== idea.author.id &&
@@ -180,6 +182,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </svg>
           {viewCount}
         </span>
+        <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 shrink-0" title="Комментарии">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+          </svg>
+          {commentCount}
+        </Link>
         <span className={`flex items-center gap-1 text-xs shrink-0 ${likeCount > 0 ? "text-red-500" : "text-gray-400"}`}>
           <svg className="w-3.5 h-3.5" fill={likeCount > 0 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
@@ -240,6 +248,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             </svg>
             {viewCount}
           </span>
+          <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 hover:text-green-600" title="Комментарии">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+            </svg>
+            {commentCount}
+          </Link>
           <button onClick={handleLike} className={`flex items-center gap-1 ${liked ? "text-red-500" : "hover:text-red-500"}`}>
             <svg className="w-3.5 h-3.5" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
@@ -373,15 +387,26 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
 
       {/* Bottom row: discuss (left), donate/share/report (right) */}
       <div className="flex items-center justify-between gap-3 mt-1">
-        <Link
-          href={idea.instruments[0] ? `/chat/${idea.instruments[0].slug}` : "/chat"}
-          className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.17 0-2.29-.2-3.31-.56L3 21l1.56-4.69C3.57 15.09 3 13.6 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          {t("idea.discussInChat")}
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/ideas/${idea.id}#comments`}
+            className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+            </svg>
+            Комментарии{commentCount > 0 ? ` (${commentCount})` : ""}
+          </Link>
+          <Link
+            href={idea.instruments[0] ? `/chat/${idea.instruments[0].slug}` : "/chat"}
+            className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.17 0-2.29-.2-3.31-.56L3 21l1.56-4.69C3.57 15.09 3 13.6 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {t("idea.discussInChat")}
+          </Link>
+        </div>
         <div className="flex items-center gap-3">
         {canDonate && (
           <button
