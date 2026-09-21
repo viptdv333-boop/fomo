@@ -176,10 +176,6 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                         className="text-[10px] text-gray-400 hover:text-yellow-600">{msg.isPinned ? "Открепить" : "Закрепить"}</button>
                       <button onClick={() => handleModerate("delete", msg.id)}
                         className="text-[10px] text-gray-400 hover:text-red-500">Удалить</button>
-                      {msg.user.id !== userId && (
-                        <button onClick={() => handleModerate("mute", undefined, msg.user.id)}
-                          className="text-[10px] text-gray-400 hover:text-orange-500">Мут 30м</button>
-                      )}
                     </>
                   )}
                 </div>
