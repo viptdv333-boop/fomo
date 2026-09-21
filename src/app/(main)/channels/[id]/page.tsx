@@ -7,6 +7,7 @@ import Link from "next/link";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import ChannelDiscussion from "@/components/channels/ChannelDiscussion";
 import ShareButtons from "@/components/shared/ShareButtons";
+import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 
 interface ChannelData {
@@ -415,10 +416,11 @@ export default function ChannelPage() {
                   /* Unlocked idea card */
                   <Link
                     href={`/ideas/${idea.id}`}
-                    className={`block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${isOwner ? "pr-32" : ""}`}
+                    className={`relative block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${isOwner ? "pr-32" : ""}`}
                     onCopy={(e) => e.preventDefault()}
                     onContextMenu={(e) => e.preventDefault()}
                   >
+                    <Watermark variant="card" />
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>

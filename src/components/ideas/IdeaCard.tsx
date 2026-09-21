@@ -7,6 +7,7 @@ import UnifiedPaymentModal from "@/components/shared/UnifiedPaymentModal";
 import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/shared/NewBadge";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import ShareButtons from "@/components/shared/ShareButtons";
+import { FomoMark } from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -170,6 +171,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             )}
           </div>
         </Link>
+        <FomoMark className="shrink-0" />
         <span className="text-xs text-gray-400 shrink-0">{idea.author.displayName}</span>
         <span className="text-xs text-gray-400 shrink-0">{dateStr}</span>
         <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
@@ -208,6 +210,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
           <StarRating rating={idea.author.rating} />
+          <FomoMark className="shrink-0" />
           {isNew && <NewBadge />}
           {isArchived && <ArchivedBadge />}
           {idea.isPaid && (
@@ -281,8 +284,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </div>
         </div>
 
-        {/* Price badge */}
+        {/* FOMO mark + price badge */}
         <div className="flex items-center gap-2 shrink-0">
+          <FomoMark />
           {idea.isPaid && (
             <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold">
               {idea.price ? `${idea.price} ₽` : "🔒 канал"}
