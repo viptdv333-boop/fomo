@@ -5,6 +5,7 @@ import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import PWARegister from "@/components/PWARegister";
 import UpdateBanner from "@/components/UpdateBanner";
+import IosInstallModal from "@/components/shared/IosInstallModal";
 import YandexMetrika from "@/components/YandexMetrika";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieBanner from "@/components/CookieBanner";
@@ -161,6 +162,7 @@ export default function RootLayout({
             <SiteSettingsInjector />
             <PWARegister />
             <UpdateBanner />
+            <IosInstallModal />
             <YandexMetrika />
             <GoogleAnalytics />
             {children}

@@ -38,7 +38,34 @@ export function isStandalone(): boolean {
 
 export function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  // iPadOS 13+ Safari reports itself as a Mac; a touch screen gives it away.
+  const ipadAsMac = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  return (/iPad|iPhone|iPod/.test(navigator.userAgent) || ipadAsMac) && !(window as any).MSStream;
+}
+
+// The iOS "how to add to Home Screen" dialog lives here rather than in the
+// button component: the button sits inside dropdown menus that close (and
+// unmount) on click, which took the dialog's state down with them, so on an
+// iPhone tapping "Установить приложение" appeared to do nothing.
+let iosStepsOpen = false;
+
+export function isIosStepsOpen(): boolean {
+  return iosStepsOpen;
+}
+
+export function openIosSteps(): void {
+  iosStepsOpen = true;
+  notify();
+}
+
+export function closeIosSteps(): void {
+  iosStepsOpen = false;
+  notify();
+}
+
+export function isIOSNonSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /CriOS|FxiOS|EdgiOS|YaBrowser|OPiOS|GSA\//.test(navigator.userAgent);
 }
 
 export function canPromptInstall(): boolean {

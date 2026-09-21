@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isStandalone, isIOS, canPromptInstall, subscribePwaInstall, triggerInstall } from "@/lib/pwa-install";
+import { isStandalone, isIOS, canPromptInstall, subscribePwaInstall, triggerInstall, openIosSteps } from "@/lib/pwa-install";
 
 interface Props {
   className?: string;
@@ -17,7 +17,6 @@ interface Props {
 export default function InstallAppButton({ className, variant = "solid", onNavigate }: Props) {
   const [standalone, setStandalone] = useState(true); // assume installed until checked, to avoid a flash
   const [canPrompt, setCanPrompt] = useState(false);
-  const [showIosSteps, setShowIosSteps] = useState(false);
 
   useEffect(() => {
     setStandalone(isStandalone());
@@ -37,7 +36,7 @@ export default function InstallAppButton({ className, variant = "solid", onNavig
       return;
     }
     if (isIOS()) {
-      setShowIosSteps(true);
+      openIosSteps();
       return;
     }
     alert(
@@ -65,27 +64,6 @@ export default function InstallAppButton({ className, variant = "solid", onNavig
         </button>
       )}
 
-      {showIosSteps && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowIosSteps(false)}>
-          <div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-sm w-full p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Установка на iPhone/iPad</h3>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
-              <li>Откройте fomo.spot в Safari</li>
-              <li>Нажмите кнопку «Поделиться» (квадрат со стрелкой вверх)</li>
-              <li>Выберите «На экран «Домой»»</li>
-            </ol>
-            <button
-              onClick={() => setShowIosSteps(false)}
-              className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-            >
-              Понятно
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
