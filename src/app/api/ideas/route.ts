@@ -182,8 +182,35 @@ export async function GET(request: NextRequest) {
 
   const userId = session?.user?.id;
 
+  // Channel posts carry the trade details (entry / stop / take) in `content`,
+  // which the card used to hide behind a click. Hand it to the list only for
+  // viewers who can open the post — its author, or an active subscriber of
+  // this channel (or a legacy author-wide subscription), same rule as
+  // /api/ideas/[id].
+  const contentById = new Map<string, string>();
+  const channelIdeas = ideas.filter((i) => i.tariffId);
+  if (userId && channelIdeas.length > 0) {
+    const subs = await prisma.subscription.findMany({
+      where: { subscriberId: userId, status: "active", endDate: { gt: new Date() } },
+      select: { authorId: true, tariffId: true },
+    });
+    const readable = channelIdeas.filter(
+      (i) =>
+        i.author.id === userId ||
+        subs.some((s) => s.authorId === i.author.id && (s.tariffId === null || s.tariffId === i.tariffId))
+    );
+    if (readable.length > 0) {
+      const rows = await prisma.idea.findMany({
+        where: { id: { in: readable.map((i) => i.id) } },
+        select: { id: true, content: true },
+      });
+      for (const r of rows) contentById.set(r.id, r.content);
+    }
+  }
+
   return NextResponse.json({
     data: ideas.map((idea) => ({
+      ...(contentById.has(idea.id) ? { content: contentById.get(idea.id) } : {}),
       id: idea.id,
       title: idea.title,
       preview: idea.preview,

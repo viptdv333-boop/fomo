@@ -32,6 +32,8 @@ interface IdeaData {
   id: string;
   title: string;
   preview: string;
+  /** Только для тех, кому пост открыт: вход/стоп/тейк лежат здесь. */
+  content?: string;
   isPaid: boolean;
   price: number | null;
   createdAt: string;
@@ -534,6 +536,16 @@ export default function ChannelPage() {
                         </span>
                       )}
                     </div>
+                    {/* Вход / стоп / тейк прямо на карточке, без раскрытия */}
+                    {idea.content ? (
+                      <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line line-clamp-10">
+                        {idea.content}
+                      </p>
+                    ) : (
+                      idea.preview && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-line">{idea.preview}</p>
+                      )
+                    )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                       <span>{new Date(idea.createdAt).toLocaleDateString("ru-RU")}</span>
                       {idea.instruments.length > 0 && (
