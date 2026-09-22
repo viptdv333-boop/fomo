@@ -8,6 +8,7 @@ import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/share
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { FomoMark } from "@/components/shared/Watermark";
+import { formatMessageTime } from "@/lib/format-message-time";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -134,13 +135,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     });
   })();
 
-  const dateStr = new Date(idea.createdAt).toLocaleString("ru", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Moscow",
-  });
+  const dateStr = formatMessageTime(idea.createdAt);
 
   const avatarColor = hashColor(idea.author.id);
   const isNew = isRecentlyPublished(idea.createdAt);

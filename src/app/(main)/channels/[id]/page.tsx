@@ -9,6 +9,7 @@ import ChannelDiscussion from "@/components/channels/ChannelDiscussion";
 import ShareButtons from "@/components/shared/ShareButtons";
 import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
+import { formatMessageTime } from "@/lib/format-message-time";
 
 interface ChannelData {
   id: string;
@@ -547,7 +548,7 @@ export default function ChannelPage() {
                       )
                     )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>{new Date(idea.createdAt).toLocaleDateString("ru-RU")}</span>
+                      <span>{formatMessageTime(idea.createdAt)}</span>
                       {idea.instruments.length > 0 && (
                         <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                       )}
@@ -570,7 +571,7 @@ export default function ChannelPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>{new Date(idea.createdAt).toLocaleDateString("ru-RU")}</span>
+                        <span>{formatMessageTime(idea.createdAt)}</span>
                         {idea.instruments.length > 0 && (
                           <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                         )}
