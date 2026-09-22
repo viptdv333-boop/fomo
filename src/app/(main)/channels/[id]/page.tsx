@@ -37,6 +37,7 @@ interface IdeaData {
   content?: string;
   isPaid: boolean;
   price: number | null;
+  isPinned?: boolean;
   createdAt: string;
   voteScore: number;
   instruments: { id: string; name: string; slug: string }[];
@@ -253,6 +254,27 @@ export default function ChannelPage() {
       alert("Не удалось удалить идею");
     }
     setDeletingId(null);
+  }, []);
+
+  const [pinningId, setPinningId] = useState<string | null>(null);
+  const togglePin = useCallback(async (id: string, next: boolean) => {
+    setPinningId(id);
+    const res = await fetch(`/api/ideas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPinned: next }),
+    });
+    if (res.ok) {
+      // Same order the API returns: pinned first, most recently pinned on top.
+      setIdeas((prev) =>
+        [...prev.map((i) => (i.id === id ? { ...i, isPinned: next } : i))].sort((a, b) =>
+          a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1
+        )
+      );
+    } else {
+      alert("Не удалось закрепить пост");
+    }
+    setPinningId(null);
   }, []);
 
   // Load channel data
@@ -503,6 +525,14 @@ export default function ChannelPage() {
               <div key={idea.id} className="relative">
                 {isOwner && (
                   <div className="absolute top-3 right-3 z-10 flex items-center gap-3 bg-white/90 dark:bg-gray-900/90 rounded-lg px-2 py-1">
+                    <button
+                      onClick={(e) => { e.preventDefault(); togglePin(idea.id, !idea.isPinned); }}
+                      disabled={pinningId === idea.id}
+                      className={`text-xs font-medium disabled:opacity-50 ${idea.isPinned ? "text-amber-600 hover:text-amber-800" : "text-gray-400 hover:text-amber-600"}`}
+                      title={idea.isPinned ? "Открепить" : "Закрепить наверху канала"}
+                    >
+                      {pinningId === idea.id ? "..." : idea.isPinned ? "📌 Открепить" : "📌 Закрепить"}
+                    </button>
                     <Link
                       href={`/ideas/${idea.id}/edit`}
                       className="text-xs text-green-600 hover:text-green-800 font-medium"
@@ -522,13 +552,20 @@ export default function ChannelPage() {
                   /* Unlocked idea card */
                   <Link
                     href={`/ideas/${idea.id}`}
-                    className={`relative block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${isOwner ? "pr-32" : ""}`}
+                    className={`relative block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${
+                      idea.isPinned ? "ring-1 ring-amber-400/60" : ""
+                    } ${isOwner ? "pr-[15rem]" : ""}`}
                     onCopy={(e) => e.preventDefault()}
                     onContextMenu={(e) => e.preventDefault()}
                   >
                     <Watermark variant="card" />
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                        {idea.isPinned && (
+                          <span className="shrink-0 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded" title="Закреплено владельцем канала">
+                            📌 Закреплено
+                          </span>
+                        )}
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>
                       </div>
                       {idea.price && (

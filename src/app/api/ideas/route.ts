@@ -47,6 +47,7 @@ const ideaSelect = {
   votes: {
     select: { value: true, userId: true },
   },
+  isPinned: true,
   _count: {
     select: { comments: { where: { isDeleted: false } } },
   },
@@ -172,7 +173,9 @@ export async function GET(request: NextRequest) {
   const [ideas, total] = await Promise.all([
     prisma.idea.findMany({
       where,
-      orderBy,
+      // Pinned posts (channel view only — never set elsewhere) always float
+      // to the top, newest pin first; everything else keeps the requested order.
+      orderBy: [{ isPinned: "desc" }, { pinnedAt: "desc" }, orderBy],
       skip: (page - 1) * limit,
       take: limit,
       select: ideaSelect,
@@ -219,6 +222,7 @@ export async function GET(request: NextRequest) {
       acceptDonations: idea.acceptDonations,
       viewCount: idea.viewCount,
       commentCount: idea._count.comments,
+      isPinned: idea.isPinned,
       createdAt: idea.createdAt,
       moderationStatus: idea.moderationStatus,
       channelId: idea.tariffId,

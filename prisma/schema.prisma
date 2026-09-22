@@ -216,6 +216,11 @@ model Idea {
   moderationStatus String  @default("published")  // published, hidden, archived
   moderationNote   String?
   viewCount       Int      @default(0)
+  /// Закреплённый пост канала (22.09.2026): владелец канала поднимает важный
+  /// сетап наверх списка публикаций. pinnedAt сортирует несколько закреплённых
+  /// между собой (последний закреплённый — выше).
+  isPinned        Boolean   @default(false)
+  pinnedAt        DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

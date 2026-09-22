@@ -16,6 +16,8 @@ const ideaPatchSchema = z.object({
   // "hidden" stays admin-only moderation, enforced below since zod alone
   // can't see who's calling.
   moderationStatus: z.enum(["published", "archived"]).optional(),
+  // Owner pins an important channel post to the top of the list (22.09.2026).
+  isPinned: z.boolean().optional(),
 });
 
 // Cuts at the nearest word boundary so a paid idea's free teaser never ends
@@ -231,6 +233,10 @@ export async function PATCH(
   if (parsed.data.acceptDonations !== undefined) data.acceptDonations = parsed.data.acceptDonations;
   if (parsed.data.attachments !== undefined) data.attachments = parsed.data.attachments;
   if (parsed.data.moderationStatus !== undefined) data.moderationStatus = parsed.data.moderationStatus;
+  if (parsed.data.isPinned !== undefined) {
+    data.isPinned = parsed.data.isPinned;
+    data.pinnedAt = parsed.data.isPinned ? new Date() : null;
+  }
 
   // Handle instruments update in a transaction
   if (parsed.data.instrumentIds !== undefined) {
