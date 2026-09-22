@@ -73,6 +73,7 @@ export default function Header() {
             { href: "/authors", label: t("nav.authors") },
             { href: "/chat", label: t("nav.chat") },
             { href: "/terminal", label: t("nav.terminal") },
+            { href: "/calculator", label: t("nav.calculator") },
             // { href: "/messages", label: "Сообщения" },
           ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link
@@ -224,6 +225,7 @@ export default function Header() {
             { href: "/authors", label: t("nav.authors") },
             { href: "/chat", label: t("nav.chat") },
             { href: "/terminal", label: t("nav.terminal") },
+            { href: "/calculator", label: t("nav.calculator") },
             // { href: "/messages", label: "Сообщения" },
           ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link

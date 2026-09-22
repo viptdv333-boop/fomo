@@ -5,6 +5,7 @@ export const ru: Record<string, string> = {
   "nav.authors": "Авторы",
   "nav.chat": "Болталка",
   "nav.terminal": "Терминал",
+  "nav.calculator": "Калькулятор",
   "nav.messages": "Сообщения",
   "nav.login": "Войти",
 
@@ -124,6 +125,7 @@ export const en: Record<string, string> = {
   "nav.authors": "Authors",
   "nav.chat": "Chat",
   "nav.terminal": "Terminal",
+  "nav.calculator": "Calculator",
   "nav.messages": "Messages",
   "nav.login": "Log in",
 
@@ -234,6 +236,7 @@ export const cn: Record<string, string> = {
   "nav.authors": "作者",
   "nav.chat": "聊天",
   "nav.terminal": "终端",
+  "nav.calculator": "计算器",
   "nav.messages": "消息",
   "nav.login": "登录",
 
