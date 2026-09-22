@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
@@ -193,16 +194,20 @@ export default function ChannelDiscussion({ tariffId }: Props) {
         ) : (
           messages.filter((m) => !m.isDeleted).map((msg) => (
             <div key={msg.id} className="flex gap-2.5 group">
-              {msg.user.avatarUrl ? (
-                <img src={msg.user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-xs font-bold shrink-0">
-                  {msg.user.displayName?.[0] || "?"}
-                </div>
-              )}
+              <Link href={`/profile/${msg.user.id}`} className="shrink-0">
+                {msg.user.avatarUrl ? (
+                  <img src={msg.user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-xs font-bold">
+                    {msg.user.displayName?.[0] || "?"}
+                  </div>
+                )}
+              </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold dark:text-gray-100">{msg.user.displayName}</span>
+                  <Link href={`/profile/${msg.user.id}`} className="text-xs font-semibold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400">
+                    {msg.user.displayName}
+                  </Link>
                   <span className="text-[10px] text-gray-400">{formatMessageTime(msg.createdAt)}</span>
                   {msg.isPinned && <span className="text-[10px] text-yellow-500">📌</span>}
                 </div>

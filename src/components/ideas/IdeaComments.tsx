@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
@@ -116,16 +117,20 @@ export default function IdeaComments({ ideaId }: Props) {
         <div className="space-y-2 mb-3">
           {comments.map((c) => (
             <div key={c.id} className="flex gap-2 group">
-              {c.user.avatarUrl ? (
-                <img src={c.user.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-[10px] font-bold shrink-0 mt-0.5">
-                  {c.user.displayName?.[0] || "?"}
-                </div>
-              )}
+              <Link href={`/profile/${c.user.id}`} className="shrink-0">
+                {c.user.avatarUrl ? (
+                  <img src={c.user.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover mt-0.5" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-[10px] font-bold mt-0.5">
+                    {c.user.displayName?.[0] || "?"}
+                  </div>
+                )}
+              </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold dark:text-gray-200">{c.user.displayName}</span>
+                  <Link href={`/profile/${c.user.id}`} className="text-xs font-semibold dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400">
+                    {c.user.displayName}
+                  </Link>
                   <span className="text-[10px] text-gray-400">{formatMessageTime(c.createdAt)}</span>
                 </div>
                 {c.replyTo && (
