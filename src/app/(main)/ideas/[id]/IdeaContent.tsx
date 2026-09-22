@@ -9,6 +9,7 @@ import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/share
 import ShareButtons from "@/components/shared/ShareButtons";
 import ImageLightbox from "@/components/shared/ImageLightbox";
 import Watermark from "@/components/shared/Watermark";
+import Linkify from "@/components/shared/Linkify";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import IdeaComments from "@/components/ideas/IdeaComments";
 import { useT } from "@/lib/i18n/client";
@@ -210,7 +211,7 @@ export default function IdeaContent() {
           idea.previewText ? (
             // Платная идея без канала: 200 символов контента + блюр-заглушка + оплата
             <div>
-              <p className="whitespace-pre-wrap dark:text-gray-100 mb-1">{idea.previewText}</p>
+              <p className="whitespace-pre-wrap dark:text-gray-100 mb-1"><Linkify text={idea.previewText} /></p>
               <div className="relative h-40 overflow-hidden -mt-1">
                 {idea.blurText && (
                   <p className="whitespace-pre-wrap blur-sm select-none pointer-events-none text-gray-400 dark:text-gray-600">
@@ -247,7 +248,7 @@ export default function IdeaContent() {
           )
         ) : idea.content ? (
           <>
-            <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100">{idea.content}</div>
+            <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100"><Linkify text={idea.content} /></div>
             {idea.attachments && (idea.attachments as any[]).length > 0 && (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {(idea.attachments as any[]).map((att: any, i: number) =>

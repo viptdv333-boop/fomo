@@ -259,6 +259,10 @@ const createIdeaSchema = z.object({
   instrumentIds: z.array(z.string()),
   attachments: z.array(attachmentSchema).optional(),
   channelId: z.string().optional(),
+  // Author explicitly picked "Общее" in the instrument picker — a post with
+  // no ticker (site news, a feature announcement) — instead of just having
+  // forgotten to tag one. Only meaningful when instrumentIds is empty.
+  general: z.boolean().optional(),
 });
 
 interface PaidTier {
@@ -294,9 +298,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments, channelId } = parsed.data;
+  const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments, channelId, general } = parsed.data;
 
-  if (!channelId && instrumentIds.length === 0) {
+  if (!channelId && !general && instrumentIds.length === 0) {
     return NextResponse.json({ error: "Выберите хотя бы один инструмент" }, { status: 400 });
   }
 

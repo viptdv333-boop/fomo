@@ -774,6 +774,10 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                               dangerouslySetInnerHTML={{
                                 __html: escapeHtml(msg.text)
                                   .replace(
+                                    /(https?:\/\/[^\s<>"']+)/g,
+                                    '<a href="$1" target="_blank" rel="noopener noreferrer nofollow" class="text-green-600 dark:text-green-400 hover:underline break-all">$1</a>'
+                                  )
+                                  .replace(
                                     /@(\S+)/g,
                                     '<span class="font-semibold text-green-600 dark:text-green-400">@$1</span>'
                                   )

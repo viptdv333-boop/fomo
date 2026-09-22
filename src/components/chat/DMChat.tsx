@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
+import Linkify from "@/components/shared/Linkify";
 
 interface Message {
   id: string;
@@ -141,7 +142,12 @@ export default function DMChat({ conversationId, otherUserName, otherUserAvatar 
                 {msg.fileUrl && msg.fileType === "image" && (
                   <img src={msg.fileUrl} alt="" className="max-w-full rounded-lg mb-1" />
                 )}
-                <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  <Linkify
+                    text={msg.text}
+                    linkClassName={isMine ? "underline hover:no-underline break-all" : undefined}
+                  />
+                </p>
                 <div className={`text-[10px] mt-1 ${isMine ? "text-white/60" : "text-gray-400"} text-right`}>
                   {new Date(msg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                 </div>

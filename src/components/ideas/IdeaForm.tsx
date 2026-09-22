@@ -58,6 +58,11 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
   const [price, setPrice] = useState(initialData?.price ? String(initialData.price) : "");
   const [acceptDonations, setAcceptDonations] = useState(initialData?.acceptDonations ?? false);
   const [selectedChips, setSelectedChips] = useState<SelectedChip[]>([]);
+  // "Общее" — идея без привязки к инструменту (например, анонс фичи сайта).
+  // Заранее true при редактировании уже опубликованной такой идеи.
+  const [isGeneral, setIsGeneral] = useState(
+    mode === "edit" && !!initialData && initialData.instrumentIds.length === 0
+  );
   const [attachments, setAttachments] = useState<Attachment[]>(
     initialData?.attachments || []
   );
@@ -168,6 +173,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
       auto: false,
     };
     setSelectedChips((prev) => [...prev, chip]);
+    setIsGeneral(false);
     setSearchQuery("");
     setShowDropdown(false);
     searchInputRef.current?.focus();
@@ -256,6 +262,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
       price: isChannelPost ? 0 : (isPaid ? Number(price) : undefined),
       acceptDonations: isChannelPost ? false : (!isPaid ? acceptDonations : false),
       instrumentIds: selectedChips.map((c) => c.id),
+      general: isGeneral,
       attachments: attachments.length > 0 ? attachments : undefined,
     };
     if (channelId) body.channelId = channelId;
@@ -347,6 +354,19 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                     />
                   </div>
                   <div className="flex-1 overflow-y-auto p-2">
+                    {!catalogSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedChips([]);
+                          setIsGeneral(true);
+                          setShowCatalog(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 mb-1 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 border border-dashed dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                      >
+                        Общее <span className="font-normal text-gray-400">— без привязки к инструменту</span>
+                      </button>
+                    )}
                     {catalogCategories
                       .map((cat) => ({
                         ...cat,
@@ -463,8 +483,20 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
           </div>
 
           {/* Selected instrument chips */}
-          {selectedChips.length > 0 && (
+          {(selectedChips.length > 0 || isGeneral) && (
             <div className="flex flex-wrap gap-2 mt-3">
+              {isGeneral && (
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border border-dashed border-gray-400 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                  Общее
+                  <button
+                    type="button"
+                    onClick={() => setIsGeneral(false)}
+                    className="ml-1 text-current opacity-50 hover:opacity-100 transition"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
               {selectedChips.map((chip) => (
                 <span
                   key={chip.id}
@@ -493,7 +525,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             </div>
           )}
 
-          {selectedChips.length === 0 && (
+          {selectedChips.length === 0 && !isGeneral && (
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
               {t("idea.atLeastOneInstrument")}
             </p>

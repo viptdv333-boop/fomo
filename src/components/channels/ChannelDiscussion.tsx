@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
+import Linkify from "@/components/shared/Linkify";
 
 interface Message {
   id: string;
@@ -210,7 +211,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                     {msg.replyTo.user.displayName}: {msg.replyTo.text.slice(0, 60)}
                   </div>
                 )}
-                {msg.text && <p className="text-sm text-gray-700 dark:text-gray-300 break-words">{msg.text}</p>}
+                {msg.text && <p className="text-sm text-gray-700 dark:text-gray-300 break-words"><Linkify text={msg.text} /></p>}
                 {msg.fileUrl && msg.fileType === "video" && (
                   <video src={msg.fileUrl} controls className="mt-1 max-w-full sm:max-w-[320px] max-h-[240px] rounded-lg" />
                 )}

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
+import Linkify from "@/components/shared/Linkify";
 
 interface Comment {
   id: string;
@@ -132,7 +133,7 @@ export default function IdeaComments({ ideaId }: Props) {
                     ↩ <span className="font-semibold">{c.replyTo.user.displayName}</span>: {c.replyTo.text.slice(0, 50)}
                   </div>
                 )}
-                {c.text && <p className="text-sm text-gray-700 dark:text-gray-300">{c.text}</p>}
+                {c.text && <p className="text-sm text-gray-700 dark:text-gray-300"><Linkify text={c.text} /></p>}
                 {c.fileUrl && (
                   <a href={c.fileUrl} target="_blank" rel="noopener noreferrer">
                     <img src={c.fileUrl} alt="" className="mt-1 max-w-[200px] max-h-[200px] rounded-lg object-cover" />
