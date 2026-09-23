@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push";
+import { canAccessRoom } from "@/lib/channel-access";
 
 // Access the global IO instance set by server/socket.ts
 const globalForIO = globalThis as unknown as { io: any };
@@ -80,12 +81,34 @@ export async function notifyRoomSubscribers(
     where: { roomId, userId: { notIn: excludeUserIds } },
     select: { userId: true },
   });
-
   if (subscribers.length === 0) return;
 
+  // Re-check access on every send, not just at subscribe time — a private
+  // room can remove a member, or a paid channel's subscription can lapse,
+  // after the ChatRoomNotify row was created; without this a stale row
+  // would keep leaking message previews via notification/push.
+  const room = await prisma.chatRoom.findUnique({ where: { id: roomId }, select: { ownerId: true } });
+  if (!room) return;
+
+  let candidateIds = subscribers.map((s) => s.userId);
+  if (room.ownerId) {
+    const members = await prisma.chatRoomMember.findMany({
+      where: { roomId, userId: { in: candidateIds } },
+      select: { userId: true },
+    });
+    candidateIds = members.map((m) => m.userId);
+  }
+  if (candidateIds.length === 0) return;
+
+  const allowed = await Promise.all(
+    candidateIds.map(async (userId) => ((await canAccessRoom(prisma, roomId, userId)) ? userId : null))
+  );
+  const recipients = allowed.filter((id): id is string => id !== null);
+  if (recipients.length === 0) return;
+
   await prisma.notification.createMany({
-    data: subscribers.map((s) => ({
-      userId: s.userId,
+    data: recipients.map((userId) => ({
+      userId,
       type,
       title,
       body,
@@ -93,8 +116,8 @@ export async function notifyRoomSubscribers(
     })),
   });
 
-  for (const s of subscribers) {
-    emitNotification(s.userId);
-    sendPushToUser(s.userId, { title, body, url: link }).catch(() => {});
+  for (const userId of recipients) {
+    emitNotification(userId);
+    sendPushToUser(userId, { title, body, url: link }).catch(() => {});
   }
 }
