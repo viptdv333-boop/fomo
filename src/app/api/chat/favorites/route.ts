@@ -13,7 +13,7 @@ export async function GET() {
     where: { userId: session.user.id! },
     include: {
       room: {
-        select: { id: true, name: true, isGeneral: true, ownerId: true, asset: { select: { slug: true } } },
+        select: { id: true, name: true, isGeneral: true, ownerId: true, isArchived: true, asset: { select: { slug: true } } },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -21,7 +21,10 @@ export async function GET() {
 
   return NextResponse.json(
     favorites
-      .filter((f) => f.room)
+      // An admin-hidden asset room (isArchived) shouldn't keep showing up
+      // here just because a user starred it earlier — same rule as the
+      // болталка sidebar's category tree.
+      .filter((f) => f.room && !f.room.isArchived)
       .map((f) => ({
         roomId: f.room.id,
         name: f.room.name,

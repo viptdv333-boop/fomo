@@ -105,6 +105,7 @@ function AssetCategoryTree() {
           const hiddenCount = cat.assets.filter((a) => a.chatRoom?.isArchived).length;
           const closedCount = cat.assets.filter((a) => a.chatRoom?.isClosed).length;
           const allHidden = cat.assets.length > 0 && hiddenCount === cat.assets.length;
+          const allClosed = cat.assets.length > 0 && closedCount === cat.assets.length;
           return (
             <div key={cat.slug}>
               <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
@@ -124,6 +125,13 @@ function AssetCategoryTree() {
                       закрыто {closedCount}
                     </span>
                   )}
+                </button>
+                <button
+                  onClick={() => bulkToggle(cat.slug, "isClosed", !allClosed)}
+                  disabled={busy === cat.slug}
+                  className="text-xs font-medium text-gray-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
+                >
+                  {busy === cat.slug ? "..." : allClosed ? "Открыть всю для записи" : "Закрыть всю категорию"}
                 </button>
                 <button
                   onClick={() => bulkToggle(cat.slug, "isArchived", !allHidden)}
