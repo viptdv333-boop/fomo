@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, notifyRoomSubscribers } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { canAccessRoom } from "@/lib/channel-access";
 import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
@@ -171,10 +171,16 @@ export async function POST(req: NextRequest) {
     ).catch(() => {});
   }
 
-  // Check for @mentions
   const text = parsed.data.text;
+  const senderName = message.user.displayName;
+  const roomLink = room.ownerId ? `/rooms/${room.id}` : `/chat?room=${room.id}`;
+  const bodyPreview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+
+  // @mentions — targeted, regardless of whether the mentioned user has the
+  // room's bell on.
   const mentionRegex = /@(\S+)/g;
   const mentions = text.match(mentionRegex);
+  const mentionedIds = new Set<string>();
   if (mentions) {
     const mentionNames = mentions.map((m: string) => m.slice(1).toLowerCase());
     const mentionedUsers = await prisma.user.findMany({
@@ -188,18 +194,28 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
-    const senderName = message.user.displayName;
-    const mentionLink = room.ownerId ? `/rooms/${room.id}` : "/chat";
     for (const u of mentionedUsers) {
+      mentionedIds.add(u.id);
       await createNotification({
         userId: u.id,
         type: "chat_mention",
         title: `${senderName} упомянул вас в болталке`,
-        body: text.length > 80 ? text.slice(0, 80) + "…" : text,
-        link: mentionLink,
+        body: bodyPreview,
+        link: roomLink,
       });
     }
   }
+
+  // Everyone else who turned the room's bell on (болталка → 🔔) — every
+  // message, not just mentions. Skip anyone already notified above.
+  await notifyRoomSubscribers(
+    room.id,
+    [session.user.id!, ...mentionedIds],
+    "chat_room_message",
+    `${senderName} написал в «${room.name}»`,
+    bodyPreview,
+    roomLink
+  ).catch(() => {});
 
   return NextResponse.json(message);
 }

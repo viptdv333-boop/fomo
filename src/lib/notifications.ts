@@ -64,3 +64,37 @@ export async function notifyFollowers(
     sendPushToUser(f.followerId, { title, body, url: link }).catch(() => {});
   }
 }
+
+// Every message in a room, not just @mentions — opt-in via the болталка bell
+// (ChatRoomNotify). excludeUserId is always the sender, so a message never
+// notifies its own author.
+export async function notifyRoomSubscribers(
+  roomId: string,
+  excludeUserIds: string[],
+  type: string,
+  title: string,
+  body?: string,
+  link?: string
+) {
+  const subscribers = await prisma.chatRoomNotify.findMany({
+    where: { roomId, userId: { notIn: excludeUserIds } },
+    select: { userId: true },
+  });
+
+  if (subscribers.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: subscribers.map((s) => ({
+      userId: s.userId,
+      type,
+      title,
+      body,
+      link,
+    })),
+  });
+
+  for (const s of subscribers) {
+    emitNotification(s.userId);
+    sendPushToUser(s.userId, { title, body, url: link }).catch(() => {});
+  }
+}

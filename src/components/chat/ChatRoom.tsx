@@ -226,15 +226,17 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const [mentionSearch, setMentionSearch] = useState<string | null>(null);
   const [mentionUsers, setMentionUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
-  const [notifications, setNotifications] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = JSON.parse(localStorage.getItem("fomo-chat-notif") || "{}");
-        return saved;
-      } catch { return {}; }
-    }
-    return {};
-  });
+  // Server-side, not localStorage (which never told the server anything, so
+  // toggling it here never actually produced a notification — see
+  // toggleNotification below). Fetched once as the full set of rooms this
+  // user has the bell on for, so switching rooms doesn't need its own request.
+  const [notifyRoomIds, setNotifyRoomIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    fetch("/api/chat/notify")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.roomIds) setNotifyRoomIds(new Set<string>(data.roomIds)); })
+      .catch(() => {});
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -243,7 +245,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const inputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const notifEnabled = notifications[roomId] === true;
+  const notifEnabled = notifyRoomIds.has(roomId);
 
   /* ── Data fetching & socket ── */
   // ChatSidebar's own unread-count fetch runs independently (mount + 20s
@@ -496,10 +498,28 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   /* ── Notifications ── */
-  function toggleNotification() {
-    const updated = { ...notifications, [roomId]: !notifEnabled };
-    setNotifications(updated);
-    localStorage.setItem("fomo-chat-notif", JSON.stringify(updated));
+  async function toggleNotification() {
+    const next = !notifEnabled;
+    setNotifyRoomIds((prev) => {
+      const updated = new Set(prev);
+      if (next) updated.add(roomId); else updated.delete(roomId);
+      return updated;
+    });
+    try {
+      const res = await fetch("/api/chat/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, enabled: next }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Roll back — the server never got it.
+      setNotifyRoomIds((prev) => {
+        const updated = new Set(prev);
+        if (next) updated.delete(roomId); else updated.add(roomId);
+        return updated;
+      });
+    }
   }
 
   /* ── Admin actions ── */

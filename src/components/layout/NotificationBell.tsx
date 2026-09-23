@@ -132,6 +132,7 @@ export default function NotificationBell() {
     switch (type) {
       case "new_message": return "💬";
       case "chat_mention": return "📢";
+      case "chat_room_message": return "🔔";
       case "new_follower": return "👤";
       case "new_idea": return "💡";
       case "new_comment": return "🗨️";

@@ -84,6 +84,7 @@ model User {
   pushSubscriptions      PushSubscription[]
   favoriteRooms          ChatRoomFavorite[]
   roomReads              ChatRoomRead[]
+  roomNotifies           ChatRoomNotify[]
   telegramAccount        TelegramAccount?
 
   @@index([status])
@@ -368,6 +369,7 @@ model ChatRoom {
   members    ChatRoomMember[]
   favoritedBy ChatRoomFavorite[]
   reads       ChatRoomRead[]
+  notifiers   ChatRoomNotify[]
   channelTariff SubscriptionTariff?
 
   @@index([ownerId])
@@ -401,6 +403,23 @@ model ChatRoomRead {
 
   @@unique([userId, roomId])
   @@index([userId])
+}
+
+/// Opt-in "notify me about every message in this room" — the болталка bell
+/// toggle (22.09.2026). Server-side (was localStorage, so it silently did
+/// nothing across devices/pushes) — a row's mere existence means "on"; a
+/// user must join first (ChatRoomMember) for a private room. Separate from
+/// the @mention notification, which fires regardless of this.
+model ChatRoomNotify {
+  id     String @id @default(cuid())
+  userId String
+  roomId String
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId])
 }
 
 /// Membership for user-created private rooms (ChatRoom.ownerId != null).
