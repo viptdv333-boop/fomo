@@ -355,6 +355,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                 <Link
                   key={f.roomId}
                   href={href}
+                  onClick={() => onSelectRoom?.({ id: f.roomId, name: f.name, isClosed: false, isArchived: false })}
                   className={`flex items-center gap-2 px-4 py-2 text-sm transition truncate ${
                     active
                       ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium border-l-2 border-green-500"
