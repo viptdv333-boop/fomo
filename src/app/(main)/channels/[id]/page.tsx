@@ -524,9 +524,13 @@ export default function ChannelPage() {
             {ideas.map((idea) => (
               <div key={idea.id} className="relative">
                 {isOwner && (
-                  <div className="absolute top-3 right-3 z-10 flex items-center gap-3 bg-white/90 dark:bg-gray-900/90 rounded-lg px-2 py-1">
+                  // In-flow toolbar, not an overlay: an absolutely-positioned
+                  // top-right box needed permanent padding reserved on every
+                  // line of the card to avoid it, which on a narrow phone left
+                  // almost no width for the post text (wrapped to ~1 word/line).
+                  <div className="flex items-center justify-end gap-3 mb-1.5 px-1">
                     <button
-                      onClick={(e) => { e.preventDefault(); togglePin(idea.id, !idea.isPinned); }}
+                      onClick={() => togglePin(idea.id, !idea.isPinned)}
                       disabled={pinningId === idea.id}
                       className={`text-xs font-medium disabled:opacity-50 ${idea.isPinned ? "text-amber-600 hover:text-amber-800" : "text-gray-400 hover:text-amber-600"}`}
                       title={idea.isPinned ? "Открепить" : "Закрепить наверху канала"}
@@ -554,7 +558,7 @@ export default function ChannelPage() {
                     href={`/ideas/${idea.id}`}
                     className={`relative block bg-white dark:bg-gray-900 rounded-xl shadow border dark:border-gray-800 p-4 hover:shadow-md transition select-none ${
                       idea.isPinned ? "ring-1 ring-amber-400/60" : ""
-                    } ${isOwner ? "pr-[15rem]" : ""}`}
+                    }`}
                     onCopy={(e) => e.preventDefault()}
                     onContextMenu={(e) => e.preventDefault()}
                   >
