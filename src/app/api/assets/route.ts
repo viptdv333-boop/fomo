@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
           exchangeRel: { select: { id: true, shortName: true, slug: true, country: true } },
         },
       },
-      chatRoom: { select: { id: true } },
+      chatRoom: { select: { id: true, isClosed: true, isArchived: true } },
       _count: { select: { instruments: true } },
     },
     ...(search ? { take: 20 } : {}),
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     },
     include: {
       category: true,
-      chatRoom: { select: { id: true } },
+      chatRoom: { select: { id: true, isClosed: true, isArchived: true } },
     },
   });
 

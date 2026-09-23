@@ -5,6 +5,156 @@ import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useS
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+interface AssetItem {
+  id: string;
+  name: string;
+  slug: string;
+  category: { slug: string; name: string };
+  chatRoom: { id: string; isClosed: boolean; isArchived: boolean } | null;
+}
+
+interface AssetCategoryGroup {
+  slug: string;
+  name: string;
+  assets: AssetItem[];
+}
+
+/* ── Asset category tree: real per-instrument chat rooms (болталка's actual
+   "RU Акции ММВБ 221" / "Алроса" structure), separate from the flat
+   categoryLabel list below which only covers manually-created rooms. ── */
+function AssetCategoryTree() {
+  const [cats, setCats] = useState<AssetCategoryGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState<string | null>(null); // categorySlug or roomId currently updating
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/assets");
+    if (res.ok) {
+      const assets: AssetItem[] = await res.json();
+      const map = new Map<string, AssetCategoryGroup>();
+      for (const a of assets) {
+        const key = a.category?.slug || "other";
+        if (!map.has(key)) map.set(key, { slug: key, name: a.category?.name || "Другое", assets: [] });
+        map.get(key)!.assets.push(a);
+      }
+      setCats([...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ru")));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function toggle(slug: string) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      return next;
+    });
+  }
+
+  async function toggleRoom(roomId: string, field: "isClosed" | "isArchived", value: boolean) {
+    setBusy(roomId);
+    await fetch("/api/admin/chat", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: roomId, [field]: !value }),
+    });
+    await load();
+    setBusy(null);
+  }
+
+  async function bulkToggle(categorySlug: string, field: "isClosed" | "isArchived", value: boolean) {
+    const label = field === "isClosed" ? (value ? "закрыть" : "открыть") : (value ? "архивировать" : "вернуть из архива");
+    if (!confirm(`Разом ${label} все чаты этой категории?`)) return;
+    setBusy(categorySlug);
+    await fetch("/api/admin/chat/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categorySlug, field, value }),
+    });
+    await load();
+    setBusy(null);
+  }
+
+  const q = search.trim().toLowerCase();
+  const filtered = cats
+    .map((c) => ({ ...c, assets: c.assets.filter((a) => !q || a.name.toLowerCase().includes(q)) }))
+    .filter((c) => c.assets.length > 0);
+
+  if (loading) return <div className="text-center py-6 text-gray-400 text-sm">Загрузка...</div>;
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden mb-6">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3 flex-wrap">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Категории активов (болталка)</h2>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск актива..."
+          className="ml-auto px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+        />
+      </div>
+      <div className="divide-y divide-gray-50 dark:divide-gray-800/30">
+        {filtered.map((cat) => {
+          const isOpen = open.has(cat.slug) || Boolean(q);
+          const closedCount = cat.assets.filter((a) => a.chatRoom?.isClosed).length;
+          const allClosed = cat.assets.length > 0 && closedCount === cat.assets.length;
+          return (
+            <div key={cat.slug}>
+              <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
+                <button onClick={() => toggle(cat.slug)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                  <svg className={`w-3 h-3 shrink-0 transition-transform text-gray-400 ${isOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6 4l8 6-8 6V4z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{cat.name}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{cat.assets.length}</span>
+                  {closedCount > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded shrink-0">
+                      закрыто {closedCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => bulkToggle(cat.slug, "isClosed", !allClosed)}
+                  disabled={busy === cat.slug}
+                  className="text-xs font-medium text-gray-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
+                >
+                  {busy === cat.slug ? "..." : allClosed ? "Открыть всю категорию" : "Закрыть всю категорию"}
+                </button>
+              </div>
+              {isOpen && (
+                <div className="bg-gray-50/50 dark:bg-gray-800/20">
+                  {cat.assets.map((a) => (
+                    <div key={a.id} className="flex items-center gap-2 pl-10 pr-4 py-1.5 text-sm">
+                      <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-gray-300">{a.name}</span>
+                      {!a.chatRoom ? (
+                        <span className="text-xs text-gray-300 dark:text-gray-600">нет чата</span>
+                      ) : (
+                        <>
+                          {a.chatRoom.isClosed && <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded">закрыт</span>}
+                          <button
+                            onClick={() => toggleRoom(a.chatRoom!.id, "isClosed", a.chatRoom!.isClosed)}
+                            disabled={busy === a.chatRoom.id}
+                            className="text-xs text-gray-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
+                          >
+                            {busy === a.chatRoom.id ? "..." : a.chatRoom.isClosed ? "Открыть" : "Закрыть"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface ChatRoom {
   id: string;
   name: string;
@@ -257,6 +407,8 @@ export default function AdminChatPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Управление болталкой</h1>
+
+      <AssetCategoryTree />
 
       {/* Search & filter */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 mb-4 flex items-center gap-3 flex-wrap">
