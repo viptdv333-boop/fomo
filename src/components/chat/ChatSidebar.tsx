@@ -11,7 +11,7 @@ interface AssetItem {
   id: string;
   name: string;
   slug: string;
-  chatRoom: { id: string } | null;
+  chatRoom: { id: string; isArchived?: boolean } | null;
   category: { slug: string; name: string };
 }
 
@@ -144,9 +144,14 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
     fetch("/api/assets")
       .then(r => r.json())
       .then((assets: AssetItem[]) => {
+        // An admin can hide a whole category or a single asset from the
+        // болталка (distinct from "закрыт" — read-only but still listed).
+        // Filtered here rather than server-side, since /admin/chat needs
+        // the full unfiltered list to manage archived rooms.
+        const visible = assets.filter((a) => !a.chatRoom?.isArchived);
         // Group by category
         const map = new Map<string, CategoryGroup>();
-        for (const a of assets) {
+        for (const a of visible) {
           const key = a.category?.slug || "other";
           if (!map.has(key)) map.set(key, { slug: key, name: a.category?.name || "Другое", assets: [] });
           map.get(key)!.assets.push(a);

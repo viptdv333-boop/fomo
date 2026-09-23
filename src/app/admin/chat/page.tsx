@@ -89,18 +89,22 @@ function AssetCategoryTree() {
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden mb-6">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3 flex-wrap">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Категории активов (болталка)</h2>
+        <p className="text-xs text-gray-400 w-full sm:w-auto sm:flex-1">
+          «Скрыть» убирает чат из болталки совсем. «Закрыть» оставляет его видимым, но только для чтения.
+        </p>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск актива..."
-          className="ml-auto px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+          className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
         />
       </div>
       <div className="divide-y divide-gray-50 dark:divide-gray-800/30">
         {filtered.map((cat) => {
           const isOpen = open.has(cat.slug) || Boolean(q);
+          const hiddenCount = cat.assets.filter((a) => a.chatRoom?.isArchived).length;
           const closedCount = cat.assets.filter((a) => a.chatRoom?.isClosed).length;
-          const allClosed = cat.assets.length > 0 && closedCount === cat.assets.length;
+          const allHidden = cat.assets.length > 0 && hiddenCount === cat.assets.length;
           return (
             <div key={cat.slug}>
               <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
@@ -110,6 +114,11 @@ function AssetCategoryTree() {
                   </svg>
                   <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{cat.name}</span>
                   <span className="text-xs text-gray-400 shrink-0">{cat.assets.length}</span>
+                  {hiddenCount > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 rounded shrink-0">
+                      скрыто {hiddenCount}
+                    </span>
+                  )}
                   {closedCount > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded shrink-0">
                       закрыто {closedCount}
@@ -117,11 +126,11 @@ function AssetCategoryTree() {
                   )}
                 </button>
                 <button
-                  onClick={() => bulkToggle(cat.slug, "isClosed", !allClosed)}
+                  onClick={() => bulkToggle(cat.slug, "isArchived", !allHidden)}
                   disabled={busy === cat.slug}
-                  className="text-xs font-medium text-gray-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
+                  className="text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50 shrink-0"
                 >
-                  {busy === cat.slug ? "..." : allClosed ? "Открыть всю категорию" : "Закрыть всю категорию"}
+                  {busy === cat.slug ? "..." : allHidden ? "Показать всю категорию" : "Скрыть всю категорию"}
                 </button>
               </div>
               {isOpen && (
@@ -133,13 +142,21 @@ function AssetCategoryTree() {
                         <span className="text-xs text-gray-300 dark:text-gray-600">нет чата</span>
                       ) : (
                         <>
+                          {a.chatRoom.isArchived && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 rounded">скрыт</span>}
                           {a.chatRoom.isClosed && <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded">закрыт</span>}
                           <button
                             onClick={() => toggleRoom(a.chatRoom!.id, "isClosed", a.chatRoom!.isClosed)}
                             disabled={busy === a.chatRoom.id}
                             className="text-xs text-gray-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
                           >
-                            {busy === a.chatRoom.id ? "..." : a.chatRoom.isClosed ? "Открыть" : "Закрыть"}
+                            {busy === a.chatRoom.id ? "..." : a.chatRoom.isClosed ? "Открыть для записи" : "Закрыть"}
+                          </button>
+                          <button
+                            onClick={() => toggleRoom(a.chatRoom!.id, "isArchived", a.chatRoom!.isArchived)}
+                            disabled={busy === a.chatRoom.id}
+                            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 shrink-0"
+                          >
+                            {busy === a.chatRoom.id ? "..." : a.chatRoom.isArchived ? "Показать" : "Скрыть"}
                           </button>
                         </>
                       )}
