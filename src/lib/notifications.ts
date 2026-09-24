@@ -121,3 +121,34 @@ export async function notifyRoomSubscribers(
     sendPushToUser(userId, { title, body, url: link }).catch(() => {});
   }
 }
+
+// New post in a paid channel — every active subscriber, not just those who
+// enabled the Telegram toggle. The author never notifies themselves.
+export async function notifyChannelSubscribers(
+  tariffId: string,
+  authorId: string,
+  title: string,
+  body?: string,
+  link?: string
+) {
+  const subs = await prisma.subscription.findMany({
+    where: {
+      tariffId,
+      status: "active",
+      endDate: { gt: new Date() },
+      subscriberId: { not: authorId },
+    },
+    select: { subscriberId: true },
+  });
+  const recipients = [...new Set(subs.map((s) => s.subscriberId))];
+  if (recipients.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({ userId, type: "channel_post", title, body, link })),
+  });
+
+  for (const userId of recipients) {
+    emitNotification(userId);
+    sendPushToUser(userId, { title, body, url: link }).catch(() => {});
+  }
+}

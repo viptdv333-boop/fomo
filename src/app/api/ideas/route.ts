@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
-import { notifyFollowers } from "@/lib/notifications";
+import { notifyFollowers, notifyChannelSubscribers } from "@/lib/notifications";
 import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -489,6 +489,14 @@ export async function POST(request: NextRequest) {
       `/ideas/${idea.id}`
     );
   } else if (tariffId) {
+    const channel = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId }, select: { name: true } });
+    await notifyChannelSubscribers(
+      tariffId,
+      userId,
+      `Новый пост в канале «${channel?.name ?? "канал"}»`,
+      title,
+      `/ideas/${idea.id}`
+    ).catch(() => {});
     await notifyChannelTelegramSubscribers(
       tariffId,
       `🔔 Новый сетап: <b>${escapeTelegramHtml(title)}</b>\n${escapeTelegramHtml(preview)}\n\nhttps://fomo.spot/ideas/${idea.id}`
