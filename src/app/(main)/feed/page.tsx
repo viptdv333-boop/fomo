@@ -251,7 +251,7 @@ function FeedPage() {
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
-          Общая лента
+          ОБЩАЯ
         </button>
         <button
           onClick={() => { setBoard("mine"); setPage(1); }}
@@ -261,7 +261,7 @@ function FeedPage() {
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
-          ⭐ Моя доска
+          ⭐ МОЯ
         </button>
         {board === "mine" && session?.user && (
           <button
