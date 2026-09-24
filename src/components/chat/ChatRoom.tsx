@@ -414,12 +414,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     if (msg.fileType === "image") {
       return (
         <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
-          <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-[280px] max-h-[220px] rounded-lg object-cover" />
+          <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
         </a>
       );
     }
     if (msg.fileType === "video") {
-      return <video src={msg.fileUrl} controls className="max-w-[320px] max-h-[220px] rounded-lg mt-1" />;
+      return <video src={msg.fileUrl} controls className="max-w-full sm:max-w-[320px] max-h-[220px] rounded-lg mt-1" />;
     }
     return (
       <a
@@ -608,7 +608,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     <>
       <style dangerouslySetInnerHTML={{ __html: fadeInStyle }} />
 
-      <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden bg-white dark:bg-gray-900">
         {/* ── HEADER ── */}
         <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/30 px-4 py-3 shrink-0">
           <div className="flex items-center justify-between">
@@ -705,7 +705,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         </div>
 
         {/* ── MESSAGES ── */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 px-4 py-4 min-h-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-900 px-3 sm:px-4 py-4 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-gray-400 dark:text-gray-500 py-12 text-sm">
               {t("chat.notFound")}
@@ -790,7 +790,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                         <>
                           {msg.text && (
                             <p
-                              className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words mt-0.5 leading-relaxed"
+                              className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-0.5 leading-relaxed"
                               dangerouslySetInnerHTML={{
                                 __html: escapeHtml(msg.text)
                                   .replace(

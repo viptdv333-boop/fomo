@@ -55,11 +55,11 @@ function ChatPageInner() {
         {/* Content — responsive: on mobile show either sidebar OR chat */}
         <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Sidebar: always visible on desktop, toggled on mobile */}
-          <div className={`${showSidebar ? "flex" : "hidden"} md:flex`}>
+          <div className={`${showSidebar ? "flex" : "hidden"} md:flex w-full md:w-auto min-w-0`}>
             <ChatSidebar currentRoomId={currentRoom.id} onSelectRoom={handleSelectRoom} />
           </div>
           {/* Chat: always visible on desktop, toggled on mobile */}
-          <div className={`${showSidebar ? "hidden" : "flex"} md:flex flex-1 min-h-0 flex-col`}>
+          <div className={`${showSidebar ? "hidden" : "flex"} md:flex flex-1 min-h-0 min-w-0 flex-col`}>
             {/* Mobile back button */}
             <button onClick={() => setShowSidebar(true)} className="md:hidden flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2 hover:text-green-600">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
