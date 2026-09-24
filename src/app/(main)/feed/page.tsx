@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -49,6 +49,13 @@ interface AuthorOption {
   displayName: string;
   avatarUrl: string | null;
   ideasCount: number;
+}
+
+interface SubscriptionEntry {
+  id: string;
+  type: "paid" | "free";
+  channel: { id: string; name: string; avatarUrl: string | null; slug: string | null } | null;
+  author: { id: string; displayName: string; avatarUrl: string | null };
 }
 
 export default function FeedPageWrapper() {
@@ -119,6 +126,60 @@ function FeedPage() {
   const [authorDisplayName, setAuthorDisplayName] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
 
+  // "Моя доска" — posts from authors you follow or subscribe to, with the
+  // channels you're subscribed to pinned above as their own entities (not
+  // merged post-by-post into the list) so you can jump straight into one.
+  const [board, setBoard] = useState<"all" | "mine">("all");
+  const [mySubs, setMySubs] = useState<SubscriptionEntry[]>([]);
+  const [mySubsLoaded, setMySubsLoaded] = useState(false);
+  const [mutedIds, setMutedIds] = useState<Set<string>>(new Set());
+  const [showMuteSettings, setShowMuteSettings] = useState(false);
+
+  const channels = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; avatarUrl: string | null; slug: string | null }>();
+    for (const s of mySubs) if (s.channel) map.set(s.channel.id, s.channel);
+    return [...map.values()];
+  }, [mySubs]);
+
+  const uniqueAuthors = useMemo(() => {
+    const map = new Map<string, SubscriptionEntry["author"]>();
+    for (const s of mySubs) if (!map.has(s.author.id)) map.set(s.author.id, s.author);
+    return [...map.values()];
+  }, [mySubs]);
+
+  const activeAuthorIds = useMemo(
+    () => uniqueAuthors.map((a) => a.id).filter((id) => !mutedIds.has(id)),
+    [uniqueAuthors, mutedIds]
+  );
+  const activeAuthorIdsKey = activeAuthorIds.join(",");
+
+  useEffect(() => {
+    if (board !== "mine" || !session?.user) return;
+    Promise.all([
+      fetch("/api/subscriptions").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/feed/mutes").then((r) => (r.ok ? r.json() : { authorIds: [] })),
+    ]).then(([subs, mutes]) => {
+      setMySubs(Array.isArray(subs) ? subs : []);
+      setMutedIds(new Set(mutes.authorIds || []));
+      setMySubsLoaded(true);
+    });
+  }, [board, session?.user?.id]);
+
+  async function toggleMute(authorId: string, muted: boolean) {
+    setMutedIds((prev) => {
+      const next = new Set(prev);
+      if (muted) next.add(authorId);
+      else next.delete(authorId);
+      return next;
+    });
+    setPage(1);
+    await fetch("/api/feed/mutes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ authorId, muted }),
+    }).catch(() => {});
+  }
+
   useEffect(() => {
     fetch("/api/categories?withInstruments=true")
       .then((r) => r.json())
@@ -127,7 +188,7 @@ function FeedPage() {
 
   useEffect(() => {
     loadIdeas();
-  }, [selectedInstrument, selectedAssetSlug, page, sortBy, sortOrder, authorFilter, paidFilter, showArchived]);
+  }, [selectedInstrument, selectedAssetSlug, page, sortBy, sortOrder, authorFilter, paidFilter, showArchived, board, mySubsLoaded, activeAuthorIdsKey]);
 
   useEffect(() => {
     fetch("/api/ideas/authors")
@@ -139,6 +200,12 @@ function FeedPage() {
   }, []);
 
   async function loadIdeas() {
+    if (board === "mine") {
+      if (!session?.user) { setIdeas([]); setHasMore(false); setLoading(false); return; }
+      if (!mySubsLoaded) return; // still fetching subscriptions — wait rather than firing an unscoped request
+      if (activeAuthorIds.length === 0) { setIdeas([]); setHasMore(false); setLoading(false); return; }
+    }
+
     setLoading(true);
     const params = new URLSearchParams();
     params.set("page", String(page));
@@ -147,7 +214,12 @@ function FeedPage() {
     else if (selectedInstrument) params.set("instrumentId", selectedInstrument);
     if (sortBy !== "date") params.set("sortBy", sortBy);
     if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
-    if (authorFilter) params.set("authorId", authorFilter);
+    if (board === "mine") {
+      params.set("authorId", activeAuthorIdsKey);
+      params.set("excludeChannelPosts", "1");
+    } else if (authorFilter) {
+      params.set("authorId", authorFilter);
+    }
     if (paidFilter === "free") params.set("isPaid", "false");
     if (paidFilter === "paid") params.set("isPaid", "true");
     if (showArchived) params.set("status", "archived");
@@ -169,6 +241,73 @@ function FeedPage() {
 
   return (
     <div>
+      {/* Board tabs */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => { setBoard("all"); setPage(1); }}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+            board === "all"
+              ? "bg-green-600 text-white"
+              : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+          }`}
+        >
+          Общая лента
+        </button>
+        <button
+          onClick={() => { setBoard("mine"); setPage(1); }}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+            board === "mine"
+              ? "bg-green-600 text-white"
+              : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+          }`}
+        >
+          ⭐ Моя доска
+        </button>
+        {board === "mine" && session?.user && (
+          <button
+            onClick={() => setShowMuteSettings(true)}
+            className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Настроить
+          </button>
+        )}
+      </div>
+
+      {board === "mine" && !session?.user ? (
+        <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl shadow">
+          <p className="text-gray-500 dark:text-gray-400 mb-3">Войдите, чтобы видеть свою ленту подписок.</p>
+          <Link href="/login" className="text-green-600 hover:text-green-700 font-medium text-sm">Войти</Link>
+        </div>
+      ) : (
+      <>
+      {board === "mine" && (
+        channels.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4">
+            {channels.map((c) => (
+              <Link
+                key={c.id}
+                href={`/channels/${c.slug || c.id}`}
+                className="flex items-center gap-2 shrink-0 px-3 py-2 bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-xl shadow-sm hover:shadow-md transition"
+              >
+                <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 text-xs font-bold overflow-hidden shrink-0">
+                  {c.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    c.name[0]
+                  )}
+                </div>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{c.name}</span>
+              </Link>
+            ))}
+          </div>
+        )
+      )}
+
       {/* Filter bar — no border, no background */}
       <div className="flex items-center gap-2 flex-wrap mb-6">
         {/* Paid filters */}
@@ -378,8 +517,10 @@ function FeedPage() {
       </div>
 
       {/* Top 3 ideas — skeleton reserves the same space while loading so this
-          block doesn't pop in and shift everything below it (CLS). */}
-      {loading ? (
+          block doesn't pop in and shift everything below it (CLS). Skipped
+          on "Моя доска": with a small personal list it just duplicates the
+          feed right below it. */}
+      {board === "mine" ? null : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 animate-pulse">
@@ -438,7 +579,19 @@ function FeedPage() {
           <svg className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="text-gray-500 dark:text-gray-400">Нет идей</p>
+          {board === "mine" && uniqueAuthors.length === 0 && channels.length === 0 ? (
+            <>
+              <p className="text-gray-500 dark:text-gray-400 mb-3">Вы пока ни на кого не подписаны.</p>
+              <div className="flex items-center justify-center gap-3 text-sm">
+                <Link href="/authors" className="text-green-600 hover:text-green-700 font-medium">Найти авторов</Link>
+                <Link href="/channels" className="text-green-600 hover:text-green-700 font-medium">Смотреть каналы</Link>
+              </div>
+            </>
+          ) : board === "mine" ? (
+            <p className="text-gray-500 dark:text-gray-400">Пока нет новых постов от тех, на кого вы подписаны.</p>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">Нет идей</p>
+          )}
         </div>
       ) : viewMode === "cards" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -480,6 +633,60 @@ function FeedPage() {
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
           </button>
+        </div>
+      )}
+      </>
+      )}
+
+      {/* Mute settings — "Моя доска" customization: hide one followed/
+          subscribed author's posts from this personal feed without
+          unfollowing them. */}
+      {showMuteSettings && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowMuteSettings(false)}>
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b dark:border-gray-800 flex items-center justify-between shrink-0">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Настроить Мою доску</h3>
+              <button onClick={() => setShowMuteSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+            </div>
+            <p className="px-4 pt-3 text-xs text-gray-400">
+              Отключите автора, чтобы его посты не показывались в Моей доске — вы останетесь подписаны.
+            </p>
+            <div className="overflow-y-auto p-2">
+              {uniqueAuthors.length === 0 ? (
+                <div className="text-sm text-gray-400 text-center py-8">Вы пока ни на кого не подписаны</div>
+              ) : (
+                uniqueAuthors.map((a) => {
+                  const muted = mutedIds.has(a.id);
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 text-xs font-bold overflow-hidden shrink-0">
+                        {a.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={a.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          a.displayName[0]
+                        )}
+                      </div>
+                      <span className="flex-1 min-w-0 truncate text-sm text-gray-800 dark:text-gray-200">{a.displayName}</span>
+                      <button
+                        onClick={() => toggleMute(a.id, !muted)}
+                        className={`shrink-0 text-xs px-2.5 py-1 rounded-lg border transition ${
+                          muted
+                            ? "border-gray-300 dark:border-gray-600 text-gray-400"
+                            : "border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        }`}
+                      >
+                        {muted ? "Скрыт" : "Показывается"}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

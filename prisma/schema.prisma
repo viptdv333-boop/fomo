@@ -65,6 +65,8 @@ model User {
   subscriptionsReceived  Subscription[] @relation("Author")
   followersReceived      Follow[]       @relation("FollowedAuthor")
   followingGiven         Follow[]       @relation("Follower")
+  feedMutes              FeedMute[]     @relation("FeedMuteUser")
+  mutedByFeedOf          FeedMute[]     @relation("FeedMuteAuthor")
   education              Education[]
   directConversations    DirectConversationParticipant[]
   directMessagesSent     DirectMessage[] @relation("DirectMessagesSent")
@@ -297,6 +299,23 @@ model Follow {
 
   @@unique([followerId, authorId])
   @@index([authorId])
+}
+
+/// "Моя доска" (24.09.2026) lets a user hide one followed/subscribed author's
+/// posts from their personal feed without unfollowing/unsubscribing —
+/// presence of a row means muted. Deliberately independent of Follow and
+/// Subscription so unfollowing later doesn't need to clean this up.
+model FeedMute {
+  id            String   @id @default(cuid())
+  userId        String
+  mutedAuthorId String
+  createdAt     DateTime @default(now())
+
+  user        User @relation("FeedMuteUser", fields: [userId], references: [id], onDelete: Cascade)
+  mutedAuthor User @relation("FeedMuteAuthor", fields: [mutedAuthorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mutedAuthorId])
+  @@index([userId])
 }
 
 model Purchase {

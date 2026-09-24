@@ -70,7 +70,11 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const search = searchParams.get("search");
-  const authorId = searchParams.get("authorId");
+  // "Моя доска" (personal feed) passes several authors at once, comma-joined
+  // — every other caller still passes zero or one, so this stays a drop-in
+  // superset of the old single-authorId behavior.
+  const authorIdParam = searchParams.get("authorId");
+  const authorIds = authorIdParam ? authorIdParam.split(",").filter(Boolean) : [];
   const sortByParam = searchParams.get("sortBy") || "date";
   const sortOrderParam = (searchParams.get("sortOrder") || "desc") as "asc" | "desc";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -105,8 +109,10 @@ export async function GET(request: NextRequest) {
       { preview: { contains: search, mode: "insensitive" } },
     ];
   }
-  if (authorId) {
-    where.authorId = authorId;
+  if (authorIds.length === 1) {
+    where.authorId = authorIds[0];
+  } else if (authorIds.length > 1) {
+    where.authorId = { in: authorIds };
   }
 
   // Archived ideas (author self-declutter) are excluded from every normal
@@ -114,7 +120,7 @@ export async function GET(request: NextRequest) {
   // one exception is an author browsing their own idea list (profile "Мои
   // идеи"), which needs every status visible so they can find and unarchive.
   const statusParam = searchParams.get("status");
-  const isOwnIdeaList = Boolean(authorId) && authorId === session?.user?.id;
+  const isOwnIdeaList = authorIds.length === 1 && authorIds[0] === session?.user?.id;
   if (statusParam === "archived") {
     where.moderationStatus = "archived";
   } else if (!isOwnIdeaList) {
@@ -127,6 +133,11 @@ export async function GET(request: NextRequest) {
   // Без channelId и authorId это общая лента: постов каналов в ней нет.
   // Профиль автора (authorId) показывает всё, закрытое остаётся закрытым.
   const channelId = searchParams.get("channelId");
+  // "Моя доска" (personal feed): the channels you're subscribed to are
+  // pinned as channels, not merged post-by-post into the feed (see
+  // src/app/(main)/feed/page.tsx) — so its regular post list explicitly
+  // excludes channel-tariff posts even though it passes multiple authorIds.
+  const excludeChannelPosts = searchParams.get("excludeChannelPosts") === "1";
   if (channelId) {
     const tariff = await prisma.subscriptionTariff.findUnique({
       where: { id: channelId },
@@ -143,7 +154,7 @@ export async function GET(request: NextRequest) {
         ],
       },
     ];
-  } else if (!authorId) {
+  } else if (authorIds.length === 0 || excludeChannelPosts) {
     where.tariffId = null;
   }
 

@@ -19,6 +19,12 @@ export async function GET() {
       author: {
         select: { id: true, displayName: true, avatarUrl: true, rating: true },
       },
+      // "Моя доска" pins channels (not their old author-wide subscription,
+      // tariffId null) as their own entities — needs the tariff's own name
+      // and picture, not just the author's.
+      tariff: {
+        select: { id: true, name: true, avatarUrl: true, slug: true },
+      },
     },
     orderBy: { endDate: "asc" },
   });
@@ -43,6 +49,7 @@ export async function GET() {
       type: "paid" as const,
       // канал подписки (13.09.2026); null — старая подписка на автора целиком
       tariffId: s.tariffId,
+      channel: s.tariff ? { id: s.tariff.id, name: s.tariff.name, avatarUrl: s.tariff.avatarUrl, slug: s.tariff.slug } : null,
       telegramNotify: s.telegramNotify,
       monthlyPrice: s.monthlyPrice,
       startDate: s.startDate,
@@ -53,6 +60,7 @@ export async function GET() {
       id: f.id,
       type: "free" as const,
       tariffId: null,
+      channel: null,
       telegramNotify: false,
       monthlyPrice: 0,
       startDate: f.createdAt,
