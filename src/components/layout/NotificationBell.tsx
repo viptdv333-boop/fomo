@@ -136,6 +136,7 @@ export default function NotificationBell() {
       case "new_follower": return "👤";
       case "new_idea": return "💡";
       case "channel_post": return "📢";
+      case "channel_comment": return "💬";
       case "new_comment": return "🗨️";
       case "comment_reply": return "↩️";
       case "payment": return "💰";

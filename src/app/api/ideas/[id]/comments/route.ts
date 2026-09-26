@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, notifyChannelSubscribers } from "@/lib/notifications";
 
 // GET — list comments for an idea
 export async function GET(
@@ -71,7 +71,7 @@ export async function POST(
 
   const idea = await prisma.idea.findUnique({
     where: { id: ideaId },
-    select: { authorId: true, title: true },
+    select: { authorId: true, title: true, tariffId: true, tariff: { select: { name: true } } },
   });
   if (idea && !notified.has(idea.authorId)) {
     notified.add(idea.authorId);
@@ -99,6 +99,19 @@ export async function POST(
         link: `/ideas/${ideaId}`,
       });
     }
+  }
+
+  // Comment under a paid-channel post — every active subscriber of the
+  // channel is told, except those already pinged above and the commenter.
+  if (idea?.tariffId) {
+    await notifyChannelSubscribers(
+      idea.tariffId,
+      [...notified],
+      `${authorName} в канале «${idea.tariff?.name ?? "канал"}»`,
+      preview || "📎 вложение",
+      `/ideas/${ideaId}`,
+      "channel_comment"
+    ).catch(() => {});
   }
 
   return NextResponse.json(comment, { status: 201 });

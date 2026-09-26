@@ -126,17 +126,18 @@ export async function notifyRoomSubscribers(
 // enabled the Telegram toggle. The author never notifies themselves.
 export async function notifyChannelSubscribers(
   tariffId: string,
-  authorId: string,
+  excludeUserIds: string[],
   title: string,
   body?: string,
-  link?: string
+  link?: string,
+  type = "channel_post"
 ) {
   const subs = await prisma.subscription.findMany({
     where: {
       tariffId,
       status: "active",
       endDate: { gt: new Date() },
-      subscriberId: { not: authorId },
+      subscriberId: { notIn: excludeUserIds },
     },
     select: { subscriberId: true },
   });
@@ -144,7 +145,7 @@ export async function notifyChannelSubscribers(
   if (recipients.length === 0) return;
 
   await prisma.notification.createMany({
-    data: recipients.map((userId) => ({ userId, type: "channel_post", title, body, link })),
+    data: recipients.map((userId) => ({ userId, type, title, body, link })),
   });
 
   for (const userId of recipients) {

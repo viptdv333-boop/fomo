@@ -492,7 +492,7 @@ export async function POST(request: NextRequest) {
     const channel = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId }, select: { name: true } });
     await notifyChannelSubscribers(
       tariffId,
-      userId,
+      [userId],
       `Новый пост в канале «${channel?.name ?? "канал"}»`,
       title,
       `/ideas/${idea.id}`
