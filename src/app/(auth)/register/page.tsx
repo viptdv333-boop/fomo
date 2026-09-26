@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +47,7 @@ export default function RegisterPage() {
         setError(data.error || "Ошибка отправки кода");
         // A token is single-use; make the visitor solve it again on retry.
         setCaptchaToken("");
-        window.turnstile?.reset();
+        setCaptchaKey((k) => k + 1);
         setLoading(false);
         return;
       }
@@ -182,10 +183,10 @@ export default function RegisterPage() {
               autoFocus
             />
           </div>
-          <Captcha onToken={setCaptchaToken} />
+          <Captcha key={captchaKey} onToken={setCaptchaToken} />
           <button
             type="submit"
-            disabled={loading || !email}
+            disabled={loading || !email || !captchaToken}
             className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? "Отправка..." : "Получить код"}

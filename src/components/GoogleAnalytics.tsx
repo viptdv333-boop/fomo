@@ -1,8 +1,21 @@
 "use client";
 
 import Script from "next/script";
+import { useEffect, useState } from "react";
 
 const MEASUREMENT_ID = "G-Q8S28FMD9K";
+
+// googletagmanager.com is blocked in mainland China: the loader hangs until it
+// times out and slows the page down, so skip GA there.
+function isChina() {
+  try {
+    const lang = (navigator.language || "").toLowerCase();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    return lang.startsWith("zh") || /^Asia\/(Shanghai|Chongqing|Harbin|Urumqi|Macau|Hong_Kong)$/.test(tz);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * No manual route tracker here, unlike YandexMetrika: GA4's enhanced
@@ -11,6 +24,10 @@ const MEASUREMENT_ID = "G-Q8S28FMD9K";
  * every navigation.
  */
 export default function GoogleAnalytics() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => setEnabled(!isChina()), []);
+  if (!enabled) return null;
+
   return (
     <>
       <Script

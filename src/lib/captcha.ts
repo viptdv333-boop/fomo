@@ -1,50 +1,61 @@
-const SECRET = process.env.TURNSTILE_SECRET_KEY;
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "crypto";
 
-/**
- * Cloudflare Turnstile server-side validation.
- *
- * Rate limits and alias normalisation stop bulk automation, but not a
- * determined person cycling proxies. This is the gate that costs an attacker
- * real effort per account.
- *
- * Note the failure mode: if Turnstile is unreachable, we let the request
- * through. A captcha service outage taking registration down with it is a
- * worse outcome than a short window where sign-ups are only protected by the
- * other limits.
- */
-export async function verifyCaptcha(token: string | undefined, ip: string): Promise<boolean> {
-  // Not configured — nothing to check. Registration keeps working on the other
-  // defences; see .env.example for the two keys this needs.
-  if (!SECRET) return true;
+// Self-hosted proof-of-work captcha (Altcha-compatible payload). Nothing is
+// loaded from third parties, so it works wherever the site itself opens
+// (Cloudflare/Google widgets are throttled or blocked in RU and CN).
+const SECRET =
+  process.env.CAPTCHA_SECRET ||
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  randomBytes(32).toString("hex");
 
-  if (!token) return false;
+const MAX_NUMBER = 100_000;
+const TTL_MS = 10 * 60 * 1000;
 
-  try {
-    const body = new URLSearchParams({ secret: SECRET, response: token });
-    if (ip && ip !== "unknown") body.set("remoteip", ip);
+const used = new Map<string, number>();
 
-    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!res.ok) {
-      console.error("Turnstile siteverify returned", res.status);
-      return true;
-    }
-
-    const data = (await res.json()) as { success?: boolean; "error-codes"?: string[] };
-    if (!data.success) {
-      console.warn("Turnstile rejected token:", data["error-codes"]);
-    }
-    return data.success === true;
-  } catch (error) {
-    console.error("Turnstile siteverify failed:", error);
-    return true;
-  }
+function sweepUsed() {
+  const now = Date.now();
+  for (const [salt, exp] of used) if (exp < now) used.delete(salt);
 }
 
-/** Whether the widget should be rendered at all. */
-export const CAPTCHA_ENABLED = Boolean(process.env.TURNSTILE_SECRET_KEY);
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+const sign = (challenge: string) => createHmac("sha256", SECRET).update(challenge).digest("hex");
+
+export function createChallenge() {
+  const expires = Date.now() + TTL_MS;
+  const salt = `${randomBytes(12).toString("hex")}?expires=${expires}`;
+  const number = randomInt(0, MAX_NUMBER + 1);
+  const challenge = sha256(salt + number);
+  return { algorithm: "SHA-256", challenge, salt, signature: sign(challenge), maxnumber: MAX_NUMBER };
+}
+
+export async function verifyCaptcha(token: string | undefined, _ip?: string): Promise<boolean> {
+  if (!token || typeof token !== "string") return false;
+  try {
+    const p = JSON.parse(Buffer.from(token, "base64").toString("utf8")) as {
+      algorithm?: string;
+      challenge?: string;
+      salt?: string;
+      signature?: string;
+      number?: number;
+    };
+    if (p.algorithm !== "SHA-256" || !p.challenge || !p.salt || !p.signature) return false;
+    if (typeof p.number !== "number" || !Number.isInteger(p.number) || p.number < 0 || p.number > MAX_NUMBER) return false;
+
+    const expected = Buffer.from(sign(p.challenge));
+    const given = Buffer.from(p.signature);
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) return false;
+    if (sha256(p.salt + p.number) !== p.challenge) return false;
+
+    const expires = Number(new URLSearchParams(p.salt.split("?")[1] ?? "").get("expires"));
+    if (!expires || expires < Date.now()) return false;
+
+    sweepUsed();
+    if (used.has(p.salt)) return false;
+    used.set(p.salt, expires);
+    return true;
+  } catch {
+    return false;
+  }
+}
