@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
-import { translate } from "@/lib/i18n/dictionaries";
+import { receiptDmText } from "@/lib/i18n/receipt-dm";
 
 // ===== Universal payment types =====
 export type PaymentPurpose =
@@ -285,7 +285,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
       const conv = await convRes.json();
 
       // The DM goes to the author, not the buyer — keep it in the site's base language.
-      const tRu = (key: string, vars?: Record<string, string | number>) => translate("ru", key, vars);
+      const tRu = receiptDmText;
       const msgText = (() => {
         switch (purpose.type) {
           case "donation":

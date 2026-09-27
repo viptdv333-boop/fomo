@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 import { HTML_LANG } from "@/lib/i18n/locale-url";
+import { DICTIONARIES } from "@/lib/i18n/dictionaries";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -139,7 +140,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
-          <I18nProvider initialLocale={locale}>
+          <I18nProvider locale={locale} messages={DICTIONARIES[locale]}>
             <SiteSettingsInjector />
             <PWARegister />
             <UpdateBanner />

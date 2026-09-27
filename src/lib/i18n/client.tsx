@@ -1,7 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { DICTIONARIES, translate } from "./dictionaries";
+import { createContext, useContext, useEffect, useMemo, ReactNode } from "react";
 import { isLocale, localizedPath, stripLocale } from "./locale-url";
 
 /**
@@ -33,43 +32,46 @@ const Ctx = createContext<I18nContext>({
   setLocale: () => {},
 });
 
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`${name}=(\\w+)`));
-  return match ? match[1] : null;
-}
-
-export function I18nProvider({ children, initialLocale = "ru" }: { children: ReactNode; initialLocale?: string }) {
-  const [locale, setLocaleState] = useState(DICTIONARIES[initialLocale] ? initialLocale : "ru");
-
+// Only the current language's dictionary reaches the browser (passed from the
+// root layout); shipping all three cost ~280 KB of JS on every page. Changing
+// language reloads the page, so the dictionary never has to swap client-side.
+export function I18nProvider({
+  children,
+  locale,
+  messages,
+}: {
+  children: ReactNode;
+  locale: string;
+  messages: Record<string, string>;
+}) {
   useEffect(() => {
-    const saved = getCookie("NEXT_LOCALE");
-    if (saved && DICTIONARIES[saved] && saved !== locale) setLocaleState(saved);
     // Users who chose a language before it was stored on the account.
     try {
-      const current = saved && DICTIONARIES[saved] ? saved : locale;
-      if (sessionStorage.getItem("locale-synced") !== current) {
-        sessionStorage.setItem("locale-synced", current);
+      if (sessionStorage.getItem("locale-synced") !== locale) {
+        sessionStorage.setItem("locale-synced", locale);
         fetch("/api/me/locale", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale: current }),
+          body: JSON.stringify({ locale }),
         }).catch(() => {});
       }
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locale]);
 
-  function t(key: string, vars?: Record<string, string | number>): string {
-    return translate(locale, key, vars);
-  }
+  const value = useMemo<I18nContext>(
+    () => ({
+      locale,
+      t: (key, vars) => {
+        let s = messages[key] ?? key;
+        if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+        return s;
+      },
+      setLocale: switchLocale,
+    }),
+    [locale, messages]
+  );
 
-  function setLocale(code: string) {
-    switchLocale(code);
-    setLocaleState(code);
-  }
-
-  return <Ctx.Provider value={{ locale, t, setLocale }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useT() {
