@@ -64,7 +64,7 @@ export default function LoginPage() {
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
       <Link href="/" className="flex justify-center mb-6">
         <Image
-          src="/logo-fomo.png"
+          src="/logo-fomo-sm.webp"
           alt="FOMO"
           width={160}
           height={80}

@@ -11,7 +11,9 @@ export default function Watermark({ variant = "page" }: { variant?: "card" | "pa
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/logo-fomo.png"
+        src="/logo-fomo-sm.webp"
+        width={480}
+        height={320}
         alt=""
         className={
           (variant === "card" ? "h-[80%] w-auto max-w-[60%] object-contain" : "w-[70%] max-w-md") +
@@ -27,7 +29,9 @@ export function FomoMark({ className = "" }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo-fomo.png"
+      src="/logo-fomo-sm.webp"
+        width={480}
+        height={320}
       alt="FOMO"
       className={`h-4 w-auto select-none opacity-70 dark:invert ${className}`}
       draggable={false}

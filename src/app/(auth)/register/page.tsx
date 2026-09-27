@@ -124,7 +124,7 @@ export default function RegisterPage() {
       {/* Logo */}
       <Link href="/" className="flex justify-center mb-6">
         <Image
-          src="/logo-fomo.png"
+          src="/logo-fomo-sm.webp"
           alt="FOMO"
           width={160}
           height={80}

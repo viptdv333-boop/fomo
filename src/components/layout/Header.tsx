@@ -61,7 +61,7 @@ export default function Header() {
         <Link href="/" className="flex flex-col items-start shrink-0">
           <div className="w-[110px] sm:w-[150px] h-[46px] sm:h-[58px] overflow-hidden relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-fomo.png" alt="FOMO" className="absolute w-full" style={{ top: '-16%' }} />
+            <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" className="absolute w-full h-auto" style={{ top: '-16%' }} />
           </div>
           <span className="text-[6px] sm:text-[7px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] font-light leading-none -mt-0.5">Find Opportunities, Make Outcomes</span>
         </Link>
