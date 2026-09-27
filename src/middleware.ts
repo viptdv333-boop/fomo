@@ -7,7 +7,14 @@ const YEAR = 60 * 60 * 24 * 365;
 
 export default auth((req) => {
   const isApi = req.nextUrl.pathname.startsWith("/api/");
-  const { locale: urlLocale, path: pathname } = stripLocale(req.nextUrl.pathname);
+  const stripped = stripLocale(req.nextUrl.pathname);
+  const pathname = stripped.path;
+  // The custom server runs middleware again on the rewritten path (/en/feed →
+  // /feed); x-locale from the first pass marks it, otherwise the cookie
+  // redirect sends it back to /en/feed forever.
+  const rewrittenLocale = req.headers.get("x-locale");
+  const isSecondPass = !stripped.locale && isLocale(rewrittenLocale) && rewrittenLocale !== "ru";
+  const urlLocale = stripped.locale;
   const user = req.auth?.user as any;
   const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
   const locale: Locale = urlLocale ?? (isLocale(cookieLocale) ? cookieLocale : "ru");
@@ -19,6 +26,7 @@ export default auth((req) => {
   if (
     !isApi &&
     !urlLocale &&
+    !isSecondPass &&
     req.method === "GET" &&
     locale !== "ru" &&
     !pathname.startsWith("/admin")
