@@ -10,6 +10,8 @@ import YandexMetrika from "@/components/YandexMetrika";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieBanner from "@/components/CookieBanner";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { DICTIONARIES } from "@/lib/i18n/dictionaries";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -142,13 +144,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const saved = (await cookies()).get("NEXT_LOCALE")?.value;
+  const locale = saved && DICTIONARIES[saved] ? saved : "ru";
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang={locale === "cn" ? "zh-CN" : locale} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -158,7 +162,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
-          <I18nProvider>
+          <I18nProvider initialLocale={locale}>
             <SiteSettingsInjector />
             <PWARegister />
             <UpdateBanner />

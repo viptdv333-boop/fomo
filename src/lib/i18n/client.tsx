@@ -21,8 +21,8 @@ function getCookie(name: string): string | null {
   return match ? match[1] : null;
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState("ru");
+export function I18nProvider({ children, initialLocale = "ru" }: { children: ReactNode; initialLocale?: string }) {
+  const [locale, setLocaleState] = useState(DICTIONARIES[initialLocale] ? initialLocale : "ru");
 
   useEffect(() => {
     const saved = getCookie("NEXT_LOCALE");
