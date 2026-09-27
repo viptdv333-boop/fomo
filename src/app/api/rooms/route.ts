@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
+import { getT } from "@/lib/i18n/server";
 
 const createRoomSchema = z.object({
   name: z.string().min(1).max(60),
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = createRoomSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Укажите название группы" }, { status: 400 });
+    return NextResponse.json({ error: (await getT()).t("api.roomNameRequired") }, { status: 400 });
   }
 
   const inviteToken = randomBytes(16).toString("base64url");

@@ -1,10 +1,13 @@
 import { randomInt } from "crypto";
+import { tFor } from "@/lib/i18n/server";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
 const BASE_URL = process.env.NEXTAUTH_URL || "https://fomo.spot";
 
-export async function sendVerificationCode(email: string, code: string) {
+/** `locale` — the language of the person who asked for the code ("ru" | "en" | "cn"). */
+export async function sendVerificationCode(email: string, code: string, locale: string = "ru") {
+  const t = tFor(locale);
   if (!RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured");
   }
@@ -18,15 +21,15 @@ export async function sendVerificationCode(email: string, code: string) {
     body: JSON.stringify({
       from: EMAIL_FROM,
       to: [email],
-      subject: "Код подтверждения FOMO",
+      subject: t("api.email.codeSubject"),
       html: `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
           <h2 style="text-align: center; color: #111; margin-bottom: 8px;">FOMO</h2>
-          <p style="text-align: center; color: #666; font-size: 14px;">Ваш код подтверждения:</p>
+          <p style="text-align: center; color: #666; font-size: 14px;">${t("api.email.codeIntro")}</p>
           <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111; margin: 24px 0; padding: 16px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
             ${code}
           </div>
-          <p style="text-align: center; color: #999; font-size: 12px;">Код действителен 15 минут</p>
+          <p style="text-align: center; color: #999; font-size: 12px;">${t("api.email.codeValidity")}</p>
         </div>
       `,
     }),
@@ -41,13 +44,20 @@ export async function sendVerificationCode(email: string, code: string) {
   return await res.json();
 }
 
-export async function sendBroadcastEmail(email: string, title: string, body: string | null, link: string | null) {
+export async function sendBroadcastEmail(
+  email: string,
+  title: string,
+  body: string | null,
+  link: string | null,
+  locale: string = "ru"
+) {
+  const t = tFor(locale);
   if (!RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured");
   }
 
   const linkHtml = link
-    ? `<p style="text-align: center; margin-top: 24px;"><a href="${link.startsWith("http") ? link : BASE_URL + link}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Перейти</a></p>`
+    ? `<p style="text-align: center; margin-top: 24px;"><a href="${link.startsWith("http") ? link : BASE_URL + link}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">${t("api.email.open")}</a></p>`
     : "";
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -68,7 +78,7 @@ export async function sendBroadcastEmail(email: string, title: string, body: str
           ${linkHtml}
           <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;" />
           <p style="text-align: center; color: #999; font-size: 11px; margin-top: 16px;">
-            Вы получили это письмо, потому что зарегистрированы на <a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>
+            ${t("api.email.footer", { link: `<a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>` })}
           </p>
         </div>
       `,

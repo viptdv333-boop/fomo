@@ -3,6 +3,7 @@ import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
 import { canAccessRoom } from "../src/lib/channel-access";
+import { translate } from "../src/lib/i18n/dictionaries";
 
 const prisma = new PrismaClient();
 
@@ -149,7 +150,7 @@ export function initSocket(httpServer: HTTPServer) {
             ],
             id: { not: socket.data.userId },
           },
-          select: { id: true },
+          select: { id: true, locale: true },
         });
 
         for (const u of mentionedUsers) {
@@ -157,7 +158,8 @@ export function initSocket(httpServer: HTTPServer) {
             data: {
               userId: u.id,
               type: "chat_mention",
-              title: `${socket.data.displayName} упомянул вас в болталке`,
+              // In the mentioned user's own language (User.locale).
+              title: translate(u.locale, "notif.chatMention.title", { name: socket.data.displayName }),
               body: text.length > 80 ? text.slice(0, 80) + "…" : text,
               link: "/chat",
             },

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createYukassaPayment } from "@/lib/yukassa";
 import { findActiveSubscription } from "@/lib/subscriptions";
 import { randomUUID } from "crypto";
+import { getT } from "@/lib/i18n/server";
 
 /**
  * POST /api/yukassa/create
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id!;
+  const { t } = await getT();
   const body = await req.json();
   const { tariffId, sellerId } = body;
 
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (userId === sellerId) {
-    return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
+    return NextResponse.json({ error: t("api.selfSubscribe") }, { status: 400 });
   }
 
   // Get tariff with YuKassa credentials
@@ -34,21 +36,21 @@ export async function POST(req: NextRequest) {
   });
 
   if (!tariff || !tariff.isActive) {
-    return NextResponse.json({ error: "Тариф не найден" }, { status: 404 });
+    return NextResponse.json({ error: t("api.tariffNotFound") }, { status: 404 });
   }
 
   if (tariff.authorId !== sellerId) {
-    return NextResponse.json({ error: "Тариф не принадлежит автору" }, { status: 400 });
+    return NextResponse.json({ error: t("api.tariffNotOwned") }, { status: 400 });
   }
 
   if (!tariff.paymentMethods.includes("yukassa") || !tariff.yukassaShopId || !tariff.yukassaSecret) {
-    return NextResponse.json({ error: "YuKassa не настроена для этого тарифа" }, { status: 400 });
+    return NextResponse.json({ error: t("api.yukassaNotConfigured") }, { status: 400 });
   }
 
   // Check existing active subscription — на ЭТОТ канал (13.09.2026)
   const existing = await findActiveSubscription(userId, sellerId, tariff.id);
   if (existing) {
-    return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
+    return NextResponse.json({ error: t("api.subscriptionActive") }, { status: 400 });
   }
 
   // Create a PaymentRequest record for tracking
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
       shopId: tariff.yukassaShopId,
       secretKey: tariff.yukassaSecret,
       amount: Number(tariff.price),
-      description: `Подписка "${tariff.name}" — ${seller?.displayName || "Автор"}`,
+      description: t("api.yukassaDescription", { tariff: tariff.name, author: seller?.displayName || t("api.authorFallback") }),
       returnUrl: `${process.env.NEXTAUTH_URL || "https://fomo.spot"}/subscriptions?payment=success`,
       metadata: {
         paymentRequestId: paymentRequest.id,
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     const confirmationUrl = payment.confirmation?.confirmation_url;
     if (!confirmationUrl) {
-      return NextResponse.json({ error: "Не удалось получить ссылку на оплату" }, { status: 500 });
+      return NextResponse.json({ error: t("api.paymentLinkFailed") }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -104,6 +106,6 @@ export async function POST(req: NextRequest) {
     console.error("[yukassa/create] Error:", err);
     // Clean up the payment request on failure
     await prisma.paymentRequest.delete({ where: { id: paymentRequest.id } });
-    return NextResponse.json({ error: "Ошибка создания платежа через ЮKassa" }, { status: 500 });
+    return NextResponse.json({ error: t("api.yukassaCreateFailed") }, { status: 500 });
   }
 }

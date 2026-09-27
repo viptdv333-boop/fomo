@@ -5,7 +5,8 @@ import { z } from "zod";
 import { createNotification, notifyRoomSubscribers } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { canAccessRoom } from "@/lib/channel-access";
-import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
+import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
+import { getT } from "@/lib/i18n/server";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -88,8 +89,9 @@ export async function POST(req: NextRequest) {
   // human conversation and far below what makes a room unusable.
   const flood = await rateLimit(`chat:${session.user.id}`, 20, 60 * 1000);
   if (!flood.allowed) {
+    const { t } = await getT();
     return NextResponse.json(
-      { error: "Слишком много сообщений. Подождите немного" },
+      { error: t("notif.err.chatFlood") },
       { status: 429 }
     );
   }
@@ -99,7 +101,8 @@ export async function POST(req: NextRequest) {
     select: { status: true },
   });
   if (!sender || sender.status === "BANNED") {
-    return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.accountBanned") }, { status: 403 });
   }
 
   // Check if room is closed
@@ -161,13 +164,23 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
   if (channelTariff) {
+    // Rendered per recipient's language in telegram.ts, which also
+    // HTML-escapes every var (name/text are raw user content here).
     const senderName = message.user.displayName;
-    const attachmentLabel =
-      parsed.data.fileType === "image" ? "🖼 фото" : parsed.data.fileType === "video" ? "🎬 видео" : parsed.data.fileUrl ? "📎 файл" : "";
-    const body = [escapeTelegramHtml(parsed.data.text), attachmentLabel].filter(Boolean).join(" ");
+    const attachmentKey =
+      parsed.data.fileType === "image"
+        ? "notif.tg.attachPhoto"
+        : parsed.data.fileType === "video"
+          ? "notif.tg.attachVideo"
+          : parsed.data.fileUrl
+            ? "notif.tg.attachFile"
+            : null;
+    const msgText = parsed.data.text;
     await notifyChannelTelegramSubscribers(
       channelTariff.id,
-      `💬 <b>${escapeTelegramHtml(senderName)}</b>: ${body}`
+      msgText && attachmentKey
+        ? { key: "notif.tg.chatMessageAttach", vars: { name: senderName, text: msgText, attachment: { key: attachmentKey } } }
+        : { key: "notif.tg.chatMessage", vars: { name: senderName, text: attachmentKey ? { key: attachmentKey } : msgText } }
     ).catch(() => {});
   }
 
@@ -199,7 +212,7 @@ export async function POST(req: NextRequest) {
       await createNotification({
         userId: u.id,
         type: "chat_mention",
-        title: `${senderName} упомянул вас в болталке`,
+        title: { key: "notif.chatMention.title", vars: { name: senderName } },
         body: bodyPreview,
         link: roomLink,
       });
@@ -212,7 +225,7 @@ export async function POST(req: NextRequest) {
     room.id,
     [session.user.id!, ...mentionedIds],
     "chat_room_message",
-    `${senderName} написал в «${room.name}»`,
+    { key: "notif.roomMessage.title", vars: { name: senderName, room: room.name } },
     bodyPreview,
     roomLink
   ).catch(() => {});

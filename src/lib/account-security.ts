@@ -3,6 +3,8 @@
  * passwords above the floor where online guessing works.
  */
 
+import { tFor } from "@/lib/i18n/server";
+
 /**
  * Collapses the aliases that resolve to one real mailbox.
  *
@@ -69,15 +71,17 @@ export interface PasswordCheck {
   error?: string;
 }
 
-export function checkPassword(password: string): PasswordCheck {
+/** `locale` — language of the returned error text. */
+export function checkPassword(password: string, locale: string = "ru"): PasswordCheck {
+  const t = tFor(locale);
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, error: `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов` };
+    return { ok: false, error: t("api.passwordTooShort", { n: MIN_PASSWORD_LENGTH }) };
   }
   if (COMMON_PASSWORDS.has(password.toLowerCase())) {
-    return { ok: false, error: "Этот пароль слишком распространён — придумайте другой" };
+    return { ok: false, error: t("api.passwordTooCommon") };
   }
   if (/^(.)\1+$/.test(password)) {
-    return { ok: false, error: "Пароль не может состоять из одного повторяющегося символа" };
+    return { ok: false, error: t("api.passwordRepeated") };
   }
   return { ok: true };
 }

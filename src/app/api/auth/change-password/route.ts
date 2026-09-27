@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { checkPassword } from "@/lib/account-security";
 import { rateLimit } from "@/lib/rate-limit";
+import { getT } from "@/lib/i18n/server";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -12,11 +13,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { currentPassword, newPassword } = await request.json();
+  const { locale, t } = await getT();
 
   if (!currentPassword || !newPassword) {
-    return NextResponse.json({ error: "Заполните все поля" }, { status: 400 });
+    return NextResponse.json({ error: t("api.fillAllFields") }, { status: 400 });
   }
-  const strength = checkPassword(newPassword);
+  const strength = checkPassword(newPassword, locale);
   if (!strength.ok) {
     return NextResponse.json({ error: strength.error }, { status: 400 });
   }
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!user) {
-    return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    return NextResponse.json({ error: t("api.userNotFound") }, { status: 404 });
   }
 
   // Someone who walked up to an unlocked screen shouldn't get unlimited tries
@@ -35,14 +37,14 @@ export async function POST(request: NextRequest) {
   const guessLimit = await rateLimit(`changepw:${session.user.id}`, 10, 15 * 60 * 1000);
   if (!guessLimit.allowed) {
     return NextResponse.json(
-      { error: "Слишком много попыток. Попробуйте позже" },
+      { error: t("api.tooManyAttempts") },
       { status: 429 }
     );
   }
 
   const valid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!valid) {
-    return NextResponse.json({ error: "Неверный текущий пароль" }, { status: 403 });
+    return NextResponse.json({ error: t("api.wrongCurrentPassword") }, { status: 403 });
   }
 
   const newHash = await bcrypt.hash(newPassword, 10);
@@ -52,5 +54,5 @@ export async function POST(request: NextRequest) {
     data: { passwordHash: newHash, sessionVersion: { increment: 1 } },
   });
 
-  return NextResponse.json({ message: "Пароль изменён" });
+  return NextResponse.json({ message: t("api.passwordChanged") });
 }

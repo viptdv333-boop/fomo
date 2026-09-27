@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { getT } from "@/lib/i18n/server";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -23,7 +24,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     },
   });
   if (!room || !room.ownerId) {
-    return NextResponse.json({ error: "Ссылка недействительна" }, { status: 404 });
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.inviteInvalid") }, { status: 404 });
   }
 
   const membership = await prisma.chatRoomMember.findUnique({
@@ -51,7 +53,8 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     select: { id: true, name: true, ownerId: true },
   });
   if (!room || !room.ownerId) {
-    return NextResponse.json({ error: "Ссылка недействительна" }, { status: 404 });
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.inviteInvalid") }, { status: 404 });
   }
 
   const existing = await prisma.chatRoomMember.findUnique({
@@ -73,7 +76,10 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     await createNotification({
       userId: room.ownerId,
       type: "room_join",
-      title: `${joiner?.displayName || "Пользователь"} присоединился к приватной группе «${room.name}»`,
+      title: {
+        key: "notif.roomJoin.title",
+        vars: { name: joiner?.displayName || { key: "notif.fallback.user" }, room: room.name },
+      },
       link: `/rooms/${room.id}`,
     });
   }

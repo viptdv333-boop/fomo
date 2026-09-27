@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import IdeaContent from "./IdeaContent";
-
-const SITE_URL = "https://fomo.spot";
+import { getT } from "@/lib/i18n/server";
+import { HTML_LANG, SITE_URL, seoAlternates } from "@/lib/i18n/locale-url";
+import { absoluteUrl, ogLocales } from "@/lib/i18n/seo-metadata";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -47,14 +48,18 @@ function trimText(s: string | null | undefined, max: number): string {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const idea = await fetchIdea(id);
+  const { locale, t } = await getT();
   if (!idea || idea.moderationStatus !== "published") {
     return {
-      title: "Идея не найдена",
+      title: t("seo.idea.notFound"),
       robots: { index: false, follow: false },
     };
   }
 
-  const url = `${SITE_URL}/ideas/${idea.id}`;
+  // Title/description are the author's own text and stay as written; only the
+  // URL, hreflang and og:locale change per language version.
+  const alternates = seoAlternates(locale, `/ideas/${idea.id}`);
+  const url = alternates.canonical;
   const title = trimText(idea.title, 70);
   const description = trimText(idea.preview, 200);
   const author = idea.author.displayName;
@@ -63,13 +68,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates,
     openGraph: {
       type: "article",
       title,
       description,
       url,
       siteName: "FOMO",
+      ...ogLocales(locale),
       publishedTime: idea.createdAt.toISOString(),
       modifiedTime: idea.updatedAt.toISOString(),
       authors: [author],
@@ -87,6 +93,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function IdeaPage({ params }: PageProps) {
   const { id } = await params;
   const idea = await fetchIdea(id);
+  const { locale } = await getT();
 
   // JSON-LD Article schema — helps Yandex/Google display rich snippets
   const jsonLd = idea && idea.moderationStatus === "published"
@@ -94,6 +101,7 @@ export default async function IdeaPage({ params }: PageProps) {
         "@context": "https://schema.org",
         "@type": "Article",
         headline: idea.title,
+        inLanguage: HTML_LANG[locale],
         description: trimText(idea.preview, 300),
         datePublished: idea.createdAt.toISOString(),
         dateModified: idea.updatedAt.toISOString(),
@@ -101,7 +109,7 @@ export default async function IdeaPage({ params }: PageProps) {
           "@type": "Person",
           name: idea.author.displayName,
           ...(idea.author.fomoId && {
-            url: `${SITE_URL}/authors/${idea.author.fomoId}`,
+            url: absoluteUrl(locale, `/authors/${idea.author.fomoId}`),
           }),
         },
         publisher: {
@@ -114,7 +122,7 @@ export default async function IdeaPage({ params }: PageProps) {
         },
         mainEntityOfPage: {
           "@type": "WebPage",
-          "@id": `${SITE_URL}/ideas/${idea.id}`,
+          "@id": absoluteUrl(locale, `/ideas/${idea.id}`),
         },
         ...(idea.isPaid && idea.price && {
           isAccessibleForFree: false,
@@ -127,7 +135,7 @@ export default async function IdeaPage({ params }: PageProps) {
         about: idea.instruments.map((i) => ({
           "@type": "Thing",
           name: i.instrument.name,
-          url: `${SITE_URL}/instruments/${i.instrument.slug}`,
+          url: absoluteUrl(locale, `/instruments/${i.instrument.slug}`),
         })),
       }
     : null;

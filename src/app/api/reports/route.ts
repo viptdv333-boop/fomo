@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/roles";
+import { getT, tFor } from "@/lib/i18n/server";
 
 // POST: Create a report (any authenticated user)
 export async function POST(request: NextRequest) {
@@ -11,13 +12,14 @@ export async function POST(request: NextRequest) {
   }
 
   const { targetType, targetId, reason, details } = await request.json();
+  const { t } = await getT();
 
   if (!targetType || !targetId || !reason) {
-    return NextResponse.json({ error: "Заполните все обязательные поля" }, { status: 400 });
+    return NextResponse.json({ error: t("api.reportFieldsRequired") }, { status: 400 });
   }
 
   if (!["idea", "author", "channel"].includes(targetType)) {
-    return NextResponse.json({ error: "Неверный тип жалобы" }, { status: 400 });
+    return NextResponse.json({ error: t("api.reportInvalidType") }, { status: 400 });
   }
 
   // Check for duplicate report
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existing) {
-    return NextResponse.json({ error: "Вы уже отправили жалобу на этот объект" }, { status: 409 });
+    return NextResponse.json({ error: t("api.reportDuplicate") }, { status: 409 });
   }
 
   const report = await prisma.report.create({
@@ -45,13 +47,13 @@ export async function POST(request: NextRequest) {
   });
 
   // Notify admins
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true, locale: true } });
   for (const admin of admins) {
     await prisma.notification.create({
       data: {
         userId: admin.id,
         type: "report",
-        title: `Новая жалоба: ${targetType}`,
+        title: tFor(admin.locale)("api.reportNewTitle", { type: targetType }),
         body: reason.slice(0, 100),
         link: "/admin?tab=reports",
       },

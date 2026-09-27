@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
 import { getT } from "@/lib/i18n/server";
+import { seoAlternates } from "@/lib/i18n/locale-url";
+import { ogLocales } from "@/lib/i18n/seo-metadata";
 
-const SITE_URL = "https://fomo.spot";
-
-export const metadata: Metadata = {
-  title: "Политика обработки персональных данных",
-  description: "Политика обработки персональных данных пользователей FOMO.",
-  alternates: { canonical: `${SITE_URL}/privacy` },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, t } = await getT();
+  const title = t("seo.privacy.title");
+  const description = t("seo.privacy.description");
+  const alternates = seoAlternates(locale, "/privacy");
+  return {
+    title,
+    description,
+    alternates,
+    openGraph: { title, description, url: alternates.canonical, ...ogLocales(locale) },
+    robots: { index: true, follow: true },
+  };
+}
 
 function P({ children }: { children: React.ReactNode }) {
   return <p className="text-[15px] leading-relaxed text-gray-700 dark:text-gray-300 mb-3">{children}</p>;

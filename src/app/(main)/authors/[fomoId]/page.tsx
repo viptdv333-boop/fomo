@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import AuthorContent from "./AuthorContent";
-
-const SITE_URL = "https://fomo.spot";
+import { getT } from "@/lib/i18n/server";
+import { HTML_LANG, seoAlternates } from "@/lib/i18n/locale-url";
+import { absoluteUrl, ogLocales } from "@/lib/i18n/seo-metadata";
 
 type PageProps = { params: Promise<{ fomoId: string }> };
 
@@ -40,31 +41,39 @@ function trimText(s: string | null | undefined, max: number): string {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { fomoId } = await params;
   const user = await fetchAuthor(fomoId);
+  const { locale, t } = await getT();
   if (!user || user.status !== "APPROVED") {
     return {
-      title: "Автор не найден",
+      title: t("seo.author.notFound"),
       robots: { index: false, follow: false },
     };
   }
 
-  const url = `${SITE_URL}/authors/${user.fomoId}`;
-  const title = `${user.displayName} — трейдер на FOMO`;
+  const alternates = seoAlternates(locale, `/authors/${user.fomoId}`);
+  const url = alternates.canonical;
+  // `name` goes last so a display name containing "{count}" is not substituted.
+  const title = t("seo.author.title", { name: user.displayName });
   const bioText = trimText(user.bio, 160);
   const description =
     bioText ||
-    `${user.displayName}: ${user._count.ideas} идей на FOMO, рейтинг ${Number(user.rating).toFixed(1)}. Читайте аналитику и подпишитесь на автора.`;
+    t("seo.author.description", {
+      count: user._count.ideas,
+      rating: Number(user.rating).toFixed(1),
+      name: user.displayName,
+    });
   const image = user.avatarUrl || "/logo-fomo.png";
 
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates,
     openGraph: {
       type: "profile",
       title,
       description,
       url,
       siteName: "FOMO",
+      ...ogLocales(locale),
       images: [{ url: image, alt: user.displayName }],
     },
     twitter: {
@@ -79,18 +88,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function AuthorPage({ params }: PageProps) {
   const { fomoId } = await params;
   const user = await fetchAuthor(fomoId);
+  const { locale } = await getT();
 
   const jsonLd = user && user.status === "APPROVED"
     ? {
         "@context": "https://schema.org",
         "@type": "ProfilePage",
+        inLanguage: HTML_LANG[locale],
         mainEntity: {
           "@type": "Person",
           name: user.displayName,
           identifier: user.fomoId,
           description: trimText(user.bio, 300) || undefined,
           image: user.avatarUrl || undefined,
-          url: `${SITE_URL}/authors/${user.fomoId}`,
+          url: absoluteUrl(locale, `/authors/${user.fomoId}`),
           ...(user.workplace && { worksFor: { "@type": "Organization", name: user.workplace } }),
           ...(user.city && { address: { "@type": "PostalAddress", addressLocality: user.city } }),
           knowsAbout: user.specializations,

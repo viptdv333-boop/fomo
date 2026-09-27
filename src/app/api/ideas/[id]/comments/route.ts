@@ -78,7 +78,7 @@ export async function POST(
     await createNotification({
       userId: idea.authorId,
       type: "new_comment",
-      title: `${authorName} прокомментировал вашу идею`,
+      title: { key: "notif.newComment.title", vars: { name: authorName } },
       body: preview,
       link: `/ideas/${ideaId}`,
     });
@@ -94,7 +94,7 @@ export async function POST(
       await createNotification({
         userId: parent.userId,
         type: "comment_reply",
-        title: `${authorName} ответил на ваш комментарий`,
+        title: { key: "notif.commentReply.title", vars: { name: authorName } },
         body: preview,
         link: `/ideas/${ideaId}`,
       });
@@ -107,8 +107,8 @@ export async function POST(
     await notifyChannelSubscribers(
       idea.tariffId,
       [...notified],
-      `${authorName} в канале «${idea.tariff?.name ?? "канал"}»`,
-      preview || "📎 вложение",
+      { key: "notif.channelComment.title", vars: { name: authorName, channel: idea.tariff?.name ?? { key: "notif.fallback.channel" } } },
+      preview || { key: "notif.attachment" },
       `/ideas/${ideaId}`,
       "channel_comment"
     ).catch(() => {});

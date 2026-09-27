@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendVerificationCode, generateCode } from "@/lib/email";
 import { consumeCode } from "@/lib/verification";
+import { getT } from "@/lib/i18n/server";
 
 // Step 1: POST with { action: "send-code", newEmail, password }
 // Step 2: POST with { action: "verify", newEmail, code }
@@ -15,20 +16,21 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { action, newEmail, password, code } = body;
+  const { locale, t } = await getT();
 
   if (!newEmail) {
-    return NextResponse.json({ error: "Укажите новый email" }, { status: 400 });
+    return NextResponse.json({ error: t("api.enterNewEmail") }, { status: 400 });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(newEmail)) {
-    return NextResponse.json({ error: "Некорректный email" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidEmail") }, { status: 400 });
   }
 
   // Check email not taken
   const existing = await prisma.user.findUnique({ where: { email: newEmail } });
   if (existing) {
-    return NextResponse.json({ error: "Email уже используется" }, { status: 409 });
+    return NextResponse.json({ error: t("api.emailInUse") }, { status: 409 });
   }
 
   const user = await prisma.user.findUnique({
@@ -36,22 +38,22 @@ export async function POST(request: NextRequest) {
     select: { passwordHash: true, email: true },
   });
   if (!user) {
-    return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    return NextResponse.json({ error: t("api.userNotFound") }, { status: 404 });
   }
 
   if (user.email === newEmail) {
-    return NextResponse.json({ error: "Это ваш текущий email" }, { status: 400 });
+    return NextResponse.json({ error: t("api.sameEmail") }, { status: 400 });
   }
 
   // STEP 1: Send verification code to new email
   if (action === "send-code") {
     if (!password) {
-      return NextResponse.json({ error: "Введите пароль" }, { status: 400 });
+      return NextResponse.json({ error: t("api.enterPassword") }, { status: 400 });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      return NextResponse.json({ error: "Неверный пароль" }, { status: 403 });
+      return NextResponse.json({ error: t("api.wrongPassword") }, { status: 403 });
     }
 
     // Rate limit: 60s
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
       where: { email: newEmail, createdAt: { gte: new Date(Date.now() - 60000) } },
     });
     if (recent) {
-      return NextResponse.json({ error: "Подождите минуту перед повторной отправкой" }, { status: 429 });
+      return NextResponse.json({ error: t("api.waitBeforeResend") }, { status: 429 });
     }
 
     const verCode = generateCode();
@@ -73,23 +75,23 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      await sendVerificationCode(newEmail, verCode);
+      await sendVerificationCode(newEmail, verCode, locale);
     } catch {
-      return NextResponse.json({ error: "Ошибка отправки кода" }, { status: 500 });
+      return NextResponse.json({ error: t("api.sendCodeFailed") }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Код отправлен на " + newEmail });
+    return NextResponse.json({ message: t("api.codeSentTo", { email: newEmail }) });
   }
 
   // STEP 2: Verify code and change email
   if (action === "verify") {
     if (!code) {
-      return NextResponse.json({ error: "Введите код" }, { status: 400 });
+      return NextResponse.json({ error: t("api.enterCode") }, { status: 400 });
     }
 
     // Counts wrong guesses and burns the code after the cap — the bare lookup
     // that used to be here allowed unlimited attempts.
-    const check = await consumeCode(newEmail, code, "change_email");
+    const check = await consumeCode(newEmail, code, "change_email", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }
@@ -103,8 +105,8 @@ export async function POST(request: NextRequest) {
       data: { email: newEmail, sessionVersion: { increment: 1 } },
     });
 
-    return NextResponse.json({ message: "Email успешно изменён! Перезайдите для обновления сессии." });
+    return NextResponse.json({ message: t("api.emailChanged") });
   }
 
-  return NextResponse.json({ error: "Укажите action: send-code или verify" }, { status: 400 });
+  return NextResponse.json({ error: t("api.changeEmailActionRequired") }, { status: 400 });
 }

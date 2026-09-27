@@ -5,6 +5,7 @@ import { isAdmin } from "@/lib/roles";
 import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 import { recalculateRating } from "@/lib/rating";
+import { getT } from "@/lib/i18n/server";
 
 const adminPatchSchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "BANNED"]).optional(),
@@ -208,15 +209,16 @@ export async function PATCH(
 
     // Handle fomoId separately (needs validation + uniqueness check)
     if (parsed.data.fomoId !== undefined) {
+      const { t } = await getT();
       if (!isValidCustomFomoId(parsed.data.fomoId)) {
         return NextResponse.json(
-          { error: "FOMO ID: латинские буквы, цифры и символы _ ! ? $ %, от 7 до 33 символов" },
+          { error: t("api.fomoIdInvalid") },
           { status: 400 }
         );
       }
       const existing = await prisma.user.findUnique({ where: { fomoId: parsed.data.fomoId } });
       if (existing && existing.id !== id) {
-        return NextResponse.json({ error: "Этот FOMO ID уже занят" }, { status: 400 });
+        return NextResponse.json({ error: t("api.fomoIdTaken") }, { status: 400 });
       }
     }
 

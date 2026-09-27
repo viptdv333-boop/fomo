@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { findActiveSubscription } from "@/lib/subscriptions";
+import { getT } from "@/lib/i18n/server";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const userId = session.user.id!;
+  const { t } = await getT();
 
   // Purchase a single idea via bank transfer
   if (body.ideaId && body.type !== "subscription") {
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
       include: { author: { select: { id: true, paymentCard: true, sbpQrUrl: true, displayName: true } } },
     });
     if (!idea || !idea.isPaid || !idea.price) {
-      return NextResponse.json({ error: "Идея не найдена или бесплатная" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.ideaNotPaid") }, { status: 400 });
     }
 
     // Check if already purchased
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
       where: { userId_ideaId: { userId, ideaId: idea.id } },
     });
     if (existingPurchase) {
-      return NextResponse.json({ error: "Уже куплена" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.alreadyPurchased") }, { status: 400 });
     }
 
     // Check existing pending payment request
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
     await createNotification({
       userId: idea.authorId,
       type: "payment",
-      title: `${buyer?.displayName || "Покупатель"} хочет купить идею`,
+      title: { key: "notif.payment.wantsIdea.title", vars: { name: buyer?.displayName || { key: "notif.fallback.buyer" } } },
       body: `${idea.title} — ${idea.price} ₽`,
       link: `/profile?tab=finance`,
     });
@@ -84,17 +86,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!tariff || !tariff.isActive) {
-      return NextResponse.json({ error: "Тариф не найден" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.tariffNotFound") }, { status: 400 });
     }
 
     if (tariff.authorId === userId) {
-      return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.selfSubscribe") }, { status: 400 });
     }
 
     // Check existing active subscription — на ЭТОТ канал (13.09.2026)
     const existing = await findActiveSubscription(userId, tariff.authorId, tariff.id);
     if (existing) {
-      return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.subscriptionActive") }, { status: 400 });
     }
 
     // Check existing pending payment request
@@ -129,7 +131,7 @@ export async function POST(req: NextRequest) {
     await createNotification({
       userId: tariff.authorId,
       type: "payment",
-      title: `${buyer?.displayName || "Покупатель"} подал заявку на подписку`,
+      title: { key: "notif.payment.subscriptionRequest.title", vars: { name: buyer?.displayName || { key: "notif.fallback.buyer" } } },
       body: `${tariff.name} — ${Number(tariff.price)} ₽`,
       link: `/profile?tab=finance`,
     });
@@ -149,17 +151,17 @@ export async function POST(req: NextRequest) {
       select: { id: true, subscriptionPrice: true, paymentCard: true, sbpQrUrl: true, displayName: true },
     });
     if (!author || !author.subscriptionPrice) {
-      return NextResponse.json({ error: "Автор не найден или подписка не настроена" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.authorNoSubscription") }, { status: 400 });
     }
 
     if (author.id === userId) {
-      return NextResponse.json({ error: "Нельзя подписаться на себя" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.selfSubscribe") }, { status: 400 });
     }
 
     // Check existing active subscription — старая подписка на автора без тарифа
     const existing = await findActiveSubscription(userId, author.id, null);
     if (existing) {
-      return NextResponse.json({ error: "Подписка уже активна" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.subscriptionActive") }, { status: 400 });
     }
 
     // Check existing pending payment request
@@ -192,7 +194,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  return NextResponse.json({ error: t("notif.err.badRequest") }, { status: 400 });
 }
 
 // GET: List user's payment requests (as buyer or seller)

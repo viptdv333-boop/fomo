@@ -6,6 +6,7 @@ import { generateFomoId } from "@/lib/fomoId";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword, normalizeEmail, isDisposableEmail, MIN_PASSWORD_LENGTH } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
+import { getT } from "@/lib/i18n/server";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -15,6 +16,7 @@ const registerSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const { locale, t } = await getT();
   try {
     const body = await req.json();
     const data = registerSchema.parse(body);
@@ -24,26 +26,26 @@ export async function POST(req: NextRequest) {
     const ipLimit = await rateLimit(`register:ip:${clientIp(req)}`, 20, 60 * 60 * 1000);
     if (!ipLimit.allowed) {
       return NextResponse.json(
-        { error: "Слишком много попыток. Попробуйте позже" },
+        { error: t("api.tooManyAttempts") },
         { status: 429 }
       );
     }
 
-    const strength = checkPassword(data.password);
+    const strength = checkPassword(data.password, locale);
     if (!strength.ok) {
       return NextResponse.json({ error: strength.error }, { status: 400 });
     }
 
     if (isDisposableEmail(data.email)) {
       return NextResponse.json(
-        { error: "Одноразовые почтовые адреса не поддерживаются" },
+        { error: t("api.disposableEmail") },
         { status: 400 }
       );
     }
 
     // Counts the guess and burns the code after too many misses, instead of the
     // old bare lookup that let a six-digit secret be ground down for free.
-    const check = await consumeCode(data.email, data.code, "register");
+    const check = await consumeCode(data.email, data.code, "register", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
     // would be an account-takeover bug, not a "resume signup" convenience.
     if (existing && existing.status !== "PENDING") {
       return NextResponse.json(
-        { error: "Пользователь с таким email уже существует" },
+        { error: t("api.userExists") },
         { status: 400 }
       );
     }
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
     const aliasOwner = approved.find((u) => normalizeEmail(u.email) === normalized);
     if (aliasOwner) {
       return NextResponse.json(
-        { error: "Пользователь с таким email уже существует" },
+        { error: t("api.userExists") },
         { status: 400 }
       );
     }
@@ -109,15 +111,15 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      message: "Регистрация успешна! Теперь вы можете войти.",
+      message: t("api.registerSuccess"),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
+      return NextResponse.json({ error: t("api.invalidData") }, { status: 400 });
     }
     console.error("Register error:", error);
     return NextResponse.json(
-      { error: "Ошибка сервера" },
+      { error: t("api.serverError") },
       { status: 500 }
     );
   }

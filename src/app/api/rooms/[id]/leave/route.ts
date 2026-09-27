@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getT } from "@/lib/i18n/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -11,13 +12,14 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const { t } = await getT();
   const membership = await prisma.chatRoomMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.user.id } },
   });
-  if (!membership) return NextResponse.json({ error: "Вы не участник этой группы" }, { status: 404 });
+  if (!membership) return NextResponse.json({ error: t("api.roomNotMember") }, { status: 404 });
   if (membership.role === "owner") {
     return NextResponse.json(
-      { error: "Владелец не может выйти из группы — удалите её вместо этого" },
+      { error: t("api.roomOwnerCantLeave") },
       { status: 400 }
     );
   }

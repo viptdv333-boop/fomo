@@ -5,32 +5,34 @@ import bcrypt from "bcryptjs";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
+import { getT } from "@/lib/i18n/server";
 
 export async function POST(request: NextRequest) {
   const { action, email, code, newPassword } = await request.json();
+  const { locale, t } = await getT();
 
   // Password reset is the shortest path to someone else's account, so it gets
   // an IP ceiling on top of the per-code attempt counter.
   const ipLimit = await rateLimit(`reset:ip:${clientIp(request)}`, 20, 60 * 60 * 1000);
   if (!ipLimit.allowed) {
     return NextResponse.json(
-      { error: "Слишком много попыток. Попробуйте позже" },
+      { error: t("api.tooManyAttempts") },
       { status: 429 }
     );
   }
 
   if (!email) {
-    return NextResponse.json({ error: "Укажите email" }, { status: 400 });
+    return NextResponse.json({ error: t("api.enterEmail") }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true, status: true } });
   if (!user) {
     // Don't reveal whether email exists
-    return NextResponse.json({ message: "Если аккаунт существует, код будет отправлен" });
+    return NextResponse.json({ message: t("api.resetGeneric") });
   }
 
   if (user.status === "BANNED") {
-    return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
+    return NextResponse.json({ error: t("api.accountBanned") }, { status: 403 });
   }
 
   // Step 1: Send code
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
       where: { email, createdAt: { gte: new Date(Date.now() - 60000) } },
     });
     if (recent) {
-      return NextResponse.json({ error: "Подождите минуту перед повторной отправкой" }, { status: 429 });
+      return NextResponse.json({ error: t("api.waitBeforeResend") }, { status: 429 });
     }
 
     const verCode = generateCode();
@@ -53,26 +55,26 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      await sendVerificationCode(email, verCode);
+      await sendVerificationCode(email, verCode, locale);
     } catch {
-      return NextResponse.json({ error: "Ошибка отправки кода" }, { status: 500 });
+      return NextResponse.json({ error: t("api.sendCodeFailed") }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Код отправлен на " + email });
+    return NextResponse.json({ message: t("api.codeSentTo", { email }) });
   }
 
   // Step 2: Verify code + set new password
   if (action === "reset") {
     if (!code || !newPassword) {
-      return NextResponse.json({ error: "Введите код и новый пароль" }, { status: 400 });
+      return NextResponse.json({ error: t("api.enterCodeAndPassword") }, { status: 400 });
     }
 
-    const strength = checkPassword(newPassword);
+    const strength = checkPassword(newPassword, locale);
     if (!strength.ok) {
       return NextResponse.json({ error: strength.error }, { status: 400 });
     }
 
-    const check = await consumeCode(email, code, "reset_password");
+    const check = await consumeCode(email, code, "reset_password", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }
@@ -85,8 +87,8 @@ export async function POST(request: NextRequest) {
       data: { passwordHash: hash, sessionVersion: { increment: 1 } },
     });
 
-    return NextResponse.json({ message: "Пароль успешно изменён!" });
+    return NextResponse.json({ message: t("api.passwordResetSuccess") });
   }
 
-  return NextResponse.json({ error: "Укажите action: send-code или reset" }, { status: 400 });
+  return NextResponse.json({ error: t("api.resetActionRequired") }, { status: 400 });
 }

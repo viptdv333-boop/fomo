@@ -9,69 +9,44 @@ import {
   FreeVsPaid,
 } from "@/components/help/Illustrations";
 import { getT } from "@/lib/i18n/server";
+import { HTML_LANG, seoAlternates, type Locale } from "@/lib/i18n/locale-url";
+import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 
-const SITE_URL = "https://fomo.spot";
-
-export const metadata: Metadata = {
-  title: "Как пользоваться FOMO — регистрация, публикация идей, платные каналы",
-  description:
-    "Полная инструкция по FOMO: как зарегистрироваться, публиковать торговые идеи, продавать прогнозы, создать платный канал, подключить приём оплаты. Комиссия площадки — 0%.",
-  keywords: [
-    "как публиковать торговые идеи",
-    "как продавать прогнозы трейдера",
-    "платный канал трейдера",
-    "монетизация торговых сигналов",
-    "инструкция FOMO",
-  ],
-  alternates: { canonical: `${SITE_URL}/help` },
-  openGraph: {
-    url: `${SITE_URL}/help`,
-    title: "Как пользоваться FOMO — полная инструкция",
-    description:
-      "Регистрация, публикация идей, платные каналы, приём оплаты и рейтинг автора. Комиссия площадки — 0%.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, t } = await getT();
+  const alternates = seoAlternates(locale, "/help");
+  return {
+    title: t("seo.help.title"),
+    description: t("seo.help.description"),
+    keywords: keywordList(t("seo.help.keywords")),
+    alternates,
+    openGraph: {
+      url: alternates.canonical,
+      title: t("seo.help.ogTitle"),
+      description: t("seo.help.ogDescription"),
+      ...ogLocales(locale),
+    },
+  };
+}
 
 // FAQPage markup: these questions are exactly what people type into search,
-// and the answers can surface directly in results.
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
+// and the answers can surface directly in results. Built per language so
+// /en/help and /zh/help carry their own FAQ rich results.
+function buildFaqJsonLd(locale: Locale, t: (key: string) => string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: HTML_LANG[locale],
+    mainEntity: [1, 2, 3, 4].map((n) => ({
       "@type": "Question",
-      name: "Какую комиссию берёт FOMO с продаж?",
+      name: t(`seo.faq.q${n}`),
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Нулевую. Читатель платит автору напрямую по его реквизитам, площадка в расчётах не участвует и денег не удерживает.",
+        text: t(`seo.faq.a${n}`),
       },
-    },
-    {
-      "@type": "Question",
-      name: "Кто может публиковать торговые идеи?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Бесплатные идеи может публиковать любой зарегистрированный пользователь с первого дня, без ограничений по рейтингу.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Какой рейтинг нужен, чтобы создать платный канал?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "5.0 и выше. Платные идеи открываются раньше — с 3.0, но с лимитом три штуки в неделю.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Сколько стоит пользоваться FOMO?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Регистрация, чтение бесплатных идей, чаты и торговый терминал бесплатны. Платить нужно только автору за его платные материалы.",
-      },
-    },
-  ],
-};
+    })),
+  };
+}
 
 const SECTIONS = [
   { id: "start", key: "help.nav.start" },
@@ -145,7 +120,8 @@ function Steps({ items }: { items: { t: string; d: React.ReactNode }[] }) {
 const B = "text-gray-900 dark:text-gray-100";
 
 export default async function HelpPage() {
-  const { t } = await getT();
+  const { t, locale } = await getT();
+  const faqJsonLd = buildFaqJsonLd(locale, t);
   return (
     <>
       <script

@@ -4,13 +4,15 @@ import { sendVerificationCode, generateCode } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { normalizeEmail, isDisposableEmail } from "@/lib/account-security";
 import { verifyCaptcha } from "@/lib/captcha";
+import { getT } from "@/lib/i18n/server";
 
 export async function POST(req: NextRequest) {
+  const { locale, t } = await getT();
   try {
     const { email, captchaToken } = await req.json();
 
     if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
+      return NextResponse.json({ error: t("api.emailRequired") }, { status: 400 });
     }
 
     const ip = clientIp(req);
@@ -19,7 +21,7 @@ export async function POST(req: NextRequest) {
     // thousand (self-hosted proof-of-work, see lib/captcha.ts).
     if (!(await verifyCaptcha(captchaToken, ip))) {
       return NextResponse.json(
-        { error: "Подтвердите, что вы не робот" },
+        { error: t("api.captchaFailed") },
         { status: 400 }
       );
     }
@@ -29,14 +31,14 @@ export async function POST(req: NextRequest) {
     const ipLimit = await rateLimit(`signup:ip:${ip}`, 5, 60 * 60 * 1000);
     if (!ipLimit.allowed) {
       return NextResponse.json(
-        { error: "Слишком много регистраций с этого адреса. Попробуйте позже" },
+        { error: t("api.tooManySignups") },
         { status: 429 }
       );
     }
 
     if (isDisposableEmail(email)) {
       return NextResponse.json(
-        { error: "Одноразовые почтовые адреса не поддерживаются" },
+        { error: t("api.disposableEmail") },
         { status: 400 }
       );
     }
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Deliberately the same reply whether or not the address is taken. The old
     // "user already registered" message let anyone test a leaked address list
     // against the site and assemble a target list for password guessing.
-    const genericOk = NextResponse.json({ message: "Код отправлен на " + email });
+    const genericOk = NextResponse.json({ message: t("api.codeSentTo", { email }) });
     if (alreadyTaken) return genericOk;
 
     const recentCode = await prisma.emailVerification.findFirst({
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
     if (recentCode) {
       return NextResponse.json(
-        { error: "Подождите минуту перед повторной отправкой" },
+        { error: t("api.waitBeforeResend") },
         { status: 429 }
       );
     }
@@ -76,11 +78,11 @@ export async function POST(req: NextRequest) {
       data: { email, code, expiresAt, purpose: "register" },
     });
 
-    await sendVerificationCode(email, code);
+    await sendVerificationCode(email, code, locale);
 
     return genericOk;
   } catch (error) {
     console.error("Send code error:", error);
-    return NextResponse.json({ error: "Ошибка отправки кода" }, { status: 500 });
+    return NextResponse.json({ error: t("api.sendCodeFailed") }, { status: 500 });
   }
 }

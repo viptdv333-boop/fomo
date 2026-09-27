@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
+import { tFor } from "@/lib/i18n/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -44,8 +45,8 @@ export async function PATCH(
     await createNotification({
       userId: paymentRequest.sellerId,
       type: "payment",
-      title: `${buyer?.displayName || "Покупатель"} отправил квитанцию`,
-      body: `Сумма: ${paymentRequest.amount} ₽`,
+      title: { key: "notif.payment.receiptSent.title", vars: { name: buyer?.displayName || { key: "notif.fallback.buyer" } } },
+      body: { key: "notif.payment.amount", vars: { amount: String(paymentRequest.amount) } },
       link: `/profile?tab=finance`,
     });
 
@@ -81,8 +82,10 @@ export async function PATCH(
       await createNotification({
         userId: paymentRequest.buyerId,
         type: "payment",
-        title: "Покупка идеи подтверждена",
-        body: idea ? `«${idea.title}» — доступ открыт` : "Доступ открыт",
+        title: { key: "notif.payment.ideaConfirmed.title" },
+        body: idea
+          ? { key: "notif.payment.ideaConfirmed.body", vars: { title: idea.title } }
+          : { key: "notif.payment.accessOpen" },
         link: `/ideas/${paymentRequest.ideaId}`,
       });
     } else if (paymentRequest.subscriptionType === "monthly" || paymentRequest.subscriptionType === "tariff") {
@@ -145,11 +148,16 @@ export async function PATCH(
         conversationId = conv.id;
       }
 
+      // Auto-written on the seller's behalf — in the buyer's (reader's) language.
+      const buyerLocale = await prisma.user.findUnique({
+        where: { id: paymentRequest.buyerId },
+        select: { locale: true },
+      });
       await prisma.directMessage.create({
         data: {
           conversationId,
           senderId: paymentRequest.sellerId,
-          text: `Спасибо за подписку! Добро пожаловать. Теперь вам доступны все мои платные идеи на ${durationDays} дней. Если есть вопросы — пишите!`,
+          text: tFor(buyerLocale?.locale)("notif.dm.subscriptionWelcome", { days: durationDays }),
         },
       });
 
@@ -157,8 +165,8 @@ export async function PATCH(
       await createNotification({
         userId: paymentRequest.buyerId,
         type: "subscription",
-        title: `Подписка на ${seller?.displayName || "автора"} оформлена`,
-        body: `Доступ на ${durationDays} дней`,
+        title: { key: "notif.subscription.done.title", vars: { name: seller?.displayName || { key: "notif.fallback.author" } } },
+        body: { key: "notif.subscription.done.body", vars: { days: durationDays } },
         link: `/messages`,
       });
     }
@@ -171,8 +179,11 @@ export async function PATCH(
     await createNotification({
       userId: paymentRequest.sellerId,
       type: "payment",
-      title: `Оплата подтверждена`,
-      body: `${buyerUser?.displayName || "Покупатель"} — ${paymentRequest.amount} ₽`,
+      title: { key: "notif.payment.confirmed.title" },
+      body: {
+        key: "notif.payment.buyerAmount",
+        vars: { name: buyerUser?.displayName || { key: "notif.fallback.buyer" }, amount: String(paymentRequest.amount) },
+      },
     });
 
     return NextResponse.json(updated);
@@ -193,8 +204,8 @@ export async function PATCH(
     await createNotification({
       userId: paymentRequest.buyerId,
       type: "payment",
-      title: "Платёж отклонён",
-      body: `Сумма: ${paymentRequest.amount} ₽`,
+      title: { key: "notif.payment.rejected.title" },
+      body: { key: "notif.payment.amount", vars: { amount: String(paymentRequest.amount) } },
       link: "/messages",
     });
 

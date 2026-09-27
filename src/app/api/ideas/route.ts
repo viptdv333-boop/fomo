@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
 import { notifyFollowers, notifyChannelSubscribers } from "@/lib/notifications";
-import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
+import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
+import { getT } from "@/lib/i18n/server";
 import { rateLimit } from "@/lib/rate-limit";
 
 // ---------- GET: List ideas ----------
@@ -312,7 +313,8 @@ export async function POST(request: NextRequest) {
   const { title, preview, content, isPaid, price, acceptDonations, instrumentIds, attachments, channelId, general } = parsed.data;
 
   if (!channelId && !general && instrumentIds.length === 0) {
-    return NextResponse.json({ error: "Выберите хотя бы один инструмент" }, { status: 400 });
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.pickInstrument") }, { status: 400 });
   }
 
   if (isPaid && !channelId && (price === undefined || price <= 0)) {
@@ -334,8 +336,9 @@ export async function POST(request: NextRequest) {
       select: { id: true, authorId: true },
     });
     if (!tariff || tariff.authorId !== userId) {
+      const { t } = await getT();
       return NextResponse.json(
-        { error: "Канал не найден или принадлежит другому автору" },
+        { error: t("notif.err.channelNotOwned") },
         { status: 403 }
       );
     }
@@ -346,8 +349,9 @@ export async function POST(request: NextRequest) {
   // Paid ones are additionally capped by the rating tiers below.
   const postLimit = await rateLimit(`idea:${userId}`, 10, 60 * 60 * 1000);
   if (!postLimit.allowed) {
+    const { t } = await getT();
     return NextResponse.json(
-      { error: "Слишком часто. Публиковать можно не больше 10 идей в час" },
+      { error: t("notif.err.ideaFlood") },
       { status: 429 }
     );
   }
@@ -358,7 +362,8 @@ export async function POST(request: NextRequest) {
     select: { status: true },
   });
   if (!poster || poster.status === "BANNED") {
-    return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 });
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.accountBanned") }, { status: 403 });
   }
 
   // If paid idea, check rating tiers and weekly limit (посты канала — не продажа)
@@ -484,7 +489,7 @@ export async function POST(request: NextRequest) {
     await notifyFollowers(
       userId,
       "new_idea",
-      `${author.displayName} опубликовал новую идею`,
+      { key: "notif.newIdea.title", vars: { name: author.displayName } },
       title,
       `/ideas/${idea.id}`
     );
@@ -493,13 +498,14 @@ export async function POST(request: NextRequest) {
     await notifyChannelSubscribers(
       tariffId,
       [userId],
-      `Новый пост в канале «${channel?.name ?? "канал"}»`,
+      { key: "notif.channelPost.title", vars: { channel: channel?.name ?? { key: "notif.fallback.channel" } } },
       title,
       `/ideas/${idea.id}`
     ).catch(() => {});
     await notifyChannelTelegramSubscribers(
       tariffId,
-      `🔔 Новый сетап: <b>${escapeTelegramHtml(title)}</b>\n${escapeTelegramHtml(preview)}\n\nhttps://fomo.spot/ideas/${idea.id}`
+      // Raw vars: telegram.ts escapes them per recipient.
+      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } }
     ).catch(() => {});
   }
 

@@ -3,62 +3,72 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LandingPage from "@/components/landing/LandingPage";
 import PwaBanners from "@/components/layout/PwaBanners";
+import { getT } from "@/lib/i18n/server";
+import { HTML_LANG, SITE_URL, seoAlternates, type Locale } from "@/lib/i18n/locale-url";
+import { absoluteUrl, ogLocales } from "@/lib/i18n/seo-metadata";
 
 export const dynamic = "force-dynamic";
 
-const SITE_URL = "https://fomo.spot";
-
-export const metadata: Metadata = {
-  title: "Торговые идеи и аналитика фондового рынка — FOMO",
-  description:
-    "Торговые идеи и прогнозы от трейдеров: акции, фьючерсы МосБиржи, криптовалюта, форекс. Технический анализ, сигналы, подписки на авторов. Публикуйте свои идеи.",
-  alternates: { canonical: SITE_URL },
-  openGraph: { url: SITE_URL },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, t } = await getT();
+  const title = t("seo.site.title");
+  const description = t("seo.site.description");
+  const alternates = seoAlternates(locale, "/");
+  return {
+    title,
+    description,
+    alternates,
+    openGraph: { title, description, url: alternates.canonical, ...ogLocales(locale) },
+  };
+}
 
 // Organization + WebSite markup. The SearchAction enables a sitelinks
 // search box in Google and feeds Yandex's site-structure data.
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": `${SITE_URL}/#organization`,
-      name: "FOMO",
-      alternateName: "FOMO — Find Opportunities, Make Outcomes",
-      url: SITE_URL,
-      logo: {
-        "@type": "ImageObject",
-        url: `${SITE_URL}/logo-fomo.png`,
-      },
-      description:
-        "Платформа для публикации и обсуждения торговых идей: акции, фьючерсы МосБиржи, криптовалюта, форекс.",
-      areaServed: "RU",
-      knowsLanguage: ["ru", "en", "zh"],
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${SITE_URL}/#website`,
-      url: SITE_URL,
-      name: "FOMO",
-      description:
-        "Торговые идеи и аналитика фондового рынка от профессиональных трейдеров.",
-      inLanguage: "ru-RU",
-      publisher: { "@id": `${SITE_URL}/#organization` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${SITE_URL}/feed?search={search_term_string}`,
+function buildJsonLd(locale: Locale, t: (key: string) => string) {
+  const home = absoluteUrl(locale, "/");
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "FOMO",
+        alternateName: "FOMO — Find Opportunities, Make Outcomes",
+        url: SITE_URL,
+        logo: {
+          "@type": "ImageObject",
+          url: `${SITE_URL}/logo-fomo.png`,
         },
-        "query-input": "required name=search_term_string",
+        description: t("seo.org.description"),
+        areaServed: "RU",
+        knowsLanguage: ["ru", "en", "zh"],
       },
-    },
-  ],
-};
+      {
+        "@type": "WebSite",
+        // One WebSite node per language version, each pointing at its own home.
+        "@id": `${home}/#website`,
+        url: home,
+        name: "FOMO",
+        description: t("seo.website.description"),
+        inLanguage: locale === "ru" ? "ru-RU" : HTML_LANG[locale],
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${absoluteUrl(locale, "/feed")}?search={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+}
 
 export default async function HomePage() {
   const session = await auth();
+  const { locale, t } = await getT();
+  const jsonLd = buildJsonLd(locale, t);
 
   // Logged-in users go straight to feed
   if (session?.user) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getT } from "@/lib/i18n/server";
 
 export async function GET(
   _request: NextRequest,
@@ -12,6 +13,7 @@ export async function GET(
   }
 
   const { id } = await params;
+  const { t } = await getT();
 
   if (session.user.id !== id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -137,7 +139,7 @@ export async function GET(
       id: s.id,
       authorId: s.author.id,
       authorName: s.author.displayName,
-      tariffName: s.tariff?.name || "Стандарт",
+      tariffName: s.tariff?.name || t("api.tariffDefaultName"),
       endDate: s.endDate,
       monthlyPrice: Number(s.monthlyPrice),
     })),

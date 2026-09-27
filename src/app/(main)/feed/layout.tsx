@@ -1,26 +1,11 @@
 import type { Metadata } from "next";
+import { sectionMetadata } from "@/lib/i18n/seo-metadata";
 
-const URL = "https://fomo.spot/feed";
-const title = "Торговые идеи и прогнозы по акциям";
-const description =
-  "Свежие торговые идеи и прогнозы от трейдеров: акции, фьючерсы МосБиржи, криптовалюта, форекс. Технический анализ, точки входа и цели. Читайте бесплатно.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  keywords: [
-    "торговые идеи",
-    "идеи для инвестиций",
-    "прогнозы по акциям",
-    "торговые сигналы",
-    "технический анализ акций",
-    "аналитика фьючерсов",
-    "прогноз индекса МосБиржи",
-  ],
-  alternates: { canonical: URL },
-  openGraph: { title, description, url: URL },
-  twitter: { title, description },
-};
+// Localized title/description/keywords + canonical and hreflang for /feed,
+// /en/feed and /zh/feed (copy lives in src/lib/i18n/dict/seo.ts).
+export function generateMetadata(): Promise<Metadata> {
+  return sectionMetadata("feed", "/feed");
+}
 
 export default function FeedLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

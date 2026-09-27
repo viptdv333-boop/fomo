@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
+import { getT } from "@/lib/i18n/server";
 
 // GET: list author's tariffs
 export async function GET(
@@ -80,7 +81,7 @@ export async function POST(
 
   if (Number(user.rating) < 5) {
     return NextResponse.json(
-      { error: "Рейтинг должен быть не менее 5.0 для создания тарифов" },
+      { error: (await getT()).t("api.tariffRatingTooLow") },
       { status: 403 }
     );
   }

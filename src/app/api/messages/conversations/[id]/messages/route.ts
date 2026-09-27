@@ -176,13 +176,13 @@ export async function POST(
     ? message.text.length > 80
       ? message.text.slice(0, 80) + "…"
       : message.text
-    : "Файл";
+    : { key: "notif.dm.file" };
 
   for (const p of otherParticipants) {
     await createNotification({
       userId: p.userId,
       type: "new_message",
-      title: `Сообщение от ${senderName}`,
+      title: { key: "notif.dm.title", vars: { name: senderName } },
       body: preview,
       link: "/messages",
     });

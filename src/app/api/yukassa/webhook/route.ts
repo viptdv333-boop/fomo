@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
+import { tFor } from "@/lib/i18n/server";
 
 /**
  * POST /api/yukassa/webhook
@@ -121,11 +122,16 @@ async function handlePaymentSucceeded(payment: any) {
     conversationId = conv.id;
   }
 
+  // Auto-written on the seller's behalf — in the buyer's (reader's) language.
+  const buyerLocale = await prisma.user.findUnique({
+    where: { id: paymentRequest.buyerId },
+    select: { locale: true },
+  });
   await prisma.directMessage.create({
     data: {
       conversationId,
       senderId: paymentRequest.sellerId,
-      text: `Спасибо за подписку! Оплата через ЮKassa прошла успешно. Доступ на ${durationDays} дней активирован. Если есть вопросы — пишите!`,
+      text: tFor(buyerLocale?.locale)("notif.dm.yukassaWelcome", { days: durationDays }),
     },
   });
 
@@ -133,8 +139,11 @@ async function handlePaymentSucceeded(payment: any) {
   await createNotification({
     userId: paymentRequest.buyerId,
     type: "subscription",
-    title: `Подписка на ${seller?.displayName || "автора"} оформлена`,
-    body: `Оплата ${Number(paymentRequest.amount)} ₽ прошла. Доступ на ${durationDays} дней`,
+    title: { key: "notif.subscription.done.title", vars: { name: seller?.displayName || { key: "notif.fallback.author" } } },
+    body: {
+      key: "notif.subscription.yukassaDone.body",
+      vars: { amount: Number(paymentRequest.amount), days: durationDays },
+    },
     link: `/messages`,
   });
 
@@ -146,8 +155,11 @@ async function handlePaymentSucceeded(payment: any) {
   await createNotification({
     userId: paymentRequest.sellerId,
     type: "payment",
-    title: `Новая оплата через ЮKassa`,
-    body: `${buyer?.displayName || "Покупатель"} — ${Number(paymentRequest.amount)} ₽`,
+    title: { key: "notif.payment.yukassaNew.title" },
+    body: {
+      key: "notif.payment.buyerAmount",
+      vars: { name: buyer?.displayName || { key: "notif.fallback.buyer" }, amount: Number(paymentRequest.amount) },
+    },
   });
 
   console.log("[yukassa/webhook] Payment succeeded, subscription activated:", paymentRequestId);
@@ -172,8 +184,8 @@ async function handlePaymentCanceled(payment: any) {
   await createNotification({
     userId: paymentRequest.buyerId,
     type: "payment",
-    title: "Платёж отменён",
-    body: `Оплата ${Number(paymentRequest.amount)} ₽ через ЮKassa не прошла`,
+    title: { key: "notif.payment.canceled.title" },
+    body: { key: "notif.payment.yukassaCanceled.body", vars: { amount: Number(paymentRequest.amount) } },
     link: "/subscriptions",
   });
 

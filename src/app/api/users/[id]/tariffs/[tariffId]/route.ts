@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidCustomFomoId } from "@/lib/fomoId";
+import { getT } from "@/lib/i18n/server";
 
 export async function PATCH(
   request: NextRequest,
@@ -14,6 +15,7 @@ export async function PATCH(
   if (session.user.id !== id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
+  const { t } = await getT();
 
   const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
   if (!tariff || tariff.authorId !== id) {
@@ -39,13 +41,13 @@ export async function PATCH(
     } else {
       if (!isValidCustomFomoId(slug)) {
         return NextResponse.json(
-          { error: "ID: латинские буквы, цифры и символы _ ! ? $ %, от 7 до 33 символов" },
+          { error: t("api.tariffSlugInvalid") },
           { status: 400 }
         );
       }
       const existing = await prisma.subscriptionTariff.findUnique({ where: { slug } });
       if (existing && existing.id !== tariffId) {
-        return NextResponse.json({ error: "Этот ID уже занят" }, { status: 400 });
+        return NextResponse.json({ error: t("api.tariffSlugTaken") }, { status: 400 });
       }
       data.slug = slug;
     }

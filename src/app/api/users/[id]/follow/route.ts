@@ -62,7 +62,7 @@ export async function POST(
       await createNotification({
         userId: authorId,
         type: "new_follower",
-        title: `${follower.displayName} подписался на вас`,
+        title: { key: "notif.newFollower.title", vars: { name: follower.displayName } },
         link: `/profile/${followerId}`,
       });
     }

@@ -23,6 +23,14 @@ const DISALLOW = [
   "/*?*page=",
 ];
 
+// The same functional areas under the /en and /zh language prefixes (the
+// middleware rewrites /en/admin etc. to the same pages). The language roots
+// themselves (/en, /zh) stay crawlable — they are listed in the sitemap.
+const LOCALE_PREFIXES = ["/en", "/zh"];
+const LOCALIZED_DISALLOW = DISALLOW.filter((p) => !p.startsWith("/api/") && !p.startsWith("/*")).flatMap((p) =>
+  LOCALE_PREFIXES.map((prefix) => `${prefix}${p}`),
+);
+
 // Tracking parameters Yandex should strip before deduplicating URLs.
 const CLEAN_PARAMS = [
   "utm_source",
@@ -40,7 +48,7 @@ const CLEAN_PARAMS = [
 ];
 
 function block(userAgent: string): string {
-  return [`User-agent: ${userAgent}`, "Allow: /", ...DISALLOW.map((p) => `Disallow: ${p}`)].join("\n");
+  return [`User-agent: ${userAgent}`, "Allow: /", ...[...DISALLOW, ...LOCALIZED_DISALLOW].map((p) => `Disallow: ${p}`)].join("\n");
 }
 
 export function GET(): Response {

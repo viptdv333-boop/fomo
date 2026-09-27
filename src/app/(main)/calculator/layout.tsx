@@ -1,24 +1,11 @@
 import type { Metadata } from "next";
+import { sectionMetadata } from "@/lib/i18n/seo-metadata";
 
-const URL = "https://fomo.spot/calculator";
-const title = "Калькулятор риска и позиции — фьючерсы МосБиржи";
-const description =
-  "Рассчитайте количество фьючерсных контрактов по риску на сделку: депозит, вход, стоп, тейк — актуальные данные биржи (шаг цены, ГО) в реальном времени.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  keywords: [
-    "калькулятор риска",
-    "калькулятор позиции трейдера",
-    "расчёт лота фьючерс",
-    "риск менеджмент трейдинг",
-    "гарантийное обеспечение фьючерс",
-  ],
-  alternates: { canonical: URL },
-  openGraph: { title, description, url: URL },
-  twitter: { title, description },
-};
+// Localized title/description/keywords + canonical and hreflang for /calculator,
+// /en/calculator and /zh/calculator (copy lives in src/lib/i18n/dict/seo.ts).
+export function generateMetadata(): Promise<Metadata> {
+  return sectionMetadata("calculator", "/calculator");
+}
 
 export default function CalculatorLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

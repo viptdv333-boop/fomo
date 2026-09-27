@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { MAX_CODE_ATTEMPTS } from "@/lib/account-security";
+import { tFor } from "@/lib/i18n/server";
 
 /**
  * Single place where an emailed code is checked.
@@ -19,8 +20,11 @@ export type CodeCheck =
 export async function consumeCode(
   email: string,
   code: string,
-  purpose: CodePurpose
+  purpose: CodePurpose,
+  /** Language of the returned error text. */
+  locale: string = "ru"
 ): Promise<CodeCheck> {
+  const t = tFor(locale);
   const match = await prisma.emailVerification.findFirst({
     where: { email, code, purpose, used: false, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
@@ -51,7 +55,7 @@ export async function consumeCode(
       });
       return {
         ok: false,
-        error: "Слишком много неверных попыток. Запросите новый код",
+        error: t("api.codeTooManyAttempts"),
         status: 429,
       };
     }
@@ -61,5 +65,5 @@ export async function consumeCode(
     });
   }
 
-  return { ok: false, error: "Неверный или просроченный код подтверждения", status: 400 };
+  return { ok: false, error: t("api.codeInvalid"), status: 400 };
 }

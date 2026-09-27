@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
-import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
+import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
 // без браузерной NextAuth-сессии, автор зафиксирован (bot-auth.ts) — эндпоинт
@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
   if (tariffId) {
     await notifyChannelTelegramSubscribers(
       tariffId,
-      `🔔 Новый сетап: <b>${escapeTelegramHtml(title)}</b>\n${escapeTelegramHtml(preview)}\n\nhttps://fomo.spot/ideas/${idea.id}`
+      // Raw vars: telegram.ts escapes them and renders per recipient's language.
+      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } }
     ).catch(() => {});
   }
 

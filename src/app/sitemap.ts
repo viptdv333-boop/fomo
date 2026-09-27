@@ -1,7 +1,28 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { HREFLANG, LOCALES } from "@/lib/i18n/locale-url";
+import { absoluteUrl } from "@/lib/i18n/seo-metadata";
 
-const BASE = "https://fomo.spot";
+// Protocol cap per sitemap file. Every page is emitted in 3 languages, so
+// pages are added in whole groups and dropped (lowest priority last) once full.
+const MAX_URLS = 50000;
+
+type Entry = MetadataRoute.Sitemap[number];
+
+/**
+ * One entry per language (ru at the root, /en/..., /zh/...) for a path given
+ * without locale prefix, each carrying the full hreflang set incl. x-default.
+ * Home has no trailing slash, matching the canonical Next renders.
+ */
+function localizedEntries(path: string, rest: Omit<Entry, "url" | "alternates">): Entry[] {
+  const languages = {
+    [HREFLANG.ru]: absoluteUrl("ru", path),
+    [HREFLANG.en]: absoluteUrl("en", path),
+    [HREFLANG.cn]: absoluteUrl("cn", path),
+    "x-default": absoluteUrl("ru", path),
+  };
+  return LOCALES.map((l) => ({ url: absoluteUrl(l, path), ...rest, alternates: { languages } }));
+}
 
 const STATIC_ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
   { path: "/", priority: 1.0, changeFrequency: "daily" },
@@ -21,14 +42,17 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
-    // Home is emitted without a trailing slash so it matches the canonical
-    // Next renders from metadataBase ("https://fomo.spot").
-    url: r.path === "/" ? BASE : `${BASE}${r.path}`,
-    lastModified: now,
-    changeFrequency: r.changeFrequency,
-    priority: r.priority,
-  }));
+  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.flatMap((r) =>
+    localizedEntries(r.path, {
+      lastModified: now,
+      changeFrequency: r.changeFrequency,
+      priority: r.priority,
+    }),
+  );
+  const add = (path: string, rest: Omit<Entry, "url" | "alternates">) => {
+    if (entries.length + LOCALES.length > MAX_URLS) return;
+    entries.push(...localizedEntries(path, rest));
+  };
 
   // Dynamic content — fail-soft so the sitemap still serves if DB is unreachable
   try {
@@ -51,34 +75,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
 
     for (const idea of ideas) {
-      entries.push({
-        url: `${BASE}/ideas/${idea.id}`,
+      add(`/ideas/${idea.id}`, {
         lastModified: idea.updatedAt ?? now,
         changeFrequency: "weekly",
         priority: 0.8,
       });
     }
-    for (const a of assets) {
-      entries.push({
-        url: `${BASE}/instruments/${a.slug}`,
-        lastModified: a.createdAt ?? now,
-        changeFrequency: "weekly",
-        priority: 0.6,
-      });
-      entries.push({
-        url: `${BASE}/feed/${a.slug}`,
-        lastModified: a.createdAt ?? now,
-        changeFrequency: "daily",
-        priority: 0.5,
-      });
-    }
     for (const u of authors) {
       if (!u.fomoId) continue;
-      entries.push({
-        url: `${BASE}/authors/${u.fomoId}`,
+      add(`/authors/${u.fomoId}`, {
         lastModified: u.updatedAt ?? now,
         changeFrequency: "weekly",
         priority: 0.6,
+      });
+    }
+    for (const a of assets) {
+      add(`/instruments/${a.slug}`, {
+        lastModified: a.createdAt ?? now,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      });
+    }
+    for (const a of assets) {
+      add(`/feed/${a.slug}`, {
+        lastModified: a.createdAt ?? now,
+        changeFrequency: "daily",
+        priority: 0.5,
       });
     }
   } catch (err) {

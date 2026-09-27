@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
+import { getT } from "@/lib/i18n/server";
 
 export async function GET(
   _request: NextRequest,
@@ -68,9 +69,10 @@ export async function POST(
   }
 
   const body = await request.json().catch(() => ({}));
+  const { t } = await getT();
   const days = Number(body?.days);
   if (!Number.isInteger(days) || days < 1 || days > 3650) {
-    return NextResponse.json({ error: "Укажите число дней от 1 до 3650" }, { status: 400 });
+    return NextResponse.json({ error: t("notif.err.daysRange") }, { status: 400 });
   }
   const subscriptionId: string | undefined = typeof body?.subscriptionId === "string" ? body.subscriptionId : undefined;
   const now = new Date();
@@ -80,14 +82,14 @@ export async function POST(
   // active term, or (re)activates from now.
   if (typeof body?.userId === "string") {
     if (body.userId === id) {
-      return NextResponse.json({ error: "Автор уже имеет доступ к своему каналу" }, { status: 400 });
+      return NextResponse.json({ error: t("notif.err.authorHasAccess") }, { status: 400 });
     }
     const user = await prisma.user.findUnique({
       where: { id: body.userId },
       select: { id: true, status: true },
     });
     if (!user || user.status !== "APPROVED") {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+      return NextResponse.json({ error: t("notif.err.userNotFound") }, { status: 404 });
     }
     const existing = await prisma.subscription.findFirst({
       where: { subscriberId: user.id, authorId: id, tariffId },
@@ -105,7 +107,7 @@ export async function POST(
     await createNotification({
       userId: user.id,
       type: "subscription_extended",
-      title: `Вас добавили в канал «${tariff.name}» на ${days} дн.`,
+      title: { key: "notif.subscription.added.title", vars: { channel: tariff.name, days } },
       body: tariff.name,
       link: `/channels/${tariff.slug || tariff.id}`,
     }).catch(() => {});
@@ -119,7 +121,7 @@ export async function POST(
     select: { id: true, subscriberId: true, status: true, endDate: true },
   });
   if (targets.length === 0) {
-    return NextResponse.json({ error: "Подписчики не найдены" }, { status: 404 });
+    return NextResponse.json({ error: t("notif.err.subscribersNotFound") }, { status: 404 });
   }
 
   await Promise.all(
@@ -138,7 +140,7 @@ export async function POST(
       createNotification({
         userId: s.subscriberId,
         type: "subscription_extended",
-        title: `Автор продлил вашу подписку на ${days} дн.`,
+        title: { key: "notif.subscription.extended.title", vars: { days } },
         body: tariff.name,
         link: `/channels/${tariff.slug || tariff.id}`,
       }).catch(() => {})
@@ -176,7 +178,10 @@ export async function DELETE(
     where: { id: subscriptionId, tariffId },
     select: { id: true, subscriberId: true },
   });
-  if (!sub) return NextResponse.json({ error: "Подписчик не найден" }, { status: 404 });
+  if (!sub) {
+    const { t } = await getT();
+    return NextResponse.json({ error: t("notif.err.subscriberNotFound") }, { status: 404 });
+  }
 
   await prisma.subscription.update({
     where: { id: sub.id },
@@ -186,7 +191,7 @@ export async function DELETE(
   await createNotification({
     userId: sub.subscriberId,
     type: "subscription_removed",
-    title: "Автор закрыл вам доступ к каналу",
+    title: { key: "notif.subscription.removed.title" },
     body: tariff.name,
     link: `/channels/${tariff.slug || tariff.id}`,
   }).catch(() => {});

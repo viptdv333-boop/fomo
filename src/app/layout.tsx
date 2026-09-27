@@ -10,7 +10,8 @@ import YandexMetrika from "@/components/YandexMetrika";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieBanner from "@/components/CookieBanner";
 import { prisma } from "@/lib/prisma";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 import { HTML_LANG } from "@/lib/i18n/locale-url";
 
 export const viewport: Viewport = {
@@ -25,12 +26,6 @@ export const viewport: Viewport = {
 
 const SITE_URL = "https://fomo.spot";
 const OG_IMAGE = "/logo-fomo.png";
-
-// Keyword-led title/description. Russian search engines weight the leading
-// words of <title> heavily, so the brand goes last.
-const DEFAULT_TITLE = "Торговые идеи и аналитика фондового рынка — FOMO";
-const DEFAULT_DESCRIPTION =
-  "Торговые идеи и прогнозы от трейдеров: акции, фьючерсы МосБиржи, криптовалюта, форекс. Технический анализ, сигналы, подписки на авторов. Публикуйте свои идеи.";
 
 // Yandex.Webmaster site ownership. Duplicated as /public/yandex_<code>.html
 // so either verification method works.
@@ -47,9 +42,14 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // DB unreachable — fall through to defaults
   }
+  const { locale, t } = await getT();
   const favicon = settings?.faviconUrl || OG_IMAGE;
-  const title = settings?.metaTitle || DEFAULT_TITLE;
-  const description = settings?.metaDescription || DEFAULT_DESCRIPTION;
+  // Keyword-led title/description (seo.site.* in src/lib/i18n/dict/seo.ts).
+  // Russian search engines weight the leading words of <title> heavily, so the
+  // brand goes last. The admin-editable overrides are written in Russian, so
+  // they only replace the Russian defaults; /en and /zh always get their own copy.
+  const title = (locale === "ru" && settings?.metaTitle) || t("seo.site.title");
+  const description = (locale === "ru" && settings?.metaDescription) || t("seo.site.description");
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -59,28 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description,
     applicationName: "FOMO",
-    keywords: [
-      // RU — mid/low frequency, the ones that actually convert
-      "торговые идеи",
-      "торговые идеи мосбиржа",
-      "инвестиционные идеи",
-      "аналитика фондового рынка",
-      "прогнозы по акциям",
-      "технический анализ акций",
-      "торговые сигналы",
-      "фьючерсы МосБиржи",
-      "трейдинг",
-      "инвестиции в акции",
-      "подписка на трейдера",
-      "социальная сеть для трейдеров",
-      "прогноз индекса МосБиржи",
-      "криптовалюта аналитика",
-      // EN
-      "trading ideas",
-      "stock market analysis",
-      "trading signals",
-      "social trading network",
-    ],
+    keywords: keywordList(t("seo.site.keywords")),
     verification: {
       yandex: YANDEX_VERIFICATION,
     },
@@ -102,8 +81,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       // No `url` here — Next merges root metadata into child pages, so a
       // global og:url would tag every route as sharing the same URL.
-      locale: "ru_RU",
-      alternateLocale: ["en_US", "zh_CN"],
+      ...ogLocales(locale),
       images: [
         {
           url: OG_IMAGE,
