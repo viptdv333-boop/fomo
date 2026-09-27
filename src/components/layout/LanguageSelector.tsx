@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FlagIcon } from "./FlagIcon";
+import { switchLocale } from "@/lib/i18n/client";
 
 interface Language {
   code: string;
@@ -26,10 +27,9 @@ export default function LanguageSelector() {
   }, []);
 
   function setLocale(code: string) {
-    document.cookie = `NEXT_LOCALE=${code};path=/;max-age=31536000`;
     setCurrent(code);
     setOpen(false);
-    window.location.reload();
+    switchLocale(code);
   }
 
   if (languages.length <= 1) return null;

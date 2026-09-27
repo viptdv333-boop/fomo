@@ -1,9 +1,32 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { isLocale, localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
+
+const LOCALE_COOKIE = "NEXT_LOCALE";
+const YEAR = 60 * 60 * 24 * 365;
 
 export default auth((req) => {
-  const { pathname } = req.nextUrl;
+  const isApi = req.nextUrl.pathname.startsWith("/api/");
+  const { locale: urlLocale, path: pathname } = stripLocale(req.nextUrl.pathname);
   const user = req.auth?.user as any;
+  const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
+  const locale: Locale = urlLocale ?? (isLocale(cookieLocale) ? cookieLocale : "ru");
+  const toLogin = () => NextResponse.redirect(new URL(localizedPath(urlLocale ?? "ru", "/login"), req.url));
+
+  // Someone who picked English/Chinese lands on the prefixed URL, so every
+  // language has its own indexable address. Crawlers carry no cookie and get
+  // Russian at the root. The admin panel is Russian-only.
+  if (
+    !isApi &&
+    !urlLocale &&
+    req.method === "GET" &&
+    locale !== "ru" &&
+    !pathname.startsWith("/admin")
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = localizedPath(locale, pathname);
+    return NextResponse.redirect(url);
+  }
 
   // Admin routes require ADMIN role
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
@@ -11,7 +34,7 @@ export default auth((req) => {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      return NextResponse.redirect(new URL("/login", req.url));
+      return toLogin();
     }
   }
 
@@ -23,10 +46,10 @@ export default auth((req) => {
 
   if (isProtectedPage) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return toLogin();
     }
     if (user.status !== "APPROVED") {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return toLogin();
     }
   }
 
@@ -49,25 +72,31 @@ export default auth((req) => {
     }
   }
 
+  if (urlLocale) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname;
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-locale", urlLocale);
+    const res = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    if (cookieLocale !== urlLocale) {
+      res.cookies.set(LOCALE_COOKIE, urlLocale, { path: "/", maxAge: YEAR, sameSite: "lax" });
+    }
+    return res;
+  }
+
   return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    "/admin/:path*",
+    // Every page (locale prefixes, auth redirects); files with an extension are skipped.
+    "/((?!api|_next|.*\\..*).*)",
     "/api/admin/:path*",
-    "/ideas/new",
-    "/chat/:path*",
-    "/subscriptions/:path*",
-    "/profile",
-    "/profile/:path*",
     "/api/ideas/:path*",
     "/api/payments/:path*",
     "/api/subscriptions/:path*",
     "/api/chat/:path*",
     "/api/users/:path*",
-    "/messages/:path*",
-    "/payments/:path*",
     "/api/messages/:path*",
     "/api/contacts/:path*",
     "/api/upload/:path*",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { stripLocale } from "@/lib/i18n/locale-url";
 import { usePathname } from "next/navigation";
 
 interface SiteSettings {
@@ -20,7 +21,7 @@ function shouldInject(pages: string[], pathname: string): boolean {
 
 export default function SiteSettingsInjector() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const pathname = usePathname();
+  const pathname = stripLocale(usePathname() || "/").path;
 
   useEffect(() => {
     fetch("/api/site-settings")

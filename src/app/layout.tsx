@@ -10,8 +10,8 @@ import YandexMetrika from "@/components/YandexMetrika";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieBanner from "@/components/CookieBanner";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { DICTIONARIES } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { HTML_LANG } from "@/lib/i18n/locale-url";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -149,10 +149,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const saved = (await cookies()).get("NEXT_LOCALE")?.value;
-  const locale = saved && DICTIONARIES[saved] ? saved : "ru";
+  const locale = await getLocale();
   return (
-    <html lang={locale === "cn" ? "zh-CN" : locale} suppressHydrationWarning>
+    <html lang={HTML_LANG[locale]} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

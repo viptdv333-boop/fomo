@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { stripLocale } from "@/lib/i18n/locale-url";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
@@ -16,7 +17,7 @@ export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const userId = user?.id;
-  const pathname = usePathname();
+  const pathname = stripLocale(usePathname() || "/").path;
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
