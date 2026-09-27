@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface ShareButtonsProps {
   url: string;
@@ -92,7 +93,7 @@ const SHARE_TARGETS = [
   },
   {
     id: "email",
-    label: "Почта",
+    label: "common.share.email",
     Icon: EmailIcon,
     urlFn: (url: string, text: string) =>
       `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`,
@@ -100,6 +101,7 @@ const SHARE_TARGETS = [
 ];
 
 export default function ShareButtons({ url, text }: ShareButtonsProps) {
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
@@ -115,7 +117,7 @@ export default function ShareButtons({ url, text }: ShareButtonsProps) {
       <button
         onClick={copyLink}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-        title="Скопировать ссылку"
+        title={t("common.share.copyLink")}
       >
         <CopyIcon copied={copied} />
       </button>
@@ -123,7 +125,7 @@ export default function ShareButtons({ url, text }: ShareButtonsProps) {
       <button
         onClick={() => setShowShare(!showShare)}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-        title="Поделиться"
+        title={t("common.share.share")}
       >
         <ShareIcon />
       </button>
@@ -132,17 +134,17 @@ export default function ShareButtons({ url, text }: ShareButtonsProps) {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setShowShare(false)} />
           <div className="absolute top-7 right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg py-1 z-20 min-w-[180px]">
-            {SHARE_TARGETS.map((t) => (
+            {SHARE_TARGETS.map((s) => (
               <a
-                key={t.id}
-                href={t.urlFn(url, text)}
+                key={s.id}
+                href={s.urlFn(url, text)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowShare(false)}
                 className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
               >
-                <t.Icon />
-                {t.label}
+                <s.Icon />
+                {s.id === "email" ? t(s.label) : s.label}
               </a>
             ))}
           </div>

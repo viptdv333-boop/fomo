@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FuturesInstrument, FuturesSpec } from "@/lib/moex-futures-spec";
+import { useT } from "@/lib/i18n/client";
 
 const RISK_PRESETS = [0.5, 1, 1.5, 2];
 
-const RUB = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
-function fmtRub(n: number): string {
-  return `${RUB.format(Math.round(n))} ₽`;
+const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
+function fmtRub(n: number, locale: string = "ru"): string {
+  const fmt = new Intl.NumberFormat(LOCALES[locale] || "ru-RU", { maximumFractionDigits: 0 });
+  return `${fmt.format(Math.round(n))} ₽`;
 }
 
 function AssetPicker({
@@ -19,6 +21,7 @@ function AssetPicker({
   selected: FuturesInstrument | null;
   onSelect: (i: FuturesInstrument) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
@@ -53,7 +56,7 @@ function AssetPicker({
             </span>
           </>
         ) : (
-          <span className="flex-1 text-gray-400">Выберите фьючерс…</span>
+          <span className="flex-1 text-gray-400">{t("calc.selectFutures")}</span>
         )}
         <svg className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -68,13 +71,13 @@ function AssetPicker({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по названию или тикеру…"
+              placeholder={t("calc.searchPlaceholder")}
               className="w-full px-2.5 py-1.5 text-sm border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
           <div className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-gray-400 text-center">Ничего не найдено</div>
+              <div className="px-3 py-4 text-sm text-gray-400 text-center">{t("calc.nothingFound")}</div>
             ) : (
               filtered.map((i) => (
                 <button
@@ -130,6 +133,7 @@ function NumberField({
 }
 
 export default function CalculatorPage() {
+  const { t, locale } = useT();
   const [instruments, setInstruments] = useState<FuturesInstrument[]>([]);
   const [selected, setSelected] = useState<FuturesInstrument | null>(null);
   const [spec, setSpec] = useState<FuturesSpec | null>(null);
@@ -156,14 +160,15 @@ export default function CalculatorPage() {
       const res = await fetch(`/api/futures/spec?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) {
-        setSpecError(data.error || "Не удалось получить данные биржи");
+        // specError holds either a server-provided message or an i18n key; rendered via t()
+        setSpecError(data.error || "calc.specError");
         setSpec(null);
         return;
       }
       setSpec(data);
       setEntry((prev) => (prev.trim() ? prev : String(data.last ?? data.offer ?? data.bid ?? "")));
     } catch {
-      setSpecError("Не удалось получить данные биржи");
+      setSpecError("calc.specError");
       setSpec(null);
     } finally {
       setSpecLoading(false);
@@ -207,11 +212,11 @@ export default function CalculatorPage() {
     const st = parseFloat(stop);
     const tk = parseFloat(take);
 
-    if (!dep || dep <= 0) return blank("Укажите размер депозита");
-    if (!en || !st) return blank("Укажите цену входа и цену стопа");
+    if (!dep || dep <= 0) return blank("calc.err.deposit");
+    if (!en || !st) return blank("calc.err.entryStop");
     const priceRisk = Math.abs(en - st);
-    if (priceRisk === 0) return blank("Стоп должен отличаться от цены входа");
-    if (!spec.minStep || !spec.stepPrice) return blank("У биржи нет данных о шаге цены по этому контракту");
+    if (priceRisk === 0) return blank("calc.err.stopEqEntry");
+    if (!spec.minStep || !spec.stepPrice) return blank("calc.err.noStep");
 
     const tickValue = spec.stepPrice / spec.minStep;
     const riskBudget = dep * (riskPercent / 100);
@@ -234,27 +239,27 @@ export default function CalculatorPage() {
 
   return (
     <div className="max-w-2xl w-full mx-auto">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">🧮 Калькулятор риска</h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t("calc.title")}</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Сколько фьючерсных контрактов открыть, чтобы не превысить свой риск на сделку. Актив всегда резолвится в текущий торгуемый контракт, шаг цены, стоимость шага и ГО — с MOEX.
+        {t("calc.subtitle")}
       </p>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Актив</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">{t("calc.asset")}</label>
           <AssetPicker instruments={instruments} selected={selected} onSelect={handleSelect} />
 
-          {specLoading && <p className="text-xs text-gray-400 mt-1.5">Получаем данные с биржи…</p>}
-          {specError && <p className="text-xs text-red-500 mt-1.5">{specError}</p>}
+          {specLoading && <p className="text-xs text-gray-400 mt-1.5">{t("calc.loadingSpec")}</p>}
+          {specError && <p className="text-xs text-red-500 mt-1.5">{t(specError)}</p>}
           {spec && !specLoading && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span className="font-mono">{spec.secid}</span>
               <span>·</span>
-              <span>экспирация {new Date(spec.expiry).toLocaleDateString("ru-RU")}</span>
+              <span>{t("calc.expiry", { date: new Date(spec.expiry).toLocaleDateString(LOCALES[locale] || "ru-RU") })}</span>
               {spec.last != null && (
                 <>
                   <span>·</span>
-                  <span>последняя цена {spec.last}</span>
+                  <span>{t("calc.lastPrice", { price: spec.last })}</span>
                 </>
               )}
               <button
@@ -262,21 +267,21 @@ export default function CalculatorPage() {
                 onClick={() => selected && loadSpec(selected.ticker)}
                 className="text-green-600 hover:underline"
               >
-                обновить
+                {t("calc.refresh")}
               </button>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <NumberField label="Размер депозита, ₽" value={deposit} onChange={setDeposit} placeholder="Например, 100000" />
-          <NumberField label="Цена входа" value={entry} onChange={setEntry} />
-          <NumberField label="Стоп" value={stop} onChange={setStop} />
-          <NumberField label="Тейк (необязательно)" value={take} onChange={setTake} />
+          <NumberField label={t("calc.deposit")} value={deposit} onChange={setDeposit} placeholder={t("calc.depositPlaceholder")} />
+          <NumberField label={t("calc.entry")} value={entry} onChange={setEntry} />
+          <NumberField label={t("calc.stop")} value={stop} onChange={setStop} />
+          <NumberField label={t("calc.take")} value={take} onChange={setTake} />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Риск на сделку</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">{t("calc.riskPerTrade")}</label>
           <div className="flex gap-2">
             {RISK_PRESETS.map((p) => (
               <button
@@ -298,38 +303,38 @@ export default function CalculatorPage() {
         {/* Result */}
         <div className="pt-2 border-t dark:border-gray-800">
           {!selected ? (
-            <p className="text-sm text-gray-400 py-2">Выберите актив, чтобы рассчитать позицию.</p>
+            <p className="text-sm text-gray-400 py-2">{t("calc.selectAssetHint")}</p>
           ) : calc && calc.error ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400 py-2">{calc.error}</p>
+            <p className="text-sm text-amber-600 dark:text-amber-400 py-2">{t(calc.error)}</p>
           ) : calc ? (
             <div className="space-y-3">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Контрактов на сделку:</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t("calc.contracts")}</span>
                 <span className="text-3xl font-bold text-green-600 dark:text-green-400">{calc.contracts}</span>
               </div>
 
               {calc.contracts === 0 ? (
                 <p className="text-sm text-amber-600 dark:text-amber-400">
-                  Риск на 1 контракт ≈ {fmtRub(calc.riskPerContract)}, это больше вашего лимита {fmtRub(calc.riskBudget)}. Увеличьте депозит или риск %, либо сузьте стоп.
+                  {t("calc.tooRisky", { perContract: fmtRub(calc.riskPerContract, locale), budget: fmtRub(calc.riskBudget, locale) })}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Риск по факту</span>
-                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.actualRisk)}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("calc.actualRisk")}</span>
+                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.actualRisk, locale)}</span>
 
-                  <span className="text-gray-500 dark:text-gray-400">Лимит риска ({riskPercent}%)</span>
-                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.riskBudget)}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("calc.riskLimit", { pct: riskPercent })}</span>
+                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.riskBudget, locale)}</span>
 
-                  <span className="text-gray-500 dark:text-gray-400">Требуемое ГО</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("calc.requiredMargin")}</span>
                   <span className={`text-right ${calc.marginShort ? "text-red-500 font-medium" : "text-gray-900 dark:text-gray-100"}`}>
-                    {fmtRub(calc.requiredMargin)}
+                    {fmtRub(calc.requiredMargin, locale)}
                   </span>
 
                   {calc.potentialProfit != null && (
                     <>
-                      <span className="text-gray-500 dark:text-gray-400">Потенциальная прибыль</span>
-                      <span className="text-green-600 dark:text-green-400 text-right">{fmtRub(calc.potentialProfit)}</span>
-                      <span className="text-gray-500 dark:text-gray-400">Соотношение риск/прибыль</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t("calc.potentialProfit")}</span>
+                      <span className="text-green-600 dark:text-green-400 text-right">{fmtRub(calc.potentialProfit, locale)}</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t("calc.rr")}</span>
                       <span className="text-gray-900 dark:text-gray-100 text-right">1 : {calc.rr!.toFixed(2)}</span>
                     </>
                   )}
@@ -338,7 +343,7 @@ export default function CalculatorPage() {
 
               {calc.marginShort && (
                 <p className="text-sm text-red-500">
-                  Депозита не хватит на такое ГО — реально доступный объём меньше. Уменьшите риск % или размер депозита в расчёте.
+                  {t("calc.marginShort")}
                 </p>
               )}
             </div>
@@ -347,7 +352,7 @@ export default function CalculatorPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Данные по контракту (шаг цены, стоимость шага, ГО, цена) — с публичного ISS Мосбиржи в реальном времени; у публичного доступа возможна задержка в несколько минут. Это не индивидуальная инвестиционная рекомендация.
+        {t("calc.disclaimer")}
       </p>
     </div>
   );

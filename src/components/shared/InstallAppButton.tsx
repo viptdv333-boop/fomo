@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { isStandalone, isIOS, canPromptInstall, subscribePwaInstall, triggerInstall, openIosSteps } from "@/lib/pwa-install";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 /// works even after that moment has passed: it re-triggers the saved native
 /// prompt on Android, or shows manual steps on iOS (which has no install API).
 export default function InstallAppButton({ className, variant = "solid", onNavigate }: Props) {
+  const { t } = useT();
   const [standalone, setStandalone] = useState(true); // assume installed until checked, to avoid a flash
   const [canPrompt, setCanPrompt] = useState(false);
 
@@ -39,12 +41,10 @@ export default function InstallAppButton({ className, variant = "solid", onNavig
       openIosSteps();
       return;
     }
-    alert(
-      "Установка доступна в Chrome/Edge на Android или компьютере — иконка появится в адресной строке. На iPhone используйте \"Поделиться\" → \"На экран «Домой»\" в Safari."
-    );
+    alert(t("common.install.unsupported"));
   }
 
-  const label = "📲 Установить приложение";
+  const label = `📲 ${t("common.install.button")}`;
 
   return (
     <>

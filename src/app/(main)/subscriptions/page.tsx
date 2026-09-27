@@ -54,7 +54,8 @@ interface ChannelSubscriberItem {
 }
 
 export default function SubscriptionsPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const dateLocale = locale === "cn" ? "zh-CN" : locale === "en" ? "en-US" : "ru";
   const { data: session } = useSession();
   const user = session?.user as any;
   const [subs, setSubs] = useState<SubItem[]>([]);
@@ -87,7 +88,7 @@ export default function SubscriptionsPage() {
   async function toggleTelegram(sub: SubItem) {
     if (!sub.tariffId) return;
     if (!telegramVerified && !sub.telegramNotify) {
-      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      alert(t("feed2.connectTelegramFirst"));
       return;
     }
     setTelegramBusyId(sub.id);
@@ -100,7 +101,7 @@ export default function SubscriptionsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Не удалось изменить настройку");
+        alert(data.error || t("feed2.settingChangeFailed"));
         return;
       }
       setSubs((prev) => prev.map((s) => (s.id === sub.id ? { ...s, telegramNotify: enabled } : s)));
@@ -124,7 +125,7 @@ export default function SubscriptionsPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">Загрузка...</div>;
+  if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">{t("common.loading")}</div>;
 
   const authorSubs = subs.filter((s) => s.type === "free");
   const channelSubs = subs.filter((s) => s.type === "paid");
@@ -203,7 +204,7 @@ export default function SubscriptionsPage() {
                       <div className="min-w-0">
                         <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">{ch.name}</div>
                         <div className="text-sm text-green-600 font-semibold mt-0.5">
-                          {Number(ch.price)} ₽ / {ch.durationDays || 30} дн.
+                          {t("feed2.pricePerDays", { price: Number(ch.price), days: ch.durationDays || 30 })}
                         </div>
                         {ch.description && (
                           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
@@ -234,7 +235,7 @@ export default function SubscriptionsPage() {
                   {expandedChannelId === ch.id && (
                     <div className="mt-3 border-t dark:border-gray-800 pt-3 space-y-2">
                       {subscribersLoading === ch.id ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500">Загрузка...</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">{t("common.loading")}</p>
                       ) : (channelSubscribers[ch.id]?.length || 0) === 0 ? (
                         <p className="text-sm text-gray-400 dark:text-gray-500">{t("subs.noChannelSubscribers")}</p>
                       ) : (
@@ -253,7 +254,7 @@ export default function SubscriptionsPage() {
                               </Link>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {s.isActive
-                                  ? `${t("subs.subscriberUntil")} ${new Date(s.endDate).toLocaleDateString("ru")}`
+                                  ? `${t("subs.subscriberUntil")} ${new Date(s.endDate).toLocaleDateString(dateLocale)}`
                                   : t("subs.subscriberInactive")}
                               </div>
                             </div>
@@ -343,13 +344,13 @@ export default function SubscriptionsPage() {
                         {sub.author.displayName}
                       </Link>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {Number(sub.monthlyPrice)} ₽/мес
-                        {sub.endDate && <> · До {new Date(sub.endDate).toLocaleDateString("ru")}</>}
+                        {t("feed2.pricePerMonth", { price: Number(sub.monthlyPrice) })}
+                        {sub.endDate && <> · {t("feed2.untilDate", { date: new Date(sub.endDate).toLocaleDateString(dateLocale) })}</>}
                       </div>
                     </div>
                     <label
                       className="flex items-center gap-1.5 shrink-0 text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
-                      title={telegramVerified ? "Пересылать сообщения канала в Telegram" : "Сначала подключите бота в профиле"}
+                      title={telegramVerified ? t("feed2.telegramForward") : t("feed2.connectBotFirst")}
                     >
                       <input
                         type="checkbox"
@@ -397,7 +398,7 @@ export default function SubscriptionsPage() {
                       {f.displayName}
                     </Link>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {t("subs.followedSince")} {new Date(f.followedAt).toLocaleDateString("ru")}
+                      {t("subs.followedSince")} {new Date(f.followedAt).toLocaleDateString(dateLocale)}
                     </div>
                   </div>
                 </div>

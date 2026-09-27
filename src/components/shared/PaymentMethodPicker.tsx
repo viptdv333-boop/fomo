@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface PaymentMethod {
   id: string;
@@ -23,6 +24,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function PaymentMethodPicker({ selectedId, onSelect }: Props) {
+  const { t } = useT();
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +35,13 @@ export default function PaymentMethodPicker({ selectedId, onSelect }: Props) {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-xs text-gray-400 py-2">Загрузка...</div>;
+  if (loading) return <div className="text-xs text-gray-400 py-2">{t("common.loading")}</div>;
 
   if (methods.length === 0) {
     return (
       <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">
-        Нет сохранённых способов оплаты.{" "}
-        <Link href="/profile?tab=finance" className="text-green-600 hover:underline">Добавить в профиле</Link>
+        {t("pm.noMethods")}.{" "}
+        <Link href="/profile?tab=finance" className="text-green-600 hover:underline">{t("pay.addInProfile")}</Link>
       </div>
     );
   }
@@ -64,7 +66,7 @@ export default function PaymentMethodPicker({ selectedId, onSelect }: Props) {
               <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>
             )}
           </div>
-          {m.isDefault && <span className="text-[10px] text-green-600">По умолч.</span>}
+          {m.isDefault && <span className="text-[10px] text-green-600">{t("pm.default")}</span>}
           {selectedId === m.id && (
             <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7" /></svg>
           )}

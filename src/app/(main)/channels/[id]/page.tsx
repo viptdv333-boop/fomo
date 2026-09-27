@@ -54,7 +54,7 @@ interface SubscriberData {
 }
 
 export default function ChannelPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -108,7 +108,7 @@ export default function ChannelPage() {
     if (!channel || !pickedId) return;
     const days = Number(addDays);
     if (!Number.isInteger(days) || days < 1 || days > 3650) {
-      alert("Укажите число дней от 1 до 3650");
+      alert(t("channel2.daysRangeError"));
       return;
     }
     setExtending(true);
@@ -120,7 +120,7 @@ export default function ChannelPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data.error || "Не удалось добавить участника");
+        alert(data.error || t("channel2.addMemberFailed"));
         return;
       }
       setShowAdd(false);
@@ -144,7 +144,7 @@ export default function ChannelPage() {
   async function toggleAuthorTelegram() {
     if (!channel) return;
     if (!telegramVerified && !channel.authorTelegramNotify) {
-      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      alert(t("channel2.connectTelegramFirst"));
       return;
     }
     const enabled = !channel.authorTelegramNotify;
@@ -157,7 +157,7 @@ export default function ChannelPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Не удалось изменить настройку");
+        alert(data.error || t("channel2.settingFailed"));
         return;
       }
       setChannel((prev) => (prev ? { ...prev, authorTelegramNotify: enabled } : prev));
@@ -169,7 +169,7 @@ export default function ChannelPage() {
   async function toggleMyTelegram() {
     if (!mySub) return;
     if (!telegramVerified && !mySub.telegramNotify) {
-      alert("Сначала подключите и подтвердите Telegram-бота в профиле");
+      alert(t("channel2.connectTelegramFirst"));
       return;
     }
     const enabled = !mySub.telegramNotify;
@@ -182,7 +182,7 @@ export default function ChannelPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data.error || "Не удалось изменить настройку");
+        alert(data.error || t("channel2.settingFailed"));
         return;
       }
       setMySub({ ...mySub, telegramNotify: enabled });
@@ -196,10 +196,10 @@ export default function ChannelPage() {
     if (!channel) return;
     const days = Number(addDays);
     if (!Number.isInteger(days) || days < 1 || days > 3650) {
-      alert("Укажите число дней от 1 до 3650");
+      alert(t("channel2.daysRangeError"));
       return;
     }
-    if (!subscriptionId && !confirm(`Добавить ${days} дн. всем активным подписчикам (${subscribers.filter((s) => s.isActive).length})?`)) return;
+    if (!subscriptionId && !confirm(t("channel2.grantAllConfirm", { days, count: subscribers.filter((s) => s.isActive).length }))) return;
     setExtending(true);
     try {
       const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
@@ -209,7 +209,7 @@ export default function ChannelPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Не удалось добавить дни");
+        alert(data.error || t("channel2.addDaysFailed"));
         return;
       }
       await openSubscribers();
@@ -220,7 +220,7 @@ export default function ChannelPage() {
 
   async function removeSubscriber(subscriptionId: string, name: string) {
     if (!channel) return;
-    if (!confirm(`Удалить «${name}» из канала? Доступ закроется сразу, деньги не возвращаются.`)) return;
+    if (!confirm(t("channel2.removeSubConfirm", { name }))) return;
     setExtending(true);
     try {
       const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
@@ -230,7 +230,7 @@ export default function ChannelPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || "Не удалось удалить подписчика");
+        alert(data.error || t("channel2.removeSubFailed"));
         return;
       }
       await openSubscribers();
@@ -245,16 +245,16 @@ export default function ChannelPage() {
   }
 
   const deleteIdea = useCallback(async (id: string) => {
-    if (!confirm("Удалить идею безвозвратно?")) return;
+    if (!confirm(t("channel2.deleteIdeaConfirm"))) return;
     setDeletingId(id);
     const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
     if (res.ok) {
       setIdeas((prev) => prev.filter((i) => i.id !== id));
     } else {
-      alert("Не удалось удалить идею");
+      alert(t("channel2.deleteIdeaFailed"));
     }
     setDeletingId(null);
-  }, []);
+  }, [t]);
 
   const [pinningId, setPinningId] = useState<string | null>(null);
   const togglePin = useCallback(async (id: string, next: boolean) => {
@@ -272,10 +272,10 @@ export default function ChannelPage() {
         )
       );
     } else {
-      alert("Не удалось закрепить пост");
+      alert(t("channel2.pinFailed"));
     }
     setPinningId(null);
-  }, []);
+  }, [t]);
 
   // Load channel data
   useEffect(() => {
@@ -416,7 +416,7 @@ export default function ChannelPage() {
                 {" · "}
                 <span className="font-mono text-green-600 dark:text-green-400">fomo.spot/channels/{channel.slug || channel.id}</span>
               </p>
-              <ShareButtons url={`https://fomo.spot/channels/${channel.slug || channel.id}`} text={`${channel.name} — канал на FOMO`} />
+              <ShareButtons url={`https://fomo.spot/channels/${channel.slug || channel.id}`} text={t("channel2.shareText", { name: channel.name })} />
             </div>
           </div>
         </div>
@@ -428,7 +428,7 @@ export default function ChannelPage() {
         <div className="mt-4 flex items-center gap-4 flex-wrap">
           <div className="bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-2">
             <span className="text-lg font-bold text-green-600 dark:text-green-400">{channel.price} ₽</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ {channel.durationDays} дн.</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{t("channel2.perDays", { days: channel.durationDays })}</span>
           </div>
 
           {!isOwner && !isSubscribed && (
@@ -441,14 +441,14 @@ export default function ChannelPage() {
           )}
           {isSubscribed && (
             <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg text-sm font-medium">
-              ✓ Вы подписаны
+              {t("channel2.youSubscribed")}
             </span>
           )}
           {isSubscribed && mySub?.tariffId && (
             <div className="flex items-center gap-2">
               <label
                 className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
-                title="Получать сетапы и сообщения канала в свой Telegram-бот"
+                title={t("channel2.tgMyTitle")}
               >
                 <input
                   type="checkbox"
@@ -457,21 +457,21 @@ export default function ChannelPage() {
                   onChange={toggleMyTelegram}
                   className="w-4 h-4 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
                 />
-                ✈️ Получать в Telegram
+                {t("channel2.tgReceive")}
               </label>
               {!telegramVerified && (
                 <Link href="/profile" className="text-xs text-green-600 hover:underline">
-                  Подключить бота
+                  {t("channel2.connectBot")}
                 </Link>
               )}
             </div>
           )}
           {isOwner && (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400">Это ваш канал</span>
+              <span className="text-sm text-gray-400">{t("channel2.yourChannel")}</span>
               <label
                 className="flex items-center gap-1.5 text-sm text-gray-400 cursor-pointer"
-                title={telegramVerified ? "Получать копию сетапов и сообщений канала в свой Telegram" : "Сначала подключите бота в профиле"}
+                title={telegramVerified ? t("channel2.tgOwnerTitle") : t("channel2.connectBotFirst")}
               >
                 <input
                   type="checkbox"
@@ -485,13 +485,13 @@ export default function ChannelPage() {
               <Link
                 href={`/channels/edit/${channel.id}`}
                 className="text-sm text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition flex items-center gap-1"
-                title="Настройки канала"
+                title={t("channel2.channelSettings")}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Настройки
+                {t("channel2.settings")}
               </Link>
             </div>
           )}
@@ -533,9 +533,9 @@ export default function ChannelPage() {
                       onClick={() => togglePin(idea.id, !idea.isPinned)}
                       disabled={pinningId === idea.id}
                       className={`text-xs font-medium disabled:opacity-50 ${idea.isPinned ? "text-amber-600 hover:text-amber-800" : "text-gray-400 hover:text-amber-600"}`}
-                      title={idea.isPinned ? "Открепить" : "Закрепить наверху канала"}
+                      title={idea.isPinned ? t("msg.unpin") : t("channel2.pinTop")}
                     >
-                      {pinningId === idea.id ? "..." : idea.isPinned ? "📌 Открепить" : "📌 Закрепить"}
+                      {pinningId === idea.id ? "..." : idea.isPinned ? t("channel2.unpinBtn") : t("channel2.pinBtn")}
                     </button>
                     <Link
                       href={`/ideas/${idea.id}/edit`}
@@ -566,8 +566,8 @@ export default function ChannelPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
                         {idea.isPinned && (
-                          <span className="shrink-0 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded" title="Закреплено владельцем канала">
-                            📌 Закреплено
+                          <span className="shrink-0 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded" title={t("channel2.pinnedTitle")}>
+                            {t("channel2.pinnedBadge")}
                           </span>
                         )}
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{idea.title}</h3>
@@ -589,7 +589,7 @@ export default function ChannelPage() {
                       )
                     )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>{formatMessageTime(idea.createdAt)}</span>
+                      <span>{formatMessageTime(idea.createdAt, locale)}</span>
                       {idea.instruments.length > 0 && (
                         <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                       )}
@@ -612,7 +612,7 @@ export default function ChannelPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>{formatMessageTime(idea.createdAt)}</span>
+                        <span>{formatMessageTime(idea.createdAt, locale)}</span>
                         {idea.instruments.length > 0 && (
                           <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                         )}
@@ -645,17 +645,17 @@ export default function ChannelPage() {
             {t("channels.otherAuthor")}
           </h2>
           <div className="space-y-2">
-            {otherTariffs.map((t) => (
+            {otherTariffs.map((ot) => (
               <Link
-                key={t.id}
-                href={`/channels/${t.id}`}
+                key={ot.id}
+                href={`/channels/${ot.id}`}
                 className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               >
                 <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.name}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{ot.name}</span>
                 </div>
                 <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                  {t.price} ₽ / {t.durationDays} дн.
+                  {t("channel2.priceForDays", { price: ot.price, days: ot.durationDays })}
                 </span>
               </Link>
             ))}
@@ -697,7 +697,7 @@ export default function ChannelPage() {
               </button>
             </div>
             <div className="p-3 border-b dark:border-gray-800 shrink-0 flex items-center gap-2 text-sm">
-              <span className="text-gray-500 dark:text-gray-400">Добавить дней:</span>
+              <span className="text-gray-500 dark:text-gray-400">{t("channel2.addDaysLabel")}</span>
               <input
                 type="number"
                 min={1}
@@ -711,13 +711,13 @@ export default function ChannelPage() {
                 disabled={extending}
                 className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                Всем активным
+                {t("channel2.allActive")}
               </button>
               <button
                 onClick={() => { setShowAdd((v) => !v); setPickedId(null); setCandQuery(""); }}
                 className="ml-auto px-3 py-1 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition"
               >
-                {showAdd ? "Назад" : "+ Добавить участника"}
+                {showAdd ? t("common.back") : t("channel2.addMember")}
               </button>
             </div>
             {showAdd ? (
@@ -727,18 +727,18 @@ export default function ChannelPage() {
                     type="text"
                     value={candQuery}
                     onChange={(e) => setCandQuery(e.target.value)}
-                    placeholder="Поиск по имени или ID"
+                    placeholder={t("channel2.searchNameOrId")}
                     className="w-full px-3 py-1.5 text-sm border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100"
                   />
                   <p className="text-xs text-gray-400 mt-2">
-                    Выберите пользователя — он получит доступ к каналу на {addDays || 0} дн. без оплаты.
+                    {t("channel2.pickUserHint", { days: addDays || 0 })}
                   </p>
                 </div>
                 <div className="overflow-y-auto p-2 flex-1">
                   {candLoading ? (
                     <div className="text-sm text-gray-400 text-center py-8">...</div>
                   ) : candidates.length === 0 ? (
-                    <div className="text-sm text-gray-400 text-center py-8">Никого не найдено</div>
+                    <div className="text-sm text-gray-400 text-center py-8">{t("channel2.nobodyFound")}</div>
                   ) : (
                     candidates.map((u) => (
                       <button
@@ -773,7 +773,7 @@ export default function ChannelPage() {
                     disabled={!pickedId || extending}
                     className="w-full px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
-                    Добавить
+                    {t("channel2.add")}
                   </button>
                 </div>
               </div>
@@ -802,7 +802,7 @@ export default function ChannelPage() {
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{s.displayName}</div>
                       {s.isActive ? (
                         <div className="text-xs text-gray-400">
-                          {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString("ru-RU")} ({daysLeft(s.endDate)} дн.)
+                          {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString(locale === "en" ? "en-US" : locale === "cn" ? "zh-CN" : "ru-RU")} {t("channel2.daysLeft", { days: daysLeft(s.endDate) })}
                         </div>
                       ) : (
                         <div className="text-xs text-red-400">{t("subs.subscriberInactive")}</div>
@@ -811,19 +811,19 @@ export default function ChannelPage() {
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); grantDays(s.id); }}
                       disabled={extending}
-                      title={`Добавить ${addDays || 0} дн. этому подписчику`}
+                      title={t("channel2.addDaysToSubTitle", { days: addDays || 0 })}
                       className="shrink-0 px-2 py-1 text-xs rounded-lg border border-green-600 text-green-600 hover:bg-green-600 hover:text-white transition disabled:opacity-50"
                     >
-                      +{addDays || 0} дн.
+                      {t("channel2.plusDays", { days: addDays || 0 })}
                     </button>
                     {s.isActive && (
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeSubscriber(s.id, s.displayName); }}
                         disabled={extending}
-                        title="Удалить из канала"
+                        title={t("channel2.removeFromChannel")}
                         className="shrink-0 px-2 py-1 text-xs rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
                       >
-                        Удалить
+                        {t("common.delete")}
                       </button>
                     )}
                   </Link>

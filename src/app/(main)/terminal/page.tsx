@@ -44,6 +44,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Криптовалюты": "/icons/categories/crypto.svg",
 };
 
+// Crypto pairs have no translation key and keep their own name.
+function instName(inst: TerminalInstrument, t: (key: string) => string): string {
+  const key = `instname.${inst.dataTicker}`;
+  const v = t(key);
+  return v === key ? inst.name : v;
+}
+
 const TERMINAL_DATA: TerminalCategory[] = [
   {
     name: "Акции ММВБ", emoji: "", color: "#3b82f6",
@@ -125,12 +132,13 @@ interface QuoteData {
 }
 
 /* ── Collapsible category ── */
-function CategorySection({ cat, selected, onSelect, quotes, tFn }: {
+function CategorySection({ cat, selected, onSelect, quotes, tFn, locale = "ru" }: {
   cat: TerminalCategory;
   selected: TerminalInstrument | null;
   onSelect: (inst: TerminalInstrument) => void;
   quotes: Record<string, QuoteData>;
   tFn?: (key: string) => string;
+  locale?: string;
 }) {
   const hasSelected = cat.instruments.some((i) => i.dataTicker === selected?.dataTicker);
   const [open, setOpen] = useState(hasSelected);
@@ -161,11 +169,11 @@ function CategorySection({ cat, selected, onSelect, quotes, tFn }: {
                   <div className={`text-sm font-black tracking-tight ${isSelected ? "text-green-600 dark:text-green-400" : "dark:text-gray-100"}`}>
                     {inst.ticker}
                   </div>
-                  <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate leading-tight">{inst.name}</div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate leading-tight">{tFn ? instName(inst, tFn) : inst.name}</div>
                 </div>
                 {q ? (
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-bold dark:text-gray-100 tabular-nums">{fmtPrice(q.price)}</div>
+                    <div className="text-sm font-bold dark:text-gray-100 tabular-nums">{fmtPrice(q.price, locale)}</div>
                     <div className={`text-[10px] font-semibold tabular-nums ${q.change >= 0 ? "text-green-500" : "text-red-500"}`}>
                       {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)} {q.changePercent?.toFixed(2)}%
                     </div>
@@ -182,9 +190,12 @@ function CategorySection({ cat, selected, onSelect, quotes, tFn }: {
   );
 }
 
-function fmtPrice(p: number): string {
-  if (p >= 10000) return p.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
-  if (p >= 100) return p.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
+
+function fmtPrice(p: number, locale: string = "ru"): string {
+  const loc = LOCALES[locale] || "ru-RU";
+  if (p >= 10000) return p.toLocaleString(loc, { maximumFractionDigits: 0 });
+  if (p >= 100) return p.toLocaleString(loc, { maximumFractionDigits: 2 });
   if (p >= 1) return p.toFixed(4);
   return p.toFixed(6);
 }
@@ -197,7 +208,7 @@ function fmtVol(v: number): string {
 }
 
 export default function TerminalPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [selected, setSelected] = useState<TerminalInstrument>(TERMINAL_DATA[0].instruments[0]);
   const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
   const [search, setSearch] = useState("");
@@ -242,7 +253,7 @@ export default function TerminalPage() {
         ...cat,
         instruments: cat.instruments.filter((i) =>
           i.ticker.toLowerCase().includes(search.toLowerCase()) ||
-          i.name.toLowerCase().includes(search.toLowerCase())
+          (i.name.toLowerCase().includes(search.toLowerCase()) || instName(i, t).toLowerCase().includes(search.toLowerCase()))
         ),
       })).filter((cat) => cat.instruments.length > 0)
     : TERMINAL_DATA;
@@ -252,14 +263,14 @@ export default function TerminalPage() {
       {/* Screen-reader/crawler heading — the terminal is a full-bleed app
           shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">
-        Торговый терминал: онлайн-графики акций, фьючерсов МосБиржи и криптовалют
+        {t("term2.heading")}
       </h1>
       {/* In-development notice */}
       <div className="shrink-0 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-amber-800 dark:text-amber-200 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-100 dark:from-amber-900/30 dark:via-yellow-900/20 dark:to-amber-900/30 border border-amber-200 dark:border-amber-800/50">
         <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 3.75a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v2.25h3.75a.75.75 0 01.6 1.2l-2.1 2.8 2.1 2.8a.75.75 0 01-.6 1.2h-3.75v9a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75v-9H6.75a.75.75 0 01-.6-1.2l2.1-2.8-2.1-2.8a.75.75 0 01.6-1.2h3.75V3.75z" />
         </svg>
-        Терминал в разработке — возможны неточности и изменения
+        {t("term2.devNotice")}
       </div>
       {/* Top bar: ticker info + price */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow px-3 md:px-4 py-2.5 shrink-0">
@@ -273,7 +284,7 @@ export default function TerminalPage() {
             <img src={selected.emoji} alt="" className="w-7 h-7 md:w-8 md:h-8 rounded-full shrink-0" />
             <div>
               <div className="text-lg font-black dark:text-gray-100 leading-tight">{selected.ticker}</div>
-              <div className="text-[11px] text-gray-400 leading-tight">{selected.name} · {selected.source === "moex" ? "MOEX" : "Bybit"}</div>
+              <div className="text-[11px] text-gray-400 leading-tight">{instName(selected, t)} · {selected.source === "moex" ? "MOEX" : "Bybit"}</div>
             </div>
           </div>
 
@@ -283,16 +294,16 @@ export default function TerminalPage() {
           {q ? (
             <div className="flex items-center gap-4">
               <div>
-                <div className="text-xl font-bold dark:text-gray-100">{fmtPrice(q.price)}</div>
+                <div className="text-xl font-bold dark:text-gray-100">{fmtPrice(q.price, locale)}</div>
                 <div className={`text-xs font-semibold ${q.change >= 0 ? "text-green-600" : "text-red-500"}`}>
                   {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)} ({q.changePercent?.toFixed(2)}%)
                 </div>
               </div>
               {/* OHLV */}
               <div className="hidden md:flex items-center gap-4 text-xs">
-                {q.open != null && <span><span className="text-gray-400">O</span> <span className="font-medium dark:text-gray-200">{fmtPrice(q.open)}</span></span>}
-                {q.high != null && <span><span className="text-gray-400">H</span> <span className="font-medium text-green-600">{fmtPrice(q.high)}</span></span>}
-                {q.low != null && <span><span className="text-gray-400">L</span> <span className="font-medium text-red-500">{fmtPrice(q.low)}</span></span>}
+                {q.open != null && <span><span className="text-gray-400">O</span> <span className="font-medium dark:text-gray-200">{fmtPrice(q.open, locale)}</span></span>}
+                {q.high != null && <span><span className="text-gray-400">H</span> <span className="font-medium text-green-600">{fmtPrice(q.high, locale)}</span></span>}
+                {q.low != null && <span><span className="text-gray-400">L</span> <span className="font-medium text-red-500">{fmtPrice(q.low, locale)}</span></span>}
                 {q.volume != null && <span><span className="text-gray-400">V</span> <span className="font-medium dark:text-gray-200">{fmtVol(q.volume)}</span></span>}
               </div>
             </div>
@@ -324,7 +335,7 @@ export default function TerminalPage() {
             </div>
             <div className="flex-1 overflow-y-auto px-1">
               {filteredCategories.map((cat) => (
-                <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={(inst) => { setSelected(inst); setMobileMenuOpen(false); }} quotes={quotes} tFn={t} />
+                <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={(inst) => { setSelected(inst); setMobileMenuOpen(false); }} quotes={quotes} tFn={t} locale={locale} />
               ))}
             </div>
           </div>
@@ -346,7 +357,7 @@ export default function TerminalPage() {
           </div>
           <div className="flex-1 overflow-y-auto px-1">
             {filteredCategories.map((cat) => (
-              <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={setSelected} quotes={quotes} tFn={t} />
+              <CategorySection key={cat.name} cat={cat} selected={selected} onSelect={setSelected} quotes={quotes} tFn={t} locale={locale} />
             ))}
           </div>
         </div>
@@ -357,7 +368,7 @@ export default function TerminalPage() {
             key={`${selected.source}-${selected.dataTicker}`}
             ticker={selected.dataTicker}
             source={selected.source}
-            name={selected.name}
+            name={instName(selected, t)}
             height={0}
           />
         </div>

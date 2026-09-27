@@ -5,9 +5,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useT } from "@/lib/i18n/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -38,11 +40,11 @@ export default function LoginPage() {
 
     if (result?.error) {
       if (result.error.includes("PENDING")) {
-        setError("Ваш аккаунт ожидает одобрения администратора");
+        setError(t("auth.errPending"));
       } else if (result.error.includes("BANNED")) {
-        setError("Ваш аккаунт заблокирован");
+        setError(t("auth.errBanned"));
       } else {
-        setError("Неверный email или пароль");
+        setError(t("auth.errInvalidCredentials"));
       }
       return;
     }
@@ -69,7 +71,7 @@ export default function LoginPage() {
           priority
         />
       </Link>
-      <h1 className="text-2xl font-bold text-center mb-6 dark:text-gray-100">Вход в FOMO</h1>
+      <h1 className="text-2xl font-bold text-center mb-6 dark:text-gray-100">{t("auth.loginTitle")}</h1>
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg mb-4 text-sm">
@@ -94,7 +96,7 @@ export default function LoginPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Пароль
+            {t("auth.password")}
           </label>
           <div className="relative">
             <input
@@ -127,7 +129,7 @@ export default function LoginPage() {
             className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 dark:bg-gray-800"
           />
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            Оставаться в системе
+            {t("auth.rememberMe")}
           </span>
         </label>
 
@@ -136,22 +138,22 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
         >
-          {loading ? "Вход..." : "Войти"}
+          {loading ? t("auth.loggingIn") : t("auth.login")}
         </button>
       </form>
 
       <p className="text-center text-sm mt-3">
         <a href="/forgot-password" className="text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition">
-          Забыли пароль?
+          {t("auth.forgotPassword")}
         </a>
       </p>
       <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-        Нет аккаунта?{" "}
+        {t("auth.noAccount")}{" "}
         <a
           href={callbackUrl ? `/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/register"}
           className="text-green-600 dark:text-green-400 hover:underline"
         >
-          Зарегистрироваться
+          {t("auth.signUp")}
         </a>
       </p>
     </div>

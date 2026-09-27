@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import UnifiedPaymentModal, { TariffOption } from "@/components/shared/UnifiedPaymentModal";
+import { useT } from "@/lib/i18n/client";
 
 interface BuySubscriptionModalProps {
   authorId: string;
@@ -16,6 +17,7 @@ export default function BuySubscriptionModal({
   onClose,
   preselectedTariffId,
 }: BuySubscriptionModalProps) {
+  const { t } = useT();
   const [tariff, setTariff] = useState<TariffOption | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,7 @@ export default function BuySubscriptionModal({
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-900 rounded-xl p-8 text-center">
-          <p className="text-gray-500 dark:text-gray-400">Загрузка...</p>
+          <p className="text-gray-500 dark:text-gray-400">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -47,8 +49,8 @@ export default function BuySubscriptionModal({
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-900 rounded-xl p-8 text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-3">У автора нет активных каналов</p>
-          <button onClick={onClose} className="text-green-600 text-sm hover:underline">Закрыть</button>
+          <p className="text-gray-500 dark:text-gray-400 mb-3">{t("pay.authorNoChannels")}</p>
+          <button onClick={onClose} className="text-green-600 text-sm hover:underline">{t("common.close")}</button>
         </div>
       </div>
     );

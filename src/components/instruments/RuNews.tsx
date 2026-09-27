@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface NewsItem {
   title: string;
@@ -15,20 +16,21 @@ interface RuNewsProps {
   title?: string;
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "только что";
-  if (mins < 60) return `${mins} мин`;
+  if (mins < 1) return t("inst.news.justNow");
+  if (mins < 60) return t("inst.news.min", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} ч`;
+  if (hrs < 24) return t("inst.news.hours", { n: hrs });
   const days = Math.floor(hrs / 24);
-  return `${days} д`;
+  return t("inst.news.days", { n: days });
 }
 
 export default function RuNews({ category = "general", slug, title }: RuNewsProps) {
+  const { t } = useT();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +45,7 @@ export default function RuNews({ category = "general", slug, title }: RuNewsProp
       .finally(() => setLoading(false));
   }, [category, slug]);
 
-  const heading = title || "Новости рынков";
+  const heading = title || t("inst.news.title");
 
   if (loading) {
     return (
@@ -62,7 +64,7 @@ export default function RuNews({ category = "general", slug, title }: RuNewsProp
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
         <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{heading}</h2>
-        <p className="text-gray-400 text-sm text-center py-8">Нет новостей</p>
+        <p className="text-gray-400 text-sm text-center py-8">{t("inst.news.empty")}</p>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export default function RuNews({ category = "general", slug, title }: RuNewsProp
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs font-medium text-green-600/70 dark:text-green-500/70">{item.source}</span>
                 {item.pubDate && (
-                  <span className="text-xs text-gray-400">{timeAgo(item.pubDate)}</span>
+                  <span className="text-xs text-gray-400">{timeAgo(item.pubDate, t)}</span>
                 )}
               </div>
             </div>

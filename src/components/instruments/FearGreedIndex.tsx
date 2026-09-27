@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface FGData {
   value: string;
@@ -17,14 +18,15 @@ const COLORS: Record<string, string> = {
 };
 
 const LABELS: Record<string, string> = {
-  "Extreme Fear": "Крайний страх",
-  "Fear": "Страх",
-  "Neutral": "Нейтрально",
-  "Greed": "Жадность",
-  "Extreme Greed": "Крайняя жадность",
+  "Extreme Fear": "inst.fg.extremeFear",
+  "Fear": "inst.fg.fear",
+  "Neutral": "inst.fg.neutral",
+  "Greed": "inst.fg.greed",
+  "Extreme Greed": "inst.fg.extremeGreed",
 };
 
 export default function FearGreedIndex() {
+  const { t } = useT();
   const [data, setData] = useState<FGData | null>(null);
 
   useEffect(() => {
@@ -40,14 +42,14 @@ export default function FearGreedIndex() {
 
   const value = parseInt(data.value);
   const color = COLORS[data.value_classification] || "#9b9b9b";
-  const label = LABELS[data.value_classification] || data.value_classification;
+  const label = LABELS[data.value_classification] ? t(LABELS[data.value_classification]) : data.value_classification;
   // Rotation: 0 = -90deg (extreme fear), 100 = 90deg (extreme greed)
   const rotation = (value / 100) * 180 - 90;
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-5">
       <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 uppercase tracking-wide">
-        Fear & Greed Index
+        {t("inst.fg.title")}
       </h3>
       <div className="flex flex-col items-center">
         {/* Gauge */}
@@ -90,8 +92,8 @@ export default function FearGreedIndex() {
         </div>
         <div className="text-sm font-medium mt-1" style={{ color }}>{label}</div>
         <div className="flex justify-between w-full mt-3 text-[10px] text-gray-400 px-2">
-          <span>Страх</span>
-          <span>Жадность</span>
+          <span>{t("inst.fg.fear")}</span>
+          <span>{t("inst.fg.greed")}</span>
         </div>
       </div>
     </div>

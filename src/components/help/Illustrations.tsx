@@ -13,6 +13,10 @@ const label = "fill-gray-500 dark:fill-gray-400";
 const strong = "fill-gray-900 dark:fill-gray-100";
 const accent = "fill-green-600";
 
+// Rendered from the server help page, so the translator is passed in as a prop.
+export type TFn = (key: string, vars?: Record<string, string | number>) => string;
+type Props = { t: TFn };
+
 function Frame({ children, viewBox }: { children: React.ReactNode; viewBox: string }) {
   return (
     <svg
@@ -26,15 +30,15 @@ function Frame({ children, viewBox }: { children: React.ReactNode; viewBox: stri
 }
 
 /** Three steps of signing up. */
-export function RegistrationSteps() {
+export function RegistrationSteps({ t }: Props) {
   const steps = [
-    { n: "1", t: "Почта", d: "Вводите адрес" },
-    { n: "2", t: "Код", d: "6 цифр из письма" },
-    { n: "3", t: "Профиль", d: "Имя и пароль" },
+    { n: "1", t: t("help.ill.reg.s1t"), d: t("help.ill.reg.s1d") },
+    { n: "2", t: t("help.ill.reg.s2t"), d: t("help.ill.reg.s2d") },
+    { n: "3", t: t("help.ill.reg.s3t"), d: t("help.ill.reg.s3d") },
   ];
   return (
     <Frame viewBox="0 0 600 130">
-      <title>Три шага регистрации: почта, код из письма, имя и пароль</title>
+      <title>{t("help.ill.reg.title")}</title>
       {steps.map((s, i) => {
         const x = 30 + i * 190;
         return (
@@ -65,30 +69,30 @@ export function RegistrationSteps() {
         );
       })}
       <text x={300} y={118} textAnchor="middle" className={`${label} text-[11px]`}>
-        Аккаунт активен сразу — модерация не нужна
+        {t("help.ill.reg.caption")}
       </text>
     </Frame>
   );
 }
 
 /** The four tabs of the personal cabinet. */
-export function CabinetTabs() {
-  const tabs = ["Профиль", "Финансы", "Мои идеи", "Безопасность"];
+export function CabinetTabs({ t }: Props) {
+  const tabs = [t("help.ill.cab.tab1"), t("help.ill.cab.tab2"), t("help.ill.cab.tab3"), t("help.ill.cab.tab4")];
   const rows = [
-    "Способы оплаты",
-    "Мои каналы",
-    "Мои подписки",
-    "Мои покупки и продажи",
+    t("help.ill.cab.row1"),
+    t("help.ill.cab.row2"),
+    t("help.ill.cab.row3"),
+    t("help.ill.cab.row4"),
   ];
   return (
     <Frame viewBox="0 0 600 250">
-      <title>Личный кабинет: вкладки Профиль, Финансы, Мои идеи, Безопасность</title>
+      <title>{t("help.ill.cab.title")}</title>
       <rect x={20} y={20} width={560} height={210} rx={14} className={`${card} ${border}`} strokeWidth={1.5} />
-      {tabs.map((t, i) => {
+      {tabs.map((tab, i) => {
         const x = 36 + i * 134;
         const active = i === 1;
         return (
-          <g key={t}>
+          <g key={tab}>
             <rect
               x={x}
               y={36}
@@ -103,7 +107,7 @@ export function CabinetTabs() {
               textAnchor="middle"
               className={`${active ? "fill-white" : label} text-[12px] font-medium`}
             >
-              {t}
+              {tab}
             </text>
           </g>
         );
@@ -118,14 +122,14 @@ export function CabinetTabs() {
         </g>
       ))}
       <text x={300} y={240} textAnchor="middle" className={`${label} text-[11px]`}>
-        Вкладка «Финансы» — всё о деньгах в одном месте
+        {t("help.ill.cab.caption")}
       </text>
     </Frame>
   );
 }
 
 /** Rating scale with the thresholds that unlock features. */
-export function RatingScale() {
+export function RatingScale({ t }: Props) {
   const marks = [
     { v: 1, x: 40 },
     { v: 3, x: 175 },
@@ -135,7 +139,7 @@ export function RatingScale() {
   ];
   return (
     <Frame viewBox="0 0 600 190">
-      <title>Шкала рейтинга: пороги 3, 5 и 7 баллов открывают платные возможности</title>
+      <title>{t("help.ill.rating.title")}</title>
       <rect x={40} y={60} width={135} height={18} rx={4} className="fill-gray-300 dark:fill-gray-600" />
       <rect x={175} y={60} width={135} height={18} rx={0} className="fill-green-300 dark:fill-green-900" />
       <rect x={310} y={60} width={135} height={18} rx={0} className="fill-green-400 dark:fill-green-700" />
@@ -150,34 +154,34 @@ export function RatingScale() {
         </g>
       ))}
 
-      <text x={107} y={104} textAnchor="middle" className={`${label} text-[11px]`}>платных идей нет</text>
-      <text x={242} y={104} textAnchor="middle" className={`${label} text-[11px]`}>3 в неделю</text>
-      <text x={377} y={104} textAnchor="middle" className={`${label} text-[11px]`}>10 в неделю</text>
-      <text x={502} y={104} textAnchor="middle" className={`${label} text-[11px]`}>без лимита</text>
+      <text x={107} y={104} textAnchor="middle" className={`${label} text-[11px]`}>{t("help.ill.rating.none")}</text>
+      <text x={242} y={104} textAnchor="middle" className={`${label} text-[11px]`}>{t("help.ill.rating.w3")}</text>
+      <text x={377} y={104} textAnchor="middle" className={`${label} text-[11px]`}>{t("help.ill.rating.w10")}</text>
+      <text x={502} y={104} textAnchor="middle" className={`${label} text-[11px]`}>{t("help.ill.rating.unlimited")}</text>
 
       <line x1={310} y1={124} x2={310} y2={140} className="stroke-green-600" strokeWidth={1.5} />
       <text x={318} y={144} className="fill-green-700 dark:fill-green-400 text-[12px] font-medium">
-        от 5.0 — можно создать платный канал
+        {t("help.ill.rating.channel")}
       </text>
       <text x={40} y={172} className={`${label} text-[11px]`}>
-        Стартовый рейтинг нового автора — 3.0
+        {t("help.ill.rating.start")}
       </text>
     </Frame>
   );
 }
 
 /** How money moves between reader and author. */
-export function PaymentFlow() {
+export function PaymentFlow({ t }: Props) {
   const steps = [
-    { t: "Покупатель", d: "нажимает «Купить»" },
-    { t: "Перевод", d: "по реквизитам автора" },
-    { t: "Чек", d: "прикладывает к заявке" },
-    { t: "Автор", d: "подтверждает" },
-    { t: "Доступ", d: "открывается" },
+    { t: t("help.ill.pay.s1t"), d: t("help.ill.pay.s1d") },
+    { t: t("help.ill.pay.s2t"), d: t("help.ill.pay.s2d") },
+    { t: t("help.ill.pay.s3t"), d: t("help.ill.pay.s3d") },
+    { t: t("help.ill.pay.s4t"), d: t("help.ill.pay.s4d") },
+    { t: t("help.ill.pay.s5t"), d: t("help.ill.pay.s5d") },
   ];
   return (
     <Frame viewBox="0 0 600 170">
-      <title>Как проходит оплата: заявка, перевод, чек, подтверждение автором, доступ</title>
+      <title>{t("help.ill.pay.title")}</title>
       {steps.map((s, i) => {
         const x = 18 + i * 115;
         const last = i === steps.length - 1;
@@ -215,43 +219,43 @@ export function PaymentFlow() {
         </marker>
       </defs>
       <text x={300} y={128} textAnchor="middle" className={`${label} text-[11px]`}>
-        Деньги идут напрямую от читателя к автору — площадка их не держит
+        {t("help.ill.pay.caption")}
       </text>
       <text x={300} y={150} textAnchor="middle" className="fill-green-700 dark:fill-green-400 text-[13px] font-semibold">
-        Комиссия FOMO — 0%
+        {t("help.ill.pay.fee")}
       </text>
     </Frame>
   );
 }
 
 /** A channel card with two tariffs. */
-export function ChannelCard() {
+export function ChannelCard({ t }: Props) {
   return (
     <Frame viewBox="0 0 600 235">
-      <title>Карточка канала с двумя тарифами: месяц и год</title>
+      <title>{t("help.ill.ch.title")}</title>
       <rect x={20} y={20} width={560} height={195} rx={14} className={`${card} ${border}`} strokeWidth={1.5} />
       <rect x={40} y={40} width={54} height={54} rx={12} className={muted} />
-      <text x={67} y={73} textAnchor="middle" className={`${label} text-[10px]`}>лого</text>
+      <text x={67} y={73} textAnchor="middle" className={`${label} text-[10px]`}>{t("help.ill.ch.logo")}</text>
 
-      <text x={110} y={58} className={`${strong} text-[15px] font-bold`}>Нефть и газ каждый день</text>
-      <text x={110} y={78} className={`${label} text-[11px]`}>Разбор Brent и Henry Hub перед открытием</text>
+      <text x={110} y={58} className={`${strong} text-[15px] font-bold`}>{t("help.ill.ch.name")}</text>
+      <text x={110} y={78} className={`${label} text-[11px]`}>{t("help.ill.ch.desc")}</text>
       <rect x={110} y={86} width={54} height={18} rx={9} className="fill-green-100 dark:fill-green-900/40" />
-      <text x={137} y={99} textAnchor="middle" className="fill-green-700 dark:fill-green-400 text-[10px]">#нефть</text>
+      <text x={137} y={99} textAnchor="middle" className="fill-green-700 dark:fill-green-400 text-[10px]">{t("help.ill.ch.tag1")}</text>
       <rect x={170} y={86} width={44} height={18} rx={9} className="fill-green-100 dark:fill-green-900/40" />
-      <text x={192} y={99} textAnchor="middle" className="fill-green-700 dark:fill-green-400 text-[10px]">#газ</text>
+      <text x={192} y={99} textAnchor="middle" className="fill-green-700 dark:fill-green-400 text-[10px]">{t("help.ill.ch.tag2")}</text>
 
       <line x1={40} y1={120} x2={560} y2={120} className="stroke-gray-200 dark:stroke-gray-700" strokeWidth={1} />
 
       {[
-        { n: "Месяц", p: "1 500 ₽", d: "30 дней", x: 40 },
-        { n: "Год", p: "12 000 ₽", d: "365 дней", x: 310 },
-      ].map((t) => (
-        <g key={t.n}>
-          <rect x={t.x} y={135} width={250} height={62} rx={10} className={muted} />
-          <text x={t.x + 18} y={160} className={`${strong} text-[13px] font-semibold`}>{t.n}</text>
-          <text x={t.x + 18} y={180} className={`${label} text-[11px]`}>{t.d}</text>
-          <text x={t.x + 232} y={168} textAnchor="end" className="fill-green-700 dark:fill-green-400 text-[15px] font-bold">
-            {t.p}
+        { n: t("help.ill.ch.month"), p: "1 500 ₽", d: t("help.ill.ch.d30"), x: 40 },
+        { n: t("help.ill.ch.year"), p: "12 000 ₽", d: t("help.ill.ch.d365"), x: 310 },
+      ].map((plan) => (
+        <g key={plan.x}>
+          <rect x={plan.x} y={135} width={250} height={62} rx={10} className={muted} />
+          <text x={plan.x + 18} y={160} className={`${strong} text-[13px] font-semibold`}>{plan.n}</text>
+          <text x={plan.x + 18} y={180} className={`${label} text-[11px]`}>{plan.d}</text>
+          <text x={plan.x + 232} y={168} textAnchor="end" className="fill-green-700 dark:fill-green-400 text-[15px] font-bold">
+            {plan.p}
           </text>
         </g>
       ))}
@@ -260,13 +264,13 @@ export function ChannelCard() {
 }
 
 /** Free idea vs paid idea — what the reader sees. */
-export function FreeVsPaid() {
+export function FreeVsPaid({ t }: Props) {
   return (
     <Frame viewBox="0 0 600 210">
-      <title>Разница между бесплатной и платной идеей: у платной виден только заголовок и превью</title>
+      <title>{t("help.ill.fvp.title")}</title>
       {[
-        { title: "Бесплатная", paid: false, x: 20 },
-        { title: "Платная", paid: true, x: 310 },
+        { title: t("help.ill.fvp.free"), paid: false, x: 20 },
+        { title: t("help.ill.fvp.paid"), paid: true, x: 310 },
       ].map((c) => (
         <g key={c.title}>
           <rect x={c.x} y={20} width={270} height={170} rx={14} className={`${card} ${border}`} strokeWidth={1.5} />
@@ -280,14 +284,14 @@ export function FreeVsPaid() {
             <>
               <rect x={c.x + 20} y={106} width={230} height={44} rx={8} className="fill-gray-200 dark:fill-gray-700" />
               <text x={c.x + 135} y={125} textAnchor="middle" className={`${label} text-[11px]`}>
-                текст скрыт
+                {t("help.ill.fvp.hidden")}
               </text>
               <text x={c.x + 135} y={141} textAnchor="middle" className={`${label} text-[10px]`}>
-                откроется после оплаты
+                {t("help.ill.fvp.afterPay")}
               </text>
               <rect x={c.x + 20} y={158} width={110} height={22} rx={11} className={accent} />
               <text x={c.x + 75} y={173} textAnchor="middle" className="fill-white text-[11px] font-medium">
-                Купить
+                {t("help.ill.fvp.buy")}
               </text>
             </>
           ) : (
@@ -297,7 +301,7 @@ export function FreeVsPaid() {
               <rect x={c.x + 20} y={132} width={190} height={7} rx={3.5} className={muted} />
               <rect x={c.x + 20} y={145} width={225} height={7} rx={3.5} className={muted} />
               <text x={c.x + 20} y={175} className="fill-green-700 dark:fill-green-400 text-[11px]">
-                читают все, включая гостей
+                {t("help.ill.fvp.everyone")}
               </text>
             </>
           )}

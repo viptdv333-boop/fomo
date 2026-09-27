@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
+
+const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface MoexData {
   last: number | null;
@@ -37,23 +41,23 @@ interface MoexStatsProps {
   slug: string;
 }
 
-function formatNumber(n: number | null): string {
+function formatNumber(n: number | null, locale: string): string {
   if (n === null || n === undefined) return "\u2014";
-  return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  return n.toLocaleString(LOCALES[locale] || "ru-RU", { maximumFractionDigits: 2 });
 }
 
-function formatVolume(n: number | null): string {
+function formatVolume(n: number | null, locale: string, t: TFn): string {
   if (n === null || n === undefined) return "\u2014";
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + " млрд";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + " млн";
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + " тыс";
-  return n.toLocaleString("ru-RU");
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + t("inst.unit.bn");
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + t("inst.unit.mn");
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + t("inst.unit.k");
+  return n.toLocaleString(LOCALES[locale] || "ru-RU");
 }
 
-function formatDate(d: string | null): string {
+function formatDate(d: string | null, locale: string): string {
   if (!d) return "\u2014";
   try {
-    return new Date(d).toLocaleDateString("ru-RU", {
+    return new Date(d).toLocaleDateString(LOCALES[locale] || "ru-RU", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -91,6 +95,10 @@ function StatItem({
 }
 
 export default function MoexStats({ slug }: MoexStatsProps) {
+  const { t, locale } = useT();
+  const fmtNum = (n: number | null) => formatNumber(n, locale);
+  const fmtVol = (n: number | null) => formatVolume(n, locale, t);
+  const fmtDate = (d: string | null) => formatDate(d, locale);
   const [data, setData] = useState<MoexData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -143,18 +151,18 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {/* Header + Price */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          Данные MOEX
+          {t("inst.moex.title")}
         </h3>
         {data.updateTime && (
           <span className="text-xs text-gray-400 dark:text-gray-500">
-            Обновлено: {data.updateTime}
+            {t("inst.moex.updated", { time: data.updateTime })}
           </span>
         )}
       </div>
 
       <div className="flex items-baseline gap-3">
         <span className="text-3xl font-bold dark:text-gray-100">
-          {formatNumber(data.last)}
+          {fmtNum(data.last)}
         </span>
         {data.change !== null && (
           <span
@@ -163,7 +171,7 @@ export default function MoexStats({ slug }: MoexStatsProps) {
             }`}
           >
             {isPositive ? "+" : ""}
-            {formatNumber(data.change)}
+            {fmtNum(data.change)}
           </span>
         )}
         {data.changePercent !== null && (
@@ -182,29 +190,29 @@ export default function MoexStats({ slug }: MoexStatsProps) {
 
       {/* Main stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatItem label="Открытие" value={formatNumber(data.open)} />
-        <StatItem label="Максимум" value={formatNumber(data.high)} highlight="green" />
-        <StatItem label="Минимум" value={formatNumber(data.low)} highlight="red" />
+        <StatItem label={t("inst.moex.open")} value={fmtNum(data.open)} />
+        <StatItem label={t("inst.moex.high")} value={fmtNum(data.high)} highlight="green" />
+        <StatItem label={t("inst.moex.low")} value={fmtNum(data.low)} highlight="red" />
         {data.prevClose !== null && (
-          <StatItem label="Пред. закрытие" value={formatNumber(data.prevClose)} />
+          <StatItem label={t("inst.moex.prevClose")} value={fmtNum(data.prevClose)} />
         )}
       </div>
 
       {/* Trading stats */}
       <div className="border-t dark:border-gray-700 pt-4">
         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          Торговая активность
+          {t("inst.moex.activity")}
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatItem label="Объём (шт)" value={formatVolume(data.volume)} />
+          <StatItem label={t("inst.moex.volumePcs")} value={fmtVol(data.volume)} />
           {data.value !== null && (
-            <StatItem label="Оборот" value={formatVolume(data.value) + " \u20BD"} />
+            <StatItem label={t("inst.moex.turnover")} value={fmtVol(data.value) + " \u20BD"} />
           )}
           {data.numTrades !== null && (
-            <StatItem label="Кол-во сделок" value={formatVolume(data.numTrades)} />
+            <StatItem label={t("inst.moex.trades")} value={fmtVol(data.numTrades)} />
           )}
           {data.waprice !== null && (
-            <StatItem label="Средневзвеш. цена" value={formatNumber(data.waprice)} />
+            <StatItem label={t("inst.moex.vwap")} value={fmtNum(data.waprice)} />
           )}
         </div>
       </div>
@@ -213,17 +221,17 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {(data.bid !== null || data.offer !== null) && (
         <div className="border-t dark:border-gray-700 pt-4">
           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            Стакан
+            {t("inst.moex.orderBook")}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {data.bid !== null && (
-              <StatItem label="Лучший Bid" value={formatNumber(data.bid)} highlight="green" />
+              <StatItem label={t("inst.moex.bestBid")} value={fmtNum(data.bid)} highlight="green" />
             )}
             {data.offer !== null && (
-              <StatItem label="Лучший Ask" value={formatNumber(data.offer)} highlight="red" />
+              <StatItem label={t("inst.moex.bestAsk")} value={fmtNum(data.offer)} highlight="red" />
             )}
             {data.spread !== null && (
-              <StatItem label="Спред" value={formatNumber(data.spread)} />
+              <StatItem label={t("inst.moex.spread")} value={fmtNum(data.spread)} />
             )}
           </div>
         </div>
@@ -233,10 +241,10 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {isFutures && data.openInterest !== null && (
         <div className="border-t dark:border-gray-700 pt-4">
           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            Деривативы
+            {t("inst.moex.derivatives")}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatItem label="Открытый интерес" value={formatVolume(data.openInterest)} />
+            <StatItem label={t("inst.moex.openInterest")} value={fmtVol(data.openInterest)} />
           </div>
         </div>
       )}
@@ -245,11 +253,11 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {(data.low52w !== null || data.high52w !== null) && (
         <div className="border-t dark:border-gray-700 pt-4">
           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            Диапазон 52 недели
+            {t("inst.moex.range52w")}
           </h4>
           <div className="flex items-center gap-3">
             <span className="text-xs text-red-500 font-medium whitespace-nowrap">
-              {formatNumber(data.low52w)}
+              {fmtNum(data.low52w)}
             </span>
             <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden">
               {data.low52w !== null && data.high52w !== null && data.last !== null && data.high52w > data.low52w && (
@@ -269,7 +277,7 @@ export default function MoexStats({ slug }: MoexStatsProps) {
               )}
             </div>
             <span className="text-xs text-green-500 font-medium whitespace-nowrap">
-              {formatNumber(data.high52w)}
+              {fmtNum(data.high52w)}
             </span>
           </div>
         </div>
@@ -279,33 +287,33 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {isBond && (
         <div className="border-t dark:border-gray-700 pt-4">
           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            Параметры облигации
+            {t("inst.moex.bondParams")}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {data.faceValue !== null && (
-              <StatItem label="Номинал" value={formatNumber(data.faceValue) + " \u20BD"} />
+              <StatItem label={t("inst.moex.faceValue")} value={fmtNum(data.faceValue) + " \u20BD"} />
             )}
             {data.couponValue !== null && (
-              <StatItem label="Купон" value={formatNumber(data.couponValue) + " \u20BD"} />
+              <StatItem label={t("inst.moex.coupon")} value={fmtNum(data.couponValue) + " \u20BD"} />
             )}
             {data.couponPercent !== null && (
-              <StatItem label="Ставка купона" value={data.couponPercent.toFixed(2) + "%"} />
+              <StatItem label={t("inst.moex.couponRate")} value={data.couponPercent.toFixed(2) + "%"} />
             )}
             {data.yieldToMaturity !== null && (
               <StatItem
-                label="Доходность к погашению"
+                label={t("inst.moex.ytm")}
                 value={data.yieldToMaturity.toFixed(2) + "%"}
                 highlight="green"
               />
             )}
             {data.nextCouponDate && (
-              <StatItem label="Ближ. купон" value={formatDate(data.nextCouponDate)} />
+              <StatItem label={t("inst.moex.nextCoupon")} value={fmtDate(data.nextCouponDate)} />
             )}
             {data.matDate && (
-              <StatItem label="Погашение" value={formatDate(data.matDate)} />
+              <StatItem label={t("inst.moex.maturity")} value={fmtDate(data.matDate)} />
             )}
             {data.duration !== null && (
-              <StatItem label="Дюрация (дней)" value={formatNumber(data.duration)} />
+              <StatItem label={t("inst.moex.duration")} value={fmtNum(data.duration)} />
             )}
           </div>
         </div>
@@ -314,10 +322,10 @@ export default function MoexStats({ slug }: MoexStatsProps) {
       {/* Additional info */}
       <div className="border-t dark:border-gray-700 pt-3 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 flex-wrap">
         {data.lotSize !== null && (
-          <span>Лот: <strong className="text-gray-600 dark:text-gray-300">{data.lotSize} шт</strong></span>
+          <span>{t("inst.moex.lot")} <strong className="text-gray-600 dark:text-gray-300">{data.lotSize} {t("inst.moex.pcs")}</strong></span>
         )}
         {data.marketCap !== null && (
-          <span>Капитализация: <strong className="text-gray-600 dark:text-gray-300">{formatVolume(data.marketCap)} \u20BD</strong></span>
+          <span>{t("inst.moex.marketCap")} <strong className="text-gray-600 dark:text-gray-300">{fmtVol(data.marketCap)}{" \u20BD"}</strong></span>
         )}
       </div>
     </div>

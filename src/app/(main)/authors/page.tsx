@@ -104,7 +104,7 @@ export default function AuthorsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold dark:text-gray-100">{t("authors.title")}</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Рейтинг профессиональных трейдеров и инвестиционных аналитиков по доходности идей и опыту на бирже
+          {t("feed2.authorsSubtitle")}
         </p>
       </div>
 
@@ -145,13 +145,13 @@ export default function AuthorsPage() {
 
         {/* View mode — right side */}
         <div className="ml-auto flex items-center gap-0.5 shrink-0">
-          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Абзац">
+          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewParagraph")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
           </button>
-          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Список">
+          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewList")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
-          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Карточки">
+          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewCards")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
         </div>
@@ -197,19 +197,19 @@ export default function AuthorsPage() {
       })()}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Загрузка...</div>
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">{t("common.loading")}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-4">{"\uD83D\uDC64"}</div>
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            {hasActiveFilters ? "Авторы не найдены" : "Авторов пока нет"}
+            {hasActiveFilters ? t("authors.notFoundResult") : t("feed2.noAuthorsYet")}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {hasActiveFilters ? t("authors.changeFilters") : t("authors.empty")}
           </p>
           {hasActiveFilters && (
             <button onClick={() => { setRatingFilter("all"); setIdeasFilter("all"); }} className="mt-3 text-sm text-green-600 hover:underline">
-              Сбросить фильтры
+              {t("authors.resetFilters")}
             </button>
           )}
         </div>

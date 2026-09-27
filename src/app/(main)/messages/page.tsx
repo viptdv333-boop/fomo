@@ -53,19 +53,19 @@ interface Contact {
 }
 
 const CHAT_BACKGROUNDS = [
-  { id: "default", label: "Стандартный", class: "" },
-  { id: "green", label: "Голубой", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
-  { id: "purple", label: "Фиолетовый", class: "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20" },
-  { id: "green", label: "Зелёный", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
-  { id: "dark", label: "Тёмный", class: "bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-950" },
-  { id: "warm", label: "Тёплый", class: "bg-gradient-to-b from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20" },
+  { id: "default", label: "Стандартный", labelKey: "msg.themeDefault", class: "" },
+  { id: "green", label: "Голубой", labelKey: "msg.themeBlue", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
+  { id: "purple", label: "Фиолетовый", labelKey: "msg.themePurple", class: "bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20" },
+  { id: "green", label: "Зелёный", labelKey: "msg.themeGreen", class: "bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20" },
+  { id: "dark", label: "Тёмный", labelKey: "msg.themeDark", class: "bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-950" },
+  { id: "warm", label: "Тёплый", labelKey: "msg.themeWarm", class: "bg-gradient-to-b from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20" },
 ];
 
 const EMOJI_CATEGORIES = [
-  { name: "Часто", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
-  { name: "Лица", emojis: ["😀", "😃", "😄", "😁", "😅", "😆", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "😮‍💨", "🤥"] },
-  { name: "Жесты", emojis: ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏"] },
-  { name: "Символы", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
+  { name: "Часто", labelKey: "msg.freq", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
+  { name: "Лица", labelKey: "msg.faces", emojis: ["😀", "😃", "😄", "😁", "😅", "😆", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "😮‍💨", "🤥"] },
+  { name: "Жесты", labelKey: "msg.gestures", emojis: ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏"] },
+  { name: "Символы", labelKey: "msg.symbols", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
 ];
 
 export default function MessagesPageWrapper() {
@@ -79,7 +79,8 @@ export default function MessagesPageWrapper() {
 }
 
 function MessagesPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const timeLocale = locale === "cn" ? "zh-CN" : locale;
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -289,7 +290,7 @@ function MessagesPage() {
     const file = e.target.files?.[0];
     if (!file || !activeConvId) return;
     if (file.size > 15 * 1024 * 1024) {
-      alert("Файл слишком большой. Максимум 15 МБ.");
+      alert(t("chat2.fileTooLarge15"));
       return;
     }
     setUploading(true);
@@ -316,7 +317,7 @@ function MessagesPage() {
         await loadConversations();
       }
     } catch {
-      alert("Ошибка загрузки файла");
+      alert(t("chat2.fileUploadError"));
     }
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -513,7 +514,7 @@ function MessagesPage() {
         className="flex items-center gap-2 mt-1 px-3 py-2 bg-white/20 dark:bg-black/20 rounded-lg hover:bg-white/30 dark:hover:bg-black/30 transition"
       >
         <span className="text-lg">📎</span>
-        <span className="text-xs truncate max-w-[180px]">{msg.fileName || "Файл"}</span>
+        <span className="text-xs truncate max-w-[180px]">{msg.fileName || t("chat2.file")}</span>
       </a>
     );
   }
@@ -523,10 +524,10 @@ function MessagesPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-3 shrink-0">
         <a href="/chat" className="px-5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-          💬 Болталка
+          💬 {t("nav.chat")}
         </a>
         <button className="px-5 py-2 rounded-lg text-sm font-medium bg-green-600 text-white">
-          ✉️ Личные
+          ✉️ {t("chat.personal")}
         </button>
       </div>
     <div className="flex bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden flex-1 min-h-0">
@@ -618,14 +619,14 @@ function MessagesPage() {
                         </span>
                         {conv.lastMessage && (
                           <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-2 shrink-0">
-                            {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(conv.lastMessage.createdAt).toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </div>
                       {conv.lastMessage && (
                         <p className={`text-xs truncate mt-0.5 ${conv.unread ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
-                          {conv.lastMessage.senderId === myId ? "Вы: " : ""}
-                          {conv.lastMessage.text || "📎 Файл"}
+                          {conv.lastMessage.senderId === myId ? t("chat2.youPrefix") : ""}
+                          {conv.lastMessage.text || `📎 ${t("chat2.file")}`}
                         </p>
                       )}
                     </div>
@@ -681,10 +682,10 @@ function MessagesPage() {
                     : "text-gray-400"
                 }`}>
                   {activeConv.otherUser?.dmEnabled === false
-                    ? "Не беспокоить"
+                    ? t("msg.doNotDisturb")
                     : activeConv.otherUser && onlineUserIds.has(activeConv.otherUser.id)
-                    ? "В сети"
-                    : "Не в сети"}
+                    ? t("msg.online")
+                    : t("msg.offline")}
                 </span>
               </div>
 
@@ -694,22 +695,22 @@ function MessagesPage() {
                   onClick={() => addContact(activeConv.otherUser!.id)}
                   className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                 >
-                  + В контакты
+                  + {t("msg.addContact")}
                 </button>
               )}
 
               {/* Header action icons */}
               <div className="ml-auto flex items-center gap-1">
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Позвонить">
+                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title={t("msg.call")}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 </button>
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Видеозвонок">
+                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title={t("msg.videoCall")}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
                 </button>
                 <button
                   onClick={() => activeConv.otherUser && toggleFavorite(activeConv.otherUser.id)}
                   className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition ${favorites.includes(activeConv.otherUser?.id || "") ? "text-amber-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
-                  title="Избранное"
+                  title={t("msg.favorites")}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={favorites.includes(activeConv.otherUser?.id || "") ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </button>
@@ -720,17 +721,17 @@ function MessagesPage() {
                 <button
                   onClick={() => setShowSettings(!showSettings)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                  title="Настройки чата"
+                  title={t("msg.chatSettings")}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
                 {showSettings && (
                   <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-xl p-4 z-50 w-64" onClick={(e) => e.stopPropagation()}>
-                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">Настройки чата</div>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">{t("msg.chatSettings")}</div>
 
                     {/* Background */}
                     <div className="mb-4">
-                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Фон чата</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">{t("chat2.chatBackground")}</div>
                       <div className="grid grid-cols-3 gap-2">
                         {CHAT_BACKGROUNDS.map(bg => (
                           <button
@@ -739,7 +740,7 @@ function MessagesPage() {
                             className={`h-10 rounded-lg border-2 transition ${
                               bg.class || "bg-white dark:bg-gray-900"
                             } ${chatBg === bg.id ? "border-green-500" : "border-gray-200 dark:border-gray-700"}`}
-                            title={bg.label}
+                            title={t(bg.labelKey)}
                           />
                         ))}
                       </div>
@@ -747,7 +748,7 @@ function MessagesPage() {
 
                     {/* Notifications */}
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs text-gray-600 dark:text-gray-300">Уведомления</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-300">{t("msg.notifications")}</span>
                       <button
                         onClick={toggleNotifications}
                         className={`w-10 h-5 rounded-full transition-colors ${chatNotifications ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"} relative`}
@@ -758,7 +759,7 @@ function MessagesPage() {
 
                     {/* Font size slider */}
                     <div>
-                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">Размер шрифта: {chatFontSize}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">{t("msg.fontSize")} {chatFontSize}</div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">0</span>
                         <input
@@ -781,7 +782,7 @@ function MessagesPage() {
             {/* Pinned messages */}
             {messages.filter((m) => m.isPinned).length > 0 && (
               <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-gray-100 dark:border-gray-800/30 text-xs text-amber-700 dark:text-amber-400">
-                📌 Закреплено: {messages.filter((m) => m.isPinned).map((m) => m.text.slice(0, 40) || "📎 Файл").join(", ")}
+                📌 {t("msg.pinned")} {messages.filter((m) => m.isPinned).map((m) => m.text.slice(0, 40) || `📎 ${t("chat2.file")}`).join(", ")}
               </div>
             )}
 
@@ -834,7 +835,7 @@ function MessagesPage() {
                               isMe ? "text-green-200" : "text-gray-400 dark:text-gray-500"
                             }`}
                           >
-                            {new Date(msg.createdAt).toLocaleTimeString("ru", {
+                            {new Date(msg.createdAt).toLocaleTimeString(timeLocale, {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
@@ -934,7 +935,7 @@ function MessagesPage() {
                     {replyTo.sender.displayName}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {replyTo.text.slice(0, 80) || "📎 Файл"}
+                    {replyTo.text.slice(0, 80) || `📎 ${t("chat2.file")}`}
                   </div>
                 </div>
                 <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -957,7 +958,7 @@ function MessagesPage() {
                           : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                       }`}
                     >
-                      {cat.name}
+                      {t(cat.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -1012,7 +1013,7 @@ function MessagesPage() {
                 type="button"
                 onClick={() => setShowEmoji(!showEmoji)}
                 className={`p-2 shrink-0 transition ${showEmoji ? "text-green-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
-                title="Эмодзи"
+                title={t("msg.emoji")}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
               </button>
@@ -1028,7 +1029,7 @@ function MessagesPage() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
-            Выберите диалог или начните новый
+            {t("chat2.selectDialog")}
           </div>
         )}
       </div>
@@ -1060,7 +1061,7 @@ function MessagesPage() {
                   return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">...</p>;
                 }
                 if (filtered.length === 0) {
-                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Никого не найдено</p>;
+                  return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">{t("msg.noUsersFound")}</p>;
                 }
                 return filtered.map((user) => (
                   <button
@@ -1089,7 +1090,7 @@ function MessagesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddContact(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 w-[90vw] sm:w-[440px] max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold dark:text-gray-100">Добавить контакт</h3>
+              <h3 className="text-lg font-bold dark:text-gray-100">{t("msg.addContactTitle")}</h3>
               <button onClick={() => setShowAddContact(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                 ✕
               </button>
@@ -1105,7 +1106,7 @@ function MessagesPage() {
             <div className="flex-1 overflow-y-auto space-y-1">
               {filteredDmUsers.length === 0 && (
                 <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
-                  {contactFilter ? "Никого не найдено" : "Нет доступных пользователей"}
+                  {contactFilter ? t("msg.noUsersFound") : t("msg.noUsers")}
                 </p>
               )}
               {filteredDmUsers.map((user) => (
@@ -1134,7 +1135,7 @@ function MessagesPage() {
                     onClick={() => addContactFromList(user.id)}
                     className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition shrink-0"
                   >
-                    Добавить
+                    {t("msg.add")}
                   </button>
                 </div>
               ))}
@@ -1163,9 +1164,9 @@ function MessagesPage() {
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
             >
               {favorites.includes(userContextMenu.userId) ? (
-                <><span className="text-amber-400">★</span> Убрать из избранного</>
+                <><span className="text-amber-400">★</span> {t("msg.removeFav")}</>
               ) : (
-                <><span className="text-gray-300">☆</span> В избранное</>
+                <><span className="text-gray-300">☆</span> {t("msg.addFav")}</>
               )}
             </button>
             {userContextMenu.convId && (
@@ -1185,9 +1186,9 @@ function MessagesPage() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 flex items-center gap-2"
                 >
                   {mutedChats.includes(userContextMenu.convId) ? (
-                    <>🔔 Включить уведомления</>
+                    <>🔔 {t("msg.enableNotif")}</>
                   ) : (
-                    <>🔕 Отключить уведомления</>
+                    <>🔕 {t("msg.disableNotif")}</>
                   )}
                 </button>
               </>

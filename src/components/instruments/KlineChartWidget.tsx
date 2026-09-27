@@ -7,6 +7,7 @@ import "@klinecharts/pro/dist/klinecharts-pro.css";
 
 import { MoexDatafeed } from "@/lib/kline-datafeed";
 import { ruLocale } from "@/lib/kline-locale-ru";
+import { useT } from "@/lib/i18n/client";
 
 export type DataSource = "moex" | "fmp" | "bybit" | "none";
 
@@ -33,21 +34,27 @@ function getDatafeed(source: string = "moex"): MoexDatafeed {
   return datafeedCache.get(source)!;
 }
 
-const DEFAULT_PERIODS: Period[] = [
-  { multiplier: 1, timespan: "minute", text: "1м" },
-  { multiplier: 5, timespan: "minute", text: "5м" },
-  { multiplier: 15, timespan: "minute", text: "15м" },
-  { multiplier: 1, timespan: "hour", text: "1ч" },
-  { multiplier: 4, timespan: "hour", text: "4ч" },
-  { multiplier: 1, timespan: "day", text: "Д" },
-  { multiplier: 1, timespan: "week", text: "Н" },
-  { multiplier: 1, timespan: "month", text: "М" },
-];
+function buildPeriods(t: (key: string) => string): Period[] {
+  return [
+    { multiplier: 1, timespan: "minute", text: t("inst.period.1m") },
+    { multiplier: 5, timespan: "minute", text: t("inst.period.5m") },
+    { multiplier: 15, timespan: "minute", text: t("inst.period.15m") },
+    { multiplier: 1, timespan: "hour", text: t("inst.period.1h") },
+    { multiplier: 4, timespan: "hour", text: t("inst.period.4h") },
+    { multiplier: 1, timespan: "day", text: t("inst.period.D") },
+    { multiplier: 1, timespan: "week", text: t("inst.period.W") },
+    { multiplier: 1, timespan: "month", text: t("inst.period.M") },
+  ];
+}
+
+// KLineChart Pro ships en-US and zh-CN; ru is registered from our own locale file.
+const KLINE_LOCALES: Record<string, string> = { ru: "ru", en: "en-US", cn: "zh-CN" };
 
 export default function KlineChartWidget({ ticker, source, name, height }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartProRef = useRef<KLineChartPro | null>(null);
   const [ready, setReady] = useState(false);
+  const { t, locale } = useT();
 
   // Init KlineChart Pro
   useEffect(() => {
@@ -71,11 +78,11 @@ export default function KlineChartWidget({ ticker, source, name, height }: Props
     const chartPro = new KLineChartPro({
       container: containerRef.current,
       symbol,
-      period: { multiplier: 1, timespan: "day", text: "Д" },
-      periods: DEFAULT_PERIODS,
+      period: { multiplier: 1, timespan: "day", text: t("inst.period.D") },
+      periods: buildPeriods(t),
       datafeed: getDatafeed(source),
       theme: dark ? "dark" : "light",
-      locale: "ru",
+      locale: KLINE_LOCALES[locale] || "ru",
       timezone: "Europe/Moscow",
       drawingBarVisible: true,
       mainIndicators: ["MA"],

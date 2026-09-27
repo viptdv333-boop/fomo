@@ -90,24 +90,24 @@ export default function CreateChannelPage() {
   async function handleCreate() {
     setError("");
     if (!channelName.trim()) {
-      setError("Укажите название канала");
+      setError(t("channel2.errNameRequired"));
       return;
     }
 
-    const validTariffs = tariffs.filter((t) => t.name.trim() && t.price);
+    const validTariffs = tariffs.filter((tr) => tr.name.trim() && tr.price);
     if (validTariffs.length === 0) {
-      setError("Добавьте хотя бы один тариф с ценой");
+      setError(t("channel2.errNeedTariff"));
       return;
     }
 
-    for (const t of validTariffs) {
-      const p = parseFloat(t.price);
+    for (const tr of validTariffs) {
+      const p = parseFloat(tr.price);
       if (isNaN(p) || p <= 0) {
-        setError(`Некорректная цена в тарифе "${t.name}"`);
+        setError(t("channel2.errBadPrice", { name: tr.name }));
         return;
       }
-      if (!t.paymentMethodId && savedPaymentMethods.length > 0) {
-        setError(`Выберите способ оплаты для тарифа "${t.name}"`);
+      if (!tr.paymentMethodId && savedPaymentMethods.length > 0) {
+        setError(t("channel2.errPickPayment", { name: tr.name }));
         return;
       }
     }
@@ -115,26 +115,26 @@ export default function CreateChannelPage() {
     setSaving(true);
 
     let allOk = true;
-    for (const t of validTariffs) {
+    for (const tr of validTariffs) {
       const res = await fetch(`/api/users/${user?.id}/tariffs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `${channelName}: ${t.name}`.trim(),
+          name: `${channelName}: ${tr.name}`.trim(),
           description: description.trim() || undefined,
-          price: parseFloat(t.price),
-          durationDays: parseInt(t.durationDays) || 30,
-          paymentMethods: t.paymentMethods,
-          cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() : undefined,
-          yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() : undefined,
-          yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() : undefined,
+          price: parseFloat(tr.price),
+          durationDays: parseInt(tr.durationDays) || 30,
+          paymentMethods: tr.paymentMethods,
+          cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() : undefined,
+          yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() : undefined,
+          yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() : undefined,
           avatarUrl: avatarUrl || undefined,
           instrumentIds: selectedTags.map((tag) => tag.id),
         }),
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Ошибка создания тарифа");
+        setError(data.error || t("channel2.errCreateTariff"));
         allOk = false;
         break;
       }
@@ -204,7 +204,7 @@ export default function CreateChannelPage() {
             value={channelName}
             onChange={(e) => setChannelName(e.target.value)}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Мой трейдинг-канал"
+            placeholder={t("channel2.namePlaceholder")}
           />
         </div>
 
@@ -226,10 +226,10 @@ export default function CreateChannelPage() {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Прямая ссылка: <span className="font-mono text-green-600 dark:text-green-400">{channelUrlDisplay}</span>
+              {t("channel2.directLink")} <span className="font-mono text-green-600 dark:text-green-400">{channelUrlDisplay}</span>
             </p>
             {channelId && (
-              <ShareButtons url={channelUrl} text={`Канал "${channelName}" на FOMO`} />
+              <ShareButtons url={channelUrl} text={t("channel2.shareTextQuoted", { name: channelName })} />
             )}
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function CreateChannelPage() {
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Опишите, что получат подписчики канала..."
+            placeholder={t("channel2.descPlaceholder")}
           />
         </div>
 

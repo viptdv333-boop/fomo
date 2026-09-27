@@ -14,11 +14,11 @@ import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
 
 const SPECIALIZATION_OPTIONS = [
-  { value: "trader", label: "Трейдер" },
-  { value: "analyst", label: "Аналитик" },
-  { value: "investor", label: "Инвестор" },
-  { value: "scalper", label: "Скальпер" },
-  { value: "algotrader", label: "Алготрейдер" },
+  { value: "trader", labelKey: "profile2.specTrader" },
+  { value: "analyst", labelKey: "profile2.specAnalyst" },
+  { value: "investor", labelKey: "profile2.specInvestor" },
+  { value: "scalper", labelKey: "profile2.specScalper" },
+  { value: "algotrader", labelKey: "profile2.specAlgotrader" },
 ];
 
 interface EducationRecord {
@@ -30,8 +30,9 @@ interface EducationRecord {
 }
 
 export default function MyProfilePage() {
+  const { t } = useT();
   return (
-    <Suspense fallback={<div className="text-center py-8">Загрузка...</div>}>
+    <Suspense fallback={<div className="text-center py-8">{t("common.loading")}</div>}>
       <ProfileContent />
     </Suspense>
   );
@@ -77,6 +78,7 @@ function ProfileContent() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
 
   // Education form
   const [eduUniversity, setEduUniversity] = useState("");
@@ -177,12 +179,12 @@ function ProfileContent() {
   }
 
   async function deleteIdea(id: string) {
-    if (!confirm("Удалить идею безвозвратно?")) return;
+    if (!confirm(t("profile2.confirmDeleteIdea"))) return;
     const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
     if (res.ok) {
       setMyIdeas((prev) => prev.filter((i) => i.id !== id));
     } else {
-      alert("Не удалось удалить идею");
+      alert(t("profile2.deleteIdeaFailed"));
     }
   }
 
@@ -192,7 +194,7 @@ function ProfileContent() {
     const everything = await fetchAllMyIdeas();
     const total = everything.length;
     if (total === 0) return;
-    if (!confirm(`Удалить ВСЕ ${total} идей безвозвратно?`)) return;
+    if (!confirm(t("profile2.confirmDeleteAll", { total }))) return;
 
     // Run sequentially — parallel deletes were silently failing (likely
     // NextAuth session race or DB connection pool). Serial is slower but
@@ -215,7 +217,7 @@ function ProfileContent() {
     }
 
     if (ok < total) {
-      alert(`Удалено ${ok} из ${total}. Первая ошибка: ${firstError || "неизвестна"}`);
+      alert(t("profile2.deleteAllPartial", { ok, total, error: firstError || t("profile2.errorUnknownShort") }));
     }
     loadMyIdeas();
   }
@@ -242,17 +244,17 @@ function ProfileContent() {
         if (result.ok) {
           setPushEnabled(true);
         } else if (result.error === "denied") {
-          setPushError("Уведомления заблокированы в настройках браузера/телефона");
+          setPushError(t("profile2.pushBlocked"));
         } else {
           // Surface the real cause instead of a generic message — this is
           // the one place a failed browser-side push registration (e.g. the
           // push service being unreachable) previously vanished with zero
           // feedback and left the toggle's state ambiguous.
-          setPushError(`Не удалось включить уведомления (${result.error || "неизвестная ошибка"})`);
+          setPushError(t("profile2.pushFailed", { error: result.error || t("profile2.errorUnknown") }));
         }
       }
     } catch (err) {
-      setPushError(`Не удалось включить уведомления (${err instanceof Error ? err.message : String(err)})`);
+      setPushError(t("profile2.pushFailed", { error: err instanceof Error ? err.message : String(err) }));
     } finally {
       setPushBusy(false);
     }
@@ -262,6 +264,7 @@ function ProfileContent() {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+    setMessageIsError(false);
 
     const res = await fetch(`/api/users/${session?.user?.id}`, {
       method: "PATCH",
@@ -288,12 +291,13 @@ function ProfileContent() {
 
     setLoading(false);
     if (res.ok) {
-      setMessage("Профиль обновлён");
+      setMessage(t("profile2.saved"));
       // Header/menu read displayName, fomoId etc. off the session, which the
       // JWT only re-reads from the DB every 5 min — force it now.
       await updateSession();
     } else {
-      setMessage("Ошибка сохранения");
+      setMessageIsError(true);
+      setMessage(t("profile2.saveError"));
     }
   }
 
@@ -367,11 +371,13 @@ function ProfileContent() {
       } else {
         const err = await res.json().catch(() => ({}));
         console.error("Upload failed:", err);
-        setMessage("Ошибка загрузки аватара: " + (err.error || "неизвестная ошибка"));
+        setMessageIsError(true);
+        setMessage(t("profile2.avatarUploadErrorDetail", { error: err.error || t("profile2.errorUnknown") }));
       }
     } catch (err) {
       console.error("Avatar upload error:", err);
-      setMessage("Ошибка загрузки аватара");
+      setMessageIsError(true);
+      setMessage(t("profile2.avatarUploadError"));
     }
     setAvatarUploading(false);
   }
@@ -397,18 +403,20 @@ function ProfileContent() {
         }
       } else {
         const err = await res.json().catch(() => ({}));
-        setMessage("Ошибка загрузки QR-кода: " + (err.error || "неизвестная ошибка"));
+        setMessageIsError(true);
+        setMessage(t("profile2.qrUploadErrorDetail", { error: err.error || t("profile2.errorUnknown") }));
       }
     } catch (err) {
       console.error("SBP QR upload error:", err);
-      setMessage("Ошибка загрузки QR-кода");
+      setMessageIsError(true);
+      setMessage(t("profile2.qrUploadError"));
     }
     setSbpQrUploading(false);
     if (sbpQrInputRef.current) sbpQrInputRef.current.value = "";
   }
 
   async function handleRemoveSbpQr() {
-    if (!confirm("Удалить QR-код СБП?")) return;
+    if (!confirm(t("profile2.confirmRemoveQr"))) return;
     const res = await fetch(`/api/users/${session?.user?.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -461,7 +469,7 @@ function ProfileContent() {
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          Комнаты
+          {t("profile2.tabRooms")}
         </button>
         <button
           onClick={() => setActiveTab("security")}
@@ -478,16 +486,16 @@ function ProfileContent() {
       {activeTab === "ideas" && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6">
           {myIdeasLoading ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">Загрузка...</div>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">{t("common.loading")}</div>
           ) : myIdeas.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Пока нет опубликованных идей
+              {t("profile2.noIdeas")}
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {myIdeas.length} {myIdeas.length === 1 ? "идея" : myIdeas.length < 5 ? "идеи" : "идей"}
+                  {myIdeas.length} {myIdeas.length === 1 ? t("profile2.ideasOne") : myIdeas.length < 5 ? t("profile2.ideasFew") : t("profile2.ideasMany")}
                 </span>
                 <button
                   onClick={deleteAllIdeas}
@@ -496,7 +504,7 @@ function ProfileContent() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3" />
                   </svg>
-                  Удалить все
+                  {t("profile2.deleteAll")}
                 </button>
               </div>
               {myIdeas.map((idea: any) => (
@@ -504,7 +512,7 @@ function ProfileContent() {
                   <button
                     onClick={() => deleteIdea(idea.id)}
                     className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-red-600 hover:border-red-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    title="Удалить идею"
+                    title={t("profile2.deleteIdea")}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -564,9 +572,9 @@ function ProfileContent() {
             onClick={() => avatarInputRef.current?.click()}
             className="text-green-600 hover:text-green-800 text-sm font-medium"
           >
-            {avatarUrl ? "Изменить фото" : "Загрузить фото"}
+            {avatarUrl ? t("profile2.changePhoto") : t("profile2.uploadPhoto")}
           </button>
-          <p className="text-xs text-gray-500 mt-1">JPG, PNG или WebP, до 2 МБ</p>
+          <p className="text-xs text-gray-500 mt-1">{t("profile2.photoHint")}</p>
         </div>
         <input
           ref={avatarInputRef}
@@ -586,7 +594,7 @@ function ProfileContent() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-              placeholder="Алексей"
+              placeholder={t("profile2.phFirstName")}
             />
           </div>
           <div>
@@ -596,7 +604,7 @@ function ProfileContent() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-              placeholder="Иванов"
+              placeholder={t("profile2.phLastName")}
             />
           </div>
         </div>
@@ -640,7 +648,7 @@ function ProfileContent() {
           </div>
           {fomoIdError && <p className="text-xs text-red-500 mt-1">{fomoIdError}</p>}
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Латинские буквы, цифры и символы _ ! ? $ % — от 7 до 33 символов
+            {t("profile2.fomoIdHint")}
           </p>
           {/* Personal page link */}
           {session?.user?.id && (
@@ -650,7 +658,7 @@ function ProfileContent() {
               </p>
               <ShareButtons
                 url={`https://fomo.spot/profile/${fomoId || (session.user as any).fomoId || session.user.id}`}
-                text={`${[firstName, lastName].filter(Boolean).join(" ") || displayName || "Профиль"} на FOMO`}
+                text={t("profile2.shareText", { name: [firstName, lastName].filter(Boolean).join(" ") || displayName || t("profile.profile") })}
               />
             </div>
           )}
@@ -673,7 +681,7 @@ function ProfileContent() {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-              placeholder="Москва"
+              placeholder={t("profile2.phCity")}
             />
           </div>
         </div>
@@ -685,7 +693,7 @@ function ProfileContent() {
             value={workplace}
             onChange={(e) => setWorkplace(e.target.value)}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Компания или 'Частный трейдер'"
+            placeholder={t("profile2.phWorkplace")}
           />
         </div>
 
@@ -696,7 +704,7 @@ function ProfileContent() {
             value={exchangeExperience}
             onChange={(e) => setExchangeExperience(e.target.value)}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="3 года, 10+ лет"
+            placeholder={t("profile2.phExperience")}
           />
         </div>
 
@@ -718,7 +726,7 @@ function ProfileContent() {
                   onChange={() => toggleSpecialization(opt.value)}
                   className="sr-only"
                 />
-                {opt.label}
+                {t(opt.labelKey)}
               </label>
             ))}
           </div>
@@ -731,7 +739,7 @@ function ProfileContent() {
             onChange={(e) => setBio(e.target.value)}
             rows={3}
             className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-            placeholder="Расскажите о себе и своём опыте..."
+            placeholder={t("profile2.phBio")}
           />
         </div>
 
@@ -746,7 +754,7 @@ function ProfileContent() {
                 value={socialLinks.telegram}
                 onChange={(e) => setSocialLinks({ ...socialLinks, telegram: e.target.value })}
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="@username или ссылка"
+                placeholder={t("profile2.phTelegram")}
               />
             </div>
             <div>
@@ -786,7 +794,7 @@ function ProfileContent() {
                 value={socialLinks.max}
                 onChange={(e) => setSocialLinks({ ...socialLinks, max: e.target.value })}
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="Ссылка на профиль"
+                placeholder={t("profile2.phProfileLink")}
               />
             </div>
             <div>
@@ -824,7 +832,7 @@ function ProfileContent() {
                   value={eduUniversity}
                   onChange={(e) => setEduUniversity(e.target.value)}
                   className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-                  placeholder="МГУ им. Ломоносова"
+                  placeholder={t("profile2.phUniversity")}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -880,14 +888,14 @@ function ProfileContent() {
                     <div className="font-medium text-sm">{edu.university}</div>
                     {edu.faculty && <div className="text-sm text-gray-600 dark:text-gray-400">{edu.faculty}</div>}
                     {edu.specialty && <div className="text-sm text-gray-500 dark:text-gray-400">{edu.specialty}</div>}
-                    {edu.yearEnd && <div className="text-xs text-gray-400 mt-1">Выпуск {edu.yearEnd}</div>}
+                    {edu.yearEnd && <div className="text-xs text-gray-400 mt-1">{t("profile2.graduation", { year: edu.yearEnd })}</div>}
                   </div>
                   <button
                     type="button"
                     onClick={() => deleteEducation(edu.id)}
                     className="text-red-500 hover:text-red-700 text-xs"
                   >
-                    Удалить
+                    {t("common.delete")}
                   </button>
                 </div>
               ))}
@@ -906,23 +914,23 @@ function ProfileContent() {
             placeholder="0000 0000 0000 0000"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Укажите номер карты для получения донатов от читателей ваших бесплатных идей
+            {t("profile2.donationHint")}
           </p>
         </div>
 
         {/* SBP QR code */}
         <div className="border-t dark:border-gray-700 pt-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">QR-код СБП</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t("profile2.sbpQr")}</h3>
           <div className="flex items-center gap-4">
             {sbpQrUrl ? (
               <div className="relative shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={sbpQrUrl} alt="QR-код СБП" className="w-24 h-24 rounded-lg border dark:border-gray-700 object-contain bg-white" />
+                <img src={sbpQrUrl} alt={t("profile2.sbpQr")} className="w-24 h-24 rounded-lg border dark:border-gray-700 object-contain bg-white" />
                 <button
                   type="button"
                   onClick={handleRemoveSbpQr}
                   className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                  title="Удалить"
+                  title={t("common.delete")}
                 >
                   ✕
                 </button>
@@ -944,10 +952,10 @@ function ProfileContent() {
                 disabled={sbpQrUploading}
                 className="text-green-600 hover:text-green-800 text-sm font-medium"
               >
-                {sbpQrUploading ? "Загрузка..." : sbpQrUrl ? "Заменить QR-код" : "Загрузить QR-код"}
+                {sbpQrUploading ? t("common.loading") : sbpQrUrl ? t("profile2.replaceQr") : t("profile2.uploadQr")}
               </button>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Загрузите свой личный QR-код СБП из банковского приложения — покупатели смогут отсканировать его и перевести деньги напрямую вам
+                {t("profile2.sbpQrHint")}
               </p>
             </div>
           </div>
@@ -971,7 +979,7 @@ function ProfileContent() {
             />
             <div>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("profile.allowDMs")}</span>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Другие пользователи смогут писать вам в мессенджер</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t("profile2.dmHint")}</p>
             </div>
           </label>
         </div>
@@ -1007,7 +1015,7 @@ function ProfileContent() {
             {loading ? t("channels.saving") : t("common.save")}
           </button>
           {message && (
-            <span className={message.includes("Ошибка") ? "text-red-600" : "text-green-600"}>
+            <span className={messageIsError ? "text-red-600" : "text-green-600"}>
               {message}
             </span>
           )}
@@ -1031,7 +1039,7 @@ function ProfileContent() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               setSecurityMessage(""); setSecurityError("");
-              if (newPassword !== confirmPassword) { setSecurityError("Пароли не совпадают"); return; }
+              if (newPassword !== confirmPassword) { setSecurityError(t("profile2.passwordsMismatch")); return; }
               const res = await fetch("/api/auth/change-password", {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ currentPassword, newPassword }),
@@ -1122,7 +1130,7 @@ function ProfileContent() {
                 } else setSecurityError(data.error);
               }} className="space-y-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Код отправлен на <span className="font-medium text-gray-900 dark:text-gray-100">{newEmail}</span>
+                  {t("profile2.codeSentTo")} <span className="font-medium text-gray-900 dark:text-gray-100">{newEmail}</span>
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.code")}</label>
@@ -1133,7 +1141,7 @@ function ProfileContent() {
                     {emailSending ? "..." : t("profile.confirm")}
                   </button>
                   <button type="button" onClick={() => { setEmailStep("form"); setEmailCode(""); setSecurityError(""); }} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                    Назад
+                    {t("common.back")}
                   </button>
                 </div>
               </form>

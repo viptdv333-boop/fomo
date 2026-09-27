@@ -175,7 +175,7 @@ export default function Header() {
               {/* Admin — rightmost */}
               {(user?.role === "ADMIN" || user?.role === "OWNER") && (
                 <Link href="/admin" className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium px-2 py-1 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                  Панель
+                  {t("common.header.admin")}
                 </Link>
               )}
             </>
@@ -268,12 +268,12 @@ export default function Header() {
                 </div>
               )}
               <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
-                <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-400 hover:text-red-500">Выйти</button>
+                <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-400 hover:text-red-500">{t("profile.logout")}</button>
               </div>
             </>
           )}
           {!session && (
-            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-green-600 font-medium">Войти</Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-green-600 font-medium">{t("nav.login")}</Link>
           )}
         </div>
       )}

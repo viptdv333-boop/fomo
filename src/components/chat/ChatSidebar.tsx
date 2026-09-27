@@ -153,7 +153,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         const map = new Map<string, CategoryGroup>();
         for (const a of visible) {
           const key = a.category?.slug || "other";
-          if (!map.has(key)) map.set(key, { slug: key, name: a.category?.name || "Другое", assets: [] });
+          if (!map.has(key)) map.set(key, { slug: key, name: a.category?.name || t("chat2.otherCategory"), assets: [] });
           map.get(key)!.assets.push(a);
         }
         setCategories([...map.values()]);
@@ -221,11 +221,11 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         <div className="px-4 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Приватные группы
+              {t("chat2.privateGroups")}
             </span>
             <button
               onClick={() => setShowCreateRoom(true)}
-              title="Создать приватную группу"
+              title={t("chat2.createPrivateGroup")}
               className="text-green-600 hover:text-white hover:bg-green-600 text-lg font-bold leading-none w-6 h-6 rounded-full flex items-center justify-center transition"
             >
               +
@@ -236,7 +236,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
               onClick={() => setShowCreateRoom(true)}
               className="w-full text-xs font-medium text-green-600 hover:text-white border border-green-600 hover:bg-green-600 rounded-lg py-1.5 transition"
             >
-              + Создать
+              + {t("chat2.create")}
             </button>
           ) : (
             <div className="space-y-0.5">
@@ -252,7 +252,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   <button
                     onClick={(e) => toggleFavorite(e, { roomId: room.id, name: room.name, isPrivate: true, assetSlug: null })}
                     className="shrink-0"
-                    title="В избранное"
+                    title={t("msg.addFav")}
                   >
                     <StarIcon filled={favorites.has(room.id)} />
                   </button>
@@ -331,7 +331,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                     <button
                       onClick={(e) => toggleFavorite(e, { roomId: asset.chatRoom!.id, name: asset.name, isPrivate: false, assetSlug: asset.slug })}
                       className="shrink-0"
-                      title="В избранное"
+                      title={t("msg.addFav")}
                     >
                       <StarIcon filled={isFav} />
                     </button>
@@ -346,11 +346,11 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
         {/* Favorites — starred chats, for quick access regardless of category. Always shown at the bottom of the topic list. */}
         <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2 pb-2">
           <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-            Избранное
+            {t("msg.favorites")}
           </div>
           {favorites.size === 0 ? (
             <div className="px-4 py-1 text-xs text-gray-400 dark:text-gray-500">
-              Нажмите ☆ рядом с чатом, чтобы добавить
+              {t("chat2.favoritesHint")}
             </div>
           ) : (
             [...favorites.values()].map((f) => {
@@ -373,7 +373,7 @@ export default function ChatSidebar({ currentSlug, currentRoomId, onSelectRoom }
                   <button
                     onClick={(e) => toggleFavorite(e, f)}
                     className="shrink-0 text-gray-300 hover:text-red-500 dark:text-gray-600"
-                    title="Убрать из избранного"
+                    title={t("msg.removeFav")}
                   >
                     ✕
                   </button>

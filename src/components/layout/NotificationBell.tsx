@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { getSocket } from "@/lib/socket";
+import { useT } from "@/lib/i18n/client";
 
 interface Notification {
   id: string;
@@ -39,6 +40,8 @@ function playNotificationSound() {
 
 export default function NotificationBell() {
   const { data: session } = useSession();
+  const { t, locale } = useT();
+  const dateLocale = locale === "cn" ? "zh-CN" : locale === "en" ? "en-US" : "ru";
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -149,6 +152,7 @@ export default function NotificationBell() {
       <button
         onClick={handleToggle}
         className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
+        aria-label={t("common.notif.title")}
       >
         <svg
           className="w-5 h-5"
@@ -174,21 +178,21 @@ export default function NotificationBell() {
         <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-lg border dark:border-gray-700 z-50 max-h-96 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800/30">
             <h3 className="text-sm font-semibold dark:text-gray-100">
-              Уведомления
+              {t("common.notif.title")}
             </h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
                 className="text-xs text-green-600 hover:text-green-800 transition"
               >
-                Прочитать все
+                {t("common.notif.markAllRead")}
               </button>
             )}
           </div>
           <div className="overflow-y-auto max-h-72">
             {notifications.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400 py-6 text-sm">
-                Нет уведомлений
+                {t("common.notif.empty")}
               </div>
             ) : (
               notifications.map((n) => (
@@ -221,7 +225,7 @@ export default function NotificationBell() {
                             </div>
                           )}
                           <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                            {new Date(n.createdAt).toLocaleDateString("ru", {
+                            {new Date(n.createdAt).toLocaleDateString(dateLocale, {
                               day: "numeric",
                               month: "short",
                               hour: "2-digit",
@@ -250,7 +254,7 @@ export default function NotificationBell() {
                           </div>
                         )}
                         <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                          {new Date(n.createdAt).toLocaleDateString("ru", {
+                          {new Date(n.createdAt).toLocaleDateString(dateLocale, {
                             day: "numeric",
                             month: "short",
                             hour: "2-digit",

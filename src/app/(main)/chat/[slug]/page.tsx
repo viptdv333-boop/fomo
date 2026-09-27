@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import ChatRoom from "@/components/chat/ChatRoom";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
+import { useT } from "@/lib/i18n/client";
 
 export default function InstrumentChatPage() {
+  const { t } = useT();
   const params = useParams();
   const [currentRoom, setCurrentRoom] = useState<{
     id: string;
@@ -33,7 +35,7 @@ export default function InstrumentChatPage() {
             <ChatRoom roomId={currentRoom.id} roomName={currentRoom.name} />
           ) : (
             <div className="text-gray-500 text-center py-12">
-              Загрузка чата...
+              {t("chat2.loadingChat")}
             </div>
           )}
         </div>

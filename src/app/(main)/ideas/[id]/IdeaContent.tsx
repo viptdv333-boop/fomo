@@ -48,7 +48,8 @@ interface IdeaDetail {
 }
 
 export default function IdeaContent() {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const dateLocale = locale === "cn" ? "zh-CN" : locale === "en" ? "en-US" : "ru";
   const params = useParams();
   const { data: session } = useSession();
   const router = useRouter();
@@ -145,10 +146,10 @@ export default function IdeaContent() {
             </Link>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {t("idea.rating")} {Number(idea.author.rating).toFixed(1)} ·{" "}
-              {new Date(idea.createdAt).toLocaleString("ru", {
+              {new Date(idea.createdAt).toLocaleString(dateLocale, {
                 day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
                 timeZone: "Europe/Moscow",
-              })} МСК
+              })} {t("feed2.msk")}
             </div>
           </div>
         </div>
@@ -175,20 +176,20 @@ export default function IdeaContent() {
               </button>
               <button
                 onClick={async () => {
-                  if (!confirm("Удалить идею безвозвратно?")) return;
+                  if (!confirm(t("feed2.deleteIdeaConfirm"))) return;
                   setDeleting(true);
                   const res = await fetch(`/api/ideas/${idea.id}`, { method: "DELETE" });
                   if (res.ok) {
                     router.push("/profile?tab=ideas");
                   } else {
                     setDeleting(false);
-                    alert("Не удалось удалить идею");
+                    alert(t("feed2.deleteIdeaFailed"));
                   }
                 }}
                 disabled={deleting}
                 className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
               >
-                {deleting ? "Удаление..." : t("common.delete")}
+                {deleting ? t("feed2.deleting") : t("common.delete")}
               </button>
             </div>
           )}
@@ -240,7 +241,7 @@ export default function IdeaContent() {
                     href={`/channels/${idea.channel.id}`}
                     className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition"
                   >
-                    Подписаться на канал «{idea.channel.name}»
+                    {t("feed2.subscribeToChannel", { name: idea.channel.name })}
                   </Link>
                 )}
               </div>

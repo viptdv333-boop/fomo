@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function IdeaComments({ ideaId }: Props) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { data: session } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState("");
@@ -55,7 +55,7 @@ export default function IdeaComments({ ideaId }: Props) {
       const data = await res.json();
       setPendingFile({ url: data.url, name: data.name });
     } else {
-      alert("Не удалось загрузить файл");
+      alert(t("feed2.uploadFailed"));
     }
     setUploading(false);
   }
@@ -131,7 +131,7 @@ export default function IdeaComments({ ideaId }: Props) {
                   <Link href={`/profile/${c.user.id}`} className="text-xs font-semibold dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400">
                     {c.user.displayName}
                   </Link>
-                  <span className="text-[10px] text-gray-400">{formatMessageTime(c.createdAt)}</span>
+                  <span className="text-[10px] text-gray-400">{formatMessageTime(c.createdAt, locale)}</span>
                 </div>
                 {c.replyTo && (
                   <div className="text-[10px] text-gray-500 dark:text-gray-400 border-l-2 border-green-400 pl-1.5 my-0.5 truncate">
@@ -209,7 +209,7 @@ export default function IdeaComments({ ideaId }: Props) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              title="Прикрепить фото"
+              title={t("feed2.attachPhoto")}
               className="px-2.5 py-1.5 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50"
             >
               {uploading ? "…" : "📎"}

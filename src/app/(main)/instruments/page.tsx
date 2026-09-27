@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 interface Category {
   id: string;
@@ -12,16 +13,24 @@ interface Category {
 }
 
 const CATEGORY_META: Record<string, { emoji: string; color: string; bg: string; desc: string }> = {
-  "ru-stocks": { emoji: "🇷🇺", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800", desc: "Акции российских компаний на Московской бирже: Сбербанк, Газпром, Лукойл, Яндекс и другие" },
-  "us-stocks": { emoji: "🇺🇸", color: "text-red-600", bg: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800", desc: "Акции крупнейших американских компаний: Apple, Tesla, Nvidia, Microsoft, Amazon" },
-  "indices": { emoji: "📊", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800", desc: "Мировые фондовые индексы: S&P 500, NASDAQ, РТС, IMOEX, Dow Jones" },
-  "currencies": { emoji: "💱", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800", desc: "Валютные пары и курсы: доллар, евро, юань, рубль" },
-  "crypto": { emoji: "₿", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800", desc: "Криптовалюты: Bitcoin, Ethereum, Solana, XRP и другие цифровые активы" },
-  "commodities": { emoji: "🛢️", color: "text-amber-700", bg: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", desc: "Сырьевые товары: нефть Brent/WTI, природный газ, пшеница, сахар, какао" },
-  "metals": { emoji: "🥇", color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800", desc: "Драгоценные и промышленные металлы: золото, серебро, платина, палладий, медь" },
+  "ru-stocks": { emoji: "🇷🇺", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800", desc: "inst.catDesc.ru-stocks" },
+  "us-stocks": { emoji: "🇺🇸", color: "text-red-600", bg: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800", desc: "inst.catDesc.us-stocks" },
+  "indices": { emoji: "📊", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800", desc: "inst.catDesc.indices" },
+  "currencies": { emoji: "💱", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800", desc: "inst.catDesc.currencies" },
+  "crypto": { emoji: "₿", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800", desc: "inst.catDesc.crypto" },
+  "commodities": { emoji: "🛢️", color: "text-amber-700", bg: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", desc: "inst.catDesc.commodities" },
+  "metals": { emoji: "🥇", color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800", desc: "inst.catDesc.metals" },
 };
 
 export default function CatalogPage() {
+  const { t, locale } = useT();
+  // Category names come from the DB in Russian; for other locales use the shared cat.* keys.
+  const catName = (c: Category) => {
+    if (locale === "ru") return c.name;
+    const k = `cat.${c.slug}`;
+    const tr = t(k);
+    return tr !== k ? tr : c.name;
+  };
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"cards" | "list" | "paragraph">("cards");
@@ -36,17 +45,17 @@ export default function CatalogPage() {
   }, []);
 
   const filtered = search
-    ? categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || CATEGORY_META[c.slug]?.desc.toLowerCase().includes(search.toLowerCase()))
+    ? categories.filter(c => catName(c).toLowerCase().includes(search.toLowerCase()) || (CATEGORY_META[c.slug] ? t(CATEGORY_META[c.slug].desc) : "").toLowerCase().includes(search.toLowerCase()))
     : categories;
 
   return (
     <div className="max-w-5xl w-full mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold dark:text-gray-100">
-          Акции, фьючерсы и криптовалюта
+          {t("inst.catalog.title")}
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Котировки, графики и торговые идеи по инструментам МосБиржи, мировых бирж и криптовалютного рынка
+          {t("inst.catalog.subtitle")}
         </p>
       </div>
 
@@ -60,7 +69,7 @@ export default function CatalogPage() {
         <div className="ml-auto flex items-center gap-2 shrink-0">
           <div className="relative">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" placeholder={t("terminal.search")} value={search} onChange={e => setSearch(e.target.value)}
               className="pl-8 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 w-44" />
           </div>
           <div className="flex items-center gap-0.5">
@@ -86,7 +95,7 @@ export default function CatalogPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           <div className="text-4xl mb-3">📭</div>
-          <p>{search ? "Ничего не найдено" : "Категории пока не добавлены"}</p>
+          <p>{search ? t("inst.nothingFound") : t("inst.noCategories")}</p>
         </div>
       ) : viewMode === "cards" ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -96,9 +105,9 @@ export default function CatalogPage() {
               <Link key={cat.id} href={`/instruments/category/${cat.slug}`}
                 className={`rounded-2xl border p-6 transition hover:shadow-lg hover:-translate-y-1 ${m.bg}`}>
                 <div className="text-4xl mb-3">{m.emoji}</div>
-                <h2 className={`text-lg font-bold ${m.color} dark:text-gray-100`}>{cat.name}</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{m.desc}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{cat._count?.assets || 0} инструментов</p>
+                <h2 className={`text-lg font-bold ${m.color} dark:text-gray-100`}>{catName(cat)}</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{m.desc ? t(m.desc) : ""}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{t("inst.instrumentsCount", { count: cat._count?.assets || 0 })}</p>
               </Link>
             );
           })}
@@ -113,10 +122,10 @@ export default function CatalogPage() {
                 <span className="text-3xl">{m.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <span className={`font-bold text-base ${m.color} dark:text-gray-100`}>{cat.name}</span>
-                    <span className="text-xs text-gray-400">{cat._count?.assets || 0} инструментов</span>
+                    <span className={`font-bold text-base ${m.color} dark:text-gray-100`}>{catName(cat)}</span>
+                    <span className="text-xs text-gray-400">{t("inst.instrumentsCount", { count: cat._count?.assets || 0 })}</span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{m.desc}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{m.desc ? t(m.desc) : ""}</p>
                 </div>
               </Link>
             );
@@ -133,11 +142,11 @@ export default function CatalogPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{m.emoji}</span>
                   <div>
-                    <h2 className={`text-xl font-bold ${m.color} dark:text-gray-100`}>{cat.name}</h2>
-                    <span className="text-xs text-gray-400">{cat._count?.assets || 0} инструментов</span>
+                    <h2 className={`text-xl font-bold ${m.color} dark:text-gray-100`}>{catName(cat)}</h2>
+                    <span className="text-xs text-gray-400">{t("inst.instrumentsCount", { count: cat._count?.assets || 0 })}</span>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">{m.desc}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">{m.desc ? t(m.desc) : ""}</p>
               </Link>
             );
           })}

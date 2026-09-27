@@ -160,50 +160,50 @@ export default function EditChannelPage() {
   async function handleSave() {
     setError("");
     setSlugError("");
-    if (!channelName.trim()) { setError("Укажите название канала"); return; }
+    if (!channelName.trim()) { setError(t("channel2.errNameRequired")); return; }
     if (channelSlug && (channelSlug.length < 7 || channelSlug.length > 33)) {
-      setSlugError("ID: от 7 до 33 символов");
+      setSlugError(t("channel2.errSlugLength"));
       return;
     }
     setSaving(true);
 
     try {
       // Delete removed tariffs
-      const currentIds = tariffs.filter((t) => t.id).map((t) => t.id);
+      const currentIds = tariffs.filter((tr) => tr.id).map((tr) => tr.id);
       // We don't track deleted here — user removes via removeTariff
 
       // Update/create each tariff
-      for (const t of tariffs) {
-        const fullName = `${channelName.trim()}: ${t.name.trim() || "Базовый"}`;
+      for (const tr of tariffs) {
+        const fullName = `${channelName.trim()}: ${tr.name.trim() || "Базовый"}`;
         const body = {
           name: fullName,
           description: channelDescription.trim() || null,
-          price: parseFloat(t.price) || 0,
-          durationDays: parseInt(t.durationDays) || 30,
-          paymentMethods: t.paymentMethods,
-          cardNumber: t.paymentMethods.includes("card") ? t.cardNumber.trim() || null : null,
-          sbpQrUrl: t.paymentMethods.includes("sbp") ? t.sbpQrUrl.trim() || null : null,
-          yukassaShopId: t.paymentMethods.includes("yukassa") ? t.yukassaShopId.trim() || null : null,
-          yukassaSecret: t.paymentMethods.includes("yukassa") ? t.yukassaSecret.trim() || null : null,
+          price: parseFloat(tr.price) || 0,
+          durationDays: parseInt(tr.durationDays) || 30,
+          paymentMethods: tr.paymentMethods,
+          cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || null : null,
+          sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
+          yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
+          yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
           avatarUrl: avatarUrl || null,
           instrumentIds: selectedTags.map((tag) => tag.id),
-          isActive: t.isActive,
-          ...(t.id === mainTariffId ? { slug: channelSlug.trim() || null } : {}),
+          isActive: tr.isActive,
+          ...(tr.id === mainTariffId ? { slug: channelSlug.trim() || null } : {}),
         };
 
-        if (t.id) {
+        if (tr.id) {
           // Update existing
-          const res = await fetch(`/api/users/${user?.id}/tariffs/${t.id}`, {
+          const res = await fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
           if (!res.ok) {
             const data = await res.json().catch(() => null);
-            if (t.id === mainTariffId && data?.error) {
+            if (tr.id === mainTariffId && data?.error) {
               setSlugError(data.error);
             } else {
-              setError(data?.error || "Ошибка обновления тарифа");
+              setError(data?.error || t("channel2.errUpdateTariff"));
             }
             setSaving(false);
             return;
@@ -215,21 +215,21 @@ export default function EditChannelPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
-          if (!res.ok) { setError("Ошибка создания тарифа"); setSaving(false); return; }
+          if (!res.ok) { setError(t("channel2.errCreateTariff")); setSaving(false); return; }
         }
       }
 
       router.push("/subscriptions");
     } catch {
-      setError("Ошибка сети");
+      setError(t("channel2.errNetwork"));
     }
     setSaving(false);
   }
 
   async function handleDeleteChannel() {
-    if (!confirm("Удалить канал и все тарифы? Подписки будут отменены.")) return;
-    for (const t of tariffs) {
-      if (t.id) await fetch(`/api/users/${user?.id}/tariffs/${t.id}`, { method: "DELETE" });
+    if (!confirm(t("channel2.deleteChannelConfirm"))) return;
+    for (const tr of tariffs) {
+      if (tr.id) await fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, { method: "DELETE" });
     }
     router.push("/subscriptions");
   }
@@ -284,7 +284,7 @@ export default function EditChannelPage() {
 
         {/* Custom channel ID */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID канала</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("channels.idLabel")}</label>
           <div className="flex items-center gap-2">
             <span className="text-gray-400 dark:text-gray-500 text-lg font-mono">#</span>
             <input
@@ -301,7 +301,7 @@ export default function EditChannelPage() {
           </div>
           {slugError && <p className="text-xs text-red-500 mt-1">{slugError}</p>}
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Латинские буквы, цифры и символы _ ! ? $ % — от 7 до 33 символов. Пусто — используется стандартный ID.
+            {t("channel2.slugHint")}
           </p>
           <div className="flex items-center gap-2 mt-2">
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -309,7 +309,7 @@ export default function EditChannelPage() {
             </p>
             <ShareButtons
               url={`https://fomo.spot/channels/${channelSlug || editId}`}
-              text={`${channelName || "Канал"} на FOMO`}
+              text={t("channel2.shareTextPlain", { name: channelName || t("channel2.channelFallback") })}
             />
           </div>
         </div>
@@ -432,7 +432,7 @@ export default function EditChannelPage() {
 
                 <div>
                   <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
-                    {t("channels.paymentMethod")} <span className="font-normal text-gray-400">(можно выбрать несколько — подписчик увидит их все)</span>
+                    {t("channels.paymentMethod")} <span className="font-normal text-gray-400">{t("channel2.paymentMultiHint")}</span>
                   </label>
                   {savedPaymentMethods.length === 0 ? (
                     <div className="text-sm text-gray-400 py-3 text-center bg-gray-50 dark:bg-gray-800 rounded-lg">

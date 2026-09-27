@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useT } from "@/lib/i18n/client";
 
 const INSTRUMENT_EMOJIS = [
   "bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "cardano", "avalanche",
@@ -17,10 +18,10 @@ const INSTRUMENT_EMOJIS = [
 ];
 
 const CATEGORIES = [
-  { name: "Часто", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "🚀", "📈", "📉", "💰", "⚡", "🤔", "😎"] },
-  { name: "Тикеры", emojis: INSTRUMENT_EMOJIS.map(s => `:${s}:`), isCustom: true },
-  { name: "Трейдинг", emojis: ["📈", "📉", "💰", "💸", "🏦", "💹", "📊", "🎯", "⚠️", "✅", "❌", "🔥", "🚀", "💎", "🐂", "🐻", "🤑", "💥", "⭐", "🏆"] },
-  { name: "Лица", emojis: ["😀", "😃", "😄", "😁", "😅", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😋", "😛", "😜", "🤪", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😏", "😒", "🙄", "😬"] },
+  { name: "common.emoji.frequent", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "🚀", "📈", "📉", "💰", "⚡", "🤔", "😎"] },
+  { name: "common.emoji.tickers", emojis: INSTRUMENT_EMOJIS.map(s => `:${s}:`), isCustom: true },
+  { name: "common.emoji.trading", emojis: ["📈", "📉", "💰", "💸", "🏦", "💹", "📊", "🎯", "⚠️", "✅", "❌", "🔥", "🚀", "💎", "🐂", "🐻", "🤑", "💥", "⭐", "🏆"] },
+  { name: "common.emoji.faces", emojis: ["😀", "😃", "😄", "😁", "😅", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😋", "😛", "😜", "🤪", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😏", "😒", "🙄", "😬"] },
 ];
 
 interface EmojiPickerProps {
@@ -28,6 +29,7 @@ interface EmojiPickerProps {
 }
 
 export default function EmojiPicker({ onSelect }: EmojiPickerProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState(0);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,7 @@ export default function EmojiPicker({ onSelect }: EmojiPickerProps) {
         type="button"
         onClick={() => setOpen(!open)}
         className="p-1.5 text-gray-400 hover:text-green-600 transition rounded"
-        title="Emoji и стикеры"
+        title={t("common.emoji.title")}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"/>
@@ -72,7 +74,7 @@ export default function EmojiPicker({ onSelect }: EmojiPickerProps) {
                     : "text-gray-400 hover:text-gray-600"
                 }`}
               >
-                {cat.name}
+                {t(cat.name)}
               </button>
             ))}
           </div>

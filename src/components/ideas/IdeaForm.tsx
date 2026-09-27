@@ -280,7 +280,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || "Ошибка сохранения");
+      setError(data.error || t("feed2.saveError"));
       return;
     }
 
@@ -340,7 +340,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowCatalog(false)}>
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                   <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                    <h3 className="font-semibold dark:text-gray-100">Выберите инструмент</h3>
+                    <h3 className="font-semibold dark:text-gray-100">{t("feed2.chooseInstrument")}</h3>
                     <button onClick={() => setShowCatalog(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
                   </div>
                   <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
@@ -348,7 +348,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                       type="text"
                       value={catalogSearch}
                       onChange={(e) => setCatalogSearch(e.target.value)}
-                      placeholder="Поиск по тикеру или названию..."
+                      placeholder={t("feed2.searchTickerOrName")}
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
                       autoFocus
                     />
@@ -364,7 +364,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                         }}
                         className="w-full text-left px-3 py-2.5 mb-1 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 border border-dashed dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                       >
-                        Общее <span className="font-normal text-gray-400">— без привязки к инструменту</span>
+                        {t("feed2.general")} <span className="font-normal text-gray-400">{t("feed2.generalHint")}</span>
                       </button>
                     )}
                     {catalogCategories
@@ -393,7 +393,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                               <svg className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path d="M9 5l7 7-7 7" />
                               </svg>
-                              {cat.name}
+                              {(() => { const k = `cat.${cat.slug}`; const v = t(k); return v === k ? cat.name : v; })()}
                               <span className="text-[10px] text-gray-300 dark:text-gray-600 ml-auto">{cat.instruments.length}</span>
                             </button>
                             {isExpanded && cat.instruments.map((inst: Instrument) => {
@@ -433,7 +433,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="hidden"
-              placeholder="Поиск инструмента по тикеру или названию..."
+              placeholder={t("feed2.searchInstrument")}
             />
             {searchLoading && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
@@ -477,7 +477,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
 
             {showDropdown && searchQuery.trim() && searchResults.length === 0 && !searchLoading && (
               <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                Ничего не найдено
+                {t("feed2.nothingFound")}
               </div>
             )}
           </div>
@@ -487,7 +487,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             <div className="flex flex-wrap gap-2 mt-3">
               {isGeneral && (
                 <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border border-dashed border-gray-400 dark:border-gray-600 text-gray-500 dark:text-gray-400">
-                  Общее
+                  {t("feed2.general")}
                   <button
                     type="button"
                     onClick={() => setIsGeneral(false)}
@@ -511,7 +511,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
                     <span className="opacity-70"> ({chip.exchange})</span>
                   )}
                   {chip.auto && (
-                    <span className="text-xs opacity-60 ml-0.5">(авто)</span>
+                    <span className="text-xs opacity-60 ml-0.5">{t("feed2.auto")}</span>
                   )}
                   <button
                     type="button"
@@ -612,7 +612,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             onChange={handleFileUpload}
             className="hidden"
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">JPG, PNG, WebP, GIF, MP4, WebM — до 10 МБ</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t("idea.fileFormats")}</p>
         </div>
 
         {!isChannelPost && <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
@@ -672,8 +672,8 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
         >
           {loading
             ? mode === "edit"
-              ? "Сохранение..."
-              : "Публикация..."
+              ? t("feed2.saving")
+              : t("feed2.publishing")
             : mode === "edit"
             ? t("idea.save")
             : t("idea.publish")}

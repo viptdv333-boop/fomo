@@ -17,9 +17,10 @@ interface Author {
   _count?: { followers: number; ideas: number };
 }
 
+// Values are i18n keys (feed2.spec.*), resolved with t() at render time.
 const SPEC_LABELS: Record<string, string> = {
-  trader: "Трейдер", analyst: "Аналитик", investor: "Инвестор",
-  scalper: "Скальпер", algotrader: "Алготрейдер",
+  trader: "feed2.spec.trader", analyst: "feed2.spec.analyst", investor: "feed2.spec.investor",
+  scalper: "feed2.spec.scalper", algotrader: "feed2.spec.algotrader",
 };
 
 export default function AuthorContent() {
@@ -86,7 +87,7 @@ export default function AuthorContent() {
               <div className="flex gap-2 mt-2">
                 {author.specializations.map((s) => (
                   <span key={s} className="text-xs px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded">
-                    {SPEC_LABELS[s] || s}
+                    {SPEC_LABELS[s] ? t(SPEC_LABELS[s]) : s}
                   </span>
                 ))}
               </div>
@@ -94,11 +95,11 @@ export default function AuthorContent() {
             <div className="flex gap-4 mt-3 text-sm text-gray-500">
               {author._count && (
                 <>
-                  <span>{author._count.ideas} идей</span>
+                  <span>{t("feed2.ideasCount", { count: author._count.ideas })}</span>
                   <span>{author._count.followers} {t("channels.subscribers")}</span>
                 </>
               )}
-              <span>Рейтинг: {author.rating?.toFixed(1) || "0"}</span>
+              <span>{t("feed2.ratingValue", { value: author.rating?.toFixed(1) || "0" })}</span>
             </div>
           </div>
         </div>

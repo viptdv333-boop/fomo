@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface CalendarEvent {
   date: string;
@@ -24,14 +25,16 @@ const IMPACT_COLORS: Record<string, string> = {
   Low: "bg-gray-400",
 };
 
-function formatDate(dateStr: string): string {
+const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
+
+function formatDate(dateStr: string, locale: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString("ru", { day: "numeric", month: "short" });
+  return d.toLocaleDateString(LOCALES[locale] || "ru-RU", { day: "numeric", month: "short" });
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, locale: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(LOCALES[locale] || "ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatVal(v: number | null, unit: string | null): string {
@@ -43,6 +46,7 @@ function formatVal(v: number | null, unit: string | null): string {
 }
 
 export default function EconomicCalendar({ country }: { country?: string }) {
+  const { t, locale } = useT();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,7 +69,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
   // Group by date
   const grouped = new Map<string, CalendarEvent[]>();
   events.forEach((e) => {
-    const day = formatDate(e.date);
+    const day = formatDate(e.date, locale);
     if (!grouped.has(day)) grouped.set(day, []);
     grouped.get(day)!.push(e);
   });
@@ -73,7 +77,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-5">
       <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 uppercase tracking-wide">
-        Экономический календарь
+        {t("inst.calendar.title")}
       </h3>
       <div className="space-y-4 max-h-[500px] overflow-y-auto">
         {[...grouped.entries()].map(([day, dayEvents]) => (
@@ -83,7 +87,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
               {dayEvents.map((e, i) => (
                 <div key={i} className="flex items-center gap-2 py-1.5 border-b border-gray-50 dark:border-gray-800/30 last:border-b-0">
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${IMPACT_COLORS[e.impact] || "bg-gray-400"}`} />
-                  <span className="text-xs text-gray-400 w-10 shrink-0">{formatTime(e.date)}</span>
+                  <span className="text-xs text-gray-400 w-10 shrink-0">{formatTime(e.date, locale)}</span>
                   <span className="text-sm shrink-0">{FLAGS[e.country] || e.country}</span>
                   <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate">{e.event}</span>
                   <div className="flex items-center gap-3 shrink-0 text-[11px]">
@@ -91,10 +95,10 @@ export default function EconomicCalendar({ country }: { country?: string }) {
                       <span className="font-medium text-gray-900 dark:text-gray-100">{formatVal(e.actual, e.unit)}</span>
                     )}
                     {e.estimate != null && (
-                      <span className="text-gray-400">п: {formatVal(e.estimate, e.unit)}</span>
+                      <span className="text-gray-400">{t("inst.calendar.forecast")} {formatVal(e.estimate, e.unit)}</span>
                     )}
                     {e.previous != null && (
-                      <span className="text-gray-400">п: {formatVal(e.previous, e.unit)}</span>
+                      <span className="text-gray-400">{t("inst.calendar.previous")} {formatVal(e.previous, e.unit)}</span>
                     )}
                   </div>
                 </div>

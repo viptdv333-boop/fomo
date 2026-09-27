@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import ShareButtons from "@/components/shared/ShareButtons";
 import CreateRoomModal from "@/components/chat/CreateRoomModal";
+import { useT } from "@/lib/i18n/client";
 
 interface Room {
   id: string;
@@ -17,6 +18,7 @@ interface Room {
 const SITE_URL = "https://fomo.spot";
 
 export default function RoomsTab() {
+  const { t } = useT();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -36,7 +38,7 @@ export default function RoomsTab() {
   }, []);
 
   async function handleLeave(roomId: string) {
-    if (!confirm("Выйти из приватной группы?")) return;
+    if (!confirm(t("profile2.roomsConfirmLeave"))) return;
     setBusyId(roomId);
     await fetch(`/api/rooms/${roomId}/leave`, { method: "POST" });
     setBusyId(null);
@@ -44,7 +46,7 @@ export default function RoomsTab() {
   }
 
   async function handleDelete(roomId: string) {
-    if (!confirm("Удалить приватную группу вместе со всей историей сообщений? Это необратимо.")) return;
+    if (!confirm(t("profile2.roomsConfirmDelete"))) return;
     setBusyId(roomId);
     await fetch(`/api/rooms/${roomId}`, { method: "DELETE" });
     setBusyId(null);
@@ -55,19 +57,18 @@ export default function RoomsTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          Мои приватные группы
+          {t("profile2.roomsTitle")}
         </h3>
         <button
           onClick={() => setShowCreate(true)}
           className="text-sm text-green-600 hover:text-green-800 transition"
         >
-          + Новая группа
+          {t("profile2.roomsNew")}
         </button>
       </div>
 
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Закрытая приватная группа для общения — бесплатно, вход только по ссылке-приглашению, как в
-        приватном чате. Создать может любой пользователь.
+        {t("profile2.roomsIntro")}
       </p>
 
       {showCreate && (
@@ -89,7 +90,7 @@ export default function RoomsTab() {
         </div>
       ) : rooms.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          У вас пока нет приватных групп — ни своих, ни тех, куда вас пригласили.
+          {t("profile2.roomsEmpty")}
         </p>
       ) : (
         <div className="space-y-3">
@@ -106,7 +107,7 @@ export default function RoomsTab() {
                     </span>
                     {room.isOwner && (
                       <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                        владелец
+                        {t("profile2.roomsOwner")}
                       </span>
                     )}
                   </div>
@@ -124,7 +125,7 @@ export default function RoomsTab() {
                       onClick={() => setOpenLinkFor(openLinkFor === room.id ? null : room.id)}
                       className="text-xs px-3 py-1.5 rounded-md border border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
                     >
-                      Ссылка
+                      {t("profile2.roomsLink")}
                     </button>
                   )}
                   {room.isOwner ? (
@@ -133,7 +134,7 @@ export default function RoomsTab() {
                       disabled={busyId === room.id}
                       className="text-xs px-3 py-1.5 rounded-md border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
                     >
-                      Удалить
+                      {t("common.delete")}
                     </button>
                   ) : (
                     <button
@@ -141,7 +142,7 @@ export default function RoomsTab() {
                       disabled={busyId === room.id}
                       className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
                     >
-                      Выйти
+                      {t("profile2.roomsLeave")}
                     </button>
                   )}
                 </div>
@@ -151,7 +152,7 @@ export default function RoomsTab() {
                 <div className="mt-3 pt-3 border-t dark:border-gray-700">
                   <ShareButtons
                     url={`${SITE_URL}/rooms/join/${room.inviteToken}`}
-                    text={`Приглашаю в приватную группу «${room.name}» на FOMO`}
+                    text={t("profile2.roomsInviteText", { name: room.name })}
                   />
                 </div>
               )}

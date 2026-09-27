@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface Channel {
   id: string;
@@ -17,6 +18,7 @@ interface TariffManagerProps {
 }
 
 export default function TariffManager({ userId, rating }: TariffManagerProps) {
+  const { t } = useT();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -38,17 +40,17 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   async function handleCreate() {
     setError("");
     if (!name.trim()) {
-      setError("Укажите название");
+      setError(t("profile2.tariffNameRequired"));
       return;
     }
     const p = parseFloat(price);
     if (isNaN(p) || p <= 0) {
-      setError("Укажите корректную цену");
+      setError(t("profile2.tariffPriceInvalid"));
       return;
     }
     const d = parseInt(durationDays);
     if (isNaN(d) || d < 1) {
-      setError("Укажите срок");
+      setError(t("profile2.tariffDurationRequired"));
       return;
     }
 
@@ -73,7 +75,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
       loadChannels();
     } else {
       const data = await res.json();
-      setError(data.error || "Ошибка создания");
+      setError(data.error || t("profile2.tariffCreateError"));
     }
     setSaving(false);
   }
@@ -81,9 +83,9 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   if (rating < 5) {
     return (
       <div className="mt-6 pt-6 border-t dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-2 dark:text-gray-100">Каналы</h3>
+        <h3 className="text-lg font-semibold mb-2 dark:text-gray-100">{t("nav.channels")}</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Для создания платных каналов необходим рейтинг не менее 5.0. Ваш текущий рейтинг: {rating.toFixed(1)}
+          {t("profile2.tariffRatingRequired", { rating: rating.toFixed(1) })}
         </p>
       </div>
     );
@@ -92,12 +94,12 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
   return (
     <div className="mt-6 pt-6 border-t dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold dark:text-gray-100">Каналы</h3>
+        <h3 className="text-lg font-semibold dark:text-gray-100">{t("nav.channels")}</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="text-sm text-green-600 hover:text-green-800 transition"
         >
-          {showForm ? "Отмена" : "+ Новый канал"}
+          {showForm ? t("common.cancel") : t("profile2.tariffNew")}
         </button>
       </div>
 
@@ -105,24 +107,24 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4 space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Название
+              {t("profile2.tariffName")}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Базовый"
+              placeholder={t("profile2.phTariffName")}
               className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:bg-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Описание
+              {t("profile2.tariffDescription")}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Что входит в подписку..."
+              placeholder={t("profile2.phTariffDescription")}
               className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:bg-gray-900 dark:text-gray-100"
               rows={2}
             />
@@ -130,7 +132,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Цена (₽)
+                {t("profile2.tariffPrice")}
               </label>
               <input
                 type="number"
@@ -142,7 +144,7 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Срок (дней)
+                {t("profile2.tariffDuration")}
               </label>
               <input
                 type="number"
@@ -159,29 +161,29 @@ export default function TariffManager({ userId, rating }: TariffManagerProps) {
             disabled={saving}
             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
-            {saving ? "Сохранение..." : "Создать канал"}
+            {saving ? t("channels.saving") : t("channels.create")}
           </button>
         </div>
       )}
 
       {channels.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Нет активных каналов</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("profile2.tariffNone")}</p>
       ) : (
         <div className="space-y-3">
-          {channels.map((t) => (
+          {channels.map((ch) => (
             <div
-              key={t.id}
+              key={ch.id}
               className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4"
             >
               <div className="flex items-center justify-between">
-                <h4 className="font-medium dark:text-gray-100">{t.name}</h4>
+                <h4 className="font-medium dark:text-gray-100">{ch.name}</h4>
                 <span className="text-sm font-semibold text-green-600">
-                  {Number(t.price)} ₽ / {t.durationDays} дн.
+                  {t("pay.pricePerDays", { price: Number(ch.price), days: ch.durationDays })}
                 </span>
               </div>
-              {t.description && (
+              {ch.description && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {t.description}
+                  {ch.description}
                 </p>
               )}
             </div>

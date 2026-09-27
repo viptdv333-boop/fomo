@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
 import InstallAppButton from "@/components/shared/InstallAppButton";
+import { useT } from "@/lib/i18n/client";
 
 function useCountUp(end: number, duration: number = 1500, start: boolean = false) {
   const [count, setCount] = useState(0);
@@ -38,7 +39,8 @@ export default function LandingPage() {
   const [logoRevealed, setLogoRevealed] = useState(false);
   const [textVisible, setTextVisible] = useState(false);
   const [loginVisible, setLoginVisible] = useState(false);
-  const [lang, setLang] = useState<"ru" | "en" | "cn">("ru");
+  const { t, locale, setLocale } = useT();
+  const lang = (locale === "en" || locale === "cn" ? locale : "ru") as "ru" | "en" | "cn";
 
   useEffect(() => {
     fetch("/api/stats/public")
@@ -63,56 +65,15 @@ export default function LandingPage() {
 
   const isDark = theme === "dark";
 
-  const content = {
-    ru: {
-      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
-      h1: "Торговые идеи и аналитика фондового рынка",
-      welcome: "Платформа для публикации и обсуждения торговых идей: акции, фьючерсы МосБиржи, криптовалюта и форекс. Читайте технический анализ и прогнозы от трейдеров, делитесь своими идеями и зарабатывайте на подписках.",
-      login: "Войти",
-      register: "Зарегистрироваться",
-      continue: "Продолжить без регистрации",
-      howTo: "Как это работает",
-      participants: "Участников",
-      ideas: "Идей",
-      instruments: "Инструментов",
-      copyright: "Copyright © Neurotrader 2026",
-    },
-    en: {
-      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
-      h1: "Trading Ideas and Stock Market Analysis",
-      welcome: "A social platform for publishing and discussing trading ideas: stocks, futures, crypto and forex. Read technical analysis and market forecasts from traders, share your own ideas and earn from subscriptions.",
-      login: "Sign In",
-      register: "Sign Up",
-      continue: "Continue without registration",
-      howTo: "How it works",
-      participants: "Members",
-      ideas: "Ideas",
-      instruments: "Instruments",
-      copyright: "Copyright © Neurotrader 2026",
-    },
-    cn: {
-      tagline: "FIND OPPORTUNITIES, MAKE OUTCOMES",
-      h1: "交易想法与股市分析",
-      welcome: "\u53D1\u5E03\u548C\u8BA8\u8BBA\u4EA4\u6613\u60F3\u6CD5\u7684\u5E73\u53F0\u3002\u9605\u8BFB\u5206\u6790\uFF0C\u5206\u4EAB\u9884\u6D4B\uFF0C\u901A\u8FC7\u8BA2\u9605\u8D5A\u53D6\u6536\u5165\u3002",
-      login: "\u767B\u5F55",
-      register: "\u6CE8\u518C",
-      continue: "\u65E0\u9700\u6CE8\u518C\u7EE7\u7EED",
-      howTo: "\u4F7F\u7528\u6307\u5357",
-      participants: "\u53C2\u4E0E\u8005",
-      ideas: "\u60F3\u6CD5",
-      instruments: "\u5DE5\u5177",
-      copyright: "Copyright © Neurotrader 2026",
-    },
-  };
-
-  const t = content[lang];
+  const TAGLINE = "FIND OPPORTUNITIES, MAKE OUTCOMES";
+  const COPYRIGHT = "Copyright © Neurotrader 2026";
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? "bg-[#0a0a0a]" : "bg-white"}`} style={isDark ? { background: "linear-gradient(180deg, #0a0a0a 0%, #151515 30%, #0d0d0d 60%, #111111 100%)" } : undefined}>
       {/* Top bar */}
       <header className="w-full px-6 py-4 flex justify-end items-center gap-4 fixed top-0 left-0 right-0 z-50">
         <button
-          onClick={() => setLang(lang === "ru" ? "en" : lang === "en" ? "cn" : "ru")}
+          onClick={() => setLocale(lang === "ru" ? "en" : lang === "en" ? "cn" : "ru")}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
             isDark
               ? "text-gray-300 hover:text-white hover:bg-gray-800"
@@ -140,7 +101,7 @@ export default function LandingPage() {
               isDark ? "text-gray-400" : "text-gray-500"
             }`}
           >
-            {t.tagline}
+            {TAGLINE}
           </div>
         </div>
 
@@ -151,10 +112,10 @@ export default function LandingPage() {
               isDark ? "text-gray-100" : "text-gray-900"
             }`}
           >
-            {t.h1}
+            {t("common.landing.h1")}
           </h1>
           <p className={`text-base leading-relaxed ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-            {t.welcome}
+            {t("common.landing.welcome")}
           </p>
         </div>
 
@@ -168,7 +129,7 @@ export default function LandingPage() {
                 : "border-gray-300 text-gray-800 hover:bg-gray-50"
             }`}
           >
-            {t.login}
+            {t("auth.login")}
           </a>
           <a
             href="/register"
@@ -178,7 +139,7 @@ export default function LandingPage() {
                 : "bg-black text-white hover:bg-gray-800"
             }`}
           >
-            {t.register}
+            {t("auth.signUp")}
           </a>
         </div>
 
@@ -192,7 +153,7 @@ export default function LandingPage() {
                 : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t.continue}
+            {t("common.landing.continue")}
           </a>
           <a
             href="/help"
@@ -202,7 +163,7 @@ export default function LandingPage() {
                 : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t.howTo}
+            {t("common.landing.howTo")}
           </a>
         </div>
 
@@ -219,15 +180,15 @@ export default function LandingPage() {
         <div className={`stats-container mt-10 grid grid-cols-3 gap-12 ${loginVisible ? "visible" : ""}`}>
           <div className="stat-item text-center">
             <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{membersCount}</div>
-            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.participants}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t("common.landing.members")}</div>
           </div>
           <div className="stat-item text-center">
             <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{ideasCount}</div>
-            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.ideas}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t("common.landing.ideas")}</div>
           </div>
           <div className="stat-item text-center">
             <div className={`text-3xl font-bold ${isDark ? "text-white" : "text-black"}`}>{instrumentsCount}</div>
-            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.instruments}</div>
+            <div className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t("common.landing.instruments")}</div>
           </div>
         </div>
       </main>
@@ -235,10 +196,10 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className={`landing-footer w-full py-6 text-center text-xs ${loginVisible ? "visible" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}>
         <div className="flex items-center justify-center gap-4 mb-1.5">
-          <a href="/privacy" className="hover:underline">Конфиденциальность</a>
-          <a href="/terms" className="hover:underline">Условия использования</a>
+          <a href="/privacy" className="hover:underline">{t("common.footer.privacy")}</a>
+          <a href="/terms" className="hover:underline">{t("common.landing.terms")}</a>
         </div>
-        {t.copyright}
+        {COPYRIGHT}
       </footer>
     </div>
   );

@@ -19,10 +19,10 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  card: "Банковская карта",
+  card: "pay.pmCard",
   yukassa: "ЮKassa",
-  crypto: "Криптокошелёк",
-  sbp: "СБП (QR-код)",
+  crypto: "pay.pmCryptoWallet",
+  sbp: "pay.pmSbp",
 };
 
 function detectCardType(num: string): string {
@@ -37,9 +37,9 @@ function detectCardType(num: string): string {
 
 function validateCardNumber(num: string): string | null {
   const clean = num.replace(/[\s-]/g, "");
-  if (!/^\d+$/.test(clean)) return "Только цифры";
-  if (clean.length < 13) return "Минимум 13 цифр";
-  if (clean.length > 19) return "Максимум 19 цифр";
+  if (!/^\d+$/.test(clean)) return "pay.cardOnlyDigits";
+  if (clean.length < 13) return "pay.cardMin13";
+  if (clean.length > 19) return "pay.cardMax19";
   // Luhn check
   let sum = 0;
   let alt = false;
@@ -49,7 +49,7 @@ function validateCardNumber(num: string): string | null {
     sum += d;
     alt = !alt;
   }
-  if (sum % 10 !== 0) return "Неверный номер карты";
+  if (sum % 10 !== 0) return "pay.cardInvalid";
   return null;
 }
 
@@ -137,7 +137,7 @@ export default function PaymentMethodsManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Удалить способ оплаты?")) return;
+    if (!confirm(t("pay.confirmDeletePm"))) return;
     await fetch(`/api/payment-methods?id=${id}`, { method: "DELETE" });
     loadMethods();
   }
@@ -168,16 +168,16 @@ export default function PaymentMethodsManager() {
             <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.type")}</label>
             <select value={addType} onChange={(e) => setAddType(e.target.value)}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100">
-              <option value="card">💳 Банковская карта</option>
-              <option value="sbp">🔳 СБП (QR-код)</option>
+              <option value="card">💳 {t("pay.pmCard")}</option>
+              <option value="sbp">🔳 {t("pay.pmSbp")}</option>
               <option value="yukassa">🏦 ЮKassa</option>
-              <option value="crypto">₿ Крипто</option>
+              <option value="crypto">₿ {t("pay.pmCrypto")}</option>
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.label")}</label>
             <input type="text" value={addLabel} onChange={(e) => setAddLabel(e.target.value)}
-              placeholder="Тинькофф, Сбер, ЮMoney..."
+              placeholder={t("pay.pmLabelPlaceholder")}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
           </div>
           {addType === "card" && (
@@ -198,23 +198,23 @@ export default function PaymentMethodsManager() {
                 className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 font-mono tracking-wider ${
                   cardError ? "border-red-500" : "dark:border-gray-700"
                 }`} />
-              {cardError && <p className="text-xs text-red-500 mt-1">{cardError}</p>}
+              {cardError && <p className="text-xs text-red-500 mt-1">{t(cardError)}</p>}
             </div>
           )}
           {addType === "sbp" && (
             <div>
-              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">QR-код СБП</label>
+              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t("profile2.sbpQr")}</label>
               {addQrImageUrl ? (
                 <div className="flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={addQrImageUrl} alt="QR" className="w-16 h-16 rounded-lg border dark:border-gray-700 object-contain bg-white" />
-                  <button type="button" onClick={() => setAddQrImageUrl("")} className="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                  <button type="button" onClick={() => setAddQrImageUrl("")} className="text-xs text-red-500 hover:text-red-700">{t("common.delete")}</button>
                 </div>
               ) : (
                 <label className="block w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-green-400 transition">
                   <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrUpload} />
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {qrUploading ? "Загрузка..." : "Нажмите, чтобы загрузить QR-код"}
+                    {qrUploading ? t("common.loading") : t("pay.clickToUploadQr")}
                   </span>
                 </label>
               )}
@@ -233,14 +233,14 @@ export default function PaymentMethodsManager() {
                   className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
               </div>
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs text-blue-900 dark:text-blue-200">
-                <div className="font-semibold mb-1">⚙️ Настройте webhook в ЮКассе</div>
-                <div className="mb-2">В личном кабинете ЮКассы → <b>Интеграция → HTTP-уведомления</b> добавьте URL:</div>
+                <div className="font-semibold mb-1">{t("pay.webhookTitle")}</div>
+                <div className="mb-2">{t("pay.webhookStepPre")} <b>{t("pay.webhookStepPath")}</b> {t("pay.webhookStepPost")}</div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded font-mono text-[11px] break-all">https://fomo.spot/api/yukassa/webhook</code>
                   <button type="button" onClick={() => navigator.clipboard?.writeText("https://fomo.spot/api/yukassa/webhook")}
-                    className="text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap">Копировать</button>
+                    className="text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap">{t("pay.copy")}</button>
                 </div>
-                <div className="mt-2">Включите события: <code>payment.succeeded</code>, <code>payment.canceled</code>.</div>
+                <div className="mt-2">{t("pay.webhookEvents")} <code>payment.succeeded</code>, <code>payment.canceled</code>.</div>
               </div>
             </>
           )}
@@ -272,7 +272,7 @@ export default function PaymentMethodsManager() {
                   {m.isDefault && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded">{t("pm.default")}</span>}
                 </div>
                 <div className="text-xs text-gray-400">
-                  {TYPE_LABELS[m.type] || m.type}
+                  {TYPE_LABELS[m.type] ? t(TYPE_LABELS[m.type]) : m.type}
                   {m.details?.cardNumber && ` · *${m.details.cardNumber.slice(-4)}`}
                 </div>
               </div>

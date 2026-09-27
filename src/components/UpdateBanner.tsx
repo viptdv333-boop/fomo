@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { forceUpdate } from "@/lib/force-update";
+import { useT } from "@/lib/i18n/client";
 
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 
 // Tells an already-open app (typically an installed PWA that is never fully
 // closed) that a newer release is live, and updates it in one tap.
 export default function UpdateBanner() {
+  const { t } = useT();
   const [outdated, setOutdated] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -44,7 +46,7 @@ export default function UpdateBanner() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[60] bg-white dark:bg-gray-900 border border-green-600 rounded-xl shadow-lg p-3 flex items-center gap-3">
-      <span className="text-sm text-gray-800 dark:text-gray-100 flex-1">Вышла новая версия FOMO</span>
+      <span className="text-sm text-gray-800 dark:text-gray-100 flex-1">{t("common.update.available")}</span>
       <button
         onClick={() => {
           setBusy(true);
@@ -53,7 +55,7 @@ export default function UpdateBanner() {
         disabled={busy}
         className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-60"
       >
-        {busy ? "…" : "Обновить"}
+        {busy ? "…" : t("common.update.button")}
       </button>
     </div>
   );

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 
 export default function ForgotPasswordPage() {
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,7 +34,7 @@ export default function ForgotPasswordPage() {
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
     setMessage(""); setError("");
-    if (newPassword !== confirmPassword) { setError("Пароли не совпадают"); return; }
+    if (newPassword !== confirmPassword) { setError(t("auth.errPasswordsMismatch")); return; }
     setLoading(true);
     const res = await fetch("/api/auth/reset-password", {
       method: "POST",
@@ -50,10 +52,10 @@ export default function ForgotPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
         <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 text-center">
           <div className="text-4xl mb-4">✅</div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Пароль изменён!</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Теперь войдите с новым паролем</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t("auth.passwordChanged")}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t("auth.passwordChangedHint")}</p>
           <Link href="/login" className="block w-full text-center rounded-lg bg-green-600 px-6 py-2.5 text-white font-medium hover:bg-green-700 transition">
-            Войти
+            {t("auth.login")}
           </Link>
         </div>
       </div>
@@ -64,9 +66,9 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
       <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Восстановление пароля</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("auth.resetTitle")}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {step === "email" ? "Введите email для получения кода" : "Введите код и новый пароль"}
+            {step === "email" ? t("auth.resetHintEmail") : t("auth.resetHintCode")}
           </p>
         </div>
 
@@ -99,13 +101,13 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
             >
-              {loading ? "Отправка..." : "Отправить код"}
+              {loading ? t("auth.sending") : t("auth.sendCode")}
             </button>
           </form>
         ) : (
           <form onSubmit={handleReset} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Код из письма</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("auth.codeFromEmail")}</label>
               <input
                 type="text"
                 value={code}
@@ -117,7 +119,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Новый пароль</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("auth.newPassword")}</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -137,7 +139,7 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Подтвердите пароль</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("auth.confirmPassword")}</label>
               <input
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
@@ -151,17 +153,17 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
             >
-              {loading ? "Сброс..." : "Сбросить пароль"}
+              {loading ? t("auth.resetting") : t("auth.resetPassword")}
             </button>
             <button type="button" onClick={() => { setStep("email"); setError(""); }} className="w-full text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-              ← Назад
+              ← {t("auth.back")}
             </button>
           </form>
         )}
 
         <div className="text-center mt-6">
           <Link href="/login" className="text-sm text-green-600 hover:text-green-700 font-medium">
-            Вернуться ко входу
+            {t("auth.backToLogin")}
           </Link>
         </div>
       </div>

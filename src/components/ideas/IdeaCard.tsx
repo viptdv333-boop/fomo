@@ -77,7 +77,7 @@ interface IdeaCardProps {
 }
 
 export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardProps) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { data: session } = useSession();
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
@@ -135,7 +135,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     });
   })();
 
-  const dateStr = formatMessageTime(idea.createdAt);
+  const dateStr = formatMessageTime(idea.createdAt, locale);
 
   const avatarColor = hashColor(idea.author.id);
   const isNew = isRecentlyPublished(idea.createdAt);
@@ -163,7 +163,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {isArchived && <ArchivedBadge className="shrink-0" />}
             {idea.isPaid && (
               <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium shrink-0">
-                {idea.price ? `${idea.price} ₽` : "🔒 канал"}
+                {idea.price ? `${idea.price} ₽` : t("feed2.channelLocked")}
               </span>
             )}
           </div>
@@ -177,7 +177,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           </svg>
           {viewCount}
         </span>
-        <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 shrink-0" title="Комментарии">
+        <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 shrink-0" title={t("feed2.comments")}>
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
           </svg>
@@ -218,7 +218,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           {isArchived && <ArchivedBadge />}
           {idea.isPaid && (
             <span className="ml-auto px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold shrink-0">
-              {idea.price ? `${idea.price} ₽` : "🔒 канал"}
+              {idea.price ? `${idea.price} ₽` : t("feed2.channelLocked")}
             </span>
           )}
         </div>
@@ -243,7 +243,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             </svg>
             {viewCount}
           </span>
-          <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 hover:text-green-600" title="Комментарии">
+          <Link href={`/ideas/${idea.id}#comments`} className="flex items-center gap-1 hover:text-green-600" title={t("feed2.comments")}>
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
             </svg>
@@ -298,7 +298,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <FomoMark />
           {idea.isPaid && (
             <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold">
-              {idea.price ? `${idea.price} ₽` : "🔒 канал"}
+              {idea.price ? `${idea.price} ₽` : t("feed2.channelLocked")}
             </span>
           )}
         </div>
@@ -306,7 +306,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         {/* Edit / archive buttons */}
         {session?.user?.id === idea.author.id && (
           <div className="flex items-center gap-2 shrink-0">
-            <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition" title="Редактировать">
+            <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition" title={t("common.edit")}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
@@ -390,7 +390,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-8 8l3-3h11a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
             </svg>
-            Комментарии{commentCount > 0 ? ` (${commentCount})` : ""}
+            {commentCount > 0 ? t("feed2.commentsCount", { count: commentCount }) : t("feed2.comments")}
           </Link>
           <Link
             href={idea.instruments[0] ? `/chat/${idea.instruments[0].slug}` : "/chat"}
@@ -430,11 +430,11 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             onChange={(e) => setReportReason(e.target.value)}
             className="w-full text-xs border dark:border-gray-700 rounded-lg px-2 py-1.5 dark:bg-gray-900 dark:text-gray-100 mb-2"
           >
-            <option value="">Причина жалобы...</option>
-            <option value="spam">Спам</option>
-            <option value="fraud">Мошенничество</option>
-            <option value="inappropriate">Неприемлемый контент</option>
-            <option value="misleading">Вводящая в заблуждение информация</option>
+            <option value="">{t("feed2.reportReasonPlaceholder")}</option>
+            <option value="spam">{t("feed2.reportSpam")}</option>
+            <option value="fraud">{t("feed2.reportFraud")}</option>
+            <option value="inappropriate">{t("feed2.reportInappropriate")}</option>
+            <option value="misleading">{t("feed2.reportMisleading")}</option>
           </select>
           <button
             onClick={async () => {
@@ -450,7 +450,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             disabled={!reportReason}
             className="text-xs bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition disabled:opacity-50"
           >
-            Отправить
+            {t("report.send")}
           </button>
         </div>
       )}

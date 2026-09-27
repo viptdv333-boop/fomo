@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface Props {
   src: string;
@@ -13,6 +14,7 @@ interface Props {
 /// idea text (this only ever renders <img>, no selectable text).
 export default function ImageLightbox({ src, alt, className }: Props) {
   const [open, setOpen] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +41,7 @@ export default function ImageLightbox({ src, alt, className }: Props) {
           <button
             onClick={() => setOpen(false)}
             className="absolute top-4 right-4 text-white/80 hover:text-white text-3xl leading-none"
-            aria-label="Закрыть"
+            aria-label={t("common.close")}
           >
             ✕
           </button>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
+import { useT } from "@/lib/i18n/client";
 
 interface Ticker {
   id: string;
@@ -39,6 +40,7 @@ function TickerBadges({ tickers, limit = 6 }: { tickers: Ticker[]; limit?: numbe
 
 export default function CategoryPage() {
   const { slug } = useParams();
+  const { t, locale } = useT();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [catName, setCatName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -68,9 +70,9 @@ export default function CategoryPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <Link href="/instruments" className="text-sm text-green-600 hover:text-green-700 dark:text-green-400">← Каталог</Link>
-          <h1 className="text-2xl font-bold dark:text-gray-100 mt-1">{catName || "..."}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{filtered.length} инструментов</p>
+          <Link href="/instruments" className="text-sm text-green-600 hover:text-green-700 dark:text-green-400">{t("inst.backToCatalog")}</Link>
+          <h1 className="text-2xl font-bold dark:text-gray-100 mt-1">{(locale !== "ru" && t(`cat.${slug}`) !== `cat.${slug}` ? t(`cat.${slug}`) : catName) || "..."}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t("inst.instrumentsCount", { count: filtered.length })}</p>
         </div>
       </div>
 
@@ -85,7 +87,7 @@ export default function CategoryPage() {
         <div className="ml-auto flex items-center gap-2 shrink-0">
           <div className="relative">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" placeholder={t("terminal.search")} value={search} onChange={e => setSearch(e.target.value)}
               className="pl-8 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 w-44" />
           </div>
           <div className="flex items-center gap-0.5">
@@ -108,7 +110,7 @@ export default function CategoryPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           <div className="text-4xl mb-3">📭</div>
-          <p>{search ? "Ничего не найдено" : "Инструменты пока не добавлены"}</p>
+          <p>{search ? t("inst.nothingFound") : t("inst.noInstruments")}</p>
         </div>
       ) : viewMode === "cards" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -131,7 +133,7 @@ export default function CategoryPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-base text-gray-900 dark:text-gray-100">{asset.name}</span>
-                  <span className="text-xs text-gray-400">{asset._count.instruments} тикеров</span>
+                  <span className="text-xs text-gray-400">{t("inst.tickersCount", { count: asset._count.instruments })}</span>
                 </div>
                 {asset.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{asset.description}</p>}
               </div>

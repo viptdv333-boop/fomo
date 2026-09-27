@@ -113,11 +113,11 @@ const INSTRUMENT_EMOJIS = [
 ];
 
 const EMOJI_CATEGORIES = [
-  { name: "Часто", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
-  { name: "Тикеры", emojis: INSTRUMENT_EMOJIS.map(s => `:${s}:`), isCustom: true },
-  { name: "Лица", emojis: ["😀", "😃", "😄", "😁", "😅", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥"] },
-  { name: "Жесты", emojis: ["👋", "🤚", "🖐️", "✋", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🤝", "🙏"] },
-  { name: "Символы", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
+  { name: "Часто", labelKey: "msg.freq", emojis: ["👍", "❤️", "😂", "🔥", "👎", "😊", "🎉", "💯", "🙏", "😭", "🤣", "😍", "🥰", "😘", "😎", "🤔"] },
+  { name: "Тикеры", labelKey: "chat2.tickers", emojis: INSTRUMENT_EMOJIS.map(s => `:${s}:`), isCustom: true },
+  { name: "Лица", labelKey: "msg.faces", emojis: ["😀", "😃", "😄", "😁", "😅", "🤣", "😂", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥"] },
+  { name: "Жесты", labelKey: "msg.gestures", emojis: ["👋", "🤚", "🖐️", "✋", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🤝", "🙏"] },
+  { name: "Символы", labelKey: "msg.symbols", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
 ] as const;
 
 /* ── SVG Icons ── */
@@ -212,7 +212,7 @@ function IconTrash() {
 
 /* ── Component ── */
 export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm }: ChatRoomProps) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { data: session } = useSession();
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
@@ -383,7 +383,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
     if (file.size > 15 * 1024 * 1024) {
-      alert("Файл слишком большой. Максимум 15 МБ.");
+      alert(t("chat2.fileTooLarge15"));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -402,7 +402,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       setPendingAttachment({ url, name, fileType });
       inputRef.current?.focus();
     } catch {
-      alert("Не удалось загрузить файл");
+      alert(t("chat2.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -429,7 +429,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         className="flex items-center gap-2 mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition max-w-fit"
       >
         <IconPaperclip />
-        <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{msg.fileName || "Файл"}</span>
+        <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{msg.fileName || t("chat2.file")}</span>
       </a>
     );
   }
@@ -465,7 +465,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   async function deleteMessage(messageId: string) {
-    if (!confirm("Удалить сообщение?")) return;
+    if (!confirm(t("chat2.confirmDeleteMessage"))) return;
     try {
       const res = await fetch(`/api/chat/messages/${messageId}`, {
         method: "PATCH",
@@ -524,7 +524,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   /* ── Admin actions ── */
   async function adminAction(action: string) {
-    if (!confirm(`${action} этот чат?`)) return;
+    if (!confirm(t("chat2.confirmAdminAction", { action }))) return;
     try {
       await fetch("/api/chat/rooms", {
         method: "PATCH",
@@ -622,7 +622,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                   <IconPeople />
                 </span>
                 <span className="text-xs text-gray-400">
-                  {participantCount} участник{participantCount === 1 ? "" : participantCount < 5 ? "а" : "ов"}
+                  {t(participantCount === 1 ? "chat2.participantsOne" : participantCount < 5 ? "chat2.participantsFew" : "chat2.participantsMany", { count: participantCount })}
                 </span>
               </div>
             </div>
@@ -636,14 +636,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                     ? "text-green-600 bg-green-50 dark:bg-green-900/30"
                     : "text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
-                title={notifEnabled ? "Уведомления включены" : "Уведомления выключены"}
+                title={notifEnabled ? t("chat2.notifOn") : t("chat2.notifOff")}
               >
                 <IconBell active={notifEnabled} />
               </button>
 
               <button
                 className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                title="Поиск"
+                title={t("common.search")}
               >
                 <IconSearch />
               </button>
@@ -653,7 +653,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 <button
                   onClick={() => setShowAdminMenu(!showAdminMenu)}
                   className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                  title="Меню"
+                  title={t("chat2.menu")}
                 >
                   <IconDots />
                 </button>
@@ -669,32 +669,32 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                               onClick={() => { setShowAdminMenu(false); adminAction("unarchive"); }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                             >
-                              Разархивировать
+                              {t("idea.unarchive")}
                             </button>
                           ) : (
                             <button
                               onClick={() => { setShowAdminMenu(false); adminAction("archive"); }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                             >
-                              В архив
+                              {t("chat2.toArchive")}
                             </button>
                           )}
                           <button
                             onClick={() => { setShowAdminMenu(false); adminAction(isClosed ? "open" : "close"); }}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                           >
-                            {isClosed ? "Открыть чат" : "Закрыть чат"}
+                            {isClosed ? t("chat2.openChat") : t("chat2.closeChat")}
                           </button>
                           <button
                             onClick={() => { setShowAdminMenu(false); adminAction("delete"); }}
                             className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                           >
-                            Удалить чат
+                            {t("chat2.deleteChat")}
                           </button>
                         </>
                       )}
                       {!isAdmin && (
-                        <div className="px-4 py-2 text-sm text-gray-400">Нет действий</div>
+                        <div className="px-4 py-2 text-sm text-gray-400">{t("chat2.noActions")}</div>
                       )}
                     </div>
                   </>
@@ -751,7 +751,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                           {msg.user.displayName}
                         </button>
                         <span className="text-xs text-gray-400 dark:text-gray-500">
-                          {formatMessageTime(msg.createdAt)}
+                          {formatMessageTime(msg.createdAt, locale)}
                         </span>
                       </div>
 
@@ -769,7 +769,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
                       {/* Message text — flat style, no bubble */}
                       {msg.isDeleted ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 italic mt-0.5">Сообщение удалено</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 italic mt-0.5">{t("msg.deleted")}</p>
                       ) : editingId === msg.id ? (
                         <div className="mt-1 flex items-center gap-2">
                           <input
@@ -783,8 +783,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             autoFocus
                             className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                           />
-                          <button onClick={() => submitEdit(msg.id)} className="text-xs text-green-600 hover:text-green-700 font-medium shrink-0">Сохранить</button>
-                          <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Отмена</button>
+                          <button onClick={() => submitEdit(msg.id)} className="text-xs text-green-600 hover:text-green-700 font-medium shrink-0">{t("common.save")}</button>
+                          <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600 shrink-0">{t("common.cancel")}</button>
                         </div>
                       ) : (
                         <>
@@ -809,7 +809,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             />
                           )}
                           {renderFileAttachment(msg)}
-                          {msg.isEdited && <span className="text-[10px] text-gray-400 dark:text-gray-500">(изменено)</span>}
+                          {msg.isEdited && <span className="text-[10px] text-gray-400 dark:text-gray-500">{t("chat2.edited")}</span>}
                         </>
                       )}
 
@@ -821,7 +821,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
                           >
                             <IconComment />
-                            <span>{replyCount} ответ{replyCount === 1 ? "" : replyCount < 5 ? "а" : "ов"}</span>
+                            <span>{t(replyCount === 1 ? "chat2.repliesOne" : replyCount < 5 ? "chat2.repliesFew" : "chat2.repliesMany", { count: replyCount })}</span>
                           </button>
                         </div>
                       )}
@@ -857,7 +857,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                         <button
                           onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
                           className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
-                          title="Ответить"
+                          title={t("msg.reply")}
                         >
                           <IconReply />
                         </button>
@@ -867,14 +867,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             inputRef.current?.focus();
                           }}
                           className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition text-xs font-bold"
-                          title="Упомянуть"
+                          title={t("chat2.mention")}
                         >
                           @
                         </button>
                         <button
                           onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
                           className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
-                          title="Реакция"
+                          title={t("chat2.reaction")}
                         >
                           <IconSmile />
                         </button>
@@ -883,14 +883,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             <button
                               onClick={() => startEdit(msg)}
                               className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
-                              title="Редактировать"
+                              title={t("common.edit")}
                             >
                               <IconPencil />
                             </button>
                             <button
                               onClick={() => deleteMessage(msg.id)}
                               className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-gray-400 hover:text-red-500 transition"
-                              title="Удалить"
+                              title={t("common.delete")}
                             >
                               <IconTrash />
                             </button>
@@ -934,7 +934,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             <button
               onClick={() => setPendingAttachment(null)}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 p-1"
-              title="Убрать вложение"
+              title={t("chat2.removeAttachment")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -948,7 +948,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
           <div className="bg-green-50 dark:bg-green-900/20 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2 shrink-0">
             <div className="flex-1 min-w-0">
               <div className="text-xs text-green-600 dark:text-green-400 font-semibold">
-                Ответ для {replyTo.user.displayName}
+                {t("chat2.replyFor")} {replyTo.user.displayName}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 break-words">{replyTo.text}</div>
             </div>
@@ -983,7 +983,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         {/* ── INPUT AREA ── */}
         {isClosed || isArchived ? (
           <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 text-center text-sm text-gray-500">
-            {isArchived ? "Чат в архиве" : "Чат закрыт"}
+            {isArchived ? t("chat2.roomArchived") : t("chat2.roomClosed")}
           </div>
         ) : (
           <form
@@ -1003,7 +1003,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-50"
-              title="Прикрепить файл"
+              title={t("msg.attachFile")}
             >
               {uploading ? (
                 <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
@@ -1069,7 +1069,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                             : "text-gray-400 hover:text-gray-600"
                         }`}
                       >
-                        {cat.name}
+                        {t(cat.labelKey)}
                       </button>
                     ))}
                   </div>

@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import IdeaForm from "@/components/ideas/IdeaForm";
+import { useT } from "@/lib/i18n/client";
 
 export default function EditIdeaPage() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
+  const { t } = useT();
   const [initialData, setInitialData] = useState<{
     title: string;
     preview: string;
@@ -26,7 +28,7 @@ export default function EditIdeaPage() {
     async function load() {
       const res = await fetch(`/api/ideas/${params.id}`);
       if (!res.ok) {
-        setError("Идея не найдена");
+        setError(t("idea.notFound"));
         setLoading(false);
         return;
       }
@@ -54,13 +56,13 @@ export default function EditIdeaPage() {
     if (session) load();
   }, [params.id, session]);
 
-  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
+  if (loading) return <div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>;
   if (error) return <div className="text-red-500 py-12 text-center">{error}</div>;
   if (!initialData) return null;
 
   return (
     <div className="max-w-3xl w-full mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Редактирование идеи</h1>
+      <h1 className="text-2xl font-bold mb-6">{t("feed2.editIdea")}</h1>
       <IdeaForm mode="edit" ideaId={params.id as string} initialData={initialData} />
     </div>
   );

@@ -31,7 +31,7 @@ interface Props {
 }
 
 export default function ChannelDiscussion({ tariffId }: Props) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
@@ -107,7 +107,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data.error || "Не удалось загрузить файл");
+        alert(data.error || t("channel2.uploadFailed"));
         return;
       }
       setPendingFile({ url: data.url, name: data.name, fileType: data.fileType });
@@ -136,7 +136,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
       setReplyTo(null);
       setPendingFile(null);
     } else {
-      alert("Не удалось отправить сообщение");
+      alert(t("channel2.sendFailed"));
     }
     setSending(false);
     loadMessages();
@@ -190,7 +190,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
       {/* Messages */}
       <div ref={messagesBoxRef} className="max-h-[400px] overflow-y-auto p-4 space-y-3">
         {messages.filter((m) => !m.isDeleted).length === 0 ? (
-          <div className="text-gray-400 text-center py-8 text-sm">Начните обсуждение</div>
+          <div className="text-gray-400 text-center py-8 text-sm">{t("channel2.startDiscussion")}</div>
         ) : (
           messages.filter((m) => !m.isDeleted).map((msg) => (
             <div key={msg.id} className="flex gap-2.5 group">
@@ -208,7 +208,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                   <Link href={`/profile/${msg.user.id}`} className="text-xs font-semibold dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400">
                     {msg.user.displayName}
                   </Link>
-                  <span className="text-[10px] text-gray-400">{formatMessageTime(msg.createdAt)}</span>
+                  <span className="text-[10px] text-gray-400">{formatMessageTime(msg.createdAt, locale)}</span>
                   {msg.isPinned && <span className="text-[10px] text-yellow-500">📌</span>}
                 </div>
                 {msg.replyTo && (
@@ -228,19 +228,19 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                 )}
                 {msg.fileUrl && msg.fileType !== "video" && msg.fileType !== "image" && (
                   <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1 text-xs text-green-600 hover:underline">
-                    📄 {msg.fileName || "Файл"}
+                    📄 {msg.fileName || t("channel2.file")}
                   </a>
                 )}
                 {/* Actions */}
                 <div className="flex gap-2 mt-0.5 opacity-0 group-hover:opacity-100 transition">
                   <button onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
-                    className="text-[10px] text-gray-400 hover:text-green-600">Ответить</button>
+                    className="text-[10px] text-gray-400 hover:text-green-600">{t("msg.reply")}</button>
                   {isAuthor && (
                     <>
                       <button onClick={() => handleModerate("pin", msg.id)}
-                        className="text-[10px] text-gray-400 hover:text-yellow-600">{msg.isPinned ? "Открепить" : "Закрепить"}</button>
+                        className="text-[10px] text-gray-400 hover:text-yellow-600">{msg.isPinned ? t("msg.unpin") : t("msg.pin")}</button>
                       <button onClick={() => handleModerate("delete", msg.id)}
-                        className="text-[10px] text-gray-400 hover:text-red-500">Удалить</button>
+                        className="text-[10px] text-gray-400 hover:text-red-500">{t("msg.delete")}</button>
                     </>
                   )}
                 </div>
@@ -285,7 +285,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          title="Прикрепить фото или видео (до 15 МБ)"
+          title={t("channel2.attachTitle")}
           className="px-3 py-2 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50 transition"
         >
           {uploading ? "…" : "📎"}

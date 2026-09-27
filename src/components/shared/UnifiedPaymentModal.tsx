@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/client";
+import { translate } from "@/lib/i18n/dictionaries";
 
 // ===== Universal payment types =====
 export type PaymentPurpose =
@@ -32,6 +34,7 @@ type Step = "method" | "pay" | "success";
 
 export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: UnifiedPaymentModalProps) {
   const router = useRouter();
+  const { t } = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Steps
@@ -81,10 +84,10 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   // ===== Helpers =====
   const title = (() => {
     switch (purpose.type) {
-      case "donation": return `Донат для ${purpose.authorName}`;
-      case "idea": return `Покупка идеи`;
-      case "subscription": return `Подписка на ${purpose.authorName}`;
-      case "course": return `Покупка курса`;
+      case "donation": return t("pay.titleDonation", { name: purpose.authorName });
+      case "idea": return t("pay.titleIdea");
+      case "subscription": return t("pay.titleSubscription", { name: purpose.authorName });
+      case "course": return t("pay.titleCourse");
     }
   })();
 
@@ -135,8 +138,8 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setError("Можно прикрепить только изображение"); return; }
-    if (file.size > 10 * 1024 * 1024) { setError("Максимальный размер — 10 МБ"); return; }
+    if (!file.type.startsWith("image/")) { setError(t("pay.onlyImage")); return; }
+    if (file.size > 10 * 1024 * 1024) { setError(t("pay.maxSize10")); return; }
     setReceiptFile(file);
     setReceiptPreview(URL.createObjectURL(file));
     setError("");
@@ -155,7 +158,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
     formData.append("file", receiptFile);
     formData.append("type", "receipts");
     const res = await fetch("/api/upload", { method: "POST", body: formData });
-    if (!res.ok) { setError("Не удалось загрузить скриншот"); return null; }
+    if (!res.ok) { setError(t("pay.screenshotUploadFailed")); return null; }
     return (await res.json()).url;
   }
 
@@ -172,11 +175,11 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           body: JSON.stringify({ ideaId: purpose.ideaId }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Ошибка оплаты");
-        if (!data.paymentRequest?.id) throw new Error("Ошибка оплаты");
+        if (!res.ok) throw new Error(data.error || t("pay.paymentError"));
+        if (!data.paymentRequest?.id) throw new Error(t("pay.paymentError"));
         setIdeaPayment({ id: data.paymentRequest.id, sellerCard: data.sellerCard || null, sellerQrUrl: data.sellerQrUrl || null });
       } catch (err: any) {
-        setError(err.message || "Ошибка оплаты");
+        setError(err.message || t("pay.paymentError"));
         setLoadingIdeaPayment(false);
         return;
       }
@@ -187,7 +190,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   }
 
   async function handleCardPayment() {
-    if (!receiptFile) { setError("Прикрепите скриншот чека об оплате"); return; }
+    if (!receiptFile) { setError(t("pay.attachReceipt")); return; }
     setSubmitting(true);
     setError("");
 
@@ -246,7 +249,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
 
       setStep("success");
     } catch (err: any) {
-      setError(err.message || "Ошибка оплаты");
+      setError(err.message || t("pay.paymentError"));
     }
     setSubmitting(false);
   }
@@ -266,7 +269,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
       const data = await res.json();
       window.location.href = data.paymentUrl;
     } else {
-      setError((await res.json()).error || "Ошибка создания платежа");
+      setError((await res.json()).error || t("pay.paymentCreateError"));
       setSubmitting(false);
     }
   }
@@ -281,23 +284,25 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
       if (!convRes.ok) return;
       const conv = await convRes.json();
 
+      // The DM goes to the author, not the buyer — keep it in the site's base language.
+      const tRu = (key: string, vars?: Record<string, string | number>) => translate("ru", key, vars);
       const msgText = (() => {
         switch (purpose.type) {
           case "donation":
-            return `💰 Донат${donationAmount ? ` ${donationAmount} ₽` : ""}\n\nЧек об оплате прикреплён. Спасибо!`;
+            return tRu("pay.dmDonation", { amount: donationAmount ? ` ${donationAmount} ₽` : "" });
           case "idea":
-            return `💳 Оплата идеи «${purpose.ideaTitle}» — ${purpose.price} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.`;
+            return tRu("pay.dmIdea", { title: purpose.ideaTitle, price: purpose.price });
           case "subscription":
-            return `💳 Оплата подписки «${selectedTariff?.name}» — ${amount} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.`;
+            return tRu("pay.dmSubscription", { title: String(selectedTariff?.name), price: amount });
           case "course":
-            return `💳 Оплата курса «${purpose.courseTitle}» — ${purpose.price} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.`;
+            return tRu("pay.dmCourse", { title: purpose.courseTitle, price: purpose.price });
         }
       })();
 
       await fetch(`/api/messages/conversations/${conv.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: msgText, fileUrl: receiptUrl, fileName: "чек_оплаты.png", fileType: "image" }),
+        body: JSON.stringify({ text: msgText, fileUrl: receiptUrl, fileName: tRu("pay.receiptFileName"), fileType: "image" }),
       });
     } catch { /* non-critical */ }
   }
@@ -317,17 +322,17 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           {step === "success" && (
             <div className="text-center py-6">
               <div className="text-4xl mb-3">✅</div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Заявка отправлена!</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{t("pay.requestSent")}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {purpose.type === "donation"
-                  ? "Автор получил ваш чек в сообщениях. Спасибо за поддержку!"
-                  : "Автор получил ваш чек в сообщениях и подтвердит оплату после проверки."}
+                  ? t("pay.successDonation")
+                  : t("pay.successPayment")}
               </p>
               <button
                 onClick={() => { onClose(); onSuccess?.(); router.refresh(); }}
                 className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
               >
-                Понятно
+                {t("pay.gotIt")}
               </button>
             </div>
           )}
@@ -341,12 +346,12 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               {/* Tariff selector for subscriptions */}
               {purpose.type === "subscription" && tariffs.length > 1 && (
                 <div className="space-y-2 mb-4">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Выберите тариф</p>
-                  {tariffs.map((t) => (
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("pay.chooseTariff")}</p>
+                  {tariffs.map((tf) => (
                     <label
-                      key={t.id}
+                      key={tf.id}
                       className={`block border rounded-lg p-3 cursor-pointer transition ${
-                        selectedTariff?.id === t.id
+                        selectedTariff?.id === tf.id
                           ? "border-green-500 bg-green-50 dark:bg-green-900/20"
                           : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                       }`}
@@ -354,16 +359,16 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                       <input
                         type="radio"
                         name="tariff"
-                        checked={selectedTariff?.id === t.id}
-                        onChange={() => setSelectedTariff(t)}
+                        checked={selectedTariff?.id === tf.id}
+                        onChange={() => setSelectedTariff(tf)}
                         className="sr-only"
                       />
                       <div className="flex justify-between">
-                        <span className="font-medium text-sm dark:text-gray-100">{t.name}</span>
-                        <span className="text-sm font-semibold text-green-600">{Number(t.price)} ₽</span>
+                        <span className="font-medium text-sm dark:text-gray-100">{tf.name}</span>
+                        <span className="text-sm font-semibold text-green-600">{Number(tf.price)} ₽</span>
                       </div>
-                      {t.description && <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>}
-                      <p className="text-xs text-gray-400 mt-0.5">Срок: {t.durationDays} дн.</p>
+                      {tf.description && <p className="text-xs text-gray-500 mt-0.5">{tf.description}</p>}
+                      <p className="text-xs text-gray-400 mt-0.5">{t("pay.termDays", { days: tf.durationDays })}</p>
                     </label>
                   ))}
                 </div>
@@ -372,18 +377,18 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               {/* Donation amount */}
               {purpose.type === "donation" && (
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Сумма доната (необязательно)</label>
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("pay.donationAmountLabel")}</label>
                   <input
                     type="number"
                     value={donationAmount}
                     onChange={(e) => setDonationAmount(e.target.value)}
-                    placeholder="Любая сумма"
+                    placeholder={t("pay.anyAmount")}
                     className="mt-1 w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
               )}
 
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Выберите способ оплаты</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t("pay.chooseMethod")}</p>
 
               {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
@@ -396,8 +401,8 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                   >
                     <span className="text-2xl">💳</span>
                     <div>
-                      <div className="font-medium text-sm dark:text-gray-100">Перевод на карту</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">По номеру карты через банковское приложение</div>
+                      <div className="font-medium text-sm dark:text-gray-100">{t("pay.methodCardTitle")}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{t("pay.methodCardDesc")}</div>
                     </div>
                     <span className="ml-auto text-gray-400">{loadingIdeaPayment && paymentMethod === "card" ? "..." : "→"}</span>
                   </button>
@@ -410,8 +415,8 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                   >
                     <span className="text-2xl">🔳</span>
                     <div>
-                      <div className="font-medium text-sm dark:text-gray-100">Оплата по QR-коду (СБП)</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Отсканируйте QR в приложении банка</div>
+                      <div className="font-medium text-sm dark:text-gray-100">{t("pay.methodSbpTitle")}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{t("pay.methodSbpDesc")}</div>
                     </div>
                     <span className="ml-auto text-gray-400">{loadingIdeaPayment && paymentMethod === "sbp" ? "..." : "→"}</span>
                   </button>
@@ -425,7 +430,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     <span className="text-2xl">🏦</span>
                     <div>
                       <div className="font-medium text-sm dark:text-gray-100">ЮKassa</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Автоматическая оплата картой онлайн</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{t("pay.methodYukassaDesc")}</div>
                     </div>
                     <span className="ml-auto text-gray-400">{submitting ? "..." : "→"}</span>
                   </button>
@@ -438,29 +443,29 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           {step === "pay" && (paymentMethod === "card" || paymentMethod === "sbp") && (
             <>
               <button onClick={() => setStep("method")} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 mb-3 inline-flex items-center gap-1">
-                ← Назад
+                ← {t("common.back")}
               </button>
 
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
 
               {/* Instructions */}
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">
-                <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">Инструкция:</p>
+                <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">{t("pay.instruction")}</p>
                 <ol className="text-xs text-green-700 dark:text-green-400 space-y-0.5 list-decimal list-inside">
                   {paymentMethod === "sbp" ? (
                     <>
-                      <li>Откройте приложение вашего банка → «Оплата по QR» / СБП</li>
-                      <li>Отсканируйте QR-код ниже</li>
-                      <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"}</li>
-                      <li>Сделайте скриншот чека об оплате</li>
-                      <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                      <li>{t("pay.sbpStep1")}</li>
+                      <li>{t("pay.sbpStep2")}</li>
+                      <li>{t("pay.transferAmount", { amount: amount > 0 ? `${amount} ₽` : t("pay.requiredAmount") })}</li>
+                      <li>{t("pay.stepScreenshot")}</li>
+                      <li>{t("pay.stepAttach")}</li>
                     </>
                   ) : (
                     <>
-                      <li>Скопируйте номер карты ниже</li>
-                      <li>Переведите {amount > 0 ? `${amount} ₽` : "нужную сумму"} через банковское приложение</li>
-                      <li>Сделайте скриншот чека об оплате</li>
-                      <li>Прикрепите скриншот и нажмите «Я оплатил»</li>
+                      <li>{t("pay.cardStep1")}</li>
+                      <li>{t("pay.cardStepTransfer", { amount: amount > 0 ? `${amount} ₽` : t("pay.requiredAmount") })}</li>
+                      <li>{t("pay.stepScreenshot")}</li>
+                      <li>{t("pay.stepAttach")}</li>
                     </>
                   )}
                 </ol>
@@ -471,12 +476,12 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                 qrUrl ? (
                   <div className="flex flex-col items-center bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 mb-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrUrl} alt="QR-код СБП" className="w-48 h-48 object-contain" />
-                    <p className="text-xs text-gray-400 mt-2">Наведите камеру банковского приложения на QR-код</p>
+                    <img src={qrUrl} alt={t("profile2.sbpQr")} className="w-48 h-48 object-contain" />
+                    <p className="text-xs text-gray-400 mt-2">{t("pay.qrScanHint")}</p>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
-                    QR-код не указан. Уточните у автора.
+                    {t("pay.qrMissing")}
                   </p>
                 )
               ) : cardNumber ? (
@@ -492,27 +497,27 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                         : "bg-green-100 dark:bg-green-900/30 text-green-600 hover:bg-green-200"
                     }`}
                   >
-                    {cardCopied ? "✓ Скопировано" : "Копировать"}
+                    {cardCopied ? t("pay.copied") : t("pay.copy")}
                   </button>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
-                  Номер карты не указан. Уточните у автора.
+                  {t("pay.cardMissing")}
                 </p>
               )}
 
               {/* Receipt upload */}
               <div className="mb-4">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  Скриншот чека <span className="text-red-500">*</span>
+                  {t("pay.receiptScreenshot")} <span className="text-red-500">*</span>
                 </p>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
                 {receiptPreview ? (
                   <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={receiptPreview} alt="Чек" className="w-full max-h-48 object-contain rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800" />
+                    <img src={receiptPreview} alt={t("pay.receiptAlt")} className="w-full max-h-48 object-contain rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800" />
                     <button onClick={removeReceipt} className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">✕</button>
-                    <p className="text-xs text-green-600 mt-1">✓ Скриншот прикреплён</p>
+                    <p className="text-xs text-green-600 mt-1">{t("pay.screenshotAttached")}</p>
                   </div>
                 ) : (
                   <button
@@ -520,8 +525,8 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-green-400 transition"
                   >
                     <div className="text-2xl mb-1">📎</div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Нажмите, чтобы прикрепить скриншот</p>
-                    <p className="text-xs text-gray-400 mt-0.5">JPG, PNG до 10 МБ</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t("pay.clickToAttach")}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("pay.fileHint10")}</p>
                   </button>
                 )}
               </div>
@@ -533,7 +538,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                 disabled={submitting || !receiptFile}
                 className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
               >
-                {submitting ? "Отправка..." : "Я оплатил"}
+                {submitting ? t("pay.sending") : t("pay.iPaid")}
               </button>
             </>
           )}
@@ -553,21 +558,22 @@ function ProductInfo({
   selectedTariff: TariffOption | null;
   amount: number;
 }) {
+  const { t } = useT();
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm dark:text-gray-100">
-            {purpose.type === "donation" && `Донат для ${purpose.authorName}`}
+            {purpose.type === "donation" && t("pay.titleDonation", { name: purpose.authorName })}
             {purpose.type === "idea" && purpose.ideaTitle}
-            {purpose.type === "subscription" && (selectedTariff?.name || "Подписка")}
+            {purpose.type === "subscription" && (selectedTariff?.name || t("pay.subscription"))}
             {purpose.type === "course" && purpose.courseTitle}
           </div>
           {purpose.type === "subscription" && selectedTariff?.description && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{selectedTariff.description}</p>
           )}
           {purpose.type === "subscription" && selectedTariff && (
-            <p className="text-xs text-gray-400 mt-0.5">Срок: {selectedTariff.durationDays} дн.</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t("pay.termDays", { days: selectedTariff.durationDays })}</p>
           )}
         </div>
         {amount > 0 && (

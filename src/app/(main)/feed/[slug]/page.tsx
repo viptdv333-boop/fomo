@@ -121,10 +121,10 @@ export default function FeedByInstrumentPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm dark:text-gray-100 truncate">{ch.name}</div>
-                    <div className="text-xs text-gray-400">{ch.author.displayName} · {ch._count.subscriptions} подписчиков</div>
+                    <div className="text-xs text-gray-400">{ch.author.displayName} · {t("feed2.subscribersCount", { count: ch._count.subscriptions })}</div>
                   </div>
                   <span className="text-xs font-medium text-green-600">
-                    {ch.price > 0 ? `${ch.price} ₽` : "Бесплатный"}
+                    {ch.price > 0 ? `${ch.price} ₽` : t("feed2.freeChannel")}
                   </span>
                 </div>
               </Link>

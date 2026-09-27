@@ -70,10 +70,10 @@ export default function FeedPageWrapper() {
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">
-            Большая доска
+            {t("feed2.bigBoard")}
           </h1>
           <p className="text-base text-gray-500 dark:text-gray-400">
-            Идеи. Аналитика. Обучение. Не ИИР!
+            {t("feed2.tagline")}
           </p>
         </div>
         {session?.user && (
@@ -88,7 +88,7 @@ export default function FeedPageWrapper() {
           </Link>
         )}
       </div>
-      <Suspense fallback={<div className="text-gray-500 py-12 text-center">Загрузка...</div>}>
+      <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>
         <FeedPage />
       </Suspense>
     </div>
@@ -251,7 +251,7 @@ function FeedPage() {
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
-          ОБЩАЯ
+          {t("feed2.boardAll")}
         </button>
         <button
           onClick={() => { setBoard("mine"); setPage(1); }}
@@ -261,7 +261,7 @@ function FeedPage() {
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
-          ⭐ МОЯ
+          {t("feed2.boardMine")}
         </button>
         {board === "mine" && session?.user && (
           <button
@@ -272,15 +272,15 @@ function FeedPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            Настроить
+            {t("feed2.customize")}
           </button>
         )}
       </div>
 
       {board === "mine" && !session?.user ? (
         <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl shadow">
-          <p className="text-gray-500 dark:text-gray-400 mb-3">Войдите, чтобы видеть свою ленту подписок.</p>
-          <Link href="/login" className="text-green-600 hover:text-green-700 font-medium text-sm">Войти</Link>
+          <p className="text-gray-500 dark:text-gray-400 mb-3">{t("feed2.loginToSeeMine")}</p>
+          <Link href="/login" className="text-green-600 hover:text-green-700 font-medium text-sm">{t("nav.login")}</Link>
         </div>
       ) : (
       <>
@@ -401,7 +401,7 @@ function FeedPage() {
                       }
                       const list = Array.from(groups.values());
                       return list.length === 0 ? (
-                        <div className="px-3 py-4 text-xs text-gray-400 text-center">Ничего не найдено</div>
+                        <div className="px-3 py-4 text-xs text-gray-400 text-center">{t("feed2.nothingFound")}</div>
                       ) : (
                         list.map((inst) => {
                           const isAsset = !!inst.asset;
@@ -504,13 +504,13 @@ function FeedPage() {
 
         {/* View mode — right side */}
         <div className="ml-auto flex items-center gap-0.5 shrink-0">
-          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Абзац">
+          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewParagraph")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
           </button>
-          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Список">
+          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewList")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
-          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title="Карточки">
+          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewCards")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
         </div>
@@ -581,16 +581,16 @@ function FeedPage() {
           </svg>
           {board === "mine" && uniqueAuthors.length === 0 && channels.length === 0 ? (
             <>
-              <p className="text-gray-500 dark:text-gray-400 mb-3">Вы пока ни на кого не подписаны.</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-3">{t("feed2.noSubsYet")}</p>
               <div className="flex items-center justify-center gap-3 text-sm">
-                <Link href="/authors" className="text-green-600 hover:text-green-700 font-medium">Найти авторов</Link>
-                <Link href="/channels" className="text-green-600 hover:text-green-700 font-medium">Смотреть каналы</Link>
+                <Link href="/authors" className="text-green-600 hover:text-green-700 font-medium">{t("subs.findAuthors")}</Link>
+                <Link href="/channels" className="text-green-600 hover:text-green-700 font-medium">{t("feed2.browseChannels")}</Link>
               </div>
             </>
           ) : board === "mine" ? (
-            <p className="text-gray-500 dark:text-gray-400">Пока нет новых постов от тех, на кого вы подписаны.</p>
+            <p className="text-gray-500 dark:text-gray-400">{t("feed2.noNewPosts")}</p>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">Нет идей</p>
+            <p className="text-gray-500 dark:text-gray-400">{t("feed2.noIdeas")}</p>
           )}
         </div>
       ) : viewMode === "cards" ? (
@@ -648,15 +648,15 @@ function FeedPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b dark:border-gray-800 flex items-center justify-between shrink-0">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Настроить Мою доску</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t("feed2.customizeMyBoard")}</h3>
               <button onClick={() => setShowMuteSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
             </div>
             <p className="px-4 pt-3 text-xs text-gray-400">
-              Отключите автора, чтобы его посты не показывались в Моей доске — вы останетесь подписаны.
+              {t("feed2.muteHint")}
             </p>
             <div className="overflow-y-auto p-2">
               {uniqueAuthors.length === 0 ? (
-                <div className="text-sm text-gray-400 text-center py-8">Вы пока ни на кого не подписаны</div>
+                <div className="text-sm text-gray-400 text-center py-8">{t("feed2.noSubsYetShort")}</div>
               ) : (
                 uniqueAuthors.map((a) => {
                   const muted = mutedIds.has(a.id);
@@ -679,7 +679,7 @@ function FeedPage() {
                             : "border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
                         }`}
                       >
-                        {muted ? "Скрыт" : "Показывается"}
+                        {muted ? t("feed2.muted") : t("feed2.shown")}
                       </button>
                     </div>
                   );

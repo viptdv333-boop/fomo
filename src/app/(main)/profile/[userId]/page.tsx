@@ -8,12 +8,13 @@ import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
 import { useT } from "@/lib/i18n/client";
 
+// Values are i18n keys (feed2.spec.*), resolved with t() at render time.
 const SPECIALIZATION_LABELS: Record<string, string> = {
-  trader: "Трейдер",
-  analyst: "Аналитик",
-  investor: "Инвестор",
-  scalper: "Скальпер",
-  algotrader: "Алготрейдер",
+  trader: "feed2.spec.trader",
+  analyst: "feed2.spec.analyst",
+  investor: "feed2.spec.investor",
+  scalper: "feed2.spec.scalper",
+  algotrader: "feed2.spec.algotrader",
 };
 
 interface EducationRecord {
@@ -201,7 +202,7 @@ export default function AuthorProfilePage() {
                 key={spec}
                 className="px-2.5 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium"
               >
-                {SPECIALIZATION_LABELS[spec] || spec}
+                {SPECIALIZATION_LABELS[spec] ? t(SPECIALIZATION_LABELS[spec]) : spec}
               </span>
             ))}
           </div>
@@ -219,7 +220,7 @@ export default function AuthorProfilePage() {
             {profile.birthDate && (
               <div>
                 <span className="text-gray-500 dark:text-gray-400">{t("profile.age")} </span>
-                <span className="text-gray-700 dark:text-gray-300">{calcAge(profile.birthDate)} лет</span>
+                <span className="text-gray-700 dark:text-gray-300">{t("feed2.ageYears", { age: calcAge(profile.birthDate) })}</span>
               </div>
             )}
             {profile.workplace && (
@@ -247,7 +248,7 @@ export default function AuthorProfilePage() {
                   <div className="font-medium text-gray-700 dark:text-gray-300">{edu.university}</div>
                   {edu.faculty && <div className="text-gray-500">{edu.faculty}</div>}
                   {edu.specialty && <div className="text-gray-500">{edu.specialty}</div>}
-                  {edu.yearEnd && <div className="text-gray-400 text-xs">Выпуск {edu.yearEnd}</div>}
+                  {edu.yearEnd && <div className="text-gray-400 text-xs">{t("feed2.graduationYear", { year: edu.yearEnd })}</div>}
                 </div>
               ))}
             </div>
@@ -298,7 +299,7 @@ export default function AuthorProfilePage() {
                 <a href={profile.socialLinks.website.startsWith("http") ? profile.socialLinks.website : `https://${profile.socialLinks.website}`}
                   target="_blank" rel="noopener noreferrer"
                   className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition">
-                  Сайт
+                  {t("profile.website")}
                 </a>
               )}
             </div>

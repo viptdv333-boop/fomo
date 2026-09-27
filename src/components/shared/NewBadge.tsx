@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/client";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Whether an idea published at `createdAt` is still within its first 24h. */
@@ -8,21 +10,23 @@ export function isRecentlyPublished(createdAt: string) {
 }
 
 export default function NewBadge({ className = "" }: { className?: string }) {
+  const { t } = useT();
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 shadow-sm animate-pulse ${className}`}
     >
-      Новое
+      {t("common.badge.new")}
     </span>
   );
 }
 
 export function ArchivedBadge({ className = "" }: { className?: string }) {
+  const { t } = useT();
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white bg-gray-400 dark:bg-gray-600 shadow-sm ${className}`}
     >
-      Архив
+      {t("common.badge.archived")}
     </span>
   );
 }

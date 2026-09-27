@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface Props {
   /** Receives the token to send along with the form, or "" when reset. */
@@ -27,6 +28,7 @@ async function solve(c: Challenge): Promise<number> {
  * proof-of-work puzzle (~1-2 s). Remount with a new `key` to reset.
  */
 export default function Captcha({ onToken }: Props) {
+  const { t } = useT();
   const [state, setState] = useState<"idle" | "working" | "done" | "error">("idle");
   const busy = useRef(false);
 
@@ -63,12 +65,12 @@ export default function Captcha({ onToken }: Props) {
       />
       <span className="text-sm text-gray-700 dark:text-gray-200">
         {state === "working"
-          ? "Проверка…"
+          ? t("common.captcha.checking")
           : state === "done"
-            ? "Подтверждено"
+            ? t("common.captcha.verified")
             : state === "error"
-              ? "Ошибка, нажмите ещё раз"
-              : "Я не робот"}
+              ? t("common.captcha.error")
+              : t("common.captcha.notRobot")}
       </span>
     </label>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
 import Linkify from "@/components/shared/Linkify";
+import { useT } from "@/lib/i18n/client";
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
 
 export default function DMChat({ conversationId, otherUserName, otherUserAvatar }: Props) {
   const { data: session } = useSession();
+  const { t, locale } = useT();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -121,7 +123,7 @@ export default function DMChat({ conversationId, otherUserName, otherUserAvatar 
       {/* Messages */}
       <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-center py-12 text-sm text-gray-400">Начните диалог</div>
+          <div className="text-center py-12 text-sm text-gray-400">{t("chat2.startDialog")}</div>
         ) : messages.map((msg) => {
           const isMine = msg.userId === myId;
           return (
@@ -149,7 +151,7 @@ export default function DMChat({ conversationId, otherUserName, otherUserAvatar 
                   />
                 </p>
                 <div className={`text-[10px] mt-1 ${isMine ? "text-white/60" : "text-gray-400"} text-right`}>
-                  {new Date(msg.createdAt).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(msg.createdAt).toLocaleTimeString(locale === "cn" ? "zh-CN" : locale, { hour: "2-digit", minute: "2-digit" })}
                 </div>
               </div>
             </div>
@@ -162,7 +164,7 @@ export default function DMChat({ conversationId, otherUserName, otherUserAvatar 
       {replyTo && (
         <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
           <div className="flex-1 text-xs text-gray-500 truncate">
-            Ответ для <strong>{replyTo.user.displayName}</strong>: {replyTo.text.slice(0, 60)}
+            {t("chat2.replyFor")} <strong>{replyTo.user.displayName}</strong>: {replyTo.text.slice(0, 60)}
           </div>
           <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
@@ -171,7 +173,7 @@ export default function DMChat({ conversationId, otherUserName, otherUserAvatar 
       {/* Input */}
       <form onSubmit={handleSend} className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex gap-2 shrink-0">
         <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
-          placeholder="Написать сообщение..."
+          placeholder={t("chat.writeMessage")}
           className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
         <button type="submit" disabled={sending || !input.trim()}
           className="w-10 h-10 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-full flex items-center justify-center transition shrink-0">

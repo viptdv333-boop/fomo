@@ -3,6 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import PaymentMethodsManager from "./PaymentMethodsManager";
+import { useT } from "@/lib/i18n/client";
+
+const DATE_LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
 
 interface PaymentItem {
   id: string;
@@ -42,6 +45,7 @@ interface FinanceTabProps {
 }
 
 export default function FinanceTab({ userId }: FinanceTabProps) {
+  const { t } = useT();
   const [data, setData] = useState<FinanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [unsubscribing, setUnsubscribing] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
   }, [userId]);
 
   const handleUnsubscribe = async (subscriptionId: string) => {
-    if (!confirm("Вы уверены, что хотите отписаться?")) return;
+    if (!confirm(t("pay.confirmUnsubscribe"))) return;
     setUnsubscribing(subscriptionId);
     try {
       const res = await fetch("/api/subscriptions", {
@@ -74,7 +78,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       if (res.ok) {
         fetchData();
       } else {
-        alert("Не удалось отписаться");
+        alert(t("pay.unsubscribeFailed"));
       }
     } finally {
       setUnsubscribing(null);
@@ -99,7 +103,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
 
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
       if (!uploadRes.ok) {
-        alert("Ошибка загрузки файла");
+        alert(t("pay.fileUploadError"));
         return;
       }
       const { url } = await uploadRes.json();
@@ -112,7 +116,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       if (patchRes.ok) {
         fetchData();
       } else {
-        alert("Ошибка сохранения квитанции");
+        alert(t("pay.receiptSaveError"));
       }
     } finally {
       setUploadingReceipt(null);
@@ -165,22 +169,22 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {/* Earnings overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
-          label="Заработано всего"
+          label={t("pay.earnedTotal")}
           value={`${data.earnings.total.toLocaleString("ru")} ₽`}
           accent="green"
         />
         <StatCard
-          label="В этом месяце"
+          label={t("pay.thisMonth")}
           value={`${data.earnings.thisMonth.toLocaleString("ru")} ₽`}
           accent="green"
         />
         <StatCard
-          label="Активных подписчиков"
+          label={t("pay.activeSubscribers")}
           value={String(data.subscribers.active)}
           accent="purple"
         />
         <StatCard
-          label="Продано идей"
+          label={t("pay.ideasSold")}
           value={`${data.ideaSales.count} (${data.ideaSales.total.toLocaleString("ru")} ₽)`}
           accent="amber"
         />
@@ -190,23 +194,23 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {data.tariffs.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-            Мои каналы
+            {t("pay.myChannels")}
           </h3>
           <div className="space-y-2">
-            {data.tariffs.map((t) => (
+            {data.tariffs.map((tr) => (
               <Link
-                key={t.id}
-                href={`/channels/${t.id}`}
+                key={tr.id}
+                href={`/channels/${tr.id}`}
                 className="flex items-center justify-between bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 hover:border-green-400 dark:hover:border-green-500 transition"
               >
                 <div>
-                  <span className="font-medium dark:text-gray-100">{t.name}</span>
+                  <span className="font-medium dark:text-gray-100">{tr.name}</span>
                   <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                    {t.price} ₽ / {t.durationDays} дн.
+                    {t("pay.pricePerDays", { price: tr.price, days: tr.durationDays })}
                   </span>
                 </div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t.subscriberCount} подписчиков
+                  {t("pay.subscribersCount", { count: tr.subscriberCount })}
                 </span>
               </Link>
             ))}
@@ -217,17 +221,17 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {/* My spending */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-          Мои расходы
+          {t("pay.mySpending")}
         </h3>
         <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <span className="text-gray-600 dark:text-gray-400">Потрачено всего</span>
+            <span className="text-gray-600 dark:text-gray-400">{t("pay.spentTotal")}</span>
             <span className="font-semibold dark:text-gray-100">
               {data.spending.total.toLocaleString("ru")} ₽
             </span>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-gray-600 dark:text-gray-400">Транзакций</span>
+            <span className="text-gray-600 dark:text-gray-400">{t("pay.transactions")}</span>
             <span className="dark:text-gray-300">{data.spending.count}</span>
           </div>
         </div>
@@ -237,7 +241,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {paidSubscriptions.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-            Мои подписки — Платные
+            {t("pay.mySubsPaid")}
           </h3>
           <div className="space-y-2">
             {paidSubscriptions.map((s) => (
@@ -256,7 +260,7 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {freeSubscriptions.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-            Мои подписки — Бесплатные
+            {t("pay.mySubsFree")}
           </h3>
           <div className="space-y-2">
             {freeSubscriptions.map((s) => (
@@ -274,10 +278,10 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {data.mySubscriptions.length === 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-            Мои подписки
+            {t("pay.mySubs")}
           </h3>
           <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 text-center text-gray-500 dark:text-gray-400">
-            Нет активных подписок
+            {t("pay.noActiveSubs")}
           </div>
         </div>
       )}
@@ -285,11 +289,11 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {/* My Purchases */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-          Мои покупки
+          {t("pay.myPurchases")}
         </h3>
         {data.purchases.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 text-center text-gray-500 dark:text-gray-400">
-            Нет покупок
+            {t("pay.noPurchases")}
           </div>
         ) : (
           <div className="space-y-2">
@@ -311,11 +315,11 @@ export default function FinanceTab({ userId }: FinanceTabProps) {
       {/* My Sales */}
       <div>
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-          Мои продажи
+          {t("pay.mySales")}
         </h3>
         {data.sales.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 text-center text-gray-500 dark:text-gray-400">
-            Нет продаж
+            {t("pay.noSales")}
           </div>
         ) : (
           <div className="space-y-2">
@@ -355,6 +359,7 @@ function SubscriptionCard({
   unsubscribing: boolean;
   onUnsubscribe: () => void;
 }) {
+  const { t } = useT();
   const s = subscription;
   const daysLeft = Math.ceil(
     (new Date(s.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
@@ -376,7 +381,7 @@ function SubscriptionCard({
       <div className="flex items-center gap-3">
         <div className="text-right">
           <div className="text-sm font-medium dark:text-gray-300">
-            {s.monthlyPrice > 0 ? `${s.monthlyPrice} ₽` : "Бесплатно"}
+            {s.monthlyPrice > 0 ? `${s.monthlyPrice} ₽` : t("pay.free")}
           </div>
           <div
             className={`text-xs ${
@@ -387,7 +392,7 @@ function SubscriptionCard({
                 : "text-gray-400 dark:text-gray-500"
             }`}
           >
-            {daysLeft > 0 ? `${daysLeft} дн. осталось` : "Истекла"}
+            {daysLeft > 0 ? t("pay.daysLeft", { days: daysLeft }) : t("pay.expired")}
           </div>
         </div>
         <button
@@ -395,7 +400,7 @@ function SubscriptionCard({
           disabled={unsubscribing}
           className="text-xs px-3 py-1.5 rounded-md border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
         >
-          {unsubscribing ? "..." : "Отписаться"}
+          {unsubscribing ? "..." : t("channels.unsubscribe")}
         </button>
       </div>
     </div>
@@ -403,15 +408,16 @@ function SubscriptionCard({
 }
 
 function StatusBadge({ status }: { status: "PENDING" | "CONFIRMED" | "REJECTED" }) {
+  const { t } = useT();
   const styles = {
     PENDING: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
     CONFIRMED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
     REJECTED: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
   };
   const labels = {
-    PENDING: "Ожидает",
-    CONFIRMED: "Подтверждено",
-    REJECTED: "Отклонено",
+    PENDING: t("pay.statusPending"),
+    CONFIRMED: t("pay.statusConfirmed"),
+    REJECTED: t("pay.statusRejected"),
   };
 
   return (
@@ -436,11 +442,12 @@ function PaymentCard({
   onUploadReceipt: () => void;
   onSendForReview: () => void;
 }) {
+  const { t, locale } = useT();
   const p = payment;
   const counterpartyId = role === "buyer" ? p.sellerId : p.buyerId;
   const counterpartyName = role === "buyer" ? p.sellerName : p.buyerName;
-  const counterpartyLabel = role === "buyer" ? "Продавец" : "Покупатель";
-  const dateStr = new Date(p.createdAt).toLocaleDateString("ru", {
+  const counterpartyLabel = role === "buyer" ? t("pay.seller") : t("pay.buyer");
+  const dateStr = new Date(p.createdAt).toLocaleDateString(DATE_LOCALES[locale] || "ru-RU", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -459,11 +466,11 @@ function PaymentCard({
     );
   } else if (p.subscriptionType) {
     description = (
-      <span className="text-sm text-gray-500 dark:text-gray-400">Подписка</span>
+      <span className="text-sm text-gray-500 dark:text-gray-400">{t("pay.subscription")}</span>
     );
   } else {
     description = (
-      <span className="text-sm text-gray-500 dark:text-gray-400">Оплата</span>
+      <span className="text-sm text-gray-500 dark:text-gray-400">{t("pay.payment")}</span>
     );
   }
 
@@ -503,7 +510,7 @@ function PaymentCard({
             disabled={uploadingReceipt}
             className="text-xs px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50"
           >
-            {uploadingReceipt ? "Загрузка..." : "Загрузить квитанцию"}
+            {uploadingReceipt ? t("common.loading") : t("pay.uploadReceipt")}
           </button>
         </div>
       )}
@@ -516,14 +523,14 @@ function PaymentCard({
             rel="noopener noreferrer"
             className="text-xs text-green-600 dark:text-green-400 hover:underline"
           >
-            Квитанция загружена
+            {t("pay.receiptUploaded")}
           </a>
           <button
             onClick={onSendForReview}
             disabled={sendingReceipt}
             className="text-xs px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50"
           >
-            {sendingReceipt ? "Отправка..." : "Отправить на проверку"}
+            {sendingReceipt ? t("pay.sending") : t("pay.sendForReview")}
           </button>
         </div>
       )}
@@ -542,7 +549,7 @@ function PaymentCard({
             rel="noopener noreferrer"
             className="text-xs text-green-600 dark:text-green-400 hover:underline"
           >
-            Просмотреть квитанцию
+            {t("pay.viewReceipt")}
           </a>
         </div>
       )}
@@ -551,9 +558,10 @@ function PaymentCard({
 }
 
 function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUrl: string }) {
+  const { t } = useT();
   const [confirming, setConfirming] = useState<"none" | "confirm" | "reject">("none");
   const [processing, setProcessing] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useState<"confirm" | "reject" | null>(null);
 
   async function handleAction(action: "confirm" | "reject") {
     if (confirming !== action) {
@@ -569,7 +577,7 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
         body: JSON.stringify({ action }),
       });
       if (res.ok) {
-        setDone(action === "confirm" ? "Подтверждено" : "Отклонено");
+        setDone(action);
       }
     } catch {}
     setProcessing(false);
@@ -578,8 +586,8 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
   if (done) {
     return (
       <div className="mt-2 pt-2 border-t dark:border-gray-700">
-        <span className={`text-xs font-medium ${done === "Подтверждено" ? "text-green-600" : "text-red-500"}`}>
-          ✓ {done}
+        <span className={`text-xs font-medium ${done === "confirm" ? "text-green-600" : "text-red-500"}`}>
+          ✓ {done === "confirm" ? t("pay.statusConfirmed") : t("pay.statusRejected")}
         </span>
       </div>
     );
@@ -590,7 +598,7 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
       {/* Receipt preview */}
       <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={receiptUrl} alt="Чек" className="max-h-32 rounded-lg border dark:border-gray-600 object-contain" />
+        <img src={receiptUrl} alt={t("pay.receiptAlt")} className="max-h-32 rounded-lg border dark:border-gray-600 object-contain" />
       </a>
 
       <div className="flex items-center gap-2">
@@ -603,7 +611,7 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
               : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200"
           }`}
         >
-          {processing ? "..." : confirming === "confirm" ? "Точно подтвердить?" : "Подтвердить"}
+          {processing ? "..." : confirming === "confirm" ? t("pay.confirmSure") : t("pay.confirm")}
         </button>
         <button
           onClick={() => handleAction("reject")}
@@ -614,14 +622,14 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
               : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200"
           }`}
         >
-          {processing ? "..." : confirming === "reject" ? "Точно отклонить?" : "Отклонить"}
+          {processing ? "..." : confirming === "reject" ? t("pay.rejectSure") : t("pay.reject")}
         </button>
         {confirming !== "none" && (
           <button
             onClick={() => setConfirming("none")}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
-            Отмена
+            {t("common.cancel")}
           </button>
         )}
       </div>

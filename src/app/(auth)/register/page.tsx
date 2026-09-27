@@ -5,8 +5,10 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import Captcha from "@/components/Captcha";
+import { useT } from "@/lib/i18n/client";
 
 export default function RegisterPage() {
+  const { t } = useT();
   const [step, setStep] = useState(1); // 1=email, 2=code, 3=details
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -44,7 +46,7 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Ошибка отправки кода");
+        setError(data.error || t("auth.errSendCode"));
         // A token is single-use; make the visitor solve it again on retry.
         setCaptchaToken("");
         setCaptchaKey((k) => k + 1);
@@ -54,7 +56,7 @@ export default function RegisterPage() {
       setStep(2);
       setCountdown(60);
     } catch {
-      setError("Ошибка сети");
+      setError(t("auth.errNetwork"));
     }
     setLoading(false);
   }
@@ -67,7 +69,7 @@ export default function RegisterPage() {
   function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
     if (code.length !== 6) {
-      setError("Введите 6-значный код");
+      setError(t("auth.errCode6"));
       return;
     }
     setError("");
@@ -86,7 +88,7 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Ошибка регистрации");
+        setError(data.error || t("auth.errRegister"));
         setLoading(false);
         return;
       }
@@ -104,7 +106,7 @@ export default function RegisterPage() {
         window.location.href = `/login${cb ? `?callbackUrl=${encodeURIComponent(cb)}` : ""}`;
       }
     } catch {
-      setError("Ошибка сети");
+      setError(t("auth.errNetwork"));
     }
     setLoading(false);
   }
@@ -166,10 +168,10 @@ export default function RegisterPage() {
       {step === 1 && (
         <form onSubmit={handleSendCode} className="space-y-4">
           <h1 className="text-xl font-bold text-center dark:text-gray-100">
-            Введите email
+            {t("auth.enterEmail")}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Мы отправим код подтверждения на вашу почту
+            {t("auth.enterEmailHint")}
           </p>
           <div>
             <input
@@ -189,7 +191,7 @@ export default function RegisterPage() {
             disabled={loading || !email || !captchaToken}
             className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
-            {loading ? "Отправка..." : "Получить код"}
+            {loading ? t("auth.sending") : t("auth.getCode")}
           </button>
         </form>
       )}
@@ -198,10 +200,10 @@ export default function RegisterPage() {
       {step === 2 && (
         <form onSubmit={handleVerifyCode} className="space-y-4">
           <h1 className="text-xl font-bold text-center dark:text-gray-100">
-            Проверьте почту
+            {t("auth.checkEmail")}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Код отправлен на <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
+            {t("auth.codeSentTo")} <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
           </p>
           <div>
             <input
@@ -220,7 +222,7 @@ export default function RegisterPage() {
             disabled={code.length !== 6}
             className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
-            Подтвердить
+            {t("auth.confirm")}
           </button>
           <div className="flex items-center justify-between text-sm">
             <button
@@ -228,7 +230,7 @@ export default function RegisterPage() {
               onClick={() => { setStep(1); setCode(""); setError(""); }}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
-              ← Изменить email
+              ← {t("auth.changeEmail")}
             </button>
             <button
               type="button"
@@ -240,7 +242,7 @@ export default function RegisterPage() {
                   : "text-green-600 dark:text-green-400 hover:underline"
               }`}
             >
-              {countdown > 0 ? `Повторно через ${countdown}с` : "Отправить снова"}
+              {countdown > 0 ? t("auth.resendIn", { s: countdown }) : t("auth.resend")}
             </button>
           </div>
         </form>
@@ -250,14 +252,14 @@ export default function RegisterPage() {
       {step === 3 && (
         <form onSubmit={handleRegister} className="space-y-4">
           <h1 className="text-xl font-bold text-center dark:text-gray-100">
-            Создайте профиль
+            {t("auth.createProfile")}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Последний шаг — имя и пароль
+            {t("auth.createProfileHint")}
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Имя
+              {t("auth.name")}
             </label>
             <input
               type="text"
@@ -267,13 +269,13 @@ export default function RegisterPage() {
               minLength={2}
               maxLength={50}
               className={inputClass}
-              placeholder="Ваше имя"
+              placeholder={t("auth.namePlaceholder")}
               autoFocus
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Пароль
+              {t("auth.password")}
             </label>
             <div className="relative">
               <input
@@ -283,7 +285,7 @@ export default function RegisterPage() {
                 required
                 minLength={8}
                 className={`${inputClass} pr-10`}
-                placeholder="Минимум 8 символов"
+                placeholder={t("auth.passwordMin")}
               />
               <button
                 type="button"
@@ -306,16 +308,15 @@ export default function RegisterPage() {
               className="mt-0.5 w-4 h-4 shrink-0 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
             />
             <span>
-              Я принимаю{" "}
+              {t("auth.termsAccept")}{" "}
               <a href="/terms" target="_blank" className="text-green-600 underline hover:text-green-700">
-                условия использования
+                {t("auth.termsOfUse")}
               </a>{" "}
-              и{" "}
+              {t("auth.termsAnd")}{" "}
               <a href="/privacy" target="_blank" className="text-green-600 underline hover:text-green-700">
-                политику обработки данных
+                {t("auth.privacyPolicy")}
               </a>
-              . Мне понятно, что площадка не участвует в расчётах между пользователями и не несёт
-              ответственности за их результат.
+              {t("auth.termsDisclaimer")}
             </span>
           </label>
           <button
@@ -323,15 +324,15 @@ export default function RegisterPage() {
             disabled={loading || !displayName || !password || !termsAccepted}
             className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
-            {loading ? "Регистрация..." : "Зарегистрироваться"}
+            {loading ? t("auth.registering") : t("auth.signUp")}
           </button>
         </form>
       )}
 
       <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
-        Уже есть аккаунт?{" "}
+        {t("auth.haveAccount")}{" "}
         <Link href="/login" className="text-green-600 dark:text-green-400 hover:underline">
-          Войти
+          {t("auth.login")}
         </Link>
       </p>
     </div>

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
+
+const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
 
 interface CryptoStats {
   name: string;
@@ -50,10 +53,10 @@ function formatPrice(n: number | null): string {
   return "$" + n.toFixed(8);
 }
 
-function formatDate(d: string | null): string {
+function formatDate(d: string | null, locale: string): string {
   if (!d) return "\u2014";
   try {
-    return new Date(d).toLocaleDateString("ru-RU", {
+    return new Date(d).toLocaleDateString(LOCALES[locale] || "ru-RU", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -116,6 +119,7 @@ function ChangeTag({ value }: { value: number | null }) {
 }
 
 export default function CryptoFundamentals({ slug }: CryptoFundamentalsProps) {
+  const { t, locale } = useT();
   const [data, setData] = useState<CryptoStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -160,7 +164,7 @@ export default function CryptoFundamentals({ slug }: CryptoFundamentalsProps) {
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-4">
       {/* Header */}
       <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {"Показатели"} {data.name}
+        {t("inst.crypto.title", { name: data.name })}
       </h3>
 
       {/* Price Changes */}
@@ -182,49 +186,49 @@ export default function CryptoFundamentals({ slug }: CryptoFundamentalsProps) {
       {/* Market Stats */}
       <div className="border-t dark:border-gray-700 pt-3">
         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-          Рыночные данные
+          {t("inst.crypto.market")}
         </h4>
         <StatRow
-          label="Рейтинг по капитализации"
+          label={t("inst.crypto.rank")}
           value={data.market_cap_rank !== null ? `#${data.market_cap_rank}` : "\u2014"}
         />
-        <StatRow label="Капитализация" value={`$${formatCompact(data.market_cap)}`} />
+        <StatRow label={t("inst.marketCap")} value={`$${formatCompact(data.market_cap)}`} />
         <StatRow
-          label="Полностью разводн. оценка"
+          label={t("inst.crypto.fdv")}
           value={`$${formatCompact(data.fully_diluted_valuation)}`}
         />
-        <StatRow label="Объём торгов (24ч)" value={`$${formatCompact(data.total_volume)}`} />
+        <StatRow label={t("inst.crypto.volume24h")} value={`$${formatCompact(data.total_volume)}`} />
       </div>
 
       {/* Supply */}
       <div className="border-t dark:border-gray-700 pt-3">
         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-          Эмиссия
+          {t("inst.crypto.supply")}
         </h4>
         <StatRow
-          label="В обращении"
+          label={t("inst.crypto.circulating")}
           value={
             formatSupply(data.circulating_supply) +
             (supplyPercent ? ` (${supplyPercent}%)` : "")
           }
         />
-        <StatRow label="Общая эмиссия" value={formatSupply(data.total_supply)} />
-        <StatRow label="Макс. эмиссия" value={formatSupply(data.max_supply)} />
+        <StatRow label={t("inst.crypto.totalSupply")} value={formatSupply(data.total_supply)} />
+        <StatRow label={t("inst.crypto.maxSupply")} value={formatSupply(data.max_supply)} />
       </div>
 
       {/* ATH / ATL */}
       <div className="border-t dark:border-gray-700 pt-3">
         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-          Исторические экстремумы
+          {t("inst.crypto.extremes")}
         </h4>
         <StatRow
-          label="ATH (макс.)"
-          value={`${formatPrice(data.ath)} \u2022 ${formatDate(data.ath_date)}`}
+          label={t("inst.crypto.ath")}
+          value={`${formatPrice(data.ath)} \u2022 ${formatDate(data.ath_date, locale)}`}
           highlight="green"
         />
         <StatRow
-          label="ATL (мин.)"
-          value={`${formatPrice(data.atl)} \u2022 ${formatDate(data.atl_date)}`}
+          label={t("inst.crypto.atl")}
+          value={`${formatPrice(data.atl)} \u2022 ${formatDate(data.atl_date, locale)}`}
           highlight="red"
         />
       </div>

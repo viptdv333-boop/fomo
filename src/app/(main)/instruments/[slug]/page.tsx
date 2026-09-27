@@ -12,6 +12,7 @@ import CryptoFundamentals from "@/components/instruments/CryptoFundamentals";
 import FmpStats from "@/components/instruments/FmpStats";
 import FearGreedIndex from "@/components/instruments/FearGreedIndex";
 import EconomicCalendar from "@/components/instruments/EconomicCalendar";
+import { useT } from "@/lib/i18n/client";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -47,6 +48,9 @@ const FLAGS: Record<string, string> = { RU: "🇷🇺", US: "🇺🇸", CN: "�
 
 export default function AssetPage() {
   const { slug } = useParams();
+  const { t, locale } = useT();
+  const tr = t; // alias: `t` is shadowed by ticker map callbacks below
+  const numLocale = ({ ru: "ru-RU", en: "en-US", cn: "zh-CN" } as Record<string, string>)[locale] || "ru-RU";
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,11 +115,11 @@ export default function AssetPage() {
     return () => clearInterval(interval);
   }, [mainSource, mainDataTicker]);
 
-  const formatNum = (n: number) => n >= 1000 ? n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) : n.toFixed(2);
+  const formatNum = (n: number) => n >= 1000 ? n.toLocaleString(numLocale, { maximumFractionDigits: 2 }) : n.toFixed(2);
   const formatVol = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : String(Math.round(v));
 
-  if (loading) return <div className="text-gray-500 py-12 text-center">Загрузка...</div>;
-  if (!asset) return <div className="text-gray-500 py-12 text-center">Инструмент не найден</div>;
+  if (loading) return <div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>;
+  if (!asset) return <div className="text-gray-500 py-12 text-center">{t("inst.notFound")}</div>;
 
   const chatLink = asset.chatRoom ? `/chat?room=${asset.chatRoom.id}` : "/chat";
 
@@ -126,10 +130,10 @@ export default function AssetPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm text-gray-400 dark:text-gray-500 mb-1">
-              <Link href="/instruments" className="hover:text-green-600">Каталог</Link>
+              <Link href="/instruments" className="hover:text-green-600">{t("inst.catalog")}</Link>
               {" / "}
               {asset.category && (
-                <Link href={`/instruments/category/${asset.category.slug}`} className="hover:text-green-600">{asset.category.name}</Link>
+                <Link href={`/instruments/category/${asset.category.slug}`} className="hover:text-green-600">{locale !== "ru" && t(`cat.${asset.category.slug}`) !== `cat.${asset.category.slug}` ? t(`cat.${asset.category.slug}`) : asset.category.name}</Link>
               )}
             </div>
             <div className="flex items-center gap-3">
@@ -147,12 +151,12 @@ export default function AssetPage() {
             {/* OHLC + Volume bar */}
             {quote && (
               <div className="flex items-center gap-5 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span>Откр. <span className="font-medium text-gray-700 dark:text-gray-300">{formatNum(quote.open)}</span></span>
-                <span>Макс. <span className="font-medium text-green-600">{formatNum(quote.high)}</span></span>
-                <span>Мин. <span className="font-medium text-red-500">{formatNum(quote.low)}</span></span>
-                <span>Объём <span className="font-medium text-gray-700 dark:text-gray-300">{formatVol(quote.volume)}</span></span>
+                <span>{t("inst.open")} <span className="font-medium text-gray-700 dark:text-gray-300">{formatNum(quote.open)}</span></span>
+                <span>{t("inst.high")} <span className="font-medium text-green-600">{formatNum(quote.high)}</span></span>
+                <span>{t("inst.low")} <span className="font-medium text-red-500">{formatNum(quote.low)}</span></span>
+                <span>{t("inst.volume")} <span className="font-medium text-gray-700 dark:text-gray-300">{formatVol(quote.volume)}</span></span>
                 {mainTicker?.exchangeRel && (
-                  <span>Биржа <span className="font-semibold text-white bg-gray-600 dark:bg-gray-500 px-1.5 py-0.5 rounded text-[11px]">{mainTicker.exchangeRel.shortName}</span></span>
+                  <span>{t("inst.exchange")} <span className="font-semibold text-white bg-gray-600 dark:bg-gray-500 px-1.5 py-0.5 rounded text-[11px]">{mainTicker.exchangeRel.shortName}</span></span>
                 )}
               </div>
             )}
@@ -174,11 +178,11 @@ export default function AssetPage() {
           <div className="flex items-center gap-2 shrink-0">
             <Link href={chatLink} className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition inline-flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-              Обсудить
+              {t("inst.discuss")}
             </Link>
             <Link href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`} className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition inline-flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 5v14m-7-7h14" /></svg>
-              Опубликовать идею
+              {t("inst.publishIdea")}
             </Link>
           </div>
         </div>
@@ -210,15 +214,15 @@ export default function AssetPage() {
       {/* Tickers table — all exchanges */}
       {asset.instruments.length > 1 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Тикеры на биржах</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{t("inst.tickersOnExchanges")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide border-b border-gray-100 dark:border-gray-800">
-                  <th className="text-left py-2 pr-4">Тикер</th>
-                  <th className="text-left py-2 px-2">Биржа</th>
-                  <th className="text-left py-2 px-2">Тип</th>
-                  <th className="text-left py-2 px-2">Название</th>
+                  <th className="text-left py-2 pr-4">{t("inst.col.ticker")}</th>
+                  <th className="text-left py-2 px-2">{t("inst.exchange")}</th>
+                  <th className="text-left py-2 px-2">{t("inst.col.type")}</th>
+                  <th className="text-left py-2 px-2">{t("inst.col.name")}</th>
                   <th className="text-right py-2 pl-2"></th>
                 </tr>
               </thead>
@@ -236,13 +240,13 @@ export default function AssetPage() {
                       ) : "—"}
                     </td>
                     <td className="py-3 px-2 text-xs text-gray-500">
-                      {t.instrumentType === "futures" ? "Фьючерс" : t.instrumentType === "spot" ? "Спот" : t.instrumentType === "stock" ? "Акция" : t.instrumentType || "—"}
+                      {t.instrumentType === "futures" ? tr("inst.type.futures") : t.instrumentType === "spot" ? tr("inst.type.spot") : t.instrumentType === "stock" ? tr("inst.type.stock") : t.instrumentType || "—"}
                     </td>
                     <td className="py-3 px-2 text-gray-600 dark:text-gray-400 text-xs">{t.name}</td>
                     <td className="py-3 pl-2 text-right">
                       {(t.externalUrl || t.exchangeUrl) && (
                         <a href={t.externalUrl || t.exchangeUrl || ""} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:text-green-700">
-                          На бирже →
+                          {tr("inst.onExchange")}
                         </a>
                       )}
                     </td>
@@ -271,13 +275,13 @@ export default function AssetPage() {
             "general"
           }
           slug={asset.slug}
-          title={`Новости: ${asset.name}`}
+          title={t("inst.newsFor", { name: asset.name })}
         />
       </div>
 
       {/* Ideas */}
       <div>
-        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">Идеи по {asset.name}</h2>
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{t("inst.ideasFor", { name: asset.name })}</h2>
         {ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
@@ -286,12 +290,12 @@ export default function AssetPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 text-center">
-            <p className="text-gray-400 dark:text-gray-500 mb-3">Пока нет идей по {asset.name}</p>
+            <p className="text-gray-400 dark:text-gray-500 mb-3">{t("inst.noIdeasFor", { name: asset.name })}</p>
             <Link
               href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition"
             >
-              Опубликовать первую идею
+              {t("inst.publishFirstIdea")}
             </Link>
           </div>
         )}

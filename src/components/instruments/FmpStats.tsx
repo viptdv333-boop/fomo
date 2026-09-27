@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 
 interface Props {
   ticker: string;
@@ -63,6 +64,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export default function FmpStats({ ticker }: Props) {
+  const { t } = useT();
   const [profile, setProfile] = useState<StockProfile | null>(null);
   const [metrics, setMetrics] = useState<KeyMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,18 +91,18 @@ export default function FmpStats({ ticker }: Props) {
       {/* Company info */}
       {profile && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 uppercase tracking-wide">Профиль компании</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 uppercase tracking-wide">{t("inst.fmp.profile")}</h3>
           <div className="space-y-0">
-            <Row label="Сектор" value={profile.sector || "—"} />
-            <Row label="Отрасль" value={profile.industry || "—"} />
-            <Row label="Страна" value={profile.country || "—"} />
+            <Row label={t("inst.fmp.sector")} value={profile.sector || "—"} />
+            <Row label={t("inst.fmp.industry")} value={profile.industry || "—"} />
+            <Row label={t("inst.fmp.country")} value={profile.country || "—"} />
             <Row label="CEO" value={profile.ceo || "—"} />
-            <Row label="Сотрудники" value={profile.fullTimeEmployees || "—"} />
-            <Row label="Капитализация" value={`$${fmt(profile.mktCap)}`} />
-            <Row label="Ср. объём" value={fmt(profile.volAvg)} />
-            <Row label="Дивиденд" value={profile.lastDiv ? `$${profile.lastDiv.toFixed(2)}` : "—"} />
+            <Row label={t("inst.fmp.employees")} value={profile.fullTimeEmployees || "—"} />
+            <Row label={t("inst.marketCap")} value={`$${fmt(profile.mktCap)}`} />
+            <Row label={t("inst.fmp.avgVolume")} value={fmt(profile.volAvg)} />
+            <Row label={t("inst.fmp.dividend")} value={profile.lastDiv ? `$${profile.lastDiv.toFixed(2)}` : "—"} />
             <Row label="Beta" value={profile.beta?.toFixed(2) || "—"} />
-            <Row label="Диапазон 52 нед." value={profile.range || "—"} />
+            <Row label={t("inst.fmp.range52w")} value={profile.range || "—"} />
           </div>
         </div>
       )}
@@ -108,20 +110,20 @@ export default function FmpStats({ ticker }: Props) {
       {/* Key metrics */}
       {metrics && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 uppercase tracking-wide">Ключевые показатели</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 uppercase tracking-wide">{t("inst.fmp.keyMetrics")}</h3>
           <div className="space-y-0">
             <Row label="P/E (TTM)" value={metrics.peRatioTTM?.toFixed(2) || "—"} />
             <Row label="PEG" value={metrics.pegRatioTTM?.toFixed(2) || "—"} />
             <Row label="P/S" value={metrics.priceToSalesRatioTTM?.toFixed(2) || "—"} />
             <Row label="P/B" value={metrics.priceToBookRatioTTM?.toFixed(2) || "—"} />
             <Row label="EV/EBITDA" value={metrics.enterpriseValueOverEBITDATTM?.toFixed(2) || "—"} />
-            <Row label="Дивидендная доходность" value={pct(metrics.dividendYieldTTM)} />
+            <Row label={t("inst.fmp.divYield")} value={pct(metrics.dividendYieldTTM)} />
             <Row label="ROE" value={pct(metrics.returnOnEquityTTM)} />
             <Row label="ROA" value={pct(metrics.returnOnAssetsTTM)} />
-            <Row label="Долг/Капитал" value={metrics.debtToEquityTTM?.toFixed(2) || "—"} />
-            <Row label="Текущая ликвидность" value={metrics.currentRatioTTM?.toFixed(2) || "—"} />
+            <Row label={t("inst.fmp.debtEquity")} value={metrics.debtToEquityTTM?.toFixed(2) || "—"} />
+            <Row label={t("inst.fmp.currentRatio")} value={metrics.currentRatioTTM?.toFixed(2) || "—"} />
             <Row label="EPS" value={`$${metrics.netIncomePerShareTTM?.toFixed(2) || "—"}`} />
-            <Row label="FCF/акция" value={`$${metrics.freeCashFlowPerShareTTM?.toFixed(2) || "—"}`} />
+            <Row label={t("inst.fmp.fcfPerShare")} value={`$${metrics.freeCashFlowPerShareTTM?.toFixed(2) || "—"}`} />
           </div>
         </div>
       )}
