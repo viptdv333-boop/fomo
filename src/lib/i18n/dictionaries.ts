@@ -1,3 +1,5 @@
+import { SECTION_DICTS } from "./dict";
+
 export const ru: Record<string, string> = {
   // Nav
   "nav.feed": "Доска",
@@ -990,4 +992,20 @@ Object.assign(cn, {
   "watch.empty": "列表为空",
 });
 
+for (const d of SECTION_DICTS) {
+  Object.assign(ru, d.ru);
+  Object.assign(en, d.en);
+  Object.assign(cn, d.cn);
+}
+
 export const DICTIONARIES: Record<string, Record<string, string>> = { ru, en, cn };
+
+export const LOCALES = ["ru", "en", "cn"] as const;
+
+// "{name}" placeholders are replaced from vars; missing keys fall back to ru, then to the key.
+export function translate(locale: string, key: string, vars?: Record<string, string | number>): string {
+  const dict = DICTIONARIES[locale] || ru;
+  let s = dict[key] || ru[key] || key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}

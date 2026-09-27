@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { DICTIONARIES } from "./dictionaries";
+import { DICTIONARIES, translate } from "./dictionaries";
 
 interface I18nContext {
   locale: string;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   setLocale: (code: string) => void;
 }
 
@@ -29,9 +29,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (saved && DICTIONARIES[saved]) setLocaleState(saved);
   }, []);
 
-  function t(key: string): string {
-    const dict = DICTIONARIES[locale] || DICTIONARIES.ru;
-    return dict[key] || DICTIONARIES.ru[key] || key;
+  function t(key: string, vars?: Record<string, string | number>): string {
+    return translate(locale, key, vars);
   }
 
   function setLocale(code: string) {
