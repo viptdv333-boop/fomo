@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
+import { startAlertScheduler } from "./alert-scheduler";
 import { canAccessRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
 
@@ -189,6 +190,9 @@ export function initSocket(httpServer: HTTPServer) {
   // Real-time price streaming (Tinkoff poll every 2 s). No page subscribes to it right now
   // (the terminal is switched off), so it stays off unless PRICE_STREAM=1 is set.
   if (process.env.PRICE_STREAM === "1") priceStreamer.start(io);
+
+  // Terminal price / line alerts (evaluates active PriceAlert rows every ~15 s; idle without any).
+  if (process.env.ALERT_SCHEDULER !== "0") startAlertScheduler();
 
   return io;
 }

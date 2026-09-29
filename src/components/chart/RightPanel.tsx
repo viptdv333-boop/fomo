@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import EconomicCalendar from "@/components/instruments/EconomicCalendar";
+import { PANEL_TAB_ICONS } from "./icons";
 import {
   ALL_INSTRUMENTS,
   CATEGORY_ICONS,
@@ -53,35 +54,7 @@ export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?:
   );
 }
 
-const tabIcons: Record<PanelTab, ReactNode> = {
-  watchlist: (
-    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-      <path d="M8 6h12M8 12h12M8 18h12" />
-      <circle cx="4" cy="6" r="1" fill="currentColor" />
-      <circle cx="4" cy="12" r="1" fill="currentColor" />
-      <circle cx="4" cy="18" r="1" fill="currentColor" />
-    </svg>
-  ),
-  info: (
-    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v5" />
-      <circle cx="12" cy="7.8" r="0.6" fill="currentColor" />
-    </svg>
-  ),
-  news: (
-    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2V5z" />
-      <path d="M18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3" />
-    </svg>
-  ),
-  calendar: (
-    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-      <rect x="4" y="5.5" width="16" height="14" rx="2" />
-      <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
-    </svg>
-  ),
-};
+const tabIcons = PANEL_TAB_ICONS as Record<PanelTab, ReactNode>;
 
 const TABS: { id: PanelTab; key: string }[] = [
   { id: "watchlist", key: "shell.tab.watchlist" },
@@ -224,27 +197,98 @@ const WatchRow = memo(function WatchRow({
 const WL_KEY = "fomo-terminal-watchlist-v1";
 const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
-/** The user's own list of symbols. Empty until they add some; kept in this browser. */
+const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
+const WL_SOURCES = ["moex", "bybit", "fmp"];
+
+function cleanWatchItems(raw: unknown): TerminalInstrument[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: TerminalInstrument[] = [];
+  for (const i of raw) {
+    if (!i || typeof i.ticker !== "string" || typeof i.dataTicker !== "string" || !WL_SOURCES.includes(i.source)) continue;
+    const key = `${i.source}:${i.dataTicker}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const known = findInstrument(i.source, i.dataTicker);
+    out.push({ ticker: i.ticker, name: typeof i.name === "string" ? i.name : i.ticker, source: i.source, dataTicker: i.dataTicker, emoji: known?.emoji ?? (typeof i.emoji === "string" ? i.emoji : "") });
+  }
+  return out;
+}
+
+/**
+ * The user's own list of symbols. Empty until they add some. Signed-in users get it on their account
+ * (same list on every device); guests keep it in this browser. The first time a signed-in user opens
+ * the terminal, whatever they had collected in the browser is merged into the account list.
+ */
 function useWatchlist() {
   const [items, setItems] = useState<TerminalInstrument[]>([]);
-  useEffect(() => {
+  const mode = useRef<"unknown" | "guest" | "user">("unknown");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const writeLocal = (list: TerminalInstrument[]) => {
     try {
-      const raw = localStorage.getItem(WL_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) {
-        setItems(
-          parsed.filter(
-            (i) => i && typeof i.ticker === "string" && typeof i.dataTicker === "string" && (i.source === "moex" || i.source === "bybit" || i.source === "fmp")
-          )
-        );
-      }
+      localStorage.setItem(WL_KEY, JSON.stringify(list));
     } catch {}
+  };
+  const push = (list: TerminalInstrument[]) => {
+    fetch("/api/terminal/watchlist", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: list.map((i) => ({ source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name })) }),
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    let local: TerminalInstrument[] = [];
+    try {
+      local = cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]"));
+    } catch {}
+    setItems(local);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/terminal/watchlist", { cache: "no-store" });
+        if (cancelled) return;
+        if (r.status === 401) {
+          mode.current = "guest";
+          try {
+            localStorage.removeItem(WL_SYNCED_KEY); // what a guest collects is merged on the next sign-in
+          } catch {}
+          return;
+        }
+        if (!r.ok) return;
+        const server = cleanWatchItems((await r.json()).items);
+        mode.current = "user";
+        let alreadySynced = false;
+        try {
+          alreadySynced = localStorage.getItem(WL_SYNCED_KEY) === "1";
+        } catch {}
+        // after the first sync the account list is the truth (an item removed on another device must not come back)
+        const have = new Set(server.map((i) => `${i.source}:${i.dataTicker}`));
+        const merged = alreadySynced ? server : [...server, ...local.filter((i) => !have.has(`${i.source}:${i.dataTicker}`))];
+        setItems(merged);
+        writeLocal(merged);
+        try {
+          localStorage.setItem(WL_SYNCED_KEY, "1");
+        } catch {}
+        if (merged.length !== server.length) push(merged);
+      } catch {
+        /* offline: keep the local copy */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
   const commit = (next: TerminalInstrument[]) => {
     setItems(next);
-    try {
-      localStorage.setItem(WL_KEY, JSON.stringify(next));
-    } catch {}
+    writeLocal(next);
+    if (mode.current === "user") {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => push(next), 400);
+    }
   };
   return {
     items,
@@ -718,7 +762,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
         </div>
 
         {/* icon strip (desktop) */}
-        <div className="hidden md:flex flex-col items-center gap-1 w-10 shrink-0 py-2 border-l border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900">
+        <div className="hidden md:flex flex-col items-center gap-1 w-12 shrink-0 py-2 border-l border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900">
           {TABS.map((tb) => {
             const on = open && tab === tb.id;
             return (
@@ -728,7 +772,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                 title={t(tb.key)}
                 aria-label={t(tb.key)}
                 aria-pressed={on}
-                className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer transition ${
+                className={`w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer transition ${
                   on ? "text-green-600 bg-green-600/10" : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800"
                 }`}
               >

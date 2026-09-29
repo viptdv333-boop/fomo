@@ -7,7 +7,10 @@ import { intervalToMs } from "@/lib/chart/format";
 import { useT } from "@/lib/i18n/client";
 import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
+import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
+import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
+import { useAlerts } from "@/components/chart/useAlerts";
 import DrawingToolbar from "@/components/chart/DrawingToolbar";
 import DrawingStyleBar from "@/components/chart/DrawingStyleBar";
 import TopToolbar, { INTERVALS, type ToggleKey } from "@/components/chart/TopToolbar";
@@ -116,12 +119,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
   const wrapRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ChartEngine | null>(null);
-  const shiftRef = useRef({ tzMs: 0, displayShiftMs: 0 });
+  const shiftRef = useRef({ tzMs: 0, displayShiftMs: 0, offsetMs: 0 });
   const genRef = useRef(0);
   const loadingHistory = useRef(false);
 
   const [drawings] = useState(() => new DrawingsController());
   const [indicators] = useState(() => new IndicatorsController());
+  const [alertsLayer] = useState(() => new AlertsLayer());
+  const alertsApi = useAlerts();
 
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
@@ -131,6 +136,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
   const [fullscreen, setFullscreen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [indOpen, setIndOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
   const [indCount, setIndCount] = useState(0);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState(false);
@@ -182,6 +189,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     engine.onAutoScaleChange = setAutoScale;
     engineRef.current = engine;
     drawings.attach(engine);
+    alertsLayer.attach(engine);
     indicators.attach(engine);
 
     const savedInd = lsGet(INDICATORS_KEY);
@@ -205,11 +213,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       unsubInd();
       unsubDraw();
       drawings.detach();
+      alertsLayer.detach();
       indicators.detach();
       engine.destroy();
       engineRef.current = null;
     };
-  }, [drawings, indicators]);
+  }, [drawings, indicators, alertsLayer]);
 
   /* drawings are saved per symbol */
   useEffect(() => {
@@ -270,7 +279,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
       const displayShiftMs = source === "moex" ? tzMs : -new Date().getTimezoneOffset() * 60_000;
-      shiftRef.current = { tzMs, displayShiftMs };
+      // chart time = real UTC ms + offsetMs (MOEX candles carry Moscow wall time minus the server's zone)
+      const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
+      shiftRef.current = { tzMs, displayShiftMs, offsetMs };
+      alertsLayer.setTimeOffset(offsetMs);
       engine.setOptions({
         symbolLabel: name || ticker,
         intervalLabel: label,
@@ -304,7 +316,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       cancelled = true;
       engine.onNeedHistory = null;
     };
-  }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd]);
+  }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer]);
 
   /* live price: quotes for the forming bar, real bars from the API now and then */
   useEffect(() => {
@@ -357,6 +369,58 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       clearTimeout(first);
     };
   }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
+
+  /* alerts: paint the active ones of this symbol on the chart */
+  const { alerts: allAlerts } = alertsApi;
+  useEffect(() => {
+    alertsLayer.setMarks(
+      allAlerts
+        .filter((a) => a.status === "active" && a.source === source && a.dataTicker === ticker)
+        .map((a) => ({ id: a.id, kind: a.kind, price: a.price, line: a.line }))
+    );
+  }, [allAlerts, source, ticker, alertsLayer]);
+
+  const openAlerts = useCallback((draft: AlertDraft | null) => {
+    setAlertDraft(draft);
+    setAlertsOpen(true);
+  }, []);
+
+  /** Alert at a price: the one under the pointer when it is over the chart, else the last close. */
+  const openAlertAtCursor = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const candles = engine.getCandles();
+    const raw = alertsLayer.getPointerPrice() ?? candles[candles.length - 1]?.c;
+    if (raw === undefined || !Number.isFinite(raw)) {
+      openAlerts(null);
+      return;
+    }
+    openAlerts({ price: Number(raw.toFixed(engine.getPrecision())) });
+  }, [alertsLayer, openAlerts]);
+
+  /** Alert that follows the selected line; anchors go from chart time back to real UTC ms. */
+  const openAlertFromDrawing = useCallback(() => {
+    const g = drawings.getSelectedGeometry();
+    if (!g || g.points.length === 0) return;
+    const { offsetMs } = shiftRef.current;
+    const pts = g.points.map((pt) => ({ t: Math.round(pt.t - offsetMs), p: pt.p }));
+    const p1 = pts[0];
+    openAlerts({ price: p1.p, line: { tool: g.tool, p1, p2: pts[1] ?? p1 } });
+  }, [drawings, openAlerts]);
+
+  // Alt+A: alert at the cursor price
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (!ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.code !== "KeyA" || ev.defaultPrevented) return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
+      ev.preventDefault();
+      openAlertAtCursor();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openAlertAtCursor]);
 
   /* fullscreen */
   useEffect(() => {
@@ -455,6 +519,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
         onChartType={(c) => update({ chartType: c })}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenIndicators={() => setIndOpen(true)}
+        onOpenAlerts={() => openAlerts(null)}
+        alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
         replay={replay}
         drawings={drawings}
@@ -490,7 +556,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
             {!loading && empty && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 pointer-events-none">{t("chart.noData")}</div>
             )}
-            {hasSelection && <DrawingStyleBar controller={drawings} />}
+            {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
           <BottomBar
@@ -519,6 +585,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
 
       <SymbolSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} />
+      <AlertsDialog
+        open={alertsOpen}
+        onClose={() => setAlertsOpen(false)}
+        api={alertsApi}
+        symbol={{ ticker: instrument.ticker, name: name || instrument.name, source, dataTicker: ticker }}
+        draft={alertDraft}
+      />
     </div>
   );
 }

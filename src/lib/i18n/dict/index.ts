@@ -15,5 +15,6 @@ import api from "./api";
 import chartind from "./chartind";
 import chartdraw from "./chartdraw";
 import chartshell from "./chartshell";
+import alerts from "./alerts";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts];

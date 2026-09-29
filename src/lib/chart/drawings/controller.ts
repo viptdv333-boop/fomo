@@ -184,6 +184,12 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     return { id: d.id, tool: d.tool, style: { ...d.style }, locked: d.locked };
   }
 
+  /** Tool and anchors (chart time, price) of the selected drawing, for features that follow a line (alerts). */
+  getSelectedGeometry(): { tool: string; points: DPoint[] } | null {
+    const d = this.selected();
+    return d ? { tool: d.tool, points: d.points.map((pt) => ({ t: pt.t, p: pt.p })) } : null;
+  }
+
   getDrawingsCount(): number {
     return this.drawings.length;
   }

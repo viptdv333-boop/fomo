@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import { getToolDef } from "@/lib/chart/drawings/tools";
 import { useT } from "@/lib/i18n/client";
+import { ALERT_LINE_TOOLS } from "@/lib/alerts/evaluate";
 import { DrawIcon } from "./DrawingToolbar";
 
 const PALETTE = [
@@ -106,7 +107,10 @@ function ColorButton({ value, title, onChange, children }: { value: string; titl
   );
 }
 
-export default function DrawingStyleBar({ controller }: { controller: DrawingsControllerLike }) {
+/** Drawings an alert can follow (a level that moves with the line). */
+const ALERT_TOOLS = new Set<string>(ALERT_LINE_TOOLS);
+
+export default function DrawingStyleBar({ controller, onCreateAlert }: { controller: DrawingsControllerLike; onCreateAlert?: () => void }) {
   const { t } = useT();
   useController(controller);
   const sel = controller.getSelection();
@@ -225,6 +229,21 @@ export default function DrawingStyleBar({ controller }: { controller: DrawingsCo
             }}
             className="h-7 w-36 rounded-md border border-gray-200 bg-transparent px-2 text-[13px] text-gray-800 outline-none focus:border-green-600 dark:border-gray-700 dark:text-gray-100"
           />
+        </>
+      )}
+
+      {onCreateAlert && ALERT_TOOLS.has(sel.tool) && (
+        <>
+          {sep}
+          <button
+            type="button"
+            title={t("alerts.createFromLine")}
+            aria-label={t("alerts.createFromLine")}
+            onClick={onCreateAlert}
+            className="h-7 shrink-0 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            {t("alerts.create")}
+          </button>
         </>
       )}
 

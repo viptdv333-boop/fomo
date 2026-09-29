@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push";
 import { canAccessRoom } from "@/lib/channel-access";
-import { tFor } from "@/lib/i18n/server";
+import { tFor } from "@/lib/i18n/for-locale";
 
 // Access the global IO instance set by server/socket.ts
 const globalForIO = globalThis as unknown as { io: any };

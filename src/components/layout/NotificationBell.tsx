@@ -143,6 +143,7 @@ export default function NotificationBell() {
       case "new_comment": return "🗨️";
       case "comment_reply": return "↩️";
       case "payment": return "💰";
+      case "price_alert": return "⏰";
       default: return "🔔";
     }
   }

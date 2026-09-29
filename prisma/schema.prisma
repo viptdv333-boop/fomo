@@ -66,6 +66,8 @@ model User {
   followersReceived      Follow[]       @relation("FollowedAuthor")
   followingGiven         Follow[]       @relation("Follower")
   feedMutes              FeedMute[]     @relation("FeedMuteUser")
+  terminalWatch          TerminalWatchItem[]
+  priceAlerts            PriceAlert[]
   mutedByFeedOf          FeedMute[]     @relation("FeedMuteAuthor")
   education              Education[]
   directConversations    DirectConversationParticipant[]
@@ -775,4 +777,57 @@ model RateLimit {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+/// A symbol in the user's terminal watchlist (synced across devices; guests keep theirs in the browser).
+model TerminalWatchItem {
+  id         String   @id @default(cuid())
+  userId     String
+  /// "moex" | "bybit" | "fmp"
+  source     String
+  ticker     String
+  dataTicker String
+  name       String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, dataTicker])
+  @@index([userId])
+}
+
+/// Price alert: a fixed level or a level that follows a drawn line. Checked on the server every few seconds.
+model PriceAlert {
+  id            String    @id @default(cuid())
+  userId        String
+  source        String
+  dataTicker    String
+  ticker        String
+  name          String
+  /// "price" = fixed level, "line" = level follows a drawn line (horizontal line, trend line, ray, extended line)
+  kind          String    @default("price")
+  /// "cross" (either way) | "up" (rises above) | "down" (falls below)
+  condition     String    @default("cross")
+  price         Float?
+  /// kind = "line": { tool, p1: {t, p}, p2: {t, p} } with t in real UTC milliseconds
+  line          Json?
+  message       String?
+  /// re-arm after each trigger (with a cooldown) instead of firing once
+  repeat        Boolean   @default(false)
+  /// "active" | "triggered" | "paused" | "expired"
+  status        String    @default("active")
+  /// side of the level the last checked price was on: 1 above, -1 below, 0 not checked yet
+  lastSide      Int       @default(0)
+  expiresAt     DateTime?
+  triggeredAt   DateTime?
+  lastTriggerAt DateTime?
+  triggerCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, source, dataTicker])
 }
