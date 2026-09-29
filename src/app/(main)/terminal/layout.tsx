@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isPageHidden } from "@/lib/hidden-pages";
 import { sectionMetadata } from "@/lib/i18n/seo-metadata";
 
 // Localized title/description/keywords + canonical and hreflang for /terminal,
@@ -7,6 +9,8 @@ export function generateMetadata(): Promise<Metadata> {
   return sectionMetadata("terminal", "/terminal");
 }
 
-export default function TerminalLayout({ children }: { children: React.ReactNode }) {
+export default async function TerminalLayout({ children }: { children: React.ReactNode }) {
+  // Switched off in Admin → Site settings: the page is closed, so nothing polls quotes for it.
+  if (await isPageHidden("terminal")) notFound();
   return <>{children}</>;
 }

@@ -9,6 +9,7 @@ import {
   FreeVsPaid,
 } from "@/components/help/Illustrations";
 import { getT } from "@/lib/i18n/server";
+import { isPageHidden } from "@/lib/hidden-pages";
 import { HTML_LANG, seoAlternates, type Locale } from "@/lib/i18n/locale-url";
 import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 
@@ -121,6 +122,7 @@ const B = "text-gray-900 dark:text-gray-100";
 
 export default async function HelpPage() {
   const { t, locale } = await getT();
+  const terminalHidden = await isPageHidden("terminal");
   const faqJsonLd = buildFaqJsonLd(locale, t);
   return (
     <>
@@ -326,7 +328,11 @@ export default async function HelpPage() {
             <Section id="terminal" title={t("help.term.title")}>
               <p>{t("help.term.p1")}</p>
               <p>
-                <Link href="/terminal" className="text-green-600 hover:underline">{t("help.term.p2link")}</Link>
+                {terminalHidden ? (
+                  <span>{t("help.term.p2link")}</span>
+                ) : (
+                  <Link href="/terminal" className="text-green-600 hover:underline">{t("help.term.p2link")}</Link>
+                )}
                 {t("help.term.p2")}
               </p>
               <Warn>{t("help.term.warn")}</Warn>

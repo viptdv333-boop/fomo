@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { getHiddenPages } from "@/lib/hidden-pages";
 import { HREFLANG, LOCALES } from "@/lib/i18n/locale-url";
 import { absoluteUrl } from "@/lib/i18n/seo-metadata";
 
@@ -41,8 +42,9 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  const hidden = await getHiddenPages();
 
-  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.flatMap((r) =>
+  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.filter((r) => !hidden.includes(r.path.slice(1))).flatMap((r) =>
     localizedEntries(r.path, {
       lastModified: now,
       changeFrequency: r.changeFrequency,

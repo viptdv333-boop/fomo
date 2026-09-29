@@ -186,8 +186,9 @@ export function initSocket(httpServer: HTTPServer) {
     });
   });
 
-  // Start real-time price streaming
-  priceStreamer.start(io);
+  // Real-time price streaming (Tinkoff poll every 2 s). No page subscribes to it right now
+  // (the terminal is switched off), so it stays off unless PRICE_STREAM=1 is set.
+  if (process.env.PRICE_STREAM === "1") priceStreamer.start(io);
 
   return io;
 }
