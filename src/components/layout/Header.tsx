@@ -13,7 +13,9 @@ import { ensurePushSubscription } from "@/lib/push-client";
 import InstallAppButton from "@/components/shared/InstallAppButton";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
 
-export default function Header() {
+// initialHiddenPages comes from the server so a switched-off page is never in the first HTML
+// (otherwise its link flashed in the menu until the settings fetch finished).
+export default function Header({ initialHiddenPages = [] }: { initialHiddenPages?: string[] }) {
   const { data: session } = useSession();
   const user = session?.user as any;
   const userId = user?.id;
@@ -21,7 +23,7 @@ export default function Header() {
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [hiddenPages, setHiddenPages] = useState<string[]>([]);
+  const [hiddenPages, setHiddenPages] = useState<string[]>(initialHiddenPages);
 
   useEffect(() => {
     fetch("/api/site-settings")
