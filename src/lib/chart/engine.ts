@@ -251,6 +251,19 @@ export class ChartEngine {
     this.invalidate();
   }
 
+  /** Zoom so that the last `bars` bars fill the plot (range buttons); the view is pinned to the newest bar. */
+  showLastBars(bars: number) {
+    const n = this.candles.length;
+    if (n === 0) return;
+    const spacing = this.plotW() / (Math.max(1, bars) + RIGHT_MARGIN_BARS);
+    this.zoomAnchor = null;
+    this.inertiaV = 0;
+    this.targetSpacing = this.barSpacing = Math.min(MAX_BS, Math.max(MIN_BS, spacing));
+    this.r = n - 1 + RIGHT_MARGIN_BARS;
+    this.setAutoScale(true);
+    this.invalidate();
+  }
+
   scrollToLatest() {
     this.zoomAnchor = null;
     this.r = this.candles.length - 1 + RIGHT_MARGIN_BARS;
