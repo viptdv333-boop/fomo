@@ -2,6 +2,10 @@ import type { SectionDict } from "./types";
 
 const dict: SectionDict = {
   ru: {
+    "common.error.title": "Что-то пошло не так",
+    "common.error.body": "Страница не загрузилась. Попробуйте ещё раз или обновите её.",
+    "common.error.retry": "Повторить",
+    "common.error.reload": "Обновить страницу",
     "common.captcha.checking": "Проверка…",
     "common.captcha.verified": "Подтверждено",
     "common.captcha.error": "Ошибка, нажмите ещё раз",
@@ -50,6 +54,10 @@ const dict: SectionDict = {
     "common.landing.terms": "Условия использования",
   },
   en: {
+    "common.error.title": "Something went wrong",
+    "common.error.body": "The page failed to load. Try again or reload it.",
+    "common.error.retry": "Try again",
+    "common.error.reload": "Reload page",
     "common.captcha.checking": "Verifying…",
     "common.captcha.verified": "Verified",
     "common.captcha.error": "Error, tap again",
@@ -98,6 +106,10 @@ const dict: SectionDict = {
     "common.landing.terms": "Terms of Use",
   },
   cn: {
+    "common.error.title": "出错了",
+    "common.error.body": "页面加载失败。请重试或刷新页面。",
+    "common.error.retry": "重试",
+    "common.error.reload": "刷新页面",
     "common.captcha.checking": "验证中…",
     "common.captcha.verified": "已验证",
     "common.captcha.error": "出错了，请再点一次",
