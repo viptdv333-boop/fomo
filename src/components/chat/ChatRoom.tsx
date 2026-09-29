@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
+import { getPastedFile } from "@/lib/clipboard-files";
 import { formatMessageTime } from "@/lib/format-message-time";
 
 /* ── fadeIn animation ── */
@@ -379,9 +380,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   /* ── File attachment ── */
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !session?.user?.id) return;
+    if (file) uploadAttachment(file);
+    else if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function uploadAttachment(file: File) {
+    if (!session?.user?.id || uploading) return;
     if (file.size > 15 * 1024 * 1024) {
       alert(t("chat2.fileTooLarge15"));
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1028,6 +1034,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                   // button (bound to synced state) stayed disabled. Force
                   // plain text instead, then sync immediately.
                   e.preventDefault();
+                  // A screenshot / copied image (Ctrl+V) becomes a draft
+                  // attachment, the same as picking it with the paperclip.
+                  const pasted = getPastedFile(e);
+                  if (pasted) {
+                    uploadAttachment(pasted);
+                    return;
+                  }
                   const text = e.clipboardData.getData("text/plain");
                   document.execCommand("insertText", false, text);
                   syncInput();

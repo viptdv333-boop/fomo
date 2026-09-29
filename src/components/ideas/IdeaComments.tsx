@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { getPastedFile } from "@/lib/clipboard-files";
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
 
@@ -42,10 +43,14 @@ export default function IdeaComments({ ideaId }: Props) {
 
   useEffect(() => { loadComments(); }, [loadComments]);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) uploadFile(file);
+  }
+
+  async function uploadFile(file: File) {
+    if (uploading) return;
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
@@ -217,6 +222,13 @@ export default function IdeaComments({ ideaId }: Props) {
             <input ref={inputRef} type="text" value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
+              onPaste={(e) => {
+                const pasted = getPastedFile(e, "image");
+                if (pasted) {
+                  e.preventDefault();
+                  uploadFile(pasted);
+                }
+              }}
               placeholder={t("idea.writeComment")}
               className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
             <button onClick={handleSend} disabled={sending || (!input.trim() && !pendingFile)}

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { getPastedFile } from "@/lib/clipboard-files";
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
 
@@ -95,10 +96,14 @@ export default function ChannelDiscussion({ tariffId }: Props) {
     if (box) box.scrollTop = box.scrollHeight;
   }, [messages]);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) uploadFile(file);
+  }
+
+  async function uploadFile(file: File) {
+    if (uploading) return;
     setUploading(true);
     try {
       const formData = new FormData();
@@ -296,6 +301,13 @@ export default function ChannelDiscussion({ tariffId }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          onPaste={(e) => {
+            const pasted = getPastedFile(e);
+            if (pasted) {
+              e.preventDefault();
+              uploadFile(pasted);
+            }
+          }}
           placeholder={t("chat.writeMessage")}
           className="flex-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
         />

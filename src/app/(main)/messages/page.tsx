@@ -7,6 +7,7 @@ import Link from "next/link";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
+import { getPastedFile } from "@/lib/clipboard-files";
 
 interface OtherUser {
   id: string;
@@ -109,6 +110,7 @@ function MessagesPage() {
   // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string; fileType: string } | null>(null);
 
   // Chat settings
   const [chatBg, setChatBg] = useState(() => {
@@ -215,6 +217,7 @@ function MessagesPage() {
   }, [activeConvId, session?.user?.id]);
 
   useEffect(() => {
+    setPendingAttachment(null);
     if (activeConvId) {
       lastMsgIdRef.current = null;
       loadMessages(activeConvId);
@@ -269,15 +272,24 @@ function MessagesPage() {
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!newText.trim() || !activeConvId || sending) return;
+    if ((!newText.trim() && !pendingAttachment) || !activeConvId || sending || uploading) return;
     setSending(true);
     const res = await fetch(`/api/messages/conversations/${activeConvId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: newText, replyToId: replyTo?.id }),
+      body: JSON.stringify({
+        text: newText,
+        replyToId: replyTo?.id,
+        ...(pendingAttachment && {
+          fileUrl: pendingAttachment.url,
+          fileName: pendingAttachment.name,
+          fileType: pendingAttachment.fileType || "document",
+        }),
+      }),
     });
     if (res.ok) {
       setNewText("");
+      setPendingAttachment(null);
       setReplyTo(null);
       setShowEmoji(false);
       await loadMessages(activeConvId);
@@ -286,11 +298,19 @@ function MessagesPage() {
     setSending(false);
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !activeConvId) return;
+    if (file) uploadAttachment(file);
+    else if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  // The file is attached as a draft; it goes out with the send button / Enter
+  // (with whatever caption was typed), not the moment the picker closes.
+  async function uploadAttachment(file: File) {
+    if (!activeConvId || uploading) return;
     if (file.size > 15 * 1024 * 1024) {
       alert(t("chat2.fileTooLarge15"));
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploading(true);
@@ -300,22 +320,8 @@ function MessagesPage() {
       formData.append("type", "messages");
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
       if (!uploadRes.ok) throw new Error("Upload failed");
-      const { url, fileType } = await uploadRes.json();
-
-      const res = await fetch(`/api/messages/conversations/${activeConvId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: "",
-          fileUrl: url,
-          fileName: file.name,
-          fileType: fileType || "document",
-        }),
-      });
-      if (res.ok) {
-        await loadMessages(activeConvId);
-        await loadConversations();
-      }
+      const { url, name, fileType } = await uploadRes.json();
+      setPendingAttachment({ url, name: name || file.name, fileType: fileType || "document" });
     } catch {
       alert(t("chat2.fileUploadError"));
     }
@@ -976,6 +982,27 @@ function MessagesPage() {
               </div>
             )}
 
+            {/* Pending attachment preview */}
+            {pendingAttachment && (
+              <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2">
+                {pendingAttachment.fileType === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={pendingAttachment.url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                ) : (
+                  <span className="shrink-0 text-gray-400">📎</span>
+                )}
+                <div className="flex-1 min-w-0 text-sm text-gray-600 dark:text-gray-300 truncate">{pendingAttachment.name}</div>
+                <button
+                  type="button"
+                  onClick={() => setPendingAttachment(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 p-1"
+                  title={t("chat2.removeAttachment")}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Input */}
             <form onSubmit={sendMessage} className="border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex gap-2 items-center">
               {/* File upload */}
@@ -1004,6 +1031,13 @@ function MessagesPage() {
                 type="text"
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = getPastedFile(e);
+                  if (pasted) {
+                    e.preventDefault();
+                    uploadAttachment(pasted);
+                  }
+                }}
                 placeholder={replyTo ? t("msg.replyTo") : t("msg.writeMessage")}
                 className="flex-1 px-4 py-2.5 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
               />
@@ -1020,7 +1054,7 @@ function MessagesPage() {
 
               <button
                 type="submit"
-                disabled={sending || (!newText.trim() && !uploading)}
+                disabled={sending || uploading || (!newText.trim() && !pendingAttachment)}
                 className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700 transition disabled:opacity-50 shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
