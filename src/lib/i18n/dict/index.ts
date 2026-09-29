@@ -12,5 +12,8 @@ import legal from "./legal";
 import seo from "./seo";
 import notif from "./notif";
 import api from "./api";
+import chartind from "./chartind";
+import chartdraw from "./chartdraw";
+import chartshell from "./chartshell";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell];

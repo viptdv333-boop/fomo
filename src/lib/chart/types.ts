@@ -131,8 +131,48 @@ export interface LegendItem {
   color: string;
 }
 
+/** A value flag drawn on a pane's price axis (like the last-price label), e.g. an indicator's latest value. */
+export interface AxisLabel {
+  price: number;
+  text: string;
+  color: string;
+  textColor?: string;
+}
+
+export type PointerRegion = "plot" | "priceAxis" | "timeAxis" | "separator" | "none";
+
+export interface PointerInfo {
+  /** CSS pixels inside the chart canvas. */
+  x: number;
+  y: number;
+  paneId: string | null;
+  region: PointerRegion;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  button: number;
+  pointerType: string;
+}
+
+/**
+ * Something painted on top of the chart that can also take pointer input (drawing tools, order lines, ...).
+ * Layers are asked first; returning true from pointerDown captures the gesture, so the chart does not pan.
+ */
+export interface OverlayLayer {
+  /** Drawn inside the plot area, above candles and below the crosshair. */
+  draw?(ctx: CanvasRenderingContext2D, engine: import("./engine").ChartEngine): void;
+  pointerDown?(p: PointerInfo): boolean;
+  /** While captured: the drag. Otherwise: hover; returning true means the layer handles hover and the crosshair is hidden. */
+  pointerMove?(p: PointerInfo): boolean;
+  pointerUp?(p: PointerInfo): void;
+  /** CSS cursor for the pointer position, or null to use the default. */
+  cursor?(p: PointerInfo): string | null;
+}
+
 export interface Series {
   id: string;
+  /** Flags on the price axis of the pane the series belongs to, for the bar at `index` (usually the last bar). */
+  axisLabels?(candles: Candle[], index: number): AxisLabel[];
   /** Price range this series needs for auto-scaling over bars [from, to], or null when it must not affect the scale. */
   range?(candles: Candle[], from: number, to: number): [number, number] | null;
   draw(sc: SeriesContext): void;

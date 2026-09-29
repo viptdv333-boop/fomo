@@ -2,6 +2,9 @@ import {
   type Candle,
   type EngineOptions,
   type LegendItem,
+  type OverlayLayer,
+  type PointerInfo,
+  type PointerRegion,
   type Series,
   type SeriesContext,
   DEFAULT_OPTIONS,
@@ -89,6 +92,8 @@ export class ChartEngine {
   onViewChange: (() => void) | null = null;
 
   // pointer state
+  private layers: OverlayLayer[] = [];
+  private layerCapture: OverlayLayer | null = null;
   private pointers = new Map<number, { x: number; y: number }>();
   private drag: {
     kind: "pan" | "priceAxis" | "timeAxis" | "separator";
@@ -319,6 +324,61 @@ export class ChartEngine {
   yToPrice(paneId: string, y: number) {
     const p = this.panes.find((q) => q.id === paneId);
     return p ? this.paneP(p, y - p.top) : NaN;
+  }
+
+  /* overlay layers (drawing tools and similar) */
+  addLayer(layer: OverlayLayer) {
+    if (!this.layers.includes(layer)) this.layers.push(layer);
+    this.invalidateOver();
+  }
+  removeLayer(layer: OverlayLayer) {
+    this.layers = this.layers.filter((l) => l !== layer);
+    if (this.layerCapture === layer) this.layerCapture = null;
+    this.invalidateOver();
+  }
+  requestOverlayRedraw() {
+    this.invalidateOver();
+  }
+  requestRedraw() {
+    this.invalidate();
+  }
+
+  /* read-only view state for layers and toolbars */
+  getPaneIds(): string[] {
+    return this.panes.map((p) => p.id);
+  }
+  getPaneRect(id: string): { top: number; height: number; width: number } | null {
+    const p = this.panes.find((q) => q.id === id);
+    return p ? { top: p.top, height: p.height, width: this.plotW() } : null;
+  }
+  getPaneAtY(y: number): string | null {
+    for (const p of this.panes) if (y >= p.top && y <= p.top + p.height) return p.id;
+    return null;
+  }
+  getPlotSize(): { width: number; height: number } {
+    return { width: this.plotW(), height: this.plotH() };
+  }
+  getBarSpacing(): number {
+    return this.barSpacing;
+  }
+  getVisibleRange(): { from: number; to: number } {
+    return this.visibleRange();
+  }
+  getPrecision(): number {
+    return this.precision;
+  }
+  getTheme() {
+    return this.opts.theme;
+  }
+  getIntervalMs(): number {
+    return this.opts.intervalMs;
+  }
+  /** Bar index (fractional between bars) at a time; extrapolates before the first and after the last bar. */
+  getIndexForTime(t: number): number {
+    return this.timeToIndex(t);
+  }
+  getTimeForIndex(i: number): number {
+    return this.indexToTime(i);
   }
 
   /* ───────────── internals: layout & data ───────────── */
@@ -720,6 +780,7 @@ export class ChartEngine {
     }
 
     this.drawLastPrice();
+    this.drawSeriesAxisLabels(ctx);
 
     // keep the axis wide enough for the widest label
     const need = Math.max(52, Math.ceil(maxLabelW + 18));
@@ -918,11 +979,34 @@ export class ChartEngine {
     this.axisLabel(ctx, formatPrice(this.display[n - 1].c, this.precision, this.opts.locale), y, color, "#fff");
   }
 
-  private axisLabel(ctx: CanvasRenderingContext2D, text: string, y: number, bg: string, fg: string) {
+  private drawSeriesAxisLabels(ctx: CanvasRenderingContext2D) {
+    const n = this.candles.length;
+    if (n === 0) return;
+    for (const pane of this.panes) {
+      const seen: number[] = [];
+      for (const s of pane.series) {
+        const labels = s.axisLabels?.(this.candles, n - 1);
+        if (!labels) continue;
+        for (const l of labels) {
+          if (!isFinite(l.price)) continue;
+          let y = pane.top + this.paneY(pane, l.price);
+          if (y < pane.top || y > pane.top + pane.height) continue;
+          // nudge a label down when it would sit on top of one already placed
+          for (let guard = 0; guard < 6 && seen.some((sy) => Math.abs(sy - y) < 17); guard++) y += 18;
+          seen.push(y);
+          this.axisLabel(ctx, l.text, y, l.color, l.textColor ?? "#fff", pane);
+        }
+      }
+    }
+  }
+
+  private axisLabel(ctx: CanvasRenderingContext2D, text: string, y: number, bg: string, fg: string, pane?: Pane) {
     ctx.save();
     ctx.font = `600 11px ${this.opts.fontFamily}`;
     const h = 18;
-    const top = Math.max(0, Math.min(this.plotH() - h, y - h / 2));
+    const lo = pane ? pane.top : 0;
+    const hi = pane ? pane.top + pane.height : this.plotH();
+    const top = Math.max(lo, Math.min(hi - h, y - h / 2));
     ctx.fillStyle = bg;
     ctx.fillRect(this.plotW(), top, this.axisW, h);
     ctx.fillStyle = fg;
@@ -947,6 +1031,16 @@ export class ChartEngine {
     const hv = this.hover;
     let index = n - 1;
     if (hv) index = Math.max(0, Math.min(n - 1, hv.index));
+
+    // layers (drawings) sit under the legends and the crosshair
+    if (this.layers.length) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, plotW, plotH);
+      ctx.clip();
+      for (const l of this.layers) l.draw?.(ctx, this);
+      ctx.restore();
+    }
 
     // legends
     for (const pane of this.panes) this.drawLegend(ctx, pane, index, pane.id === "main" && !hv);
@@ -1092,6 +1186,21 @@ export class ChartEngine {
     return { region: "plot", pane };
   }
 
+  private pointerInfo(e: PointerEvent, x: number, y: number): PointerInfo {
+    const { region, pane } = this.regionAt(x, y);
+    return {
+      x,
+      y,
+      paneId: pane?.id ?? null,
+      region: region as PointerRegion,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey || e.metaKey,
+      altKey: e.altKey,
+      button: e.button,
+      pointerType: e.pointerType,
+    };
+  }
+
   private setCursor(region: Region) {
     this.over.style.cursor =
       region === "priceAxis" || region === "separator" ? "ns-resize" : region === "timeAxis" ? "ew-resize" : this.drag?.moved ? "grabbing" : "crosshair";
@@ -1119,6 +1228,18 @@ export class ChartEngine {
       return;
     }
 
+    // overlay layers get the first chance to take the gesture
+    if (this.layers.length && e.pointerType !== "touch") {
+      const info = this.pointerInfo(e, x, y);
+      for (let i = this.layers.length - 1; i >= 0; i--) {
+        if (this.layers[i].pointerDown?.(info)) {
+          this.layerCapture = this.layers[i];
+          this.drag = null;
+          this.invalidateOver();
+          return;
+        }
+      }
+    }
     const { region, pane } = this.regionAt(x, y);
     const kind = region === "priceAxis" ? "priceAxis" : region === "timeAxis" ? "timeAxis" : region === "separator" ? "separator" : "pan";
     this.drag = {
@@ -1170,7 +1291,29 @@ export class ChartEngine {
       return;
     }
 
+    if (this.layerCapture) {
+      this.layerCapture.pointerMove?.(this.pointerInfo(e, x, y));
+      this.hover = { x, y, index: Math.round(this.xToIndex(x)), pane: this.regionAt(x, y).pane };
+      this.invalidateOver();
+      return;
+    }
+
     const d = this.drag;
+    if (!d && this.layers.length && e.pointerType !== "touch") {
+      const info = this.pointerInfo(e, x, y);
+      let handled = false;
+      let cursor: string | null = null;
+      for (let i = this.layers.length - 1; i >= 0; i--) {
+        if (this.layers[i].pointerMove?.(info)) handled = true;
+        cursor = cursor ?? this.layers[i].cursor?.(info) ?? null;
+      }
+      if (cursor) this.over.style.cursor = cursor;
+      if (handled) {
+        this.hover = { x, y, index: Math.round(this.xToIndex(x)), pane: this.regionAt(x, y).pane };
+        this.invalidateOver();
+        return;
+      }
+    }
     if (!d) {
       const { region, pane } = this.regionAt(x, y);
       this.setCursor(region);
@@ -1246,6 +1389,15 @@ export class ChartEngine {
   };
 
   private onPointerUp = (e: PointerEvent) => {
+    if (this.layerCapture) {
+      const { x, y } = this.local(e);
+      const layer = this.layerCapture;
+      this.layerCapture = null;
+      this.pointers.delete(e.pointerId);
+      layer.pointerUp?.(this.pointerInfo(e, x, y));
+      this.invalidateOver();
+      return;
+    }
     this.pointers.delete(e.pointerId);
     if (this.longPress) clearTimeout(this.longPress);
     if (this.pinch && this.pointers.size < 2) this.pinch = null;
