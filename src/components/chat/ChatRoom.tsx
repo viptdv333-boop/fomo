@@ -388,8 +388,8 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   async function uploadAttachment(file: File) {
     if (!session?.user?.id || uploading) return;
-    if (file.size > 15 * 1024 * 1024) {
-      alert(t("chat2.fileTooLarge15"));
+    if (file.size > 100 * 1024 * 1024) {
+      alert(t("chat2.fileTooLarge"));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }

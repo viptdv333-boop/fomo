@@ -1,6 +1,9 @@
 import sharp from "sharp";
 import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
+import { createWriteStream } from "fs";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import path from "path";
 
 type UploadType = "avatars" | "ideas" | "receipts" | "messages" | "payment-qr";
@@ -9,7 +12,9 @@ const SIZE_LIMITS: Record<UploadType, number> = {
   avatars: 5 * 1024 * 1024, // 5MB
   ideas: 10 * 1024 * 1024, // 10MB
   receipts: 5 * 1024 * 1024, // 5MB
-  messages: 15 * 1024 * 1024, // 15MB
+  // Files are parsed from memory by the multipart reader, and this VPS has ~4 GB shared with
+  // the database, so this is the ceiling that keeps two parallel uploads from causing an OOM.
+  messages: 100 * 1024 * 1024, // 100MB
   "payment-qr": 5 * 1024 * 1024, // 5MB
 };
 
@@ -27,14 +32,17 @@ const ALLOWED_DOC_TYPES = [
   "text/plain",
 ];
 
+// Writes the file to disk in chunks instead of copying it into another Buffer.
+async function saveStream(file: File, fullPath: string) {
+  await pipeline(Readable.fromWeb(file.stream() as any), createWriteStream(fullPath));
+}
+
 export async function saveUploadedFile(
   file: File,
   type: UploadType,
   userId: string
 ): Promise<{ url: string; name: string; fileType: string }> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  if (buffer.length > SIZE_LIMITS[type]) {
+  if (file.size > SIZE_LIMITS[type]) {
     throw new Error(`File too large. Max ${SIZE_LIMITS[type] / 1024 / 1024}MB`);
   }
 
@@ -64,6 +72,7 @@ export async function saveUploadedFile(
   await mkdir(dir, { recursive: true });
 
   if (isImage) {
+    const buffer = Buffer.from(await file.arrayBuffer());
     try {
       console.log(`[upload] Processing image: ${file.name} (${buffer.length} bytes, type: ${file.type})`);
       let processed: Buffer;
@@ -131,7 +140,7 @@ export async function saveUploadedFile(
   if (isVideo) {
     const ext = file.type === "video/webm" ? "webm" : "mp4";
     const filename = `${uuid}.${ext}`;
-    await writeFile(path.join(dir, filename), buffer);
+    await saveStream(file, path.join(dir, filename));
     return {
       url: `/uploads/${type}/${userId}/${filename}`,
       name: file.name,
@@ -142,7 +151,7 @@ export async function saveUploadedFile(
   if (isAudio) {
     const ext = file.type === "audio/ogg" ? "ogg" : file.type === "audio/wav" ? "wav" : "mp3";
     const filename = `${uuid}.${ext}`;
-    await writeFile(path.join(dir, filename), buffer);
+    await saveStream(file, path.join(dir, filename));
     return {
       url: `/uploads/${type}/${userId}/${filename}`,
       name: file.name,
@@ -153,7 +162,7 @@ export async function saveUploadedFile(
   // Documents — save as-is with original extension
   const origExt = file.name.split(".").pop() || "bin";
   const filename = `${uuid}.${origExt}`;
-  await writeFile(path.join(dir, filename), buffer);
+  await saveStream(file, path.join(dir, filename));
   return {
     url: `/uploads/${type}/${userId}/${filename}`,
     name: file.name,

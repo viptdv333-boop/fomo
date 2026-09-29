@@ -25,7 +25,7 @@ const dict: SectionDict = {
 
     // ChatRoom
     "chat2.tickers": "Тикеры",
-    "chat2.fileTooLarge15": "Файл слишком большой. Максимум 15 МБ.",
+    "chat2.fileTooLarge": "Файл слишком большой. Максимум 100 МБ.",
     "chat2.uploadFailed": "Не удалось загрузить файл",
     "chat2.fileUploadError": "Ошибка загрузки файла",
     "chat2.file": "Файл",
@@ -105,7 +105,7 @@ const dict: SectionDict = {
 
     // ChatRoom
     "chat2.tickers": "Tickers",
-    "chat2.fileTooLarge15": "File is too large. Maximum 15 MB.",
+    "chat2.fileTooLarge": "File is too large. Maximum 100 MB.",
     "chat2.uploadFailed": "Failed to upload file",
     "chat2.fileUploadError": "File upload error",
     "chat2.file": "File",
@@ -185,7 +185,7 @@ const dict: SectionDict = {
 
     // ChatRoom
     "chat2.tickers": "代码",
-    "chat2.fileTooLarge15": "文件过大。最大 15 MB。",
+    "chat2.fileTooLarge": "文件过大。最大 100 MB。",
     "chat2.uploadFailed": "文件上传失败",
     "chat2.fileUploadError": "文件上传出错",
     "chat2.file": "文件",

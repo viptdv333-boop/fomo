@@ -61,12 +61,34 @@ function serveUploads(req: IncomingMessage, res: ServerResponse): boolean {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
-    res.writeHead(200, {
+    // Range support: without it browsers cannot seek in a video, and Safari/iOS
+    // refuses to play a video that is served without byte ranges at all.
+    const baseHeaders = {
       "Content-Type": contentType,
-      "Content-Length": stat.size,
+      "Accept-Ranges": "bytes",
       "Cache-Control": "public, max-age=31536000, immutable",
-    });
+    };
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+    if (range && (range[1] || range[2])) {
+      let start = range[1] ? parseInt(range[1], 10) : stat.size - parseInt(range[2], 10);
+      let end = range[1] && range[2] ? parseInt(range[2], 10) : stat.size - 1;
+      start = Math.max(0, start);
+      end = Math.min(end, stat.size - 1);
+      if (start > end || start >= stat.size) {
+        res.writeHead(416, { "Content-Range": `bytes */${stat.size}` });
+        res.end();
+        return true;
+      }
+      res.writeHead(206, {
+        ...baseHeaders,
+        "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+        "Content-Length": end - start + 1,
+      });
+      createReadStream(filePath, { start, end }).pipe(res);
+      return true;
+    }
 
+    res.writeHead(200, { ...baseHeaders, "Content-Length": stat.size });
     createReadStream(filePath).pipe(res);
     return true;
   } catch (err) {

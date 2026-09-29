@@ -107,6 +107,5 @@ export const config = {
     "/api/users/:path*",
     "/api/messages/:path*",
     "/api/contacts/:path*",
-    "/api/upload/:path*",
   ],
 };

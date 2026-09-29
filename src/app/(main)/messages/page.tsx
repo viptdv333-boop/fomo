@@ -308,8 +308,8 @@ function MessagesPage() {
   // (with whatever caption was typed), not the moment the picker closes.
   async function uploadAttachment(file: File) {
     if (!activeConvId || uploading) return;
-    if (file.size > 15 * 1024 * 1024) {
-      alert(t("chat2.fileTooLarge15"));
+    if (file.size > 100 * 1024 * 1024) {
+      alert(t("chat2.fileTooLarge"));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
