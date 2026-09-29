@@ -19,6 +19,10 @@ function buildId(): string {
 const WEEK = "public, max-age=604800, stale-while-revalidate=86400";
 
 const nextConfig: NextConfig = {
+  // Deploys build into another folder (NEXT_DIST_DIR=.next-build) and swap it in afterwards: a
+  // build into the live .next wipes the files the running server still serves, so open pages hit
+  // chunk-load errors for the length of the build. The running server always uses ".next".
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId(),
   },
