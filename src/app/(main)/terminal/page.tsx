@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import type { DataSource } from "@/components/instruments/ChartWidget";
+import type { ChartSource as DataSource } from "@/components/chart/TradingChart";
 import { useT } from "@/lib/i18n/client";
 
 const CATEGORY_I18N: Record<string, string> = {
@@ -15,7 +15,7 @@ const CATEGORY_I18N: Record<string, string> = {
 };
 
 const ChartWidget = dynamic(
-  () => import("@/components/instruments/ChartWidget"),
+  () => import("@/components/chart/TradingChart"),
   { ssr: false, loading: () => <div className="flex-1 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-xl" /> }
 );
 
@@ -369,7 +369,6 @@ export default function TerminalPage() {
             ticker={selected.dataTicker}
             source={selected.source}
             name={instName(selected, t)}
-            height={0}
           />
         </div>
       </div>

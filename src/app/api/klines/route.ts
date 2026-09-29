@@ -400,6 +400,9 @@ export async function GET(request: NextRequest) {
     {
       ticker: resolvedTicker,
       source,
+      // MOEX candle times are Moscow wall-clock strings parsed in the server's zone; the chart
+      // needs that zone's offset (minutes east of UTC) to show them as the exchange's time.
+      serverTzOffsetMin: -new Date().getTimezoneOffset(),
       candles,
     },
     { headers }
