@@ -5,7 +5,9 @@ import { saveUploadedFile } from "@/lib/upload";
 export async function POST(request: NextRequest) {
   console.log("[api/upload] POST received");
   const session = await auth();
-  if (!session?.user) {
+  // Same rule the middleware used to apply to this path: only approved accounts upload.
+  // Checked here because the middleware would buffer (and cut at 10 MB) every upload body.
+  if (!session?.user || (session.user as any).status !== "APPROVED") {
     console.log("[api/upload] Unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
