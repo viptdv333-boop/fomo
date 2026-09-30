@@ -5,6 +5,9 @@ import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import EconomicCalendar from "@/components/instruments/EconomicCalendar";
 import { PANEL_TAB_ICONS } from "./icons";
+import ObjectTree from "./ObjectTree";
+import type { DrawingsController } from "@/lib/chart/drawings/controller";
+import type { IndicatorsControllerLike } from "@/lib/chart/contracts";
 import {
   ALL_INSTRUMENTS,
   CATEGORY_ICONS,
@@ -21,7 +24,7 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 
-export type PanelTab = "watchlist" | "info" | "news" | "calendar";
+export type PanelTab = "watchlist" | "info" | "news" | "calendar" | "objects";
 
 export interface Quote {
   price: number;
@@ -61,6 +64,7 @@ const TABS: { id: PanelTab; key: string }[] = [
   { id: "info", key: "shell.tab.info" },
   { id: "news", key: "shell.tab.news" },
   { id: "calendar", key: "shell.tab.calendar" },
+  { id: "objects", key: "cm.tab.objects" },
 ];
 
 /* ───────────── batch quotes ───────────── */
@@ -673,9 +677,12 @@ interface Props {
   onCloseMobile: () => void;
   selected: TerminalInstrument;
   onSelect: (inst: TerminalInstrument) => void;
+  /** Object tree tab: the chart's drawings and indicators. */
+  drawings?: DrawingsController;
+  indicators?: IndicatorsControllerLike;
 }
 
-export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect }: Props) {
+export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators }: Props) {
   const { t } = useT();
   const cat = categoryOf(selected);
 
@@ -752,6 +759,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                   <RuNews category={CATEGORY_NEWS[cat?.name ?? ""] ?? "general"} title={t("shell.tab.news")} />
                 </div>
               )}
+              {tab === "objects" && drawings && indicators && <ObjectTree drawings={drawings} indicators={indicators} />}
               {tab === "calendar" && (
                 <div className="flex-1 min-h-0 overflow-y-auto [&>div]:shadow-none! [&>div]:rounded-none! [&>div]:p-3! [&_h2]:text-sm! [&_h2]:mb-2!">
                   <EconomicCalendar country={cat?.name === "Акции ММВБ" ? "RU" : undefined} />

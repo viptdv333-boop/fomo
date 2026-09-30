@@ -155,8 +155,8 @@ export default function ReplayControls({ api, hostRef, getEngine }: { api: Repla
     if (!e || !host) return null;
     const rect = host.getBoundingClientRect();
     const n = e.getCandles().length;
-    const idx = Math.max(1, Math.min(n - 2, Math.round(e.xToIndex(clientX - rect.left))));
-    return { idx, x: e.indexToX(idx) };
+    const idx = Math.max(1, Math.min(n - 2, Math.round(e.xToIndex(clientX - rect.left - e.getPlotOffsetX()))));
+    return { idx, x: e.indexToX(idx) + e.getPlotOffsetX() };
   };
 
   const btn = "w-8 h-8 flex items-center justify-center rounded cursor-pointer text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-default";

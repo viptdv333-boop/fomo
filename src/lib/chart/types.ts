@@ -6,9 +6,103 @@ export interface Candle {
   l: number;
   c: number;
   v: number;
+  /** Extra flag of transformed bars: Kagi 1 = thick (yang) line, Point & Figure 1 = X column, 0 = O column. */
+  k?: number;
 }
 
-export type ChartType = "candles" | "hollow" | "bars" | "line" | "area" | "heikin";
+export type ChartType =
+  | "candles"
+  | "hollow"
+  | "bars"
+  | "line"
+  | "area"
+  | "heikin"
+  | "columns"
+  | "highlow"
+  | "linemarkers"
+  | "step"
+  | "baseline"
+  | "volcandles"
+  | "renko"
+  | "kagi"
+  | "linebreak"
+  | "range"
+  | "pnf";
+
+/** Chart types whose bars are built from the OHLC data (not one per source candle, not uniform in time). */
+export const TRANSFORMED_TYPES: ChartType[] = ["renko", "kagi", "linebreak", "range", "pnf"];
+export const isTransformedType = (t: ChartType) => TRANSFORMED_TYPES.includes(t);
+
+export type ScaleMode = "regular" | "percent" | "indexed" | "log";
+export type PriceSource = "close" | "open" | "high" | "low" | "hl2" | "hlc3" | "ohlc4";
+export type LineStyleId = "solid" | "dashed" | "dotted";
+
+/** Candle colours; an empty string means "the theme's up/down colour". */
+export interface CandleStyle {
+  upBody: string;
+  downBody: string;
+  upBorder: string;
+  downBorder: string;
+  upWick: string;
+  downWick: string;
+  bodyOn: boolean;
+  borderOn: boolean;
+  wickOn: boolean;
+  /** Colour by the previous close instead of by close vs open. */
+  byPrevClose: boolean;
+}
+
+export const DEFAULT_CANDLE_STYLE: CandleStyle = {
+  upBody: "",
+  downBody: "",
+  upBorder: "",
+  downBorder: "",
+  upWick: "",
+  downWick: "",
+  bodyOn: true,
+  borderOn: false,
+  wickOn: true,
+  byPrevClose: false,
+};
+
+/** How Renko / Kagi / line break / range / Point & Figure bars are built. */
+export interface TransformParams {
+  /** "atr": box = ATR(period) of the source candles; "fixed": box = `box` (price units); "percent": box = percent of the price. */
+  method: "atr" | "fixed" | "percent";
+  atrPeriod: number;
+  box: number;
+  percent: number;
+  /** Kagi / Point & Figure reversal, in boxes. */
+  reversal: number;
+  /** Line break: number of lines. */
+  breakLines: number;
+}
+
+export const DEFAULT_TRANSFORM: TransformParams = {
+  method: "atr",
+  atrPeriod: 14,
+  box: 1,
+  percent: 1,
+  reversal: 3,
+  breakLines: 3,
+};
+
+export interface StatusLineOptions {
+  symbol: boolean;
+  ohlc: boolean;
+  change: boolean;
+  barChange: boolean;
+  volume: boolean;
+  indTitles: boolean;
+  indValues: boolean;
+}
+
+export interface CrosshairOptions {
+  width: number;
+  style: LineStyleId;
+  priceLabel: boolean;
+  timeLabel: boolean;
+}
 
 export interface ChartTheme {
   bg: string;
@@ -28,6 +122,9 @@ export interface ChartTheme {
   areaBottom: string;
   watermark: string;
   paneBorder: string;
+  /** Vertical background gradient (top / bottom); when both are set they replace `bg`. */
+  bgTop?: string;
+  bgBottom?: string;
 }
 
 export const LIGHT_THEME: ChartTheme = {
@@ -89,6 +186,44 @@ export interface EngineOptions {
   /** Nominal bar length in ms (used to extrapolate labels past the last bar). */
   intervalMs: number;
   fontFamily: string;
+
+  /* ── chart settings (see lib/chart/settings.ts); the defaults keep the previous look ── */
+  candleStyle: CandleStyle;
+  /** Price used by line / area / step / baseline charts. */
+  priceSource: PriceSource;
+  lineWidth: number;
+  scaleMode: ScaleMode;
+  invertScale: boolean;
+  /** Freeze the price range: no auto-scale, no dragging of the price scale. */
+  lockScale: boolean;
+  scaleSide: "right" | "left";
+  showSymbolLabel: boolean;
+  showLastPriceLabel: boolean;
+  showPriceLine: boolean;
+  showPrevCloseLine: boolean;
+  showCountdown: boolean;
+  showHighLow: boolean;
+  /** Axis font size, px. */
+  scaleFontSize: number;
+  /** Space above / below the price range, % of the pane height. */
+  marginTop: number;
+  marginBottom: number;
+  /** Empty bars to the right of the last bar. */
+  rightOffset: number;
+  gridV: boolean;
+  gridH: boolean;
+  crosshair: CrosshairOptions;
+  status: StatusLineOptions;
+  sessionBreaks: boolean;
+  /** Baseline chart: where the base level sits, % of the pane height from the bottom. */
+  baselinePercent: number;
+  transform: TransformParams;
+  /** IANA zone of the time axis; undefined = use timeShiftMs as is. */
+  timeZone?: string;
+  /** chart time = real UTC ms + clockOffsetMs (needed to translate "now" into chart time and to find zone offsets). */
+  clockOffsetMs: number;
+  /** Symbol name shown in the label on the price scale (defaults to symbolLabel). */
+  scaleSymbol?: string;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
@@ -105,6 +240,31 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   intervalLabel: "",
   intervalMs: 86_400_000,
   fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  candleStyle: DEFAULT_CANDLE_STYLE,
+  priceSource: "close",
+  lineWidth: 2,
+  scaleMode: "regular",
+  invertScale: false,
+  lockScale: false,
+  scaleSide: "right",
+  showSymbolLabel: false,
+  showLastPriceLabel: true,
+  showPriceLine: true,
+  showPrevCloseLine: false,
+  showCountdown: false,
+  showHighLow: false,
+  scaleFontSize: 11,
+  marginTop: 8,
+  marginBottom: 8,
+  rightOffset: 8,
+  gridV: true,
+  gridH: true,
+  crosshair: { width: 1, style: "dashed", priceLabel: true, timeLabel: true },
+  status: { symbol: true, ohlc: true, change: true, barChange: true, volume: true, indTitles: true, indValues: true },
+  sessionBreaks: false,
+  baselinePercent: 50,
+  transform: DEFAULT_TRANSFORM,
+  clockOffsetMs: 0,
 };
 
 /** What a series needs to draw itself into a pane. All coordinates are CSS pixels inside the pane. */

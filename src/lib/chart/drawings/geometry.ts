@@ -198,3 +198,34 @@ export function nearestOhlc(candle: OhlcLike, py: number, toY: (price: number) =
 export function finite(n: number, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
+
+/* ───────────── Shift constraints ───────────── */
+
+/** Point at the same distance from `from` as `to`, with the direction rounded to a multiple of `stepDeg`. */
+export function snapAngle(from: Pt, to: Pt, stepDeg = 15): Pt {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return { x: to.x, y: to.y };
+  const step = (stepDeg * Math.PI) / 180;
+  const ang = Math.round(Math.atan2(dy, dx) / step) * step;
+  return { x: from.x + Math.cos(ang) * len, y: from.y + Math.sin(ang) * len };
+}
+
+/** Keeps only the larger of the two movements from `from` (horizontal or vertical). */
+export function snapAxis(from: Pt, to: Pt): Pt {
+  return Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
+}
+
+/** Square (or circle) box: both sides as long as the longer one, keeping the direction of the pointer. */
+export function snapSquare(from: Pt, to: Pt): Pt {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const s = Math.max(Math.abs(dx), Math.abs(dy));
+  return { x: from.x + (dx < 0 ? -s : s), y: from.y + (dy < 0 ? -s : s) };
+}
+
+/** Do two axis-aligned boxes overlap? */
+export function boxesOverlap(a: Rect, b: Rect): boolean {
+  return !(a.x1 < b.x0 || a.x0 > b.x1 || a.y1 < b.y0 || a.y0 > b.y1);
+}

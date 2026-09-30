@@ -1,13 +1,16 @@
-import type { Candle } from "../types";
+import type { Candle, SeriesContext } from "../types";
 import type { ParamValue } from "../contracts";
 import * as M from "./math";
 import type { F64 } from "./math";
+import { drawVolumeProfile } from "./volprofile";
 
 /* Indicator definitions: parameter schema + compute(). Names and descriptions live in the i18n dictionary
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
 
 export type Params = Record<string, ParamValue>;
-export type Category = "trend" | "momentum" | "volatility" | "volume" | "other";
+export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "other";
+export type PlotShape = "line" | "step" | "area" | "histogram" | "columns" | "circles";
+export type LineStyleName = "solid" | "dashed" | "dotted";
 export type NumFmt = "price" | "osc" | "vol";
 
 export interface NumberParam { key: string; type: "number"; min: number; max: number; step: number; default: number }
@@ -40,12 +43,28 @@ export interface PlotSpec {
   /** Show the value in the legend (default true). */
   legend?: boolean;
   fmt?: NumFmt;
+  /** Drawing type; when omitted: line -> "line", hist -> "columns", dots -> "circles". */
+  shape?: PlotShape;
+  lineStyle?: LineStyleName;
+  /** Not drawn, not in the legend, not in the scale (set by the Style tab). */
+  hidden?: boolean;
+  /** Horizontal line at the last value. */
+  priceLine?: boolean;
+  /** Join the points across NaN gaps (ZigZag). */
+  connect?: boolean;
+  /** Colour params that feed the per-bar `colors` (the Style tab edits those instead of a single colour). */
+  colorParams?: string[];
 }
 
 export interface LevelSpec {
   value: number;
   color: string;
   dashed?: boolean;
+  lineStyle?: LineStyleName;
+  width?: number;
+  hidden?: boolean;
+  /** Name in the Style tab: an i18n key ("ind2.lvl.upper") or a literal. */
+  name?: string;
   label?: string;
   /** Start bar; the line runs from there to the right edge. Full width when omitted. */
   fromIndex?: number;
@@ -61,9 +80,13 @@ export interface FillSpec {
   /** Only where a >= b ("above") or a < b ("below"). */
   when?: "above" | "below";
   offset?: number;
+  /** Name in the Style tab. */
+  name?: string;
+  hidden?: boolean;
 }
 
-export interface BandSpec { lo: number; hi: number; color: string }
+/** Background between two levels. `loLevel` / `hiLevel` point into `levels` so that editing a level moves the band. */
+export interface BandSpec { lo: number; hi: number; color: string; loLevel?: number; hiLevel?: number; hidden?: boolean }
 
 export interface IndResult {
   plots: PlotSpec[];
@@ -86,6 +109,14 @@ export interface IndicatorDef {
   compute(candles: Candle[], p: Params): IndResult;
   /** Extra search words (latin), besides the localized name. */
   keywords?: string;
+  /** Colour params edited on the Style tab as plain colour rows (used by drawExtra, which has no plots to hang colours on). */
+  styleParams?: string[];
+  /** Param keys that the Inputs tab must not list (they are edited on the Style tab, e.g. RSI bands). */
+  hiddenParams?: string[];
+  /** Can not be moved to another pane (draws on the price scale or in the volume band). */
+  fixedPane?: boolean;
+  /** Custom painter for things that are not plots (volume profile). Runs every frame with the visible range. */
+  drawExtra?(sc: SeriesContext, p: Params): void;
 }
 
 /* ───────────── helpers ───────────── */
@@ -186,6 +217,7 @@ const RED = "#ef5350";
 const YELLOW = "#fbc02d";
 const CYAN = "#00acc1";
 const PINK = "#e91e63";
+const RIBBON = ["#f23645", "#ff9800", "#fbc02d", "#26a69a", "#2962ff", "#7e57c2", "#e91e63", "#00acc1"];
 
 function line(key: string, data: ArrayLike<number>, color: string, extra?: Partial<PlotSpec>): PlotSpec {
   return { key, data, kind: "line", color, width: 1.6, ...extra };
@@ -194,21 +226,21 @@ function line(key: string, data: ArrayLike<number>, color: string, extra?: Parti
 /** Standard overbought/oversold decoration: dashed levels and a soft band between them. */
 function oscLevels(upper: number, lower: number, color: string, mid?: number) {
   const levels: LevelSpec[] = [
-    { value: upper, color: GRAY_LINE, dashed: true },
-    { value: lower, color: GRAY_LINE, dashed: true },
+    { value: upper, color: GRAY_LINE, dashed: true, name: "ind2.lvl.upper" },
+    { value: lower, color: GRAY_LINE, dashed: true, name: "ind2.lvl.lower" },
   ];
-  if (mid !== undefined) levels.push({ value: mid, color: "rgba(120,123,134,0.35)", dashed: true });
-  return { levels, bands: [{ lo: lower, hi: upper, color: hexToRgba(color, 0.08) }] as BandSpec[] };
+  if (mid !== undefined) levels.push({ value: mid, color: "rgba(120,123,134,0.35)", dashed: true, name: "ind2.lvl.middle" });
+  return { levels, bands: [{ lo: lower, hi: upper, color: hexToRgba(color, 0.08), loLevel: 1, hiLevel: 0 }] as BandSpec[] };
 }
 
 function zeroLevel(): LevelSpec[] {
-  return [{ value: 0, color: "rgba(120,123,134,0.5)", dashed: true }];
+  return [{ value: 0, color: "rgba(120,123,134,0.5)", dashed: true, name: "ind2.lvl.zero" }];
 }
 
 function movingAverage(id: string, short: string, defLen: number, defColor: string, fn: (s: F64, n: number, c: Cols) => F64, kw = ""): IndicatorDef {
   return {
     id,
-    category: "trend",
+    category: "ma",
     pane: "overlay",
     fmt: "price",
     keywords: `${short} moving average ${kw}`,
@@ -247,7 +279,7 @@ const defs: IndicatorDef[] = [
   movingAverage("vwma", "VWMA", 20, CYAN, (s, n, c) => M.vwma(s, c.v, n)),
   {
     id: "alma",
-    category: "trend",
+    category: "ma",
     pane: "overlay",
     fmt: "price",
     keywords: "ALMA arnaud legoux moving average",
@@ -260,7 +292,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "alma_multi",
-    category: "trend",
+    category: "ma",
     pane: "overlay",
     fmt: "price",
     keywords: "ALMA multi arnaud legoux 20 50 200 three",
@@ -312,7 +344,7 @@ const defs: IndicatorDef[] = [
       const c = S(p, "color");
       return {
         plots: [line("Upper", up, c, { width: 1.4 }), line("Basis", basis, S(p, "colorBasis"), { width: 1.4 }), line("Lower", lo, c, { width: 1.4 })],
-        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.07) }],
+        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.07), name: "Upper / Lower" }],
       };
     },
   },
@@ -338,7 +370,7 @@ const defs: IndicatorDef[] = [
       const c = S(p, "color");
       return {
         plots: [line("Upper", up, c, { width: 1.4 }), line("Basis", basis, c, { width: 1.4, dashed: true }), line("Lower", lo, c, { width: 1.4 })],
-        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.06) }],
+        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.06), name: "Upper / Lower" }],
       };
     },
   },
@@ -359,7 +391,7 @@ const defs: IndicatorDef[] = [
       const c = S(p, "color");
       return {
         plots: [line("Upper", up, c, { width: 1.4 }), line("Basis", mid, S(p, "colorBasis"), { width: 1.4 }), line("Lower", lo, c, { width: 1.4 })],
-        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.06) }],
+        fills: [{ a: up, b: lo, color: hexToRgba(c, 0.06), name: "Upper / Lower" }],
       };
     },
   },
@@ -396,7 +428,7 @@ const defs: IndicatorDef[] = [
         }
         const bc = S(p, "colorBands");
         plots.push(line("Upper", up, bc, { width: 1.2 }), line("Lower", lo, bc, { width: 1.2 }));
-        fills.push({ a: up, b: lo, color: hexToRgba(bc, 0.06) });
+        fills.push({ a: up, b: lo, color: hexToRgba(bc, 0.06), name: "Upper / Lower" });
       }
       return { plots, fills };
     },
@@ -432,7 +464,7 @@ const defs: IndicatorDef[] = [
       const dn = S(p, "colorDown");
       const colors = new Array<string>(cols.n);
       for (let i = 0; i < cols.n; i++) colors[i] = r.dir[i] >= 0 ? up : dn;
-      return { plots: [{ key: "SAR", data: r.sar, kind: "dots", color: up, colors }] };
+      return { plots: [{ key: "SAR", data: r.sar, kind: "dots", color: up, colors, colorParams: ["colorUp", "colorDown"] }] };
     },
   },
   {
@@ -479,14 +511,15 @@ const defs: IndicatorDef[] = [
           line("Span B", spanB, cB, { width: 1, offset: off }),
         ],
         fills: [
-          { a: spanA, b: spanB, color: hexToRgba(cA, 0.16), when: "above", offset: off },
-          { a: spanA, b: spanB, color: hexToRgba(cB, 0.16), when: "below", offset: off },
+          { a: spanA, b: spanB, color: hexToRgba(cA, 0.16), when: "above", offset: off, name: "ind2.fill.cloudUp" },
+          { a: spanA, b: spanB, color: hexToRgba(cB, 0.16), when: "below", offset: off, name: "ind2.fill.cloudDown" },
         ],
       };
     },
   },
   {
     id: "volume_ma",
+    fixedPane: true,
     category: "volume",
     pane: "overlay",
     fmt: "vol",
@@ -501,7 +534,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "pivots",
-    category: "other",
+    category: "sr",
     pane: "overlay",
     fmt: "price",
     keywords: "pivot points classic support resistance",
@@ -538,7 +571,7 @@ const defs: IndicatorDef[] = [
       const cP = S(p, "colorPivot");
       const cR = S(p, "colorRes");
       const cS = S(p, "colorSup");
-      const mk = (label: string, value: number, color: string): LevelSpec => ({ value, color, label, fromIndex: start, flag: true, scale: false });
+      const mk = (label: string, value: number, color: string): LevelSpec => ({ value, color, label, name: label, fromIndex: start, flag: true, scale: false });
       return {
         plots: [],
         levels: [
@@ -557,6 +590,7 @@ const defs: IndicatorDef[] = [
   /* ── momentum ── */
   {
     id: "rsi",
+    hiddenParams: ["upper", "lower"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.2,
@@ -602,7 +636,7 @@ const defs: IndicatorDef[] = [
       for (let i = 0; i < cols.n; i++) colors[i] = r.hist[i] >= 0 ? up : dn;
       return {
         plots: [
-          { key: "Hist", data: r.hist, kind: "hist", color: up, colors, alpha: 0.75, flag: false },
+          { key: "Hist", data: r.hist, kind: "hist", color: up, colors, alpha: 0.75, flag: false, colorParams: ["colorUp", "colorDown"] },
           line("MACD", r.macd, S(p, "colorMacd")),
           line("Signal", r.signal, S(p, "colorSignal")),
         ],
@@ -612,6 +646,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "stoch",
+    hiddenParams: ["upper", "lower"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.2,
@@ -631,6 +666,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "stochrsi",
+    hiddenParams: ["upper", "lower"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.2,
@@ -660,6 +696,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "cci",
+    hiddenParams: ["upper", "lower"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.2,
@@ -691,6 +728,7 @@ const defs: IndicatorDef[] = [
   },
   {
     id: "mfi",
+    hiddenParams: ["upper", "lower"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.18,
@@ -773,7 +811,7 @@ const defs: IndicatorDef[] = [
       const r = M.adx(cols.h, cols.l, cols.c, N(p, "diLength"), N(p, "adxSmoothing"));
       return {
         plots: [line("ADX", r.adx, S(p, "colorAdx"), { width: 1.8 }), line("+DI", r.plus, S(p, "colorPlus"), { width: 1.3 }), line("-DI", r.minus, S(p, "colorMinus"), { width: 1.3 })],
-        levels: [{ value: 25, color: GRAY_LINE, dashed: true }],
+        levels: [{ value: 25, color: GRAY_LINE, dashed: true, name: "ind2.lvl.level" }],
       };
     },
   },
@@ -794,7 +832,7 @@ const defs: IndicatorDef[] = [
       const dn = S(p, "colorDown");
       const colors = new Array<string>(cols.n);
       for (let i = 0; i < cols.n; i++) colors[i] = cols.c[i] >= cols.o[i] ? up : dn;
-      const plots: PlotSpec[] = [{ key: "Vol", data: cols.v, kind: "hist", color: up, colors, alpha: 0.7, flag: true }];
+      const plots: PlotSpec[] = [{ key: "Vol", data: cols.v, kind: "hist", color: up, colors, alpha: 0.7, flag: true, colorParams: ["colorUp", "colorDown"] }];
       if (B(p, "showMa")) plots.push(line("MA", M.sma(cols.v, N(p, "maLength")), S(p, "colorMa"), { width: 1.4 }));
       return { plots };
     },
@@ -827,6 +865,207 @@ const defs: IndicatorDef[] = [
       return { plots: [line("CVD≈", M.cvdApprox(cols.o, cols.h, cols.l, cols.c, cols.v), S(p, "color"))], levels: zeroLevel() };
     },
   },
+
+  /* ── moving averages: ribbon ── */
+  {
+    id: "ma_ribbon",
+    category: "ma",
+    pane: "overlay",
+    fmt: "price",
+    keywords: "ma ribbon moving average ribbon several lines",
+    params: [
+      sel("maType", "ema", MA_OPTIONS),
+      num("count", 6, 2, 8),
+      num("startLength", 20, 1, 500),
+      num("step", 10, 1, 200),
+      src(),
+    ],
+    title: (p) => `Ribbon ${S(p, "maType").toUpperCase()} ${N(p, "startLength")}+${N(p, "step")}×${N(p, "count")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const s = pick(cols, S(p, "source"));
+      const plots: PlotSpec[] = [];
+      for (let k = 0; k < N(p, "count"); k++) {
+        const len = N(p, "startLength") + k * N(p, "step");
+        plots.push(line(`MA ${len}`, M.maByType(S(p, "maType"), s, len, cols.v), RIBBON[k % RIBBON.length], { width: 1.3 }));
+      }
+      return { plots };
+    },
+  },
+
+  /* ── trend ── */
+  {
+    id: "aroon",
+    category: "trend",
+    pane: "own",
+    paneRatio: 0.18,
+    fmt: "osc",
+    keywords: "aroon up down trend strength",
+    params: [num("length", 14, 1, 500), col("colorUp", "#fb8c00"), col("colorDown", BLUE)],
+    title: (p) => `Aroon ${N(p, "length")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const r = M.aroon(cols.h, cols.l, N(p, "length"));
+      return {
+        plots: [line("Up", r.up, S(p, "colorUp")), line("Down", r.down, S(p, "colorDown"))],
+        levels: [
+          { value: 70, color: GRAY_LINE, dashed: true, name: "ind2.lvl.upper" },
+          { value: 30, color: GRAY_LINE, dashed: true, name: "ind2.lvl.lower" },
+        ],
+        range: [0, 100],
+      };
+    },
+  },
+  {
+    id: "linreg",
+    category: "trend",
+    pane: "overlay",
+    fmt: "price",
+    keywords: "linear regression channel trend line",
+    params: [num("length", 100, 2, 5000), num("mult", 2, 0.1, 10, 0.1), src(), col("color", BLUE), col("colorBasis", ORANGE)],
+    title: (p) => `LR ${N(p, "length")} ${N(p, "mult")} ${S(p, "source")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const r = M.linregChannel(pick(cols, S(p, "source")), N(p, "length"), N(p, "mult"));
+      const c = S(p, "color");
+      return {
+        plots: [line("Upper", r.upper, c, { width: 1.4 }), line("Basis", r.base, S(p, "colorBasis"), { width: 1.4, lineStyle: "dashed" }), line("Lower", r.lower, c, { width: 1.4 })],
+        fills: [{ a: r.upper, b: r.lower, color: hexToRgba(c, 0.07), name: "Upper / Lower" }],
+      };
+    },
+  },
+  {
+    id: "zigzag",
+    category: "sr",
+    pane: "overlay",
+    fmt: "price",
+    keywords: "zigzag zig zag swing pivots",
+    params: [num("deviation", 5, 0.1, 50, 0.1), col("color", "#2962ff")],
+    title: (p) => `ZigZag ${N(p, "deviation")}%`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      return { plots: [line("ZigZag", M.zigzag(cols.h, cols.l, N(p, "deviation")), S(p, "color"), { width: 1.8, connect: true, flag: false })] };
+    },
+  },
+  {
+    id: "fractals",
+    category: "sr",
+    pane: "overlay",
+    fmt: "price",
+    keywords: "williams fractals bill",
+    params: [num("periods", 2, 1, 10), col("colorUp", "#ef5350"), col("colorDown", "#26a69a")],
+    title: (p) => `Fractals ${N(p, "periods")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const r = M.fractals(cols.h, cols.l, N(p, "periods"));
+      return {
+        plots: [
+          { key: "Up", data: r.up, kind: "dots", color: S(p, "colorUp"), flag: false, legend: false },
+          { key: "Down", data: r.down, kind: "dots", color: S(p, "colorDown"), flag: false, legend: false },
+        ],
+      };
+    },
+  },
+
+  /* ── momentum ── */
+  {
+    id: "ao",
+    category: "momentum",
+    pane: "own",
+    paneRatio: 0.18,
+    fmt: "osc",
+    keywords: "awesome oscillator bill williams AO",
+    params: [num("aoFast", 5, 1, 200), num("aoSlow", 34, 2, 500), col("colorUp", GREEN), col("colorDown", RED)],
+    title: (p) => `AO ${N(p, "aoFast")} ${N(p, "aoSlow")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const mid = pick(cols, "hl2");
+      const fast = M.sma(mid, N(p, "aoFast"));
+      const slow = M.sma(mid, N(p, "aoSlow"));
+      const ao = new Float64Array(cols.n).fill(NaN);
+      const colors = new Array<string>(cols.n);
+      const up = S(p, "colorUp");
+      const dn = S(p, "colorDown");
+      for (let i = 0; i < cols.n; i++) {
+        ao[i] = fast[i] - slow[i];
+        colors[i] = i > 0 && ao[i] < ao[i - 1] ? dn : up;
+      }
+      return { plots: [{ key: "AO", data: ao, kind: "hist", color: up, colors, alpha: 0.85, flag: false, colorParams: ["colorUp", "colorDown"] }], levels: zeroLevel() };
+    },
+  },
+  {
+    id: "trix",
+    category: "momentum",
+    pane: "own",
+    paneRatio: 0.18,
+    fmt: "osc",
+    keywords: "trix triple exponential average",
+    params: [num("length", 18, 1, 300), col("color", "#f23645")],
+    title: (p) => `TRIX ${N(p, "length")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      return { plots: [line("TRIX", M.trix(cols.c, N(p, "length")), S(p, "color"))], levels: zeroLevel() };
+    },
+  },
+
+  /* ── volume ── */
+  {
+    id: "cmf",
+    category: "volume",
+    pane: "own",
+    paneRatio: 0.18,
+    fmt: "osc",
+    keywords: "chaikin money flow CMF",
+    params: [num("length", 20, 1, 500), col("color", "#43a047")],
+    title: (p) => `CMF ${N(p, "length")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      return { plots: [line("CMF", M.cmf(cols.h, cols.l, cols.c, cols.v, N(p, "length")), S(p, "color"))], levels: zeroLevel() };
+    },
+  },
+  {
+    id: "efi",
+    category: "volume",
+    pane: "own",
+    paneRatio: 0.18,
+    fmt: "vol",
+    keywords: "elder force index EFI",
+    params: [num("length", 13, 1, 500), col("color", "#ef5350")],
+    title: (p) => `EFI ${N(p, "length")}`,
+    compute(cs, p) {
+      const cols = toCols(cs);
+      return { plots: [line("EFI", M.forceIndex(cols.c, cols.v, N(p, "length")), S(p, "color"))], levels: zeroLevel() };
+    },
+  },
+  {
+    id: "vprofile",
+    fixedPane: true,
+    category: "volume",
+    pane: "overlay",
+    fmt: "vol",
+    keywords: "volume profile visible range VRVP POC value area",
+    params: [
+      num("rows", 24, 4, 200),
+      num("widthPct", 30, 5, 90),
+      sel("placement", "left", [
+        { value: "left", label: "ind2.o.left" },
+        { value: "right", label: "ind2.o.right" },
+      ]),
+      num("valueArea", 70, 10, 100),
+      bool("showVaLines", false),
+      col("colorUp", "#2962ff"),
+      col("colorDown", "#ff9800"),
+      col("colorPoc", "#f23645"),
+    ],
+    styleParams: ["colorUp", "colorDown", "colorPoc"],
+    title: (p) => `VP ${N(p, "rows")} ${N(p, "valueArea")}%`,
+    compute() {
+      return { plots: [] };
+    },
+    drawExtra(sc, p) {
+      drawVolumeProfile(sc, p);
+    },
+  },
 ];
 
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
@@ -838,7 +1077,7 @@ export function getIndicatorDef(id: string): IndicatorDef | undefined {
   return byId.get(id);
 }
 
-export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "other"];
+export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "other"];
 
 export function defaultParams(def: IndicatorDef): Params {
   const out: Params = {};

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import { DRAWING_GROUPS, getToolDef } from "@/lib/chart/drawings/tools";
+import { DRAW_TEXT_DEFAULTS, setDrawTexts } from "@/lib/chart/drawings/tools-kit";
 import { useT } from "@/lib/i18n/client";
 import { DrawIcon } from "./icons";
 
@@ -86,6 +87,13 @@ export default function DrawingToolbar({ controller, className }: { controller: 
 
   // translated strings that drawings paint themselves (measure labels etc.)
   useEffect(() => {
+    // strings painted by the extended tools (pattern captions, VWAP, POC ...)
+    const texts: Record<string, string> = {};
+    for (const k of Object.keys(DRAW_TEXT_DEFAULTS)) {
+      const v = t(k);
+      if (v && v !== k) texts[k] = v;
+    }
+    setDrawTexts(texts);
     ctl.setLabels?.({
       bars: t("draw.lbl.bars"),
       d: t("draw.lbl.d"),
@@ -118,6 +126,15 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
+  }, [flyout]);
+
+  useEffect(() => {
+    // keyboard: move focus into the menu (the active tool when there is one)
+    if (!flyout) return;
+    const el = flyRef.current;
+    if (!el) return;
+    const target = el.querySelector<HTMLElement>('[aria-current="true"]') ?? el.querySelector<HTMLElement>('[role="menuitem"]');
+    target?.focus({ preventScroll: false });
   }, [flyout]);
 
   useLayoutEffect(() => {
@@ -154,6 +171,21 @@ export default function DrawingToolbar({ controller, className }: { controller: 
     }
     const r = el.getBoundingClientRect();
     setFlyout({ groupId, left: r.right + 6, top: r.top });
+  };
+
+  const onMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    const items = Array.from(flyRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    if (items.length === 0) return;
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    let n = i;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") n = i < 0 ? 0 : (i + 1) % items.length;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") n = i <= 0 ? items.length - 1 : i - 1;
+    else if (e.key === "Home") n = 0;
+    else n = items.length - 1;
+    e.preventDefault();
+    items[n].focus();
   };
 
   const activeTool = controller.getTool();
@@ -303,26 +335,61 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           role="menu"
           aria-label={t(flyGroup.labelKey)}
           style={{ position: "fixed", left: flyout.left, top: flyout.top }}
+          onKeyDown={onMenuKey}
           className="z-[100] max-h-[calc(100vh-16px)] min-w-[250px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-900"
         >
           <div className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(flyGroup.labelKey)}</div>
-          {flyGroup.tools.map((tool) => {
-            const isActive = flyGroup.id === "cursors" ? activeTool === null && (last[flyGroup.id] ?? "") === tool.id : activeTool === tool.id;
-            return (
-              <button
-                key={tool.id}
-                type="button"
-                role="menuitem"
-                onClick={() => pickTool(flyGroup.id, tool.id)}
-                className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-[13.5px] text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 ${
-                  isActive ? "bg-green-600/10 !text-green-600 dark:!text-green-500" : ""
-                }`}
-              >
-                <DrawIcon id={tool.id} size={24} />
-                <span className="truncate">{t(tool.labelKey)}</span>
-              </button>
-            );
-          })}
+          {(flyGroup.sections ?? [{ id: "all", labelKey: flyGroup.labelKey, tools: flyGroup.tools }]).map((sec, si, all) => (
+            <div key={sec.id} role="group" aria-label={t(sec.labelKey)}>
+              {all.length > 1 && (
+                <div className={`px-3 pb-0.5 pt-2 text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 ${si > 0 ? "mt-1 border-t border-gray-100 dark:border-gray-800" : ""}`}>
+                  {t(sec.labelKey)}
+                </div>
+              )}
+              {flyGroup.grid ? (
+                <div className="grid grid-cols-6 gap-1 px-2 py-1.5">
+                  {sec.tools.map((tool) => {
+                    const isActive = activeTool === tool.id;
+                    return (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        role="menuitem"
+                        title={t(tool.labelKey)}
+                        aria-label={t(tool.labelKey)}
+                        aria-current={isActive ? "true" : undefined}
+                        onClick={() => pickTool(flyGroup.id, tool.id)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800 ${
+                          isActive ? "bg-green-600/10 !text-green-600 dark:!text-green-500" : ""
+                        }`}
+                      >
+                        <DrawIcon id={tool.id} size={24} />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                sec.tools.map((tool) => {
+                  const isActive = flyGroup.id === "cursors" ? activeTool === null && (last[flyGroup.id] ?? "") === tool.id : activeTool === tool.id;
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      role="menuitem"
+                      aria-current={isActive ? "true" : undefined}
+                      onClick={() => pickTool(flyGroup.id, tool.id)}
+                      className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-[13.5px] text-gray-700 hover:bg-gray-100 focus-visible:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800 ${
+                        isActive ? "bg-green-600/10 !text-green-600 dark:!text-green-500" : ""
+                      }`}
+                    >
+                      <DrawIcon id={tool.id} size={24} />
+                      <span className="truncate">{t(tool.labelKey)}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -2,29 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
+import { getPropSchema, schemaFromUi } from "@/lib/chart/drawings/props";
 import { getToolDef } from "@/lib/chart/drawings/tools";
 import { useT } from "@/lib/i18n/client";
 import { ALERT_LINE_TOOLS } from "@/lib/alerts/evaluate";
 import { DrawIcon } from "./DrawingToolbar";
-
-const PALETTE = [
-  "#2962ff",
-  "#f23645",
-  "#089981",
-  "#ff9800",
-  "#9c27b0",
-  "#00bcd4",
-  "#e91e63",
-  "#4caf50",
-  "#3f51b5",
-  "#fdd835",
-  "#795548",
-  "#787b86",
-  "#000000",
-  "#ffffff",
-];
-
-const HEX = /^#[0-9a-fA-F]{6}$/;
+import ColorPicker, { composeColor, parseColor } from "./ColorPicker";
+import { btnCls, LinePreview, Menu, TemplateMenu } from "./DrawingControls";
+import { IND_ICONS } from "./icons";
 
 function useController(c: DrawingsControllerLike) {
   const ver = useRef(0);
@@ -45,79 +30,43 @@ function useController(c: DrawingsControllerLike) {
 
 const btn =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800";
-const btnOn = "bg-green-600/10 !text-green-600 dark:!text-green-500";
-const sep = <div className="mx-0.5 h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />;
-
-function ColorButton({ value, title, onChange, children }: { value: string; title: string; onChange: (c: string) => void; children?: ReactNode }) {
-  const { t } = useT();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" title={title} aria-label={title} aria-expanded={open} className={btn} onClick={() => setOpen((o) => !o)}>
-        {children ?? <span className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600" style={{ background: value }} />}
-      </button>
-      {open && (
-        <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[170px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
-          <div className="grid grid-cols-7 gap-1">
-            {PALETTE.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => {
-                  onChange(c);
-                  setOpen(false);
-                }}
-                className={`h-5 w-5 rounded border ${value.toLowerCase() === c ? "border-green-600 ring-1 ring-green-600" : "border-gray-300 dark:border-gray-600"}`}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-          <label className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-            <span>{t("draw.style.custom")}</span>
-            <input
-              type="color"
-              value={HEX.test(value) ? value : "#2962ff"}
-              onChange={(e) => onChange(e.target.value)}
-              className="h-6 w-8 cursor-pointer rounded border border-gray-300 bg-transparent p-0 dark:border-gray-600"
-            />
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
+const btnOn = "bg-[#2962ff]/15 !text-[#2962ff]";
+const sep = <div className="mx-0.5 hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />;
 
 /** Drawings an alert can follow (a level that moves with the line). */
 const ALERT_TOOLS = new Set<string>(ALERT_LINE_TOOLS);
+
+const TEXT_SIZES = [10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+const STAMP_SIZES = [14, 18, 22, 30, 40, 60, 80];
+
+/** Colour button with a glyph over a colour bar (line colour, text colour). */
+function GlyphSwatch({ glyph, color }: { glyph: ReactNode; color: string }) {
+  const p = parseColor(color);
+  return (
+    <span className="flex h-full w-full flex-col items-center justify-center gap-[2px]">
+      <span className="flex h-3.5 items-center text-gray-700 dark:text-gray-200">{glyph}</span>
+      <span className="h-[3px] w-4 rounded-sm" style={{ background: composeColor(p.hex, Math.max(0.35, p.a)) }} />
+    </span>
+  );
+}
+
+const PEN = (
+  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2.5 13.5l.6-3L11 2.6a1.3 1.3 0 011.8 0l.6.6a1.3 1.3 0 010 1.8L5.5 12.9z" />
+  </svg>
+);
 
 export default function DrawingStyleBar({ controller, onCreateAlert }: { controller: DrawingsControllerLike; onCreateAlert?: () => void }) {
   const { t } = useT();
   useController(controller);
   const sel = controller.getSelection();
-  const textRef = useRef<HTMLInputElement | null>(null);
+  const [textOpen, setTextOpen] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const textWrap = useRef<HTMLDivElement | null>(null);
   const focusedFor = useRef<string | null>(null);
 
   const def = sel ? getToolDef(sel.tool) : undefined;
+  const schema = sel && def ? getPropSchema(sel.tool) ?? schemaFromUi(def.ui) : undefined;
   const selId = sel?.id ?? null;
   const wantsText = !!def?.ui.text;
   const emptyText = (sel?.style.text ?? "") === "";
@@ -126,109 +75,207 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
   useEffect(() => {
     if (!selId) {
       focusedFor.current = null;
+      setTextOpen(false);
       return;
     }
     if (wantsText && emptyText && focusedFor.current !== selId) {
       focusedFor.current = selId;
-      textRef.current?.focus();
+      setTextOpen(true);
     }
   }, [selId, wantsText, emptyText]);
 
-  if (!sel || !def) return null;
+  useEffect(() => {
+    if (!textOpen) return;
+    const t0 = setTimeout(() => textRef.current?.focus(), 30);
+    const onDown = (e: PointerEvent) => {
+      if (textWrap.current && e.target instanceof Node && textWrap.current.contains(e.target)) return;
+      setTextOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => {
+      clearTimeout(t0);
+      document.removeEventListener("pointerdown", onDown, true);
+    };
+  }, [textOpen]);
+
+  if (!sel || !def || !schema) return null;
+  const d = controller.getById(sel.id);
   const ui = def.ui;
   const st = sel.style;
+  const multi = (sel.count ?? 1) > 1;
   const patch = (p: Parameters<DrawingsControllerLike["updateSelectedStyle"]>[0]) => controller.updateSelectedStyle(p);
-  const isSizeOnly = !ui.dash && !ui.fill && (def.id === "text" || def.id.startsWith("stamp_"));
-  const widthTitle = isSizeOnly ? t("draw.style.size") : t("draw.style.width");
-  const widths = [1, 2, 3, 4];
-  const dashes: { id: string; icon: string; key: string }[] = [
-    { id: "solid", icon: "dashSolid", key: "draw.style.solid" },
-    { id: "dashed", icon: "dashDashed", key: "draw.style.dashed" },
-    { id: "dotted", icon: "dashDotted", key: "draw.style.dotted" },
-  ];
+  const cpLabels = { opacity: t("dp.opacity"), custom: t("draw.style.custom"), recent: t("dp.recent") };
+  const isText = def.id === "text";
+  const isStamp = def.id.startsWith("stamp_");
+  const sizeOnly = isText || isStamp;
+  const sizes = isStamp ? STAMP_SIZES : TEXT_SIZES;
+  const curSize = st.fontSize ?? (isStamp ? 14 + Math.round(Math.max(1, st.width)) * 4 : 11 + Math.round(Math.max(1, st.width)) * 2);
+  const hasTextColor = !!schema.text && schema.text.colorKey !== "color";
   const fillColor = st.fill ?? st.color;
-  const opacityPct = Math.round((st.fillOpacity ?? 0.15) * 100);
+  const hideFn = (controller as unknown as { toggleSelectedHidden?: () => void }).toggleSelectedHidden;
+  const openSettings = () => controller.requestSettings(sel.id);
+  const textVal = (hasTextColor ? st.textColor : undefined) ?? st.color;
+
+  const lockBtn = (
+    <button type="button" title={sel.locked ? t("draw.style.unlock") : t("draw.style.lock")} aria-label={sel.locked ? t("draw.style.unlock") : t("draw.style.lock")} aria-pressed={sel.locked} onClick={() => controller.toggleSelectedLock()} className={`${btn} ${sel.locked ? btnOn : ""}`}>
+      <DrawIcon id={sel.locked ? "lock" : "unlock"} />
+    </button>
+  );
+  const cloneBtn = (
+    <button type="button" title={t("draw.style.clone")} aria-label={t("draw.style.clone")} onClick={() => controller.cloneSelected()} className={btn}>
+      <DrawIcon id="clone" />
+    </button>
+  );
+  const hideBtn = hideFn ? (
+    <button type="button" title={sel.hidden ? t("dp.show") : t("dp.hide")} aria-label={sel.hidden ? t("dp.show") : t("dp.hide")} aria-pressed={!!sel.hidden} onClick={() => hideFn.call(controller)} className={`${btn} ${sel.hidden ? btnOn : ""}`}>
+      <DrawIcon id={sel.hidden ? "eyeOff" : "eye"} />
+    </button>
+  ) : null;
+  const delBtn = (
+    <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => controller.removeSelected()} className={`${btn} hover:!text-red-500`}>
+      <DrawIcon id="trash" />
+    </button>
+  );
 
   return (
     <div
       role="toolbar"
       aria-label={t("draw.style.bar")}
-      className="pointer-events-auto absolute left-1/2 top-2 z-30 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-0.5 rounded-full border border-gray-200 bg-white px-2 py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-gray-200 bg-white px-2 py-1 shadow-lg dark:border-[#2a2e39] dark:bg-[#1e222d]"
     >
-      {ui.color && <ColorButton value={st.color} title={t("draw.style.color")} onChange={(c) => patch({ color: c })} />}
+      {ui.color && (
+        <ColorPicker value={st.color} size={28} labels={cpLabels} title={isText ? t("dp.textColor") : t("draw.style.color")} onChange={(c) => patch({ color: c })}>
+          <GlyphSwatch glyph={isText ? <span className="text-[13px] font-bold leading-none">A</span> : PEN} color={st.color} />
+        </ColorPicker>
+      )}
+
+      {ui.fill && (
+        <ColorPicker
+          value={composeColor(parseColor(fillColor).hex, st.fillOpacity ?? 0.15)}
+          size={28}
+          labels={cpLabels}
+          title={t("draw.style.fill")}
+          onChange={(c) => {
+            const p = parseColor(c);
+            patch({ fill: p.hex, fillOpacity: Math.round(p.a * 100) / 100 });
+          }}
+        />
+      )}
+
+      {hasTextColor && (
+        <ColorPicker value={textVal} size={28} labels={cpLabels} title={t("dp.textColor")} onChange={(c) => patch({ textColor: c })}>
+          <GlyphSwatch glyph={<span className="text-[13px] font-bold leading-none">A</span>} color={textVal} />
+        </ColorPicker>
+      )}
 
       {ui.width && (
         <>
           {sep}
-          <div className="flex items-center" role="group" aria-label={widthTitle}>
-            {widths.map((w) => {
-              const on = Math.round(st.width) === w || (w === 4 && st.width > 4);
-              return (
-                <button key={w} type="button" title={`${widthTitle}: ${w}`} aria-label={`${widthTitle}: ${w}`} aria-pressed={on} onClick={() => patch({ width: w })} className={`${btn} w-6 ${on ? btnOn : ""}`}>
-                  {isSizeOnly ? (
-                    <span className="font-semibold leading-none" style={{ fontSize: 9 + w * 2 }}>
-                      A
-                    </span>
-                  ) : (
-                    <span className="block w-4 rounded-full bg-current" style={{ height: w }} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {sizeOnly ? (
+            <Menu title={t("draw.style.size")} trigger={<span className="text-[12px] tabular-nums">{curSize}px</span>}>
+              {(close) => (
+                <div className="max-h-56 overflow-y-auto">
+                  {sizes.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        patch({ fontSize: s });
+                        close();
+                      }}
+                      className={`flex w-full items-center rounded px-2 py-1 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${s === curSize ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                    >
+                      {s}px
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Menu>
+          ) : (
+            <Menu
+              title={t("draw.style.width")}
+              trigger={
+                <span className="flex items-center gap-1">
+                  <LinePreview width={Math.min(6, st.width)} dash="solid" />
+                  <span className="hidden text-[11px] opacity-70 sm:inline">{Math.round(st.width)}px</span>
+                </span>
+              }
+            >
+              {(close) => (
+                <>
+                  {[1, 2, 3, 4].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => {
+                        patch({ width: w });
+                        close();
+                      }}
+                      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${Math.round(st.width) === w ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                    >
+                      <LinePreview width={w} dash="solid" />
+                      <span>{w}px</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </Menu>
+          )}
         </>
       )}
 
       {ui.dash && (
-        <>
-          {sep}
-          <div className="flex items-center" role="group" aria-label={t("draw.style.dash")}>
-            {dashes.map((d) => (
-              <button key={d.id} type="button" title={t(d.key)} aria-label={t(d.key)} aria-pressed={st.dash === d.id} onClick={() => patch({ dash: d.id })} className={`${btn} w-6 ${st.dash === d.id ? btnOn : ""}`}>
-                <DrawIcon id={d.icon} />
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {ui.fill && (
-        <>
-          {sep}
-          <ColorButton value={fillColor} title={t("draw.style.fill")} onChange={(c) => patch({ fill: c })}>
-            <span className="relative h-4 w-4 rounded border border-gray-300 dark:border-gray-600" style={{ background: fillColor, opacity: Math.max(0.35, st.fillOpacity ?? 0.15) }} />
-          </ColorButton>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={opacityPct}
-            title={`${t("draw.style.opacity")}: ${opacityPct}%`}
-            aria-label={t("draw.style.opacity")}
-            onChange={(e) => patch({ fillOpacity: Number(e.target.value) / 100 })}
-            className="mx-1 h-1 w-16 cursor-pointer accent-green-600"
-          />
-        </>
+        <Menu title={t("draw.style.dash")} trigger={<LinePreview width={2} dash={st.dash} />}>
+          {(close) => (
+            <>
+              {(["solid", "dashed", "dotted"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    patch({ dash: k });
+                    close();
+                  }}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${st.dash === k ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                >
+                  <LinePreview width={2} dash={k} />
+                  <span>{t(`draw.style.${k}`)}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </Menu>
       )}
 
       {ui.text && (
         <>
           {sep}
-          <input
-            ref={textRef}
-            type="text"
-            value={st.text ?? ""}
-            maxLength={500}
-            placeholder={t("draw.style.textPlaceholder")}
-            aria-label={t("draw.style.text")}
-            onChange={(e) => patch({ text: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
-              e.stopPropagation();
-            }}
-            className="h-7 w-36 rounded-md border border-gray-200 bg-transparent px-2 text-[13px] text-gray-800 outline-none focus:border-green-600 dark:border-gray-700 dark:text-gray-100"
-          />
+          <div ref={textWrap} className="relative">
+            <button type="button" title={t("draw.style.text")} aria-label={t("draw.style.text")} aria-expanded={textOpen} onClick={() => setTextOpen((o) => !o)} className={`${btn} ${textOpen ? btnOn : ""}`}>
+              <DrawIcon id="text" size={18} />
+            </button>
+            {textOpen && (
+              <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[240px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]">
+                <textarea
+                  ref={textRef}
+                  value={st.text ?? ""}
+                  maxLength={500}
+                  rows={3}
+                  placeholder={t("draw.style.textPlaceholder")}
+                  aria-label={t("draw.style.text")}
+                  onChange={(e) => patch({ text: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) {
+                      e.preventDefault();
+                      setTextOpen(false);
+                    }
+                    e.stopPropagation();
+                  }}
+                  className="w-full resize-none rounded border border-gray-300 bg-transparent px-2 py-1 text-[13px] text-gray-800 outline-none focus:border-[#2962ff] dark:border-[#363a45] dark:text-gray-100"
+                />
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -248,22 +295,54 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
       )}
 
       {sep}
-      <button
-        type="button"
-        title={sel.locked ? t("draw.style.unlock") : t("draw.style.lock")}
-        aria-label={sel.locked ? t("draw.style.unlock") : t("draw.style.lock")}
-        aria-pressed={sel.locked}
-        onClick={() => controller.toggleSelectedLock()}
-        className={`${btn} ${sel.locked ? btnOn : ""}`}
-      >
-        <DrawIcon id={sel.locked ? "lock" : "unlock"} />
+      {d && !multi && (
+        <span className="hidden sm:inline-flex">
+          <TemplateMenu d={d} controller={controller} t={t} factory={def.style} compact down apply={(p) => controller.updateById(d.id, p)} />
+        </span>
+      )}
+      {!multi && (
+        <button type="button" title={t("dp.settings")} aria-label={t("dp.settings")} onClick={openSettings} className={btn}>
+          {IND_ICONS.gear(17)}
+        </button>
+      )}
+
+      {/* lock / clone / hide sit in the row on wide screens and in the "more" menu on narrow ones */}
+      <span className="hidden items-center gap-0.5 sm:flex">
+        {lockBtn}
+        {cloneBtn}
+        {hideBtn}
+      </span>
+      <span className="sm:hidden">
+        <MoreMenu>
+          {lockBtn}
+          {cloneBtn}
+          {hideBtn}
+        </MoreMenu>
+      </span>
+      {delBtn}
+    </div>
+  );
+}
+
+/** "..." popover for the actions that do not fit on a phone-width bar. */
+function MoreMenu({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: PointerEvent) => {
+      if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", down, true);
+    return () => document.removeEventListener("pointerdown", down, true);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={`${btnCls} !border-0 w-7 !px-0`}>
+        {IND_ICONS.more(16)}
       </button>
-      <button type="button" title={t("draw.style.clone")} aria-label={t("draw.style.clone")} onClick={() => controller.cloneSelected()} className={btn}>
-        <DrawIcon id="clone" />
-      </button>
-      <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => controller.removeSelected()} className={`${btn} hover:!text-red-500`}>
-        <DrawIcon id="trash" />
-      </button>
+      {open && <div className="absolute right-0 top-full z-40 mt-1.5 flex gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]">{children}</div>}
     </div>
   );
 }

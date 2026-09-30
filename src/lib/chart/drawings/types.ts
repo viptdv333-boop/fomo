@@ -12,7 +12,19 @@ export interface Drawing {
   points: DPoint[];
   style: DrawingStyle;
   locked: boolean;
+  /** Hidden by the user (object tree / context menu); not drawn and not selectable. */
+  hidden?: boolean;
+  /** Custom name shown in the object tree. */
+  name?: string;
   extra?: Record<string, unknown>;
+}
+
+/** What updateById merges: style / extra key by key (undefined removes a key), points and locked replace. */
+export interface DrawingPatch {
+  style?: Partial<DrawingStyle>;
+  extra?: Record<string, unknown>;
+  points?: DPoint[];
+  locked?: boolean;
 }
 
 export type Magnet = "off" | "weak" | "strong";
@@ -47,6 +59,10 @@ export interface DrawLabels {
   target: string;
   price: string;
   empty: string;
+  /** Optional extras (position tools); English fallbacks are used when the shell does not push them. */
+  qty?: string;
+  risk?: string;
+  reward?: string;
 }
 
 export const DEFAULT_LABELS: DrawLabels = {

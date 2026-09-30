@@ -13,7 +13,8 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 
-const TradingChart = dynamic(() => import("@/components/chart/TradingChart"), {
+// MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
+const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-100 dark:bg-gray-900 animate-pulse" />,
 });

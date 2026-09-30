@@ -16,5 +16,10 @@ import chartind from "./chartind";
 import chartdraw from "./chartdraw";
 import chartshell from "./chartshell";
 import alerts from "./alerts";
+import drawtools from "./drawtools";
+import chartmenu from "./chartmenu";
+import indicators2 from "./indicators2";
+import drawprops from "./drawprops";
+import chartsettings from "./chartsettings";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings];

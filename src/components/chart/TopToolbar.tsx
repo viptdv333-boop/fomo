@@ -7,6 +7,12 @@ import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import type { ReplayApi } from "./ReplayControls";
 import { InstIcon } from "./RightPanel";
 import { CHART_TYPE_ICONS, UI_ICONS } from "./icons";
+import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
+import IntervalControl from "./IntervalControl";
+import ChartTypeSettings from "./ChartTypeSettings";
+import TemplatesMenu from "./TemplatesMenu";
+import type { ChartSettingsApi } from "./useChartSettings";
+import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { exchangeLabel, type TerminalInstrument } from "@/lib/terminal-data";
 
 export const INTERVALS: { id: string; key: string }[] = [
@@ -27,6 +33,17 @@ export const CHART_TYPES: { id: ChartType; key: string }[] = [
   { id: "line", key: "chart.type.line" },
   { id: "area", key: "chart.type.area" },
   { id: "heikin", key: "chart.type.heikin" },
+  { id: "columns", key: "chart.type.columns" },
+  { id: "highlow", key: "chart.type.highlow" },
+  { id: "linemarkers", key: "chart.type.linemarkers" },
+  { id: "step", key: "chart.type.step" },
+  { id: "baseline", key: "chart.type.baseline" },
+  { id: "volcandles", key: "chart.type.volcandles" },
+  { id: "renko", key: "chart.type.renko" },
+  { id: "kagi", key: "chart.type.kagi" },
+  { id: "linebreak", key: "chart.type.linebreak" },
+  { id: "range", key: "chart.type.range" },
+  { id: "pnf", key: "chart.type.pnf" },
 ];
 
 export type ToggleKey = "showVolume" | "showGrid" | "showWatermark";
@@ -54,11 +71,29 @@ interface Props {
   toolsOpen: boolean;
   onTogglePanel: () => void;
   panelOpen: boolean;
+  /* chart settings, intervals, compare, layouts (all optional: the toolbar works without them) */
+  favIntervals?: string[];
+  onFavIntervals?: (list: string[]) => void;
+  onOpenSettings?: () => void;
+  onOpenCompare?: () => void;
+  compareCount?: number;
+  settingsApi?: ChartSettingsApi;
+  transformBox?: number;
+  templates?: {
+    getTemplate: (withDrawings: boolean) => ChartTemplateData;
+    applyTemplate: (d: ChartTemplateData) => void;
+    getLayout: () => ChartLayoutData;
+    applyLayout: (d: ChartLayoutData) => void;
+  };
+  onScreenshotCopy?: () => void;
+  onOpenShortcuts?: () => void;
+  /** Extra buttons (the multi-chart layout picker). */
+  extra?: ReactNode;
 }
 
 /* icons live in ./icons */
 const I = UI_ICONS;
-const typeIcon = CHART_TYPE_ICONS as Record<ChartType, ReactNode>;
+const typeIcon = { ...CHART_TYPE_ICONS, ...CHART_TYPE_ICONS_EXTRA } as Record<ChartType, ReactNode>;
 
 /* ───────────── dropdown ───────────── */
 
@@ -93,7 +128,7 @@ function Menu({
         <>
           <div className="fixed inset-0 z-[55]" onClick={close} />
           <div
-            className="fixed z-[56] py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl"
+            className="fixed z-[56] py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl max-h-[calc(100vh-70px)] overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width }}
           >
             {children(close)}
@@ -139,14 +174,18 @@ export default function TopToolbar(p: Props) {
       </button>
       {sep}
 
-      {INTERVALS.map((i) => (
-        <button key={i.id} onClick={() => p.onInterval(i.id)} aria-pressed={p.interval === i.id} className={`${btn} px-2.5 ${p.interval === i.id ? btnOn : ""}`}>
-          {t(i.key)}
-        </button>
-      ))}
+      {p.favIntervals && p.onFavIntervals ? (
+        <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} />
+      ) : (
+        INTERVALS.map((i) => (
+          <button key={i.id} onClick={() => p.onInterval(i.id)} aria-pressed={p.interval === i.id} className={`${btn} px-2.5 ${p.interval === i.id ? btnOn : ""}`}>
+            {t(i.key)}
+          </button>
+        ))
+      )}
       {sep}
 
-      <Menu title={t("shell.chartType")} className={`${btn}`} width={190} trigger={<>{typeIcon[currentType.id]}{I.chevron}</>}>
+      <Menu title={t("shell.chartType")} className={`${btn}`} width={220} trigger={<>{typeIcon[currentType.id]}{I.chevron}</>}>
         {(close) =>
           CHART_TYPES.map((c) => (
             <button
@@ -165,8 +204,16 @@ export default function TopToolbar(p: Props) {
           ))
         }
       </Menu>
+      {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={btn} />}
       {sep}
 
+      {p.onOpenCompare && (
+        <button onClick={p.onOpenCompare} title={t("cs.compare")} className={btn}>
+          {CS_ICONS.compare}
+          <span className="hidden xl:inline">{t("cs.compareShort")}</span>
+          {(p.compareCount ?? 0) > 0 && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{p.compareCount}</span>}
+        </button>
+      )}
       <button onClick={p.onOpenIndicators} title={t("shell.indicators")} className={btn}>
         {I.indicators}
         <span className="hidden lg:inline">{t("shell.indicators")}</span>
@@ -192,6 +239,13 @@ export default function TopToolbar(p: Props) {
 
       <span className="flex-1 min-w-2" />
 
+      {p.extra}
+      {p.templates && <TemplatesMenu btn={btn} {...p.templates} />}
+      {p.onOpenSettings ? (
+        <button onClick={p.onOpenSettings} title={t("chart.settings")} className={btn}>
+          {I.gear}
+        </button>
+      ) : (
       <Menu title={t("chart.settings")} className={btn} width={220} trigger={I.gear}>
         {(close) => (
           <div className="px-1 text-xs text-gray-800 dark:text-gray-200">
@@ -219,12 +273,47 @@ export default function TopToolbar(p: Props) {
           </div>
         )}
       </Menu>
+      )}
+      {p.onOpenShortcuts && (
+        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} className={`${btn} hidden lg:inline-flex`}>
+          {CS_ICONS.keyboard}
+        </button>
+      )}
       <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${btn} ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
       </button>
-      <button onClick={p.onScreenshot} title={t("chart.screenshot")} className={btn}>
-        {I.camera}
-      </button>
+      {p.onScreenshotCopy ? (
+        <Menu title={t("chart.screenshot")} className={btn} width={220} trigger={I.camera}>
+          {(close) => (
+            <>
+              <button
+                onClick={() => {
+                  p.onScreenshot();
+                  close();
+                }}
+                className="w-full h-9 px-3 flex items-center gap-2.5 text-[13px] text-left cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                {CS_ICONS.download}
+                {t("cs.snap.download")}
+              </button>
+              <button
+                onClick={() => {
+                  p.onScreenshotCopy?.();
+                  close();
+                }}
+                className="w-full h-9 px-3 flex items-center gap-2.5 text-[13px] text-left cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                {CS_ICONS.copy}
+                {t("cs.snap.copy")}
+              </button>
+            </>
+          )}
+        </Menu>
+      ) : (
+        <button onClick={p.onScreenshot} title={t("chart.screenshot")} className={btn}>
+          {I.camera}
+        </button>
+      )}
       <button onClick={p.onTogglePanel} title={t("shell.panel")} aria-pressed={p.panelOpen} className={`${btn} md:hidden ${p.panelOpen ? btnOn : ""}`}>
         {I.panel}
       </button>

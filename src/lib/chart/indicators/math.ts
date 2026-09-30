@@ -563,3 +563,201 @@ export function classicPivots(high: number, low: number, close: number): PivotLe
     S3: low - 2 * (high - P),
   };
 }
+
+/* ───────────── additional indicators ───────────── */
+
+/** Aroon up / down: 100 * (n - bars since the highest high / lowest low within the last n + 1 bars) / n. */
+export function aroon(h: ArrayLike<number>, l: ArrayLike<number>, n: number): { up: F64; down: F64 } {
+  const len = h.length;
+  const up = nanArray(len);
+  const down = nanArray(len);
+  n = Math.max(1, Math.floor(n));
+  for (let i = n; i < len; i++) {
+    let hi = -Infinity;
+    let lo = Infinity;
+    let hiAt = i;
+    let loAt = i;
+    for (let j = i - n; j <= i; j++) {
+      if (h[j] >= hi) {
+        hi = h[j];
+        hiAt = j;
+      }
+      if (l[j] <= lo) {
+        lo = l[j];
+        loAt = j;
+      }
+    }
+    up[i] = (100 * (n - (i - hiAt))) / n;
+    down[i] = (100 * (n - (i - loAt))) / n;
+  }
+  return { up, down };
+}
+
+/** Chaikin Money Flow: sum of money-flow volume over n bars / sum of volume over n bars. */
+export function cmf(h: ArrayLike<number>, l: ArrayLike<number>, c: ArrayLike<number>, v: ArrayLike<number>, n: number): F64 {
+  const len = h.length;
+  const out = nanArray(len);
+  n = Math.max(1, Math.floor(n));
+  const mfv = new Float64Array(len);
+  for (let i = 0; i < len; i++) {
+    const rng = h[i] - l[i];
+    mfv[i] = rng > 0 ? ((c[i] - l[i] - (h[i] - c[i])) / rng) * v[i] : 0;
+  }
+  let sm = 0;
+  let sv = 0;
+  for (let i = 0; i < len; i++) {
+    sm += mfv[i];
+    sv += v[i];
+    if (i >= n) {
+      sm -= mfv[i - n];
+      sv -= v[i - n];
+    }
+    if (i >= n - 1) out[i] = sv > 0 ? sm / sv : 0;
+  }
+  return out;
+}
+
+/** Elder's Force Index: EMA of (close change * volume). */
+export function forceIndex(c: ArrayLike<number>, v: ArrayLike<number>, n: number): F64 {
+  const len = c.length;
+  const raw = nanArray(len);
+  for (let i = 1; i < len; i++) raw[i] = (c[i] - c[i - 1]) * v[i];
+  return ema(raw, n);
+}
+
+/** TRIX: 10000 * one-bar change of the triple-smoothed EMA of log(close) (TradingView's scale). */
+export function trix(c: ArrayLike<number>, n: number): F64 {
+  const len = c.length;
+  const lg = new Float64Array(len);
+  for (let i = 0; i < len; i++) lg[i] = c[i] > 0 ? Math.log(c[i]) : NaN;
+  const e3 = ema(ema(ema(lg, n), n), n);
+  const out = nanArray(len);
+  for (let i = 1; i < len; i++) {
+    const d = e3[i] - e3[i - 1];
+    if (d === d) out[i] = 10000 * d;
+  }
+  return out;
+}
+
+/**
+ * ZigZag by percentage deviation: pivots (values at the pivot bars, NaN elsewhere). The last leg ends at the
+ * current extreme, so it repaints while the leg is unfinished, like TradingView's.
+ */
+export function zigzag(h: ArrayLike<number>, l: ArrayLike<number>, devPct: number): F64 {
+  const len = h.length;
+  const out = nanArray(len);
+  if (len < 2) return out;
+  const dev = Math.max(0.01, devPct) / 100;
+  let dir = 0;
+  let hi = h[0];
+  let hiAt = 0;
+  let lo = l[0];
+  let loAt = 0;
+  let ext = 0;
+  let extAt = 0;
+  for (let i = 1; i < len; i++) {
+    if (dir === 0) {
+      if (h[i] > hi) {
+        hi = h[i];
+        hiAt = i;
+      }
+      if (l[i] < lo) {
+        lo = l[i];
+        loAt = i;
+      }
+      if (lo > 0 && (hi - lo) / lo >= dev) {
+        if (hiAt > loAt) {
+          out[loAt] = lo;
+          dir = 1;
+          ext = hi;
+          extAt = hiAt;
+        } else {
+          out[hiAt] = hi;
+          dir = -1;
+          ext = lo;
+          extAt = loAt;
+        }
+      }
+    } else if (dir === 1) {
+      if (h[i] > ext) {
+        ext = h[i];
+        extAt = i;
+      } else if (ext > 0 && (ext - l[i]) / ext >= dev) {
+        out[extAt] = ext;
+        dir = -1;
+        ext = l[i];
+        extAt = i;
+      }
+    } else {
+      if (l[i] < ext) {
+        ext = l[i];
+        extAt = i;
+      } else if (ext > 0 && (h[i] - ext) / ext >= dev) {
+        out[extAt] = ext;
+        dir = 1;
+        ext = h[i];
+        extAt = i;
+      }
+    }
+  }
+  if (dir !== 0) out[extAt] = ext;
+  return out;
+}
+
+/** Williams fractals with `k` bars on each side: values at the fractal bar (the last k bars can not be confirmed yet). */
+export function fractals(h: ArrayLike<number>, l: ArrayLike<number>, k: number): { up: F64; down: F64 } {
+  const len = h.length;
+  const up = nanArray(len);
+  const down = nanArray(len);
+  k = Math.max(1, Math.floor(k));
+  for (let i = k; i < len - k; i++) {
+    let isUp = true;
+    let isDn = true;
+    for (let j = 1; j <= k; j++) {
+      if (!(h[i] > h[i - j] && h[i] > h[i + j])) isUp = false;
+      if (!(l[i] < l[i - j] && l[i] < l[i + j])) isDn = false;
+      if (!isUp && !isDn) break;
+    }
+    if (isUp) up[i] = h[i];
+    if (isDn) down[i] = l[i];
+  }
+  return { up, down };
+}
+
+/** Least-squares regression line over the last n bars of `src`, ± mult * stdev of the residuals. NaN outside the window. */
+export function linregChannel(src: ArrayLike<number>, n: number, mult: number): { base: F64; upper: F64; lower: F64 } {
+  const len = src.length;
+  const base = nanArray(len);
+  const upper = nanArray(len);
+  const lower = nanArray(len);
+  n = Math.max(2, Math.min(Math.floor(n), len));
+  if (len < 2) return { base, upper, lower };
+  const s0 = len - n;
+  let sx = 0;
+  let sy = 0;
+  let sxy = 0;
+  let sxx = 0;
+  for (let k = 0; k < n; k++) {
+    const y = src[s0 + k];
+    sx += k;
+    sy += y;
+    sxy += k * y;
+    sxx += k * k;
+  }
+  const den = n * sxx - sx * sx;
+  const slope = den !== 0 ? (n * sxy - sx * sy) / den : 0;
+  const icpt = (sy - slope * sx) / n;
+  let sq = 0;
+  for (let k = 0; k < n; k++) {
+    const d = src[s0 + k] - (icpt + slope * k);
+    sq += d * d;
+  }
+  const sd = Math.sqrt(sq / n);
+  for (let k = 0; k < n; k++) {
+    const m = icpt + slope * k;
+    base[s0 + k] = m;
+    upper[s0 + k] = m + mult * sd;
+    lower[s0 + k] = m - mult * sd;
+  }
+  return { base, upper, lower };
+}

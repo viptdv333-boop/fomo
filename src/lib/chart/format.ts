@@ -128,7 +128,11 @@ export function intervalToMs(interval: string): number {
     case "D": return 86_400_000;
     case "W": return 7 * 86_400_000;
     case "M": return 30 * 86_400_000;
-    default: return 86_400_000;
+    default: {
+      // custom intervals are their length in minutes ("45" = 45m, "120" = 2h)
+      const m = /^\d+$/.test(interval) ? Number(interval) : 0;
+      return m > 0 ? m * 60_000 : 86_400_000;
+    }
   }
 }
 
@@ -146,4 +150,58 @@ export function toHeikinAshi(src: Candle[]): Candle[] {
     pc = close;
   }
   return out;
+}
+
+/* ───────────── time zones ───────────── */
+
+const zoneFmt = new Map<string, Intl.DateTimeFormat | null>();
+const zoneOffCache = new Map<string, number>();
+
+/** Offset of an IANA zone from UTC (ms, east positive) at the real UTC instant `utcMs`; 0 for unknown zones. */
+export function zoneOffsetMs(zone: string, utcMs: number): number {
+  if (zone === "UTC") return 0;
+  const bucket = Math.floor(utcMs / 900_000);
+  const key = `${zone}|${bucket}`;
+  const hit = zoneOffCache.get(key);
+  if (hit !== undefined) return hit;
+  let f = zoneFmt.get(zone);
+  if (f === undefined) {
+    try {
+      f = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" });
+    } catch {
+      f = null;
+    }
+    zoneFmt.set(zone, f);
+  }
+  let off = 0;
+  if (f) {
+    const t = bucket * 900_000;
+    const parts: Record<string, number> = {};
+    for (const p of f.formatToParts(new Date(t))) if (p.type !== "literal") parts[p.type] = Number(p.value);
+    off = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour % 24, parts.minute, parts.second) - t;
+  }
+  if (zoneOffCache.size > 5000) zoneOffCache.clear();
+  zoneOffCache.set(key, off);
+  return off;
+}
+
+/** "UTC+3", "UTC-4:30" for the current offset of a zone. */
+export function zoneOffsetLabel(zone: string, utcMs = Date.now()): string {
+  const min = Math.round(zoneOffsetMs(zone, utcMs) / 60_000);
+  const sign = min >= 0 ? "+" : "-";
+  const a = Math.abs(min);
+  return `UTC${sign}${Math.floor(a / 60)}${a % 60 ? ":" + String(a % 60).padStart(2, "0") : ""}`;
+}
+
+/** Price of a candle according to the line/area price source. */
+export function sourcePrice(c: Candle, src: string): number {
+  switch (src) {
+    case "open": return c.o;
+    case "high": return c.h;
+    case "low": return c.l;
+    case "hl2": return (c.h + c.l) / 2;
+    case "hlc3": return (c.h + c.l + c.c) / 3;
+    case "ohlc4": return (c.o + c.h + c.l + c.c) / 4;
+    default: return c.c;
+  }
 }

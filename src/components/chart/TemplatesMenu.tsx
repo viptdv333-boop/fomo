@@ -1,0 +1,120 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
+import MenuPopover from "./MenuPopover";
+import { CS_ICONS } from "./icons-cs";
+import { deleteUserData, listUserData, saveUserData, type UserDataItem } from "@/lib/chart/userdata";
+import { LAYOUT_KIND, TEMPLATE_KIND, isLayout, isTemplate, type ChartLayoutData, type ChartTemplateData } from "@/lib/chart/templates";
+
+interface Props {
+  btn: string;
+  getTemplate: (withDrawings: boolean) => ChartTemplateData;
+  applyTemplate: (d: ChartTemplateData) => void;
+  getLayout: () => ChartLayoutData;
+  applyLayout: (d: ChartLayoutData) => void;
+}
+
+const field = "h-8 flex-1 min-w-0 rounded border border-gray-300 dark:border-[#363a45] bg-transparent px-2 text-[13px] outline-none focus:border-[#2962ff]";
+
+function Panel({ close, getTemplate, applyTemplate, getLayout, applyLayout }: Omit<Props, "btn"> & { close: () => void }) {
+  const { t } = useT();
+  const [layouts, setLayouts] = useState<UserDataItem<ChartLayoutData>[]>([]);
+  const [templates, setTemplates] = useState<UserDataItem<ChartTemplateData>[]>([]);
+  const [layoutName, setLayoutName] = useState("");
+  const [tplName, setTplName] = useState("");
+  const [withDrawings, setWithDrawings] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const reload = useCallback(async () => {
+    const [l, tp] = await Promise.all([listUserData<ChartLayoutData>(LAYOUT_KIND), listUserData<ChartTemplateData>(TEMPLATE_KIND)]);
+    setLayouts(l.filter((i) => isLayout(i.data)));
+    setTemplates(tp.filter((i) => isTemplate(i.data)));
+  }, []);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const flash = (m: string) => {
+    setMsg(m);
+    setTimeout(() => setMsg(""), 2200);
+  };
+
+  const saveLayout = async () => {
+    const name = layoutName.trim().slice(0, 80);
+    if (!name) return;
+    const ok = await saveUserData(LAYOUT_KIND, name, getLayout());
+    flash(ok ? t("cs.tpl.saved") : t("cs.tpl.saveFailed"));
+    setLayoutName("");
+    void reload();
+  };
+  const saveTemplate = async () => {
+    const name = tplName.trim().slice(0, 80);
+    if (!name) return;
+    const ok = await saveUserData(TEMPLATE_KIND, name, getTemplate(withDrawings));
+    flash(ok ? t("cs.tpl.saved") : t("cs.tpl.saveFailed"));
+    setTplName("");
+    void reload();
+  };
+
+  const row = (key: string, sub: string | undefined, onApply: () => void, onDelete: () => void) => (
+    <div key={key} className="group flex items-center h-8 pl-3 pr-1 hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
+      <button
+        onClick={() => {
+          onApply();
+          close();
+        }}
+        className="flex-1 min-w-0 text-left h-full cursor-pointer flex items-baseline gap-2"
+        title={t("cs.tpl.apply")}
+      >
+        <span className="truncate text-[13px] text-gray-800 dark:text-gray-200">{key}</span>
+        {sub && <span className="text-[11px] text-gray-400 shrink-0">{sub}</span>}
+      </button>
+      <button onClick={onDelete} title={t("cs.tpl.delete")} className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-400 hover:text-red-500 cursor-pointer">
+        {CS_ICONS.trash}
+      </button>
+    </div>
+  );
+
+  const label = "px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400";
+
+  return (
+    <div>
+      <div className={label}>{t("cs.tpl.layouts")}</div>
+      <div className="flex items-center gap-1.5 px-3 pb-1.5">
+        <input value={layoutName} onChange={(e) => setLayoutName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveLayout()} placeholder={t("cs.tpl.namePlaceholder")} maxLength={80} className={field} />
+        <button onClick={saveLayout} disabled={!layoutName.trim()} className="h-8 px-3 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5] disabled:opacity-40 disabled:cursor-default">
+          {t("cs.tpl.save")}
+        </button>
+      </div>
+      {layouts.length === 0 && <div className="px-3 pb-1 text-[12px] text-gray-400">{t("cs.tpl.noLayouts")}</div>}
+      {layouts.map((i) => row(i.key, `${i.data.ticker} · ${i.data.interval}`, () => applyLayout(i.data), async () => { await deleteUserData(LAYOUT_KIND, i.key); void reload(); }))}
+
+      <div className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />
+      <div className={label}>{t("cs.tpl.templates")}</div>
+      <div className="flex items-center gap-1.5 px-3 pb-1">
+        <input value={tplName} onChange={(e) => setTplName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveTemplate()} placeholder={t("cs.tpl.namePlaceholder")} maxLength={80} className={field} />
+        <button onClick={saveTemplate} disabled={!tplName.trim()} className="h-8 px-3 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5] disabled:opacity-40 disabled:cursor-default">
+          {t("cs.tpl.save")}
+        </button>
+      </div>
+      <label className="flex items-center gap-2 px-3 pb-1.5 text-[12px] text-gray-600 dark:text-gray-300 cursor-pointer">
+        <input type="checkbox" checked={withDrawings} onChange={(e) => setWithDrawings(e.target.checked)} className="accent-[#2962ff]" />
+        {t("cs.tpl.withDrawings")}
+      </label>
+      {templates.length === 0 && <div className="px-3 pb-1 text-[12px] text-gray-400">{t("cs.tpl.noTemplates")}</div>}
+      {templates.map((i) => row(i.key, i.data.drawings ? t("cs.tpl.hasDrawings") : undefined, () => applyTemplate(i.data), async () => { await deleteUserData(TEMPLATE_KIND, i.key); void reload(); }))}
+      {msg && <div className="px-3 py-1 text-[12px] text-green-600">{msg}</div>}
+    </div>
+  );
+}
+
+/** Save / open chart layouts (symbol + interval + look) and templates (look only). */
+export default function TemplatesMenu({ btn, ...rest }: Props) {
+  const { t } = useT();
+  return (
+    <MenuPopover title={t("cs.tpl.title")} className={btn} width={290} align="right" trigger={CS_ICONS.layout}>
+      {(close) => <Panel close={close} {...rest} />}
+    </MenuPopover>
+  );
+}

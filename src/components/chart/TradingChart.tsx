@@ -1,23 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChartEngine } from "@/lib/chart/engine";
 import { DARK_THEME, LIGHT_THEME, type Candle, type ChartType } from "@/lib/chart/types";
-import { intervalToMs } from "@/lib/chart/format";
+import { formatPrice, intervalToMs } from "@/lib/chart/format";
 import { useT } from "@/lib/i18n/client";
 import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
+import IndicatorLegend from "@/components/chart/IndicatorLegend";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
 import { useAlerts } from "@/components/chart/useAlerts";
 import DrawingToolbar from "@/components/chart/DrawingToolbar";
 import DrawingStyleBar from "@/components/chart/DrawingStyleBar";
-import TopToolbar, { INTERVALS, type ToggleKey } from "@/components/chart/TopToolbar";
+import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
+import TopToolbar, { type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import SymbolSearch from "@/components/chart/SymbolSearch";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
+import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
+import ChartSettingsDialog, { type SettingsTab } from "@/components/chart/ChartSettingsDialog";
+import PriceScaleMenu from "@/components/chart/PriceScaleMenu";
+import ShortcutsDialog from "@/components/chart/ShortcutsDialog";
+import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegend";
+import { useChartSettings } from "@/components/chart/useChartSettings";
+import { CS_ICONS } from "@/components/chart/icons-cs";
+import { aggregateCandles, formatInterval, intervalPlan } from "@/lib/chart/intervals";
+import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
+import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
+import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
+import type { ChartSyncHub } from "@/lib/chart/sync";
 import { adHocInstrument, findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 
 export type { ChartSource } from "@/lib/terminal-data";
@@ -28,6 +42,19 @@ interface Props {
   source: ChartSource;
   name?: string;
   onSelectSymbol?: (inst: TerminalInstrument) => void;
+  /* multi-chart layouts: a pane of a grid has no side panel and keeps its own preferences */
+  embedded?: boolean;
+  /** Hide the side panel only (the main pane of a multi-chart grid). */
+  compact?: boolean;
+  storageId?: string;
+  /** false while another pane of the grid is the active one: hotkeys ignore this chart. */
+  active?: boolean;
+  /** Extra toolbar content (the layout picker). */
+  toolbarExtra?: ReactNode;
+  hub?: ChartSyncHub;
+  /** Interval forced by the layout while intervals are synced. */
+  syncInterval?: string | null;
+  onIntervalChange?: (id: string) => void;
 }
 
 interface Prefs {
@@ -59,9 +86,9 @@ const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" 
 const MSK_MS = 3 * 3_600_000;
 const DAY_MS = 86_400_000;
 
-function loadPrefs(): Prefs {
+function loadPrefs(key: string = PREFS_KEY, fallbackKey?: string): Prefs {
   try {
-    const raw = localStorage.getItem(PREFS_KEY);
+    const raw = localStorage.getItem(key) ?? (fallbackKey ? localStorage.getItem(fallbackKey) : null);
     if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
   } catch {}
   return DEFAULT_PREFS;
@@ -93,6 +120,28 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0 };
 }
 
+/** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
+async function fetchBars(source: string, ticker: string, interval: string, limit: number, to?: number) {
+  const plan = intervalPlan(interval, source);
+  if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
+  const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
+  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin };
+}
+
+const COMPARE_COLORS = ["#f5a623", "#e91e63", "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722"];
+
+interface CompareState {
+  id: string;
+  source: string;
+  ticker: string;
+  label: string;
+  color: string;
+  mode: "percent" | "own";
+  visible: boolean;
+  loading?: boolean;
+  failed?: boolean;
+}
+
 /** Start of the bar containing `nowWall` (ms on the exchange's wall clock, read with UTC getters). */
 function bucketStartWall(nowWall: number, interval: string): number {
   if (interval === "W") {
@@ -114,8 +163,12 @@ function bucketStartWall(nowWall: number, interval: string): number {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange }: Props) {
   const { t, locale } = useT();
+  const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
+  const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
+  const activeRef = useRef(active !== false);
+  activeRef.current = active !== false;
   const wrapRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ChartEngine | null>(null);
@@ -143,22 +196,59 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
   const [mobilePanel, setMobilePanel] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   const [hasSelection, setHasSelection] = useState(false);
+  const [settingsId, setSettingsId] = useState<string | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
+  const [menu, setMenu] = useState<ChartMenuState | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  /* chart settings (gear dialog), price scale menu, compare, shortcuts */
+  const csApi = useChartSettings();
+  const cs = csApi.settings;
+  const [siteDark, setSiteDark] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+  const [csOpen, setCsOpen] = useState(false);
+  const [csTab, setCsTab] = useState<SettingsTab>("symbol");
+  const [scaleMenu, setScaleMenu] = useState<{ x: number; y: number } | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [gotoSignal, setGotoSignal] = useState(0);
+  const [offsetMs, setOffsetMs] = useState(0);
+  const [transformBox, setTransformBox] = useState(0);
+  const [compares, setCompares] = useState<CompareState[]>([]);
+  const [comparePick, setComparePick] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+  const compareData = useRef(new Map<string, Candle[]>());
+  const compareShift = useRef(new Map<string, number>());
+  const compareList = useRef<CompareState[]>([]);
+  const compareExtending = useRef(new Set<string>());
+  const extendComparesRef = useRef<() => void>(() => {});
+  const csRef = useRef(csApi);
+  csRef.current = csApi;
+  const logMigrated = useRef(false);
 
   const instrument: TerminalInstrument = findInstrument(source, ticker) ?? adHocInstrument(source, ticker);
 
   /* saved preferences */
   useEffect(() => {
-    setPrefs(loadPrefs());
+    setPrefs(loadPrefs(prefsKey, storageId ? PREFS_KEY : undefined));
     setPrefsLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const update = useCallback((patch: Partial<Prefs>) => {
-    setPrefs((p) => {
-      const next = { ...p, ...patch };
-      lsSet(PREFS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
+  const update = useCallback(
+    (patch: Partial<Prefs>) => {
+      setPrefs((p) => {
+        const next = { ...p, ...patch };
+        lsSet(prefsKey, JSON.stringify(next));
+        return next;
+      });
+    },
+    [prefsKey]
+  );
+
+  /* the layout forces one interval on all charts while intervals are synced */
+  useEffect(() => {
+    if (prefsLoaded && syncInterval && syncInterval !== prefs.interval) update({ interval: syncInterval });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncInterval, prefsLoaded]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -192,19 +282,24 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     alertsLayer.attach(engine);
     indicators.attach(engine);
 
-    const savedInd = lsGet(INDICATORS_KEY);
+    const savedInd = lsGet(indKey);
     if (savedInd) indicators.restore(savedInd);
     setIndCount(indicators.list().length);
     let indTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubInd = indicators.subscribe(() => {
       setIndCount(indicators.list().length);
       clearTimeout(indTimer);
-      indTimer = setTimeout(() => lsSet(INDICATORS_KEY, indicators.serialize()), 200);
+      indTimer = setTimeout(() => lsSet(indKey, indicators.serialize()), 200);
     });
     const unsubDraw = drawings.subscribe(() => setHasSelection(!!drawings.getSelection()));
 
+    setSiteDark(dark);
+    engine.onBaselineChange = (pct) => csRef.current.update((x) => ({ ...x, baselinePercent: Math.round(pct) }));
+    engine.onPriceAxisMenu = ({ clientX, clientY }) => setScaleMenu({ x: clientX, y: clientY });
+    setEngineReady(true);
+
     const mo = new MutationObserver(() => {
-      engine.setOptions({ theme: document.documentElement.classList.contains("dark") ? DARK_THEME : LIGHT_THEME });
+      setSiteDark(document.documentElement.classList.contains("dark"));
     });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => {
@@ -217,8 +312,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       indicators.detach();
       engine.destroy();
       engineRef.current = null;
+      setEngineReady(false);
     };
-  }, [drawings, indicators, alertsLayer]);
+  }, [drawings, indicators, alertsLayer, indKey]);
 
   /* drawings are saved per symbol */
   useEffect(() => {
@@ -251,14 +347,39 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
 
   /* options that do not need a reload */
   useEffect(() => {
-    engineRef.current?.setOptions({
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.setOptions({
       chartType: prefs.chartType,
       showVolume: prefs.showVolume,
       showGrid: prefs.showGrid,
       showWatermark: prefs.showWatermark,
-      logScale: prefs.logScale,
     });
-  }, [prefs.chartType, prefs.showVolume, prefs.showGrid, prefs.showWatermark, prefs.logScale]);
+    setTransformBox(engine.getTransformBox());
+  }, [engineReady, prefs.chartType, prefs.showVolume, prefs.showGrid, prefs.showWatermark]);
+
+  /* chart settings: theme, candles, scales, labels ... */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.setOptions(settingsToEngine(cs, siteDark));
+    setTransformBox(engine.getTransformBox());
+  }, [engineReady, cs, siteDark]);
+
+  /* time zone of the axis and crosshair */
+  useEffect(() => {
+    engineRef.current?.setOptions({ timeZone: resolveZone(cs.tz, source), clockOffsetMs: offsetMs });
+  }, [engineReady, cs.tz, source, offsetMs]);
+
+  /* the old "log" preference lives in the scale mode now */
+  useEffect(() => {
+    if (!prefsLoaded || !csApi.ready || logMigrated.current) return;
+    logMigrated.current = true;
+    if (prefs.logScale) {
+      if (cs.scale.mode === "regular") csApi.update((x) => ({ ...x, scale: { ...x.scale, mode: "log" } }));
+      update({ logScale: false });
+    }
+  }, [prefsLoaded, csApi, cs.scale.mode, prefs.logScale, update]);
 
   /* data for the current symbol and timeframe */
   useEffect(() => {
@@ -271,10 +392,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     setLoading(true);
     setEmpty(false);
     const iv = prefs.interval;
-    const label = t(INTERVALS.find((i) => i.id === iv)?.key ?? "inst.period.D");
+    const label = formatInterval(iv, t);
 
     (async () => {
-      const { candles, tzMin } = await fetchCandles(source, ticker, iv, 600);
+      const { candles, tzMin } = await fetchBars(source, ticker, iv, 600);
       if (cancelled) return;
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
@@ -283,17 +404,22 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
       alertsLayer.setTimeOffset(offsetMs);
+      setOffsetMs(offsetMs);
       engine.setOptions({
         symbolLabel: name || ticker,
         intervalLabel: label,
         intervalMs: intervalToMs(iv),
         timeShiftMs: displayShiftMs,
+        timeZone: resolveZone(csRef.current.settings.tz, source),
+        clockOffsetMs: offsetMs,
         locale: LOCALES[locale] ?? "ru-RU",
       });
       engine.setData(candles);
       refreshInd();
       setEmpty(candles.length === 0);
       setLoading(false);
+      setTransformBox(engine.getTransformBox());
+      setDataVersion((v) => v + 1);
     })();
 
     engine.onNeedHistory = async () => {
@@ -302,10 +428,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       if (!first) return;
       loadingHistory.current = true;
       try {
-        const { candles } = await fetchCandles(source, ticker, iv, 500, first.t - 1);
+        const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1);
         if (!cancelled && gen === genRef.current) {
           engine.prependCandles(candles);
           refreshInd();
+          extendComparesRef.current();
         }
       } finally {
         loadingHistory.current = false;
@@ -336,9 +463,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
         if (!r.ok) return;
         const q = await r.json();
         if (!q.price || stopped) return;
-        const { tzMs } = shiftRef.current;
+        const { tzMs, offsetMs: off } = shiftRef.current;
         const nowWall = Date.now() + (source === "moex" ? MSK_MS : 0);
-        const bucketT = bucketStartWall(nowWall, iv) - tzMs;
+        const plan = intervalPlan(iv, source);
+        let bucketT: number;
+        if (plan.ratio > 1) {
+          // aggregated bars are anchored to each day's first candle: continue from the last bar, and let the bar refresh fetch real ones after gaps
+          const nowChart = Date.now() + off;
+          bucketT = last.t + Math.floor((nowChart - last.t) / plan.ms) * plan.ms;
+          if (bucketT - last.t > plan.ms * 2) bucketT = last.t;
+        } else bucketT = bucketStartWall(nowWall, iv) - tzMs;
         if (bucketT > last.t) {
           engine.upsertCandle({ t: bucketT, o: q.price, h: q.price, l: q.price, c: q.price, v: 0 });
         } else {
@@ -352,7 +486,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
       const engine = engineRef.current;
       if (stopped || !engine || document.hidden) return;
       try {
-        const { candles } = await fetchCandles(source, ticker, iv, 3);
+        const { candles } = await fetchBars(source, ticker, iv, 3);
         if (stopped) return;
         for (const c of candles) engine.upsertCandle(c);
         refreshInd();
@@ -411,7 +545,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
   // Alt+A: alert at the cursor price
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
-      if (!ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.code !== "KeyA" || ev.defaultPrevented) return;
+      if (!ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.code !== "KeyA" || ev.defaultPrevented || !activeRef.current) return;
       const el = document.activeElement as HTMLElement | null;
       const tag = el?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
@@ -421,6 +555,61 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [openAlertAtCursor]);
+
+  /* context menu: right click, or a long press on a drawing (touch); the browser menu never shows over the chart */
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let lastOpen = 0;
+    const open = (clientX: number, clientY: number, forcedId?: string | null, pointerType = "mouse") => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      const r = host.getBoundingClientRect();
+      const x = clientX - r.left - engine.getPlotOffsetX();
+      const y = clientY - r.top;
+      const inMain = engine.getPaneAtY(y) === "main" && x >= 0 && x <= engine.getPlotSize().width && y <= engine.getPlotSize().height;
+      let id: string | null = null;
+      if (forcedId !== undefined) id = forcedId;
+      else if (inMain) id = drawings.selectAtPoint(x, y, pointerType);
+      const price = inMain ? engine.yToPrice("main", y) : NaN;
+      const time = inMain ? engine.xToTime(x) : NaN;
+      const okPrice = Number.isFinite(price) && Number.isFinite(time);
+      lastOpen = Date.now();
+      setMenu({
+        clientX,
+        clientY,
+        local: inMain ? { x, y } : null,
+        drawingId: id,
+        price: okPrice ? price : null,
+        priceText: okPrice ? formatPrice(price, engine.getPrecision(), engine.opts.locale) : "",
+        time: okPrice ? time : null,
+      });
+    };
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      // a touch long press fires both the controller callback and this event: keep the first
+      if (Date.now() - lastOpen < 900) return;
+      open(e.clientX, e.clientY, undefined, (e as PointerEvent).pointerType || "mouse");
+    };
+    host.addEventListener("contextmenu", onCtx);
+    drawings.setContextMenuHandler(({ x, y, id }) => {
+      const r = host.getBoundingClientRect();
+      open(r.left + (engineRef.current?.getPlotOffsetX() ?? 0) + x, r.top + y, id);
+    });
+    return () => {
+      host.removeEventListener("contextmenu", onCtx);
+      drawings.setContextMenuHandler(null);
+    };
+  }, [drawings]);
+
+  /* drawing properties dialog: the style bar gear, a double click and the context menu ask the controller for it */
+  useEffect(() => {
+    drawings.setSettingsHandler((id) => setSettingsId(id));
+    return () => drawings.setSettingsHandler(null);
+  }, [drawings]);
+  useEffect(() => {
+    drawings.setLabels({ qty: t("draw.lbl.qty"), risk: t("draw.lbl.risk"), reward: t("draw.lbl.reward") });
+  }, [drawings, t]);
 
   /* fullscreen */
   useEffect(() => {
@@ -440,6 +629,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     a.href = url;
     a.download = `${ticker}-${prefs.interval}.png`;
     a.click();
+  };
+
+  const copyScreenshot = async () => {
+    const url = engineRef.current?.screenshot();
+    if (!url) return;
+    try {
+      const blob = await (await fetch(url)).blob();
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    } catch {
+      screenshot();
+    }
   };
 
   /* visible range buttons: load enough history if needed, then zoom to the last N bars */
@@ -471,10 +671,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
         if (gen !== genRef.current) return;
         loadingHistory.current = true;
         try {
-          const { candles: older } = await fetchCandles(source, ticker, iv, 500, first.t - 1);
+          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1);
           if (gen !== genRef.current) return;
           engine.prependCandles(older);
           refreshInd();
+          extendComparesRef.current();
           if (older.length === 0) break;
         } finally {
           loadingHistory.current = false;
@@ -494,6 +695,292 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
     }
   };
 
+  /* go to a date: load older bars when needed, then centre on it */
+  const goToDate = async (iso: string) => {
+    const engine = engineRef.current;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!engine || !m || rangeBusy || replay.mode !== "off") return;
+    const wall = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+    const target = wall - engine.getTimeShiftAt(wall);
+    const gen = genRef.current;
+    const iv = prefs.interval;
+    setRangeBusy(true);
+    try {
+      for (let round = 0; round < 40; round++) {
+        if (gen !== genRef.current) return;
+        const first = engine.getCandles()[0];
+        if (!first || first.t <= target || !engine.hasMoreHistory) break;
+        let waited = 0;
+        while (loadingHistory.current && waited < 3000) {
+          await new Promise((res) => setTimeout(res, 100));
+          waited += 100;
+        }
+        if (gen !== genRef.current) return;
+        loadingHistory.current = true;
+        try {
+          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1);
+          if (gen !== genRef.current) return;
+          engine.prependCandles(older);
+          refreshInd();
+          extendComparesRef.current();
+          if (older.length === 0) break;
+        } finally {
+          loadingHistory.current = false;
+        }
+      }
+      const cs2 = engine.getCandles();
+      if (cs2.length && target >= cs2[cs2.length - 1].t) engine.scrollToLatest();
+      else engine.centerOn(target);
+    } finally {
+      setRangeBusy(false);
+    }
+  };
+
+  /* compare / overlay symbols */
+  const loadCompare = useCallback(
+    async (c: CompareState, iv: string, token: { cancelled: boolean }) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      try {
+        const { candles, tzMin } = await fetchBars(c.source, c.ticker, iv, 600);
+        if (token.cancelled) return;
+        // bring the other exchange's clock onto the main chart's clock
+        const cmpTz = c.source === "moex" ? tzMin * 60_000 : 0;
+        const cmpOffset = (c.source === "moex" ? MSK_MS : 0) - cmpTz;
+        const shift = shiftRef.current.offsetMs - cmpOffset;
+        const mapped = shift === 0 ? candles : candles.map((k) => ({ ...k, t: k.t + shift }));
+        compareData.current.set(c.id, mapped);
+        compareShift.current.set(c.id, shift);
+        engine.setCompareData(c.id, mapped);
+        setCompares((list) => list.map((x) => (x.id === c.id ? { ...x, loading: false, failed: mapped.length === 0 } : x)));
+      } catch {
+        if (!token.cancelled) setCompares((list) => list.map((x) => (x.id === c.id ? { ...x, loading: false, failed: true } : x)));
+      }
+    },
+    []
+  );
+
+  const addCompare = (inst: TerminalInstrument) => {
+    const engine = engineRef.current;
+    if (!engine || inst.source === "none") return;
+    const id = `${inst.source}:${inst.dataTicker}`;
+    if (compares.some((c) => c.id === id) || (inst.source === source && inst.dataTicker === ticker)) return;
+    const color = COMPARE_COLORS[compares.length % COMPARE_COLORS.length];
+    const state: CompareState = { id, source: inst.source, ticker: inst.dataTicker, label: inst.ticker, color, mode: "percent", visible: true, loading: true };
+    setCompares((l) => [...l, state]);
+    engine.addCompare({ id, label: inst.ticker, color, mode: "percent", candles: [] });
+    // same scale as percent, like TradingView
+    if (cs.scale.mode === "regular") csApi.update((x) => ({ ...x, scale: { ...x.scale, mode: "percent" } }));
+    void loadCompare(state, prefs.interval, { cancelled: false });
+  };
+
+  // older history of the main symbol was loaded: compared symbols reach back as far
+  extendComparesRef.current = async () => {
+    const engine = engineRef.current;
+    const mainFirst = engine?.getCandles()[0]?.t;
+    if (!engine || mainFirst === undefined) return;
+    const iv = prefs.interval;
+    for (const c of compareList.current) {
+      const cur = compareData.current.get(c.id);
+      if (!cur || cur.length === 0 || cur[0].t <= mainFirst || compareExtending.current.has(c.id)) continue;
+      compareExtending.current.add(c.id);
+      try {
+        const shift = compareShift.current.get(c.id) ?? 0;
+        const { candles } = await fetchBars(c.source, c.ticker, iv, 500, cur[0].t - shift - 1);
+        const fresh = candles.map((k) => ({ ...k, t: k.t + shift })).filter((k) => k.t < cur[0].t);
+        const now = compareData.current.get(c.id);
+        if (fresh.length && now && now[0].t === cur[0].t) {
+          const next = fresh.concat(now);
+          compareData.current.set(c.id, next);
+          engine.setCompareData(c.id, next);
+        }
+      } catch {
+      } finally {
+        compareExtending.current.delete(c.id);
+      }
+    }
+  };
+  compareList.current = compares;
+
+  const removeCompare = (id: string) => {
+    engineRef.current?.removeCompare(id);
+    compareData.current.delete(id);
+    setCompares((l) => l.filter((c) => c.id !== id));
+  };
+
+  // the interval or the main symbol changed: compared symbols follow
+  useEffect(() => {
+    if (dataVersion === 0 || compares.length === 0) return;
+    const token = { cancelled: false };
+    for (const c of compares) void loadCompare({ ...c, loading: false }, prefs.interval, token);
+    return () => {
+      token.cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataVersion]);
+
+  // compared symbols get their newest bars now and then
+  useEffect(() => {
+    if (compares.length === 0 || replayActive) return;
+    const iv = prefs.interval;
+    const id = setInterval(async () => {
+      if (document.hidden) return;
+      const engine = engineRef.current;
+      if (!engine) return;
+      for (const c of compares) {
+        const cur = compareData.current.get(c.id);
+        if (!cur || cur.length === 0) continue;
+        try {
+          const { candles, tzMin } = await fetchBars(c.source, c.ticker, iv, 3);
+          const cmpTz = c.source === "moex" ? tzMin * 60_000 : 0;
+          const shift = shiftRef.current.offsetMs - ((c.source === "moex" ? MSK_MS : 0) - cmpTz);
+          const next = cur.slice();
+          for (const k of candles) {
+            const kk = { ...k, t: k.t + shift };
+            const last = next[next.length - 1];
+            if (kk.t === last.t) next[next.length - 1] = kk;
+            else if (kk.t > last.t) next.push(kk);
+          }
+          compareData.current.set(c.id, next);
+          engine.setCompareData(c.id, next);
+        } catch {}
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [compares, prefs.interval, replayActive]);
+
+  const compareItems: CompareItem[] = compares.map((c) => ({ id: c.id, label: c.label, color: c.color, mode: c.mode, visible: c.visible, loading: c.loading, failed: c.failed }));
+
+  /* layouts and templates */
+  const getTemplate = (withDrawings: boolean): ChartTemplateData => ({
+    v: 1,
+    settings: cs,
+    chartType: prefs.chartType,
+    showVolume: prefs.showVolume,
+    showGrid: prefs.showGrid,
+    showWatermark: prefs.showWatermark,
+    indicators: indicators.serialize(),
+    drawings: withDrawings ? drawings.serialize() : undefined,
+  });
+  const applyTemplate = (d: ChartTemplateData) => {
+    // the interval favourites belong to the user, not to a template
+    csApi.replace({ ...normalizeSettings(d.settings), ui: csApi.settings.ui });
+    update({ chartType: d.chartType, showVolume: d.showVolume, showGrid: d.showGrid, showWatermark: d.showWatermark });
+    if (d.indicators) indicators.restore(d.indicators);
+    if (d.drawings) drawings.restore(d.drawings);
+  };
+  const getLayout = (): ChartLayoutData => ({ v: 1, source, ticker, name: instrument.name, interval: prefs.interval, template: getTemplate(true) });
+  const applyLayout = (l: ChartLayoutData) => {
+    const same = l.source === source && l.ticker === ticker;
+    if (l.template.drawings && !same) lsSet(drawingsKey(l.source, l.ticker), l.template.drawings);
+    applyTemplate(l.template);
+    update({ interval: l.interval });
+    if (!same) handleSelectRef.current(findInstrument(l.source, l.ticker) ?? adHocInstrument(l.source as ChartSource, l.ticker));
+  };
+
+  const openSettings = useCallback((tab?: SettingsTab) => {
+    if (tab) setCsTab(tab);
+    setCsOpen(true);
+  }, []);
+
+  /* linked charts: crosshair and visible time range travel through the layout's hub */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!hub || !engine || !engineReady) return;
+    const id = storageId ?? "main";
+    let lastKey = "";
+    let quiet = 0;
+    engine.onCrosshairMove = (t) => hub.emitCrosshair(id, t);
+    engine.onViewChange = () => {
+      if (!hub.range || Date.now() < quiet) return;
+      const r = engine.getVisibleTimeRange();
+      const key = `${Math.round(r.from / 1000)}:${Math.round(r.to / 1000)}`;
+      if (key === lastKey) return;
+      lastKey = key;
+      hub.emitRange(id, r);
+    };
+    const u1 = hub.onCrosshair((from, tm) => {
+      if (from !== id) engine.setExternalCrosshair(hub.crosshair ? tm : null);
+    });
+    const u2 = hub.onRange((from, r) => {
+      if (from === id || !hub.range) return;
+      lastKey = `${Math.round(r.from / 1000)}:${Math.round(r.to / 1000)}`;
+      quiet = Date.now() + 120;
+      engine.setVisibleTimeRange(r.from, r.to);
+    });
+    return () => {
+      u1();
+      u2();
+      engine.onCrosshairMove = null;
+      engine.onViewChange = null;
+      engine.setExternalCrosshair(null);
+    };
+  }, [hub, engineReady, storageId]);
+
+  /* hotkeys: zoom, scroll, help, settings ... */
+  const modalOpenRef = useRef(false);
+  modalOpenRef.current = csOpen || shortcutsOpen || searchOpen || indOpen || alertsOpen || comparePick;
+  const hotkeyActions = useRef({ toggleFullscreen: () => {}, screenshot: () => {} });
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.defaultPrevented) return;
+      if (!activeRef.current) return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
+      const engine = engineRef.current;
+      const mod = ev.ctrlKey || ev.metaKey;
+      if (ev.key === "?" || (ev.shiftKey && ev.code === "Slash")) {
+        ev.preventDefault();
+        setShortcutsOpen((v) => !v);
+        return;
+      }
+      if (modalOpenRef.current || mod) return;
+      if (ev.altKey) {
+        if (ev.code === "KeyR") engine?.resetView();
+        else if (ev.code === "KeyG") setGotoSignal((n) => n + 1);
+        else if (ev.code === "KeyP") setCsOpen(true);
+        else if (ev.code === "KeyS") hotkeyActions.current.screenshot();
+        else return;
+        ev.preventDefault();
+        return;
+      }
+      if (!engine) return;
+      if (ev.shiftKey && ev.code === "KeyF") {
+        ev.preventDefault();
+        hotkeyActions.current.toggleFullscreen();
+        return;
+      }
+      switch (ev.key) {
+        case "+":
+        case "=":
+          engine.zoomBy(1.25);
+          break;
+        case "-":
+        case "_":
+          engine.zoomBy(0.8);
+          break;
+        case "ArrowLeft":
+          engine.scrollBy(ev.shiftKey ? -10 : -1);
+          break;
+        case "ArrowRight":
+          engine.scrollBy(ev.shiftKey ? 10 : 1);
+          break;
+        case "End":
+          engine.scrollToLatest();
+          break;
+        case "Home":
+          engine.scrollToStart();
+          break;
+        default:
+          return;
+      }
+      ev.preventDefault();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const handleSelect = (inst: TerminalInstrument) => {
     onSelectSymbol?.(inst);
     if (!isDesktop) setMobilePanel(false);
@@ -508,13 +995,21 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
   };
 
   const panelVisible = isDesktop ? prefs.panelOpen : mobilePanel;
+  const handleSelectRef = useRef(handleSelect);
+  handleSelectRef.current = handleSelect;
+  hotkeyActions.current = { toggleFullscreen, screenshot };
+  const scaleModeNow = cs.scale.mode;
+  const setScaleMode = (m: ScaleMode) => csApi.update((x) => ({ ...x, scale: { ...x.scale, mode: m } }));
 
   return (
     <div ref={wrapRef} className="flex flex-col w-full h-full min-h-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 select-none">
       <TopToolbar
         instrument={instrument}
         interval={prefs.interval}
-        onInterval={(id) => update({ interval: id })}
+        onInterval={(id) => {
+          update({ interval: id });
+          onIntervalChange?.(id);
+        }}
         chartType={prefs.chartType}
         onChartType={(c) => update({ chartType: c })}
         onOpenSearch={() => setSearchOpen(true)}
@@ -534,19 +1029,30 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
         toolsOpen={toolsOpen}
         onTogglePanel={() => setMobilePanel((v) => !v)}
         panelOpen={mobilePanel}
+        favIntervals={cs.ui.favIntervals}
+        onFavIntervals={(list) => csApi.update((x) => ({ ...x, ui: { ...x.ui, favIntervals: list } }))}
+        onOpenSettings={() => openSettings()}
+        onOpenCompare={() => setComparePick(true)}
+        compareCount={compares.length}
+        settingsApi={csApi}
+        transformBox={transformBox}
+        templates={{ getTemplate, applyTemplate, getLayout, applyLayout }}
+        onScreenshotCopy={copyScreenshot}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+        extra={toolbarExtra}
       />
 
       <div className="relative flex flex-1 min-h-0">
         {/* drawing tools */}
         <div
-          className={`${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 top-0 bottom-0 z-30 md:z-auto shrink-0 overflow-y-auto bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
+          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 top-0 bottom-0 z-30 md:z-auto shrink-0 overflow-y-auto bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
         >
           <DrawingToolbar controller={drawings} />
         </div>
 
         {/* chart + bottom bar */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0">
-          <div className="relative flex-1 min-h-0">
+          <div className="group relative flex-1 min-h-0">
             <div ref={hostRef} className="absolute inset-0" />
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -557,19 +1063,67 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
               <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 pointer-events-none">{t("chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
+            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} />}
+            <CompareLegend
+              items={compareItems}
+              right={cs.scale.side === "left" ? 12 : 84}
+              onToggle={(id) => {
+                const c = compares.find((x) => x.id === id);
+                if (!c) return;
+                engineRef.current?.updateCompare(id, { visible: !c.visible });
+                setCompares((l) => l.map((x) => (x.id === id ? { ...x, visible: !x.visible } : x)));
+              }}
+              onRemove={removeCompare}
+              onColor={(id, color) => {
+                engineRef.current?.updateCompare(id, { color });
+                setCompares((l) => l.map((x) => (x.id === id ? { ...x, color } : x)));
+              }}
+              onMode={(id, mode) => {
+                engineRef.current?.updateCompare(id, { mode });
+                setCompares((l) => l.map((x) => (x.id === id ? { ...x, mode } : x)));
+              }}
+            />
+            {cs.navButtons !== "never" && (
+              <div
+                className={`absolute bottom-9 z-10 flex items-center gap-0.5 rounded-lg border border-gray-200 dark:border-[#2a2e39] bg-white/90 dark:bg-[#1e222d]/90 backdrop-blur p-0.5 transition-opacity ${
+                  cs.scale.side === "left" ? "left-[76px]" : "left-2"
+                } ${cs.navButtons === "hover" ? "opacity-0 group-hover:opacity-100 focus-within:opacity-100" : ""}`}
+              >
+                {(
+                  [
+                    ["zoomOut", "cs.nav.zoomOut", () => engineRef.current?.zoomBy(0.8)],
+                    ["zoomIn", "cs.nav.zoomIn", () => engineRef.current?.zoomBy(1.25)],
+                    ["toLatest", "cs.nav.toLatest", () => engineRef.current?.scrollToLatest()],
+                    ["resetView", "cs.nav.resetView", () => engineRef.current?.resetView()],
+                  ] as const
+                ).map(([k, label, fn]) => (
+                  <button key={k} onClick={fn} title={t(label)} aria-label={t(label)} className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+                    {CS_ICONS[k]}
+                  </button>
+                ))}
+              </div>
+            )}
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
           <BottomBar
             source={source}
             autoScale={autoScale}
-            logScale={prefs.logScale}
+            logScale={scaleModeNow === "log"}
             onAuto={() => engineRef.current?.setAutoScale(!autoScale)}
-            onLog={() => update({ logScale: !prefs.logScale })}
+            onLog={() => setScaleMode(scaleModeNow === "log" ? "regular" : "log")}
             onRange={applyRange}
             rangeBusy={rangeBusy || replayActive}
+            scaleMode={scaleModeNow}
+            onScaleMode={setScaleMode}
+            tz={cs.tz}
+            zone={resolveZone(cs.tz, source)}
+            onTz={(tz) => csApi.update((x) => ({ ...x, tz }))}
+            onGoToDate={goToDate}
+            gotoSignal={gotoSignal}
           />
         </div>
 
+        <div className={embedded || compact ? "hidden" : "contents"}>
         <RightPanel
           open={prefs.panelOpen}
           mobileOpen={mobilePanel}
@@ -580,9 +1134,43 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol }: P
           onCloseMobile={() => setMobilePanel(false)}
           selected={instrument}
           onSelect={handleSelect}
+          drawings={drawings}
+          indicators={indicators}
         />
+        </div>
       </div>
 
+      <ChartContextMenu
+        state={menu}
+        controller={drawings}
+        onClose={closeMenu}
+        onResetView={() => engineRef.current?.resetView()}
+        onAlertAtPrice={(price) => openAlerts({ price: Number(price.toFixed(engineRef.current?.getPrecision() ?? 2)) })}
+        onCreateAlertFromDrawing={openAlertFromDrawing}
+        onOpenChartSettings={() => openSettings()}
+      />
+      <ChartSettingsDialog
+        open={csOpen}
+        onClose={() => setCsOpen(false)}
+        api={csApi}
+        theme={composeTheme(cs, siteDark)}
+        autoScale={autoScale}
+        onAutoScale={(a) => engineRef.current?.setAutoScale(a)}
+        toggles={{ showVolume: prefs.showVolume, showGrid: prefs.showGrid, showWatermark: prefs.showWatermark }}
+        onToggle={(k, v) => update({ [k]: v } as Partial<Prefs>)}
+        initialTab={csTab}
+      />
+      <PriceScaleMenu
+        pos={scaleMenu}
+        onClose={() => setScaleMenu(null)}
+        api={csApi}
+        autoScale={autoScale}
+        onAuto={(a) => engineRef.current?.setAutoScale(a)}
+        onSettings={() => openSettings("scales")}
+      />
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <SymbolSearch open={comparePick} onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
+      <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <SymbolSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} />
       <AlertsDialog

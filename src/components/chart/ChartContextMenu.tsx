@@ -1,0 +1,280 @@
+"use client";
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useT } from "@/lib/i18n/client";
+import type { DrawingsController, ZOrderMode } from "@/lib/chart/drawings/controller";
+import { ALERT_LINE_TOOLS } from "@/lib/alerts/evaluate";
+import { DrawIcon } from "./icons";
+
+/** Where and on what the menu was opened. Client coordinates place the menu; `local` is chart-local (for paste). */
+export interface ChartMenuState {
+  clientX: number;
+  clientY: number;
+  local: { x: number; y: number } | null;
+  /** Drawing under the pointer (it is already selected), or null for empty chart space. */
+  drawingId: string | null;
+  /** Price and time under the pointer when it is over the main pane. */
+  price: number | null;
+  priceText: string;
+  time: number | null;
+}
+
+interface Props {
+  state: ChartMenuState | null;
+  controller: DrawingsController;
+  onClose: () => void;
+  onResetView: () => void;
+  onAlertAtPrice?: (price: number) => void;
+  /** Alert that follows the selected line (same path as the style bar button). */
+  onCreateAlertFromDrawing?: () => void;
+  /** Provided by the chart settings work; the entry is hidden when absent. */
+  onOpenChartSettings?: () => void;
+}
+
+const ALERT_TOOLS = new Set<string>(ALERT_LINE_TOOLS);
+const MARGIN = 8;
+
+function Item({
+  label,
+  shortcut,
+  onClick,
+  disabled,
+  danger,
+  icon,
+  arrow,
+  onEnter,
+  active,
+}: {
+  label: string;
+  shortcut?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  icon?: ReactNode;
+  arrow?: boolean;
+  onEnter?: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      onMouseEnter={onEnter}
+      className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-left text-[13px] leading-none outline-none transition-colors disabled:cursor-default disabled:opacity-40 ${
+        danger ? "text-red-500" : "text-gray-800 dark:text-gray-100"
+      } ${active ? "bg-gray-100 dark:bg-[#2a2e39]" : ""} enabled:hover:bg-gray-100 enabled:focus-visible:bg-gray-100 dark:enabled:hover:bg-[#2a2e39] dark:enabled:focus-visible:bg-[#2a2e39]`}
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {shortcut && <span className="shrink-0 pl-4 text-[11px] text-gray-400 dark:text-gray-500">{shortcut}</span>}
+      {arrow && (
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+const Sep = () => <div role="separator" className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />;
+
+export default function ChartContextMenu({ state, controller, onClose, onResetView, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings }: Props) {
+  const { t } = useT();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [flip, setFlip] = useState(false);
+
+  // place inside the viewport once the size is known
+  useLayoutEffect(() => {
+    setOrderOpen(false);
+    if (!state) {
+      setPos(null);
+      return;
+    }
+    const el = ref.current;
+    const w = el?.offsetWidth ?? 240;
+    const h = el?.offsetHeight ?? 300;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = state.clientX;
+    let top = state.clientY;
+    if (left + w + MARGIN > vw) left = Math.max(MARGIN, vw - w - MARGIN);
+    if (top + h + MARGIN > vh) top = Math.max(MARGIN, state.clientY - h);
+    if (top < MARGIN) top = MARGIN;
+    setPos({ left, top });
+    setFlip(left + w + 230 > vw);
+  }, [state]);
+
+  // close on outside press, Escape, scroll, resize
+  useEffect(() => {
+    if (!state) return;
+    const inside = (e: Event) => !!ref.current && e.target instanceof Node && ref.current.contains(e.target);
+    const onDown = (e: Event) => {
+      if (!inside(e)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const onScroll = (e: Event) => {
+      if (!inside(e)) onClose();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("wheel", onScroll, { capture: true, passive: true });
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("blur", onClose);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("wheel", onScroll, true);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("blur", onClose);
+    };
+  }, [state, onClose]);
+
+  // keyboard: arrows move between entries
+  const onMenuKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+    if (items.length === 0) return;
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    items[next].focus();
+  };
+
+  const info = useMemo(() => {
+    if (!state) return null;
+    const sel = controller.getSelection();
+    const ids = controller.getSelectedIds();
+    return { sel, count: ids.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, controller]);
+
+  if (!state) return null;
+  const run = (fn: () => void) => () => {
+    onClose();
+    fn();
+  };
+
+  const onDrawing = !!state.drawingId && !!info?.sel;
+  const sel = info?.sel ?? null;
+  const many = (info?.count ?? 0) > 1;
+  const canPaste = controller.hasClipboard();
+  const pasteAt = state.local;
+  const hasHidden = controller.hasHiddenDrawings();
+
+  const orderItems: [ZOrderMode, string][] = [
+    ["front", "cm.front"],
+    ["forward", "cm.forward"],
+    ["backward", "cm.backward"],
+    ["back", "cm.back"],
+  ];
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      aria-label={t("cm.menu")}
+      onKeyDown={onMenuKey}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{ position: "fixed", left: pos?.left ?? state.clientX, top: pos?.top ?? state.clientY, visibility: pos ? "visible" : "hidden" }}
+      className="z-[80] min-w-[230px] max-w-[92vw] select-none rounded-lg border border-gray-200 bg-white py-1 text-gray-900 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d]"
+    >
+      {onDrawing && sel ? (
+        <>
+          {many && <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">{t("cm.selectedN", { n: info?.count ?? 0 })}</div>}
+          {!many && (
+            <Item label={t("cm.settings")} onClick={run(() => controller.openSettings(sel.id))} />
+          )}
+          <Item label={t("cm.clone")} shortcut="Ctrl+D" icon={<DrawIcon id="clone" size={16} />} onClick={run(() => controller.cloneSelected())} />
+          <Item label={t("cm.copy")} shortcut="Ctrl+C" onClick={run(() => controller.copySelected())} />
+          <Item label={t("cm.paste")} shortcut="Ctrl+V" disabled={!canPaste} onClick={run(() => controller.paste(pasteAt))} />
+          <Sep />
+          <Item
+            label={sel.locked ? t("cm.unlock") : t("cm.lock")}
+            icon={<DrawIcon id={sel.locked ? "unlock" : "lock"} size={16} />}
+            onClick={run(() => controller.toggleSelectedLock())}
+          />
+          <Item label={t("cm.hide")} icon={<DrawIcon id="eyeOff" size={16} />} onClick={run(() => controller.toggleSelectedHidden())} />
+          <div className="relative">
+            <Item label={t("cm.order")} arrow active={orderOpen} onClick={() => setOrderOpen(true)} onEnter={() => setOrderOpen(true)} />
+            {orderOpen && (
+              <div
+                role="menu"
+                className={`absolute top-[-5px] z-10 min-w-[200px] rounded-lg border border-gray-200 bg-white py-1 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
+              >
+                {orderItems.map(([mode, key]) => (
+                  <Item key={mode} label={t(key)} onClick={run(() => controller.zOrder(sel.id, mode))} />
+                ))}
+              </div>
+            )}
+          </div>
+          {!many && onCreateAlertFromDrawing && ALERT_TOOLS.has(sel.tool) && (
+            <>
+              <Sep />
+              <Item label={t("cm.createAlert")} onClick={run(onCreateAlertFromDrawing)} />
+            </>
+          )}
+          <Sep />
+          <Item
+            label={many ? t("cm.deleteN", { n: info?.count ?? 0 }) : t("cm.delete")}
+            shortcut="Del"
+            danger
+            icon={<DrawIcon id="trash" size={16} />}
+            onClick={run(() => controller.removeSelected())}
+          />
+        </>
+      ) : (
+        <>
+          <Item label={t("cm.resetView")} onClick={run(onResetView)} />
+          {state.price !== null && onAlertAtPrice && (
+            <Item label={t("cm.alertAt", { price: state.priceText })} shortcut="Alt+A" onClick={run(() => onAlertAtPrice(state.price as number))} />
+          )}
+          {state.price !== null && state.time !== null && (
+            <Item
+              label={t("cm.hlineAt", { price: state.priceText })}
+              onClick={run(() => {
+                controller.addDrawing("hline", [{ t: state.time as number, p: state.price as number }]);
+              })}
+            />
+          )}
+          <Sep />
+          <Item label={t("cm.paste")} shortcut="Ctrl+V" disabled={!canPaste} onClick={run(() => controller.paste(pasteAt))} />
+          <Sep />
+          <Item
+            label={controller.isHidden() ? t("cm.showAll") : t("cm.hideAll")}
+            icon={<DrawIcon id={controller.isHidden() ? "eye" : "eyeOff"} size={16} />}
+            disabled={controller.getDrawingsCount() === 0}
+            onClick={run(() => controller.setHidden(!controller.isHidden()))}
+          />
+          {hasHidden && <Item label={t("cm.showHidden")} icon={<DrawIcon id="eye" size={16} />} onClick={run(() => controller.showAllHidden())} />}
+          <Item
+            label={t("cm.removeAll")}
+            danger
+            icon={<DrawIcon id="trash" size={16} />}
+            disabled={controller.getDrawingsCount() === 0}
+            onClick={run(() => {
+              if (window.confirm(t("cm.removeAllConfirm"))) controller.removeAll();
+            })}
+          />
+          {onOpenChartSettings && (
+            <>
+              <Sep />
+              <Item label={t("cm.chartSettings")} onClick={run(onOpenChartSettings)} />
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

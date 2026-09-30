@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { getToolDef } from "@/lib/chart/drawings/tools";
+import { EXTRA_DRAW_ICONS } from "./icons-draw-extra";
 
 /*
  * Own icon set for the terminal chrome.
@@ -290,6 +291,7 @@ const DRAW_ICONS: Record<string, ReactNode> = {
 
 // the measure button shares the ruler glyph
 DRAW_ICONS.measureBtn = DRAW_ICONS.measure;
+Object.assign(DRAW_ICONS, EXTRA_DRAW_ICONS);
 
 export function DrawIcon({ id, className, size = 20 }: { id: string; className?: string; size?: number }) {
   const def = getToolDef(id);
@@ -485,3 +487,94 @@ export const PANEL_TAB_ICONS: Record<string, ReactNode> = {
     </>
   ),
 };
+
+/* ───────────── indicator UI icons (legend, catalog, settings) ───────────── */
+
+const indIcon = (body: ReactNode, filled = false) =>
+  function IndIcon(size = 16) {
+    return filled ? (
+      <svg viewBox="0 0 24 24" width={size} height={size} className="shrink-0" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round">
+        {body}
+      </svg>
+    ) : (
+      ui(body, size, 1.8)
+    );
+  };
+
+export const IND_ICONS = {
+  eye: indIcon(
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: indIcon(
+    <>
+      <path d="M3 3l18 18" />
+      <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3.2 4M6.3 7.6A16 16 0 002.5 12S6 18.5 12 18.5c1.2 0 2.3-.3 3.3-.7M9.9 9.9a3 3 0 004.2 4.2" />
+    </>
+  ),
+  gear: indIcon(
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.8l1.7 2.4 2.9-.7 1 2.8 2.8 1-.7 2.9L21.2 12l-2.4 1.7.7 2.9-2.8 1-1 2.8-2.9-.7L12 21.2l-1.7-2.4-2.9.7-1-2.8-2.8-1 .7-2.9L2.8 12l2.4-1.7-.7-2.9 2.8-1 1-2.8 2.9.7z" />
+    </>
+  ),
+  more: indIcon(
+    <>
+      <circle cx="5.5" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1.3" fill="currentColor" />
+    </>
+  ),
+  close: indIcon(<path d="M6 6l12 12M18 6L6 18" />),
+  chevronDown: indIcon(<path d="M6 9l6 6 6-6" />),
+  chevronUp: indIcon(<path d="M6 15l6-6 6 6" />),
+  chevronRight: indIcon(<path d="M9 6l6 6-6 6" />),
+  star: indIcon(<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z" />),
+  starFilled: indIcon(<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z" />, true),
+  copy: indIcon(
+    <>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 8.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7.5a2 2 0 002 2h2.5" />
+    </>
+  ),
+  trash: indIcon(<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7M10 10.5v6M14 10.5v6" />),
+  plus: indIcon(<path d="M12 5v14M5 12h14" />),
+  check: indIcon(<path d="M5 12.5l4.5 4.5L19 7" />),
+  search: indIcon(
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5L21 21" />
+    </>
+  ),
+  pane: indIcon(
+    <>
+      <rect x="3.5" y="4" width="17" height="16" rx="2" />
+      <path d="M3.5 13.5h17" />
+    </>
+  ),
+  reset: indIcon(<path d="M4.5 12a7.5 7.5 0 107.5-7.5c-2.2 0-4.2.9-5.6 2.4M4.5 4v4h4" />),
+  template: indIcon(
+    <>
+      <path d="M5 4.5h10l4 4V19a1 1 0 01-1 1H5a1 1 0 01-1-1V5.5a1 1 0 011-1z" />
+      <path d="M8 4.5v5h6v-5M8 20v-6h8v6" />
+    </>
+  ),
+  recent: indIcon(
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  layers: indIcon(<path d="M12 4l9 5-9 5-9-5zM3 14l9 5 9-5" />),
+};
+
+/* object tree tab (layers of drawings and indicators) */
+PANEL_TAB_ICONS.objects = ui(
+  <>
+    <path d="M12 4l8.5 4.5L12 13 3.5 8.5z" />
+    <path d="M3.5 12.5L12 17l8.5-4.5" />
+    <path d="M3.5 16.5L12 21l8.5-4.5" opacity={0.55} />
+  </>
+);
