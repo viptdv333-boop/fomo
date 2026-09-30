@@ -1577,6 +1577,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       barsBetween: (a, b) => e.getIndexForTime(b) - e.getIndexForTime(a),
       fmt: (v) => formatPrice(v, precision, locale),
       candles: () => e.getCandles(),
+      flow: () => e.flow,
     };
   }
 

@@ -21,5 +21,7 @@ import chartmenu from "./chartmenu";
 import indicators2 from "./indicators2";
 import drawprops from "./drawprops";
 import chartsettings from "./chartsettings";
+import indscripts from "./indscripts";
+import orderflow from "./orderflow";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow];

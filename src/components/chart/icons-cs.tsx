@@ -80,6 +80,15 @@ export const CHART_TYPE_ICONS_EXTRA: Record<string, ReactNode> = {
       <path d="M13 17.5l4 4M17 17.5l-4 4" />
     </>
   ),
+  footprint: ui(
+    <>
+      <rect x="3" y="4" width="8" height="16" rx="1" />
+      <rect x="13" y="7" width="8" height="13" rx="1" />
+      <path d="M7 4v16M17 7v13M3 9h8M3 14h8M13 11h8M13 16h8" opacity={0.75} />
+      <rect x="7" y="9" width="4" height="5" fill="currentColor" fillOpacity={0.35} stroke="none" />
+      <rect x="13" y="11" width="4" height="5" fill="currentColor" fillOpacity={0.35} stroke="none" />
+    </>
+  ),
 };
 
 export const CS_ICONS = {

@@ -2,14 +2,17 @@ import type { AxisLabel, Candle, ChartTheme, LegendItem, Series, SeriesContext }
 import type { IndicatorStyle } from "../contracts";
 import { formatPrice, formatVolume } from "../format";
 import { computeIndicator } from "./registry";
-import type { IndicatorDef, IndResult, LevelSpec, LineStyleName, NumFmt, Params, PlotShape, PlotSpec } from "./registry";
+import type { IndEnv, IndicatorDef, IndResult, LevelSpec, LineStyleName, NumFmt, Params, PlotShape, PlotSpec } from "./registry";
 import { applyStyle, solidColor, tfGroupOf } from "./style";
+import type { OrderFlowStore } from "../orderflow/store";
 
 /** What a series needs from the engine, without importing the engine class. */
 export interface SeriesHost {
   getCandles(): Candle[];
   getPrecision(): number;
   getIntervalMs?(): number;
+  /** Order flow of the chart (trades / estimates) for indicators that read it. */
+  getFlow?(): OrderFlowStore | null;
 }
 
 const NO_DASH: number[] = [];
@@ -37,6 +40,9 @@ export interface LegendParts {
   items: LegendItem[];
   /** Colour of the first plot: used for the marker next to the title. */
   color: string;
+  /** User scripts: the script failed / is still computing. */
+  error?: string;
+  pending?: boolean;
 }
 
 /**
@@ -69,6 +75,7 @@ export class IndicatorSeries implements Series {
   private sLastH = NaN;
   private sLastL = NaN;
   private sLastV = NaN;
+  private sFlowV = -1;
 
   // remembered from the last draw, used by legend / axis labels which get no theme or locale
   private theme: ChartTheme | null = null;
@@ -97,13 +104,27 @@ export class IndicatorSeries implements Series {
     this.onMain = v;
   }
 
+  /** Forces a recompute on the next access (a user script delivered a new result). */
+  invalidate() {
+    this.version++;
+  }
+
   title(): string {
-    return this.def.title(this.params);
+    return this.def.title(this.params, this.env());
   }
 
   /** The computed result before the style is applied (for the settings dialog). Null before the first computation. */
   getRaw(): IndResult | null {
     return this.raw;
+  }
+
+  private env(): IndEnv {
+    return { flow: this.host.getFlow ? this.host.getFlow() : null, intervalMs: this.host.getIntervalMs ? this.host.getIntervalMs() : 0 };
+  }
+
+  private flowVersion(): number {
+    const f = this.host.getFlow ? this.host.getFlow() : null;
+    return f ? f.version : 0;
   }
 
   /** True when the timeframe filter of the style allows the current bar length. */
@@ -125,6 +146,7 @@ export class IndicatorSeries implements Series {
     const first = n > 0 ? candles[0] : null;
     if (
       this.doneVersion === this.version &&
+      (!this.def.usesFlow || this.sFlowV === this.flowVersion()) &&
       this.sLen === n &&
       (n === 0 ||
         (this.sFirstT === first!.t &&
@@ -144,10 +166,11 @@ export class IndicatorSeries implements Series {
     this.sLastL = last ? last.l : NaN;
     this.sLastV = last ? last.v : NaN;
     this.doneVersion = this.version;
+    this.sFlowV = this.flowVersion();
     try {
-      this.raw = computeIndicator(this.def, candles, this.params);
-    } catch {
-      this.raw = { plots: [] };
+      this.raw = computeIndicator(this.def, candles, this.params, this.env());
+    } catch (e) {
+      this.raw = { plots: [], error: e instanceof Error ? e.message : String(e) };
     }
     this.res = applyStyle(this.raw, this.style);
     return true;
@@ -244,6 +267,7 @@ export class IndicatorSeries implements Series {
     const title = this.title();
     const fallback = this.theme?.textMuted ?? "#9ca3af";
     if (!r || n === 0) return { title, items: [], color: fallback };
+    const flags = { error: r.error, pending: r.pending };
     if (index < 0) index = 0;
     if (index > n - 1) index = n - 1;
     const items: LegendItem[] = [];
@@ -260,7 +284,7 @@ export class IndicatorSeries implements Series {
       const sw = this.def.params.find((q) => q.type === "color");
       color = sw && sw.type === "color" ? String(this.params[sw.key] ?? sw.default) : fallback;
     }
-    return { title, items, color };
+    return { title, items, color, ...flags };
   }
 
   legend(candles: Candle[], index: number): LegendItem[] {
@@ -346,7 +370,7 @@ export class IndicatorSeries implements Series {
     }
     if (this.def.drawExtra) {
       try {
-        this.def.drawExtra(sc, this.params);
+        this.def.drawExtra(sc, this.params, r, this.env());
       } catch {
         /* a painter bug must not break the chart */
       }
@@ -377,6 +401,13 @@ export class IndicatorSeries implements Series {
     }
     for (const p of r.plots) {
       if (!p.hidden && p.priceLine && !p.volBand) this.drawPriceLine(sc, p);
+    }
+    if (this.def.drawTop) {
+      try {
+        this.def.drawTop(sc, this.params, r);
+      } catch {
+        /* a painter bug must not break the chart */
+      }
     }
 
     ctx.restore();

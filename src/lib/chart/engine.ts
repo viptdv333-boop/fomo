@@ -24,6 +24,9 @@ import {
 } from "./format";
 import { transformBars } from "./transforms";
 import { withAlpha } from "./settings";
+import { OrderFlowStore } from "./orderflow/store";
+import { DEFAULT_FOOTPRINT } from "./orderflow/types";
+import { NO_FRAME, drawFootprint, flowLabels, footprintLayout, footprintTip, footprintTotalsHeight, fmtQty, type FootprintFrame, type FootprintHost } from "./orderflow/footprint";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Own canvas chart engine. No third-party chart code.
@@ -50,6 +53,8 @@ type Region = "plot" | "priceAxis" | "timeAxis" | "separator" | "none";
 
 const MIN_BS = 0.5;
 const MAX_BS = 90;
+/** The footprint needs wide bars to fit the numbers. */
+const MAX_BS_FOOTPRINT = 320;
 const DEFAULT_BS = 8;
 const RIGHT_MARGIN_BARS = 8;
 const TIME_AXIS_H = 26;
@@ -146,6 +151,11 @@ export class ChartEngine {
   onNeedHistory: (() => void) | null = null;
   onAutoScaleChange: ((auto: boolean) => void) | null = null;
   onViewChange: (() => void) | null = null;
+  /** Order flow of this chart (footprint, volume profile, CVD ...). Filled by lib/chart/orderflow/client. */
+  readonly flow = new OrderFlowStore();
+  private viewListeners = new Set<() => void>();
+  /** Layout of the last footprint frame (cell step, level of detail), used by the crosshair tooltip. */
+  private fpFrame: FootprintFrame = NO_FRAME;
   /** Right click on a price scale (client coordinates); when set the browser menu is suppressed there. */
   onPriceAxisMenu: ((info: { clientX: number; clientY: number; paneId: string }) => void) | null = null;
   /** The baseline chart's base level was dragged (percent of the pane height from the bottom). */
@@ -218,6 +228,32 @@ export class ChartEngine {
     this.ro.observe(container);
     this.bindEvents();
     this.resize();
+    this.flow.subscribe(() => this.invalidate());
+  }
+
+  /** Called after every repaint of the base layer (pan, zoom, new data); returns an unsubscribe function. */
+  addViewListener(cb: () => void): () => void {
+    this.viewListeners.add(cb);
+    return () => this.viewListeners.delete(cb);
+  }
+
+  /** Visible price range and height of a pane. */
+  getPaneRange(id: string): { min: number; max: number; height: number } | null {
+    const p = this.panes.find((q) => q.id === id);
+    return p && p.ready ? { min: p.min, max: p.max, height: p.height } : null;
+  }
+
+  /** Zooms in (around the right edge) until bars are at least `bs` px apart. */
+  ensureMinSpacing(bs: number) {
+    if (this.targetSpacing >= bs) return;
+    this.targetSpacing = Math.min(this.maxBs(), bs);
+    this.zoomAnchor = { index: this.xToIndex(this.plotW()), x: this.plotW() };
+    this.invalidate();
+  }
+
+  /** Footprint cell step of the last frame (0 while the chart type is not a footprint or the bars are too narrow). */
+  getFootprintStep(): number {
+    return this.opts.chartType === "footprint" && this.fpFrame.cells ? this.fpFrame.step : 0;
   }
 
   /* ───────────── public API ───────────── */
@@ -284,6 +320,17 @@ export class ChartEngine {
     return isFinite(m) ? Math.max(0, m) : RIGHT_MARGIN_BARS;
   }
 
+  /** Bar spacing after loading data / resetting the view. */
+  private defaultSpacing(): number {
+    const t = this.opts.chartType;
+    return t === "line" ? 4 : t === "footprint" ? 64 : DEFAULT_BS;
+  }
+
+  /** Widest allowed bar spacing: the footprint needs room for its numbers. */
+  private maxBs(): number {
+    return this.opts.chartType === "footprint" ? MAX_BS_FOOTPRINT : MAX_BS;
+  }
+
   private transformed(): boolean {
     return isTransformedType(this.opts.chartType);
   }
@@ -298,7 +345,7 @@ export class ChartEngine {
     this.rebuildDisplay();
     this.hasMoreHistory = true;
     this.lastRequestedLen = -1;
-    this.barSpacing = this.targetSpacing = this.opts.chartType === "line" ? 4 : DEFAULT_BS;
+    this.barSpacing = this.targetSpacing = this.defaultSpacing();
     this.zoomAnchor = null;
     this.r = this.bars.length - 1 + this.margin();
     for (const p of this.panes) {
@@ -351,7 +398,7 @@ export class ChartEngine {
   resetView() {
     this.zoomAnchor = null;
     this.inertiaV = 0;
-    this.targetSpacing = this.barSpacing = DEFAULT_BS;
+    this.targetSpacing = this.barSpacing = this.defaultSpacing();
     this.r = this.bars.length - 1 + this.margin();
     this.setAutoScale(true);
     this.invalidate();
@@ -364,7 +411,7 @@ export class ChartEngine {
     const spacing = this.plotW() / (Math.max(1, bars) + this.margin());
     this.zoomAnchor = null;
     this.inertiaV = 0;
-    this.targetSpacing = this.barSpacing = Math.min(MAX_BS, Math.max(MIN_BS, spacing));
+    this.targetSpacing = this.barSpacing = Math.min(this.maxBs(), Math.max(MIN_BS, spacing));
     this.r = n - 1 + this.margin();
     this.setAutoScale(true);
     this.invalidate();
@@ -415,7 +462,7 @@ export class ChartEngine {
 
   /** Zoom around the right edge by a factor (> 1 zooms in). */
   zoomBy(factor: number) {
-    this.targetSpacing = Math.max(MIN_BS, Math.min(MAX_BS, this.targetSpacing * factor));
+    this.targetSpacing = Math.max(MIN_BS, Math.min(this.maxBs(), this.targetSpacing * factor));
     this.zoomAnchor = { index: this.xToIndex(this.plotW()), x: this.plotW() };
     this.invalidate();
   }
@@ -614,7 +661,7 @@ export class ChartEngine {
     const i0 = this.timeToIndex(from);
     const i1 = this.timeToIndex(to);
     if (!(i1 > i0)) return;
-    const bs = Math.max(MIN_BS, Math.min(MAX_BS, this.plotW() / (i1 - i0)));
+    const bs = Math.max(MIN_BS, Math.min(this.maxBs(), this.plotW() / (i1 - i0)));
     this.zoomAnchor = null;
     this.inertiaV = 0;
     this.targetSpacing = this.barSpacing = bs;
@@ -837,7 +884,12 @@ export class ChartEngine {
   }
 
   private updateAutoScale(dt: number, immediate: boolean): boolean {
-    const { from, to } = this.visibleRange();
+    let { from, to } = this.visibleRange();
+    if (this.opts.chartType === "footprint") {
+      // wide bars: bars that are entirely off screen must not stretch the scale
+      from = Math.max(from, Math.ceil(this.xToIndex(0) - 0.5));
+      to = Math.min(to, Math.floor(this.xToIndex(this.plotW()) + 0.5));
+    }
     const transformed = this.transformed();
     let animating = false;
     for (const p of this.panes) {
@@ -886,7 +938,11 @@ export class ChartEngine {
         hi += d;
       }
       const topPad = Math.max(0, this.opts.marginTop) / 100;
-      const botPad = Math.max(0, this.opts.marginBottom) / 100 + (p.id === "main" && this.opts.showVolume ? 0.14 : 0);
+      const fpBottom =
+        p.id === "main" && this.opts.chartType === "footprint" && p.height > 0
+          ? (footprintTotalsHeight(this.opts.footprint ?? DEFAULT_FOOTPRINT) + 8) / p.height
+          : 0;
+      const botPad = Math.max(0, this.opts.marginBottom) / 100 + (p.id === "main" && this.opts.showVolume && this.opts.chartType !== "footprint" ? 0.14 : 0) + fpBottom;
       if (this.isLogRange(p, lo)) {
         const a = Math.log(lo);
         const b = Math.log(hi);
@@ -1011,6 +1067,7 @@ export class ChartEngine {
 
   private notifyView() {
     this.onViewChange?.();
+    for (const cb of this.viewListeners) cb();
     const { from } = this.visibleRange();
     const n = this.candles.length;
     const wantMore = !this.transformed() || this.bars.length < 300;
@@ -1036,6 +1093,7 @@ export class ChartEngine {
       paneHeight: pane.height,
       theme: this.opts.theme,
       options: this.opts,
+      flow: this.flow,
     };
   }
 
@@ -1146,7 +1204,7 @@ export class ChartEngine {
       ctx.clip();
       ctx.translate(0, pane.top);
       if (pane.id === "main") {
-        if (this.opts.showVolume) this.drawVolume(sc);
+        if (this.opts.showVolume && this.opts.chartType !== "footprint") this.drawVolume(sc);
         this.drawPriceSeries(sc);
         this.drawCompares(sc);
       }
@@ -1353,6 +1411,8 @@ export class ChartEngine {
         return this.drawKagi(sc);
       case "pnf":
         return this.drawPnf(sc);
+      case "footprint":
+        return this.drawFootprintBars(sc);
       default:
         return this.drawBodies(sc, type);
     }
@@ -1551,6 +1611,69 @@ export class ChartEngine {
         }
       }
     }
+  }
+
+  private footprintHost(): FootprintHost {
+    return {
+      bars: this.display,
+      store: this.flow,
+      settings: this.opts.footprint ?? DEFAULT_FOOTPRINT,
+      colors: (up) => this.candleColors(up),
+      isUp: (i) => this.isUp(i),
+      fontFamily: this.opts.fontFamily,
+      locale: this.opts.locale,
+    };
+  }
+
+  /** Footprint chart: numbers per price level; plain candles while the bars are too narrow for them. */
+  private drawFootprintBars(sc: SeriesContext) {
+    this.flow.precision = this.precision;
+    const host = this.footprintHost();
+    const layout = footprintLayout(host, sc);
+    if (!layout.cells) {
+      this.fpFrame = layout;
+      this.drawBodies(sc, "candles");
+      this.drawBadge(sc.ctx, flowLabels(this.opts.locale).zoom, false, 22);
+      return;
+    }
+    this.fpFrame = drawFootprint(host, sc, layout);
+    this.drawFootprintBadge(sc.ctx, this.fpFrame);
+  }
+
+  /** Small note in the corner: where the numbers come from. */
+  private drawFootprintBadge(ctx: CanvasRenderingContext2D, f: FootprintFrame) {
+    const th = this.opts.theme;
+    const L = flowLabels(this.opts.locale);
+    const total = f.approxBars + f.realBars;
+    if (total === 0) return;
+    let text = "";
+    let warn = false;
+    if (f.realBars === 0) {
+      text = this.flow.avail === "unknown" || this.flow.pending ? `${L.approxShort} …` : this.flow.delayed && this.flow.size > 0 ? L.delayed : L.approx;
+      warn = true;
+    } else if (f.approxBars > 0) {
+      text = this.flow.delayed ? L.delayed : L.partial;
+      warn = true;
+    } else text = this.flow.live ? L.live : "";
+    if (!text) return;
+    this.drawBadge(ctx, text, warn, f.totalsH + 22);
+  }
+
+  /** Small right-aligned note near the bottom of the main pane. */
+  private drawBadge(ctx: CanvasRenderingContext2D, text: string, warn: boolean, fromBottom: number) {
+    const th = this.opts.theme;
+    ctx.save();
+    ctx.font = `600 10px ${this.opts.fontFamily}`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    const w = ctx.measureText(text).width + 12;
+    const x = this.plotW() - w - 8;
+    const y = this.panes[0].height - fromBottom;
+    ctx.fillStyle = warn ? "rgba(245,166,35,0.16)" : "rgba(38,166,154,0.14)";
+    ctx.fillRect(x, y, w, 16);
+    ctx.fillStyle = warn ? "#f5a623" : th.textMuted;
+    ctx.fillText(text, x + w - 6, y + 8.5);
+    ctx.restore();
   }
 
   private drawKagi(sc: SeriesContext) {
@@ -1949,6 +2072,8 @@ export class ChartEngine {
     ctx.stroke();
     ctx.restore();
 
+    if (this.opts.chartType === "footprint" && hv.pane?.id === "main") this.drawFootprintTip(ctx, hv);
+
     // price label
     if (hv.pane && ch.priceLabel && hv.pane.height > 0) {
       const price = this.paneP(hv.pane, hv.y - hv.pane.top);
@@ -1972,6 +2097,56 @@ export class ChartEngine {
       ctx.fillText(text, x + w / 2, plotH + (TIME_AXIS_H - 4) / 2 + 0.5);
       ctx.restore();
     }
+  }
+
+  /** Tooltip with the numbers of the cell under the pointer (footprint). */
+  private drawFootprintTip(ctx: CanvasRenderingContext2D, hv: { x: number; y: number; index: number; pane: Pane | null }) {
+    const f = this.fpFrame;
+    if (!f.cells || !hv.pane) return;
+    const idx = Math.max(0, Math.min(this.bars.length - 1, hv.index));
+    const price = this.paneP(hv.pane, hv.y - hv.pane.top);
+    const host = this.footprintHost();
+    const tip = footprintTip(host, idx, price, f.step);
+    if (!tip) return;
+    const L = flowLabels(this.opts.locale);
+    const p = (v: number) => formatPrice(v, this.precision, this.opts.locale);
+    const d = tip.ask - tip.bid;
+    const bd = tip.barAsk - tip.barBid;
+    const lines: [string, string][] = [
+      [`${L.price} ${p(tip.lo)} – ${p(tip.hi)}`, this.opts.theme.text],
+      [`Bid ${fmtQty(tip.bid)}  ×  Ask ${fmtQty(tip.ask)}`, this.opts.theme.text],
+      [`${L.delta} ${d > 0 ? "+" : ""}${fmtQty(d)}   ${L.vol} ${fmtQty(tip.bid + tip.ask)}`, d >= 0 ? this.candleColors(true).body : this.candleColors(false).body],
+      [`Σ ${fmtQty(tip.barBid + tip.barAsk)}   Δ ${bd > 0 ? "+" : ""}${fmtQty(bd)}   POC ${p(tip.poc)}`, this.opts.theme.textMuted],
+    ];
+    if (!tip.real) lines.push([L.approx, "#f5a623"]);
+    ctx.save();
+    ctx.font = `12px ${this.opts.fontFamily}`;
+    let w = 0;
+    for (const l of lines) w = Math.max(w, ctx.measureText(l[0]).width);
+    w += 16;
+    const h = lines.length * 16 + 10;
+    const plotW = this.plotW();
+    let x = hv.x + 16;
+    if (x + w > plotW - 4) x = hv.x - w - 16;
+    let y = hv.y + 14;
+    if (y + h > this.plotH() - 4) y = hv.y - h - 10;
+    x = Math.max(4, x);
+    y = Math.max(4, y);
+    ctx.fillStyle = this.opts.theme.labelBg;
+    ctx.globalAlpha = 0.94;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, 5);
+    else ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    lines.forEach((l, k) => {
+      ctx.fillStyle = l[1] === this.opts.theme.text || l[1] === this.opts.theme.textMuted ? this.opts.theme.labelText : l[1];
+      ctx.globalAlpha = l[1] === this.opts.theme.textMuted ? 0.75 : 1;
+      ctx.fillText(l[0], x + 8, y + 6 + k * 16);
+    });
+    ctx.restore();
   }
 
   private drawExternalCrosshair(ctx: CanvasRenderingContext2D) {
@@ -2248,7 +2423,7 @@ export class ChartEngine {
       const [a, b] = [...this.pointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
       const mid = (a.x + b.x) / 2;
-      const bs = Math.max(MIN_BS, Math.min(MAX_BS, this.pinch.spacing * (dist / this.pinch.dist)));
+      const bs = Math.max(MIN_BS, Math.min(this.maxBs(), this.pinch.spacing * (dist / this.pinch.dist)));
       this.barSpacing = this.targetSpacing = bs;
       this.r = this.pinch.index + (this.plotW() - mid) / bs;
       this.invalidate();
@@ -2336,7 +2511,7 @@ export class ChartEngine {
       }
       this.invalidate();
     } else if (d.kind === "timeAxis") {
-      const bs = Math.max(MIN_BS, Math.min(MAX_BS, this.barSpacing * Math.exp(dx * 0.006)));
+      const bs = Math.max(MIN_BS, Math.min(this.maxBs(), this.barSpacing * Math.exp(dx * 0.006)));
       this.barSpacing = this.targetSpacing = bs;
       this.zoomAnchor = null;
       this.invalidate();
@@ -2438,7 +2613,7 @@ export class ChartEngine {
     const coeff = e.ctrlKey ? 0.009 : 0.0016;
     const factor = Math.exp(-dy * coeff);
     const anchorX = region === "timeAxis" ? this.plotW() : Math.min(x, this.plotW());
-    this.targetSpacing = Math.max(MIN_BS, Math.min(MAX_BS, this.targetSpacing * factor));
+    this.targetSpacing = Math.max(MIN_BS, Math.min(this.maxBs(), this.targetSpacing * factor));
     this.zoomAnchor = { index: this.xToIndex(anchorX), x: anchorX };
     this.invalidate();
   };

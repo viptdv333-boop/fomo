@@ -35,11 +35,13 @@ interface Props {
   /** Instance to edit; null = closed. */
   uid: string | null;
   onClose: () => void;
+  /** User scripts: opens the source editor (a button shows up in the header). */
+  onEditSource?: (scriptId: string) => void;
 }
 
-export default function IndicatorSettingsDialog({ controller, uid, onClose }: Props) {
+export default function IndicatorSettingsDialog({ controller, uid, onClose, onEditSource }: Props) {
   if (!uid) return null;
-  return <Body key={uid} controller={controller} uid={uid} onClose={onClose} />;
+  return <Body key={uid} controller={controller} uid={uid} onClose={onClose} onEditSource={onEditSource} />;
 }
 
 /* ───────────── small controls ───────────── */
@@ -80,7 +82,7 @@ function Check({ checked, onChange, label, title }: { checked: boolean; onChange
 
 /* ───────────── dialog body ───────────── */
 
-function Body({ controller, uid, onClose }: { controller: IndicatorsController; uid: string; onClose: () => void }) {
+function Body({ controller, uid, onClose, onEditSource }: { controller: IndicatorsController; uid: string; onClose: () => void; onEditSource?: (scriptId: string) => void }) {
   const { t } = useT();
   const [, force] = useState(0);
   const [tab, setTab] = useState<Tab>("inputs");
@@ -162,7 +164,7 @@ function Body({ controller, uid, onClose }: { controller: IndicatorsController; 
   if (!inst || !def) return null;
 
   const setParam = (key: string, value: ParamValue) => controller.update(uid, { params: { [key]: value } });
-  const name = t(`ind.${def.id}.name`);
+  const name = def.label ?? t(`ind.${def.id}.name`);
 
   const resetDefaults = () => {
     controller.update(uid, { params: defaultParams(def), style: null });
@@ -212,6 +214,18 @@ function Body({ controller, uid, onClose }: { controller: IndicatorsController; 
             <h2 className="truncate text-sm font-semibold">{name}</h2>
             <p className="truncate font-mono text-[11px] text-gray-500 dark:text-gray-400">{def.title(inst.params)}</p>
           </div>
+          {def.script && onEditSource && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onEditSource(def.id);
+              }}
+              className="mr-1 h-7 shrink-0 rounded border border-gray-300 px-2 text-[11px] font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:border-[#2a2e39] dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+            >
+              {t("isc.editSource")}
+            </button>
+          )}
           <button
             type="button"
             onClick={cancel}
@@ -293,7 +307,7 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
             <div key={p.key} className="flex items-center gap-2">
               <input id={idOf(p.key)} type="checkbox" className={checkCls} checked={Boolean(v)} onChange={(e) => onSet(p.key, e.target.checked)} />
               <label htmlFor={idOf(p.key)} className="cursor-pointer text-xs text-gray-700 dark:text-gray-300">
-                {t(`ind.p.${p.key}`)}
+                {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
               </label>
             </div>
           );
@@ -301,7 +315,7 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
         return (
           <div key={p.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3">
             <label htmlFor={idOf(p.key)} className="text-xs text-gray-700 dark:text-gray-300">
-              {t(`ind.p.${p.key}`)}
+              {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
             </label>
             {p.type === "number" ? (
               <NumField min={(p as NumberParam).min} max={(p as NumberParam).max} step={(p as NumberParam).step} value={Number(v)} onCommit={(n) => onSet(p.key, n)} />
@@ -313,6 +327,8 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
                   </option>
                 ))}
               </select>
+            ) : p.type === "text" ? (
+              <input id={idOf(p.key)} type="text" maxLength={200} value={String(v)} onChange={(e) => onSet(p.key, e.target.value)} className={`${fieldCls} w-full`} />
             ) : null}
           </div>
         );
@@ -382,8 +398,8 @@ function StyleTab({
           t("ind2.st.colors"),
           def.styleParams.map((k) => (
             <div key={k} className="flex items-center gap-2">
-              <ColorPicker value={String(params[k] ?? "#2962ff")} onChange={(c) => onParam(k, c)} opacity={false} title={t(`ind.p.${k}`)} labels={labels} />
-              <span className="text-xs text-gray-700 dark:text-gray-300">{t(`ind.p.${k}`)}</span>
+              <ColorPicker value={String(params[k] ?? "#2962ff")} onChange={(c) => onParam(k, c)} opacity={false} title={def.paramLabels?.[k] ?? t(`ind.p.${k}`)} labels={labels} />
+              <span className="text-xs text-gray-700 dark:text-gray-300">{def.paramLabels?.[k] ?? t(`ind.p.${k}`)}</span>
             </div>
           )),
         )}

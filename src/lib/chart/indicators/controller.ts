@@ -5,6 +5,9 @@ import type { IndicatorDef, LineStyleName, Params, PlotShape } from "./registry"
 import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
+import { onScriptResult } from "../scripts/compute";
+import { subscribeScripts } from "../scripts/store";
+import type { ScriptEvent } from "../scripts/store";
 
 interface Item {
   inst: IndicatorInstance;
@@ -57,6 +60,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private externalLegend = false;
   /** Stable snapshot handed out by list(); rebuilt only when something changes (friendly to useSyncExternalStore). */
   private snapshot: IndicatorInstance[] = [];
+  /** Subscriptions to the user-script registry / worker results (only while attached to an engine). */
+  private scriptOffs: (() => void)[] = [];
 
   /* ───────────── engine binding ───────────── */
 
@@ -64,12 +69,68 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (this.engine && this.engine !== engine) this.unmountAll();
     this.engine = engine;
     for (const it of this.items) this.mount(it);
+    this.listenScripts();
+    this.syncScripts({ type: "list" });
     this.refresh();
   }
 
   detach(): void {
+    for (const off of this.scriptOffs) off();
+    this.scriptOffs = [];
     this.unmountAll();
     this.engine = null;
+  }
+
+  /* ───────────── user scripts ───────────── */
+
+  private listenScripts() {
+    for (const off of this.scriptOffs) off();
+    this.scriptOffs = [
+      subscribeScripts((ev) => this.syncScripts(ev)),
+      onScriptResult((scriptId) => {
+        let any = false;
+        for (const it of this.items) {
+          if (it.inst.id === scriptId) {
+            it.series.invalidate();
+            any = true;
+          }
+        }
+        if (any) this.refresh();
+      }),
+    ];
+  }
+
+  /** A script changed (code, declarations, list): re-sanitize the params of its instances, move panes, recompute. */
+  private syncScripts(ev: ScriptEvent) {
+    let touched = false;
+    for (const it of this.items) {
+      if (!it.def.script || (ev.id && it.inst.id !== ev.id)) continue;
+      touched = true;
+      let cur = it.inst.params;
+      if (ev.defaultChanges) {
+        cur = { ...cur };
+        for (const [k, [was, now]] of Object.entries(ev.defaultChanges)) if (cur[k] === was) cur[k] = now;
+      }
+      const next = sanitizeParams(it.def, cur);
+      if (JSON.stringify(next) !== JSON.stringify(it.inst.params)) {
+        it.inst.params = next;
+        it.series.setParams(next);
+      } else {
+        it.series.invalidate();
+      }
+      if (this.engine && it.pane !== null) {
+        const wantOwn = this.isOwn(it);
+        const isOwnNow = it.pane !== "main";
+        if (wantOwn !== isOwnNow) {
+          this.unmount(it);
+          this.mount(it);
+        }
+      }
+    }
+    if (!touched) return;
+    this.emit();
+    this.engine?.requestRedraw();
+    this.refresh();
   }
 
   private paneId(it: Item): string {
@@ -173,6 +234,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
         getCandles: () => (this.engine ? this.engine.getCandles() : []),
         getPrecision: () => (this.engine ? this.engine.getPrecision() : 2),
         getIntervalMs: () => (this.engine ? this.engine.getIntervalMs() : 0),
+        getFlow: () => (this.engine ? this.engine.flow : null),
       },
       st,
     );

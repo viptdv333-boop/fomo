@@ -1,3 +1,6 @@
+import type { FootprintSettings } from "./orderflow/types";
+import type { OrderFlowStore } from "./orderflow/store";
+
 export interface Candle {
   /** Bar start, ms. For MOEX this is Moscow wall time stored as if it were UTC (see timeShiftMs). */
   t: number;
@@ -27,7 +30,8 @@ export type ChartType =
   | "kagi"
   | "linebreak"
   | "range"
-  | "pnf";
+  | "pnf"
+  | "footprint";
 
 /** Chart types whose bars are built from the OHLC data (not one per source candle, not uniform in time). */
 export const TRANSFORMED_TYPES: ChartType[] = ["renko", "kagi", "linebreak", "range", "pnf"];
@@ -224,6 +228,8 @@ export interface EngineOptions {
   clockOffsetMs: number;
   /** Symbol name shown in the label on the price scale (defaults to symbolLabel). */
   scaleSymbol?: string;
+  /** Footprint chart type settings (see lib/chart/orderflow); defaults apply when missing. */
+  footprint?: FootprintSettings;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
@@ -284,6 +290,8 @@ export interface SeriesContext {
   paneHeight: number;
   theme: ChartTheme;
   options: EngineOptions;
+  /** Order flow of the chart (real trades where fetched, approximations elsewhere); see lib/chart/orderflow. */
+  flow?: OrderFlowStore;
 }
 
 export interface LegendItem {

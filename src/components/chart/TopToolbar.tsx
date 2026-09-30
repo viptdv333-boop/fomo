@@ -44,6 +44,7 @@ export const CHART_TYPES: { id: ChartType; key: string }[] = [
   { id: "linebreak", key: "chart.type.linebreak" },
   { id: "range", key: "chart.type.range" },
   { id: "pnf", key: "chart.type.pnf" },
+  { id: "footprint", key: "chart.type.footprint" },
 ];
 
 export type ToggleKey = "showVolume" | "showGrid" | "showWatermark";
@@ -204,7 +205,7 @@ export default function TopToolbar(p: Props) {
           ))
         }
       </Menu>
-      {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={btn} />}
+      {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={btn} source={p.instrument.source} />}
       {sep}
 
       {p.onOpenCompare && (

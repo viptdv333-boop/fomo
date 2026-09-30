@@ -25,6 +25,8 @@ export interface Env {
   fmt(price: number): string;
   /** Loaded candles (ascending by time) for data-driven tools: regression, VWAP, volume profile, bars pattern. */
   candles?(): Candle[];
+  /** Order flow of the chart (real trades where fetched): volume profile / VWAP tools use it when present. */
+  flow?(): import("../orderflow/store").OrderFlowStore | null;
 }
 
 export interface DrawState {

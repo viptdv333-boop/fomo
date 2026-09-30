@@ -8,6 +8,9 @@ import { useT } from "@/lib/i18n/client";
 import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
+import { OrderFlowClient } from "@/lib/chart/orderflow/client";
+import { AnchoredVwapLayer } from "@/lib/chart/orderflow/avwap-layer";
+import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
@@ -179,6 +182,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [drawings] = useState(() => new DrawingsController());
   const [indicators] = useState(() => new IndicatorsController());
   const [alertsLayer] = useState(() => new AlertsLayer());
+  const [avwapLayer] = useState(() => new AnchoredVwapLayer(indicators));
   const alertsApi = useAlerts();
 
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
@@ -281,6 +285,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     drawings.attach(engine);
     alertsLayer.attach(engine);
     indicators.attach(engine);
+    avwapLayer.attach(engine);
 
     const savedInd = lsGet(indKey);
     if (savedInd) indicators.restore(savedInd);
@@ -309,12 +314,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       unsubDraw();
       drawings.detach();
       alertsLayer.detach();
+      avwapLayer.detach();
       indicators.detach();
       engine.destroy();
       engineRef.current = null;
       setEngineReady(false);
     };
-  }, [drawings, indicators, alertsLayer, indKey]);
+  }, [drawings, indicators, alertsLayer, avwapLayer, indKey]);
+
+  useEffect(() => {
+    avwapLayer.hint = t("of.avwap.pick");
+  }, [avwapLayer, t]);
 
   /* drawings are saved per symbol */
   useEffect(() => {
@@ -403,6 +413,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       // chart time = real UTC ms + offsetMs (MOEX candles carry Moscow wall time minus the server's zone)
       const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
+      // sessions / days of the order flow indicators follow the exchange clock
+      engine.flow.wallShiftMs = source === "moex" ? tzMs : 0;
       alertsLayer.setTimeOffset(offsetMs);
       setOffsetMs(offsetMs);
       engine.setOptions({
@@ -503,6 +515,63 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(first);
     };
   }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
+
+  /* order flow (footprint, volume profile, VWAP / CVD from trades): fetches the trades of what the chart shows */
+  const flowClientRef = useRef<OrderFlowClient | null>(null);
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine || !engineReady || !prefsLoaded || source === "none") return;
+    const client = new OrderFlowClient({
+      engine,
+      source,
+      ticker,
+      getOffsetMs: () => shiftRef.current.offsetMs,
+      getFootprint: () => csRef.current.settings.footprint,
+    });
+    flowClientRef.current = client;
+    client.start();
+    // the indicators' legend values follow the trades too
+    const offFlow = engine.flow.subscribe(refreshInd);
+    return () => {
+      offFlow();
+      client.stop();
+      flowClientRef.current = null;
+    };
+  }, [engineReady, prefsLoaded, source, ticker, prefs.interval, refreshInd]);
+
+  /* who needs trade data: the footprint chart type, order flow indicators, volume profile / VWAP drawings */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine || !engineReady) return;
+    const sync = () => {
+      const needs = engine.flow.needs;
+      const set = (k: string, on: boolean) => {
+        if (on) needs.add(k);
+        else needs.delete(k);
+      };
+      set("footprint", prefs.chartType === "footprint");
+      set("ind", indicators.list().some((i) => i.visible && FLOW_INDICATOR_IDS.includes(i.id)));
+      set("draw", drawings.listAll().some((d) => FLOW_DRAWING_TOOLS.includes(d.tool)));
+      set("big", indicators.list().some((i) => i.visible && i.id === "bigtrades"));
+      flowClientRef.current?.kick(120);
+    };
+    sync();
+    const u1 = indicators.subscribe(sync);
+    const u2 = drawings.subscribe(sync);
+    return () => {
+      u1();
+      u2();
+    };
+  }, [engineReady, prefs.chartType, indicators, drawings, source, ticker, prefs.interval]);
+
+  useEffect(() => {
+    flowClientRef.current?.kick(200);
+  }, [cs.footprint.stepTicks]);
+
+  /* the footprint needs wide bars: zoom in once when it is picked */
+  useEffect(() => {
+    if (prefs.chartType === "footprint") engineRef.current?.ensureMinSpacing(64);
+  }, [engineReady, prefs.chartType]);
 
   /* alerts: paint the active ones of this symbol on the chart */
   const { alerts: allAlerts } = alertsApi;

@@ -7,7 +7,10 @@ import type { IndicatorInstance } from "@/lib/chart/contracts";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { INDICATOR_DEFS, getIndicatorDef } from "@/lib/chart/indicators/registry";
 import type { Category } from "@/lib/chart/indicators/registry";
-import { listUserData, saveUserData } from "@/lib/chart/userdata";
+import { isSignedInForUserData, listUserData, saveUserData } from "@/lib/chart/userdata";
+import { createDraftScript, deleteScript, ensureScriptsLoaded, isPersisted, listScripts, parseImported, subscribeScripts } from "@/lib/chart/scripts/store";
+import { BLANK_SCRIPT, SCRIPT_TEMPLATES } from "@/lib/chart/scripts/templates";
+import IndicatorEditor from "./IndicatorEditor";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
 
@@ -73,7 +76,7 @@ function CatIcon({ name, className = "h-4 w-4" }: { name: IconName; className?: 
 
 /* ───────────── dialog ───────────── */
 
-type Section = "fav" | "recent" | "all" | Category | "active";
+type Section = "fav" | "recent" | "all" | Category | "active" | "scripts";
 
 const NAV_GROUPS: Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma"];
 
@@ -84,8 +87,23 @@ interface Props {
 }
 
 export default function IndicatorsDialog(props: Props) {
-  if (!props.open) return null;
-  return <DialogBody {...props} />;
+  // the script editor lives here (not in the dialog body) so that it stays open when the dialog closes
+  const [editScript, setEditScript] = useState<string | null>(null);
+  const { controller, onClose } = props;
+  return (
+    <>
+      {props.open && (
+        <DialogBody
+          {...props}
+          onEditScript={(id) => {
+            setEditScript(id);
+            onClose();
+          }}
+        />
+      )}
+      <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />
+    </>
+  );
 }
 
 function readRecent(): string[] {
@@ -97,7 +115,7 @@ function readRecent(): string[] {
   }
 }
 
-function DialogBody({ controller, onClose }: Props) {
+function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScript: (scriptId: string) => void }) {
   const { t } = useT();
   const [, force] = useState(0);
   const [section, setSection] = useState<Section>("all");
@@ -106,11 +124,18 @@ function DialogBody({ controller, onClose }: Props) {
   const [favs, setFavs] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [settingsUid, setSettingsUid] = useState<string | null>(null);
+  const [scriptTick, setScriptTick] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => controller.subscribe(() => force((n) => n + 1)), [controller]);
+
+  // the user's scripts (loaded once, then kept live)
+  useEffect(() => {
+    void ensureScriptsLoaded();
+    return subscribeScripts(() => setScriptTick((n) => n + 1));
+  }, []);
 
   // favorites (per user, or this browser for guests) and recently used
   useEffect(() => {
@@ -167,6 +192,13 @@ function DialogBody({ controller, onClose }: Props) {
   );
 
   const q = query.trim().toLowerCase();
+
+  // only stored scripts are listed (a draft that was never saved lives in the editor only)
+  const scriptList = useMemo(
+    () => listScripts().filter((s) => isPersisted(s.id)).map((s) => ({ id: s.id, name: s.name })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scriptTick],
+  );
 
   const catalog = useMemo(
     () =>
@@ -314,6 +346,7 @@ function DialogBody({ controller, onClose }: Props) {
               {navBtn("fav", t("ind2.cat.fav"), IND_ICONS.star(16), favs.length)}
               {navBtn("recent", t("ind2.cat.recent"), IND_ICONS.recent(16))}
               {navBtn("all", t("ind2.cat.builtin"), <CatIcon name="all" />)}
+              {navBtn("scripts", t("isc.cat"), IND_ICONS.template(16), scriptList.length)}
               <div className="mx-1 hidden h-px shrink-0 bg-gray-200 sm:my-1 sm:block dark:bg-[#2a2e39]" />
               {NAV_GROUPS.map((c) => navBtn(c, t(`ind.cat.${c}`), <CatIcon name={c as IconName} />))}
               <div className="mx-1 hidden h-px shrink-0 bg-gray-200 sm:my-1 sm:block dark:bg-[#2a2e39]" />
@@ -325,6 +358,8 @@ function DialogBody({ controller, onClose }: Props) {
               <div className="min-h-0 flex-1 overflow-y-auto" onKeyDown={onListKey}>
                 {section === "active" ? (
                   <ActiveList active={active} controller={controller} onGoAdd={() => setSection("all")} onSettings={setSettingsUid} />
+                ) : section === "scripts" ? (
+                  <ScriptsList controller={controller} query={q} scripts={scriptList} onEdit={onEditScript} />
                 ) : shown.length === 0 ? (
                   <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">{emptyText}</div>
                 ) : (
@@ -391,8 +426,148 @@ function DialogBody({ controller, onClose }: Props) {
           </div>
         </div>
       </div>
-      <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} />
+      <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} onEditSource={onEditScript} />
     </>
+  );
+}
+
+/* ───────────── my scripts ───────────── */
+
+function ScriptsList({
+  controller,
+  query,
+  scripts,
+  onEdit,
+}: {
+  controller: IndicatorsController;
+  query: string;
+  scripts: { id: string; name: string }[];
+  onEdit: (id: string) => void;
+}) {
+  const { t } = useT();
+  const [delId, setDelId] = useState<string | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const list = query ? scripts.filter((s) => s.name.toLowerCase().includes(query)) : scripts;
+  const counts = new Map<string, number>();
+  for (const i of controller.list()) counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
+
+  const create = (name: string, code: string) => {
+    const rec = createDraftScript(name, code);
+    onEdit(rec.id);
+  };
+  const iconBtn =
+    "rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-gray-100";
+  const tb =
+    "flex h-7 items-center gap-1.5 rounded border border-gray-300 px-2 text-xs font-medium text-gray-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:border-[#363a45] dark:text-gray-200 dark:hover:bg-[#2a2e39]";
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-[#2a2e39]">
+        <button type="button" data-nav onClick={() => create(t("isc.tpl.blank"), BLANK_SCRIPT)} className="flex h-7 items-center gap-1.5 rounded bg-[#2962ff] px-3 text-xs font-semibold text-white hover:bg-[#1e53e5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] focus-visible:ring-offset-1 dark:focus-visible:ring-offset-[#1e222d]">
+          {IND_ICONS.plus(14)}
+          {t("isc.newScript")}
+        </button>
+        <div className="relative">
+          <button type="button" data-nav className={tb} aria-expanded={tplOpen} onClick={() => setTplOpen((o) => !o)}>
+            {t("isc.fromTemplate")}
+            {IND_ICONS.chevronDown(12)}
+          </button>
+          {tplOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-[#2a2e39] dark:bg-[#1e222d]">
+              {SCRIPT_TEMPLATES.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  className="block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-[#2a2e39]"
+                  onClick={() => {
+                    setTplOpen(false);
+                    create(t(`isc.tpl.${x.id}`), x.code);
+                  }}
+                >
+                  <span className="block text-xs font-medium text-gray-900 dark:text-gray-100">{t(`isc.tpl.${x.id}`)}</span>
+                  <span className="block truncate text-[10px] text-gray-500 dark:text-gray-400">{t(`isc.tpl.${x.id}.d`)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="button" data-nav className={tb} onClick={() => fileRef.current?.click()}>
+          {t("isc.import")}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,.js,.txt,application/json,text/javascript,text/plain"
+          className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            try {
+              const p = parseImported(await f.text(), f.name);
+              if (p) create(p.name, p.code);
+            } catch {
+              /* unreadable file */
+            }
+          }}
+        />
+      </div>
+      {list.length === 0 ? (
+        <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">{query ? t("ind.noResults") : t("isc.noScripts")}</div>
+      ) : (
+        <ul className="divide-y divide-gray-100 dark:divide-[#2a2e39]">
+          {list.map((s) => {
+            const n = counts.get(s.id) ?? 0;
+            return (
+              <li key={s.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#2a2e39]/60">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2962ff]" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{s.name}</span>
+                    <span className="shrink-0 rounded border border-gray-200 px-1 text-[9px] uppercase leading-4 tracking-wide text-gray-500 dark:border-[#363a45] dark:text-gray-400">{t("isc.tag")}</span>
+                    {n > 0 && <span className="shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold leading-4 text-gray-600 dark:bg-[#2a2e39] dark:text-gray-300">×{n}</span>}
+                  </span>
+                </span>
+                {delId === s.id ? (
+                  <span className="flex items-center gap-1 text-xs">
+                    <span className="text-red-600 dark:text-red-400">{t("isc.delete")}?</span>
+                    <button
+                      type="button"
+                      data-nav
+                      className="rounded bg-red-600 px-2 py-0.5 text-white hover:bg-red-700"
+                      onClick={async () => {
+                        for (const i of controller.list()) if (i.id === s.id) controller.remove(i.uid);
+                        setDelId(null);
+                        await deleteScript(s.id);
+                      }}
+                    >
+                      {t("isc.yes")}
+                    </button>
+                    <button type="button" data-nav className="rounded border border-gray-300 px-2 py-0.5 dark:border-[#363a45]" onClick={() => setDelId(null)}>
+                      {t("isc.no")}
+                    </button>
+                  </span>
+                ) : (
+                  <>
+                    <button type="button" data-nav className={iconBtn} title={t("isc.list.add")} aria-label={t("isc.list.add")} onClick={() => controller.add(s.id)}>
+                      {IND_ICONS.plus(16)}
+                    </button>
+                    <button type="button" data-nav className={iconBtn} title={t("isc.list.edit")} aria-label={t("isc.list.edit")} onClick={() => onEdit(s.id)}>
+                      {IND_ICONS.template(16)}
+                    </button>
+                    <button type="button" data-nav className={`${iconBtn} hover:!text-red-600 dark:hover:!text-red-400`} title={t("isc.list.delete")} aria-label={t("isc.list.delete")} onClick={() => setDelId(s.id)}>
+                      {IND_ICONS.trash(16)}
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {isSignedInForUserData() === false && <p className="px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400">{t("isc.local")}</p>}
+    </div>
   );
 }
 
@@ -439,7 +614,7 @@ function ActiveList({
             <div className="flex items-center gap-2 px-3 py-1.5">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatchColor }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{t(`ind.${def.id}.name`)}</span>
+                <span className="block truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{def.label ?? t(`ind.${def.id}.name`)}</span>
                 <span className="block truncate font-mono text-[10px] text-gray-500 dark:text-gray-400">{def.title(inst.params)}</span>
               </span>
               <button

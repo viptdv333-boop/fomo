@@ -2,7 +2,8 @@ import type { Candle, SeriesContext } from "../types";
 import type { ParamValue } from "../contracts";
 import * as M from "./math";
 import type { F64 } from "./math";
-import { drawVolumeProfile } from "./volprofile";
+import { ORDERFLOW_DEFS } from "./orderflow-defs";
+import type { OrderFlowStore } from "../orderflow/store";
 
 /* Indicator definitions: parameter schema + compute(). Names and descriptions live in the i18n dictionary
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
@@ -18,7 +19,9 @@ export interface SelectOption { value: string; /** i18n key (starts with "ind.")
 export interface SelectParam { key: string; type: "select"; options: SelectOption[]; default: string }
 export interface BooleanParam { key: string; type: "boolean"; default: boolean }
 export interface ColorParam { key: string; type: "color"; default: string }
-export type ParamDef = NumberParam | SelectParam | BooleanParam | ColorParam;
+/** Free text input (user scripts only). */
+export interface TextParam { key: string; type: "text"; default: string }
+export type ParamDef = NumberParam | SelectParam | BooleanParam | ColorParam | TextParam;
 
 export interface PlotSpec {
   key: string;
@@ -95,6 +98,19 @@ export interface IndResult {
   bands?: BandSpec[];
   /** Fixed scale for the pane (RSI 0..100). */
   range?: [number, number];
+  /** User scripts: the script failed (message) or has no result yet (pending). Shown as a badge in the legend. */
+  error?: string;
+  pending?: boolean;
+  /** Opaque data for the definition's own painter (drawExtra), e.g. plotshape markers of a user script. */
+  extra?: unknown;
+}
+
+/** What an order-flow-aware indicator may read besides the candles. */
+export interface IndEnv {
+  /** Trades / estimates of the chart (see lib/chart/orderflow). */
+  flow: OrderFlowStore | null;
+  /** Nominal bar length of the chart, ms. */
+  intervalMs: number;
 }
 
 export interface IndicatorDef {
@@ -105,8 +121,8 @@ export interface IndicatorDef {
   paneRatio?: number;
   fmt: NumFmt;
   params: ParamDef[];
-  title(p: Params): string;
-  compute(candles: Candle[], p: Params): IndResult;
+  title(p: Params, env?: IndEnv): string;
+  compute(candles: Candle[], p: Params, env?: IndEnv): IndResult;
   /** Extra search words (latin), besides the localized name. */
   keywords?: string;
   /** Colour params edited on the Style tab as plain colour rows (used by drawExtra, which has no plots to hang colours on). */
@@ -116,7 +132,19 @@ export interface IndicatorDef {
   /** Can not be moved to another pane (draws on the price scale or in the volume band). */
   fixedPane?: boolean;
   /** Custom painter for things that are not plots (volume profile). Runs every frame with the visible range. */
-  drawExtra?(sc: SeriesContext, p: Params): void;
+  drawExtra?(sc: SeriesContext, p: Params, res?: IndResult, env?: IndEnv): void;
+  /** Recompute when the order flow data of the chart changes (indicators that read trades). */
+  usesFlow?: boolean;
+  /** Painter that runs after the plots (markers on top of the lines). */
+  drawTop?(sc: SeriesContext, p: Params, res?: IndResult): void;
+  /** User scripts: literal display name (instead of the `ind.<id>.name` dictionary key). */
+  label?: string;
+  /** User scripts: literal labels of the parameters (instead of `ind.p.<key>`). */
+  paramLabels?: Record<string, string>;
+  /** Marks a definition made from a user script. */
+  script?: boolean;
+  /** User scripts: the scripts are still being loaded, params are kept as they are. */
+  loading?: boolean;
 }
 
 /* ───────────── helpers ───────────── */
@@ -393,44 +421,6 @@ const defs: IndicatorDef[] = [
         plots: [line("Upper", up, c, { width: 1.4 }), line("Basis", mid, S(p, "colorBasis"), { width: 1.4 }), line("Lower", lo, c, { width: 1.4 })],
         fills: [{ a: up, b: lo, color: hexToRgba(c, 0.06), name: "Upper / Lower" }],
       };
-    },
-  },
-  {
-    id: "vwap",
-    category: "volume",
-    pane: "overlay",
-    fmt: "price",
-    keywords: "vwap volume weighted average price session anchored",
-    params: [
-      sel("anchor", "day", [
-        { value: "day", label: "ind.o.day" },
-        { value: "week", label: "ind.o.week" },
-        { value: "month", label: "ind.o.month" },
-      ]),
-      bool("bands", false),
-      num("mult", 1, 0.1, 10, 0.1),
-      col("color", "#1e88e5"),
-      col("colorBands", "#43a047"),
-    ],
-    title: (p) => `VWAP ${S(p, "anchor")}${B(p, "bands") ? " ±" + N(p, "mult") : ""}`,
-    compute(cs, p) {
-      const cols = toCols(cs);
-      const { vwap, sd } = M.vwapAnchored(cols.t, cols.h, cols.l, cols.c, cols.v, S(p, "anchor") as "day" | "week" | "month");
-      const plots = [line("VWAP", vwap, S(p, "color"), { width: 1.8 })];
-      const fills: FillSpec[] = [];
-      if (B(p, "bands")) {
-        const k = N(p, "mult");
-        const up = new Float64Array(cols.n);
-        const lo = new Float64Array(cols.n);
-        for (let i = 0; i < cols.n; i++) {
-          up[i] = vwap[i] + k * sd[i];
-          lo[i] = vwap[i] - k * sd[i];
-        }
-        const bc = S(p, "colorBands");
-        plots.push(line("Upper", up, bc, { width: 1.2 }), line("Lower", lo, bc, { width: 1.2 }));
-        fills.push({ a: up, b: lo, color: hexToRgba(bc, 0.06), name: "Upper / Lower" });
-      }
-      return { plots, fills };
     },
   },
   {
@@ -851,20 +841,6 @@ const defs: IndicatorDef[] = [
       return { plots: [line("OBV", M.obv(cols.c, cols.v), S(p, "color"))] };
     },
   },
-  {
-    id: "cvd",
-    category: "volume",
-    pane: "own",
-    paneRatio: 0.18,
-    fmt: "vol",
-    keywords: "cvd cumulative volume delta approximate",
-    params: [col("color", CYAN)],
-    title: () => "CVD≈",
-    compute(cs, p) {
-      const cols = toCols(cs);
-      return { plots: [line("CVD≈", M.cvdApprox(cols.o, cols.h, cols.l, cols.c, cols.v), S(p, "color"))], levels: zeroLevel() };
-    },
-  },
 
   /* ── moving averages: ribbon ── */
   {
@@ -1037,44 +1013,22 @@ const defs: IndicatorDef[] = [
       return { plots: [line("EFI", M.forceIndex(cols.c, cols.v, N(p, "length")), S(p, "color"))], levels: zeroLevel() };
     },
   },
-  {
-    id: "vprofile",
-    fixedPane: true,
-    category: "volume",
-    pane: "overlay",
-    fmt: "vol",
-    keywords: "volume profile visible range VRVP POC value area",
-    params: [
-      num("rows", 24, 4, 200),
-      num("widthPct", 30, 5, 90),
-      sel("placement", "left", [
-        { value: "left", label: "ind2.o.left" },
-        { value: "right", label: "ind2.o.right" },
-      ]),
-      num("valueArea", 70, 10, 100),
-      bool("showVaLines", false),
-      col("colorUp", "#2962ff"),
-      col("colorDown", "#ff9800"),
-      col("colorPoc", "#f23645"),
-    ],
-    styleParams: ["colorUp", "colorDown", "colorPoc"],
-    title: (p) => `VP ${N(p, "rows")} ${N(p, "valueArea")}%`,
-    compute() {
-      return { plots: [] };
-    },
-    drawExtra(sc, p) {
-      drawVolumeProfile(sc, p);
-    },
-  },
 ];
 
+defs.push(...ORDERFLOW_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 
 const byId = new Map<string, IndicatorDef>();
 for (const d of defs) byId.set(d.id, d);
 
+/** Definitions that are created at runtime (user scripts): asked when an id is not a built-in one. */
+let dynamicResolver: ((id: string) => IndicatorDef | undefined) | null = null;
+export function setDynamicResolver(fn: ((id: string) => IndicatorDef | undefined) | null): void {
+  dynamicResolver = fn;
+}
+
 export function getIndicatorDef(id: string): IndicatorDef | undefined {
-  return byId.get(id);
+  return byId.get(id) ?? (dynamicResolver ? dynamicResolver(id) : undefined);
 }
 
 export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "other"];
@@ -1087,6 +1041,8 @@ export function defaultParams(def: IndicatorDef): Params {
 
 /** Fills missing keys with defaults and coerces / clamps everything else to the schema. */
 export function sanitizeParams(def: IndicatorDef, raw: Record<string, ParamValue> | undefined): Params {
+  // a user script whose declarations are not known yet keeps the stored values untouched
+  if (def.loading) return { ...(raw ?? {}) };
   const out: Params = {};
   for (const p of def.params) {
     const v = raw?.[p.key];
@@ -1109,12 +1065,15 @@ export function sanitizeParams(def: IndicatorDef, raw: Record<string, ParamValue
       case "color":
         out[p.key] = typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : p.default;
         break;
+      case "text":
+        out[p.key] = typeof v === "string" ? v.slice(0, 200) : p.default;
+        break;
     }
   }
   return out;
 }
 
-export function computeIndicator(def: IndicatorDef, candles: Candle[], params: Params): IndResult {
+export function computeIndicator(def: IndicatorDef, candles: Candle[], params: Params, env?: IndEnv): IndResult {
   if (candles.length === 0) return { plots: [] };
-  return def.compute(candles, params);
+  return def.compute(candles, params, env);
 }

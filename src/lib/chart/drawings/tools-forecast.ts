@@ -1,4 +1,6 @@
 import * as G from "./geometry";
+import { buildProfileFromFlow } from "../orderflow/flowmath";
+import { computeVwap } from "../orderflow/vwapcalc";
 import {
   BLUE,
   GREEN,
@@ -264,18 +266,13 @@ function vwapSeries(env: Env, t0: number): { pts: VwapPoint[]; last: number } | 
   if (!all || all.length === 0) return null;
   const start = lowerBound(all, t0);
   if (start >= all.length) return null;
-  let pv = 0;
-  let vol = 0;
+  // same maths as the Anchored VWAP indicator: from real trades when the chart has them
+  const r = computeVwap(all, { anchor: { from: start }, source: "hlc3", useTrades: true, store: env.flow?.() });
   const pts: VwapPoint[] = [];
   let last = 0;
   for (let i = start; i < all.length; i++) {
-    const c = all[i];
-    const tp = (c.h + c.l + c.c) / 3;
-    const v = c.v > 0 ? c.v : 1e-9;
-    pv += tp * v;
-    vol += v;
-    last = pv / vol;
-    pts.push({ x: env.toX(c.t), y: env.toY(last) });
+    last = r.vwap[i];
+    pts.push({ x: env.toX(all[i].t), y: env.toY(last) });
   }
   return { pts, last };
 }
@@ -352,6 +349,8 @@ interface Profile {
   vaHi: number;
   x0: number;
   x1: number;
+  /** true = spread from candles (no trade data). */
+  approx?: boolean;
 }
 
 export function buildProfile(cs: Candle[], rows = VP_ROWS, vaShare = 0.7): Omit<Profile, "x0" | "x1"> | null {
@@ -447,6 +446,7 @@ function paintProfile(ctx: CanvasRenderingContext2D, env: Env, d: Parameters<Too
   ctx.lineTo(pr.x1, valY);
   ctx.stroke();
   ctx.restore();
+  if (pr.approx) label(ctx, env, "≈", pr.x0 + 6, env.toY(pr.lo + pr.total.length * pr.step) + 8, { base: "top", bg: "#f5a623", fg: "#ffffff", size: 10, clamp: false });
   const showLabels = opt(d, "showLabels", false) || st.selected || st.hover;
   if (showLabels) {
     label(ctx, env, `${tx("draw.txt.poc")} ${env.fmt(pr.lo + (pr.poc + 0.5) * pr.step)}`, pr.x1 - 4, pocY, { align: "right", base: "middle", bg: RED, fg: "#ffffff", size: 10, clamp: false });
@@ -461,11 +461,15 @@ function profileFor(env: Env, d: Drawing, tA: number, tB: number, toEnd: boolean
   const lo = Math.min(tA, tB);
   const hiT = toEnd ? all[all.length - 1].t : Math.max(tA, tB);
   const cs = candleSlice(env, lo, hiT);
-  const pr = buildProfile(cs, Math.round(optNum(d, "rows", VP_ROWS, 8, 120)), optNum(d, "vaPct", 70, 10, 100) / 100);
+  const rows = Math.round(optNum(d, "rows", VP_ROWS, 8, 120));
+  const vaShare = optNum(d, "vaPct", 70, 10, 100) / 100;
+  // real trades (buy / sell split, volume at the price it traded) when the chart has them, else the candle approximation
+  const real = buildProfileFromFlow(cs, env.flow?.(), rows, vaShare);
+  const pr = real ?? buildProfile(cs, rows, vaShare);
   if (!pr) return null;
   const x0 = env.toX(lo);
   const x1 = toEnd ? env.toX(all[all.length - 1].t) : env.toX(hiT);
-  return { ...pr, x0, x1 };
+  return { ...pr, x0, x1, approx: !real };
 }
 
 function profileTool(id: string, anchored: boolean): ToolDef {

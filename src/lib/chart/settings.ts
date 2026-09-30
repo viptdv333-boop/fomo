@@ -13,6 +13,7 @@ import {
   type TransformParams,
 } from "./types";
 import { DEFAULT_FAVORITE_INTERVALS } from "./intervals";
+import { DEFAULT_FOOTPRINT, sanitizeFootprint, type FootprintSettings } from "./orderflow/types";
 
 /* User-facing chart settings (the gear dialog). Saved locally and on the account (userdata 'chart_settings' / 'default'),
    turned into engine options by settingsToEngine(). */
@@ -75,6 +76,8 @@ export interface ChartSettings {
   sessionBreaks: boolean;
   baselinePercent: number;
   transform: TransformParams;
+  /** Footprint chart type: display mode, imbalances, colours. */
+  footprint: FootprintSettings;
   /** Not touched by presets / reset. */
   ui: { favIntervals: string[] };
 }
@@ -114,6 +117,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   sessionBreaks: false,
   baselinePercent: 50,
   transform: DEFAULT_TRANSFORM,
+  footprint: DEFAULT_FOOTPRINT,
   ui: { favIntervals: DEFAULT_FAVORITE_INTERVALS },
 };
 
@@ -277,6 +281,7 @@ export function settingsToEngine(s: ChartSettings, siteDark: boolean): Partial<E
     sessionBreaks: s.sessionBreaks,
     baselinePercent: s.baselinePercent,
     transform: s.transform,
+    footprint: s.footprint,
   };
 }
 
@@ -345,6 +350,7 @@ export function normalizeSettings(saved: unknown): ChartSettings {
   const s = mergeInto(DEFAULT_SETTINGS, saved);
   if (!["classic", "tvdark", "tvlight"].includes(s.preset)) s.preset = "classic";
   if (isObj(saved) && typeof saved.precision === "number") s.precision = Math.max(0, Math.min(10, Math.round(saved.precision)));
+  s.footprint = sanitizeFootprint(isObj(saved) ? saved.footprint : undefined);
   return s;
 }
 

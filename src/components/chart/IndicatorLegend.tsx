@@ -5,6 +5,8 @@ import type { ReactNode, RefObject } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
+import { getIndicatorDef } from "@/lib/chart/indicators/registry";
+import IndicatorEditor from "./IndicatorEditor";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
 
@@ -37,6 +39,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const [collapsed, setCollapsed] = useState(false);
   const [menuUid, setMenuUid] = useState<string | null>(null);
   const [settingsUid, setSettingsUid] = useState<string | null>(null);
+  const [editScript, setEditScript] = useState<string | null>(null);
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [tops, setTops] = useState<Record<string, number>>({});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -206,6 +209,17 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
           <span className="truncate font-medium" style={{ color: "var(--ind-legend-title, #787b86)" }}>
             {info.title}
           </span>
+          {info.error && (
+            <span
+              className="inline-flex h-[14px] w-[14px] shrink-0 cursor-help items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white"
+              title={`${t("isc.badge.error")}: ${info.error}`}
+              role="img"
+              aria-label={`${t("isc.badge.error")}: ${info.error}`}
+            >
+              !
+            </span>
+          )}
+          {info.pending && !info.error && <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" title={t("isc.badge.pending")} aria-label={t("isc.badge.pending")} />}
           {!dim &&
             info.items.map((it, i) => (
               <span key={i} className="whitespace-nowrap tabular-nums" style={{ color: it.color }}>
@@ -259,6 +273,16 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 onClick={() => {
                   setMenuUid(null);
                   controller.move(uid, inOwn ? "main" : "own");
+                }}
+              />
+            )}
+            {getIndicatorDef(inst.id)?.script && (
+              <MenuItem
+                icon={IND_ICONS.template(14)}
+                label={t("isc.editSource")}
+                onClick={() => {
+                  setMenuUid(null);
+                  setEditScript(inst.id);
                 }}
               />
             )}
@@ -318,7 +342,8 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
           ),
         )}
       </div>
-      <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} />
+      <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} onEditSource={setEditScript} />
+      <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />
     </>
   );
 }

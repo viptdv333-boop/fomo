@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import type { IndicatorsControllerLike } from "@/lib/chart/contracts";
 import type { DrawingsController } from "@/lib/chart/drawings/controller";
 import { getToolDef } from "@/lib/chart/drawings/tools";
+import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { DrawIcon } from "./icons";
 
 /** Re-renders whenever a controller reports a change. */
@@ -103,7 +104,7 @@ export default function ObjectTree({ drawings, indicators }: { drawings: Drawing
                 </svg>
               </span>
               <span className={`min-w-0 flex-1 truncate py-1.5 text-[13px] ${inst.visible ? "text-gray-800 dark:text-gray-100" : "text-gray-400 line-through dark:text-gray-500"}`}>
-                {t(`ind.${inst.id}.name`)} <span className="text-gray-400 dark:text-gray-500">{indicatorSummary(inst.params)}</span>
+                {getIndicatorDef(inst.id)?.label ?? t(`ind.${inst.id}.name`)} <span className="text-gray-400 dark:text-gray-500">{indicatorSummary(inst.params)}</span>
               </span>
               <button
                 type="button"

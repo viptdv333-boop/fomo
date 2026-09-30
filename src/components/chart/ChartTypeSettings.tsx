@@ -5,6 +5,7 @@ import MenuPopover from "./MenuPopover";
 import { UI_ICONS } from "./icons";
 import type { ChartType, TransformParams } from "@/lib/chart/types";
 import type { ChartSettingsApi } from "./useChartSettings";
+import FootprintSettingsButton from "./FootprintSettingsDialog";
 
 const WITH_SETTINGS: ChartType[] = ["baseline", "renko", "kagi", "linebreak", "range", "pnf"];
 
@@ -20,8 +21,9 @@ function Line({ label, children }: { label: string; children: React.ReactNode })
 }
 
 /** Gear next to the chart type: base level of the baseline chart, box / reversal settings of Renko, Kagi, P&F ... */
-export default function ChartTypeSettings({ type, api, box, btn }: { type: ChartType; api: ChartSettingsApi; box: number; btn: string }) {
+export default function ChartTypeSettings({ type, api, box, btn, source }: { type: ChartType; api: ChartSettingsApi; box: number; btn: string; source?: string }) {
   const { t } = useT();
+  if (type === "footprint") return <FootprintSettingsButton api={api} btn={btn} source={source} />;
   if (!WITH_SETTINGS.includes(type)) return null;
   const s = api.settings;
   const tr = s.transform;
