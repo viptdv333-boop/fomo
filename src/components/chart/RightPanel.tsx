@@ -699,10 +699,11 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
     <>
       {mobileOpen && <div className="md:hidden absolute inset-0 z-40 bg-black/40" onClick={onCloseMobile} />}
       <aside
-        className={`${mobileOpen ? "flex" : "hidden"} md:flex absolute md:static top-0 md:top-auto bottom-0 md:bottom-auto right-0 z-50 md:z-auto shrink-0 md:h-full max-w-[92vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800`}
+        className={`${mobileOpen ? "flex" : "hidden"} md:flex absolute md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 z-50 md:z-auto shrink-0 h-[78%] md:h-full w-full md:w-auto rounded-t-2xl md:rounded-none shadow-2xl md:shadow-none bg-white dark:bg-gray-900 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-800 pb-[env(safe-area-inset-bottom)] md:pb-0`}
       >
         {/* content */}
-        <div className={`w-[300px] md:w-[280px] max-w-full flex-col min-h-0 min-w-0 flex ${open ? "md:flex" : "md:hidden"}`}>
+        <div className={`w-full md:w-[280px] flex-col min-h-0 min-w-0 flex ${open ? "md:flex" : "md:hidden"}`}>
+          <button type="button" onClick={onCloseMobile} aria-label={t("shell.close")} className="md:hidden shrink-0 flex justify-center pt-2 pb-1 cursor-pointer"><span className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" /></button>
           {visible && (
             <>
               <div className="flex items-center gap-1 h-9 px-2 shrink-0 border-b border-gray-100 dark:border-gray-800">

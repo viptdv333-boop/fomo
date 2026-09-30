@@ -30,6 +30,7 @@ import ShortcutsDialog from "@/components/chart/ShortcutsDialog";
 import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegend";
 import { useChartSettings } from "@/components/chart/useChartSettings";
 import { CS_ICONS } from "@/components/chart/icons-cs";
+import { DrawIcon, PANEL_TAB_ICONS, UI_ICONS } from "@/components/chart/icons";
 import { aggregateCandles, formatInterval, intervalPlan } from "@/lib/chart/intervals";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
@@ -1190,6 +1191,29 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             onGoToDate={goToDate}
             gotoSignal={gotoSignal}
           />
+          {!embedded && !compact && (
+            <nav className="md:hidden shrink-0 flex items-stretch border-t border-gray-200 dark:border-[#2a2e39] bg-white dark:bg-gray-900 pb-[env(safe-area-inset-bottom)]">
+              {(
+                [
+                  ["watchlist", "mnav.watchlist", PANEL_TAB_ICONS.watchlist, () => onTab("watchlist"), mobilePanel],
+                  ["indicators", "mnav.indicators", UI_ICONS.indicators, () => setIndOpen(true), false],
+                  ["tools", "mnav.tools", <DrawIcon key="d" id="trend" size={22} />, () => setToolsOpen((v) => !v), toolsOpen],
+                  ["alerts", "mnav.alerts", UI_ICONS.alert, () => openAlerts(null), false],
+                  ["settings", "mnav.settings", UI_ICONS.gear, () => openSettings(), false],
+                ] as const
+              ).map(([k, label, icon, fn, on]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={fn}
+                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] leading-tight cursor-pointer ${on ? "text-blue-500" : "text-gray-500 dark:text-gray-400"}`}
+                >
+                  {icon}
+                  <span className="truncate max-w-full">{t(label)}</span>
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
 
         <div className={embedded || compact ? "hidden" : "contents"}>
