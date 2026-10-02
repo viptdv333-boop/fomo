@@ -57,7 +57,7 @@ export default async function TerminalFeaturesPage() {
   return (
     <article className="max-w-3xl mx-auto w-full px-4 py-8 text-gray-800 dark:text-gray-200">
       {jsonLd.map((d, i) => (
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(d).replace(/</g, "\u003c") }} />
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(d).replace(/</g, "\\u003c") }} />
       ))}
       <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">{t("tf.h1")}</h1>
       <p className="text-[16px] leading-relaxed mb-6">{t("tf.lead")}</p>
