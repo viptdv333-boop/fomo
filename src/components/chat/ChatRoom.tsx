@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
-import { getPastedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
+import { getPastedFile, consumeSharedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 
 import { formatMessageTime } from "@/lib/format-message-time";
@@ -309,6 +309,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     messages.forEach((m) => map.set(m.user.id, m.user.displayName));
     return Array.from(map.entries()).map(([id, displayName]) => ({ id, displayName }));
   }, [messages]);
+
+  /* a file shared into the app ("Share → FOMO") becomes the draft attachment of the room that opens */
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    consumeSharedFile().then((f) => f && uploadAttachment(f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, roomId]);
 
   function handleContentInput() {
     // A screenshot pasted natively on a phone (keyboard clipboard, long-press → Paste) arrives as an <img> inside

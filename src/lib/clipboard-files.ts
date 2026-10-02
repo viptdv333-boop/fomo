@@ -126,3 +126,21 @@ export async function readClipboardImageDetailed(): Promise<{ file: File | null;
     return { file: null, why: `${err.name || "Error"}: ${err.message || ""}`.trim() };
   }
 }
+
+/** A file shared into the installed app ("Share → FOMO"); the service worker keeps it for 15 minutes. Returns it once. */
+export async function consumeSharedFile(): Promise<File | null> {
+  try {
+    if (typeof caches === "undefined") return null;
+    const cache = await caches.open("fomo-share");
+    const res = await cache.match("/__shared__");
+    if (!res) return null;
+    await cache.delete("/__shared__");
+    if (Date.now() - Number(res.headers.get("X-Time") || 0) > 15 * 60_000) return null;
+    const blob = await res.blob();
+    const name = decodeURIComponent(res.headers.get("X-Name") || "shared");
+    const isShot = /^image\.\w+$/i.test(name) || !name;
+    return new File([blob], isShot ? `screenshot-${Date.now()}.png` : name, { type: blob.type });
+  } catch {
+    return null;
+  }
+}

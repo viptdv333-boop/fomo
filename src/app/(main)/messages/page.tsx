@@ -7,7 +7,7 @@ import Link from "next/link";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
-import { getPastedFile } from "@/lib/clipboard-files";
+import { consumeSharedFile, getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
 
@@ -301,6 +301,13 @@ function MessagesPage() {
     }
     setSending(false);
   }
+
+  /* a file shared into the app ("Share → FOMO") is attached to the conversation that gets opened */
+  useEffect(() => {
+    if (!activeConvId) return;
+    consumeSharedFile().then((f) => f && uploadAttachment(f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvId]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

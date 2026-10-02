@@ -1,5 +1,6 @@
 // FOMO service worker — bump CACHE version to force clients to drop old assets.
-const CACHE = "fomo-v4";
+const CACHE = "fomo-v5";
+const SHARE_CACHE = "fomo-share";
 const PRECACHE = ["/", "/logo-fomo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -13,7 +14,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => k !== CACHE && k !== SHARE_CACHE).map((k) => caches.delete(k)));
       await self.clients.claim();
     })()
   );
@@ -86,6 +87,34 @@ self.addEventListener("notificationclick", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
+  // Web Share Target: keep the shared file for the chat composer, then open the chat.
+  if (request.method === "POST" && new URL(request.url).pathname === "/share-target") {
+    event.respondWith(
+      (async () => {
+        try {
+          const fd = await request.formData();
+          const file = fd.get("file");
+          if (file && typeof file !== "string" && file.size) {
+            const cache = await caches.open(SHARE_CACHE);
+            await cache.put(
+              "/__shared__",
+              new Response(file, {
+                headers: {
+                  "Content-Type": file.type || "application/octet-stream",
+                  "X-Name": encodeURIComponent(file.name || "shared"),
+                  "X-Time": String(Date.now()),
+                },
+              })
+            );
+          }
+        } catch (e) {}
+        return Response.redirect("/chat?shared=1", 303);
+      })()
+    );
+    return;
+  }
+
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
