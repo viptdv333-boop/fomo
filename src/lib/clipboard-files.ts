@@ -57,3 +57,50 @@ export async function readClipboardImage(): Promise<File | null> {
   } catch {}
   return null;
 }
+
+/** Floating "paste the screenshot" chip: the Android Paste menu does not deliver images to web fields, the clipboard API does. */
+function offerClipboardImage(onPick: () => void) {
+  if (typeof document === "undefined" || document.getElementById("composer-clip-chip")) return;
+  const d = document.createElement("div");
+  d.id = "composer-clip-chip";
+  d.style.cssText =
+    "position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:6px;padding:6px 8px 6px 14px;border-radius:999px;background:#16a34a;color:#fff;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)";
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = "📋 Вставить скриншот";
+  b.style.cssText = "background:none;border:0;color:#fff;font-size:14px;font-weight:600;padding:6px 4px";
+  const x = document.createElement("button");
+  x.type = "button";
+  x.textContent = "✕";
+  x.style.cssText = "background:rgba(0,0,0,.2);border:0;color:#fff;width:28px;height:28px;border-radius:50%;font-size:13px";
+  const close = () => d.remove();
+  // keep the field focused while tapping the chip (otherwise the keyboard collapses before the click lands)
+  d.addEventListener("pointerdown", (e) => e.preventDefault());
+  b.addEventListener("click", () => {
+    close();
+    onPick();
+  });
+  x.addEventListener("click", close);
+  d.append(b, x);
+  document.body.appendChild(d);
+  setTimeout(close, 10000);
+}
+
+async function clipboardReadGranted(): Promise<boolean> {
+  try {
+    const st = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
+    return st.state === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/** On focusing a message field: when the clipboard (already permitted) holds an image, show the paste chip. */
+export function maybeOfferClipboardImage(onFile: (file: File) => void) {
+  clipboardReadGranted().then((ok) => {
+    if (!ok) return;
+    readClipboardImage().then((f) => {
+      if (f) offerClipboardImage(() => onFile(f));
+    });
+  });
+}

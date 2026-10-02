@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
-import { getPastedFile, readClipboardImage } from "@/lib/clipboard-files";
+import { getPastedFile, maybeOfferClipboardImage, readClipboardImage } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 
 import { formatMessageTime } from "@/lib/format-message-time";
@@ -1033,6 +1033,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleContentInput}
+                onFocus={() => maybeOfferClipboardImage(uploadAttachment)}
                 onPaste={(e) => {
                   // Default paste drops the clipboard's rich HTML into the
                   // contentEditable — from some sources (Word, Docs, other

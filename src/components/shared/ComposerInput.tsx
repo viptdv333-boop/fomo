@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { getPastedFile, readClipboardImage } from "@/lib/clipboard-files";
+import { getPastedFile, maybeOfferClipboardImage, readClipboardImage } from "@/lib/clipboard-files";
 
 interface Props {
   value: string;
@@ -98,6 +98,7 @@ const ComposerInput = forwardRef<ComposerHandle, Props>(function ComposerInput({
       enterKeyHint="send"
       data-placeholder={placeholder}
       onInput={handleInput}
+      onFocus={() => maybeOfferClipboardImage(onFile)}
       onPaste={(e) => {
         e.preventDefault();
         const file = getPastedFile(e, imagesOnly ? "image" : "any");
