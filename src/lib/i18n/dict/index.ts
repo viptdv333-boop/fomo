@@ -17,6 +17,7 @@ import chartdraw from "./chartdraw";
 import chartshell from "./chartshell";
 import alerts from "./alerts";
 import mobilenav from "./mobilenav";
+import attach from "./attach";
 import drawtools from "./drawtools";
 import chartmenu from "./chartmenu";
 import indicators2 from "./indicators2";
@@ -25,4 +26,4 @@ import chartsettings from "./chartsettings";
 import indscripts from "./indscripts";
 import orderflow from "./orderflow";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, mobilenav];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, mobilenav, attach];

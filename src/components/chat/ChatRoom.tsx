@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
+import AttachMenu from "@/components/shared/AttachMenu";
+
 import { formatMessageTime } from "@/lib/format-message-time";
 
 /* ── fadeIn animation ── */
@@ -309,6 +311,24 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }, [messages]);
 
   function handleContentInput() {
+    // A screenshot pasted natively on a phone (keyboard clipboard, long-press → Paste) arrives as an <img> inside
+    // the field; turn it into a draft attachment instead of leaving it in the text.
+    const host = inputRef.current;
+    if (host) {
+      host.querySelectorAll("img").forEach((img) => {
+        if (img.dataset.emoji) return;
+        const src = img.getAttribute("src") || "";
+        img.remove();
+        if (/^(data|blob):/.test(src)) {
+          fetch(src)
+            .then((r) => r.blob())
+            .then((blob) => {
+              if (blob.type.startsWith("image/")) uploadAttachment(new File([blob], `screenshot-${Date.now()}.${blob.type === "image/jpeg" ? "jpg" : "png"}`, { type: blob.type }));
+            })
+            .catch(() => {});
+        }
+      });
+    }
     const val = getInputText();
     setInput(val);
 
@@ -997,26 +1017,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex items-center gap-2 shrink-0 relative"
           >
             {/* Paperclip / attach */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFileUpload}
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-50"
+            <AttachMenu
+              onFile={uploadAttachment}
+              uploading={uploading}
               title={t("msg.attachFile")}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-50"
             >
-              {uploading ? (
-                <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
-              ) : (
-                <IconPaperclip />
-              )}
-            </button>
+              <IconPaperclip />
+            </AttachMenu>
 
             {/* Text input wrapper */}
             <div className="flex-1 relative">
@@ -1052,7 +1060,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                   }
                 }}
                 data-placeholder={t("chat.writeMessage")}
-                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[40px] max-h-[120px] overflow-y-auto [&_img]:inline-block [&_img]:align-middle"
+                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-[20px] text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[42px] max-h-[62px] overflow-y-auto break-words [&_img]:inline-block [&_img]:align-middle"
               />
 
               {/* Emoji button inside input */}

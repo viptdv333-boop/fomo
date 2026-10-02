@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
+import AttachMenu from "@/components/shared/AttachMenu";
+
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
 
@@ -280,21 +282,14 @@ export default function ChannelDiscussion({ tariffId }: Props) {
 
       {/* Input */}
       <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+        <AttachMenu
+          onFile={uploadFile}
+          uploading={uploading}
           title={t("channel2.attachTitle")}
           className="px-3 py-2 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50 transition"
         >
-          {uploading ? "…" : "📎"}
-        </button>
+          📎
+        </AttachMenu>
         <input
           ref={inputRef}
           type="text"

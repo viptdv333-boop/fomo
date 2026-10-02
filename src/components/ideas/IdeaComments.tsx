@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
+import AttachMenu from "@/components/shared/AttachMenu";
+
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
 
@@ -210,15 +212,15 @@ export default function IdeaComments({ ideaId }: Props) {
             </div>
           )}
           <div className="flex gap-2">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+            <AttachMenu
+              onFile={uploadFile}
+              uploading={uploading}
+              docs={false}
               title={t("feed2.attachPhoto")}
               className="px-2.5 py-1.5 border dark:border-gray-700 rounded-lg text-gray-500 hover:text-green-600 dark:text-gray-400 disabled:opacity-50"
             >
-              {uploading ? "…" : "📎"}
-            </button>
+              📎
+            </AttachMenu>
             <input ref={inputRef} type="text" value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}

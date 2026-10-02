@@ -8,6 +8,8 @@ import AuthGuard from "@/components/layout/AuthGuard";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
+import AttachMenu from "@/components/shared/AttachMenu";
+
 
 interface OtherUser {
   id: string;
@@ -1006,26 +1008,14 @@ function MessagesPage() {
             {/* Input */}
             <form onSubmit={sendMessage} className="border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex gap-2 items-center">
               {/* File upload */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 shrink-0 disabled:opacity-50 transition"
+              <AttachMenu
+                onFile={uploadAttachment}
+                uploading={uploading}
                 title={t("msg.attachFile")}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 shrink-0 disabled:opacity-50 transition"
               >
-                {uploading ? (
-                  <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                )}
-              </button>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </AttachMenu>
 
               <input
                 type="text"
