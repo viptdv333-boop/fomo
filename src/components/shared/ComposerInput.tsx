@@ -20,6 +20,18 @@ export interface ComposerHandle {
   focus(): void;
 }
 
+/** Short message above the bottom edge, for cases where the browser silently gives us nothing. */
+function toast(text: string) {
+  if (typeof document === "undefined") return;
+  const d = document.createElement("div");
+  d.textContent = text;
+  d.setAttribute("role", "status");
+  d.style.cssText =
+    "position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:90vw;z-index:200;padding:10px 14px;border-radius:12px;background:#111827;color:#fff;font-size:13px;line-height:1.3;box-shadow:0 4px 16px rgba(0,0,0,.35)";
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 4000);
+}
+
 function textOf(el: HTMLElement): string {
   let text = "";
   el.childNodes.forEach((node, i) => {
@@ -100,7 +112,26 @@ const ComposerInput = forwardRef<ComposerHandle, Props>(function ComposerInput({
           return;
         }
         // image-only clipboard that the paste event does not expose: ask the clipboard directly (the paste is a user gesture)
-        readClipboardImage().then((f) => f && onFile(f));
+        readClipboardImage().then((f) => {
+          if (f) onFile(f);
+          else toast("Браузер не передал картинку из буфера. Нажмите скрепку → «Вставить из буфера обмена» или «Галерея»");
+        });
+      }}
+      onBeforeInput={(e) => {
+        // some mobile browsers deliver a pasted / keyboard-inserted image as an input event with files, not a paste event
+        const dt = (e.nativeEvent as InputEvent).dataTransfer;
+        const f = dt?.files?.[0];
+        if (f && (!imagesOnly || f.type.startsWith("image/"))) {
+          e.preventDefault();
+          onFile(f);
+        }
+      }}
+      onDrop={(e) => {
+        const f = e.dataTransfer.files?.[0];
+        if (f && (!imagesOnly || f.type.startsWith("image/"))) {
+          e.preventDefault();
+          onFile(f);
+        }
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.shiftKey && onSubmit) {
