@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { getPastedFile, maybeOfferClipboardImage, readClipboardImage } from "@/lib/clipboard-files";
+import { getPastedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 
 interface Props {
   value: string;
@@ -113,9 +113,10 @@ const ComposerInput = forwardRef<ComposerHandle, Props>(function ComposerInput({
           return;
         }
         // image-only clipboard that the paste event does not expose: ask the clipboard directly (the paste is a user gesture)
-        readClipboardImage().then((f) => {
+        const seen = Array.from(e.clipboardData.types || []).join(", ") || "—";
+        readClipboardImageDetailed().then(({ file: f, why }) => {
           if (f) onFile(f);
-          else toast("Браузер не передал картинку из буфера. Нажмите скрепку → «Вставить из буфера обмена» или «Галерея»");
+          else toast(`Картинка не вставилась (${why}; событие вставки: ${seen}). Скрепка → «Вставить из буфера обмена» или «Галерея»`);
         });
       }}
       onBeforeInput={(e) => {

@@ -104,3 +104,25 @@ export function maybeOfferClipboardImage(onFile: (file: File) => void) {
     });
   });
 }
+
+/** Like readClipboardImage but explains why nothing came back (shown to the user, since phones cannot be inspected remotely). */
+export async function readClipboardImageDetailed(): Promise<{ file: File | null; why: string }> {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return { file: null, why: "clipboard API недоступен" };
+  if (typeof navigator.clipboard.read !== "function") return { file: null, why: "clipboard.read не поддерживается" };
+  try {
+    const items = await navigator.clipboard.read();
+    const types: string[] = [];
+    for (const it of items) {
+      types.push(...it.types);
+      const type = it.types.find((x) => x.startsWith("image/"));
+      if (!type) continue;
+      const blob = await it.getType(type);
+      const ext = EXT_BY_MIME[type] ?? "png";
+      return { file: new File([blob], `screenshot-${Date.now()}.${ext}`, { type }), why: "" };
+    }
+    return { file: null, why: items.length ? `в буфере нет картинки (типы: ${types.join(", ") || "—"})` : "буфер пуст" };
+  } catch (e) {
+    const err = e as { name?: string; message?: string };
+    return { file: null, why: `${err.name || "Error"}: ${err.message || ""}`.trim() };
+  }
+}

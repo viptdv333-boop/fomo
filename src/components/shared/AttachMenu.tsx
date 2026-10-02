@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n/client";
+import { readClipboardImageDetailed } from "@/lib/clipboard-files";
 
 const MEDIA = "image/*,video/*";
 const DOCS =
@@ -59,24 +60,14 @@ export default function AttachMenu({ onFile, uploading, disabled, docs = true, t
 
   const fromClipboard = async () => {
     setNote("");
-    try {
-      const items = await navigator.clipboard.read();
-      for (const it of items) {
-        const type = it.types.find((x) => x.startsWith("image/"));
-        if (type) {
-          const blob = await it.getType(type);
-          setOpen(false);
-          onFile(stamped(blob));
-          return;
-        }
-      }
-      setNote(t("attach.clipboardEmpty"));
-    } catch {
-      setNote(t("attach.clipboardDenied"));
-    }
+    const { file, why } = await readClipboardImageDetailed();
+    if (file) {
+      setOpen(false);
+      onFile(file);
+    } else setNote(`${t("attach.clipboardEmpty")}: ${why}`);
   };
 
-  const canClipboard = typeof navigator !== "undefined" && !!navigator.clipboard && typeof navigator.clipboard.read === "function";
+  const canClipboard = true; // always offered: when the browser refuses, the real reason is shown under the list
   const itemCls = "flex items-center gap-3 w-full px-4 py-3.5 text-left text-[15px] text-gray-800 dark:text-gray-100 active:bg-gray-100 dark:active:bg-gray-800 cursor-pointer";
   const icon = (d: string) => (
     <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0 text-green-600" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
-import { getPastedFile, maybeOfferClipboardImage, readClipboardImage } from "@/lib/clipboard-files";
+import { getPastedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 
 import { formatMessageTime } from "@/lib/format-message-time";
@@ -1052,7 +1052,11 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                   }
                   const text = e.clipboardData.getData("text/plain");
                   if (!text) {
-                    readClipboardImage().then((f) => f && uploadAttachment(f));
+                    const seen = Array.from(e.clipboardData.types || []).join(", ") || "—";
+                    readClipboardImageDetailed().then(({ file: f, why }) => {
+                      if (f) uploadAttachment(f);
+                      else alert(`Картинка не вставилась (${why}; событие вставки: ${seen}). Скрепка → «Вставить из буфера обмена» или «Галерея»`);
+                    });
                     return;
                   }
                   document.execCommand("insertText", false, text);
