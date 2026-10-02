@@ -144,3 +144,18 @@ export async function consumeSharedFile(): Promise<File | null> {
     return null;
   }
 }
+
+/** Looks at the shared file without taking it (the destination picker shows a preview). */
+export async function peekSharedFile(): Promise<File | null> {
+  try {
+    if (typeof caches === "undefined") return null;
+    const cache = await caches.open("fomo-share");
+    const res = await cache.match("/__shared__");
+    if (!res) return null;
+    if (Date.now() - Number(res.headers.get("X-Time") || 0) > 15 * 60_000) return null;
+    const blob = await res.blob();
+    return new File([blob], decodeURIComponent(res.headers.get("X-Name") || "shared"), { type: blob.type });
+  } catch {
+    return null;
+  }
+}

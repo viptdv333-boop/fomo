@@ -304,7 +304,7 @@ function MessagesPage() {
 
   /* a file shared into the app ("Share → FOMO") is attached to the conversation that gets opened */
   useEffect(() => {
-    if (!activeConvId) return;
+    if (!activeConvId || new URLSearchParams(window.location.search).get("shared") !== "1") return;
     consumeSharedFile().then((f) => f && uploadAttachment(f));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId]);

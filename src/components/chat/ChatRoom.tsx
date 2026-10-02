@@ -312,7 +312,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   /* a file shared into the app ("Share → FOMO") becomes the draft attachment of the room that opens */
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || new URLSearchParams(window.location.search).get("shared") !== "1") return;
     consumeSharedFile().then((f) => f && uploadAttachment(f));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, roomId]);

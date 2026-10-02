@@ -1,5 +1,5 @@
 // FOMO service worker — bump CACHE version to force clients to drop old assets.
-const CACHE = "fomo-v5";
+const CACHE = "fomo-v6";
 const SHARE_CACHE = "fomo-share";
 const PRECACHE = ["/", "/logo-fomo.png", "/manifest.webmanifest"];
 
@@ -109,7 +109,7 @@ self.addEventListener("fetch", (event) => {
             );
           }
         } catch (e) {}
-        return Response.redirect("/chat?shared=1", 303);
+        return Response.redirect("/share", 303);
       })()
     );
     return;
