@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
+import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
+
 
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
@@ -34,7 +36,7 @@ export default function IdeaComments({ ideaId }: Props) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<{ url: string; name: string } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<ComposerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadComments = useCallback(async () => {
@@ -221,18 +223,16 @@ export default function IdeaComments({ ideaId }: Props) {
             >
               📎
             </AttachMenu>
-            <input ref={inputRef} type="text" value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
-              onPaste={(e) => {
-                const pasted = getPastedFile(e, "image");
-                if (pasted) {
-                  e.preventDefault();
-                  uploadFile(pasted);
-                }
-              }}
+            <ComposerInput
+              ref={inputRef}
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
+              onFile={uploadFile}
+              imagesOnly
               placeholder={t("idea.writeComment")}
-              className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
+              className="flex-1 px-3 py-1.5 border dark:border-gray-700 rounded-xl dark:bg-gray-800 dark:text-gray-100"
+            />
             <button onClick={handleSend} disabled={sending || (!input.trim() && !pendingFile)}
               className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">→</button>
           </div>

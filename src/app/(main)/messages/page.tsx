@@ -9,6 +9,8 @@ import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
+import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
+
 
 
 interface OtherUser {
@@ -1017,19 +1019,13 @@ function MessagesPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               </AttachMenu>
 
-              <input
-                type="text"
+              <ComposerInput
                 value={newText}
-                onChange={(e) => setNewText(e.target.value)}
-                onPaste={(e) => {
-                  const pasted = getPastedFile(e);
-                  if (pasted) {
-                    e.preventDefault();
-                    uploadAttachment(pasted);
-                  }
-                }}
+                onChange={setNewText}
+                onSubmit={() => sendMessage({ preventDefault() {} } as React.FormEvent)}
+                onFile={uploadAttachment}
                 placeholder={replyTo ? t("msg.replyTo") : t("msg.writeMessage")}
-                className="flex-1 px-4 py-2.5 border rounded-full text-sm focus:ring-2 focus:ring-green-500 focus:outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                className="flex-1 px-4 py-2.5 border rounded-[20px] focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
               />
 
               {/* Emoji toggle */}

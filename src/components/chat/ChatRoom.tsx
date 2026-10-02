@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
-import { getPastedFile } from "@/lib/clipboard-files";
+import { getPastedFile, readClipboardImage } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 
 import { formatMessageTime } from "@/lib/format-message-time";
@@ -1050,6 +1050,10 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                     return;
                   }
                   const text = e.clipboardData.getData("text/plain");
+                  if (!text) {
+                    readClipboardImage().then((f) => f && uploadAttachment(f));
+                    return;
+                  }
                   document.execCommand("insertText", false, text);
                   syncInput();
                 }}

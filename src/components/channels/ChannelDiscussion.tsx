@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
+import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
+
 
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
@@ -48,7 +50,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
   const messagesBoxRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<ComposerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
@@ -290,21 +292,14 @@ export default function ChannelDiscussion({ tariffId }: Props) {
         >
           📎
         </AttachMenu>
-        <input
+        <ComposerInput
           ref={inputRef}
-          type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-          onPaste={(e) => {
-            const pasted = getPastedFile(e);
-            if (pasted) {
-              e.preventDefault();
-              uploadFile(pasted);
-            }
-          }}
+          onChange={setInput}
+          onSubmit={handleSend}
+          onFile={uploadFile}
           placeholder={t("chat.writeMessage")}
-          className="flex-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100"
+          className="flex-1 px-3 py-2 border dark:border-gray-700 rounded-xl dark:bg-gray-800 dark:text-gray-100"
         />
         <button onClick={handleSend} disabled={sending || uploading || (!input.trim() && !pendingFile)}
           className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition">
