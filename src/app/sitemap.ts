@@ -56,6 +56,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (entries.length + LOCALES.length > MAX_URLS) return;
     entries.push(...localizedEntries(path, rest));
   };
+  // Pages whose text is user-written Russian: only the ru URL is indexed (en/zh are noindex), so only it is listed.
+  const addRuOnly = (path: string, rest: Omit<Entry, "url" | "alternates">) => {
+    if (entries.length + 1 > MAX_URLS) return;
+    entries.push({ url: absoluteUrl("ru", path), ...rest });
+  };
 
   // Dynamic content — fail-soft so the sitemap still serves if DB is unreachable
   try {
@@ -78,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
 
     for (const idea of ideas) {
-      add(`/ideas/${idea.id}`, {
+      addRuOnly(`/ideas/${idea.id}`, {
         lastModified: idea.updatedAt ?? now,
         changeFrequency: "weekly",
         priority: 0.8,
@@ -86,7 +91,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
     for (const u of authors) {
       if (!u.fomoId) continue;
-      add(`/authors/${u.fomoId}`, {
+      addRuOnly(`/authors/${u.fomoId}`, {
         lastModified: u.updatedAt ?? now,
         changeFrequency: "weekly",
         priority: 0.6,

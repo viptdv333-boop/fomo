@@ -13,6 +13,7 @@ import FmpStats from "@/components/instruments/FmpStats";
 import FearGreedIndex from "@/components/instruments/FearGreedIndex";
 import EconomicCalendar from "@/components/instruments/EconomicCalendar";
 import { useT } from "@/lib/i18n/client";
+import { assetName } from "@/lib/i18n/asset-names";
 
 const ChartWidget = dynamic(
   () => import("@/components/instruments/ChartWidget"),
@@ -137,8 +138,8 @@ export default function AssetPage() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <InstrumentLogo slug={asset.slug} name={asset.name} size={48} />
-              <h1 className="text-2xl font-bold dark:text-gray-100">{asset.name}</h1>
+              <InstrumentLogo slug={asset.slug} name={assetName(asset, locale)} size={48} />
+              <h1 className="text-2xl font-bold dark:text-gray-100">{assetName(asset, locale)}</h1>
               {quote && (
                 <div className="flex items-baseline gap-3">
                   <span className="text-2xl font-bold dark:text-gray-100">{formatNum(quote.price)}</span>
@@ -194,7 +195,7 @@ export default function AssetPage() {
           <ChartWidget
               ticker={mainTicker.dataTicker}
               source={mainTicker.dataSource as any}
-              name={asset.name}
+              name={assetName(asset, locale)}
               height={500}
             />
         </>
@@ -275,13 +276,13 @@ export default function AssetPage() {
             "general"
           }
           slug={asset.slug}
-          title={t("inst.newsFor", { name: asset.name })}
+          title={t("inst.newsFor", { name: assetName(asset, locale) })}
         />
       </div>
 
       {/* Ideas */}
       <div>
-        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{t("inst.ideasFor", { name: asset.name })}</h2>
+        <h2 className="text-lg font-semibold dark:text-gray-100 mb-4">{t("inst.ideasFor", { name: assetName(asset, locale) })}</h2>
         {ideas.length > 0 ? (
           <div className="space-y-4">
             {ideas.map((idea: any) => (
@@ -290,7 +291,7 @@ export default function AssetPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-8 text-center">
-            <p className="text-gray-400 dark:text-gray-500 mb-3">{t("inst.noIdeasFor", { name: asset.name })}</p>
+            <p className="text-gray-400 dark:text-gray-500 mb-3">{t("inst.noIdeasFor", { name: assetName(asset, locale) })}</p>
             <Link
               href={`/ideas/new?instrumentId=${asset.instruments[0]?.id || ""}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition"

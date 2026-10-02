@@ -49,7 +49,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const alternates = seoAlternates(locale, `/authors/${user.fomoId}`);
+  // Display names and bios are the author's own text: only the ru URL is indexed, en/zh are noindex.
+  const full = seoAlternates(locale, `/authors/${user.fomoId}`);
+  const alternates = { canonical: full.canonical };
   const url = alternates.canonical;
   // `name` goes last so a display name containing "{count}" is not substituted.
   const title = t("seo.author.title", { name: user.displayName });
@@ -67,6 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     alternates,
+    robots: locale === "ru" ? undefined : { index: false, follow: true },
     openGraph: {
       type: "profile",
       title,

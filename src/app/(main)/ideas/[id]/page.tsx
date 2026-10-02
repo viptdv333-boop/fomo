@@ -58,7 +58,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Title/description are the author's own text and stay as written; only the
   // URL, hreflang and og:locale change per language version.
-  const alternates = seoAlternates(locale, `/ideas/${idea.id}`);
+  // The idea text is the author's own (Russian): the en/zh URLs would be duplicates, so only ru is indexed.
+  const full = seoAlternates(locale, `/ideas/${idea.id}`);
+  const alternates = { canonical: full.canonical };
   const url = alternates.canonical;
   const title = trimText(idea.title, 70);
   const description = trimText(idea.preview, 200);
@@ -69,6 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     alternates,
+    robots: locale === "ru" ? undefined : { index: false, follow: true },
     openGraph: {
       type: "article",
       title,
