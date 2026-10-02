@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
+import { isPageHidden } from "@/lib/hidden-pages";
+import { localizedPath } from "@/lib/i18n/locale-url";
 
 export default async function Footer() {
-  const { t } = await getT();
+  const { t, locale } = await getT();
+  const terminalShown = !(await isPageHidden("terminal"));
   return (
     <footer className="h-12 flex items-center px-4 bg-white dark:bg-gray-900 shrink-0 gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -14,6 +17,11 @@ export default async function Footer() {
         <Link href="/help" className="hover:text-gray-600 dark:hover:text-gray-400 transition hidden sm:inline">
           {t("common.footer.howTo")}
         </Link>
+        {terminalShown && (
+          <Link href={localizedPath(locale, "/terminal/features")} className="hover:text-gray-600 dark:hover:text-gray-400 transition hidden sm:inline">
+            {t("tf.more")}
+          </Link>
+        )}
         <Link href="/privacy" className="hover:text-gray-600 dark:hover:text-gray-400 transition hidden sm:inline">
           {t("common.footer.privacy")}
         </Link>

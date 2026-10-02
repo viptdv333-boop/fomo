@@ -31,7 +31,8 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/authors", priority: 0.7, changeFrequency: "daily" },
   { path: "/channels", priority: 0.7, changeFrequency: "daily" },
   { path: "/instruments", priority: 0.7, changeFrequency: "daily" },
-  { path: "/terminal", priority: 0.6, changeFrequency: "daily" },
+  { path: "/terminal", priority: 0.7, changeFrequency: "daily" },
+  { path: "/terminal/features", priority: 0.7, changeFrequency: "weekly" },
   { path: "/chat", priority: 0.5, changeFrequency: "weekly" },
   // Knowledge base: answers the "how do I sell forecasts" queries and carries
   // FAQPage markup, so it earns a high priority despite rarely changing.
@@ -44,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const hidden = await getHiddenPages();
 
-  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.filter((r) => !hidden.includes(r.path.slice(1))).flatMap((r) =>
+  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.filter((r) => !hidden.includes(r.path.slice(1).split("/")[0])).flatMap((r) =>
     localizedEntries(r.path, {
       lastModified: now,
       changeFrequency: r.changeFrequency,

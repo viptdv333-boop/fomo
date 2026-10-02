@@ -692,6 +692,28 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     else wrapRef.current?.requestFullscreen?.();
   };
 
+  /** Candles on the chart as a CSV file: time is exchange time for MOEX (Moscow) and UTC for crypto. */
+  const exportCandlesCsv = () => {
+    const candles = engineRef.current?.getCandles() ?? [];
+    if (!candles.length) return;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = (ms: number) => {
+      const d = new Date(ms);
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+    };
+    const head = source === "moex" ? "time_msk" : "time_utc";
+    const rows = candles.map((c) => `${stamp(c.t)},${c.o},${c.h},${c.l},${c.c},${c.v}`);
+    const blob = new Blob([`${head},open,high,low,close,volume\n${rows.join("\n")}\n`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${instrument.ticker}_${prefs.interval}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
   const screenshot = () => {
     const url = engineRef.current?.screenshot();
     if (!url) return;
@@ -1238,6 +1260,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         controller={drawings}
         onClose={closeMenu}
         onResetView={() => engineRef.current?.resetView()}
+        onExportCsv={exportCandlesCsv}
         onAlertAtPrice={(price) => openAlerts({ price: Number(price.toFixed(engineRef.current?.getPrecision() ?? 2)) })}
         onCreateAlertFromDrawing={openAlertFromDrawing}
         onOpenChartSettings={() => openSettings()}

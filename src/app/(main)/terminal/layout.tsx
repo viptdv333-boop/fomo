@@ -4,6 +4,9 @@ import { isPageHidden } from "@/lib/hidden-pages";
 import { auth } from "@/lib/auth";
 import { isAdmin } from "@/lib/roles";
 import { sectionMetadata } from "@/lib/i18n/seo-metadata";
+import { getT } from "@/lib/i18n/server";
+import { localizedPath } from "@/lib/i18n/locale-url";
+import Link from "next/link";
 
 // Localized title/description/keywords + canonical and hreflang for /terminal,
 // /en/terminal and /zh/terminal (copy lives in src/lib/i18n/dict/seo.ts).
@@ -17,5 +20,14 @@ export default async function TerminalLayout({ children }: { children: React.Rea
     const session = await auth();
     if (!session?.user || !isAdmin(session.user)) notFound();
   }
-  return <>{children}</>;
+  const { locale, t } = await getT();
+  return (
+    <>
+      {children}
+      <nav className="sr-only" aria-label={t("tf.more")}>
+        <p>{t("tf.lead")}</p>
+        <Link href={localizedPath(locale, "/terminal/features")}>{t("tf.more")}</Link>
+      </nav>
+    </>
+  );
 }

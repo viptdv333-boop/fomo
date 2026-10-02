@@ -58,11 +58,11 @@ const dict: SectionDict = {
     "seo.instruments.keywords":
       "акции, фьючерсы МосБиржи, криптовалюта, нефть Brent, котировки акций, аналитика по инструментам, инвестиции в акции",
 
-    "seo.terminal.title": "Торговый терминал: графики МосБиржи онлайн",
+    "seo.terminal.title": "Торговый терминал онлайн — аналог TradingView для МосБиржи и крипты",
     "seo.terminal.description":
-      "Онлайн-графики акций, фьючерсов МосБиржи и криптовалют с индикаторами. Живые котировки MOEX и Bybit, технический анализ и обсуждение сделок в чате.",
+      "Бесплатный торговый терминал: графики акций и фьючерсов МосБиржи, Bybit, футпринт (кластерный график), объёмный профиль, VWAP, 60+ индикаторов, 126 инструментов рисования, свои индикаторы на JS, скачать свечи в CSV.",
     "seo.terminal.keywords":
-      "торговый терминал, графики акций онлайн, котировки МосБиржи, график биткоина, технический анализ онлайн, живые котировки",
+      "торговый терминал, аналог TradingView, терминал для МосБиржи, футпринт, кластерный график, объёмный профиль, VWAP, графики акций онлайн, скачать свечи, свечи CSV, котировки МосБиржи, график биткоина, технический анализ онлайн",
 
     // noindex account areas — title only
     "seo.messages.title": "Сообщения",
@@ -158,11 +158,11 @@ const dict: SectionDict = {
     "seo.instruments.keywords":
       "stocks, Moscow Exchange futures, cryptocurrency, Brent oil, stock quotes, instrument analysis, stock investing",
 
-    "seo.terminal.title": "Trading Terminal: Live Moscow Exchange Charts",
+    "seo.terminal.title": "Online Trading Terminal — TradingView Alternative for MOEX and Crypto",
     "seo.terminal.description":
-      "Online charts for stocks, Moscow Exchange futures and crypto with indicators. Live MOEX and Bybit quotes, technical analysis and trade discussion.",
+      "Free trading terminal: Moscow Exchange stocks and futures, Bybit crypto, footprint charts, volume profile, VWAP, 60+ indicators, 126 drawing tools, custom JS indicators, download candles as CSV.",
     "seo.terminal.keywords":
-      "trading terminal, live stock charts, Moscow Exchange quotes, bitcoin chart, online technical analysis, real-time quotes",
+      "trading terminal, TradingView alternative, footprint chart, order flow, volume profile, VWAP, Moscow Exchange charts, download candles, candles CSV, bitcoin chart, online technical analysis, real-time quotes",
 
     "seo.messages.title": "Messages",
     "seo.payments.title": "Payments",
@@ -245,10 +245,10 @@ const dict: SectionDict = {
       "交易品种目录：俄罗斯与美国股票、莫斯科交易所期货、加密货币、外汇、原油与黄金。每个资产的行情、图表与交易观点。",
     "seo.instruments.keywords": "股票, 莫斯科交易所期货, 加密货币, 布伦特原油, 股票行情, 品种分析, 股票投资",
 
-    "seo.terminal.title": "交易终端：莫斯科交易所实时图表",
+    "seo.terminal.title": "在线交易终端 — 莫斯科交易所与加密货币的TradingView替代品",
     "seo.terminal.description":
-      "带指标的股票、莫斯科交易所期货和加密货币在线图表。MOEX 与 Bybit 实时行情、技术分析及交易讨论。",
-    "seo.terminal.keywords": "交易终端, 在线股票图表, 莫斯科交易所行情, 比特币走势图, 在线技术分析, 实时行情",
+      "免费交易终端：莫斯科交易所股票与期货、Bybit加密货币、足迹图、成交量分布、VWAP、60+指标、126种绘图工具、自定义JS指标，K线可下载为CSV。",
+    "seo.terminal.keywords": "交易终端, TradingView替代, 足迹图, 订单流, 成交量分布, VWAP, 莫斯科交易所图表, 下载K线, K线CSV, 比特币走势图, 在线技术分析, 实时行情",
 
     "seo.messages.title": "私信",
     "seo.payments.title": "付款",

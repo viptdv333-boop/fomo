@@ -24,6 +24,8 @@ interface Props {
   controller: DrawingsController;
   onClose: () => void;
   onResetView: () => void;
+  /** Download the loaded candles as CSV. */
+  onExportCsv?: () => void;
   onAlertAtPrice?: (price: number) => void;
   /** Alert that follows the selected line (same path as the style bar button). */
   onCreateAlertFromDrawing?: () => void;
@@ -80,7 +82,7 @@ function Item({
 
 const Sep = () => <div role="separator" className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />;
 
-export default function ChartContextMenu({ state, controller, onClose, onResetView, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings }: Props) {
+export default function ChartContextMenu({ state, controller, onClose, onResetView, onExportCsv, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings }: Props) {
   const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -237,6 +239,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
       ) : (
         <>
           <Item label={t("cm.resetView")} onClick={run(onResetView)} />
+          {onExportCsv && <Item label={t("cm.exportCsv")} onClick={run(onExportCsv)} />}
           {state.price !== null && onAlertAtPrice && (
             <Item label={t("cm.alertAt", { price: state.priceText })} shortcut="Alt+A" onClick={run(() => onAlertAtPrice(state.price as number))} />
           )}
