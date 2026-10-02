@@ -23,6 +23,7 @@ import {
   zoneOffsetMs,
 } from "./format";
 import { transformBars } from "./transforms";
+import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
 import { OrderFlowStore } from "./orderflow/store";
 import { DEFAULT_FOOTPRINT } from "./orderflow/types";
@@ -340,7 +341,9 @@ export class ChartEngine {
   }
 
   setData(candles: Candle[]) {
-    this.candles = candles;
+    // the canvas draws whatever it is given: a bar with a null / 0 open would be a solid body down to the bottom of the pane
+    this.candles = cleanCandles(candles);
+    candles = this.candles;
     this.precision = this.opts.pricePrecision ?? inferPrecision(candles);
     this.rebuildDisplay();
     this.hasMoreHistory = true;
@@ -359,6 +362,7 @@ export class ChartEngine {
 
   /** Older bars, ascending, all earlier than the current first bar. The view does not move. */
   prependCandles(older: Candle[]) {
+    older = cleanCandles(older);
     if (older.length === 0) {
       this.hasMoreHistory = false;
       return;
@@ -376,20 +380,19 @@ export class ChartEngine {
     this.invalidate();
   }
 
-  /** Replace the last bar or append a newer one. */
+  /**
+   * Replace the last bar, append a newer one, or put the final numbers of a bar that was closed a moment ago in its place.
+   * The bar is repaired first (see candles.ts); one that cannot be drawn is dropped.
+   */
   upsertCandle(c: Candle) {
     const n = this.candles.length;
     if (n === 0) return;
-    const last = this.candles[n - 1];
     const nb = this.bars.length;
     const atLatest = this.r >= nb - 1 - 0.5 && this.r <= nb - 1 + this.plotW() / this.barSpacing;
-    if (c.t === last.t) {
-      this.candles[n - 1] = c;
-    } else if (c.t > last.t) {
-      this.candles.push(c);
-    } else {
-      return;
-    }
+    const res = mergeCandle(this.candles, c);
+    if (res === "none") return;
+    // indicators and other caches look at the newest bar only: a changed older bar needs a new array identity to be noticed
+    if (res === "older") this.candles = this.candles.slice();
     this.rebuildDisplay();
     if (atLatest && this.bars.length > nb) this.r += this.bars.length - nb;
     this.invalidate();

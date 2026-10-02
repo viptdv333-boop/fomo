@@ -32,6 +32,7 @@ import { useChartSettings } from "@/components/chart/useChartSettings";
 import { CS_ICONS } from "@/components/chart/icons-cs";
 import { DrawIcon, PANEL_TAB_ICONS, UI_ICONS } from "@/components/chart/icons";
 import { aggregateCandles, formatInterval, intervalPlan } from "@/lib/chart/intervals";
+import { cleanCandles } from "@/lib/chart/candles";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
@@ -118,9 +119,13 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   if (!res.ok) return { candles: [] as Candle[], tzMin: 0 };
   const j = await res.json();
   const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
-  const candles: Candle[] = rows
-    .filter((d) => d && isFinite(d.open) && isFinite(d.close))
-    .map((d) => ({ t: d.timestamp, o: d.open, h: d.high, l: d.low, c: d.close, v: d.volume || 0 }));
+  // isFinite(null) is true and null reads as 0: a bar with a null open used to get through and was drawn as a solid body
+  // from its close down to the bottom of the pane (the scale only follows high / low). Repair or drop such bars here.
+  const candles = cleanCandles(
+    rows
+      .filter((d) => d && typeof d === "object")
+      .map((d) => ({ t: d.timestamp, o: d.open, h: d.high, l: d.low, c: d.close, v: d.volume }) as Candle),
+  );
   return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0 };
 }
 
@@ -178,6 +183,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const engineRef = useRef<ChartEngine | null>(null);
   const shiftRef = useRef({ tzMs: 0, displayShiftMs: 0, offsetMs: 0 });
   const genRef = useRef(0);
+  /** "source|ticker|interval" of the bars that are on the chart now ("" until the first load): the live updates wait for it. */
+  const dataKeyRef = useRef("");
   const loadingHistory = useRef(false);
 
   const [drawings] = useState(() => new DrawingsController());
@@ -428,6 +435,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         locale: LOCALES[locale] ?? "ru-RU",
       });
       engine.setData(candles);
+      dataKeyRef.current = `${source}|${ticker}|${iv}`;
       refreshInd();
       setEmpty(candles.length === 0);
       setLoading(false);
@@ -464,19 +472,27 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (!prefsLoaded || source === "none" || replayActive) return;
     const iv = prefs.interval;
     const intraday = iv !== "D" && iv !== "W" && iv !== "M";
+    const dataKey = `${source}|${ticker}|${iv}`;
     let stopped = false;
+    let quoteBusy = false;
+    let barsBusy = false;
 
     const pollQuote = async () => {
       const engine = engineRef.current;
-      if (stopped || !engine || document.hidden) return;
-      const candles = engine.getCandles();
-      const last = candles[candles.length - 1];
-      if (!last) return;
+      // the chart still shows the previous symbol / interval until its bars have been loaded: its bars must not get this one's price
+      if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
+      quoteBusy = true;
       try {
         const r = await fetch(`/api/quote?source=${source}&ticker=${encodeURIComponent(ticker)}&_t=${Date.now()}`, { cache: "no-store" });
         if (!r.ok) return;
         const q = await r.json();
-        if (!q.price || stopped) return;
+        const price: unknown = q?.price;
+        if (typeof price !== "number" || !Number.isFinite(price) || price <= 0 || stopped || dataKeyRef.current !== dataKey) return;
+        q.price = price;
+        // the newest bar as it is NOW: the bar refresh or the previous quote may have replaced it while this request was on its way
+        const candles = engine.getCandles();
+        const last = candles[candles.length - 1];
+        if (!last) return;
         // A single bad print (a quote far from the previous close) must not stretch the forming bar with a huge wick:
         // a jump of more than 3% is only accepted when the next quote confirms it.
         const jump = Math.abs(q.price - last.c) / (last.c || q.price);
@@ -503,18 +519,26 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           engine.upsertCandle({ ...last, c: q.price, h: Math.max(last.h, q.price), l: Math.min(last.l, q.price) });
         }
         refreshInd();
-      } catch {}
+      } catch {
+      } finally {
+        quoteBusy = false;
+      }
     };
 
     const refreshBars = async () => {
       const engine = engineRef.current;
-      if (stopped || !engine || document.hidden) return;
+      if (stopped || barsBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
+      barsBusy = true;
       try {
         const { candles } = await fetchBars(source, ticker, iv, 3);
-        if (stopped) return;
+        if (stopped || dataKeyRef.current !== dataKey) return;
+        // the last few bars: the newest one is replaced, the one that closed a moment ago gets its final numbers
         for (const c of candles) engine.upsertCandle(c);
         refreshInd();
-      } catch {}
+      } catch {
+      } finally {
+        barsBusy = false;
+      }
     };
 
     const q = setInterval(pollQuote, intraday ? 4000 : 12000);

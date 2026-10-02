@@ -71,6 +71,8 @@ export class IndicatorSeries implements Series {
   private version = 0;
   private doneVersion = -1;
   private sLen = -1;
+  /** The array of the last computation: the engine hands out a new one when an older bar changed (its final numbers arrived). */
+  private sRef: Candle[] | null = null;
   private sFirstT = NaN;
   private sLastT = NaN;
   private sLastC = NaN;
@@ -149,6 +151,7 @@ export class IndicatorSeries implements Series {
     if (
       this.doneVersion === this.version &&
       (!this.def.usesFlow || this.sFlowV === this.flowVersion()) &&
+      this.sRef === candles &&
       this.sLen === n &&
       (n === 0 ||
         (this.sFirstT === first!.t &&
@@ -160,6 +163,7 @@ export class IndicatorSeries implements Series {
     ) {
       return false;
     }
+    this.sRef = candles;
     this.sLen = n;
     this.sFirstT = first ? first.t : NaN;
     this.sLastT = last ? last.t : NaN;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cleanCandle } from "@/lib/chart/candles";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -154,14 +155,41 @@ async function findActiveContract(baseTicker: string): Promise<string | null> {
 }
 
 function parseCandles(candles: any[][]) {
-  return candles.map((c: any[]) => ({
-    timestamp: new Date(c[6]).getTime(),
-    open: c[0],
-    high: c[2],
-    low: c[3],
-    close: c[1],
-    volume: c[5] || 0,
-  }));
+  return cleanRows(
+    candles.map((c: any[]) => ({
+      timestamp: new Date(c[6]).getTime(),
+      open: c[0],
+      high: c[2],
+      low: c[3],
+      close: c[1],
+      volume: c[5] || 0,
+    }))
+  );
+}
+
+interface KlineRow {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+// An exchange feed can deliver a bar without an open (null) or with a close a tick outside the high / low while the bar is still
+// forming. JSON turns NaN into null as well, and the client draws a null open as 0: a solid body from the close down to the bottom
+// of the pane. Rows go out drawable: a missing open becomes the previous close, high / low cover open and close, a row without a
+// time or a close is dropped (rows are ascending).
+function cleanRows(rows: KlineRow[]): KlineRow[] {
+  const out: KlineRow[] = [];
+  let prev: number | undefined;
+  for (const r of rows) {
+    const c = cleanCandle({ t: r.timestamp, o: r.open, h: r.high, l: r.low, c: r.close, v: r.volume }, prev);
+    if (!c) continue;
+    out.push({ timestamp: c.t, open: c.o, high: c.h, low: c.l, close: c.c, volume: c.v });
+    prev = c.c;
+  }
+  return out;
 }
 
 function toDateStr(ms: number): string {
@@ -388,6 +416,8 @@ export async function GET(request: NextRequest) {
   } else if (source === "bybit") {
     candles = await fetchBybitCandles(ticker, interval, limit, toMs);
   }
+
+  candles = cleanRows(candles);
 
   // Return object with metadata + candles
   // No cache for realtime (limit<=5), short cache for full loads
