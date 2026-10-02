@@ -3,13 +3,15 @@ import type { ParamValue } from "../contracts";
 import * as M from "./math";
 import type { F64 } from "./math";
 import { ORDERFLOW_DEFS } from "./orderflow-defs";
+import { ELLIOTT_DEFS } from "./elliott-defs";
+import { PATTERN_DEFS } from "./patterns-def";
 import type { OrderFlowStore } from "../orderflow/store";
 
 /* Indicator definitions: parameter schema + compute(). Names and descriptions live in the i18n dictionary
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
 
 export type Params = Record<string, ParamValue>;
-export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "other";
+export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "patterns" | "other";
 export type PlotShape = "line" | "step" | "area" | "histogram" | "columns" | "circles";
 export type LineStyleName = "solid" | "dashed" | "dotted";
 export type NumFmt = "price" | "osc" | "vol";
@@ -137,6 +139,12 @@ export interface IndicatorDef {
   usesFlow?: boolean;
   /** Painter that runs after the plots (markers on top of the lines). */
   drawTop?(sc: SeriesContext, p: Params, res?: IndResult): void;
+  /** Tooltip of the legend row (multi-line text), e.g. the list of Elliott counts with their confidence. */
+  legendTip?(res: IndResult, p: Params, locale: string): string | undefined;
+  /** Price levels worth an alert (data only), e.g. invalidation and next target of an Elliott count. */
+  alertLevels?(res: IndResult): number[];
+  /** Extra coloured text items for the legend (e.g. summaries of detected patterns); `locale` is the chart's locale. */
+  legendItems?(res: IndResult, p: Params, locale: string): { text: string; color: string }[];
   /** User scripts: literal display name (instead of the `ind.<id>.name` dictionary key). */
   label?: string;
   /** User scripts: literal labels of the parameters (instead of `ind.p.<key>`). */
@@ -1016,6 +1024,8 @@ const defs: IndicatorDef[] = [
 ];
 
 defs.push(...ORDERFLOW_DEFS);
+defs.push(...ELLIOTT_DEFS);
+defs.push(...PATTERN_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 
 const byId = new Map<string, IndicatorDef>();
@@ -1031,7 +1041,7 @@ export function getIndicatorDef(id: string): IndicatorDef | undefined {
   return byId.get(id) ?? (dynamicResolver ? dynamicResolver(id) : undefined);
 }
 
-export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "other"];
+export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns", "other"];
 
 export function defaultParams(def: IndicatorDef): Params {
   const out: Params = {};

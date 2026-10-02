@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
+import { setIndTranslator } from "@/lib/chart/indicators/ind-text";
 import IndicatorEditor from "./IndicatorEditor";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
@@ -52,6 +53,13 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     controller.setExternalLegend(true);
     return () => controller.setExternalLegend(false);
   }, [controller]);
+
+  /* canvas / legend texts of the pattern indicators (Elliott waves) are translated through the same dictionary */
+  useEffect(() => {
+    setIndTranslator(t);
+    getEngine()?.requestRedraw();
+    tick();
+  }, [t, getEngine]);
 
   /* pane positions */
   const measure = useCallback(() => {
@@ -204,7 +212,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             if ((e.target as HTMLElement).closest("button")) return;
             setActiveUid((a) => (a === uid ? null : uid));
           }}
-          title={info.tfHidden ? t("ind2.lg.tfHidden") : undefined}
+          title={info.tfHidden ? t("ind2.lg.tfHidden") : info.tip}
         >
           <span className="truncate font-medium" style={{ color: "var(--ind-legend-title, #787b86)" }}>
             {info.title}

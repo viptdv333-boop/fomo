@@ -43,6 +43,8 @@ export interface LegendParts {
   /** User scripts: the script failed / is still computing. */
   error?: string;
   pending?: boolean;
+  /** Tooltip text of the legend row. */
+  tip?: string;
 }
 
 /**
@@ -280,11 +282,26 @@ export class IndicatorSeries implements Series {
       if (!finite(v)) continue;
       items.push({ text: this.fmt(v, this.plotFmt(p)), color: solidColor(c) });
     }
+    if (this.def.legendItems) {
+      try {
+        for (const it of this.def.legendItems(r, this.params, this.locale)) items.push(it);
+      } catch {
+        /* a legend bug must not break the chart */
+      }
+    }
+    let tip: string | undefined;
+    if (this.def.legendTip) {
+      try {
+        tip = this.def.legendTip(r, this.params, this.locale);
+      } catch {
+        /* ignore */
+      }
+    }
     if (!color) {
       const sw = this.def.params.find((q) => q.type === "color");
       color = sw && sw.type === "color" ? String(this.params[sw.key] ?? sw.default) : fallback;
     }
-    return { title, items, color, ...flags };
+    return tip ? { title, items, color, tip, ...flags } : { title, items, color, ...flags };
   }
 
   legend(candles: Candle[], index: number): LegendItem[] {

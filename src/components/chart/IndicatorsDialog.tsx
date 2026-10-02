@@ -24,7 +24,7 @@ const MAX_RECENT = 10;
 
 /* ───────────── category icons ───────────── */
 
-type IconName = "all" | "trend" | "momentum" | "volatility" | "volume" | "sr" | "ma" | "other";
+type IconName = "all" | "trend" | "momentum" | "volatility" | "volume" | "sr" | "ma" | "patterns" | "other";
 
 function CatIcon({ name, className = "h-4 w-4" }: { name: IconName; className?: string }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -55,6 +55,9 @@ function CatIcon({ name, className = "h-4 w-4" }: { name: IconName; className?: 
     case "sr":
       body = <path d="M2.5 6h15M2.5 14h15M6 6v8M14 6v8" {...p} strokeDasharray="0" />;
       break;
+    case "patterns":
+      body = <path d="M2 15 4.5 9 7 13l3-9 3 9 2.5-4L18 15" {...p} />;
+      break;
     case "ma":
       body = <path d="M2.5 13.5c2.5-7 5-7 7.5-2s5 4.5 7.5-4M2.5 16.5h15" {...p} />;
       break;
@@ -78,7 +81,7 @@ function CatIcon({ name, className = "h-4 w-4" }: { name: IconName; className?: 
 
 type Section = "fav" | "recent" | "all" | Category | "active" | "scripts";
 
-const NAV_GROUPS: Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma"];
+const NAV_GROUPS: Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns"];
 
 interface Props {
   controller: IndicatorsController;
