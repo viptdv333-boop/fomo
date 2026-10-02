@@ -89,6 +89,18 @@ interface Props {
   onClose: () => void;
 }
 
+/** ё = е, lower case; every word of the query must appear as a word start/stem ("объемный профиль" finds "Профиль объёма"). */
+function normSearch(x: string): string {
+  return x.toLowerCase().replace(/ё/g, "е");
+}
+function matchesQuery(q: string, haystack: string): boolean {
+  const h = normSearch(haystack);
+  return normSearch(q)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((tok) => h.includes(tok.length > 5 ? tok.slice(0, 5) : tok));
+}
+
 export default function IndicatorsDialog(props: Props) {
   // the script editor lives here (not in the dialog body) so that it stays open when the dialog closes
   const [editScript, setEditScript] = useState<string | null>(null);
@@ -223,7 +235,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
     let list = catalog.filter(({ def, name, desc }) => {
       if (!inSection(def.id, def.category)) return false;
       if (!q) return true;
-      return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q) || def.id.includes(q) || (def.keywords ?? "").toLowerCase().includes(q);
+      return matchesQuery(q, `${name} ${desc} ${def.id} ${def.keywords ?? ""}`);
     });
     if (section === "recent") list = [...list].sort((a, b) => recent.indexOf(a.def.id) - recent.indexOf(b.def.id));
     return list;

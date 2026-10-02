@@ -107,7 +107,7 @@ const vwapDef: IndicatorDef = {
   pane: "overlay",
   fmt: "price",
   usesFlow: true,
-  keywords: "vwap volume weighted average price session anchored weekly monthly bands deviation",
+  keywords: "vwap volume weighted average price session anchored weekly monthly bands deviation средневзвешенная цена по объему ватп",
   params: vwapParams,
   title: (p) => `VWAP ${S(p, "anchor")}${bandTitle(p)}`,
   compute(cs, p, env) {
@@ -201,7 +201,7 @@ const vprofileDef: IndicatorDef = {
   pane: "overlay",
   fmt: "vol",
   usesFlow: true,
-  keywords: "volume profile visible range VPVR VRVP POC value area order flow",
+  keywords: "volume profile visible range VPVR VRVP POC value area order flow объемный профиль объема профиль рынка кластерный",
   params: [
     ...profileCommon,
     num("widthPct", 30, 5, 90),
@@ -253,7 +253,7 @@ const vpSessionDef: IndicatorDef = {
   pane: "overlay",
   fmt: "vol",
   usesFlow: true,
-  keywords: "session volume profile SVP day week month POC naked developing",
+  keywords: "session volume profile SVP day week month POC naked developing объемный профиль сессии дня недели",
   params: [
     sel("session", "day", [
       { value: "day", label: "ind.o.day" },
@@ -382,7 +382,7 @@ const cvdDef: IndicatorDef = {
   paneRatio: 0.2,
   fmt: "vol",
   usesFlow: true,
-  keywords: "cvd cumulative volume delta order flow buy sell aggressor candles",
+  keywords: "cvd cumulative volume delta order flow buy sell aggressor candles дельта накопленная кластерный футпринт",
   params: [sel("mode", "candles", [
     { value: "candles", label: "ind.of.o.candles" },
     { value: "line", label: "ind.of.o.line" },
