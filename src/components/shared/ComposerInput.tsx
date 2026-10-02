@@ -140,7 +140,7 @@ const ComposerInput = forwardRef<ComposerHandle, Props>(function ComposerInput({
           onSubmit();
         }
       }}
-      className={`min-w-0 text-sm leading-5 whitespace-pre-wrap break-words overflow-y-auto max-h-[62px] focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 ${className}`}
+      className={`min-w-0 text-sm leading-5 whitespace-pre-wrap [overflow-wrap:anywhere] [word-break:break-word] overflow-y-auto max-h-[62px] focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 ${className}`}
     />
   );
 });

@@ -1027,7 +1027,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             </AttachMenu>
 
             {/* Text input wrapper */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               <div
                 ref={inputRef}
                 contentEditable
@@ -1065,7 +1065,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                   }
                 }}
                 data-placeholder={t("chat.writeMessage")}
-                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-[20px] text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[42px] max-h-[62px] overflow-y-auto break-words [&_img]:inline-block [&_img]:align-middle"
+                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-[20px] text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[42px] max-h-[62px] overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere] [word-break:break-word] [&_img]:inline-block [&_img]:align-middle"
               />
 
               {/* Emoji button inside input */}
