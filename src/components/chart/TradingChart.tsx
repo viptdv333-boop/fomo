@@ -458,6 +458,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     };
   }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer]);
 
+  const badQuoteRef = useRef(0);
   /* live price: quotes for the forming bar, real bars from the API now and then */
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
@@ -476,6 +477,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         if (!r.ok) return;
         const q = await r.json();
         if (!q.price || stopped) return;
+        // A single bad print (a quote far from the previous close) must not stretch the forming bar with a huge wick:
+        // a jump of more than 3% is only accepted when the next quote confirms it.
+        const jump = Math.abs(q.price - last.c) / (last.c || q.price);
+        if (jump > 0.03) {
+          if (!(badQuoteRef.current && Math.abs(q.price - badQuoteRef.current) / badQuoteRef.current < 0.01)) {
+            badQuoteRef.current = q.price;
+            return;
+          }
+        }
+        badQuoteRef.current = 0;
         const { tzMs, offsetMs: off } = shiftRef.current;
         const nowWall = Date.now() + (source === "moex" ? MSK_MS : 0);
         const plan = intervalPlan(iv, source);
