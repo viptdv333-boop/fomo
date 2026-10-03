@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { fmpSymbol } from "@/lib/fmp-alias";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -258,7 +259,7 @@ const FMP_KEY = process.env.FMP_API_KEY || "";
 async function fetchFmpOne(ticker: string): Promise<BatchQuote | null> {
   if (!FMP_KEY) return null;
   try {
-    const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(ticker)}&apikey=${FMP_KEY}`, { cache: "no-store" });
+    const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(fmpSymbol(ticker))}&apikey=${FMP_KEY}`, { cache: "no-store" });
     if (!r.ok) return null;
     const data = await r.json();
     const it = Array.isArray(data) ? data[0] : data;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fmpSymbol } from "@/lib/fmp-alias";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -211,7 +212,7 @@ const FMP_KEY = process.env.FMP_API_KEY || "";
 
 async function fetchFmpQuote(ticker: string): Promise<Quote | null> {
   try {
-    const res = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${ticker}&apikey=${FMP_KEY}`, { cache: "no-store" });
+    const res = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     const item = Array.isArray(data) ? data[0] : data;

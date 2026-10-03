@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fmpSymbol } from "@/lib/fmp-alias";
 import { cleanCandle } from "@/lib/chart/candles";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
@@ -311,7 +312,7 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number, 
     if (["D", "W", "M"].includes(interval)) {
       // Daily/weekly/monthly — use EOD endpoint
       const res = await fetch(
-        `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${ticker}&apikey=${FMP_KEY}`,
+        `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`,
         { cache: "no-store" }
       );
       if (!res.ok) return [];
@@ -330,7 +331,7 @@ async function fetchFmpCandles(ticker: string, interval: string, limit: number, 
       // Intraday
       const fmpInterval = FMP_INTERVALS[interval] || "1hour";
       const res = await fetch(
-        `https://financialmodelingprep.com/stable/historical-chart/${fmpInterval}?symbol=${ticker}&apikey=${FMP_KEY}`,
+        `https://financialmodelingprep.com/stable/historical-chart/${fmpInterval}?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`,
         { cache: "no-store" }
       );
       if (!res.ok) return [];
