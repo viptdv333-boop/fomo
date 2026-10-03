@@ -4,6 +4,7 @@ import * as M from "./math";
 import type { F64 } from "./math";
 import { ORDERFLOW_DEFS } from "./orderflow-defs";
 import { ELLIOTT_DEFS } from "./elliott-defs";
+import { SWINGS_DEFS } from "./swings-defs";
 import { PATTERN_DEFS } from "./patterns-def";
 import type { OrderFlowStore } from "../orderflow/store";
 
@@ -143,6 +144,10 @@ export interface IndicatorDef {
   legendTip?(res: IndResult, p: Params, locale: string): string | undefined;
   /** Price levels worth an alert (data only), e.g. invalidation and next target of an Elliott count. */
   alertLevels?(res: IndResult): number[];
+  /** Flags on the price axis for values that are not plots (e.g. the levels of a volume profile). `text` defaults to the formatted price. */
+  axisFlags?(res: IndResult, p: Params): { price: number; color: string; text?: string }[];
+  /** Settings dialog: param key -> i18n key of the section heading it belongs to (Inputs and Style tabs). */
+  paramGroup?: Record<string, string>;
   /** Extra coloured text items for the legend (e.g. summaries of detected patterns); `locale` is the chart's locale. */
   legendItems?(res: IndResult, p: Params, locale: string): { text: string; color: string }[];
   /** User scripts: literal display name (instead of the `ind.<id>.name` dictionary key). */
@@ -1025,6 +1030,7 @@ const defs: IndicatorDef[] = [
 
 defs.push(...ORDERFLOW_DEFS);
 defs.push(...ELLIOTT_DEFS);
+defs.push(...SWINGS_DEFS);
 defs.push(...PATTERN_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 

@@ -343,6 +343,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
     };
   }
 
+  /** Tells the data listeners (React legend) that values changed outside a recompute, e.g. a painter learned the visible range. */
+  notifyData(): void {
+    this.emitData();
+  }
+
   /** The React legend overlay takes over the indicator lines of the canvas legend. */
   setExternalLegend(on: boolean): void {
     this.externalLegend = on;

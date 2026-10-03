@@ -300,19 +300,22 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
   const idOf = (k: string) => `indset-${uid}-${k}`;
   return (
     <div className="flex flex-col gap-2.5">
-      {list.map((p: ParamDef) => {
+      {list.map((p: ParamDef, idx: number) => {
         const v = params[p.key] ?? p.default;
+        // sections of the Inputs tab (definitions with many parameters name a group per key)
+        const grp = def.paramGroup?.[p.key];
+        const head = grp && grp !== (idx > 0 ? def.paramGroup?.[list[idx - 1].key] : undefined) ? <h3 key={`h-${p.key}`} className="mb-0.5 mt-2 border-b border-gray-200 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 first:mt-0 dark:border-[#2a2e39] dark:text-gray-400">{t(grp)}</h3> : null;
         if (p.type === "boolean") {
-          return (
+          return [head, (
             <div key={p.key} className="flex items-center gap-2">
               <input id={idOf(p.key)} type="checkbox" className={checkCls} checked={Boolean(v)} onChange={(e) => onSet(p.key, e.target.checked)} />
               <label htmlFor={idOf(p.key)} className="cursor-pointer text-xs text-gray-700 dark:text-gray-300">
                 {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
               </label>
             </div>
-          );
+          )];
         }
-        return (
+        return [head, (
           <div key={p.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3">
             <label htmlFor={idOf(p.key)} className="text-xs text-gray-700 dark:text-gray-300">
               {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
@@ -331,7 +334,7 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
               <input id={idOf(p.key)} type="text" maxLength={200} value={String(v)} onChange={(e) => onSet(p.key, e.target.value)} className={`${fieldCls} w-full`} />
             ) : null}
           </div>
-        );
+        )];
       })}
     </div>
   );
@@ -396,12 +399,17 @@ function StyleTab({
         def.styleParams.length > 0 &&
         section(
           t("ind2.st.colors"),
-          def.styleParams.map((k) => (
-            <div key={k} className="flex items-center gap-2">
-              <ColorPicker value={String(params[k] ?? "#2962ff")} onChange={(c) => onParam(k, c)} opacity={false} title={def.paramLabels?.[k] ?? t(`ind.p.${k}`)} labels={labels} />
-              <span className="text-xs text-gray-700 dark:text-gray-300">{def.paramLabels?.[k] ?? t(`ind.p.${k}`)}</span>
-            </div>
-          )),
+          def.styleParams.map((k, i) => {
+            const grp = def.paramGroup?.[k];
+            const sp = def.styleParams as string[];
+            const head = grp && grp !== (i > 0 ? def.paramGroup?.[sp[i - 1]] : undefined) ? <h4 key={`h-${k}`} className="mt-1.5 text-[10.5px] font-semibold text-gray-500 dark:text-gray-400">{t(grp)}</h4> : null;
+            return [head, (
+              <div key={k} className="flex items-center gap-2">
+                <ColorPicker value={String(params[k] ?? "#2962ff")} onChange={(c) => onParam(k, c)} opacity={false} title={def.paramLabels?.[k] ?? t(`ind.p.${k}`)} labels={labels} />
+                <span className="text-xs text-gray-700 dark:text-gray-300">{def.paramLabels?.[k] ?? t(`ind.p.${k}`)}</span>
+              </div>
+            )];
+          }),
         )}
 
       {desc.fills.length > 0 &&

@@ -114,6 +114,6 @@ export function sanitizeFootprint(raw: unknown): FootprintSettings {
 }
 
 /** Indicator ids that read order flow data (the chart then fetches it even when the footprint is not the chart type). */
-export const FLOW_INDICATOR_IDS = ["vprofile", "vp_session", "vwap", "avwap", "cvd", "delta"];
+export const FLOW_INDICATOR_IDS = ["vprofile", "vprofile_pro", "vp_session", "vwap", "avwap", "cvd", "delta"];
 /** Drawing tools that use it. */
 export const FLOW_DRAWING_TOOLS = ["fixed_volume_profile", "anchored_volume_profile", "anchored_vwap"];

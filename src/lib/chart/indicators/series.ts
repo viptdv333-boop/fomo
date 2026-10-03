@@ -356,6 +356,15 @@ export class IndicatorSeries implements Series {
         out.push({ price: l.value, text: this.fmt(l.value, this.def.fmt), color: solidColor(l.color) });
       }
     }
+    if (this.def.axisFlags) {
+      try {
+        for (const f of this.def.axisFlags(r, this.params)) {
+          if (finite(f.price)) out.push({ price: f.price, text: f.text ?? this.fmt(f.price, this.def.fmt), color: solidColor(f.color) });
+        }
+      } catch {
+        /* a flag bug must not break the chart */
+      }
+    }
     return out;
   }
 

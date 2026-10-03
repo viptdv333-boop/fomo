@@ -10,6 +10,7 @@ import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import { OrderFlowClient } from "@/lib/chart/orderflow/client";
 import { AnchoredVwapLayer } from "@/lib/chart/orderflow/avwap-layer";
+import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
 import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
@@ -191,6 +192,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [indicators] = useState(() => new IndicatorsController());
   const [alertsLayer] = useState(() => new AlertsLayer());
   const [avwapLayer] = useState(() => new AnchoredVwapLayer(indicators));
+  const [vpLayer] = useState(() => new VpLayer(indicators));
   const alertsApi = useAlerts();
 
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
@@ -294,6 +296,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     alertsLayer.attach(engine);
     indicators.attach(engine);
     avwapLayer.attach(engine);
+    vpLayer.attach(engine);
 
     const savedInd = lsGet(indKey);
     if (savedInd) indicators.restore(savedInd);
@@ -323,16 +326,18 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       drawings.detach();
       alertsLayer.detach();
       avwapLayer.detach();
+      vpLayer.detach();
       indicators.detach();
       engine.destroy();
       engineRef.current = null;
       setEngineReady(false);
     };
-  }, [drawings, indicators, alertsLayer, avwapLayer, indKey]);
+  }, [drawings, indicators, alertsLayer, avwapLayer, vpLayer, indKey]);
 
   useEffect(() => {
     avwapLayer.hint = t("of.avwap.pick");
-  }, [avwapLayer, t]);
+    vpLayer.hint = t("vp.pick");
+  }, [avwapLayer, vpLayer, t]);
 
   /* drawings are saved per symbol */
   useEffect(() => {
@@ -423,6 +428,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
       // sessions / days of the order flow indicators follow the exchange clock
       engine.flow.wallShiftMs = source === "moex" ? tzMs : 0;
+      engine.flow.sourceName = source;
       alertsLayer.setTimeOffset(offsetMs);
       setOffsetMs(offsetMs);
       engine.setOptions({

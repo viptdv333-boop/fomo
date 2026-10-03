@@ -3,6 +3,7 @@ import type { BooleanParam, ColorParam, FillSpec, IndEnv, IndicatorDef, IndResul
 import { cachedDeltaSeries, buildVProfile, type ResetPeriod } from "../orderflow/flowmath";
 import { ANCHOR_MS, computeVwap, indexAtOrAfter, type PriceSourceId, type VwapAnchor, type VwapResult } from "../orderflow/vwapcalc";
 import { flowLabels, fmtQty } from "../orderflow/footprint";
+import { VPRO_DEFS } from "./vpro-def";
 import { developingPoc, paintApproxNote, paintDevelopingPoc, paintProfile, rgba, sessionProfile, splitSessions, type VpStyle } from "../orderflow/vpdraw";
 
 /* Order flow indicators: VWAP (session / weekly / monthly, deviation bands), anchored VWAP, volume profiles (visible range and
@@ -615,7 +616,7 @@ const bigTradesDef: IndicatorDef = {
   },
 };
 
-export const ORDERFLOW_DEFS: IndicatorDef[] = [vwapDef, avwapDef, vprofileDef, vpSessionDef, cvdDef, deltaDef, bigTradesDef, volColorDef];
+export const ORDERFLOW_DEFS: IndicatorDef[] = [vwapDef, avwapDef, ...VPRO_DEFS, vprofileDef, vpSessionDef, cvdDef, deltaDef, bigTradesDef, volColorDef];
 /** Ids whose definitions replace older built-ins of the registry. */
 export const ORDERFLOW_OVERRIDES = new Set(["vwap", "vprofile", "cvd"]);
 

@@ -129,3 +129,86 @@ export function fitLine(points: { i: number; p: number }[]): { a: number; b: num
   for (const q of points) ssRes += (q.p - (a + b * q.i)) ** 2;
   return { a, b, r2: Math.max(0, 1 - ssRes / ssTot) };
 }
+
+/* ───────────── additional swing modes (Double ZigZag indicator) ───────────── */
+
+/**
+ * Pine-style pivots (`ta.pivothigh / ta.pivotlow`): bar i is a swing high when its high is strictly above the `left` bars before it
+ * and not below the `right` bars after it (symmetrically for lows), so the pivot is confirmed `right` bars later and never repaints.
+ * Consecutive pivots of the same type are merged (the more extreme one wins), so the result alternates H / L. The last pivot is
+ * the pending extreme of the opposite type after the last confirmed one (`confirmed: false`).
+ */
+export function pivotSwings(c: SwingCandle[], left = 5, right = left): Pivot[] {
+  const n = c.length;
+  left = Math.max(1, Math.floor(left) || 1);
+  right = Math.max(1, Math.floor(right) || 1);
+  if (n < left + right + 1) return [];
+  const out: Pivot[] = [];
+  const push = (i: number, type: "H" | "L") => {
+    const p = type === "H" ? c[i].h : c[i].l;
+    if (!(p === p) || p === Infinity || p === -Infinity) return;
+    const last = out[out.length - 1];
+    if (last && last.type === type) {
+      if (type === "H" ? p > last.p : p < last.p) out[out.length - 1] = { i, t: c[i].t, p, type, confirmed: true };
+      return;
+    }
+    out.push({ i, t: c[i].t, p, type, confirmed: true });
+  };
+  for (let i = left; i <= n - 1 - right; i++) {
+    const hi = c[i].h;
+    const lo = c[i].l;
+    let isH = hi === hi;
+    let isL = lo === lo;
+    for (let j = i - left; (isH || isL) && j < i; j++) {
+      if (!(c[j].h < hi)) isH = false;
+      if (!(c[j].l > lo)) isL = false;
+    }
+    for (let j = i + 1; (isH || isL) && j <= i + right; j++) {
+      if (!(c[j].h <= hi)) isH = false;
+      if (!(c[j].l >= lo)) isL = false;
+    }
+    if (isH && isL) {
+      // an outside bar is both: put the type that continues the alternation first
+      const last = out[out.length - 1];
+      const lowFirst = last ? last.type === "H" : c[i].c >= c[i].o;
+      if (lowFirst) {
+        push(i, "L");
+        push(i, "H");
+      } else {
+        push(i, "H");
+        push(i, "L");
+      }
+    } else if (isH) push(i, "H");
+    else if (isL) push(i, "L");
+  }
+  const last = out[out.length - 1];
+  if (last && last.i < n - 1) {
+    let k = -1;
+    for (let j = last.i + 1; j < n; j++) {
+      if (last.type === "H" ? (k < 0 || c[j].l < c[k].l) : (k < 0 || c[j].h > c[k].h)) k = j;
+    }
+    if (k >= 0) out.push({ i: k, t: c[k].t, p: last.type === "H" ? c[k].l : c[k].h, type: last.type === "H" ? "L" : "H", confirmed: false });
+  }
+  return out;
+}
+
+export type SwingMode = "pivot" | "pct" | "atr";
+
+export interface SwingSpec {
+  mode: SwingMode;
+  /** pivot: bars to each side. */
+  bars?: number;
+  /** pct: reversal in percent of price. */
+  pct?: number;
+  /** atr: reversal in ATR multiples. */
+  atr?: number;
+  atrPeriod?: number;
+}
+
+/** Swing detection by the chosen mode: Pivot bars, Deviation % or ATR × k (all return alternating H/L, the last one provisional). */
+export function detectSwings(c: SwingCandle[], spec: SwingSpec): Pivot[] {
+  if (c.length < 3) return [];
+  if (spec.mode === "pivot") return pivotSwings(c, spec.bars ?? 5, spec.bars ?? 5);
+  if (spec.mode === "pct") return zigzag(c, { atrMult: 0, minPct: Math.max(1e-6, spec.pct ?? 1), atrPeriod: spec.atrPeriod });
+  return zigzag(c, { atrMult: Math.max(1e-6, spec.atr ?? 2), atrPeriod: spec.atrPeriod });
+}

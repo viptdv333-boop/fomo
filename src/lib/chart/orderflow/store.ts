@@ -65,6 +65,8 @@ export class OrderFlowStore {
   wallShiftMs = 0;
   /** Price decimals of the instrument (for the approximation grid). */
   precision = 2;
+  /** Exchange the trades come from ("bybit" / "moex" / ""), for labels. */
+  sourceName = "";
   /** Who wants data: "footprint", "ind", "draw". */
   readonly needs = new Set<string>();
 
