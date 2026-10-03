@@ -4,6 +4,7 @@ import { cleanCandle } from "@/lib/chart/candles";
 import { frontSecid } from "@/lib/moex-contracts";
 import { issSecurityPath, resolveMoex, type MoexSecurity } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
+import { applyTinkoffTail, type TailResult } from "@/lib/tinkoff-candles";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -117,6 +118,54 @@ async function fetchIssCandlesPage(
     start += batch.length;
   }
   return rows;
+}
+
+// A request for a few bars (the chart's 60 s refresh asks for 3) must not page days of ISS history: take the NEWEST rows only.
+// `iss.reverse=true` returns the candles newest-first, so one 500-row page is enough for up to 500 native bars; further pages are
+// read only while fewer than `needRows` rows came back. The result is ascending, like fetchIssCandlesPage.
+async function fetchIssRecent(
+  url: string,
+  moexInterval: number,
+  needRows: number,
+  from: string,
+  till?: string
+): Promise<any[][]> {
+  const rows: any[][] = [];
+  let start = 0;
+  for (let page = 0; page < 6; page++) {
+    const params = new URLSearchParams({
+      interval: String(moexInterval),
+      from,
+      start: String(start),
+      "iss.meta": "off",
+      "iss.reverse": "true",
+    });
+    if (till) params.set("till", till);
+    const res = await fetch(`${url}?${params}`, { cache: "no-store" });
+    if (!res.ok) break;
+    const data = await res.json();
+    const batch: any[][] = data.candles?.data;
+    if (!batch || batch.length === 0) break;
+    rows.push(...batch);
+    if (batch.length < 500 || rows.length >= needRows) break;
+    start += batch.length;
+  }
+  return rows.reverse();
+}
+
+/** Up to this many bars requested = "a refresh", served by the newest-rows path (and nothing else) */
+const SMALL_LIMIT = 60;
+
+// How far back (calendar days) the newest `needRows` native bars can be, with a margin for weekends and holidays.
+function smallFromDate(needRows: number, moexInterval: number, anchorMs?: number): string {
+  let days: number;
+  if (moexInterval === 1) days = Math.ceil(needRows / 300) + 5;
+  else if (moexInterval === 10) days = Math.ceil(needRows / 30) + 5;
+  else if (moexInterval === 60) days = Math.ceil(needRows / 6) + 5;
+  else if (moexInterval === 24) days = needRows * 2 + 6;
+  else if (moexInterval === 7) days = needRows * 7 + 10;
+  else days = needRows * 31 + 31;
+  return dateFromDays(Math.min(days, 500), anchorMs);
 }
 
 // Find nearest active futures contract for a base ticker
@@ -255,6 +304,8 @@ interface MoexResult {
   resolvedTicker: string;
   /** what the ticker turned out to be (board, group, % unit for bonds) */
   sec?: MoexSecurity;
+  /** where the real-time tail came from (undefined: not applicable, e.g. a scroll-back page) */
+  tail?: TailResult;
 }
 
 async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs?: number): Promise<MoexResult> {
@@ -271,8 +322,31 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   // `timestamp <= toMs` cut happens below.
   const till = toMs !== undefined ? toDateStr(toMs) : undefined;
 
-  function finalize(rawRows: any[][]) {
+  // A refresh-sized request needs only the newest native rows: (limit + 1) bars of the requested interval, plus one more bucket of
+  // slack so the oldest (possibly partial) synthesized bar falls outside the trimmed result.
+  // (a scroll-back page ending in the past keeps the regular window: ISS `till` is date-granular, so the newest rows could all be later)
+  const small = limit <= SMALL_LIMIT && toMs === undefined;
+  const ratio = synth ? synth.bucketMs / (MOEX_INTERVALS[fetchInterval] * 60_000) : 1;
+  const needRows = synth ? (limit + 2) * ratio : limit + 2;
+  const smallFrom = small ? smallFromDate(needRows, moexInterval, toMs) : from;
+
+  async function issRows(url: string): Promise<any[][]> {
+    if (small) {
+      const rows = await fetchIssRecent(url, moexInterval, needRows, smallFrom, till);
+      if (rows.length > 0) return rows;
+      // nothing in the short window (a long holiday?): the regular wide window
+    }
+    return fetchIssCandlesPage(url, moexInterval, from, till);
+  }
+
+  let tail: TailResult | undefined;
+  async function finalize(rawRows: any[][], withTail?: MoexSecurity) {
     let candles = filterAndDedupe(rawRows, toMs);
+    // Real-time tail: ISS is ~15 minutes behind. Only for the live edge (not for a scroll-back page ending in the past).
+    if (withTail && toMs === undefined && candles.length > 0) {
+      tail = await applyTinkoffTail(withTail, moexInterval, candles);
+      candles = tail.rows;
+    }
     if (synth) candles = aggregateCandles(candles, synth.bucketMs);
     return candles.slice(-limit);
   }
@@ -282,10 +356,10 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   const sec = await resolveMoex(ticker);
   if (sec) {
     try {
-      const rows = await fetchIssCandlesPage(`${issSecurityPath(sec)}/candles.json`, moexInterval, from, till);
+      const rows = await issRows(`${issSecurityPath(sec)}/candles.json`);
       if (rows.length > 0) {
-        const candles = finalize(rows);
-        if (candles.length > 0) return { candles, resolvedTicker: sec.secid, sec };
+        const candles = await finalize(rows, sec);
+        if (candles.length > 0) return { candles, resolvedTicker: sec.secid, sec, tail };
       }
     } catch {
       // fall through to the fixed board list
@@ -296,9 +370,9 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   for (const { engine, market, board } of MOEX_CANDLE_BOARDS) {
     try {
       const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/boards/${board}/securities/${ticker}/candles.json`;
-      const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
+      const rows = await issRows(url);
       if (rows.length > 0) {
-        const candles = finalize(rows);
+        const candles = await finalize(rows);
         if (candles.length > 0) return { candles, resolvedTicker: ticker };
       }
     } catch {
@@ -311,9 +385,9 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   if (activeContract) {
     try {
       const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json`;
-      const rows = await fetchIssCandlesPage(url, moexInterval, from, till);
+      const rows = await issRows(url);
       if (rows.length > 0) {
-        const candles = finalize(rows);
+        const candles = await finalize(rows);
         if (candles.length > 0) return { candles, resolvedTicker: activeContract };
       }
     } catch {
@@ -433,12 +507,14 @@ export async function GET(request: NextRequest) {
   let candles: any[] = [];
   let resolvedTicker = ticker;
   let sec: MoexSecurity | undefined;
+  let tail: TailResult | undefined;
 
   if (source === "moex") {
     const result = await fetchMoexCandles(ticker, interval, limit, toMs);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
     sec = result.sec;
+    tail = result.tail;
   } else if (source === "fmp") {
     candles = await fetchFmpCandles(ticker, interval, limit, toMs);
   } else if (source === "bybit") {
@@ -452,7 +528,15 @@ export async function GET(request: NextRequest) {
   const headers: Record<string, string> =
     limit <= 5
       ? { "Cache-Control": "no-cache, no-store, must-revalidate" }
-      : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" };
+      : tail?.tail === "tinkoff"
+        ? // a real-time tail must not be served from a shared cache for a minute
+          { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=3" }
+        : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" };
+  // diagnostics: which feed provided the last minutes of a MOEX chart
+  if (tail) {
+    headers["X-Candle-Tail"] = tail.tail;
+    headers["X-Candle-Tail-Reason"] = tail.reason.replace(/[^\x20-\x7e]/g, "?").slice(0, 200);
+  }
 
   return NextResponse.json(
     {
@@ -463,6 +547,8 @@ export async function GET(request: NextRequest) {
       serverTzOffsetMin: -new Date().getTimezoneOffset(),
       // instrument facts for the legend / price axis (bonds quote in % of par)
       ...(sec ? { group: sec.group, board: sec.board, unit: sec.unit, auto: sec.auto } : {}),
+      // where the real-time tail of a MOEX chart came from: "tinkoff" (T-Invest) or "iss" (delayed ISS only)
+      ...(tail ? { tail: tail.tail, tailReason: tail.reason } : {}),
       candles,
     },
     { headers }
