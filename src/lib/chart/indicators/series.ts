@@ -5,6 +5,7 @@ import { computeIndicator } from "./registry";
 import type { IndEnv, IndicatorDef, IndResult, LevelSpec, LineStyleName, NumFmt, Params, PlotShape, PlotSpec } from "./registry";
 import { applyStyle, solidColor, tfGroupOf } from "./style";
 import type { OrderFlowStore } from "../orderflow/store";
+import type { AlgoStore } from "../algopack/store";
 
 /** What a series needs from the engine, without importing the engine class. */
 export interface SeriesHost {
@@ -13,6 +14,8 @@ export interface SeriesHost {
   getIntervalMs?(): number;
   /** Order flow of the chart (trades / estimates) for indicators that read it. */
   getFlow?(): OrderFlowStore | null;
+  /** ALGOPACK datasets of the chart for the Promo indicators. */
+  getAlgo?(): AlgoStore | null;
 }
 
 const NO_DASH: number[] = [];
@@ -80,6 +83,7 @@ export class IndicatorSeries implements Series {
   private sLastL = NaN;
   private sLastV = NaN;
   private sFlowV = -1;
+  private sAlgoV = -1;
 
   // remembered from the last draw, used by legend / axis labels which get no theme or locale
   private theme: ChartTheme | null = null;
@@ -123,7 +127,16 @@ export class IndicatorSeries implements Series {
   }
 
   private env(): IndEnv {
-    return { flow: this.host.getFlow ? this.host.getFlow() : null, intervalMs: this.host.getIntervalMs ? this.host.getIntervalMs() : 0 };
+    return {
+      flow: this.host.getFlow ? this.host.getFlow() : null,
+      intervalMs: this.host.getIntervalMs ? this.host.getIntervalMs() : 0,
+      algo: this.def.algo && this.host.getAlgo ? this.host.getAlgo() : null,
+    };
+  }
+
+  private algoVersion(): number {
+    const a = this.def.algo && this.host.getAlgo ? this.host.getAlgo() : null;
+    return a ? a.version : 0;
   }
 
   private flowVersion(): number {
@@ -151,6 +164,7 @@ export class IndicatorSeries implements Series {
     if (
       this.doneVersion === this.version &&
       (!this.def.usesFlow || this.sFlowV === this.flowVersion()) &&
+      (!this.def.algo || this.sAlgoV === this.algoVersion()) &&
       this.sRef === candles &&
       this.sLen === n &&
       (n === 0 ||
@@ -173,6 +187,7 @@ export class IndicatorSeries implements Series {
     this.sLastV = last ? last.v : NaN;
     this.doneVersion = this.version;
     this.sFlowV = this.flowVersion();
+    this.sAlgoV = this.algoVersion();
     try {
       this.raw = computeIndicator(this.def, candles, this.params, this.env());
     } catch (e) {

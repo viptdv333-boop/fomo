@@ -6,7 +6,9 @@ import { ORDERFLOW_DEFS } from "./orderflow-defs";
 import { ELLIOTT_DEFS } from "./elliott-defs";
 import { SWINGS_DEFS } from "./swings-defs";
 import { PATTERN_DEFS } from "./patterns-def";
+import { ALGOPACK_DEFS } from "./algopack-defs";
 import type { OrderFlowStore } from "../orderflow/store";
+import type { AlgoNeed, AlgoStore } from "../algopack/store";
 
 /* Indicator definitions: parameter schema + compute(). Names and descriptions live in the i18n dictionary
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
@@ -114,6 +116,8 @@ export interface IndEnv {
   flow: OrderFlowStore | null;
   /** Nominal bar length of the chart, ms. */
   intervalMs: number;
+  /** MOEX ALGOPACK datasets of the chart (Promo; filled only for entitled requesters). */
+  algo?: AlgoStore | null;
 }
 
 export interface IndicatorDef {
@@ -138,6 +142,8 @@ export interface IndicatorDef {
   drawExtra?(sc: SeriesContext, p: Params, res?: IndResult, env?: IndEnv): void;
   /** Recompute when the order flow data of the chart changes (indicators that read trades). */
   usesFlow?: boolean;
+  /** ALGOPACK datasets the indicator reads (env.algo): fetched while it is on the chart, recomputed when they change. */
+  algo?: AlgoNeed[];
   /** Painter that runs after the plots (markers on top of the lines). */
   drawTop?(sc: SeriesContext, p: Params, res?: IndResult): void;
   /** Tooltip of the legend row (multi-line text), e.g. the list of Elliott counts with their confidence. */
@@ -1032,6 +1038,7 @@ defs.push(...ORDERFLOW_DEFS);
 defs.push(...ELLIOTT_DEFS);
 defs.push(...SWINGS_DEFS);
 defs.push(...PATTERN_DEFS);
+defs.push(...ALGOPACK_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 
 const byId = new Map<string, IndicatorDef>();

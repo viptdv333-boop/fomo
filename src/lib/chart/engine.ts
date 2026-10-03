@@ -26,6 +26,7 @@ import { transformBars } from "./transforms";
 import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
 import { OrderFlowStore } from "./orderflow/store";
+import { AlgoStore } from "./algopack/store";
 import { DEFAULT_FOOTPRINT } from "./orderflow/types";
 import { NO_FRAME, drawFootprint, flowLabels, footprintLayout, footprintTip, footprintTotalsHeight, fmtQty, type FootprintFrame, type FootprintHost } from "./orderflow/footprint";
 
@@ -154,6 +155,8 @@ export class ChartEngine {
   onViewChange: (() => void) | null = null;
   /** Order flow of this chart (footprint, volume profile, CVD ...). Filled by lib/chart/orderflow/client. */
   readonly flow = new OrderFlowStore();
+  /** MOEX ALGOPACK datasets (FUTOI, SuperCandles, Mega Alerts, HI2) of this chart. Filled by lib/chart/algopack/client. */
+  readonly algo = new AlgoStore();
   private viewListeners = new Set<() => void>();
   /** Layout of the last footprint frame (cell step, level of detail), used by the crosshair tooltip. */
   private fpFrame: FootprintFrame = NO_FRAME;
@@ -230,6 +233,7 @@ export class ChartEngine {
     this.bindEvents();
     this.resize();
     this.flow.subscribe(() => this.invalidate());
+    this.algo.subscribe(() => this.invalidate());
   }
 
   /** Called after every repaint of the base layer (pan, zoom, new data); returns an unsubscribe function. */

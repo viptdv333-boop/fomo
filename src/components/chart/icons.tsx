@@ -578,3 +578,18 @@ PANEL_TAB_ICONS.objects = ui(
     <path d="M3.5 16.5L12 21l8.5-4.5" opacity={0.55} />
   </>
 );
+
+/* order book tab (depth ladder) and ALGOPACK tab (alerts + concentration) */
+PANEL_TAB_ICONS.orderbook = ui(
+  <>
+    <path d="M4 5.5h9M4 9h6M4 12.5h11" opacity={0.9} />
+    <path d="M20 11.5h-9M20 15h-6M20 18.5h-11" opacity={0.55} />
+  </>
+);
+PANEL_TAB_ICONS.algo = ui(
+  <>
+    <path d="M12 3.5l8.5 15.5h-17z" />
+    <path d="M12 10v4" />
+    <Dot x={12} y={16.6} r={0.9} />
+  </>
+);

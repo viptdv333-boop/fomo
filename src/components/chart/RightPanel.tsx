@@ -6,6 +6,8 @@ import RuNews from "@/components/instruments/RuNews";
 import EconomicCalendar from "@/components/instruments/EconomicCalendar";
 import { PANEL_TAB_ICONS } from "./icons";
 import ObjectTree from "./ObjectTree";
+import OrderBookPanel from "./OrderBookPanel";
+import AlgoPanel from "./AlgoPanel";
 import type { DrawingsController } from "@/lib/chart/drawings/controller";
 import type { IndicatorsControllerLike } from "@/lib/chart/contracts";
 import {
@@ -29,7 +31,7 @@ import type { MarketItem } from "@/lib/market-types";
 import { ContractBadge } from "./ContractPicker";
 import { ContractSubRows, ExpandButton, GroupTabs, useMarketSearch, iconFor, type GroupTab } from "./MarketRows";
 
-export type PanelTab = "watchlist" | "info" | "news" | "calendar" | "objects";
+export type PanelTab = "watchlist" | "info" | "news" | "calendar" | "objects" | "orderbook" | "algo";
 
 export interface Quote {
   price: number;
@@ -70,6 +72,8 @@ const TABS: { id: PanelTab; key: string }[] = [
   { id: "news", key: "shell.tab.news" },
   { id: "calendar", key: "shell.tab.calendar" },
   { id: "objects", key: "cm.tab.objects" },
+  { id: "orderbook", key: "shell.tab.orderbook" },
+  { id: "algo", key: "shell.tab.algo" },
 ];
 
 /* ───────────── batch quotes ───────────── */
@@ -901,6 +905,8 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                 </div>
               )}
               {tab === "objects" && drawings && indicators && <ObjectTree drawings={drawings} indicators={indicators} />}
+              {tab === "orderbook" && <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} />}
+              {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
               {tab === "calendar" && (
                 <div className="flex-1 min-h-0 overflow-y-auto [&>div]:shadow-none! [&>div]:rounded-none! [&>div]:p-3! [&_h2]:text-sm! [&_h2]:mb-2!">
                   <EconomicCalendar country={cat?.name === "Акции ММВБ" ? "RU" : undefined} />

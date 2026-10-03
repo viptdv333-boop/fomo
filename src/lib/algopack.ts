@@ -259,6 +259,8 @@ async function doFetch(url: string, family: string, opts: ApOptions): Promise<Ap
  */
 export async function apGet<T = any>(urlOrPath: string, query?: Record<string, string | number | undefined | null>, opts: ApOptions = {}): Promise<ApResult<T>> {
   if (!algopackEnabled()) return failRes("no-key");
+  // the bearer key goes only to the gateway (or the public ISS host, which is rewritten to it): never to any other host
+  if (/^https?:\/\//.test(urlOrPath) && !urlOrPath.startsWith(PUBLIC_ISS) && !urlOrPath.startsWith(algopackBase())) return failRes("bad-host");
   const url = /^https?:\/\//.test(urlOrPath)
     ? (() => {
         const u = publicToApim(urlOrPath);

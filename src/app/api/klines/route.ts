@@ -5,7 +5,8 @@ import { frontSecid } from "@/lib/moex-contracts";
 import { issSecurityPath, resolveMoex, type MoexSecurity } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { applyTinkoffTail, type TailResult } from "@/lib/tinkoff-candles";
-import { algopackEnabled, apGet, PUBLIC_ISS } from "@/lib/algopack";
+import { algopackEnabled } from "@/lib/algopack";
+import { getIssJson, labelTail, type Feed } from "@/lib/algopack-feed";
 import { getAlgopackAccess, PRIVATE_HEADERS } from "@/lib/algopack-access";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
@@ -87,35 +88,6 @@ function dateFromDays(days: number, anchorMs?: number): string {
   const d = anchorMs ? new Date(anchorMs) : new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
-}
-
-// Where the ISS candle rows come from for this request. `ap` (privileged requester + ALGOPACK key): the authenticated gateway
-// apim.moex.com serves the same ISS routes with online (real-time) data for the subscription; any failure of it (no entitlement,
-// 429 cool-down, network) falls back to the public delayed ISS for that call, so the chart never ends up emptier than before.
-interface Feed {
-  ap: boolean;
-  apHits: number;
-  apMiss: number;
-  apReason: string;
-}
-
-async function getIssJson(url: string, feed: Feed): Promise<any | null> {
-  if (feed.ap && url.startsWith(PUBLIC_ISS)) {
-    const r = await apGet(url, undefined, { ttlMs: 1500, family: "candles", timeoutMs: 15_000 });
-    if (r.ok && r.data) {
-      feed.apHits++;
-      return r.data;
-    }
-    feed.apMiss++;
-    feed.apReason = r.reason;
-  }
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
 }
 
 // MOEX ISS paginates candles.json in pages of up to 500 rows via `start`
@@ -337,16 +309,6 @@ interface MoexResult {
   sec?: MoexSecurity;
   /** where the real-time tail came from (undefined: not applicable, e.g. a scroll-back page) */
   tail?: TailResult;
-}
-
-// The diagnostic label of the live edge: tinkoff (T-Invest added newer bars) | algopack (the base rows came from the online
-// gateway, nothing newer to add) | iss (delayed ISS). The reason says what happened to ALGOPACK as well.
-function labelTail(t: TailResult, feed: Feed): TailResult {
-  if (!feed.ap) return t;
-  const apOk = feed.apHits > 0 && feed.apMiss === 0;
-  const apNote = apOk ? "apim ok" : `apim ${feed.apMiss > 0 ? feed.apReason || "fallback" : "unused"}`;
-  if (t.tail === "iss" && apOk) return { ...t, tail: "algopack", reason: `${apNote}; ${t.reason}` };
-  return { ...t, reason: `${apNote}; ${t.reason}` };
 }
 
 async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs: number | undefined, feed: Feed): Promise<MoexResult> {

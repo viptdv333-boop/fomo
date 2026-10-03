@@ -9,6 +9,10 @@ import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import { OrderFlowClient } from "@/lib/chart/orderflow/client";
+import { AlgoClient } from "@/lib/chart/algopack/client";
+import type { AlgoNeed } from "@/lib/chart/algopack/store";
+import { delayedNow } from "@/lib/chart/algopack/delayed";
+import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { AnchoredVwapLayer } from "@/lib/chart/orderflow/avwap-layer";
 import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
 import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
@@ -117,7 +121,7 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   let url = `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`;
   if (to) url += `&to=${to}`;
   const res = await fetch(url);
-  if (!res.ok) return { candles: [] as Candle[], tzMin: 0 };
+  if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined };
   const j = await res.json();
   const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
   // isFinite(null) is true and null reads as 0: a bar with a null open used to get through and was drawn as a solid body
@@ -127,7 +131,8 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
       .filter((d) => d && typeof d === "object")
       .map((d) => ({ t: d.timestamp, o: d.open, h: d.high, l: d.low, c: d.close, v: d.volume }) as Candle),
   );
-  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0 };
+  // `delayed`: the newest bars are the 15-minute delayed ISS ones (no real-time tail was added); absent for scroll-back pages
+  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined };
 }
 
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
@@ -135,7 +140,7 @@ async function fetchBars(source: string, ticker: string, interval: string, limit
   const plan = intervalPlan(interval, source);
   if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
   const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
-  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin };
+  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed };
 }
 
 const COMPARE_COLORS = ["#f5a623", "#e91e63", "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722"];
@@ -199,6 +204,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
+  /** MOEX bars up to the 15-minute delay of the public ISS (no online feed for this requester) */
+  const [candlesDelayed, setCandlesDelayed] = useState(false);
   const [autoScale, setAutoScale] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -418,7 +425,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const label = formatInterval(iv, t);
 
     (async () => {
-      const { candles, tzMin } = await fetchBars(source, ticker, iv, 600);
+      const { candles, tzMin, delayed } = await fetchBars(source, ticker, iv, 600);
       if (cancelled) return;
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
@@ -426,9 +433,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       // chart time = real UTC ms + offsetMs (MOEX candles carry Moscow wall time minus the server's zone)
       const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
+      setCandlesDelayed(delayedNow(source, delayed, candles[candles.length - 1]?.t, offsetMs, iv));
       // sessions / days of the order flow indicators follow the exchange clock
       engine.flow.wallShiftMs = source === "moex" ? tzMs : 0;
       engine.flow.sourceName = source;
+      engine.algo.setTz(tzMs);
       alertsLayer.setTimeOffset(offsetMs);
       setOffsetMs(offsetMs);
       engine.setOptions({
@@ -536,8 +545,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       if (stopped || barsBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
       barsBusy = true;
       try {
-        const { candles } = await fetchBars(source, ticker, iv, 3);
+        const { candles, delayed } = await fetchBars(source, ticker, iv, 3);
         if (stopped || dataKeyRef.current !== dataKey) return;
+        if (delayed !== undefined) setCandlesDelayed(delayedNow(source, delayed, engine.getCandles().at(-1)?.t, shiftRef.current.offsetMs, iv));
         // the last few bars: the newest one is replaced, the one that closed a moment ago gets its final numbers
         for (const c of candles) engine.upsertCandle(c);
         refreshInd();
@@ -609,6 +619,39 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   useEffect(() => {
     flowClientRef.current?.kick(200);
   }, [cs.footprint.stepTicks]);
+
+  /* MOEX ALGOPACK (Promo datasets for the FUTOI / SuperCandles / Mega Alerts / HI2 indicators): the server serves them to entitled requesters only */
+  const algoClientRef = useRef<AlgoClient | null>(null);
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine || !engineReady || !prefsLoaded || source === "none") return;
+    const client = new AlgoClient({ engine, source, ticker, getTzMs: () => shiftRef.current.tzMs });
+    algoClientRef.current = client;
+    client.start();
+    const off = engine.algo.subscribe(refreshInd);
+    return () => {
+      off();
+      client.stop();
+      algoClientRef.current = null;
+    };
+  }, [engineReady, prefsLoaded, source, ticker, prefs.interval, refreshInd]);
+
+  /* which ALGOPACK datasets the indicators on the chart need */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine || !engineReady) return;
+    const sync = () => {
+      const want = new Set<AlgoNeed>();
+      for (const i of indicators.list()) if (i.visible) for (const n of getIndicatorDef(i.id)?.algo ?? []) want.add(n);
+      const needs = engine.algo.needs;
+      let changed = false;
+      for (const n of Array.from(needs)) if (!want.has(n)) (needs.delete(n), (changed = true));
+      for (const n of want) if (!needs.has(n)) (needs.add(n), (changed = true));
+      if (changed) algoClientRef.current?.kick(150);
+    };
+    sync();
+    return indicators.subscribe(sync);
+  }, [engineReady, indicators, source, ticker, prefs.interval]);
 
   /* the footprint needs wide bars: zoom in once when it is picked */
   useEffect(() => {
@@ -1191,6 +1234,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
+              </div>
+            )}
+            {candlesDelayed && !loading && !empty && (
+              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>
+                {t("ap.delayed")}
               </div>
             )}
             {!loading && empty && (

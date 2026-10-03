@@ -235,6 +235,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
         getPrecision: () => (this.engine ? this.engine.getPrecision() : 2),
         getIntervalMs: () => (this.engine ? this.engine.getIntervalMs() : 0),
         getFlow: () => (this.engine ? this.engine.flow : null),
+        getAlgo: () => (this.engine ? this.engine.algo : null),
       },
       st,
     );

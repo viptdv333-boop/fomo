@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { aggregateBars } from "@/lib/orderflow/aggregate";
 import { prepareBybit, bybitSupported } from "@/lib/orderflow/bybit";
 import { prepareMoex } from "@/lib/orderflow/moex";
+import { algopackEnabled } from "@/lib/algopack";
+import { getAlgopackAccess } from "@/lib/algopack-access";
 
 /* Order flow (footprint) data: for a list of bars, the traded volume per price level split into bid (market sells) and
    ask (market buys). POST { source, ticker, starts: number[] (real UTC ms, ascending), end: number, tick?: number }.
@@ -49,6 +51,9 @@ export async function POST(req: NextRequest) {
   }
   for (let i = 1; i < starts.length; i++) if (starts[i] <= starts[i - 1]) return NextResponse.json({ error: "starts must ascend" }, { status: 400 });
   const noStore = { headers: { "Cache-Control": "no-store" } };
+  // online trades from ALGOPACK for entitled requesters only (admins, or ALGOPACK_PUBLIC=1): checked on the server, per request
+  const privileged = source === "moex" && algopackEnabled() && (await getAlgopackAccess()).allowed;
+  const answerHeaders = privileged ? { "Cache-Control": "private, no-store", Vary: "Cookie" } : noStore.headers;
   const unsupported = NextResponse.json({ supported: false, bars: [], tick: 0, nativeTick: 0, cov: [], pending: false, live: false }, noStore);
 
   try {
@@ -57,7 +62,7 @@ export async function POST(req: NextRequest) {
       if (!bybitSupported(ticker)) return unsupported;
       prep = await prepareBybit(ticker, starts[0], end);
     } else if (source === "moex") {
-      prep = await prepareMoex(ticker, starts[0], end);
+      prep = await prepareMoex(ticker, starts[0], end, { privileged });
     } else return unsupported;
     if (!prep) return unsupported;
 
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
     const bars = wantLevels ? aggregateBars(prep.source, starts, end, native, k, prep.bounds) : [];
     return NextResponse.json(
       { supported: true, bars, tick: +(native * k).toFixed(10), nativeTick: native, cov: prep.cov, pending: prep.pending, live: prep.live, delayed: !!prep.delayed, now: Date.now(), ...(wantBig && prep.big ? { big: prep.big(starts[0], end, 300).map((x) => [x.t, x.p, x.v, x.b]) } : {}) },
-      noStore,
+      { headers: answerHeaders },
     );
   } catch (e) {
     return NextResponse.json({ error: "internal", message: String((e as Error)?.message ?? e) }, { status: 500 });

@@ -6,6 +6,7 @@ import { getTinkoffFeed } from "./tinkoff";
 import { BigBook } from "./big";
 import { frontSecid } from "../moex-contracts";
 import { issSecurityPath, resolveMoex } from "../moex-resolve";
+import { algopackEnabled, apBlocked, apGet } from "../algopack";
 
 /* MOEX (shares on TQBR and FORTS futures) trades from ISS.
    `trades.json` carries BUYSELL (the initiator side) for every trade, but only for the CURRENT session and at most 5000
@@ -33,6 +34,8 @@ interface Resolved {
   /** instrument id and Tinkoff class code for the real-time feed */
   secid: string;
   cls: string;
+  /** read through the authenticated ALGOPACK gateway (privileged requester) */
+  ap?: boolean;
 }
 
 interface MoexState {
@@ -56,7 +59,12 @@ async function limited<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-async function getJson(url: string): Promise<any | null> {
+async function getJson(url: string, ap = false): Promise<any | null> {
+  if (ap) {
+    // online trades from the gateway: no cache (every poll wants the newest rows), coalesced and cooled down by algopack.ts
+    const r = await apGet(url, undefined, { family: "trades", timeoutMs: 25_000, quoteBigInts: true });
+    return r.ok ? r.data : null;
+  }
   return limited(async () => {
     try {
       const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(25_000) });
@@ -89,8 +97,9 @@ async function activeContract(base: string): Promise<string | null> {
   return c;
 }
 
-async function resolve(ticker: string): Promise<Resolved | null> {
-  const hit = state.resolved.get(ticker);
+async function resolve(ticker: string, ap = false): Promise<Resolved | null> {
+  const ck = ap ? `ap:${ticker}` : ticker;
+  const hit = state.resolved.get(ck);
   if (hit && Date.now() - hit.at < 30 * 60_000) return hit.r;
   let r: Resolved | null = null;
   // an exact contract (MXZ6, IMOEXF), a generic futures ticker (front contract) or any other id on its primary board (ISS)
@@ -111,7 +120,9 @@ async function resolve(ticker: string): Promise<Resolved | null> {
       if (fu?.securities?.data?.length) r = { key: `fu:${contract}`, url: `${ISS}/engines/futures/markets/forts/securities/${contract}/trades.json`, secid: contract, cls: "SPBFUT" };
     }
   }
-  state.resolved.set(ticker, { r, at: Date.now() });
+  // the gateway serves the same routes: the privileged copy differs only in the key and the transport
+  if (ap && r) r = { ...r, key: `ap:${r.key}`, ap: true };
+  state.resolved.set(ck, { r, at: Date.now() });
   return r;
 }
 
@@ -138,7 +149,7 @@ class Collector {
   }
 
   private async page(start: number, limit: number): Promise<Row[] | null> {
-    const data = await getJson(`${this.r.url}?iss.meta=off&iss.only=trades&reversed=1&limit=${limit}&start=${start}&trades.columns=${COLS}`);
+    const data = await getJson(`${this.r.url}?iss.meta=off&iss.only=trades&reversed=1&limit=${limit}&start=${start}&trades.columns=${COLS}`, this.r.ap);
     const rows: any[][] | undefined = data?.trades?.data;
     if (!rows) return null;
     const out: Row[] = [];
@@ -301,7 +312,33 @@ function getCollector(r: Resolved): Collector {
   return c;
 }
 
-export async function prepareMoex(ticker: string, fromMs: number, _toMs: number): Promise<PrepareResult | null> {
+/** Online trades of a privileged requester from the ALGOPACK gateway; null = not available (the caller falls back to the public feed). */
+async function prepareAlgopack(ticker: string, fromMs: number): Promise<PrepareResult | null> {
+  if (!algopackEnabled() || apBlocked("trades")) return null;
+  const r = await resolve(ticker, true);
+  if (!r) return null;
+  const c = getCollector(r);
+  await Promise.race([c.ready, new Promise((res) => setTimeout(res, 7000))]);
+  // not up yet, or the gateway refused: let the public path serve this request
+  if (c.broken || !isFinite(c.book.maxMinute)) return null;
+  const now = Date.now();
+  const cov = mergeCov(c.coverage(now));
+  const covFrom = cov.length ? cov[0][0] : Infinity;
+  const source: FlowSource = {
+    minute(minute, cb) {
+      if (!c.book.has(minute)) return false;
+      c.book.each(minute, cb);
+      return true;
+    },
+  };
+  return { source, big: (from, to, limit) => c.big.range(from, to, limit), nativeTick: c.tick, cov, pending: !c.done && fromMs < covFrom, live: true, delayed: false, bounds: [c.book.minMinute, Math.floor(now / 60_000)] };
+}
+
+export async function prepareMoex(ticker: string, fromMs: number, _toMs: number, opts?: { privileged?: boolean }): Promise<PrepareResult | null> {
+  if (opts?.privileged) {
+    const online = await prepareAlgopack(ticker, fromMs);
+    if (online) return online;
+  }
   const r = await resolve(ticker);
   if (!r) return null;
   const c = getCollector(r);
