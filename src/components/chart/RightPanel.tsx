@@ -321,13 +321,15 @@ function AddTicker({
   existing,
   onAdd,
   onClose,
+  initialQuery = "",
 }: {
   existing: TerminalInstrument[];
   onAdd: (i: TerminalInstrument) => void;
   onClose: () => void;
+  initialQuery?: string;
 }) {
   const { t } = useT();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [results, setResults] = useState<TerminalInstrument[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<GroupTab>("all");
@@ -514,14 +516,21 @@ function Watchlist({
     };
   }, [moexIds, locale]);
 
-  const needle = filter.trim().toLowerCase();
+  const norm = (x: string) => x.toLowerCase().replace(/ё/g, "е");
+  const needle = norm(filter.trim());
   const shown = useMemo(
     () =>
       items.filter(
-        (i) => !needle || i.ticker.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle) || instName(i, t).toLowerCase().includes(needle)
+        (i) =>
+          !needle ||
+          norm(i.ticker).includes(needle) ||
+          norm(i.dataTicker).includes(needle) ||
+          norm(i.name).includes(needle) ||
+          norm(instName(i, t)).includes(needle)
       ),
     [items, needle, t]
   );
+  const [addSeed, setAddSeed] = useState("");
 
   const headCls = "text-[11px] font-medium text-gray-500 dark:text-gray-400";
   return (
@@ -542,7 +551,10 @@ function Watchlist({
             />
           </div>
           <button
-            onClick={() => setAdding((v) => !v)}
+            onClick={() => {
+              setAddSeed("");
+              setAdding((v) => !v);
+            }}
             title={t("shell.watch.add")}
             aria-label={t("shell.watch.add")}
             className={`w-7 h-7 shrink-0 flex items-center justify-center rounded border cursor-pointer ${
@@ -556,9 +568,11 @@ function Watchlist({
         </div>
         {adding && (
           <AddTicker
+            key={addSeed}
             existing={items}
             onAdd={(i) => onAdd(i)}
             onClose={() => setAdding(false)}
+            initialQuery={addSeed}
           />
         )}
       </div>
@@ -584,7 +598,20 @@ function Watchlist({
             </button>
           </div>
         )}
-        {items.length > 0 && shown.length === 0 && <div className="px-3 py-6 text-center text-xs text-gray-400">{t("shell.watch.empty")}</div>}
+        {items.length > 0 && shown.length === 0 && (
+          <div className="px-3 py-6 text-center text-xs text-gray-400">
+            <div>{t("shell.watch.empty")}</div>
+            <button
+              onClick={() => {
+                setAddSeed(filter.trim());
+                setAdding(true);
+              }}
+              className="mt-3 inline-flex items-center gap-1 px-3 h-7 rounded bg-green-600 text-white text-xs font-medium hover:bg-green-700 cursor-pointer"
+            >
+              {t("shell.watch.searchExchange", { q: filter.trim() })}
+            </button>
+          </div>
+        )}
         {shown.map((inst) => (
           <WatchRow
             key={qKey(inst)}
