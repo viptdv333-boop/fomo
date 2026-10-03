@@ -21,7 +21,7 @@ export interface BatchQuote {
 }
 
 export interface QuoteRequest {
-  source: "moex" | "bybit";
+  source: "moex" | "bybit" | "fmp";
   ticker: string;
 }
 
@@ -250,22 +250,51 @@ async function loadBybit(): Promise<Map<string, BatchQuote>> {
 /* ── public entry ── */
 
 const cache = new Map<string, { at: number; q: BatchQuote | null }>();
+
+/* FMP (US stocks, spot commodities): one request per symbol, cached longer than the exchange feeds */
+const FMP_TTL_MS = 15_000;
+const FMP_KEY = process.env.FMP_API_KEY || "";
+
+async function fetchFmpOne(ticker: string): Promise<BatchQuote | null> {
+  if (!FMP_KEY) return null;
+  try {
+    const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(ticker)}&apikey=${FMP_KEY}`, { cache: "no-store" });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const it = Array.isArray(data) ? data[0] : data;
+    if (!it || !it.price) return null;
+    return {
+      price: it.price,
+      change: it.change || 0,
+      changePercent: it.changePercentage ?? it.changesPercentage ?? 0,
+      volume: it.volume || 0,
+      time: it.timestamp ? new Date(it.timestamp * 1000).toISOString() : new Date().toISOString(),
+      open: it.open || undefined,
+      high: it.dayHigh || undefined,
+      low: it.dayLow || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
 let moexInflight: { key: string; p: Promise<Map<string, BatchQuote>> } | null = null;
 
 export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<string, BatchQuote>> {
   const out: Record<string, BatchQuote> = {};
   const now = Date.now();
   const staleMoex: string[] = [];
+  const staleFmp: string[] = [];
   let needBybit = false;
 
   for (const it of items) {
     const key = `${it.source}:${it.ticker}`;
     const hit = cache.get(key);
-    if (hit && now - hit.at < QUOTE_TTL_MS) {
+    if (hit && now - hit.at < (it.source === "fmp" ? FMP_TTL_MS : QUOTE_TTL_MS)) {
       if (hit.q) out[key] = hit.q;
       continue;
     }
     if (it.source === "moex") staleMoex.push(it.ticker);
+    else if (it.source === "fmp") staleFmp.push(it.ticker);
     else needBybit = true;
   }
 
@@ -292,6 +321,23 @@ export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<stri
           cache.set(`moex:${ticker}`, { at, q: keep });
           if (keep) out[`moex:${ticker}`] = keep;
         }
+      })()
+    );
+  }
+
+  if (staleFmp.length) {
+    jobs.push(
+      (async () => {
+        const list = [...new Set(staleFmp)].slice(0, 30);
+        const res = await Promise.all(list.map((t) => fetchFmpOne(t)));
+        const at = Date.now();
+        list.forEach((t, i) => {
+          const key = `fmp:${t}`;
+          const prev = cache.get(key);
+          const keep = res[i] ?? (prev?.q && at - prev.at < 5 * 60_000 ? prev.q : null);
+          cache.set(key, { at, q: keep });
+          if (keep) out[key] = keep;
+        });
       })()
     );
   }
