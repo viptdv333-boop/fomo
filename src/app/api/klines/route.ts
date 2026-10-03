@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fmpSymbol } from "@/lib/fmp-alias";
 import { cleanCandle } from "@/lib/chart/candles";
+import { frontSecid } from "@/lib/moex-contracts";
+import { issSecurityPath, resolveMoex, type MoexSecurity } from "@/lib/moex-resolve";
+import { parseBybitTicker } from "@/lib/bybit-symbol";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -118,6 +121,9 @@ async function fetchIssCandlesPage(
 
 // Find nearest active futures contract for a base ticker
 async function findActiveContract(baseTicker: string): Promise<string | null> {
+  // classified FORTS list (any generic ticker, "<ASSET>.F"); the prefix scan below stays as the fallback
+  const front = await frontSecid(baseTicker);
+  if (front) return front;
   const prefix = FUTURES_PREFIX[baseTicker];
   if (!prefix) return null;
 
@@ -247,6 +253,8 @@ function synthDaysNeeded(limit: number, nativeIntervalMinutes: number, bucketMs:
 interface MoexResult {
   candles: any[];
   resolvedTicker: string;
+  /** what the ticker turned out to be (board, group, % unit for bonds) */
+  sec?: MoexSecurity;
 }
 
 async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs?: number): Promise<MoexResult> {
@@ -267,6 +275,21 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
     let candles = filterAndDedupe(rawRows, toMs);
     if (synth) candles = aggregateCandles(candles, synth.bucketMs);
     return candles.slice(-limit);
+  }
+
+  // 0. Resolve the id: an exact futures contract (MXZ6, IMOEXF), a generic futures ticker (-> front contract) or any other
+  // instrument on its primary board (TQBR / TQOB / TQCB / TQTF / TQBD / CETS ...). The fixed board list below is the fallback.
+  const sec = await resolveMoex(ticker);
+  if (sec) {
+    try {
+      const rows = await fetchIssCandlesPage(`${issSecurityPath(sec)}/candles.json`, moexInterval, from, till);
+      if (rows.length > 0) {
+        const candles = finalize(rows);
+        if (candles.length > 0) return { candles, resolvedTicker: sec.secid, sec };
+      }
+    } catch {
+      // fall through to the fixed board list
+    }
   }
 
   // 1. Try all standard boards with the exact ticker
@@ -353,6 +376,8 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
   const BYBIT_INTERVALS: Record<string, string> = {
     "1": "1", "5": "5", "15": "15", "60": "60", "240": "240", "D": "D", "W": "W", "M": "M",
   };
+  // spot unless the ticker carries a category (BTCUSDT.P linear perpetual, BTC-26DEC25 dated future, ...: see bybit-symbol.ts)
+  const bb = parseBybitTicker(ticker);
   try {
     const bybitInterval = BYBIT_INTERVALS[interval] || "D";
     const PAGE = 200; // Bybit max per request
@@ -361,7 +386,7 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
     let endTime: number | undefined = toMs;
 
     for (let i = 0; i < pages; i++) {
-      let url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${PAGE}`;
+      let url = `https://api.bybit.com/v5/market/kline?category=${bb.category}&symbol=${encodeURIComponent(bb.symbol)}&interval=${bybitInterval}&limit=${PAGE}`;
       if (endTime) url += `&end=${endTime}`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) break;
@@ -407,11 +432,13 @@ export async function GET(request: NextRequest) {
 
   let candles: any[] = [];
   let resolvedTicker = ticker;
+  let sec: MoexSecurity | undefined;
 
   if (source === "moex") {
     const result = await fetchMoexCandles(ticker, interval, limit, toMs);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
+    sec = result.sec;
   } else if (source === "fmp") {
     candles = await fetchFmpCandles(ticker, interval, limit, toMs);
   } else if (source === "bybit") {
@@ -434,6 +461,8 @@ export async function GET(request: NextRequest) {
       // MOEX candle times are Moscow wall-clock strings parsed in the server's zone; the chart
       // needs that zone's offset (minutes east of UTC) to show them as the exchange's time.
       serverTzOffsetMin: -new Date().getTimezoneOffset(),
+      // instrument facts for the legend / price axis (bonds quote in % of par)
+      ...(sec ? { group: sec.group, board: sec.board, unit: sec.unit, auto: sec.auto } : {}),
       candles,
     },
     { headers }

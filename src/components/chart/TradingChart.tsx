@@ -1146,6 +1146,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         chartType={prefs.chartType}
         onChartType={(c) => update({ chartType: c })}
         onOpenSearch={() => setSearchOpen(true)}
+        onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
         onOpenAlerts={() => openAlerts(null)}
         alertCount={alertsApi.activeCount}

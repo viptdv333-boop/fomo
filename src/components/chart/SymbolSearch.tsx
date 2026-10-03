@@ -12,6 +12,10 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 import { InstIcon } from "./RightPanel";
+import { ContractSubRows, ExpandButton, GroupTabs, pickMarketItem, useMarketSearch, type GroupTab } from "./MarketRows";
+import { ContractBadge } from "./ContractPicker";
+import { autoToAsset, getLastContract, lookupSecid, itemToInstrument } from "@/lib/market-client";
+import type { MarketItem } from "@/lib/market-types";
 
 interface Props {
   open: boolean;
@@ -24,14 +28,21 @@ interface Row {
   inst: TerminalInstrument;
   group: string;
   custom?: boolean;
+  /** result of the exchange search */
+  item?: MarketItem;
+  /** futures underlying whose contracts can be expanded under the row (auto ticker) */
+  expand?: string;
 }
 
 export default function SymbolSearch({ open, onClose, onPick, current }: Props) {
   const { t } = useT();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
+  const [tab, setTab] = useState<GroupTab>("all");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const market = useMarketSearch(q, tab, open);
 
   useEffect(() => {
     if (open) {
@@ -44,27 +55,46 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
   const rows = useMemo<Row[]>(() => {
     const needle = q.trim().toLowerCase();
     const out: Row[] = [];
+    const seen = new Set<string>();
     for (const cat of TERMINAL_DATA) {
       const group = t(CATEGORY_I18N[cat.name] || cat.name);
+      const shares = cat.name === "Акции ММВБ";
       for (const inst of cat.instruments) {
+        // tabs: shares -> Акции, the other MOEX entries are futures, crypto only in "Все"
+        if (tab !== "all" && !(inst.source === "moex" && (tab === "stock" ? shares : tab === "future" ? !shares : false))) continue;
         if (
           !needle ||
           inst.ticker.toLowerCase().includes(needle) ||
           inst.name.toLowerCase().includes(needle) ||
           instName(inst, t).toLowerCase().includes(needle)
         ) {
-          out.push({ inst, group });
+          out.push({ inst, group, expand: inst.source === "moex" && !shares ? inst.dataTicker : undefined });
+          seen.add(`${inst.source}:${inst.dataTicker}`);
         }
       }
     }
+    // the exchange search: shares of all boards, bonds, funds, currency, futures with their contracts
+    let marketHits = 0;
+    for (const item of market.items) {
+      const key = `moex:${item.secid}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      marketHits++;
+      out.push({
+        inst: itemToInstrument(item, ""),
+        group: t(`ms.group.${item.group === "other" ? "stock" : item.group}`),
+        item,
+        expand: item.group === "future" && item.auto && (item.contracts ?? 0) > 1 ? item.secid : undefined,
+      });
+    }
     // Any other ticker can be opened directly on either exchange.
     const raw = q.trim();
-    if (/^[A-Za-z0-9_.-]{2,20}$/.test(raw) && !ALL_INSTRUMENTS.some((i) => i.ticker.toLowerCase() === raw.toLowerCase())) {
-      out.push({ inst: adHocInstrument("moex", raw), group: "MOEX", custom: true });
+    if (/^[A-Za-z0-9_.-]{2,24}$/.test(raw) && !ALL_INSTRUMENTS.some((i) => i.ticker.toLowerCase() === raw.toLowerCase()) && tab === "all") {
+      if (!marketHits && !market.loading) out.push({ inst: adHocInstrument("moex", raw), group: "MOEX", custom: true });
       out.push({ inst: adHocInstrument("bybit", raw.toUpperCase()), group: "Bybit", custom: true });
     }
     return out;
-  }, [q, t]);
+  }, [q, t, tab, market.items, market.loading]);
 
   useEffect(() => setIdx(0), [q]);
   useEffect(() => {
@@ -74,9 +104,16 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
 
   if (!open) return null;
 
-  const pick = (r: Row | undefined) => {
+  const pick = async (r: Row | undefined) => {
     if (!r) return;
-    onPick(r.inst);
+    if (r.item) {
+      onPick(await pickMarketItem(r.item, ALL_INSTRUMENTS));
+    } else if (r.expand && !r.custom) {
+      // a curated futures entry: reopen the contract the user chose last time (still listed), else the auto front month
+      const last = getLastContract(autoToAsset(r.expand));
+      const found = last ? await lookupSecid(last) : null;
+      onPick(found && !(found.daysLeft != null && found.daysLeft < 0) ? itemToInstrument(found, r.inst.emoji) : r.inst);
+    } else onPick(r.inst);
     onClose();
   };
 
@@ -126,13 +163,19 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
           </button>
         </div>
 
+        <GroupTabs value={tab} onChange={setTab} className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-800 shrink-0" />
+
         <div ref={listRef} className="flex-1 overflow-y-auto py-1">
-          {rows.length === 0 && <div className="px-4 py-8 text-center text-sm text-gray-400">{t("shell.symbol.empty")}</div>}
+          {rows.length === 0 && !market.loading && <div className="px-4 py-8 text-center text-sm text-gray-400">{t("shell.symbol.empty")}</div>}
+          {market.loading && <div className="px-4 pt-2 text-[11px] text-gray-400">{t("ms.searching")}</div>}
           {rows.map((r, i) => {
             const head = r.group !== lastGroup;
             lastGroup = r.group;
             const active = i === idx;
             const isCurrent = current && current.source === r.inst.source && current.ticker === r.inst.dataTicker;
+            const isOpen = !!(r.expand && expanded[r.expand]);
+            const it = r.item;
+            const badgeText = it && it.kind === "perpetual" ? t("ms.perpetual") : it && it.order === 1 ? t("ct.b.current") : it && it.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: it?.order ?? 0 });
             return (
               <div key={`${r.inst.source}:${r.inst.dataTicker}:${i}`}>
                 {head && (
@@ -141,7 +184,7 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
                 <button
                   data-i={i}
                   onMouseMove={() => setIdx(i)}
-                  onClick={() => pick(r)}
+                  onClick={() => void pick(r)}
                   className={`w-full flex items-center gap-3 px-3 h-10 text-left ${active ? "bg-gray-100 dark:bg-gray-800" : ""}`}
                 >
                   <InstIcon inst={r.inst} size={24} />
@@ -151,10 +194,31 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
                   <span className="flex-1 min-w-0 truncate text-xs text-gray-500 dark:text-gray-400">
                     {r.custom
                       ? t(r.inst.source === "moex" ? "shell.symbol.openMoex" : "shell.symbol.openBybit", { ticker: r.inst.ticker })
-                      : instName(r.inst, t)}
+                      : it
+                        ? it.name
+                        : instName(r.inst, t)}
                   </span>
+                  {it?.group === "future" && !it.auto && it.kind && <ContractBadge c={{ kind: it.kind, order: it.order ?? 0, badge: badgeText }} />}
+                  {it?.group === "future" && it.auto && (it.contracts ?? 0) > 1 && (
+                    <span className="text-[10px] text-gray-400 shrink-0">{t("ct.contracts", { n: it.contracts ?? 0 })}</span>
+                  )}
+                  {it?.unit === "%" && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 shrink-0">%</span>}
                   <span className="text-[11px] text-gray-400 shrink-0">{exchangeLabel(r.inst.source)}</span>
+                  {r.expand && <ExpandButton open={isOpen} onToggle={() => setExpanded((e) => ({ ...e, [r.expand as string]: !e[r.expand as string] }))} />}
                 </button>
+                {isOpen && r.expand && (
+                  <ContractSubRows
+                    asset={r.expand}
+                    base={r.inst}
+                    autoTicker={r.expand}
+                    autoName={it ? it.name : r.inst.name}
+                    mark={(tk) => !!current && current.source === "moex" && current.ticker === tk}
+                    onPick={(inst) => {
+                      onPick(inst);
+                      onClose();
+                    }}
+                  />
+                )}
               </div>
             );
           })}

@@ -9,9 +9,11 @@ import {
   adHocInstrument,
   findInstrument,
   instName,
+  rememberInstrument,
   type ChartSource,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
+import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -33,7 +35,7 @@ function instrumentFromUrl(): TerminalInstrument {
   // no source given: take the curated instrument with that ticker, or guess Bybit for USDT pairs
   const known = ALL_INSTRUMENTS.find((i) => i.ticker.toLowerCase() === symbol.toLowerCase());
   if (known) return known;
-  return adHocInstrument(/USDT$|USDC$/i.test(symbol) ? "bybit" : "moex", symbol);
+  return adHocInstrument(/USDT$|USDC$|\.[PI]$|-\d{1,2}[A-Z]{3}\d{2}$/i.test(symbol) ? "bybit" : "moex", symbol);
 }
 
 export default function TerminalPage() {
@@ -43,10 +45,29 @@ export default function TerminalPage() {
 
   // the symbol comes from the URL, so a shared link opens the same chart
   useEffect(() => {
-    setSelected(instrumentFromUrl());
+    let cancelled = false;
+    const inst = instrumentFromUrl();
+    (async () => {
+      // an id outside the curated list (an exact futures contract MXZ6, IMOEXF, a bond, a fund ...): ask the exchange search for
+      // its proper name / group / unit once, before the chart loads (never longer than 2.5 s)
+      if (inst.source === "moex" && !inst.emoji && !findInstrument("moex", inst.dataTicker)) {
+        const item = await Promise.race([lookupSecid(inst.dataTicker), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
+        if (item && !cancelled) {
+          const parent = item.asset ? ALL_INSTRUMENTS.find((i) => i.source === "moex" && i.group === undefined && (i.dataTicker === item.asset || autoToAsset(i.dataTicker) === item.asset)) : undefined;
+          const found = itemToInstrument(item, parent?.emoji ?? "");
+          if (!cancelled) setSelected(found);
+          return;
+        }
+      }
+      if (!cancelled) setSelected(inst);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const onSelectSymbol = useCallback((inst: TerminalInstrument) => {
+    rememberInstrument(inst);
     setSelected(inst);
     try {
       const url = new URL(window.location.href);

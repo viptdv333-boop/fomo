@@ -1,5 +1,7 @@
 /* Terminal instrument list (hardcoded, not from DB) and helpers shared by the terminal page and the chart shell. */
 
+import type { MarketGroup } from "./market-types";
+
 export type ChartSource = "moex" | "fmp" | "bybit" | "none";
 
 export interface TerminalInstrument {
@@ -9,6 +11,10 @@ export interface TerminalInstrument {
   dataTicker: string;
   /** Icon path (kept under its historical field name). Empty for ad-hoc symbols. */
   emoji: string;
+  /** Market group of a symbol found through the exchange search (absent for the curated list) */
+  group?: MarketGroup;
+  /** Price unit when it is not money: bonds quote in % of par */
+  unit?: "%";
 }
 
 export interface TerminalCategory {
@@ -125,8 +131,21 @@ export const TERMINAL_DATA: TerminalCategory[] = [
 
 export const ALL_INSTRUMENTS: TerminalInstrument[] = TERMINAL_DATA.flatMap((c) => c.instruments);
 
+/** Instruments met at runtime (found through the exchange search, a contract picked in the toolbar, a saved watchlist row, a URL). */
+const RUNTIME = new Map<string, TerminalInstrument>();
+
+/** Remembers an instrument that is not in the curated list, so findInstrument() returns its proper ticker, name and icon. */
+export function rememberInstrument(inst: TerminalInstrument): void {
+  if (!inst.dataTicker) return;
+  if (RUNTIME.size > 2000) RUNTIME.clear();
+  RUNTIME.set(`${inst.source}:${inst.dataTicker.toLowerCase()}`, inst);
+}
+
 export function findInstrument(source: string, ticker: string): TerminalInstrument | undefined {
-  return ALL_INSTRUMENTS.find((i) => i.source === source && i.dataTicker.toLowerCase() === ticker.toLowerCase());
+  return (
+    ALL_INSTRUMENTS.find((i) => i.source === source && i.dataTicker.toLowerCase() === ticker.toLowerCase()) ??
+    RUNTIME.get(`${source}:${ticker.toLowerCase()}`)
+  );
 }
 
 export function categoryOf(inst: { source: string; dataTicker: string }): TerminalCategory | undefined {

@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { frontSecid } from "./moex-contracts";
+import { issQuote, resolveMoex, type MoexSecurity } from "./moex-resolve";
+import { parseBybitTicker, type BybitCategory } from "./bybit-symbol";
 import { fmpSymbol } from "@/lib/fmp-alias";
 
 /**
@@ -102,6 +105,8 @@ async function loadFuturesList(): Promise<[string, string][]> {
 }
 
 async function findActiveContract(base: string): Promise<string | null> {
+  const front = await frontSecid(base);
+  if (front) return front;
   const prefix = FUTURES_PREFIX[base];
   if (!prefix) return null;
   const cached = contractCache.get(base);
@@ -162,21 +167,46 @@ async function fetchMoex(tickers: string[]): Promise<Map<string, BatchQuote>> {
 
   // ticker -> uid
   const uidByTicker = new Map<string, string>();
+  const secByTicker = new Map<string, MoexSecurity>();
   await Promise.all(
     tickers.map(async (ticker) => {
       let resolved = ticker;
       let classCode = "SPBFUT";
       if (shares.has(ticker)) classCode = "TQBR";
-      else if (FUTURES_PREFIX[ticker]) {
-        const contract = await findActiveContract(ticker);
-        if (!contract) return;
-        resolved = contract;
+      else {
+        // any MOEX id: exact futures contract / perpetual as is, generic futures ticker -> front contract, everything else
+        // (shares of any board, bonds, funds, currency) on its primary board from ISS
+        const sec = await resolveMoex(ticker);
+        if (sec) {
+          secByTicker.set(ticker, sec);
+          resolved = sec.secid;
+          classCode = sec.classCode;
+        } else if (FUTURES_PREFIX[ticker]) {
+          const contract = await findActiveContract(ticker);
+          if (!contract) return;
+          resolved = contract;
+        }
       }
       const uid = await resolveUid(resolved, classCode);
       if (uid) uidByTicker.set(ticker, uid);
     })
   );
-  if (uidByTicker.size === 0) return out;
+  if (uidByTicker.size > 0) await fillFromTinkoff(out, uidByTicker);
+
+  // Instruments Tinkoff did not answer for (no token, an id it does not list): ISS marketdata, 15 minutes delayed
+  const missing = [...secByTicker.entries()].filter(([t]) => !out.has(t));
+  for (let i = 0; i < missing.length; i += 6) {
+    await Promise.all(
+      missing.slice(i, i + 6).map(async ([ticker, sec]) => {
+        const q = await issQuote(sec);
+        if (q) out.set(ticker, { price: q.price, change: q.change, changePercent: q.changePercent, volume: q.volume, time: q.time, open: q.open, high: q.high, low: q.low });
+      })
+    );
+  }
+  return out;
+}
+
+async function fillFromTinkoff(out: Map<string, BatchQuote>, uidByTicker: Map<string, string>): Promise<void> {
 
   const uids = [...new Set(uidByTicker.values())];
   const [prices] = await Promise.all([
@@ -203,21 +233,22 @@ async function fetchMoex(tickers: string[]): Promise<Map<string, BatchQuote>> {
       open: prev > 0 ? prev : undefined,
     });
   }
-  return out;
 }
 
-/* ── Bybit: the whole spot board in one request ── */
+/* ── Bybit: one tickers request per category covers every pair ── */
 
-let bybitAll: { at: number; map: Map<string, BatchQuote> } | null = null;
-let bybitInflight: Promise<Map<string, BatchQuote>> | null = null;
+const bybitAll: Partial<Record<BybitCategory, { at: number; map: Map<string, BatchQuote> }>> = {};
+const bybitInflight: Partial<Record<BybitCategory, Promise<Map<string, BatchQuote>>>> = {};
 
-async function loadBybit(): Promise<Map<string, BatchQuote>> {
-  if (bybitAll && Date.now() - bybitAll.at < QUOTE_TTL_MS) return bybitAll.map;
-  if (bybitInflight) return bybitInflight;
-  bybitInflight = (async () => {
+async function loadBybit(category: BybitCategory = "spot"): Promise<Map<string, BatchQuote>> {
+  const cached = bybitAll[category];
+  if (cached && Date.now() - cached.at < QUOTE_TTL_MS) return cached.map;
+  const running = bybitInflight[category];
+  if (running) return running;
+  const p = (async () => {
     try {
-      const res = await fetch("https://api.bybit.com/v5/market/tickers?category=spot", { cache: "no-store" });
-      if (!res.ok) return bybitAll?.map ?? new Map();
+      const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=${category}`, { cache: "no-store" });
+      if (!res.ok) return bybitAll[category]?.map ?? new Map();
       const data = await res.json();
       const map = new Map<string, BatchQuote>();
       const time = new Date().toISOString();
@@ -237,15 +268,16 @@ async function loadBybit(): Promise<Map<string, BatchQuote>> {
           low: parseFloat(it.lowPrice24h || "0") || undefined,
         });
       }
-      bybitAll = { at: Date.now(), map };
+      bybitAll[category] = { at: Date.now(), map };
       return map;
     } catch {
-      return bybitAll?.map ?? new Map();
+      return bybitAll[category]?.map ?? new Map();
     } finally {
-      bybitInflight = null;
+      delete bybitInflight[category];
     }
   })();
-  return bybitInflight;
+  bybitInflight[category] = p;
+  return p;
 }
 
 /* ── public entry ── */
@@ -346,14 +378,18 @@ export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<stri
   if (needBybit) {
     jobs.push(
       (async () => {
-        const map = await loadBybit();
+        // BTCUSDT is spot, BTCUSDT.P / BTC-26DEC25 linear, BTCUSD.I inverse: one tickers request per category in use
+        const cats = [...new Set(items.filter((i) => i.source === "bybit").map((i) => parseBybitTicker(i.ticker).category))];
+        const maps = new Map<BybitCategory, Map<string, BatchQuote>>();
+        await Promise.all(cats.map(async (c) => maps.set(c, await loadBybit(c))));
         const at = Date.now();
         for (const it of items) {
           if (it.source !== "bybit") continue;
           const key = `bybit:${it.ticker}`;
           const hit = cache.get(key);
           if (hit && at - hit.at < QUOTE_TTL_MS) continue; // already answered from cache above
-          const q = map.get(it.ticker) ?? null;
+          const bb = parseBybitTicker(it.ticker);
+          const q = maps.get(bb.category)?.get(bb.symbol) ?? null;
           cache.set(key, { at, q });
           if (q) out[key] = q;
         }

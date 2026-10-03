@@ -4,6 +4,8 @@ import type { PrepareResult } from "./types";
 import { mergeCov } from "./bybit";
 import { getTinkoffFeed } from "./tinkoff";
 import { BigBook } from "./big";
+import { frontSecid } from "../moex-contracts";
+import { issSecurityPath, resolveMoex } from "../moex-resolve";
 
 /* MOEX (shares on TQBR and FORTS futures) trades from ISS.
    `trades.json` carries BUYSELL (the initiator side) for every trade, but only for the CURRENT session and at most 5000
@@ -28,6 +30,9 @@ const FUTURES_PREFIX: Record<string, string> = {
 interface Resolved {
   key: string;
   url: string;
+  /** instrument id and Tinkoff class code for the real-time feed */
+  secid: string;
+  cls: string;
 }
 
 interface MoexState {
@@ -66,6 +71,8 @@ async function getJson(url: string): Promise<any | null> {
 }
 
 async function activeContract(base: string): Promise<string | null> {
+  const front = await frontSecid(base);
+  if (front) return front;
   const prefix = FUTURES_PREFIX[base];
   if (!prefix) return null;
   const hit = state.contracts.get(base);
@@ -86,14 +93,22 @@ async function resolve(ticker: string): Promise<Resolved | null> {
   const hit = state.resolved.get(ticker);
   if (hit && Date.now() - hit.at < 30 * 60_000) return hit.r;
   let r: Resolved | null = null;
-  if (/^[A-Za-z0-9]{2,12}$/.test(ticker)) {
+  // an exact contract (MXZ6, IMOEXF), a generic futures ticker (front contract) or any other id on its primary board (ISS)
+  const sec = /^[A-Za-z0-9_.-]{1,24}$/.test(ticker) ? await resolveMoex(ticker) : null;
+  if (sec && sec.engine === "futures") {
+    r = { key: `fu:${sec.secid}`, url: `${issSecurityPath(sec)}/trades.json`, secid: sec.secid, cls: "SPBFUT" };
+  } else if (sec && sec.engine === "stock" && sec.market === "shares") {
+    r = { key: `sh:${sec.secid}:${sec.board}`, url: `${issSecurityPath(sec)}/trades.json`, secid: sec.secid, cls: sec.classCode };
+  } else if (sec) {
+    r = null; // bonds / currency / indices: no initiator side in ISS trades the collector could use
+  } else if (/^[A-Za-z0-9]{2,12}$/.test(ticker)) {
     const sh = await getJson(`${ISS}/engines/stock/markets/shares/boards/TQBR/securities/${ticker}.json?iss.meta=off&iss.only=securities&securities.columns=SECID`);
     if (sh?.securities?.data?.length) {
-      r = { key: `sh:${ticker}`, url: `${ISS}/engines/stock/markets/shares/boards/TQBR/securities/${ticker}/trades.json` };
+      r = { key: `sh:${ticker}`, url: `${ISS}/engines/stock/markets/shares/boards/TQBR/securities/${ticker}/trades.json`, secid: ticker, cls: "TQBR" };
     } else {
       const contract = (await activeContract(ticker)) ?? ticker;
       const fu = await getJson(`${ISS}/engines/futures/markets/forts/securities/${contract}.json?iss.meta=off&iss.only=securities&securities.columns=SECID`);
-      if (fu?.securities?.data?.length) r = { key: `fu:${contract}`, url: `${ISS}/engines/futures/markets/forts/securities/${contract}/trades.json` };
+      if (fu?.securities?.data?.length) r = { key: `fu:${contract}`, url: `${ISS}/engines/futures/markets/forts/securities/${contract}/trades.json`, secid: contract, cls: "SPBFUT" };
     }
   }
   state.resolved.set(ticker, { r, at: Date.now() });
@@ -294,7 +309,7 @@ export async function prepareMoex(ticker: string, fromMs: number, _toMs: number)
   const now = Date.now();
   // ISS trades are ~15 minutes late: the Tinkoff feed (when a token is configured) supplies the newest minutes
   const issMax = c.book.maxMinute;
-  const feed = getTinkoffFeed(r.key.slice(3), r.key.startsWith("sh:") ? "TQBR" : "SPBFUT", isFinite(issMax) ? (issMax - 3) * 60_000 : now - 3_600_000);
+  const feed = getTinkoffFeed(r.secid, r.cls, isFinite(issMax) ? (issMax - 3) * 60_000 : now - 3_600_000);
   if (feed) await Promise.race([feed.ready, new Promise((res) => setTimeout(res, 4000))]);
   const rt = !!feed && feed.ok;
   const covList = c.coverage(isFinite(issMax) ? (issMax + 1) * 60_000 : now);

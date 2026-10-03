@@ -9,6 +9,7 @@ import { InstIcon } from "./RightPanel";
 import { CHART_TYPE_ICONS, UI_ICONS } from "./icons";
 import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
 import IntervalControl from "./IntervalControl";
+import ContractPicker from "./ContractPicker";
 import ChartTypeSettings from "./ChartTypeSettings";
 import TemplatesMenu from "./TemplatesMenu";
 import type { ChartSettingsApi } from "./useChartSettings";
@@ -56,6 +57,8 @@ interface Props {
   chartType: ChartType;
   onChartType: (t: ChartType) => void;
   onOpenSearch: () => void;
+  /** Switches to another instrument (exact contract chosen in the contract chip). Without it the chip is not shown. */
+  onPickInstrument?: (inst: TerminalInstrument) => void;
   onOpenIndicators: () => void;
   indicatorCount: number;
   onOpenAlerts?: () => void;
@@ -173,6 +176,7 @@ export default function TopToolbar(p: Props) {
         <span className="hidden xl:inline text-[11px] font-normal text-gray-400 max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
         <span className="text-gray-400">{I.search}</span>
       </button>
+      {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={btn} />}
       {sep}
 
       {p.favIntervals && p.onFavIntervals ? (

@@ -30,5 +30,6 @@ import patterns2 from "./patterns2";
 import elliott from "./elliott";
 import vpro from "./vpro";
 import swings from "./swings";
+import contracts from "./contracts";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts];

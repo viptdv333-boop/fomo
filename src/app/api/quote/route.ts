@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fmpSymbol } from "@/lib/fmp-alias";
 import { prisma } from "@/lib/prisma";
+import { frontSecid } from "@/lib/moex-contracts";
+import { issQuote, resolveMoex } from "@/lib/moex-resolve";
+import { parseBybitTicker } from "@/lib/bybit-symbol";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API.
@@ -69,6 +72,8 @@ function parseQuotation(q: { units?: string; nano?: number }): number {
 }
 
 async function findActiveContract(baseTicker: string): Promise<string | null> {
+  const front = await frontSecid(baseTicker);
+  if (front) return front;
   const prefix = FUTURES_PREFIX[baseTicker];
   if (!prefix) return null;
   const cached = contractCache.get(baseTicker);
@@ -131,13 +136,21 @@ async function fetchTinkoffQuote(ticker: string): Promise<Quote | null> {
 
   if ((await getShareTickers()).has(ticker)) {
     classCode = "TQBR";
-  } else if (FUTURES_PREFIX[ticker]) {
-    const contract = await findActiveContract(ticker);
-    if (!contract) return null;
-    resolvedTicker = contract;
-    classCode = "SPBFUT";
   } else {
-    classCode = "SPBFUT";
+    // any MOEX id: generic futures ticker -> front contract, exact contract (MXZ6, IMOEXF) as is, other securities on
+    // their primary board (TQBR / TQOB / TQCB / TQTF / CETS ...)
+    const sec = await resolveMoex(ticker);
+    if (sec) {
+      resolvedTicker = sec.secid;
+      classCode = sec.classCode;
+    } else if (FUTURES_PREFIX[ticker]) {
+      const contract = await findActiveContract(ticker);
+      if (!contract) return null;
+      resolvedTicker = contract;
+      classCode = "SPBFUT";
+    } else {
+      classCode = "SPBFUT";
+    }
   }
 
   const instrumentId = `${resolvedTicker}_${classCode}`;
@@ -186,9 +199,19 @@ async function fetchTinkoffQuote(ticker: string): Promise<Quote | null> {
   }
 }
 
+/** ISS marketdata (15 min delayed) when Tinkoff does not answer: no token, or an instrument it does not list. */
+async function fetchIssFallback(ticker: string): Promise<Quote | null> {
+  const sec = await resolveMoex(ticker);
+  if (!sec) return null;
+  const q = await issQuote(sec);
+  return q ? { ...q, ticker: sec.secid } : null;
+}
+
 async function fetchBybitQuote(ticker: string): Promise<Quote | null> {
   try {
-    const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${ticker}`, { cache: "no-store" });
+    // spot unless the ticker carries a category (BTCUSDT.P, BTC-26DEC25 ...)
+    const bb = parseBybitTicker(ticker);
+    const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=${bb.category}&symbol=${encodeURIComponent(bb.symbol)}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     const item = data?.result?.list?.[0];
@@ -246,7 +269,7 @@ export async function GET(request: NextRequest) {
   let quote: Quote | null = null;
 
   if (source === "moex") {
-    quote = await fetchTinkoffQuote(ticker);
+    quote = (await fetchTinkoffQuote(ticker)) ?? (await fetchIssFallback(ticker));
   } else if (source === "bybit") {
     quote = await fetchBybitQuote(ticker);
   } else if (source === "fmp") {

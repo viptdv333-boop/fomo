@@ -21,8 +21,13 @@ import {
   fmtPrice,
   fmtSigned,
   instName,
+  rememberInstrument,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
+import { fetchContractInfo, itemToInstrument, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
+import type { MarketItem } from "@/lib/market-types";
+import { ContractBadge } from "./ContractPicker";
+import { ContractSubRows, ExpandButton, GroupTabs, useMarketSearch, iconFor, type GroupTab } from "./MarketRows";
 
 export type PanelTab = "watchlist" | "info" | "news" | "calendar" | "objects";
 
@@ -131,6 +136,7 @@ const WatchRow = memo(function WatchRow({
   removeTitle,
   locale,
   label,
+  contract,
 }: {
   inst: TerminalInstrument;
   q: Quote | undefined;
@@ -140,6 +146,8 @@ const WatchRow = memo(function WatchRow({
   removeTitle: string;
   locale: string;
   label: string;
+  /** exact futures contract: kind / order for the badge next to the ticker */
+  contract?: ContractBadgeInfo;
 }) {
   const prev = useRef<number | undefined>(undefined);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
@@ -171,7 +179,10 @@ const WatchRow = memo(function WatchRow({
         <InstIcon inst={inst} size={18} />
         <span className="min-w-0 leading-tight">
           <span className={`block text-xs font-bold truncate ${selected ? "text-green-700 dark:text-green-400" : "text-gray-900 dark:text-gray-100"}`}>{inst.ticker}</span>
-          <span className="block text-[10px] text-gray-400 dark:text-gray-500 truncate">{label}</span>
+          <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
+            {contract && <ContractBadge c={contract} />}
+            <span className="truncate">{label}</span>
+          </span>
         </span>
       </span>
       <span
@@ -214,7 +225,9 @@ function cleanWatchItems(raw: unknown): TerminalInstrument[] {
     if (seen.has(key)) continue;
     seen.add(key);
     const known = findInstrument(i.source, i.dataTicker);
-    out.push({ ticker: i.ticker, name: typeof i.name === "string" ? i.name : i.ticker, source: i.source, dataTicker: i.dataTicker, emoji: known?.emoji ?? (typeof i.emoji === "string" ? i.emoji : "") });
+    const item: TerminalInstrument = { ticker: i.ticker, name: typeof i.name === "string" ? i.name : i.ticker, source: i.source, dataTicker: i.dataTicker, emoji: known?.emoji ?? (typeof i.emoji === "string" ? i.emoji : ""), ...(i.group ? { group: i.group } : {}), ...(i.unit ? { unit: i.unit } : {}) };
+    if (!known) rememberInstrument(item);
+    out.push(item);
   }
   return out;
 }
@@ -317,8 +330,31 @@ function AddTicker({
   const [q, setQ] = useState("");
   const [results, setResults] = useState<TerminalInstrument[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<GroupTab>("all");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const market = useMarketSearch(q, tab);
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  // curated + catalogue rows (filtered by the tab) followed by the exchange search results
+  const merged = useMemo(() => {
+    if (results === null && market.items.length === 0) return null;
+    const out: { inst: TerminalInstrument; item?: MarketItem; expand?: string }[] = [];
+    const seen = new Set<string>();
+    for (const inst of results ?? []) {
+      const cat = categoryOf(inst);
+      const grp: GroupTab | null = inst.source !== "moex" ? null : cat ? (cat.name === "Акции ММВБ" ? "stock" : "future") : "stock";
+      if (tab !== "all" && grp !== tab) continue;
+      seen.add(wlKey(inst));
+      out.push({ inst, expand: inst.source === "moex" && cat && cat.name !== "Акции ММВБ" ? inst.dataTicker : undefined });
+    }
+    for (const item of market.items) {
+      if (seen.has(`moex:${item.secid}`)) continue;
+      seen.add(`moex:${item.secid}`);
+      out.push({ inst: itemToInstrument(item, iconFor(item, ALL_INSTRUMENTS)), item, expand: item.group === "future" && item.auto && (item.contracts ?? 0) > 1 ? item.secid : undefined });
+    }
+    return out;
+  }, [results, market.items, tab]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -403,26 +439,44 @@ function AddTicker({
           className="w-full h-7 px-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:border-green-600"
         />
       </div>
+      <GroupTabs value={tab} onChange={setTab} className="px-2 py-1.5 border-b border-gray-100 dark:border-gray-800" />
       <div className="max-h-64 overflow-y-auto py-1">
-        {results === null && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading ? "…" : t("shell.watch.addHint")}</div>}
-        {results !== null && results.length === 0 && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading ? "…" : t("shell.watch.noResults")}</div>}
-        {results?.map((inst) => {
+        {merged === null && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading || market.loading ? "…" : t("shell.watch.addHint")}</div>}
+        {merged !== null && merged.length === 0 && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading || market.loading ? "…" : t("shell.watch.noResults")}</div>}
+        {merged?.map(({ inst, item, expand }) => {
           const inList = existing.some((i) => wlKey(i) === wlKey(inst));
+          const isOpen = !!(expand && expanded[expand]);
           return (
-            <button
-              key={wlKey(inst)}
-              onClick={() => onAdd(inst)}
-              disabled={inList}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60 disabled:opacity-50 disabled:cursor-default cursor-pointer"
-            >
-              <InstIcon inst={inst} size={18} />
-              <span className="min-w-0 flex-1 leading-tight">
-                <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{inst.ticker}</span>
-                <span className="block text-[10px] text-gray-400 truncate">{inst.name}</span>
-              </span>
-              <span className="text-[10px] text-gray-400 shrink-0">{exchangeLabel(inst.source)}</span>
-              <span className={`text-xs shrink-0 ${inList ? "text-green-600" : "text-gray-400"}`}>{inList ? "✓" : "+"}</span>
-            </button>
+            <div key={wlKey(inst)}>
+              <button
+                onClick={() => onAdd(inst)}
+                disabled={inList}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60 disabled:opacity-50 disabled:cursor-default cursor-pointer"
+              >
+                <InstIcon inst={inst} size={18} />
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{inst.ticker}</span>
+                  <span className="block text-[10px] text-gray-400 truncate">{inst.name}</span>
+                </span>
+                {item?.group === "future" && !item.auto && item.kind && (
+                  <ContractBadge c={{ kind: item.kind, order: item.order ?? 0, badge: item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }} />
+                )}
+                {item?.group === "future" && item.auto && (item.contracts ?? 0) > 1 && <span className="text-[10px] text-gray-400 shrink-0">{t("ct.contracts", { n: item.contracts ?? 0 })}</span>}
+                <span className="text-[10px] text-gray-400 shrink-0">{exchangeLabel(inst.source)}</span>
+                {expand && <ExpandButton open={isOpen} onToggle={() => setExpanded((e) => ({ ...e, [expand]: !e[expand] }))} />}
+                <span className={`text-xs shrink-0 ${inList ? "text-green-600" : "text-gray-400"}`}>{inList ? "✓" : "+"}</span>
+              </button>
+              {isOpen && expand && (
+                <ContractSubRows
+                  asset={expand}
+                  base={inst}
+                  autoTicker={expand}
+                  autoName={item ? item.name : inst.name}
+                  mark={(tk) => existing.some((i) => i.source === "moex" && i.dataTicker === tk)}
+                  onPick={(c) => onAdd(c)}
+                />
+              )}
+            </div>
           );
         })}
       </div>
@@ -448,6 +502,17 @@ function Watchlist({
   const { t, locale } = useT();
   const [filter, setFilter] = useState("");
   const [adding, setAdding] = useState(false);
+  // badges (текущий / следующий / вечный ...) of the exact futures contracts in the list; the answer only has contracts
+  const [contractInfo, setContractInfo] = useState<Record<string, ContractBadgeInfo>>({});
+  const moexIds = useMemo(() => items.filter((i) => i.source === "moex" && i.dataTicker.length >= 3 && !ALL_INSTRUMENTS.some((c) => c.source === "moex" && c.dataTicker === i.dataTicker)).map((i) => i.dataTicker).join(","), [items]);
+  useEffect(() => {
+    if (!moexIds) return;
+    let cancelled = false;
+    fetchContractInfo(moexIds.split(","), locale).then((r) => !cancelled && setContractInfo(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [moexIds, locale]);
 
   const needle = filter.trim().toLowerCase();
   const shown = useMemo(
@@ -531,6 +596,7 @@ function Watchlist({
             removeTitle={t("shell.watch.remove")}
             locale={locale}
             label={instName(inst, t)}
+            contract={inst.source === "moex" ? contractInfo[inst.dataTicker] : undefined}
           />
         ))}
       </div>
@@ -552,20 +618,40 @@ function isMarketOpen(inst: TerminalInstrument): boolean {
   const [dow, m] = moscowNow();
   if (dow === 0 || dow === 6) return false;
   const inRange = (a: number, b: number) => m >= a && m < b;
-  const shares = categoryOf(inst)?.name === "Акции ММВБ";
+  const shares = categoryOf(inst)?.name === "Акции ММВБ" || inst.group === "stock" || inst.group === "bond" || inst.group === "fund";
   if (shares) return inRange(9 * 60 + 50, 18 * 60 + 50) || inRange(19 * 60 + 5, 23 * 60 + 50);
   return inRange(9 * 60, 14 * 60) || inRange(14 * 60 + 5, 18 * 60 + 50) || inRange(19 * 60 + 5, 23 * 60 + 50);
 }
 
 const POINT_TICKERS = new Set(["MIX", "RTS", "SPYF", "NASD"]);
+/** exact contracts of the index futures (MXZ6, RIH7, SFZ6, IMOEXF ...) quote in index points as well */
+const POINT_CONTRACT = /^(MX|MM|RI|RM|SF|NA)[FGHJKMNQUVXZ]\d$|^(IMOEXF|SP500F|QQQF)$/;
 
 function currencyOf(inst: TerminalInstrument, t: (k: string) => string): string {
   if (inst.source === "bybit") return inst.ticker.endsWith("USDT") ? "USDT" : inst.ticker.endsWith("USDC") ? "USDC" : "";
-  if (inst.source === "moex") return POINT_TICKERS.has(inst.dataTicker) ? t("shell.info.points") : "RUB";
+  if (inst.source === "moex") return inst.unit === "%" ? "%" : POINT_TICKERS.has(inst.dataTicker) || POINT_CONTRACT.test(inst.dataTicker) || inst.group === "index" ? t("shell.info.points") : "RUB";
   return "";
 }
 
-function InfoCard({ inst, quote, visible }: { inst: TerminalInstrument; quote: Quote | undefined; visible: boolean }) {
+/** An instrument restored from a saved list has no market group / unit: ask the exchange search for them once. */
+function useResolvedGroup(inst: TerminalInstrument): TerminalInstrument {
+  const [found, setFound] = useState<{ id: string; group?: TerminalInstrument["group"]; unit?: TerminalInstrument["unit"] } | null>(null);
+  const need = inst.source === "moex" && !inst.group && !categoryOf(inst);
+  useEffect(() => {
+    if (!need) return;
+    let cancelled = false;
+    lookupSecid(inst.dataTicker).then((it) => {
+      if (!cancelled && it) setFound({ id: inst.dataTicker, group: it.group, unit: it.unit });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [need, inst.dataTicker]);
+  return need && found?.id === inst.dataTicker ? { ...inst, group: found.group, unit: found.unit ?? inst.unit } : inst;
+}
+
+function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; quote: Quote | undefined; visible: boolean }) {
+  const inst = useResolvedGroup(inst0);
   const { t, locale } = useT();
   const [detail, setDetail] = useState<Quote | null>(null);
   const [, setTick] = useState(0);
@@ -608,7 +694,14 @@ function InfoCard({ inst, quote, visible }: { inst: TerminalInstrument; quote: Q
   const open_ = isMarketOpen(inst);
   const cur = currencyOf(inst, t);
   const cat = categoryOf(inst);
-  const type = inst.source === "bybit" ? t("shell.info.spot") : cat?.name === "Акции ММВБ" ? t("shell.info.stock") : t("shell.info.future");
+  const type =
+    inst.source === "bybit"
+      ? t("shell.info.spot")
+      : cat?.name === "Акции ММВБ" || inst.group === "stock"
+        ? t("shell.info.stock")
+        : inst.group && inst.group !== "future" && inst.group !== "other"
+          ? t(`ms.group.${inst.group}`)
+          : t("shell.info.future");
   const pos = high != null && low != null && high > low && price != null ? Math.min(100, Math.max(0, ((price - low) / (high - low)) * 100)) : null;
   const label = "text-gray-500 dark:text-gray-400";
   const val = "text-gray-900 dark:text-gray-100 tabular-nums";
