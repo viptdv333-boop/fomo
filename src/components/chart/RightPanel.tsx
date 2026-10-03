@@ -345,9 +345,29 @@ function AddTicker({
         if (cancelled) return;
         const seen = new Set<string>();
         const out: TerminalInstrument[] = [];
+        // the terminal's own list first (names like «Кофе» have no data source in the instruments table, but the terminal charts them)
+        const norm = (x: string) => x.toLowerCase().replace(/ё/g, "е");
+        const nd = norm(needle);
+        for (const inst of ALL_INSTRUMENTS) {
+          if (norm(inst.name).includes(nd) || norm(inst.ticker).includes(nd) || norm(inst.dataTicker).includes(nd)) {
+            const key = `${inst.source}:${inst.dataTicker}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              out.push(inst);
+            }
+          }
+        }
         for (const row of Array.isArray(rows) ? rows : []) {
-          const source = row?.dataSource;
-          const dataTicker = row?.dataTicker || row?.ticker;
+          let source = row?.dataSource;
+          let dataTicker = row?.dataTicker || row?.ticker;
+          if (!source && row?.ticker) {
+            // a catalogue entry without a feed (e.g. ICE «KC») maps to the curated instrument with the same ticker
+            const alias = ALL_INSTRUMENTS.find((i) => i.ticker.toLowerCase() === String(row.ticker).toLowerCase());
+            if (alias) {
+              source = alias.source;
+              dataTicker = alias.dataTicker;
+            }
+          }
           if ((source !== "moex" && source !== "bybit" && source !== "fmp") || !dataTicker) continue;
           const key = `${source}:${dataTicker}`;
           if (seen.has(key)) continue;
