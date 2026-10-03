@@ -29,7 +29,7 @@ export interface CandleRow {
   volume: number;
 }
 
-export type TailSource = "tinkoff" | "iss";
+export type TailSource = "tinkoff" | "algopack" | "iss";
 export type Level = 1 | 10 | 60 | "D" | "W" | "M";
 
 export interface TailResult {

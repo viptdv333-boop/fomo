@@ -46,16 +46,6 @@ export default auth((req) => {
     }
   }
 
-  // The terminal itself is for registered users: guests go to login and come back to the same chart.
-  // /terminal/features (the public description of the terminal) stays open and indexable.
-  if (pathname === "/terminal") {
-    if (!user) {
-      const login = new URL(localizedPath(urlLocale ?? "ru", "/login"), req.url);
-      login.searchParams.set("callbackUrl", localizedPath(urlLocale ?? "ru", "/terminal") + req.nextUrl.search);
-      return NextResponse.redirect(login);
-    }
-  }
-
   // Protected page routes that require APPROVED status (auth required)
   // Feed, idea detail pages, and instrument pages are PUBLIC (readable without login)
   // Chat, messages pages handle auth themselves (show popup instead of redirect)

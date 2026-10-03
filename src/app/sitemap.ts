@@ -31,6 +31,7 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/authors", priority: 0.7, changeFrequency: "daily" },
   { path: "/channels", priority: 0.7, changeFrequency: "daily" },
   { path: "/instruments", priority: 0.7, changeFrequency: "daily" },
+  { path: "/terminal", priority: 0.7, changeFrequency: "daily" },
   { path: "/terminal/features", priority: 0.7, changeFrequency: "weekly" },
   { path: "/chat", priority: 0.5, changeFrequency: "weekly" },
   // Knowledge base: answers the "how do I sell forecasts" queries and carries
