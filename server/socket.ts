@@ -3,8 +3,10 @@ import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
 import { startAlertScheduler } from "./alert-scheduler";
+import { startSubscriptionExpiryNotices } from "./subscription-expiry";
 import { canAccessRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
+import { dispatchNotification } from "../src/lib/notify-dispatch";
 
 const prisma = new PrismaClient();
 
@@ -155,17 +157,16 @@ export function initSocket(httpServer: HTTPServer) {
         });
 
         for (const u of mentionedUsers) {
-          await prisma.notification.create({
-            data: {
-              userId: u.id,
-              type: "chat_mention",
-              // In the mentioned user's own language (User.locale).
-              title: translate(u.locale, "notif.chatMention.title", { name: socket.data.displayName }),
-              body: text.length > 80 ? text.slice(0, 80) + "…" : text,
-              link: "/chat",
-            },
+          // Bell + push + the user's channels per their "mention" preferences
+          // (the dispatcher also pings the socket room).
+          await dispatchNotification({
+            recipients: [u.id],
+            type: "chat_mention",
+            // In the mentioned user's own language (User.locale).
+            title: translate(u.locale, "notif.chatMention.title", { name: socket.data.displayName }),
+            body: text.length > 80 ? text.slice(0, 80) + "…" : text,
+            link: "/chat",
           });
-          io.to(`user_${u.id}`).emit("new_notification");
         }
       }
     });
@@ -193,6 +194,9 @@ export function initSocket(httpServer: HTTPServer) {
 
   // Terminal price / line alerts (evaluates active PriceAlert rows every ~15 s; idle without any).
   if (process.env.ALERT_SCHEDULER !== "0") startAlertScheduler();
+
+  // "Subscription ending soon" reminders (opt-in: SUBSCRIPTION_EXPIRY_NOTICE=1).
+  startSubscriptionExpiryNotices();
 
   return io;
 }

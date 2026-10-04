@@ -21,17 +21,23 @@ interface PushPayload {
 /// from. Best-effort: a dead subscription (device unsubscribed, browser data
 /// cleared) makes the push service respond 404/410, at which point we prune
 /// that row so it stops being retried on every future notification.
-export async function sendPushToUser(userId: string, payload: PushPayload) {
+export function isPushConfigured(): boolean {
+  return PUSH_ENABLED;
+}
+
+/// Resolves to the number of devices the push was handed to (0 = none).
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
   if (!PUSH_ENABLED) {
     console.error("[push] VAPID keys not configured — skipping send");
-    return;
+    return 0;
   }
 
   const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) return 0;
 
   const body = JSON.stringify(payload);
 
+  let sent = 0;
   await Promise.all(
     subscriptions.map(async (sub) => {
       try {
@@ -50,6 +56,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
             vapidDetails: { subject: SUBJECT, publicKey: PUBLIC_KEY!, privateKey: PRIVATE_KEY! },
           }
         );
+        sent++;
       } catch (err: any) {
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
@@ -62,4 +69,5 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
       }
     })
   );
+  return sent;
 }

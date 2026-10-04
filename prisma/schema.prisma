@@ -91,6 +91,9 @@ model User {
   roomReads              ChatRoomRead[]
   roomNotifies           ChatRoomNotify[]
   telegramAccount        TelegramAccount?
+  notificationChannels   NotificationChannel[]
+  notificationPrefs      NotificationPref[]
+  notificationSetting    NotificationSetting?
 
   @@index([status])
 }
@@ -848,4 +851,71 @@ model TerminalUserData {
 
   @@unique([userId, kind, key])
   @@index([userId, kind])
+}
+
+/// A place a user receives notifications besides the site itself (unified
+/// notification channels). Web push stays in PushSubscription and the legacy
+/// "own Telegram bot" stays in TelegramAccount — both are surfaced in the UI
+/// as channels but are not rows here. One row per (user, channel).
+/// `address`: e-mail / Telegram chat id / E.164 phone / MAX user id / VK user id / webhook URL.
+/// Connection is proven by a one-time token (deep link) or a 6-digit code;
+/// only the SHA-256 of it is stored (linkTokenHash) and it dies at linkExpiresAt
+/// or after the first successful use.
+model NotificationChannel {
+  id            String    @id @default(cuid())
+  userId        String
+  /// 'email' | 'telegram' | 'whatsapp' | 'max' | 'vk' | 'webhook'
+  channel       String
+  address       String?
+  label         String?
+  verified      Boolean   @default(false)
+  enabled       Boolean   @default(true)
+  linkTokenHash String?
+  linkExpiresAt DateTime?
+  /// Wrong guesses of the 6-digit code (e-mail / WhatsApp); the code is burned at the cap.
+  attempts      Int       @default(0)
+  /// Webhook channel only: HMAC key for the X-Fomo-Signature header.
+  secret        String?
+  lastError     String?
+  /// Consecutive hard failures (bot blocked, number not on WhatsApp...).
+  /// The channel is switched off at the threshold — see src/lib/notify-dispatch.ts.
+  failCount     Int       @default(0)
+  lastSentAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel])
+  @@index([linkTokenHash])
+}
+
+/// Explicit per-event / per-channel override of the defaults that live in code
+/// (src/lib/notification-events.ts). A missing row = "use the default".
+/// channel: 'inapp' | 'webpush' | 'email' | 'telegram' | 'whatsapp' | 'max' | 'vk' | 'webhook'.
+model NotificationPref {
+  id        String   @id @default(cuid())
+  userId    String
+  event     String
+  channel   String
+  enabled   Boolean
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, event, channel])
+  @@index([userId])
+}
+
+/// Quiet hours: while active only the in-app bell is written (push and every
+/// external channel are held back). Minutes since local midnight in `timezone`.
+model NotificationSetting {
+  userId        String   @id
+  quietEnabled  Boolean  @default(false)
+  quietStartMin Int      @default(1380)
+  quietEndMin   Int      @default(480)
+  timezone      String   @default("Europe/Moscow")
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

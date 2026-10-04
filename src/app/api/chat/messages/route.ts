@@ -219,6 +219,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Someone replied to / quoted MY message (event "quote_me") — told even
+  // without the room's bell, unless already pinged by an @mention above.
+  if (parsed.data.replyToId) {
+    const quoted = await prisma.chatMessage.findUnique({
+      where: { id: parsed.data.replyToId },
+      select: { userId: true, roomId: true },
+    });
+    // Re-check access: the quoted author may have left a private room / let a paid channel lapse.
+    const stillIn =
+      quoted &&
+      (!room.ownerId ||
+        Boolean(await prisma.chatRoomMember.findUnique({ where: { roomId_userId: { roomId: room.id, userId: quoted.userId } } }))) &&
+      (await canAccessRoom(prisma, room.id, quoted.userId));
+    if (quoted && stillIn && quoted.roomId === room.id && quoted.userId !== session.user.id! && !mentionedIds.has(quoted.userId)) {
+      mentionedIds.add(quoted.userId);
+      await createNotification({
+        userId: quoted.userId,
+        type: "chat_reply",
+        title: { key: "ns.notif.chatReply.title", vars: { name: senderName, room: room.name } },
+        body: bodyPreview,
+        link: roomLink,
+      }).catch(() => {});
+    }
+  }
+
   // Everyone else who turned the room's bell on (болталка → 🔔) — every
   // message, not just mentions. Skip anyone already notified above.
   await notifyRoomSubscribers(

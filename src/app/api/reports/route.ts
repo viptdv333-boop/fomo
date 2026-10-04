@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/roles";
-import { getT, tFor } from "@/lib/i18n/server";
+import { getT } from "@/lib/i18n/server";
+import { createNotification } from "@/lib/notifications";
 
 // POST: Create a report (any authenticated user)
 export async function POST(request: NextRequest) {
@@ -49,15 +50,14 @@ export async function POST(request: NextRequest) {
   // Notify admins
   const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true, locale: true } });
   for (const admin of admins) {
-    await prisma.notification.create({
-      data: {
-        userId: admin.id,
-        type: "report",
-        title: tFor(admin.locale)("api.reportNewTitle", { type: targetType }),
-        body: reason.slice(0, 100),
-        link: "/admin?tab=reports",
-      },
-    });
+    // Event "system": always in the bell, e-mailed if the admin connected an address.
+    await createNotification({
+      userId: admin.id,
+      type: "report",
+      title: { key: "api.reportNewTitle", vars: { type: targetType } },
+      body: reason.slice(0, 100),
+      link: "/admin?tab=reports",
+    }).catch(() => {});
   }
 
   return NextResponse.json(report, { status: 201 });

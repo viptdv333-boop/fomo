@@ -1,52 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { sendPushToUser } from "@/lib/push";
 import { canAccessRoom } from "@/lib/channel-access";
-import { tFor } from "@/lib/i18n/for-locale";
+import { dispatchNotification } from "@/lib/notify-dispatch";
+import { isKeyed, renderNotifText, type NotifText, type NotifVar } from "@/lib/notif-render";
+import type { EventId } from "@/lib/notification-events";
 
-// Access the global IO instance set by server/socket.ts
-const globalForIO = globalThis as unknown as { io: any };
-
-function emitNotification(userId: string) {
-  const io = globalForIO.io;
-  if (io) {
-    io.to(`user_${userId}`).emit("new_notification");
-  }
-}
-
-/// A placeholder value: user-provided text (idea title, display name, channel
-/// name…) goes in as-is; `{ key }` is itself translated for the recipient —
-/// for server fallbacks like "Покупатель" when a name is missing.
-export type NotifVar = string | number | { key: string };
-
-/// Notification text: a plain string is stored/sent verbatim (user-generated
-/// content, e.g. a comment preview); `{ key, vars }` is translated into each
-/// recipient's own User.locale.
-export type NotifText = string | { key: string; vars?: Record<string, NotifVar> };
-
-function isKeyed(text: NotifText | undefined): boolean {
-  return typeof text === "object" && text !== null;
-}
-
-/// Renders a NotifText for one locale. `escapeVar` is applied to every
-/// substituted value (Telegram HTML escaping) — never to the template itself,
-/// so markup in the dictionary (<b>) survives.
-export function renderNotifText(
-  text: NotifText,
-  locale: string | null | undefined,
-  escapeVar?: (s: string) => string
-): string {
-  if (typeof text === "string") return text;
-  const t = tFor(locale);
-  let vars: Record<string, string | number> | undefined;
-  if (text.vars) {
-    vars = {};
-    for (const [k, v] of Object.entries(text.vars)) {
-      const raw = typeof v === "object" && v !== null ? t(v.key) : v;
-      vars[k] = escapeVar ? escapeVar(String(raw)) : raw;
-    }
-  }
-  return t(text.key, vars);
-}
+// The rendering helpers moved to notif-render.ts (Next-free) so the custom
+// server can use them; re-exported here for the existing importers.
+export { renderNotifText };
+export type { NotifText, NotifVar };
 
 /// Recipients' saved languages in ONE query. Skipped entirely when every text
 /// is a plain string, so user-generated notifications cost no extra query.
@@ -64,33 +25,20 @@ export async function loadUserLocales(
   return map;
 }
 
-/// Writes one Notification row per recipient (each in their own language),
-/// then fires the socket ping and push with the same translated strings.
+/// Every notification goes through src/lib/notify-dispatch.ts: it writes the
+/// bell row (each recipient's own language) and — per the user's event
+/// preferences (NotificationPref) and connected channels — Web Push, e-mail,
+/// Telegram, WhatsApp, MAX, VK and webhook. `type` maps to an event through
+/// EVENT_FOR_TYPE in notification-events.ts (pass `event` to override).
 async function deliver(
   recipients: string[],
   type: string,
   title: NotifText,
   body: NotifText | undefined,
-  link: string | undefined
+  link: string | undefined,
+  event?: EventId
 ) {
-  const locales = await loadUserLocales(recipients, title, body);
-  const rows = recipients.map((userId) => {
-    const locale = locales.get(userId);
-    return {
-      userId,
-      type,
-      title: renderNotifText(title, locale),
-      body: body === undefined ? undefined : renderNotifText(body, locale),
-      link,
-    };
-  });
-
-  await prisma.notification.createMany({ data: rows });
-
-  for (const row of rows) {
-    emitNotification(row.userId);
-    sendPushToUser(row.userId, { title: row.title, body: row.body, url: link }).catch(() => {});
-  }
+  await dispatchNotification({ recipients, type, title, body, link, event });
 }
 
 interface CreateNotificationParams {
@@ -99,6 +47,8 @@ interface CreateNotificationParams {
   title: NotifText;
   body?: NotifText;
   link?: string;
+  /// Preference event; defaults to the one mapped from `type`.
+  event?: EventId;
 }
 
 export async function createNotification({
@@ -107,17 +57,11 @@ export async function createNotification({
   title,
   body,
   link,
+  event,
 }: CreateNotificationParams) {
-  const locale = (await loadUserLocales([userId], title, body)).get(userId);
-  const titleText = renderNotifText(title, locale);
-  const bodyText = body === undefined ? undefined : renderNotifText(body, locale);
-
-  const notification = await prisma.notification.create({
-    data: { userId, type, title: titleText, body: bodyText, link },
-  });
-  emitNotification(userId);
-  sendPushToUser(userId, { title: titleText, body: bodyText, url: link }).catch(() => {});
-  return notification;
+  const rows = await dispatchNotification({ recipients: [userId], type, title, body, link, event });
+  // null when the user switched the bell off for this event.
+  return rows[0] ?? null;
 }
 
 export async function notifyFollowers(

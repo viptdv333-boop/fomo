@@ -9,7 +9,7 @@ import FinanceTab from "@/components/profile/FinanceTab";
 import RoomsTab from "@/components/profile/RoomsTab";
 import ShareButtons from "@/components/shared/ShareButtons";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
-import TelegramBotSettings from "@/components/profile/TelegramBotSettings";
+import NotificationSettings from "@/components/profile/NotificationSettings";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
 
@@ -92,8 +92,9 @@ function ProfileContent() {
     tabParam === "finance" ? "finance" :
     tabParam === "security" ? "security" :
     tabParam === "ideas" ? "ideas" :
-    tabParam === "rooms" ? "rooms" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security" | "ideas" | "rooms">(initialTab);
+    tabParam === "rooms" ? "rooms" :
+    tabParam === "notifications" ? "notifications" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "finance" | "security" | "ideas" | "rooms" | "notifications">(initialTab);
   const [myIdeas, setMyIdeas] = useState<any[]>([]);
   const [myIdeasLoading, setMyIdeasLoading] = useState(true);
 
@@ -430,7 +431,7 @@ function ProfileContent() {
       <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">{t("profile.title")}</h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+      <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 overflow-x-auto" role="tablist">
         <button
           onClick={() => setActiveTab("profile")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
@@ -472,6 +473,18 @@ function ProfileContent() {
           {t("profile2.tabRooms")}
         </button>
         <button
+          onClick={() => setActiveTab("notifications")}
+          role="tab"
+          aria-selected={activeTab === "notifications"}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition whitespace-nowrap ${
+            activeTab === "notifications"
+              ? "bg-white dark:bg-gray-900 shadow text-gray-900 dark:text-gray-100"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          {t("ns.tab")}
+        </button>
+        <button
           onClick={() => setActiveTab("security")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
             activeTab === "security"
@@ -482,6 +495,8 @@ function ProfileContent() {
           {t("profile.security")}
         </button>
       </div>
+
+      {activeTab === "notifications" && session?.user?.id && <NotificationSettings />}
 
       {activeTab === "ideas" && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6">
@@ -1004,7 +1019,7 @@ function ProfileContent() {
           </div>
         )}
 
-        <TelegramBotSettings />
+        {/* Telegram bot settings moved to the «Уведомления» tab (Telegram card → "my own bot"). */}
 
         <div className="flex items-center gap-4 pt-2">
           <button

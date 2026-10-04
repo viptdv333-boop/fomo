@@ -1,15 +1,18 @@
 /**
  * Terminal price alerts: every ~15 s load the active alerts, fetch one batch of quotes for their
  * instruments, evaluate them (src/lib/alerts/evaluate.ts) and notify the owner on a trigger.
- * Notifications are delivered here directly (bell row + socket "new_notification" + web push), translated
- * per recipient locale. src/lib/notifications.ts is NOT imported: it pulls next/headers, which throws an
- * AsyncLocalStorage invariant when loaded in this custom-server context. Keep the imports below Next-free.
+ * Notifications go through src/lib/notify-dispatch.ts (bell row + socket "new_notification" + web push + the user's
+ * connected channels, per their event preferences), translated per recipient locale. src/lib/notifications.ts is NOT
+ * imported: it pulls next/headers, which throws an AsyncLocalStorage invariant when loaded in this custom-server
+ * context. Keep the imports below Next-free.
  * Never throws out of the interval; does nothing without alerts.
  */
 
 import { prisma } from "../src/lib/prisma";
 import { getBatchQuotes, type QuoteRequest } from "../src/lib/quotes";
-import { sendPushToUser } from "../src/lib/push";
+// notify-dispatch is Next-free (unlike notifications.ts): bell row + socket ping + push + the
+// user's e-mail / Telegram / WhatsApp / MAX / VK / webhook channels, gated by their event preferences.
+import { dispatchNotification } from "../src/lib/notify-dispatch";
 import { translate } from "../src/lib/i18n/dictionaries";
 import { evaluateAlert, parseLineSpec, type AlertPatch, type AlertState } from "../src/lib/alerts/evaluate";
 
@@ -79,9 +82,7 @@ async function notifyOwner(
   const body = translate(locale, `alerts.notif.body.${a.kind}.${a.condition}`, { price: fmt(price), level: fmt(level) });
   const link = `/terminal?symbol=${encodeURIComponent(a.dataTicker)}&source=${a.source}`;
 
-  await prisma.notification.create({ data: { userId: a.userId, type: "price_alert", title, body, link } });
-  (globalThis as unknown as { io?: { to(room: string): { emit(ev: string): void } } }).io?.to(`user_${a.userId}`).emit("new_notification");
-  sendPushToUser(a.userId, { title, body, url: link }).catch(() => {});
+  await dispatchNotification({ recipients: [a.userId], type: "price_alert", title, body, link });
 }
 
 function toRow(p: AlertPatch) {

@@ -11,6 +11,7 @@ import help from "./help";
 import legal from "./legal";
 import seo from "./seo";
 import notif from "./notif";
+import notifsettings from "./notifsettings";
 import api from "./api";
 import chartind from "./chartind";
 import chartdraw from "./chartdraw";
@@ -34,4 +35,4 @@ import contracts from "./contracts";
 import algopack from "./algopack";
 import econcal from "./econcal";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal];

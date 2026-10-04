@@ -1,5 +1,7 @@
 import { randomInt } from "crypto";
-import { tFor } from "@/lib/i18n/server";
+// for-locale (not i18n/server): this file is also loaded by the notification
+// dispatcher inside the custom server, where next/headers must not be imported.
+import { tFor } from "@/lib/i18n/for-locale";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
@@ -91,6 +93,80 @@ export async function sendBroadcastEmail(
     return false;
   }
   return true;
+}
+
+export function isEmailConfigured(): boolean {
+  return Boolean(RESEND_API_KEY);
+}
+
+export interface EmailSendResult {
+  ok: boolean;
+  error?: string;
+  /** a hard failure (address rejected) as opposed to a hiccup worth retrying later */
+  permanent?: boolean;
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * One notification as a mail, for the notification-channels dispatcher.
+ * Unlike sendBroadcastEmail it escapes user-generated text, never throws, has a
+ * timeout and reports whether a failure is permanent. `fetchImpl` is injectable for tests.
+ */
+export async function sendNotificationEmail(
+  to: string,
+  msg: { title: string; body?: string | null; link?: string | null; locale?: string; footerNote?: string },
+  fetchImpl: typeof fetch = fetch
+): Promise<EmailSendResult> {
+  if (!RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY is not configured" };
+  const t = tFor(msg.locale ?? "ru");
+  const link = msg.link ? (msg.link.startsWith("http") ? msg.link : BASE_URL + msg.link) : null;
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
+      <h2 style="text-align: center; color: #111; margin-bottom: 16px;">FOMO</h2>
+      <h3 style="color: #111; margin-bottom: 8px;">${escHtml(msg.title)}</h3>
+      ${msg.body ? `<p style="color: #444; font-size: 15px; line-height: 1.6;">${escHtml(msg.body).replace(/\n/g, "<br>")}</p>` : ""}
+      ${link ? `<p style="text-align: center; margin-top: 24px;"><a href="${escHtml(link)}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">${t("api.email.open")}</a></p>` : ""}
+      <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;" />
+      <p style="text-align: center; color: #999; font-size: 11px; margin-top: 16px;">
+        ${msg.footerNote ? escHtml(msg.footerNote) + "<br>" : ""}${t("api.email.footer", { link: `<a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>` })}
+      </p>
+    </div>`;
+  try {
+    const res = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject: msg.title.slice(0, 200), html }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.ok) return { ok: true };
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    // 4xx other than 429 = the request itself is bad (invalid / suppressed address).
+    return {
+      ok: false,
+      error: `Resend ${res.status}${data?.message ? `: ${data.message}` : ""}`.slice(0, 200),
+      permanent: res.status >= 400 && res.status < 500 && res.status !== 429 && res.status !== 401 && res.status !== 403,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** The 6-digit code for adding a notification address (the generic sendVerificationCode text is for sign-up). */
+export async function sendNotificationEmailCode(
+  to: string,
+  code: string,
+  locale: string = "ru",
+  fetchImpl: typeof fetch = fetch
+): Promise<EmailSendResult> {
+  const t = tFor(locale);
+  return sendNotificationEmail(
+    to,
+    { title: t("ns.email.codeSubject", { code }), body: t("ns.email.codeBody", { code }), locale },
+    fetchImpl
+  );
 }
 
 /**
