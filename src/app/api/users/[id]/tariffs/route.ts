@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { getT } from "@/lib/i18n/server";
+import { validateTariffMethods } from "@/lib/payment-link-server";
 
 // GET: list author's tariffs
 export async function GET(
@@ -45,7 +46,11 @@ const createTariffSchema = z.object({
   description: z.string().max(500).optional(),
   price: z.number().positive(),
   durationDays: z.number().int().min(1).max(365),
-  paymentMethods: z.array(z.enum(["card", "yukassa", "sbp"])).optional(),
+  // "link:<paymentMethodId>" = author's "payment by link" method (see lib/payment-link.ts)
+  paymentMethods: z
+    .array(z.union([z.enum(["card", "yukassa", "sbp"]), z.string().regex(/^link(:[A-Za-z0-9_-]{1,64})?$/)]))
+    .max(20)
+    .optional(),
   cardNumber: z.string().max(30).optional(),
   sbpQrUrl: z.string().max(500).nullable().optional(),
   yukassaShopId: z.string().max(50).optional(),
@@ -99,6 +104,11 @@ export async function POST(
       { error: "Invalid input", details: parsed.error.issues },
       { status: 400 }
     );
+  }
+
+  if (parsed.data.paymentMethods) {
+    const methodsError = await validateTariffMethods(id, parsed.data.paymentMethods);
+    if (methodsError) return NextResponse.json({ error: methodsError }, { status: 400 });
   }
 
   const tariff = await prisma.subscriptionTariff.create({

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { receiptDmText } from "@/lib/i18n/receipt-dm";
+import { hasLinkRef, validatePaymentLink, type PublicPayLink } from "@/lib/payment-link";
 
 // ===== Universal payment types =====
 export type PaymentPurpose =
@@ -29,7 +30,8 @@ interface UnifiedPaymentModalProps {
   onSuccess?: () => void;
 }
 
-type PaymentMethod = "card" | "yukassa" | "sbp";
+// "link" = the author's external payment link; handled by the same manual receipt flow as card/sbp
+type PaymentMethod = "card" | "yukassa" | "sbp" | "link";
 type Step = "method" | "pay" | "success";
 
 export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: UnifiedPaymentModalProps) {
@@ -58,6 +60,10 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   const [ideaPayment, setIdeaPayment] = useState<{ id: string; sellerCard: string | null; sellerQrUrl: string | null } | null>(null);
   const [loadingIdeaPayment, setLoadingIdeaPayment] = useState(false);
 
+  // "Оплата по ссылке": the author's link methods that apply to this purchase
+  const [payLinks, setPayLinks] = useState<PublicPayLink[]>([]);
+  const [selectedLink, setSelectedLink] = useState<PublicPayLink | null>(null);
+
   // Donation amount (free-form)
   const [donationAmount, setDonationAmount] = useState("");
 
@@ -80,6 +86,21 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
         .finally(() => setTariffsLoaded(true));
     }
   });
+
+  // Load the author's link methods (for a tariff: only those the tariff accepts)
+  useEffect(() => {
+    if (purpose.type === "subscription") {
+      if (!selectedTariff || !hasLinkRef(selectedTariff.paymentMethods)) { setPayLinks([]); return; }
+    }
+    let cancelled = false;
+    const q = purpose.type === "subscription" && selectedTariff ? `?tariffId=${encodeURIComponent(selectedTariff.id)}` : "";
+    fetch(`/api/users/${purpose.authorId}/payment-links${q}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (!cancelled) setPayLinks(Array.isArray(d) ? d : []); })
+      .catch(() => { if (!cancelled) setPayLinks([]); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purpose.type, purpose.authorId, selectedTariff?.id]);
 
   // ===== Helpers =====
   const title = (() => {
@@ -165,6 +186,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   async function handleSelectMethod(method: PaymentMethod) {
     setPaymentMethod(method);
 
+    // "link" needs no seller card/QR, so no up-front request: it is created together with the receipt.
     if ((method === "card" || method === "sbp") && purpose.type === "idea" && !ideaPayment) {
       setLoadingIdeaPayment(true);
       setError("");
@@ -299,10 +321,14 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
         }
       })();
 
+      const viaLink = paymentMethod === "link" && selectedLink
+        ? tRu("pay.dmViaLink", { label: selectedLink.label, host: selectedLink.host })
+        : "";
+
       await fetch(`/api/messages/conversations/${conv.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: msgText, fileUrl: receiptUrl, fileName: tRu("pay.receiptFileName"), fileType: "image" }),
+        body: JSON.stringify({ text: msgText + viaLink, fileUrl: receiptUrl, fileName: tRu("pay.receiptFileName"), fileType: "image" }),
       });
     } catch { /* non-critical */ }
   }
@@ -421,6 +447,21 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     <span className="ml-auto text-gray-400">{loadingIdeaPayment && paymentMethod === "sbp" ? "..." : "→"}</span>
                   </button>
                 )}
+                {payLinks.map((pl) => (
+                  <button
+                    key={pl.id}
+                    onClick={() => { setSelectedLink(pl); handleSelectMethod("link"); }}
+                    disabled={loadingIdeaPayment}
+                    className="w-full flex items-center gap-3 p-4 border dark:border-gray-700 rounded-lg hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition text-left disabled:opacity-50"
+                  >
+                    <span className="text-2xl">🔗</span>
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm dark:text-gray-100 truncate">{t("pay.link.methodTitle", { label: pl.label })}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{t("pay.link.methodDesc")} · {pl.host}</div>
+                    </div>
+                    <span className="ml-auto text-gray-400">→</span>
+                  </button>
+                ))}
                 {availableMethods.includes("yukassa") && (
                   <button
                     onClick={() => { setPaymentMethod("yukassa"); handleYukassaPayment(); }}
@@ -440,7 +481,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           )}
 
           {/* ===== STEP 2: Card / SBP QR payment ===== */}
-          {step === "pay" && (paymentMethod === "card" || paymentMethod === "sbp") && (
+          {step === "pay" && (paymentMethod === "card" || paymentMethod === "sbp" || (paymentMethod === "link" && selectedLink)) && (
             <>
               <button onClick={() => setStep("method")} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 mb-3 inline-flex items-center gap-1">
                 ← {t("common.back")}
@@ -452,7 +493,14 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">
                 <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">{t("pay.instruction")}</p>
                 <ol className="text-xs text-green-700 dark:text-green-400 space-y-0.5 list-decimal list-inside">
-                  {paymentMethod === "sbp" ? (
+                  {paymentMethod === "link" ? (
+                    <>
+                      <li>{t("pay.link.step1")}</li>
+                      <li>{t("pay.link.step2", { amount: amount > 0 ? `${amount} ₽` : t("pay.requiredAmount") })}</li>
+                      <li>{t("pay.stepScreenshot")}</li>
+                      <li>{t("pay.stepAttach")}</li>
+                    </>
+                  ) : paymentMethod === "sbp" ? (
                     <>
                       <li>{t("pay.sbpStep1")}</li>
                       <li>{t("pay.sbpStep2")}</li>
@@ -472,7 +520,9 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               </div>
 
               {/* Payment details: card number or SBP QR code */}
-              {paymentMethod === "sbp" ? (
+              {paymentMethod === "link" && selectedLink ? (
+                <PayLinkBlock link={selectedLink} amount={amount} />
+              ) : paymentMethod === "sbp" ? (
                 qrUrl ? (
                   <div className="flex flex-col items-center bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 mb-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -543,6 +593,43 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== "Оплата по ссылке": amount, author's instruction, button to the external page =====
+function PayLinkBlock({ link, amount }: { link: PublicPayLink; amount: number }) {
+  const { t } = useT();
+  // Re-validate right before rendering an href (defence in depth; the API already does it).
+  const checked = validatePaymentLink(link.url);
+  if (!checked.ok) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">{t("pay.cardMissing")}</p>;
+  }
+  return (
+    <div className="mb-4 space-y-3">
+      <div className="flex items-center justify-between bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg px-4 py-3">
+        <span className="text-xs text-gray-500 dark:text-gray-400">{t("pay.link.amountTitle")}</span>
+        <span className="text-lg font-bold text-green-600">{amount > 0 ? `${amount} ₽` : t("pay.requiredAmount")}</span>
+      </div>
+      {link.instruction && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-0.5">{t("pay.link.instructionTitle")}</p>
+          <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap break-words">{link.instruction}</p>
+        </div>
+      )}
+      <a
+        href={checked.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full text-center bg-blue-600 text-white py-3 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+      >
+        🔗 {t("pay.link.go")} ↗
+      </a>
+      <p className="text-xs text-gray-400 text-center -mt-1">{t("pay.link.goHint", { host: checked.host })}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t("pay.link.checkDomain", { host: checked.host })}</p>
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs text-blue-900 dark:text-blue-200">
+        ⏳ {t("pay.link.manualNotice")}
       </div>
     </div>
   );

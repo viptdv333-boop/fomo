@@ -6,6 +6,7 @@ const RECEIPT_DM: Record<string, string> = {
   "pay.dmIdea": "💳 Оплата идеи «{title}» — {price} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.",
   "pay.dmSubscription": "💳 Оплата подписки «{title}» — {price} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.",
   "pay.dmCourse": "💳 Оплата курса «{title}» — {price} ₽\n\nЧек об оплате прикреплён. Пожалуйста, подтвердите получение.",
+  "pay.dmViaLink": "\n\n🔗 Оплата по ссылке: «{label}» ({host})",
   "pay.receiptFileName": "чек_оплаты.png",
 };
 

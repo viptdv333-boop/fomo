@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
+import { linkRef, paymentLinkHost } from "@/lib/payment-link";
 
 interface SavedPaymentMethod {
   id: string;
@@ -20,7 +21,7 @@ interface TariffRow {
   price: string;
   durationDays: string;
   paymentMethodId: string; // ID of saved payment method
-  paymentMethods: ("card" | "yukassa")[];
+  paymentMethods: string[];
   cardNumber: string;
   yukassaShopId: string;
   yukassaSecret: string;
@@ -424,7 +425,7 @@ export default function CreateChannelPage() {
                           <button key={m.id} type="button"
                             onClick={() => {
                               updateTariff(i, "paymentMethodId", m.id);
-                              updateTariff(i, "paymentMethods", [m.type]);
+                              updateTariff(i, "paymentMethods", [m.type === "link" ? linkRef(m.id) : m.type]);
                               if (m.type === "card") updateTariff(i, "cardNumber", m.details?.cardNumber || "");
                               if (m.type === "yukassa") {
                                 updateTariff(i, "yukassaShopId", m.details?.yukassaShopId || "");
@@ -434,10 +435,11 @@ export default function CreateChannelPage() {
                             className={`w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm transition border ${
                               isSelected ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                             }`}>
-                            <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : "₿"}</span>
+                            <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : m.type === "sbp" ? "🔳" : m.type === "link" ? "🔗" : "₿"}</span>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium dark:text-gray-100">{m.label}</div>
                               {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}
+                              {m.type === "link" && paymentLinkHost(m.details?.url) && <div className="text-xs text-gray-400">{paymentLinkHost(m.details?.url)}</div>}
                             </div>
                             {isSelected && (
                               <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7" /></svg>

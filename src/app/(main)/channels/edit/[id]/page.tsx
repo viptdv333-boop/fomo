@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
+import { linkRef, paymentLinkHost } from "@/lib/payment-link";
 
 interface TariffData {
   id: string;
@@ -442,15 +443,17 @@ export default function EditChannelPage() {
                   ) : (
                     <div className="space-y-1.5">
                       {savedPaymentMethods.map((m) => {
-                        const isChecked = tr.paymentMethods.includes(m.type);
+                        // Link methods are stored per method ("link:<id>"), the rest per type.
+                        const methodKey = m.type === "link" ? linkRef(m.id) : m.type;
+                        const isChecked = tr.paymentMethods.includes(methodKey);
                         return (
                           <button key={m.id} type="button"
                             onClick={() => {
                               if (isChecked) {
-                                updateTariff(idx, "paymentMethods", tr.paymentMethods.filter((x) => x !== m.type));
+                                updateTariff(idx, "paymentMethods", tr.paymentMethods.filter((x) => x !== methodKey));
                                 return;
                               }
-                              updateTariff(idx, "paymentMethods", [...tr.paymentMethods, m.type]);
+                              updateTariff(idx, "paymentMethods", [...tr.paymentMethods, methodKey]);
                               if (m.type === "card") updateTariff(idx, "cardNumber", m.details?.cardNumber || "");
                               if (m.type === "sbp") updateTariff(idx, "sbpQrUrl", m.details?.qrImageUrl || "");
                               if (m.type === "yukassa") {
@@ -469,11 +472,12 @@ export default function EditChannelPage() {
                             {m.type === "sbp" && m.details?.qrImageUrl ? (
                               <img src={m.details.qrImageUrl} alt="QR" className="w-7 h-7 rounded object-contain bg-white border dark:border-gray-700 shrink-0" />
                             ) : (
-                              <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : m.type === "sbp" ? "🔳" : "₿"}</span>
+                              <span className="text-lg">{m.type === "card" ? "💳" : m.type === "yukassa" ? "🏦" : m.type === "sbp" ? "🔳" : m.type === "link" ? "🔗" : "₿"}</span>
                             )}
                             <div className="flex-1 min-w-0">
                               <div className="font-medium dark:text-gray-100">{m.label}</div>
                               {m.details?.cardNumber && <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>}
+                              {m.type === "link" && paymentLinkHost(m.details?.url) && <div className="text-xs text-gray-400">{paymentLinkHost(m.details?.url)}</div>}
                             </div>
                           </button>
                         );

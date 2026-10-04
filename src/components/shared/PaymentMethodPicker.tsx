@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { paymentLinkHost } from "@/lib/payment-link";
 
 interface PaymentMethod {
   id: string;
@@ -21,6 +22,8 @@ const TYPE_ICONS: Record<string, string> = {
   card: "💳",
   yukassa: "🏦",
   crypto: "₿",
+  sbp: "🔳",
+  link: "🔗",
 };
 
 export default function PaymentMethodPicker({ selectedId, onSelect }: Props) {
@@ -64,6 +67,9 @@ export default function PaymentMethodPicker({ selectedId, onSelect }: Props) {
             <div className="font-medium dark:text-gray-100">{m.label}</div>
             {m.details?.cardNumber && (
               <div className="text-xs text-gray-400">**** {m.details.cardNumber.slice(-4)}</div>
+            )}
+            {m.type === "link" && paymentLinkHost(m.details?.url) && (
+              <div className="text-xs text-gray-400">{paymentLinkHost(m.details?.url)}</div>
             )}
           </div>
           {m.isDefault && <span className="text-[10px] text-green-600">{t("pm.default")}</span>}

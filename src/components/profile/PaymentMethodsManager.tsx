@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import {
+  PAYMENT_LINK_MAX_INSTRUCTION,
+  PAYMENT_LINK_MAX_LABEL,
+  PAYMENT_LINK_MAX_URL,
+  normalizeLinkDetails,
+  paymentLinkHost,
+  validatePaymentLink,
+} from "@/lib/payment-link";
 
 interface PaymentMethod {
   id: string;
@@ -16,6 +24,7 @@ const TYPE_ICONS: Record<string, string> = {
   yukassa: "🏦",
   crypto: "₿",
   sbp: "🔳",
+  link: "🔗",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -23,7 +32,14 @@ const TYPE_LABELS: Record<string, string> = {
   yukassa: "ЮKassa",
   crypto: "pay.pmCryptoWallet",
   sbp: "pay.pmSbp",
+  link: "pay.pmLink",
 };
+
+/** Only ever put a re-validated https URL into href (legacy / hand-edited rows included). */
+function safeLinkUrl(u: unknown): string | null {
+  const r = validatePaymentLink(u);
+  return r.ok ? r.url : null;
+}
 
 function detectCardType(num: string): string {
   const n = num.replace(/\s/g, "");
@@ -75,6 +91,10 @@ export default function PaymentMethodsManager() {
   const [saving, setSaving] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardType, setCardType] = useState("");
+  const [addLinkUrl, setAddLinkUrl] = useState("");
+  const [addLinkNote, setAddLinkNote] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   async function loadMethods() {
     const res = await fetch("/api/payment-methods");
@@ -90,6 +110,14 @@ export default function PaymentMethodsManager() {
       const err = validateCardNumber(addCardNumber);
       if (err) { setCardError(err); return; }
     }
+    setFormError(null);
+    let linkDetails: { url: string; instruction?: string } | null = null;
+    if (addType === "link") {
+      if (addLabel.trim().length > PAYMENT_LINK_MAX_LABEL) { setFormError(t("pay.link.saveError")); return; }
+      const norm = normalizeLinkDetails({ url: addLinkUrl, instruction: addLinkNote });
+      if (!norm.ok) { setLinkError(`pay.link.err.${norm.code}`); return; }
+      linkDetails = norm.details;
+    }
     setSaving(true);
 
     const details: any = {};
@@ -104,7 +132,9 @@ export default function PaymentMethodsManager() {
       details.qrImageUrl = addQrImageUrl;
     }
 
-    await fetch("/api/payment-methods", {
+    if (linkDetails) Object.assign(details, linkDetails);
+
+    const res = await fetch("/api/payment-methods", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -115,7 +145,17 @@ export default function PaymentMethodsManager() {
       }),
     });
 
+    if (addType === "link" && !res.ok) {
+      // The server is the authority: show its code-based message in the user's language.
+      const data = await res.json().catch(() => null);
+      if (data?.code) setLinkError(`pay.link.err.${data.code}`);
+      else setFormError(data?.error || t("pay.link.saveError"));
+      setSaving(false);
+      return;
+    }
+
     setAddLabel(""); setAddCardNumber(""); setAddYukassaShopId(""); setAddYukassaSecret(""); setAddQrImageUrl("");
+    setAddLinkUrl(""); setAddLinkNote(""); setLinkError(null);
     setShowAdd(false);
     setSaving(false);
     loadMethods();
@@ -166,10 +206,11 @@ export default function PaymentMethodsManager() {
         <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 space-y-3">
           <div>
             <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.type")}</label>
-            <select value={addType} onChange={(e) => setAddType(e.target.value)}
+            <select value={addType} onChange={(e) => { setAddType(e.target.value); setLinkError(null); setFormError(null); }}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100">
               <option value="card">💳 {t("pay.pmCard")}</option>
               <option value="sbp">🔳 {t("pay.pmSbp")}</option>
+              <option value="link">🔗 {t("pay.pmLink")}</option>
               <option value="yukassa">🏦 ЮKassa</option>
               <option value="crypto">₿ {t("pay.pmCrypto")}</option>
             </select>
@@ -177,6 +218,7 @@ export default function PaymentMethodsManager() {
           <div>
             <label className="text-xs text-gray-500 dark:text-gray-400">{t("pm.label")}</label>
             <input type="text" value={addLabel} onChange={(e) => setAddLabel(e.target.value)}
+              maxLength={addType === "link" ? PAYMENT_LINK_MAX_LABEL : undefined}
               placeholder={t("pay.pmLabelPlaceholder")}
               className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100" />
           </div>
@@ -200,6 +242,41 @@ export default function PaymentMethodsManager() {
                 }`} />
               {cardError && <p className="text-xs text-red-500 mt-1">{t(cardError)}</p>}
             </div>
+          )}
+          {addType === "link" && (
+            <>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400">{t("pay.link.urlLabel")}</label>
+                <input type="url" inputMode="url" autoComplete="off" spellCheck={false}
+                  value={addLinkUrl}
+                  maxLength={PAYMENT_LINK_MAX_URL}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAddLinkUrl(v);
+                    // Live feedback once something is typed; the server re-checks on save.
+                    const r = v.trim() ? validatePaymentLink(v) : null;
+                    setLinkError(r && !r.ok ? `pay.link.err.${r.code}` : null);
+                  }}
+                  placeholder={t("pay.link.urlPlaceholder")}
+                  className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 ${
+                    linkError ? "border-red-500" : "dark:border-gray-700"
+                  }`} />
+                {linkError && <p className="text-xs text-red-500 mt-1">{t(linkError)}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
+                  <span>{t("pay.link.noteLabel")}</span>
+                  <span>{addLinkNote.length}/{PAYMENT_LINK_MAX_INSTRUCTION}</span>
+                </label>
+                <textarea value={addLinkNote} rows={2} maxLength={PAYMENT_LINK_MAX_INSTRUCTION}
+                  onChange={(e) => setAddLinkNote(e.target.value)}
+                  placeholder={t("pay.link.notePlaceholder")}
+                  className="w-full mt-1 px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100 resize-none" />
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs text-blue-900 dark:text-blue-200">
+                {t("pay.link.hint")}
+              </div>
+            </>
           )}
           {addType === "sbp" && (
             <div>
@@ -244,7 +321,8 @@ export default function PaymentMethodsManager() {
               </div>
             </>
           )}
-          <button onClick={handleAdd} disabled={saving || !addLabel.trim() || (addType === "sbp" && !addQrImageUrl)}
+          {formError && <p className="text-xs text-red-500">{formError}</p>}
+          <button onClick={handleAdd} disabled={saving || !addLabel.trim() || (addType === "sbp" && !addQrImageUrl) || (addType === "link" && (!addLinkUrl.trim() || !!linkError))}
             className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50">
             {saving ? "..." : t("common.save")}
           </button>
@@ -274,8 +352,15 @@ export default function PaymentMethodsManager() {
                 <div className="text-xs text-gray-400">
                   {TYPE_LABELS[m.type] ? t(TYPE_LABELS[m.type]) : m.type}
                   {m.details?.cardNumber && ` · *${m.details.cardNumber.slice(-4)}`}
+                  {m.type === "link" && paymentLinkHost(m.details?.url) && ` · ${paymentLinkHost(m.details?.url)}`}
                 </div>
               </div>
+              {m.type === "link" && safeLinkUrl(m.details?.url) && (
+                <a href={safeLinkUrl(m.details?.url)!} target="_blank" rel="noopener noreferrer" title={t("pay.link.openTitle")}
+                  className="text-xs text-green-600 hover:text-green-700 whitespace-nowrap">
+                  {t("pay.link.open")} ↗
+                </a>
+              )}
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
                 {!m.isDefault && (
                   <button onClick={() => handleSetDefault(m.id)} className="text-xs text-green-600 hover:text-green-700">{t("pm.default")}</button>

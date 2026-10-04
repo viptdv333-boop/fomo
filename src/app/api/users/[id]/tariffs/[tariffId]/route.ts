@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 import { getT } from "@/lib/i18n/server";
+import { validateTariffMethods } from "@/lib/payment-link-server";
 
 export async function PATCH(
   request: NextRequest,
@@ -20,6 +21,11 @@ export async function PATCH(
   const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
   if (!tariff || tariff.authorId !== id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (body.paymentMethods !== undefined) {
+    const methodsError = await validateTariffMethods(id, body.paymentMethods);
+    if (methodsError) return NextResponse.json({ error: methodsError }, { status: 400 });
   }
 
   const data: Record<string, any> = {};
