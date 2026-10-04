@@ -143,6 +143,10 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                     </div>
 
                     {/* Menu items — each goes to a DIFFERENT page/action */}
+                    <Link href="/help" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                      {t("nav.help")}
+                    </Link>
                     <Link href="/ideas/new" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                       {t("profile.createIdea")}
@@ -260,6 +264,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
               <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-3">
                 <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{t("profile.cabinet")}</div>
                 <div className="space-y-1">
+                  <Link href="/help" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("nav.help")}</Link>
                   <Link href="/ideas/new" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.createIdea")}</Link>
                   <Link href="/profile?tab=ideas" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.ideas")}</Link>
                   <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.subscriptions")}</Link>
