@@ -21,7 +21,7 @@ function group(id: string): "m" | "h" | "d" {
 }
 
 /** Favourite intervals as buttons plus a dropdown with every interval, stars and a custom interval form. */
-export default function IntervalControl({ interval, onInterval, favorites, onFavorites, btn, btnOn }: Props) {
+export default function IntervalControl({ interval, onInterval, favorites, onFavorites }: Props) {
   const { t } = useT();
   const [num, setNum] = useState("");
   const [unit, setUnit] = useState<"m" | "h">("m");
@@ -52,13 +52,18 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
   ];
 
   return (
-    <>
+    <div className="flex items-center shrink-0 rounded-[9px] bg-[var(--tv3-fill2)] p-0.5">
       {shown.map((id) => (
-        <button key={id} onClick={() => onInterval(id)} aria-pressed={interval === id} className={`${btn} px-2.5 ${interval === id ? btnOn : ""}`}>
+        <button
+          key={id}
+          onClick={() => onInterval(id)}
+          aria-pressed={interval === id}
+          className={`px-[9px] py-1 text-[13px] font-semibold rounded-[7px] shrink-0 cursor-pointer text-[var(--tv3-text)] ${interval === id ? "bg-[var(--tv3-card)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "hover:bg-[var(--tv3-card)]/60"}`}
+        >
           {formatInterval(id, t)}
         </button>
       ))}
-      <MenuPopover title={t("cs.iv.all")} className={`${btn} px-1`} width={230} trigger={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>}>
+      <MenuPopover title={t("cs.iv.all")} className="px-1.5 py-1 rounded-[7px] shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)]/60" width={230} trigger={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>}>
         {(close) => (
           <div className="text-[13px]">
             {sections.map((sec) => {
@@ -120,6 +125,6 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
           </div>
         )}
       </MenuPopover>
-    </>
+    </div>
   );
 }

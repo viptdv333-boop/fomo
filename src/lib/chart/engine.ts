@@ -1980,7 +1980,10 @@ export class ChartEngine {
     const top = Math.max(lo, Math.min(hi - h, y - h / 2));
     const x0 = this.axisEdge();
     ctx.fillStyle = bg;
-    ctx.fillRect(x0, top, this.axisW, h);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(x0 + 1, top, this.axisW - 2, h, 5);
+    else ctx.rect(x0, top, this.axisW, h);
+    ctx.fill();
     ctx.fillStyle = fg;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -2097,7 +2100,10 @@ export class ChartEngine {
       const w = ctx.measureText(text).width + 16;
       const x = Math.max(0, Math.min(plotW - w, cx - w / 2));
       ctx.fillStyle = th.labelBg;
-      ctx.fillRect(x, plotH, w, TIME_AXIS_H - 4);
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") ctx.roundRect(x, plotH + 1, w, TIME_AXIS_H - 5, 5);
+      else ctx.rect(x, plotH, w, TIME_AXIS_H - 4);
+      ctx.fill();
       ctx.fillStyle = th.labelText;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -2183,7 +2189,10 @@ export class ChartEngine {
       const w = ctx.measureText(text).width + 16;
       const lx = Math.max(0, Math.min(plotW - w, cx - w / 2));
       ctx.fillStyle = th.labelBg;
-      ctx.fillRect(lx, plotH, w, TIME_AXIS_H - 4);
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") ctx.roundRect(lx, plotH + 1, w, TIME_AXIS_H - 5, 5);
+      else ctx.rect(lx, plotH, w, TIME_AXIS_H - 4);
+      ctx.fill();
       ctx.fillStyle = th.labelText;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -2210,11 +2219,13 @@ export class ChartEngine {
       x += ctx.measureText(text).width + 8;
     };
     let ly = y;
+    let chipRight = 0;
     if (pane.id === "main") {
       let cy = y;
       if (st.symbol) {
         put(`${this.opts.symbolLabel}${this.opts.intervalLabel ? " · " + this.opts.intervalLabel : ""}`, th.text, 700, 13);
         cy += 18;
+        chipRight = Math.max(chipRight, x - 8);
       }
       const prev = index > 0 ? this.bars[index - 1] : c;
       const up = c.c >= prev.c;
@@ -2258,8 +2269,20 @@ export class ChartEngine {
           x += ctx.measureText("Vol").width + 3;
           ctx.fillStyle = col;
           ctx.fillText(formatVolume(c.v, this.opts.locale), x, cy);
+          x += ctx.measureText(formatVolume(c.v, this.opts.locale)).width;
         }
+        chipRight = Math.max(chipRight, x);
         cy += 18;
+      }
+      // design v3: the status block sits on a soft rounded chip (drawn behind the text already on this layer)
+      if (chipRight > 0 && cy > y) {
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.fillStyle = withAlpha(th.bg, 0.88);
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(4, y - 4, chipRight + 6, cy - y + 5, 9);
+        else ctx.rect(4, y - 4, chipRight + 6, cy - y + 5);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
       }
       void isLast;
       ly = cy;

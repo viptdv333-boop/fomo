@@ -132,8 +132,6 @@ export function useReplay(getEngine: () => ChartEngine | null, onChanged: () => 
 
 /* ───────────── UI ───────────── */
 
-const ic = "w-4 h-4";
-
 export default function ReplayControls({ api, hostRef, getEngine }: { api: ReplayApi; hostRef: RefObject<HTMLDivElement | null>; getEngine: () => ChartEngine | null }) {
   const { t } = useT();
   const [hoverX, setHoverX] = useState<number | null>(null);
@@ -159,7 +157,8 @@ export default function ReplayControls({ api, hostRef, getEngine }: { api: Repla
     return { idx, x: e.indexToX(idx) + e.getPlotOffsetX() };
   };
 
-  const btn = "w-8 h-8 flex items-center justify-center rounded cursor-pointer text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-default";
+  // design v3: dark pill "Симулятор · осталось N | Пуск | Шаг | Выход"
+  const pill = "cursor-pointer px-2.5 py-1 rounded-full bg-white/[.14] hover:bg-white/25 font-semibold text-white disabled:opacity-40 disabled:cursor-default disabled:hover:bg-white/[.14]";
 
   if (api.mode === "pick") {
     return (
@@ -178,7 +177,7 @@ export default function ReplayControls({ api, hostRef, getEngine }: { api: Repla
         }}
       >
         {hoverX !== null && <div className="absolute top-0 bottom-0 w-px bg-green-600/80 pointer-events-none" style={{ left: hoverX }} />}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] px-3 py-1.5 rounded-md bg-gray-900/90 text-white text-xs shadow-lg flex items-center gap-2">
+        <div className="absolute top-3.5 left-1/2 -translate-x-1/2 max-w-[90%] px-3.5 py-[7px] rounded-full bg-[var(--tv3-pill-dark)] text-white text-[13px] shadow-lg flex items-center gap-2">
           <span>{t("shell.replay.pick")}</span>
           <button
             onClick={(ev) => {
@@ -197,47 +196,23 @@ export default function ReplayControls({ api, hostRef, getEngine }: { api: Repla
     );
   }
 
+  const nextSpeed = REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(api.speed) + 1) % REPLAY_SPEEDS.length] ?? 1;
   return (
-    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 px-1.5 h-10 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg max-w-[96%]">
-      <button onClick={api.togglePlay} disabled={api.atEnd} title={api.playing ? t("shell.replay.pause") : t("shell.replay.play")} className={btn}>
-        {api.playing ? (
-          <svg viewBox="0 0 24 24" className={ic} fill="currentColor">
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" className={ic} fill="currentColor">
-            <path d="M8 5.5v13l11-6.5z" />
-          </svg>
-        )}
-      </button>
-      <button onClick={api.step} disabled={api.atEnd} title={t("shell.replay.step")} className={btn}>
-        <svg viewBox="0 0 24 24" className={ic} fill="currentColor">
-          <path d="M6 6l9 6-9 6zM17 6h2v12h-2z" />
-        </svg>
-      </button>
-      <span className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-      <div className="flex items-center" title={t("shell.replay.speed")}>
-        {REPLAY_SPEEDS.map((s) => (
-          <button
-            key={s}
-            onClick={() => api.setSpeed(s)}
-            className={`h-7 px-1.5 rounded text-[11px] font-medium cursor-pointer ${
-              api.speed === s ? "bg-green-600/10 text-green-700 dark:text-green-400" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            {s}x
-          </button>
-        ))}
-      </div>
-      <span className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-      <span className="hidden sm:inline text-[11px] text-gray-500 dark:text-gray-400 tabular-nums px-1 whitespace-nowrap">
-        {api.atEnd ? t("shell.replay.end") : t("shell.replay.bars", { i: api.pos, n: api.total })}
+    <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full bg-[var(--tv3-pill-dark)] px-2 py-[5px] text-[13px] text-white max-w-[96%] shadow-[0_2px_12px_rgba(0,0,0,.25)]">
+      <span className="hidden sm:inline px-2 whitespace-nowrap text-[#c7c7cc] tabular-nums">
+        {api.atEnd ? t("v3.sim.end") : t("v3.sim", { n: Math.max(0, api.total - api.pos) })}
       </span>
-      <button onClick={() => api.exit(true)} title={t("shell.replay.exit")} className={btn}>
-        <svg viewBox="0 0 24 24" className={ic} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
+      <button onClick={api.togglePlay} disabled={api.atEnd} title={api.playing ? t("shell.replay.pause") : t("shell.replay.play")} className={pill}>
+        {api.playing ? t("v3.sim.pause") : t("v3.sim.play")}
+      </button>
+      <button onClick={api.step} disabled={api.atEnd} title={t("shell.replay.step")} className={pill}>
+        {t("v3.sim.step")}
+      </button>
+      <button onClick={() => api.setSpeed(nextSpeed)} title={t("v3.sim.speed", { s: api.speed })} aria-label={t("shell.replay.speed")} className={`${pill} tabular-nums`}>
+        {api.speed}x
+      </button>
+      <button onClick={() => api.exit(true)} title={t("shell.replay.exit")} className={pill}>
+        {t("v3.sim.exit")}
       </button>
     </div>
   );

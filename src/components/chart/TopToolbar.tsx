@@ -133,7 +133,7 @@ function Menu({
         <>
           <div className="fixed inset-0 z-[55]" onClick={close} />
           <div
-            className="fixed z-[56] py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl max-h-[calc(100vh-70px)] overflow-y-auto"
+            className="fixed z-[56] py-1.5 rounded-[14px] bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-70px)] overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width }}
           >
             {children(close)}
@@ -151,10 +151,16 @@ export default function TopToolbar(p: Props) {
   const [, setV] = useState(0);
   useEffect(() => p.drawings.subscribe(() => setV((v) => v + 1)), [p.drawings]);
 
+  // design v3: grey rounded buttons on the white card, the "on" state is a darker grey (not green)
   const btn =
-    "h-9 min-w-9 px-2 inline-flex items-center justify-center gap-1.5 rounded-md text-[13px] font-medium shrink-0 transition cursor-pointer text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-35 disabled:cursor-default disabled:hover:bg-transparent";
-  const btnOn = "bg-green-600/10 text-green-700 dark:text-green-400 hover:bg-green-600/15 dark:hover:bg-green-600/15";
-  const sep = <span className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />;
+    "h-8 min-w-8 px-2.5 inline-flex items-center justify-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125 disabled:opacity-40 disabled:cursor-default disabled:hover:brightness-100";
+  const btnOn = "!bg-[var(--tv3-fill-on)]";
+  // icon-only square buttons on the right
+  const ibtn = `${btn} !w-8 !px-0`;
+  const lbl = "hidden md:inline";
+  const badge = (n: number) => (
+    <span className="min-w-[17px] h-[17px] px-[3px] rounded-full bg-[var(--tv3-text)] text-[var(--tv3-card)] text-[11px] font-semibold leading-none inline-flex items-center justify-center box-border">{n}</span>
+  );
 
   const replayOn = p.replay.mode !== "off";
   const onReplay = () => {
@@ -166,32 +172,37 @@ export default function TopToolbar(p: Props) {
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
 
   return (
-    <div className="flex items-center gap-0.5 h-12 px-2 shrink-0 overflow-x-auto border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto md:overflow-visible md:flex-wrap border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
         {I.tools}
       </button>
 
-      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} gap-2 pr-3`}>
-        <InstIcon inst={p.instrument} size={22} />
-        <span className="font-bold text-sm">{p.instrument.ticker}</span>
-        <span className="hidden xl:inline text-[11px] font-normal text-gray-400 max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
-        <span className="text-gray-400">{I.search}</span>
+      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} !h-auto !gap-[7px] !rounded-[10px] !py-1 !pl-[5px] !pr-2.5`}>
+        <InstIcon inst={p.instrument} size={24} />
+        <span className="font-bold text-[15px]">{p.instrument.ticker}</span>
+        <span className="hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
+        <span className="text-[var(--tv3-text2)] scale-90 inline-flex">{I.search}</span>
       </button>
       {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={btn} />}
-      {sep}
 
       {p.favIntervals && p.onFavIntervals ? (
         <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} />
       ) : (
-        INTERVALS.map((i) => (
-          <button key={i.id} onClick={() => p.onInterval(i.id)} aria-pressed={p.interval === i.id} className={`${btn} px-2.5 ${p.interval === i.id ? btnOn : ""}`}>
-            {t(i.key)}
-          </button>
-        ))
+        <div className="flex items-center shrink-0 rounded-[9px] bg-[var(--tv3-fill2)] p-0.5">
+          {INTERVALS.map((i) => (
+            <button
+              key={i.id}
+              onClick={() => p.onInterval(i.id)}
+              aria-pressed={p.interval === i.id}
+              className={`px-[9px] py-1 text-[13px] font-semibold rounded-[7px] cursor-pointer ${p.interval === i.id ? "bg-[var(--tv3-card)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : ""}`}
+            >
+              {t(i.key)}
+            </button>
+          ))}
+        </div>
       )}
-      {sep}
 
-      <Menu title={t("shell.chartType")} className={`${btn}`} width={220} trigger={<>{typeIcon[currentType.id]}{I.chevron}</>}>
+      <Menu title={t("shell.chartType")} className={`${btn}`} width={220} trigger={<>{typeIcon[currentType.id]}</>}>
         {(close) =>
           CHART_TYPES.map((c) => (
             <button
@@ -200,8 +211,8 @@ export default function TopToolbar(p: Props) {
                 p.onChartType(c.id);
                 close();
               }}
-              className={`w-full h-9 px-3 flex items-center gap-2.5 text-[13px] text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                p.chartType === c.id ? "text-green-600 dark:text-green-400 font-medium" : "text-gray-800 dark:text-gray-200"
+              className={`w-full h-9 px-3.5 flex items-center gap-2.5 text-sm text-left cursor-pointer hover:bg-[var(--tv3-fill)] ${
+                p.chartType === c.id ? "text-[var(--tv3-accent)] font-semibold" : "font-medium text-[var(--tv3-text)]"
               }`}
             >
               {typeIcon[c.id]}
@@ -211,31 +222,29 @@ export default function TopToolbar(p: Props) {
         }
       </Menu>
       {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={btn} source={p.instrument.source} />}
-      {sep}
 
       {p.onOpenCompare && (
         <button onClick={p.onOpenCompare} title={t("cs.compare")} className={btn}>
           {CS_ICONS.compare}
-          <span className="hidden xl:inline">{t("cs.compareShort")}</span>
-          {(p.compareCount ?? 0) > 0 && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{p.compareCount}</span>}
+          <span className={lbl}>{t("cs.compareShort")}</span>
+          {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
         </button>
       )}
       <button onClick={p.onOpenIndicators} title={t("shell.indicators")} className={btn}>
         {I.indicators}
-        <span className="hidden lg:inline">{t("shell.indicators")}</span>
-        {p.indicatorCount > 0 && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{p.indicatorCount}</span>}
+        <span className={lbl}>{t("shell.indicators")}</span>
+        {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
         {I.alert}
-        <span className="hidden lg:inline">{t("shell.alerts")}</span>
-        {(p.alertCount ?? 0) > 0 && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{p.alertCount}</span>}
+        <span className={lbl}>{t("shell.alerts")}</span>
+        {(p.alertCount ?? 0) > 0 && badge(p.alertCount ?? 0)}
       </button>
       <ChartEventsButton className={btn} onClassName={btnOn} />
       <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} ${replayOn ? btnOn : ""}`}>
         {I.replay}
-        <span className="hidden lg:inline">{t("shell.replay")}</span>
+        <span className={lbl}>{t("shell.replay")}</span>
       </button>
-      {sep}
 
       <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} className={btn}>
         {I.undo}
@@ -244,18 +253,18 @@ export default function TopToolbar(p: Props) {
         {I.redo}
       </button>
 
-      <span className="flex-1 min-w-2" />
+      <span className="flex-1 min-w-2 hidden md:block" />
 
       {p.extra}
-      {p.templates && <TemplatesMenu btn={btn} {...p.templates} />}
+      {p.templates && <TemplatesMenu btn={ibtn} {...p.templates} />}
       {p.onOpenSettings ? (
-        <button onClick={p.onOpenSettings} title={t("chart.settings")} className={btn}>
+        <button onClick={p.onOpenSettings} title={t("chart.settings")} className={ibtn}>
           {I.gear}
         </button>
       ) : (
-      <Menu title={t("chart.settings")} className={btn} width={220} trigger={I.gear}>
+      <Menu title={t("chart.settings")} className={ibtn} width={220} trigger={I.gear}>
         {(close) => (
-          <div className="px-1 text-xs text-gray-800 dark:text-gray-200">
+          <div className="px-1 text-[13px] text-[var(--tv3-text)]">
             {(
               [
                 ["showVolume", "chart.volume"],
@@ -263,7 +272,7 @@ export default function TopToolbar(p: Props) {
                 ["showWatermark", "chart.watermark"],
               ] as const
             ).map(([k, label]) => (
-              <label key={k} className="flex items-center gap-2 h-8 px-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+              <label key={k} className="flex items-center gap-2 h-8 px-2 rounded-lg cursor-pointer hover:bg-[var(--tv3-fill)]">
                 <input type="checkbox" className="accent-green-600" checked={p.toggles[k]} onChange={(e) => p.onToggle(k, e.target.checked)} />
                 {t(label)}
               </label>
@@ -273,7 +282,7 @@ export default function TopToolbar(p: Props) {
                 p.onResetView();
                 close();
               }}
-              className="w-full h-8 px-2 rounded text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="w-full h-8 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)]"
             >
               {t("shell.settings.resetView")}
             </button>
@@ -282,15 +291,15 @@ export default function TopToolbar(p: Props) {
       </Menu>
       )}
       {p.onOpenShortcuts && (
-        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} className={`${btn} hidden lg:inline-flex`}>
+        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} className={`${ibtn} hidden lg:inline-flex`}>
           {CS_ICONS.keyboard}
         </button>
       )}
-      <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${btn} ${p.fullscreen ? btnOn : ""}`}>
+      <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
       </button>
       {p.onScreenshotCopy ? (
-        <Menu title={t("chart.screenshot")} className={btn} width={220} trigger={I.camera}>
+        <Menu title={t("chart.screenshot")} className={ibtn} width={220} trigger={I.camera}>
           {(close) => (
             <>
               <button
@@ -298,7 +307,7 @@ export default function TopToolbar(p: Props) {
                   p.onScreenshot();
                   close();
                 }}
-                className="w-full h-9 px-3 flex items-center gap-2.5 text-[13px] text-left cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full h-9 px-3.5 flex items-center gap-2.5 text-sm font-medium text-left cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]"
               >
                 {CS_ICONS.download}
                 {t("cs.snap.download")}
@@ -308,7 +317,7 @@ export default function TopToolbar(p: Props) {
                   p.onScreenshotCopy?.();
                   close();
                 }}
-                className="w-full h-9 px-3 flex items-center gap-2.5 text-[13px] text-left cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full h-9 px-3.5 flex items-center gap-2.5 text-sm font-medium text-left cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]"
               >
                 {CS_ICONS.copy}
                 {t("cs.snap.copy")}
@@ -317,7 +326,7 @@ export default function TopToolbar(p: Props) {
           )}
         </Menu>
       ) : (
-        <button onClick={p.onScreenshot} title={t("chart.screenshot")} className={btn}>
+        <button onClick={p.onScreenshot} title={t("chart.screenshot")} className={ibtn}>
           {I.camera}
         </button>
       )}

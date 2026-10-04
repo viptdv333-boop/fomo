@@ -75,14 +75,18 @@ export interface TableColors {
   muted: string;
   border: string;
   sep: string;
+  /** Header strip fill (design v3 soft card); empty = no strip. */
+  head?: string;
+  /** Soft rounded card with a shadow instead of a hard frame (the automatic theme only). */
+  soft?: boolean;
 }
 
 export function tableColors(cfg: VpCfg, theme: ChartTheme): TableColors {
   if (cfg.tblAuto) {
     const dark = isDark(theme.bg);
     return dark
-      ? { bg: rgba("#1e222d", cfg.tblAlpha), text: "#d1d4dc", muted: "#868993", border: "#434651", sep: "rgba(255,255,255,0.09)" }
-      : { bg: rgba("#f0f3fa", cfg.tblAlpha), text: "#131722", muted: "#6a6d78", border: "#c4c8d2", sep: "rgba(0,0,0,0.09)" };
+      ? { bg: rgba("#1c1c1e", Math.max(cfg.tblAlpha, 0.9)), text: "#f2f2f7", muted: "#8e8e93", border: "#2c2c2e", sep: "rgba(255,255,255,0.07)", head: "rgba(255,255,255,0.06)", soft: true }
+      : { bg: rgba("#ffffff", Math.max(cfg.tblAlpha, 0.9)), text: "#1c1c1e", muted: "#8e8e93", border: "#e5e5ea", sep: "#f0f0f4", head: "rgba(242,242,247,0.9)", soft: true };
   }
   return { bg: rgba(cfg.c.vpTblBg, cfg.tblAlpha), text: cfg.c.vpTblText, muted: cfg.c.vpTblText, border: cfg.c.vpTblBorder, sep: rgba(cfg.c.vpTblText, 0.14) };
 }
@@ -131,15 +135,37 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   const belowLegend = !bottom && (!right || place.W - w - m < LEGEND_ROOM);
   const y = Math.round(bottom ? place.H - h - m - place.stack : (belowLegend ? place.insetTop : m) + place.stack);
   // background and frame
-  ctx.fillStyle = col.bg;
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = col.border;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  if (col.soft && typeof ctx.roundRect === "function") {
+    // design v3: white rounded card, soft shadow, grey header strip
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = col.bg;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.restore();
+    if (col.head) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 12);
+      ctx.clip();
+      ctx.fillStyle = col.head;
+      ctx.fillRect(x, y, w, rowH);
+      ctx.restore();
+    }
+  } else {
+    ctx.fillStyle = col.bg;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = col.border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
   ctx.textBaseline = "middle";
   // header
   ctx.font = `600 ${fs}px ${fontFamily}`;
-  ctx.fillStyle = col.muted;
+  ctx.fillStyle = col.soft ? col.text : col.muted;
   ctx.textAlign = "left";
   ctx.fillText(head, x + padX, y + rowH / 2 + 0.5);
   // rows
@@ -147,14 +173,15 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
     const ry = y + rowH * (i + 1);
     ctx.strokeStyle = col.sep;
     ctx.beginPath();
-    ctx.moveTo(x + 1, ry + 0.5);
-    ctx.lineTo(x + w - 1, ry + 0.5);
+    ctx.moveTo(x + (col.soft ? 8 : 1), ry + 0.5);
+    ctx.lineTo(x + w - (col.soft ? 8 : 1), ry + 0.5);
     ctx.stroke();
     ctx.font = `${fs}px ${fontFamily}`;
-    ctx.fillStyle = col.text;
+    ctx.fillStyle = col.soft ? col.muted : col.text;
     ctx.textAlign = "left";
     ctx.fillText(showRows[i].label, x + padX, ry + rowH / 2 + 0.5);
     ctx.font = `600 ${fs}px ${fontFamily}`;
+    ctx.fillStyle = col.text;
     ctx.textAlign = "right";
     ctx.fillText(showRows[i].value, x + w - padX, ry + rowH / 2 + 0.5);
   }

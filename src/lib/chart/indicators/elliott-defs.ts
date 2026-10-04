@@ -513,7 +513,7 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
   const { ctx, theme } = sc;
   const lines: { text: string; color: string; bold?: boolean; size?: number }[] = [];
   const title = indT("ind.ew.short", "Elliott") + (r.multi ? "" : " · " + degText(r.degrees[0]?.degree ?? "intermediate"));
-  lines.push({ text: title, color: theme.textMuted, size: 10 });
+  lines.push({ text: title, color: theme.text, bold: true, size: 12 });
   if (!sum) {
     lines.push({ text: indT("ind.ew.none", "no count ≥ {min}%", { min: r.minConfidence }), color: theme.textMuted });
   } else {
@@ -531,7 +531,7 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
     ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 11}px ${sc.options.fontFamily}`;
     w = Math.max(w, ctx.measureText(l.text).width);
   }
-  w = Math.min(w + 16, sc.paneWidth * 0.5);
+  w = Math.min(w + 20, sc.paneWidth * 0.5);
   const lh = 15;
   const h = lines.length * lh + 8;
   // the corner where the card hides the fewest candles and none of the projection labels
@@ -562,14 +562,17 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
   }
   const x = best.x;
   const y = best.y;
-  ctx.fillStyle = theme.bg.length === 7 ? rgba(theme.bg, 0.86) : theme.bg;
-  ctx.strokeStyle = theme.paneBorder;
-  ctx.lineWidth = 1;
+  // design v3: soft white card with a shadow instead of a hard frame
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.16)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = theme.bg.length === 7 ? rgba(theme.bg, 0.94) : theme.bg;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 6);
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 12);
   else ctx.rect(x, y, w, h);
   ctx.fill();
-  ctx.stroke();
+  ctx.restore();
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.beginPath();
@@ -578,7 +581,7 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
   lines.forEach((l, i) => {
     ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 11}px ${sc.options.fontFamily}`;
     ctx.fillStyle = l.color;
-    ctx.fillText(l.text, x + 8, y + 4 + lh * i + lh / 2);
+    ctx.fillText(l.text, x + 10, y + 4 + lh * i + lh / 2);
   });
   ctx.restore();
 }

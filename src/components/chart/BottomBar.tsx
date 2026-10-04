@@ -85,8 +85,8 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
       {open && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
-          <div style={pos} className="fixed z-[56] w-[230px] rounded-lg bg-white dark:bg-[#1e222d] border border-gray-200 dark:border-[#2a2e39] shadow-xl p-3">
-            <div className="text-[12px] text-gray-500 dark:text-gray-400 mb-1.5">{t("cs.gotoTitle")}</div>
+          <div style={pos} className="fixed z-[56] w-[240px] rounded-[14px] bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] p-3">
+            <div className="text-xs font-semibold text-[var(--tv3-muted)] mb-1.5">{t("cs.gotoTitle")}</div>
             <input
               type="date"
               autoFocus
@@ -96,9 +96,9 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
                 if (e.key === "Enter") go();
                 if (e.key === "Escape") setOpen(false);
               }}
-              className="w-full h-8 rounded border border-gray-300 dark:border-[#363a45] bg-white dark:bg-[#131722] px-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#2962ff]"
+              className="w-full h-9 rounded-[9px] border-0 bg-[var(--tv3-fill2)] px-2.5 text-sm text-[var(--tv3-text)] outline-none focus:ring-2 focus:ring-[var(--tv3-accent)]"
             />
-            <button onClick={go} disabled={!val} className="mt-2 w-full h-8 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5] disabled:opacity-40 disabled:cursor-default">
+            <button onClick={go} disabled={!val} className="mt-2 w-full h-9 rounded-[9px] bg-[var(--tv3-accent)] text-white text-sm font-semibold cursor-pointer hover:bg-[var(--tv3-accent-hover)] disabled:opacity-40 disabled:cursor-default">
               {t("cs.gotoGo")}
             </button>
           </div>
@@ -112,21 +112,24 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
   const { t, locale } = useT();
   const clock = useExchangeClock(source, zone);
 
-  const btn = "h-6 px-2 rounded text-[11px] font-medium shrink-0 transition cursor-pointer text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800";
-  const on = "bg-green-600/10 text-green-700 dark:text-green-400";
+  // design v3: grey pills (segmented ranges + tiny buttons), the active toggle is tinted green
+  const btn = "h-[26px] px-2.5 rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
+  const seg = "h-[22px] px-2 rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
+  const on = "!bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]";
 
   return (
-    <div className="flex items-center gap-0.5 h-8 px-2 shrink-0 overflow-x-auto whitespace-nowrap border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {RANGES.map((r) => (
-        <button key={r} onClick={() => onRange(r)} disabled={rangeBusy} title={t("shell.range.tip")} className={`${btn} disabled:opacity-50 disabled:cursor-wait`}>
-          {t(`shell.range.${r}`)}
-        </button>
-      ))}
+    <div className="flex items-center gap-2 min-h-[38px] px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 shrink-0">
+        {RANGES.map((r) => (
+          <button key={r} onClick={() => onRange(r)} disabled={rangeBusy} title={t("shell.range.tip")} className={`${seg} disabled:opacity-50 disabled:cursor-wait`}>
+            {t(`shell.range.${r}`)}
+          </button>
+        ))}
+      </div>
       {rangeBusy && <span className="ml-1 inline-block w-3 h-3 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin shrink-0" title={t("shell.loadingHistory")} />}
       {onGoToDate && (
         <>
-          <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
-          <GoToDate btn={btn} onGo={onGoToDate} signal={gotoSignal} />
+          <GoToDate btn={`${btn} !rounded-lg !px-2.5`} onGo={onGoToDate} signal={gotoSignal} />
         </>
       )}
 
@@ -135,14 +138,14 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
       {onTz && tz !== undefined ? (
         <MenuPopover
           title={t("cs.timezone")}
-          className="h-6 px-2 rounded text-[11px] tabular-nums shrink-0 cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="h-[26px] px-2 rounded-[7px] text-xs tabular-nums shrink-0 cursor-pointer text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
           width={250}
           align="right"
           up
           trigger={
             <span className="inline-flex items-center gap-1.5">
               {clock.time}
-              {clock.zone && <span className="text-gray-400 dark:text-gray-500">{clock.zone}</span>}
+              {clock.zone && <span>{clock.zone}</span>}
             </span>
           }
         >
@@ -167,12 +170,11 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
           )}
         </MenuPopover>
       ) : (
-        <span className="text-[11px] tabular-nums text-gray-500 dark:text-gray-400 shrink-0 px-2" title={source === "moex" ? t("shell.tz.moscow") : t("shell.tz.local")}>
+        <span className="text-xs tabular-nums text-[var(--tv3-text2)] shrink-0 px-2" title={source === "moex" ? t("shell.tz.moscow") : t("shell.tz.local")}>
           {clock.time}
-          {clock.zone && <span className="ml-1.5 text-gray-400 dark:text-gray-500">{clock.zone}</span>}
+          {clock.zone && <span className="ml-1.5">{clock.zone}</span>}
         </span>
       )}
-      <span className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
       {onScaleMode && (
         <button
           onClick={() => onScaleMode(scaleMode === "percent" ? "regular" : "percent")}

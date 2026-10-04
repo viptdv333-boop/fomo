@@ -18,7 +18,9 @@ const COLLAPSED_KEY = "fomo-ind-legend-collapsed";
 
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
+    // design v3: collapsed ("Индикаторы ( N )" pill only) until the user opens the list
+    const v = localStorage.getItem(COLLAPSED_KEY);
+    return v === null ? true : v === "1";
   } catch {
     return false;
   }
@@ -33,11 +35,11 @@ interface Props {
   mainTop?: number;
 }
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 46 }: Props) {
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 50 }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [menuUid, setMenuUid] = useState<string | null>(null);
   const [settingsUid, setSettingsUid] = useState<string | null>(null);
   const [editScript, setEditScript] = useState<string | null>(null);
@@ -193,7 +195,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   }
 
   const btn =
-    "flex h-[18px] w-[18px] items-center justify-center rounded text-gray-500 hover:bg-gray-500/15 hover:text-gray-900 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:text-white";
+    "flex h-[18px] w-[18px] items-center justify-center rounded text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tv3-accent)]";
 
   const renderRow = (uid: string) => {
     const info = controller.legendInfo(uid, index);
@@ -206,7 +208,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     return (
       <div key={uid} className="relative pointer-events-auto">
         <div
-          className={`group inline-flex max-w-full flex-wrap items-center gap-x-1.5 rounded px-1 py-[1px] text-[12px] leading-[16px] hover:bg-white/70 dark:hover:bg-[#1e222d]/80 ${dim ? "opacity-55" : ""}`}
+          className={`group inline-flex max-w-full flex-wrap items-center gap-x-1.5 rounded-lg px-2 py-[3px] text-[13px] leading-[18px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] ${dim ? "opacity-55" : ""}`}
           onClick={(e) => {
             // tap on touch screens reveals the actions
             if ((e.target as HTMLElement).closest("button")) return;
@@ -214,7 +216,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
           }}
           title={info.tfHidden ? t("ind2.lg.tfHidden") : info.tip}
         >
-          <span className="truncate font-medium" style={{ color: "var(--ind-legend-title, #787b86)" }}>
+          <span className="truncate font-medium" style={{ color: "var(--tv3-text)" }}>
             {info.title}
           </span>
           {info.error && (
@@ -257,7 +259,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
           </span>
         </div>
         {menuUid === uid && (
-          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 text-xs text-gray-800 shadow-xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-200">
+          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-56 rounded-xl bg-[var(--tv3-card)] py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
             <MenuItem
               icon={IND_ICONS.gear(14)}
               label={t("ind2.lg.settings")}
@@ -302,7 +304,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 controller.update(uid, { visible: !info.visible });
               }}
             />
-            <div className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />
+            <div className="my-1 h-px bg-[var(--tv3-hair)]" />
             <MenuItem
               icon={IND_ICONS.trash(14)}
               label={t("ind.remove")}
@@ -323,29 +325,31 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
 
   return (
     <>
-      <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-gray-700 dark:text-gray-300 [--ind-legend-title:#787b86]">
+      <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
         {mainUids.length > 0 && (
-          <div className="absolute left-2 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: mainTop }}>
-            {!collapsed && mainUids.map(renderRow)}
-            {/* TradingView style: the arrow sits under the list; collapsed it shows how many indicators are hidden */}
-            <div className="pointer-events-auto mt-0.5 flex items-center">
+          <div className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop }}>
+            {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
+            <div className="pointer-events-auto flex items-center">
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="flex h-[22px] items-center gap-1 rounded-md border border-gray-300 bg-white/85 px-1.5 text-[11px] text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2962ff] dark:border-[#2a2e39] dark:bg-[#1e222d]/90 dark:text-gray-300 dark:hover:bg-[#2a2e39] dark:hover:text-white"
+                className="flex h-[25px] items-center gap-[5px] rounded-[9px] bg-[var(--tv3-fill)]/95 px-2.5 text-[13px] font-semibold text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
                 aria-expanded={!collapsed}
                 title={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                {collapsed ? IND_ICONS.chevronDown(14) : IND_ICONS.chevronUp(14)}
-                {collapsed && <span>{t("ind2.lg.count", { n: mainUids.length })}</span>}
+                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d={collapsed ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
+                </svg>
+                <span>{t("v3.indicators", { n: list.length })}</span>
               </button>
             </div>
+            {!collapsed && <div className="flex flex-col items-start rounded-xl bg-[var(--tv3-glass)] py-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]">{mainUids.map(renderRow)}</div>}
           </div>
         )}
         {others.map(([pid, uids]) =>
           tops[pid] === undefined ? null : (
-            <div key={pid} className="absolute left-2 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + 5 }}>
+            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + 5 }}>
               {uids.map(renderRow)}
             </div>
           ),
@@ -363,9 +367,9 @@ function MenuItem({ icon, label, onClick, danger }: { icon: ReactNode; label: st
       type="button"
       role="menuitem"
       onClick={onClick}
-      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:hover:bg-[#2a2e39] dark:focus:bg-[#2a2e39] ${danger ? "text-red-600 dark:text-red-400" : ""}`}
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--tv3-fill)] focus:bg-[var(--tv3-fill)] focus:outline-none ${danger ? "text-[var(--tv3-red)]" : ""}`}
     >
-      <span className="text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className="text-[var(--tv3-muted)]">{icon}</span>
       {label}
     </button>
   );

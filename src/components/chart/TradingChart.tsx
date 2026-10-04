@@ -46,6 +46,7 @@ import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
 import type { ChartSyncHub } from "@/lib/chart/sync";
 import { adHocInstrument, findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
+import "@/components/chart/terminal-v3.css";
 
 export type { ChartSource } from "@/lib/terminal-data";
 import type { ChartSource } from "@/lib/terminal-data";
@@ -1200,7 +1201,18 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const setScaleMode = (m: ScaleMode) => csApi.update((x) => ({ ...x, scale: { ...x.scale, mode: m } }));
 
   return (
-    <div ref={wrapRef} className="flex flex-col w-full h-full min-h-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 select-none">
+    <div ref={wrapRef} className="flex flex-col w-full h-full min-h-0 bg-[var(--tv3-canvas)] text-[var(--tv3-text)] select-none">
+      {/* design v3: floating cards on the canvas: [drawing tools] [chart card: toolbar + chart + bottom bar] [right panel] */}
+      <div className={`relative flex flex-1 min-h-0 ${embedded ? "" : compact ? "md:gap-2" : "md:gap-2 md:p-2"}`}>
+        {/* drawing tools (the toolbar is its own card; on a phone it is a drawer under the top toolbar) */}
+        <div
+          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 top-[46px] md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
+        >
+          <DrawingToolbar controller={drawings} />
+        </div>
+
+        {/* chart card */}
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
       <TopToolbar
         instrument={instrument}
         interval={prefs.interval}
@@ -1241,21 +1253,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         extra={toolbarExtra}
       />
 
-      <div className="relative flex flex-1 min-h-0">
-        {/* drawing tools */}
-        <div
-          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 top-0 bottom-0 z-30 md:z-auto shrink-0 overflow-y-auto bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
-        >
-          <DrawingToolbar controller={drawings} />
-        </div>
-
-        {/* chart + bottom bar */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0">
           <div className="group relative flex-1 min-h-0">
             <div ref={hostRef} className="absolute inset-0" />
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
+                <span className="inline-block w-6 h-6 border-2 border-[var(--tv3-hair)] border-t-[var(--tv3-accent)] rounded-full animate-spin" />
               </div>
             )}
             {candlesDelayed && !loading && !empty && (
@@ -1264,7 +1266,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             {!loading && empty && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 pointer-events-none">{t("chart.noData")}</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t("chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} />}
@@ -1289,20 +1291,20 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             />
             {cs.navButtons !== "never" && (
               <div
-                className={`absolute bottom-9 z-10 flex items-center gap-0.5 rounded-lg border border-gray-200 dark:border-[#2a2e39] bg-white/90 dark:bg-[#1e222d]/90 backdrop-blur p-0.5 transition-opacity ${
-                  cs.scale.side === "left" ? "left-[76px]" : "left-2"
+                className={`absolute bottom-9 z-10 flex items-center overflow-hidden rounded-[11px] bg-[var(--tv3-glass)] shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
+                  cs.scale.side === "left" ? "left-[76px]" : "left-2.5"
                 } ${cs.navButtons === "hover" ? "opacity-0 group-hover:opacity-100 focus-within:opacity-100" : ""}`}
               >
                 {(
                   [
-                    ["zoomOut", "cs.nav.zoomOut", () => engineRef.current?.zoomBy(0.8)],
-                    ["zoomIn", "cs.nav.zoomIn", () => engineRef.current?.zoomBy(1.25)],
-                    ["toLatest", "cs.nav.toLatest", () => engineRef.current?.scrollToLatest()],
-                    ["resetView", "cs.nav.resetView", () => engineRef.current?.resetView()],
+                    ["zoomOut", "−", "cs.nav.zoomOut", () => engineRef.current?.zoomBy(0.8)],
+                    ["zoomIn", "+", "cs.nav.zoomIn", () => engineRef.current?.zoomBy(1.25)],
+                    ["toLatest", "»", "cs.nav.toLatest", () => engineRef.current?.scrollToLatest()],
+                    ["resetView", "↻", "cs.nav.resetView", () => engineRef.current?.resetView()],
                   ] as const
-                ).map(([k, label, fn]) => (
-                  <button key={k} onClick={fn} title={t(label)} aria-label={t(label)} className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
-                    {CS_ICONS[k]}
+                ).map(([k, glyph, label, fn]) => (
+                  <button key={k} onClick={fn} title={t(label)} aria-label={t(label)} className="w-[34px] h-[30px] inline-flex items-center justify-center text-base font-semibold text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] cursor-pointer">
+                    {glyph}
                   </button>
                 ))}
               </div>
@@ -1326,7 +1328,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             gotoSignal={gotoSignal}
           />
           {!embedded && !compact && (
-            <nav className="md:hidden shrink-0 flex items-stretch border-t border-gray-200 dark:border-[#2a2e39] bg-white dark:bg-gray-900 pb-[env(safe-area-inset-bottom)]">
+            <nav className="md:hidden shrink-0 flex items-stretch border-t border-[var(--tv3-hair)] bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)]">
               {(
                 [
                   ["watchlist", "mnav.watchlist", PANEL_TAB_ICONS.watchlist, () => onTab("watchlist"), mobilePanel],
@@ -1340,7 +1342,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   key={k}
                   type="button"
                   onClick={fn}
-                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] leading-tight cursor-pointer ${on ? "text-blue-500" : "text-gray-500 dark:text-gray-400"}`}
+                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] leading-tight cursor-pointer ${on ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)]"}`}
                 >
                   {icon}
                   <span className="truncate max-w-full">{t(label)}</span>

@@ -203,7 +203,7 @@ export default function MultiChart(props: Props) {
   const picker = (
     <MenuPopover
       title={t("cs.ml.title")}
-      className="h-9 min-w-9 px-2 inline-flex items-center justify-center gap-1.5 rounded-md text-[13px] font-medium shrink-0 transition cursor-pointer text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+      className="h-8 w-8 inline-flex items-center justify-center rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
       width={250}
       align="right"
       trigger={<span className="scale-[0.85] inline-flex">{LAYOUT_ICONS[state.layout]}</span>}
@@ -247,10 +247,10 @@ export default function MultiChart(props: Props) {
     </MenuPopover>
   );
 
-  const cellCls = (i: number) => `relative min-w-0 min-h-0 flex flex-col overflow-hidden ${count === 3 && i === 0 ? "row-span-2" : ""} ${count > 1 && active === i ? "ring-1 ring-inset ring-[#2962ff]/60" : ""}`;
+  const cellCls = (i: number) => `relative min-w-0 min-h-0 flex flex-col overflow-hidden ${count === 3 && i === 0 ? "row-span-2" : ""} ${count > 1 ? "rounded-2xl" : ""} ${count > 1 && active === i ? "outline outline-2 -outline-offset-2 outline-[var(--tv3-accent)]/60" : ""}`;
 
   return (
-    <div className={`grid w-full h-full min-h-0 gap-px bg-gray-200 dark:bg-[#2a2e39] ${GRID[state.layout]}`}>
+    <div className={`grid w-full h-full min-h-0 ${count > 1 ? "gap-2 p-2 bg-[var(--tv3-canvas)]" : ""} ${GRID[state.layout]}`}>
       {Array.from({ length: count }, (_, i) => {
         const sym = symOf(i);
         const inst = findInstrument(sym.source, sym.ticker) ?? adHocInstrument(sym.source, sym.ticker);
