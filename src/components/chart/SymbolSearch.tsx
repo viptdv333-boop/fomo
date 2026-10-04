@@ -12,7 +12,7 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 import { InstIcon } from "./RightPanel";
-import { ContractSubRows, ExpandButton, GroupTabs, pickMarketItem, useMarketSearch, type GroupTab } from "./MarketRows";
+import { ContractSubRows, ExpandButton, GroupTabs, iconFor, pickMarketItem, useMarketSearch, type GroupTab } from "./MarketRows";
 import { ContractBadge } from "./ContractPicker";
 import { autoToAsset, getLastContract, lookupSecid, itemToInstrument } from "@/lib/market-client";
 import type { MarketItem } from "@/lib/market-types";
@@ -81,8 +81,8 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
       const group = t(CATEGORY_I18N[cat.name] || cat.name);
       const shares = cat.name === "Акции ММВБ";
       for (const inst of cat.instruments) {
-        // tabs: shares -> Акции, the other MOEX entries are futures, crypto only in "Все"
-        if (tab !== "all" && !(inst.source === "moex" && (tab === "stock" ? shares : tab === "future" ? !shares : false))) continue;
+        // tabs: shares -> Акции, the other MOEX entries are futures, Bybit pairs -> Крипто
+        if (tab === "crypto" ? inst.source !== "bybit" : tab !== "all" && !(inst.source === "moex" && (tab === "stock" ? shares : tab === "future" ? !shares : false))) continue;
         if (
           !needle ||
           inst.ticker.toLowerCase().includes(needle) ||
@@ -97,12 +97,12 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
     // the exchange search: shares of all boards, bonds, funds, currency, futures with their contracts
     let marketHits = 0;
     for (const item of market.items) {
-      const key = `moex:${item.secid}`;
+      const key = `${item.source}:${item.secid}`;
       if (seen.has(key)) continue;
       seen.add(key);
       marketHits++;
       out.push({
-        inst: itemToInstrument(item, ""),
+        inst: itemToInstrument(item, iconFor(item, ALL_INSTRUMENTS)),
         group: t(`ms.group.${item.group === "other" ? "stock" : item.group}`),
         item,
         expand: item.group === "future" && item.auto && (item.contracts ?? 0) > 1 ? item.secid : undefined,
@@ -110,9 +110,10 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
     }
     // Any other ticker can be opened directly on either exchange.
     const raw = q.trim();
-    if (/^[A-Za-z0-9_.-]{2,24}$/.test(raw) && !ALL_INSTRUMENTS.some((i) => i.ticker.toLowerCase() === raw.toLowerCase()) && tab === "all") {
-      if (!marketHits && !market.loading) out.push({ inst: adHocInstrument("moex", raw), group: "MOEX", custom: true });
-      out.push({ inst: adHocInstrument("bybit", raw.toUpperCase()), group: "Bybit", custom: true });
+    if (/^[A-Za-z0-9_.-]{2,24}$/.test(raw) && !ALL_INSTRUMENTS.some((i) => i.ticker.toLowerCase() === raw.toLowerCase()) && (tab === "all" || tab === "crypto")) {
+      if (tab === "all" && !marketHits && !market.loading) out.push({ inst: adHocInstrument("moex", raw), group: "MOEX", custom: true });
+      // perpetuals / dated contracts (BTCUSDT.P ...) are not in the spot list: still openable by the exact ticker
+      if (!out.some((r) => r.inst.source === "bybit" && !r.custom)) out.push({ inst: adHocInstrument("bybit", raw.toUpperCase()), group: "Bybit", custom: true });
     }
     return out;
   }, [q, t, tab, market.items, market.loading]);

@@ -7,6 +7,7 @@
 import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
 import type { MarketGroup, MarketItem } from "./market-types";
+import { getBybitSpotList, looksLikeCoin, pairToItem, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -54,6 +55,7 @@ const RU_NAMES: Record<string, string> = {
 const ruName = (f: ContractFamily) => RU_NAMES[f.asset] ?? RU_NAMES[f.name];
 
 const SEARCH_TTL = 60_000;
+const CRYPTO_IN_ALL = 5;
 const searchCache = new Map<string, { at: number; items: MarketItem[] }>();
 
 function norm(s: string): string {
@@ -182,6 +184,7 @@ function rank(items: MarketItem[], q: string): MarketItem[] {
 
 export async function searchMarket(q: string, group: MarketGroup | "all" = "all", limit = 30): Promise<MarketItem[]> {
   q = q.trim();
+  if (group === "crypto") return searchCrypto(q, limit); // the whole Bybit spot list (has its own 1 h cache)
   if (q.length < 1) return [];
   const key = `${group}|${limit}|${norm(q)}`;
   const hit = searchCache.get(key);
@@ -198,6 +201,11 @@ export async function searchMarket(q: string, group: MarketGroup | "all" = "all"
   const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...cash], q);
   // an exact secid always on top; otherwise cash groups and futures interleave by relevance
   const items = [...exactFut, ...rest].slice(0, limit);
+  // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
+  if (group === "all" && looksLikeCoin(q)) {
+    const spot = await getBybitSpotList();
+    items.push(...searchSpotPairs(spot, q, CRYPTO_IN_ALL).map(pairToItem));
+  }
   if (searchCache.size > 500) searchCache.clear();
   searchCache.set(key, { at: Date.now(), items });
   return items;

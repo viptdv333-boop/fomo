@@ -5,16 +5,17 @@ import { useT } from "@/lib/i18n/client";
 import type { ContractInfo, ContractsResponse, MarketGroup, MarketItem } from "@/lib/market-types";
 import { contractToInstrument, fetchContracts, getLastContract, lookupSecid, itemToInstrument, searchMarketApi } from "@/lib/market-client";
 import { rememberInstrument, type TerminalInstrument } from "@/lib/terminal-data";
+import { coinIcon, pairToItem, POPULAR_CRYPTO } from "@/lib/bybit-spot-search";
 import { ContractBadge, ROLL_DAYS } from "./ContractPicker";
 
 export type GroupTab = "all" | Exclude<MarketGroup, "other">;
-export const GROUP_TABS: GroupTab[] = ["all", "stock", "bond", "fund", "future", "currency"];
+export const GROUP_TABS: GroupTab[] = ["all", "stock", "bond", "fund", "future", "crypto", "currency"];
 
-/** Group filter chips of the search dialogs (Все · Акции · Облигации · Фонды · Фьючерсы · Валюта). */
+/** Group filter chips of the search dialogs (Все · Акции · Облигации · Фонды · Фьючерсы · Крипто · Валюта), wrapped onto several lines so no chip is clipped. */
 export function GroupTabs({ value, onChange, className = "" }: { value: GroupTab; onChange: (g: GroupTab) => void; className?: string }) {
   const { t } = useT();
   return (
-    <div role="tablist" className={`flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
+    <div role="tablist" className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${className}`}>
       {GROUP_TABS.map((g) => (
         <button
           key={g}
@@ -32,17 +33,25 @@ export function GroupTabs({ value, onChange, className = "" }: { value: GroupTab
   );
 }
 
+const POPULAR_ITEMS = POPULAR_CRYPTO.map(pairToItem);
+
 /** Debounced exchange search (shares of all boards, bonds, funds, currency, futures with their contracts). */
 export function useMarketSearch(q: string, group: GroupTab, enabled = true): { items: MarketItem[]; loading: boolean } {
   const [state, setState] = useState<{ items: MarketItem[]; loading: boolean }>({ items: [], loading: false });
   useEffect(() => {
     const needle = q.trim();
+    // the crypto tab is never empty: the popular pairs until something is typed
+    if (enabled && !needle && group === "crypto") {
+      setState({ items: POPULAR_ITEMS, loading: false });
+      return;
+    }
     if (!enabled || !needle) {
       setState({ items: [], loading: false });
       return;
     }
     const ctl = new AbortController();
-    setState((s) => ({ ...s, loading: true }));
+    // the popular pairs of an empty query are not an answer for the typed text: drop them while the search runs
+    setState((s) => ({ items: s.items === POPULAR_ITEMS ? [] : s.items, loading: true }));
     const id = setTimeout(async () => {
       const items = await searchMarketApi(needle, group, ctl.signal);
       if (!ctl.signal.aborted) setState({ items, loading: false });
@@ -57,6 +66,7 @@ export function useMarketSearch(q: string, group: GroupTab, enabled = true): { i
 
 /** The icon of a futures underlying, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
+  if (item.group === "crypto") return coinIcon(item.asset ?? "") || (curated.find((i) => i.source === "bybit" && i.dataTicker === item.secid)?.emoji ?? "");
   if (item.group !== "future") return "";
   return curated.find((i) => i.source === "moex" && (i.dataTicker === item.secid || i.dataTicker === item.asset))?.emoji ?? "";
 }

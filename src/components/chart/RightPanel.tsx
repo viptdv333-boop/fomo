@@ -427,14 +427,15 @@ function AddTicker({
     const seen = new Set<string>();
     for (const inst of results ?? []) {
       const cat = categoryOf(inst);
-      const grp: GroupTab | null = inst.source !== "moex" ? null : cat ? (cat.name === "Акции ММВБ" ? "stock" : "future") : "stock";
+      const grp: GroupTab | null = inst.source === "bybit" ? "crypto" : inst.source !== "moex" ? null : cat ? (cat.name === "Акции ММВБ" ? "stock" : "future") : "stock";
       if (tab !== "all" && grp !== tab) continue;
       seen.add(wlKey(inst));
       out.push({ inst, expand: inst.source === "moex" && cat && cat.name !== "Акции ММВБ" ? inst.dataTicker : undefined });
     }
     for (const item of market.items) {
-      if (seen.has(`moex:${item.secid}`)) continue;
-      seen.add(`moex:${item.secid}`);
+      const key = `${item.source}:${item.secid}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       out.push({ inst: itemToInstrument(item, iconFor(item, ALL_INSTRUMENTS)), item, expand: item.group === "future" && item.auto && (item.contracts ?? 0) > 1 ? item.secid : undefined });
     }
     return out;
