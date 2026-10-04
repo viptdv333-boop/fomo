@@ -14,7 +14,7 @@ import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
-import { CountryFilter, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
@@ -52,8 +52,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const cells = useMemo(() => buildMonthCells(start, today, DAYS), [start, today]);
 
   const events = useMemo(
-    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex }),
-    [data.events, prefs.countries, prefs.impacts, prefs.moex, q]
+    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex, energy: prefs.energy }),
+    [data.events, prefs.countries, prefs.impacts, prefs.moex, prefs.energy, q]
   );
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
@@ -161,6 +161,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         <ImpactToggles />
         <div className="flex w-[190px] max-w-full"><CountryFilter seen={seen} /></div>
         <div className="hidden sm:block"><QuickChips /></div>
+        <EnergyChip />
         <MoexChip />
         <div className="flex min-w-[150px] max-w-[260px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
       </div>

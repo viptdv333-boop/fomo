@@ -15,6 +15,8 @@ import { ImpactDots, MoexMark, SURPRISE_CLASS, useNow } from "./parts";
 /** descriptions are fetched on demand (the list answers carry only `hasDesc`) and remembered */
 const descMemo = new Map<string, string>();
 
+type Glossary = typeof import("@/lib/calendar/glossary");
+
 const MINUTES = [5, 15, 30, 60];
 
 export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEvent; anchor: Anchor; zone: string; onClose: () => void }) {
@@ -30,7 +32,7 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
     if (desc || !ev.hasDesc) return;
     let off = false;
     const day = new Date(ev.ts).toISOString().slice(0, 10);
-    const params = new URLSearchParams({ from: day, to: day, desc: "1", q: ev.event, lang: locale });
+    const params = new URLSearchParams({ from: day, to: day, desc: "1", q: ev.eventEn ?? ev.event, lang: locale });
     if (ev.country) params.set("countries", ev.country);
     fetch(`/api/economic-calendar?${params}`)
       .then((r) => r.json())
@@ -46,6 +48,18 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
       off = true;
     };
   }, [ev, desc, locale]);
+  // the glossary (Russian «что это» / «на что влияет», tag labels) is a separate chunk: loaded when the first popup opens
+  const [gl, setGl] = useState<Glossary | null>(null);
+  useEffect(() => {
+    let off = false;
+    void import("@/lib/calendar/glossary").then((m) => {
+      if (!off) setGl(m);
+    });
+    return () => {
+      off = true;
+    };
+  }, []);
+  const explain = gl && ev.category !== "moex" ? gl.glossaryText(ev.gk ?? `~${ev.category}`, locale) : null;
   const s = surprise(ev);
 
   const when = (() => {
@@ -96,6 +110,23 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
           {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] dark:bg-[#2a2e39]">{t(`ec.cat.${ev.category}`)}</span>}
           {ev.period && <span className="text-[11px] text-gray-400">{ev.period}</span>}
         </div>
+        {ev.eventEn && ev.eventEn !== ev.event && (
+          <div className="mt-1 text-[11px] leading-snug text-gray-400" title={t("ec.originalName")}>
+            {ev.eventEn}
+          </div>
+        )}
+        {gl && ev.tags && ev.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {ev.tags.map((tag) => (
+              <span
+                key={tag}
+                className={`rounded-full px-1.5 py-0.5 text-[10.5px] ${tag === "oil" || tag === "gas" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-gray-100 text-gray-600 dark:bg-[#2a2e39] dark:text-gray-300"}`}
+              >
+                {gl.tagLabel(tag, locale)}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
           <div>{when}{ev.allDay ? ` · ${t("ec.allDay")}` : ""}</div>
@@ -113,12 +144,34 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
           {cell(t("ec.change"), formatChange(ev.change ?? (ev.actual !== null && ev.previous !== null ? ev.actual - ev.previous : null), ev.unit, loc))}
         </div>
         {s && <div className={`mt-2 text-xs font-medium ${SURPRISE_CLASS[s]}`}>{t(`ec.surprise.${s}`)}</div>}
-        {ev.hasDesc && (
-          <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
-            {desc || <span className="text-gray-400">…</span>}
-            {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+        {explain && (
+          <div className="mt-3 space-y-2 text-xs leading-relaxed">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("ec.about")}</div>
+              <p className="mt-0.5 text-gray-700 dark:text-gray-200">{explain.about}</p>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("ec.affects")}</div>
+              <p className="mt-0.5 text-gray-700 dark:text-gray-200">{explain.affects}</p>
+            </div>
           </div>
         )}
+        {ev.hasDesc &&
+          (explain ? (
+            // the English text of the source stays available, but folded away: the Russian explanation above is the main one
+            <details className="mt-2 rounded-md bg-gray-50 p-2 text-xs text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
+              <summary className="cursor-pointer select-none text-[11px] text-gray-400">{t("ec.original")}</summary>
+              <div className="mt-1.5 max-h-40 overflow-y-auto leading-relaxed">
+                {desc || <span className="text-gray-400">…</span>}
+                {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+              </div>
+            </details>
+          ) : (
+            <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
+              {desc || <span className="text-gray-400">…</span>}
+              {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+            </div>
+          ))}
 
         {future && (
           <div className="mt-3 border-t border-gray-100 pt-3 dark:border-[#2a2e39]">

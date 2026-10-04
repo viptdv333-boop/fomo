@@ -14,7 +14,7 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
-import { CountryFilter, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
 import { ActualValue, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
@@ -41,7 +41,7 @@ export function NextChip({ zone, enabled, onPick }: { zone: string; enabled: boo
   const data = useCalendarRange(range, zone, enabled, locale);
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
   const impacts = useMemo(() => new Set(prefs.impacts), [prefs.impacts]);
-  const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, now]);
+  const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, prefs.energy, now]);
   if (!next) return <span className="flex-1 truncate text-[11px] text-gray-400">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
   return (
     <button
@@ -191,8 +191,8 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       const d = eventDay(e, zone);
       return d >= range.from && d <= range.to;
     });
-    return filterEvents(inRange, { countries, impacts, q, noMoex: !prefs.moex });
-  }, [data.events, zone, range, countries, impacts, q, prefs.moex]);
+    return filterEvents(inRange, { countries, impacts, q, noMoex: !prefs.moex, energy: prefs.energy });
+  }, [data.events, zone, range, countries, impacts, q, prefs.moex, prefs.energy]);
 
   const groups = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
@@ -223,10 +223,10 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     } else el.scrollTop = 0;
   }, [visible, data.status, range, wide, list.length]);
 
-  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex;
+  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || prefs.energy;
   const resetFilters = () => {
     setQLocal("");
-    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true }));
+    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, energy: false }));
   };
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
@@ -391,6 +391,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
           </div>
           <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1"><QuickChips /></div>
+            <EnergyChip />
             <MoexChip />
           </div>
           <div className="flex"><SearchBox q={qLocal} setQ={setQLocal} /></div>

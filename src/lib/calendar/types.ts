@@ -9,6 +9,7 @@ export interface CalEvent {
   /** ISO-3166 alpha-2 ("EU" for the euro area), "" when unknown. */
   country: string;
   currency: string;
+  /** Title. The API translates it for lang=ru (glossary); the original English name is then in `eventEn`. */
   event: string;
   category: CalCategory;
   /** 1 low, 2 medium, 3 high. */
@@ -29,6 +30,12 @@ export interface CalEvent {
   period?: string;
   ticker?: string;
   origin?: string;
+  /** Original (TradingView) name when `event` was translated: search matches it too, inverse-indicator detection uses it. */
+  eventEn?: string;
+  /** Glossary key (lib/calendar/glossary): the popup looks the «что это» / «на что влияет» texts up by it (they never travel in the list). */
+  gk?: string;
+  /** Markets the indicator moves (usd, oil, gas, stocks ...), labels in glossary TAGS. */
+  tags?: string[];
 }
 
 export type CalCategory =
@@ -56,6 +63,8 @@ export interface CalFilter {
   q?: string;
   /** Hide the Moscow Exchange layer. */
   noMoex?: boolean;
+  /** "Oil and gas" quick filter: only events tagged oil / gas, from any country (the country filter does not apply). */
+  energy?: boolean;
 }
 
 /** Why a response carries no (or only partial) data; sent in the X-Calendar-Reason header. */

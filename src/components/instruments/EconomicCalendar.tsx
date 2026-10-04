@@ -30,14 +30,14 @@ export default function EconomicCalendar({ country }: { country?: string }) {
 
   useEffect(() => {
     // the API answers with normalised events (see lib/calendar/types); the page shows the next week of the major economies
-    const params = new URLSearchParams({ days: "7", countries: country || MAJOR, limit: "30" });
+    const params = new URLSearchParams({ days: "7", countries: country || MAJOR, limit: "30", lang: locale });
     if (!country) params.set("impact", "high,medium");
     fetch(`/api/economic-calendar?${params}`)
       .then((r) => r.json())
       .then((d) => setEvents(Array.isArray(d) ? d : []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [country]);
+  }, [country, locale]);
 
   if (loading) {
     return <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 animate-pulse h-[300px]" />;

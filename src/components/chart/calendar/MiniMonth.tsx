@@ -21,8 +21,8 @@ export default function MiniMonth({ zone, visible, q }: { zone: string; visible:
   const data = useCalendarWindow(start, zone, visible, locale, 35);
   const cells = useMemo(() => buildMonthCells(start, today, 35), [start, today]);
   const events = useMemo(
-    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex }),
-    [data.events, prefs.countries, prefs.impacts, prefs.moex, q]
+    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex, energy: prefs.energy }),
+    [data.events, prefs.countries, prefs.impacts, prefs.moex, prefs.energy, q]
   );
   const by = useMemo(() => dayCounts(events, zone), [events, zone]);
   const heads = useMemo(() => cells.slice(0, 7).map((c) => formatDayHeading(c.date, loc, { weekday: "narrow" })), [cells, loc]);

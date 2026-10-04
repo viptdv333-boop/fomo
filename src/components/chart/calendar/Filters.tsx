@@ -143,6 +143,24 @@ export function MoexChip() {
   );
 }
 
+/** «Нефть и газ»: one click shows only oil / gas events (EIA / API inventories, Baker Hughes rigs, OPEC, IEA) from every country. */
+export function EnergyChip() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  return (
+    <button
+      type="button"
+      aria-pressed={prefs.energy}
+      title={t("ec.energy.hint")}
+      onClick={() => update((p) => ({ ...p, energy: !p.energy }))}
+      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.energy ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+    >
+      <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+      {t("ec.energy")}
+    </button>
+  );
+}
+
 export function SearchBox({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const { t } = useT();
   return (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gzipSync } from "node:zlib";
+import { localizeCalEvent } from "@/lib/calendar/glossary";
 import { filterEvents } from "@/lib/calendar/normalize";
 import { getCalendarRange } from "@/lib/calendar/source";
 import { addDays, daySpan, MAX_RANGE_DAYS } from "@/lib/calendar/time";
@@ -11,7 +12,11 @@ import type { CalReason } from "@/lib/calendar/types";
  *   days       legacy: today .. today+days when from/to are absent
  *   countries  comma list of ISO2 codes or "all" (legacy single `country` works too)
  *   impact     comma list of low | medium | high (default: all)
- *   q          text search in the event name (or a country / currency code)
+ *   q          text search in the event name, Russian or the original English (or a country / currency code)
+ *   energy     1 keeps only the oil and gas events (tags oil | gas), from any country
+ *   lang       ru | en | cn: ru translates the titles and periods (the English name stays in eventEn), adds gk (glossary key) and
+ *              tags to every event and raises the importance of energy events (EIA / API / Baker Hughes / OPEC / IEA >= 2, EIA crude
+ *              and natural gas storage 3). The about / affects texts are not in the list: the client reads them from lib/calendar/glossary.
  *   limit      max events (default 3000)
  *   moex       0 switches the Moscow Exchange layer off (default on); lang = ru | en | cn for its texts
  *   desc       1 keeps the long event descriptions (otherwise stripped; events carry hasDesc)
@@ -99,7 +104,9 @@ export async function GET(request: NextRequest) {
     const moex = sp.get("moex") !== "0";
     const res = await getCalendarRange(from, to, now, { moex, lang });
     const wantDesc = sp.get("desc") === "1";
-    const events = filterEvents(res.events, { countries, impacts, q })
+    // localise BEFORE filtering: the importance of energy events is raised by the glossary, and the search matches both names
+    const localized = res.events.map((e) => localizeCalEvent(e, lang));
+    const events = filterEvents(localized, { countries, impacts, q, energy: sp.get("energy") === "1" })
       .slice(0, limit)
       .map((e) => {
         if (wantDesc || !e.description) return e;

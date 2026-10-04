@@ -32,7 +32,7 @@ export type Surprise = "better" | "worse" | "inline";
  * Actual vs forecast (vs previous when there is no forecast). null while there is no actual or nothing to compare to.
  * "better" = green, "worse" = red; equal figures are "inline".
  */
-export function surprise(e: Pick<CalEvent, "event" | "actual" | "forecast" | "previous">): Surprise | null {
+export function surprise(e: Pick<CalEvent, "event" | "actual" | "forecast" | "previous"> & { eventEn?: string }): Surprise | null {
   if (e.actual === null) return null;
   const ref = e.forecast ?? e.previous;
   if (ref === null) return null;
@@ -40,7 +40,7 @@ export function surprise(e: Pick<CalEvent, "event" | "actual" | "forecast" | "pr
   const diff = e.actual - ref;
   if (Math.abs(diff) <= eps) return "inline";
   const up = diff > 0;
-  return up !== isInverse(e.event) ? "better" : "worse";
+  return up !== isInverse(e.eventEn ?? e.event) ? "better" : "worse";
 }
 
 const nfCache = new Map<string, Intl.NumberFormat>();
