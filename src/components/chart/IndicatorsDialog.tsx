@@ -11,6 +11,8 @@ import { isSignedInForUserData, listUserData, saveUserData } from "@/lib/chart/u
 import { createDraftScript, deleteScript, ensureScriptsLoaded, isPersisted, listScripts, parseImported, subscribeScripts } from "@/lib/chart/scripts/store";
 import { BLANK_SCRIPT, SCRIPT_TEMPLATES } from "@/lib/chart/scripts/templates";
 import IndicatorEditor from "./IndicatorEditor";
+import IndicatorsPopover from "./IndicatorsPopover";
+import { TV3 } from "./tv3-ui";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
 
@@ -104,10 +106,16 @@ function matchesQuery(q: string, haystack: string): boolean {
 export default function IndicatorsDialog(props: Props) {
   // the script editor lives here (not in the dialog body) so that it stays open when the dialog closes
   const [editScript, setEditScript] = useState<string | null>(null);
+  // Terminal v3: opening shows the compact popover under the «Индикаторы» button; «All indicators…» (and phones) go to the full catalog
+  const [catalog, setCatalog] = useState(false);
   const { controller, onClose } = props;
+  useEffect(() => {
+    if (props.open) setCatalog(typeof window !== "undefined" && window.innerWidth < 640);
+  }, [props.open]);
   return (
     <>
-      {props.open && (
+      {props.open && !catalog && <IndicatorsPopover controller={controller} onClose={onClose} onOpenCatalog={() => setCatalog(true)} />}
+      {props.open && catalog && (
         <DialogBody
           {...props}
           onEditScript={(id) => {
@@ -285,13 +293,13 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
         type="button"
         onClick={() => setSection(s)}
         aria-current={isOn ? "true" : undefined}
-        className={`flex shrink-0 items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] ${
-          isOn ? "bg-[#2962ff]/10 text-[#2962ff] dark:bg-[#2962ff]/20 dark:text-[#6f95ff]" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+        className={`flex shrink-0 items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] ${
+          isOn ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
         }`}
       >
         {icon}
         <span className="flex-1 whitespace-nowrap">{label}</span>
-        {count !== undefined && count > 0 && <span className="rounded-full bg-[#2962ff] px-1.5 text-[10px] font-semibold leading-4 text-white">{count}</span>}
+        {count !== undefined && count > 0 && <span className="rounded-full bg-[var(--tv3-accent)] px-1.5 text-[10px] font-semibold leading-4 text-white">{count}</span>}
       </button>
     );
   };
@@ -301,7 +309,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4"
+        className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 ${TV3.backdrop}`}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
@@ -312,13 +320,13 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
           role="dialog"
           aria-modal="true"
           aria-label={t("ind.title")}
-          className="flex h-[min(620px,92vh)] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d]"
+          className="flex h-[min(620px,92vh)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         >
           {/* header: title + search */}
-          <div className="flex items-center gap-3 border-b border-gray-200 px-3 py-2 dark:border-[#2a2e39]">
-            <h2 className="shrink-0 text-sm font-semibold text-gray-900 dark:text-gray-100">{t("ind.title")}</h2>
+          <div className="flex items-center gap-3 border-b border-[var(--tv3-hair)] px-3 py-2">
+            <h2 className="shrink-0 text-sm font-semibold text-[var(--tv3-text)]">{t("ind.title")}</h2>
             <div className="relative min-w-0 flex-1">
-              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">{IND_ICONS.search(14)}</span>
+              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tv3-muted)]">{IND_ICONS.search(14)}</span>
               <input
                 ref={searchRef}
                 type="text"
@@ -338,7 +346,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                 }}
                 placeholder={t("ind.search")}
                 aria-label={t("ind.search")}
-                className="w-full rounded border border-gray-200 bg-gray-50 py-1.5 pl-7 pr-2 text-xs text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#2962ff] focus:ring-1 focus:ring-[#2962ff] dark:border-[#2a2e39] dark:bg-[#131722] dark:text-gray-100"
+                className="w-full rounded-[10px] border border-transparent bg-[var(--tv3-fill)] py-2 pl-8 pr-2.5 text-[13px] text-[var(--tv3-text)] outline-none placeholder:text-[var(--tv3-muted)] focus:border-[var(--tv3-accent)] focus:ring-1 focus:ring-[var(--tv3-accent)]"
               />
             </div>
             <button
@@ -346,7 +354,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
               onClick={onClose}
               aria-label={t("ind.close")}
               title={t("ind.close")}
-              className="shrink-0 rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-gray-100"
+              className="shrink-0 rounded-lg bg-[var(--tv3-fill)] p-1.5 text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]"
             >
               {IND_ICONS.close(16)}
             </button>
@@ -356,15 +364,15 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
             {/* left column: categories */}
             <nav
               aria-label={t("ind.categories")}
-              className="flex shrink-0 gap-1 overflow-x-auto border-b border-gray-200 p-1.5 sm:w-52 sm:flex-col sm:overflow-y-auto sm:border-b-0 sm:border-r dark:border-[#2a2e39]"
+              className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--tv3-hair)] p-1.5 sm:w-52 sm:flex-col sm:overflow-y-auto sm:border-b-0 sm:border-r"
             >
               {navBtn("fav", t("ind2.cat.fav"), IND_ICONS.star(16), favs.length)}
               {navBtn("recent", t("ind2.cat.recent"), IND_ICONS.recent(16))}
               {navBtn("all", t("ind2.cat.builtin"), <CatIcon name="all" />)}
               {navBtn("scripts", t("isc.cat"), IND_ICONS.template(16), scriptList.length)}
-              <div className="mx-1 hidden h-px shrink-0 bg-gray-200 sm:my-1 sm:block dark:bg-[#2a2e39]" />
+              <div className="mx-1 hidden h-px shrink-0 bg-[var(--tv3-fill2)] sm:my-1 sm:block" />
               {NAV_GROUPS.map((c) => navBtn(c, t(`ind.cat.${c}`), <CatIcon name={c as IconName} />))}
-              <div className="mx-1 hidden h-px shrink-0 bg-gray-200 sm:my-1 sm:block dark:bg-[#2a2e39]" />
+              <div className="mx-1 hidden h-px shrink-0 bg-[var(--tv3-fill2)] sm:my-1 sm:block" />
               {navBtn("active", t("ind.active"), IND_ICONS.layers(16), active.length)}
             </nav>
 
@@ -376,38 +384,38 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                 ) : section === "scripts" ? (
                   <ScriptsList controller={controller} query={q} scripts={scriptList} onEdit={onEditScript} />
                 ) : shown.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">{emptyText}</div>
+                  <div className="p-6 text-center text-xs text-[var(--tv3-muted)]">{emptyText}</div>
                 ) : (
-                  <ul className="divide-y divide-gray-100 dark:divide-[#2a2e39]">
+                  <ul className="divide-y divide-[var(--tv3-hair2)]">
                     {shown.map(({ def, name, desc }) => {
                       const n = countById.get(def.id) ?? 0;
                       const swatch = def.params.find((p) => p.type === "color");
                       const fav = favs.includes(def.id);
                       const just = justAdded === def.id;
                       return (
-                        <li key={def.id} className="group flex items-stretch hover:bg-gray-50 dark:hover:bg-[#2a2e39]/60">
+                        <li key={def.id} className="group flex items-stretch hover:bg-[var(--tv3-fill3)]">
                           <button
                             type="button"
                             data-nav
                             onClick={() => addIndicator(def.id)}
-                            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2962ff] dark:focus:bg-[#2a2e39]/60"
+                            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-[var(--tv3-fill3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)]"
                           >
                             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatch && swatch.type === "color" ? swatch.default : "#9ca3af" }} />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2">
-                                <span className="truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{name}</span>
-                                <span className="shrink-0 rounded border border-gray-200 px-1 text-[9px] uppercase leading-4 tracking-wide text-gray-500 dark:border-[#363a45] dark:text-gray-400">
+                                <span className="truncate text-xs font-semibold text-[var(--tv3-text)]">{name}</span>
+                                <span className="shrink-0 rounded border border-[var(--tv3-hair)] px-1 text-[9px] uppercase leading-4 tracking-wide text-[var(--tv3-muted)]">
                                   {def.pane === "own" ? t("ind.pane.own") : t("ind.pane.overlay")}
                                 </span>
                               </span>
-                              <span className="mt-0.5 block truncate text-[11px] text-gray-500 dark:text-gray-400">{desc}</span>
+                              <span className="mt-0.5 block truncate text-[11px] text-[var(--tv3-muted)]">{desc}</span>
                             </span>
                             {n > 0 && (
-                              <span className="shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold leading-4 text-gray-600 dark:bg-[#2a2e39] dark:text-gray-300">×{n}</span>
+                              <span className="shrink-0 rounded-full bg-[var(--tv3-fill)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--tv3-text2)]">×{n}</span>
                             )}
                             <span
                               className={`flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[11px] font-medium ${
-                                just ? "text-[#26a69a]" : "text-gray-400 group-hover:text-[#2962ff] dark:group-hover:text-[#6f95ff]"
+                                just ? "text-[#26a69a]" : "text-[var(--tv3-muted)] group-hover:text-[var(--tv3-accent)]"
                               }`}
                             >
                               {just ? IND_ICONS.check(14) : IND_ICONS.plus(14)}
@@ -421,8 +429,8 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                             aria-pressed={fav}
                             title={fav ? t("ind2.fav.remove") : t("ind2.fav.add")}
                             aria-label={fav ? t("ind2.fav.remove") : t("ind2.fav.add")}
-                            className={`flex w-9 shrink-0 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2962ff] ${
-                              fav ? "text-[#f5a623]" : "text-gray-300 hover:text-[#f5a623] dark:text-gray-600"
+                            className={`flex w-9 shrink-0 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)] ${
+                              fav ? "text-[#f5a623]" : "text-[#c7c7cc] hover:text-[#f5a623] dark:text-[#48484a]"
                             }`}
                           >
                             {fav ? IND_ICONS.starFilled(16) : IND_ICONS.star(16)}
@@ -433,7 +441,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                   </ul>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-1.5 text-[11px] text-gray-500 dark:border-[#2a2e39] dark:text-gray-400">
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--tv3-hair)] px-3 py-1.5 text-[11px] text-[var(--tv3-muted)]">
                 <span className="truncate">{t("ind2.multi")}</span>
                 <span className="shrink-0">{t("ind2.onChart", { n: active.length })}</span>
               </div>
@@ -472,14 +480,14 @@ function ScriptsList({
     onEdit(rec.id);
   };
   const iconBtn =
-    "rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-gray-100";
+    "rounded p-1.5 text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
   const tb =
-    "flex h-7 items-center gap-1.5 rounded border border-gray-300 px-2 text-xs font-medium text-gray-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:border-[#363a45] dark:text-gray-200 dark:hover:bg-[#2a2e39]";
+    "flex h-7 items-center gap-1.5 rounded-lg border border-[#e5e5ea] dark:border-[#3a3a3c] px-2 text-xs font-medium text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-[#2a2e39]">
-        <button type="button" data-nav onClick={() => create(t("isc.tpl.blank"), BLANK_SCRIPT)} className="flex h-7 items-center gap-1.5 rounded bg-[#2962ff] px-3 text-xs font-semibold text-white hover:bg-[#1e53e5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] focus-visible:ring-offset-1 dark:focus-visible:ring-offset-[#1e222d]">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--tv3-hair)] px-3 py-2">
+        <button type="button" data-nav onClick={() => create(t("isc.tpl.blank"), BLANK_SCRIPT)} className="flex h-7 items-center gap-1.5 rounded-lg bg-[var(--tv3-accent)] px-3 text-xs font-semibold text-white hover:bg-[var(--tv3-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] focus-visible:ring-offset-1">
           {IND_ICONS.plus(14)}
           {t("isc.newScript")}
         </button>
@@ -489,19 +497,19 @@ function ScriptsList({
             {IND_ICONS.chevronDown(12)}
           </button>
           {tplOpen && (
-            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-[#2a2e39] dark:bg-[#1e222d]">
+            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-xl bg-[var(--tv3-card)] py-1 shadow-[var(--tv3-shadow-pop)]">
               {SCRIPT_TEMPLATES.map((x) => (
                 <button
                   key={x.id}
                   type="button"
-                  className="block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-[#2a2e39]"
+                  className="block w-full px-3 py-1.5 text-left hover:bg-[var(--tv3-fill)]"
                   onClick={() => {
                     setTplOpen(false);
                     create(t(`isc.tpl.${x.id}`), x.code);
                   }}
                 >
-                  <span className="block text-xs font-medium text-gray-900 dark:text-gray-100">{t(`isc.tpl.${x.id}`)}</span>
-                  <span className="block truncate text-[10px] text-gray-500 dark:text-gray-400">{t(`isc.tpl.${x.id}.d`)}</span>
+                  <span className="block text-xs font-medium text-[var(--tv3-text)]">{t(`isc.tpl.${x.id}`)}</span>
+                  <span className="block truncate text-[10px] text-[var(--tv3-muted)]">{t(`isc.tpl.${x.id}.d`)}</span>
                 </button>
               ))}
             </div>
@@ -529,28 +537,28 @@ function ScriptsList({
         />
       </div>
       {list.length === 0 ? (
-        <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">{query ? t("ind.noResults") : t("isc.noScripts")}</div>
+        <div className="p-6 text-center text-xs text-[var(--tv3-muted)]">{query ? t("ind.noResults") : t("isc.noScripts")}</div>
       ) : (
-        <ul className="divide-y divide-gray-100 dark:divide-[#2a2e39]">
+        <ul className="divide-y divide-[var(--tv3-hair2)]">
           {list.map((s) => {
             const n = counts.get(s.id) ?? 0;
             return (
-              <li key={s.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#2a2e39]/60">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2962ff]" />
+              <li key={s.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--tv3-fill3)]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--tv3-accent)]" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{s.name}</span>
-                    <span className="shrink-0 rounded border border-gray-200 px-1 text-[9px] uppercase leading-4 tracking-wide text-gray-500 dark:border-[#363a45] dark:text-gray-400">{t("isc.tag")}</span>
-                    {n > 0 && <span className="shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold leading-4 text-gray-600 dark:bg-[#2a2e39] dark:text-gray-300">×{n}</span>}
+                    <span className="truncate text-xs font-semibold text-[var(--tv3-text)]">{s.name}</span>
+                    <span className="shrink-0 rounded border border-[var(--tv3-hair)] px-1 text-[9px] uppercase leading-4 tracking-wide text-[var(--tv3-muted)]">{t("isc.tag")}</span>
+                    {n > 0 && <span className="shrink-0 rounded-full bg-[var(--tv3-fill)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--tv3-text2)]">×{n}</span>}
                   </span>
                 </span>
                 {delId === s.id ? (
                   <span className="flex items-center gap-1 text-xs">
-                    <span className="text-red-600 dark:text-red-400">{t("isc.delete")}?</span>
+                    <span className="text-[var(--tv3-down)]">{t("isc.delete")}?</span>
                     <button
                       type="button"
                       data-nav
-                      className="rounded bg-red-600 px-2 py-0.5 text-white hover:bg-red-700"
+                      className="rounded-md bg-[var(--tv3-down)] px-2 py-0.5 text-white hover:opacity-90"
                       onClick={async () => {
                         for (const i of controller.list()) if (i.id === s.id) controller.remove(i.uid);
                         setDelId(null);
@@ -559,7 +567,7 @@ function ScriptsList({
                     >
                       {t("isc.yes")}
                     </button>
-                    <button type="button" data-nav className="rounded border border-gray-300 px-2 py-0.5 dark:border-[#363a45]" onClick={() => setDelId(null)}>
+                    <button type="button" data-nav className="rounded-md border border-[#e5e5ea] dark:border-[#3a3a3c] px-2 py-0.5" onClick={() => setDelId(null)}>
                       {t("isc.no")}
                     </button>
                   </span>
@@ -571,7 +579,7 @@ function ScriptsList({
                     <button type="button" data-nav className={iconBtn} title={t("isc.list.edit")} aria-label={t("isc.list.edit")} onClick={() => onEdit(s.id)}>
                       {IND_ICONS.template(16)}
                     </button>
-                    <button type="button" data-nav className={`${iconBtn} hover:!text-red-600 dark:hover:!text-red-400`} title={t("isc.list.delete")} aria-label={t("isc.list.delete")} onClick={() => setDelId(s.id)}>
+                    <button type="button" data-nav className={`${iconBtn} hover:!text-[var(--tv3-down)]`} title={t("isc.list.delete")} aria-label={t("isc.list.delete")} onClick={() => setDelId(s.id)}>
                       {IND_ICONS.trash(16)}
                     </button>
                   </>
@@ -581,7 +589,7 @@ function ScriptsList({
           })}
         </ul>
       )}
-      {isSignedInForUserData() === false && <p className="px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400">{t("isc.local")}</p>}
+      {isSignedInForUserData() === false && <p className="px-3 py-2 text-[10px] text-[var(--tv3-muted)]">{t("isc.local")}</p>}
     </div>
   );
 }
@@ -602,13 +610,13 @@ function ActiveList({
   const { t } = useT();
   if (active.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 p-8 text-center text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex flex-col items-center gap-3 p-8 text-center text-xs text-[var(--tv3-muted)]">
         <span>{t("ind.empty")}</span>
         <button
           type="button"
           data-nav
           onClick={onGoAdd}
-          className="rounded bg-[#2962ff] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1e53e5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1e222d]"
+          className="rounded-lg bg-[var(--tv3-accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--tv3-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] focus-visible:ring-offset-2"
         >
           {t("ind.browse")}
         </button>
@@ -616,9 +624,9 @@ function ActiveList({
     );
   }
   const iconBtn =
-    "rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-gray-100";
+    "rounded p-1.5 text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
   return (
-    <ul className="divide-y divide-gray-100 dark:divide-[#2a2e39]">
+    <ul className="divide-y divide-[var(--tv3-hair2)]">
       {active.map((inst) => {
         const def = getIndicatorDef(inst.id);
         if (!def) return null;
@@ -629,8 +637,8 @@ function ActiveList({
             <div className="flex items-center gap-2 px-3 py-1.5">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatchColor }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{def.label ?? t(`ind.${def.id}.name`)}</span>
-                <span className="block truncate font-mono text-[10px] text-gray-500 dark:text-gray-400">{def.title(inst.params)}</span>
+                <span className="block truncate text-xs font-semibold text-[var(--tv3-text)]">{def.label ?? t(`ind.${def.id}.name`)}</span>
+                <span className="block truncate font-mono text-[10px] text-[var(--tv3-muted)]">{def.title(inst.params)}</span>
               </span>
               <button
                 type="button"
@@ -659,7 +667,7 @@ function ActiveList({
               <button
                 type="button"
                 data-nav
-                className={`${iconBtn} hover:!text-red-600 dark:hover:!text-red-400`}
+                className={`${iconBtn} hover:!text-[var(--tv3-down)]`}
                 aria-label={t("ind.remove")}
                 title={t("ind.remove")}
                 onClick={() => controller.remove(inst.uid)}

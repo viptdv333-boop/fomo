@@ -36,11 +36,11 @@ import { IND_ICONS } from "./icons";
    status, problems + console + alert conditions. The script is re-run on the chart 350 ms after the last keystroke. */
 
 const btn =
-  "flex h-7 shrink-0 items-center gap-1.5 rounded border border-gray-300 px-2 text-xs font-medium text-gray-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#363a45] dark:text-gray-200 dark:hover:bg-[#2a2e39]";
+  "flex h-7 shrink-0 items-center gap-1.5 rounded-[9px] border border-[var(--tv3-fill2)] px-2 text-xs font-medium text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] disabled:cursor-not-allowed disabled:opacity-40";
 const btnPrimary =
-  "flex h-7 shrink-0 items-center gap-1.5 rounded bg-[#2962ff] px-3 text-xs font-semibold text-white hover:bg-[#1e53e5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 dark:focus-visible:ring-offset-[#1e222d]";
+  "flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--tv3-accent)] px-3 text-xs font-semibold text-white hover:bg-[var(--tv3-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40";
 const field =
-  "h-7 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 outline-none focus:border-[#2962ff] focus:ring-1 focus:ring-[#2962ff] dark:border-[#363a45] dark:bg-[#131722] dark:text-gray-100";
+  "h-7 rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-2 text-xs text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)] focus:ring-1 focus:ring-[var(--tv3-accent)]";
 
 interface Props {
   controller: IndicatorsController;
@@ -293,10 +293,10 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
       role="tab"
       aria-selected={panel === id}
       onClick={() => setPanel(id)}
-      className={`flex items-center gap-1 border-b-2 px-2.5 py-1 text-[11px] font-medium ${panel === id ? "border-[#2962ff] text-gray-900 dark:text-white" : "border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"}`}
+      className={`flex items-center gap-1 border-b-2 px-2.5 py-1 text-[11px] font-medium ${panel === id ? "border-[var(--tv3-accent)] text-[var(--tv3-text)]" : "border-transparent text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
     >
       {label}
-      {count > 0 && <span className={`rounded-full px-1.5 text-[10px] leading-4 ${id === "problems" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700 dark:bg-[#2a2e39] dark:text-gray-300"}`}>{count}</span>}
+      {count > 0 && <span className={`rounded-full px-1.5 text-[10px] leading-4 ${id === "problems" ? "bg-red-500 text-white" : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]"}`}>{count}</span>}
     </button>
   );
 
@@ -310,12 +310,12 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
       aria-modal="false"
       aria-label={t("isc.title")}
       onKeyDown={onKeyDown}
-      className={`fixed inset-y-0 right-0 z-[75] flex w-full flex-col border-l border-gray-200 bg-white text-gray-900 shadow-2xl outline-none dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100 ${
+      className={`fixed inset-y-0 right-0 z-[75] flex w-full flex-col border-l border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] outline-none ${
         wide ? "lg:w-[min(1080px,94vw)]" : "lg:w-[min(680px,56vw)]"
       }`}
     >
       {/* header */}
-      <div className="flex items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-[#2a2e39]">
+      <div className="flex items-center gap-2 border-b border-[var(--tv3-hair)] px-3 py-2">
         <h2 className="hidden shrink-0 text-sm font-semibold sm:block">{t("isc.title")}</h2>
         <input
           value={name}
@@ -328,17 +328,17 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
           placeholder={t("isc.name")}
           className={`${field} min-w-0 flex-1`}
         />
-        <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-400" role="status" aria-live="polite">
+        <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--tv3-text2)]" role="status" aria-live="polite">
           <span className={`h-2 w-2 rounded-full ${statusView.dot}`} />
           <span className="hidden max-w-[180px] truncate sm:inline">{statusView.text}</span>
         </span>
-        <button type="button" onClick={requestClose} aria-label={t("isc.close")} title={t("isc.close")} className="shrink-0 rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-white">
+        <button type="button" onClick={requestClose} aria-label={t("isc.close")} title={t("isc.close")} className="shrink-0 rounded-lg p-1.5 text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]">
           {IND_ICONS.close(16)}
         </button>
       </div>
 
       {/* toolbar */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 px-3 py-1.5 dark:border-[#2a2e39]">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--tv3-hair)] px-3 py-1.5">
         <button type="button" className={btn} onClick={() => void doSave()} disabled={tooBig}>
           {IND_ICONS.check(14)}
           {t("isc.save")}
@@ -353,11 +353,11 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
           {keptOnChart ? t("isc.updateOnChart") : t("isc.addToChart")}
         </button>
         <span className="flex-1" />
-        <button type="button" className={`${btn} ${side === "tpl" ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`} aria-pressed={side === "tpl"} onClick={() => setSide((s) => (s === "tpl" ? null : "tpl"))}>
+        <button type="button" className={`${btn} ${side === "tpl" ? "bg-[var(--tv3-fill)]" : ""}`} aria-pressed={side === "tpl"} onClick={() => setSide((s) => (s === "tpl" ? null : "tpl"))}>
           {IND_ICONS.template(14)}
           <span className="hidden sm:inline">{t("isc.templates")}</span>
         </button>
-        <button type="button" className={`${btn} ${side === "docs" ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`} aria-pressed={side === "docs"} onClick={() => setSide((s) => (s === "docs" ? null : "docs"))}>
+        <button type="button" className={`${btn} ${side === "docs" ? "bg-[var(--tv3-fill)]" : ""}`} aria-pressed={side === "docs"} onClick={() => setSide((s) => (s === "docs" ? null : "docs"))}>
           <span className="font-mono text-[11px] font-bold">?</span>
           <span className="hidden sm:inline">{t("isc.docs")}</span>
         </button>
@@ -371,15 +371,15 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
             {IND_ICONS.chevronDown(12)}
           </button>
           {exportOpen && (
-            <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 text-xs shadow-xl dark:border-[#2a2e39] dark:bg-[#1e222d]">
-              <button type="button" className="block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-[#2a2e39]" onClick={() => doExport("json")}>{t("isc.exportJson")}</button>
-              <button type="button" className="block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-[#2a2e39]" onClick={() => doExport("js")}>{t("isc.exportJs")}</button>
+            <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl bg-[var(--tv3-card)] py-1 text-xs shadow-[var(--tv3-shadow-pop)]">
+              <button type="button" className="block w-full px-3 py-1.5 text-left hover:bg-[var(--tv3-fill)]" onClick={() => doExport("json")}>{t("isc.exportJson")}</button>
+              <button type="button" className="block w-full px-3 py-1.5 text-left hover:bg-[var(--tv3-fill)]" onClick={() => doExport("js")}>{t("isc.exportJs")}</button>
             </div>
           )}
         </div>
         <button
           type="button"
-          className={`${btn} hover:!border-red-400 hover:!text-red-600 dark:hover:!text-red-400`}
+          className={`${btn} hover:!border-red-400 hover:!text-[var(--tv3-down)] dark:hover:!text-red-400`}
           onClick={() => setConfirm({ message: t("isc.deleteConfirm", { name: name || "?" }), onYes: () => void doDelete() })}
           title={t("isc.delete")}
           aria-label={t("isc.delete")}
@@ -398,7 +398,7 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
       )}
       {saveAs !== null && (
         <form
-          className="flex items-center gap-2 border-b border-gray-200 px-3 py-1.5 dark:border-[#2a2e39]"
+          className="flex items-center gap-2 border-b border-[var(--tv3-hair)] px-3 py-1.5"
           onSubmit={(e) => {
             e.preventDefault();
             void doSaveAs();
@@ -410,7 +410,7 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
         </form>
       )}
       {(note || !scriptsSupported() || tooBig) && (
-        <div className={`px-3 py-1 text-[11px] ${note?.ok === false || tooBig || !scriptsSupported() ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+        <div className={`px-3 py-1 text-[11px] ${note?.ok === false || tooBig || !scriptsSupported() ? "bg-red-500/10 text-[var(--tv3-down)]" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
           {note?.text ?? (tooBig ? t("isc.tooBig", { n: SCRIPT_LIMITS.codeChars }) : t("isc.unsupported"))}
         </div>
       )}
@@ -421,56 +421,56 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
           <ScriptCodeEditor value={code} onChange={onCode} onSave={() => void doSave()} errorLine={err?.line ?? null} goto={goto} ariaLabel={t("isc.editSource")} />
 
           {/* output */}
-          <div className="flex h-[132px] shrink-0 flex-col border-t border-gray-200 dark:border-[#2a2e39]">
-            <div role="tablist" className="flex items-center border-b border-gray-200 dark:border-[#2a2e39]">
+          <div className="flex h-[132px] shrink-0 flex-col border-t border-[var(--tv3-hair)]">
+            <div role="tablist" className="flex items-center border-b border-[var(--tv3-hair)]">
               {tab("problems", t("isc.out.problems"), problemsCount)}
               {tab("console", t("isc.out.console"), logs.length)}
               {tab("alerts", t("isc.out.alertsTab"), alerts.length)}
               <span className="flex-1" />
-              <span className="hidden pr-3 text-[10px] text-gray-400 sm:inline">{t("isc.keys")}</span>
+              <span className="hidden pr-3 text-[10px] text-[var(--tv3-muted)] sm:inline">{t("isc.keys")}</span>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-1.5 font-mono text-[12px]" role="tabpanel">
               {panel === "problems" && (
                 <>
                   {err ? (
-                    <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+                    <div className="flex items-start gap-2 text-[var(--tv3-down)]">
                       <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-red-500" />
                       <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{err.message}</span>
                       {err.line ? (
-                        <button type="button" className="shrink-0 rounded px-1.5 text-[11px] underline hover:bg-red-500/10" onClick={() => setGoto({ line: err.line!, col: err.col ?? 1, nonce: Date.now() })}>
+                        <button type="button" className="shrink-0 rounded-lg px-1.5 text-[11px] underline hover:bg-red-500/10" onClick={() => setGoto({ line: err.line!, col: err.col ?? 1, nonce: Date.now() })}>
                           {t("isc.out.line", { line: err.line })}
                           {err.col ? `:${err.col}` : ""}
                         </button>
                       ) : null}
                     </div>
                   ) : (
-                    !status?.shapesCut && <span className="text-gray-500 dark:text-gray-400">{t("isc.out.none")}</span>
+                    !status?.shapesCut && <span className="text-[var(--tv3-muted)]">{t("isc.out.none")}</span>
                   )}
                   {status?.shapesCut && <div className="text-amber-600 dark:text-amber-400">{t("isc.out.shapesCut")}</div>}
                 </>
               )}
               {panel === "console" &&
-                (logs.length ? logs.map((x, i) => <div key={i} className="whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">{x}</div>) : <span className="text-gray-500 dark:text-gray-400">{t("isc.out.consoleEmpty")}</span>)}
+                (logs.length ? logs.map((x, i) => <div key={i} className="whitespace-pre-wrap break-words text-[var(--tv3-text)]">{x}</div>) : <span className="text-[var(--tv3-muted)]">{t("isc.out.consoleEmpty")}</span>)}
               {panel === "alerts" &&
                 (alerts.length ? (
                   alerts.map((a, i) => (
-                    <div key={i} className="text-gray-800 dark:text-gray-200">
+                    <div key={i} className="text-[var(--tv3-text)]">
                       {t("isc.out.alertRow", { message: a.message || "—", n: a.count })}
                       {a.last && <span className="ml-2 rounded bg-emerald-500/15 px-1 text-emerald-600 dark:text-emerald-400">{t("isc.out.alertLast")}</span>}
                     </div>
                   ))
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">{t("isc.out.none")}</span>
+                  <span className="text-[var(--tv3-muted)]">{t("isc.out.none")}</span>
                 ))}
             </div>
           </div>
         </div>
 
         {side && (
-          <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-gray-200 dark:border-[#2a2e39] lg:w-[400px] lg:flex-none lg:border-l">
-            <div className="flex items-center justify-between border-b border-gray-200 px-3 py-1.5 dark:border-[#2a2e39]">
+          <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-[var(--tv3-hair)] lg:w-[400px] lg:flex-none lg:border-l">
+            <div className="flex items-center justify-between border-b border-[var(--tv3-hair)] px-3 py-1.5">
               <h3 className="text-xs font-semibold">{side === "docs" ? t("isc.docs.title") : t("isc.templates")}</h3>
-              <button type="button" onClick={() => setSide(null)} aria-label={t("isc.close")} className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-[#2a2e39]">
+              <button type="button" onClick={() => setSide(null)} aria-label={t("isc.close")} className="rounded-lg p-1 text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)]">
                 {IND_ICONS.close(14)}
               </button>
             </div>
@@ -485,7 +485,7 @@ function Body({ controller, scriptId, onClose }: { controller: IndicatorsControl
         )}
       </div>
 
-      {isSignedInForUserData() === false && <p className="border-t border-gray-200 px-3 py-1 text-[10px] text-gray-500 dark:border-[#2a2e39] dark:text-gray-400">{t("isc.local")}</p>}
+      {isSignedInForUserData() === false && <p className="border-t border-[var(--tv3-hair)] px-3 py-1 text-[10px] text-[var(--tv3-muted)]">{t("isc.local")}</p>}
     </div>
   );
 }
@@ -500,12 +500,12 @@ function TemplatesPanel({ onPick }: { onPick: (name: string, code: string) => vo
   const { t } = useT();
   const list = [{ id: "blank", name: t("isc.tpl.blank"), code: BLANK_SCRIPT }, ...SCRIPT_TEMPLATES.map((x) => ({ id: x.id, name: x.name, code: x.code }))];
   return (
-    <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-[#2a2e39]">
+    <ul className="min-h-0 flex-1 divide-y divide-[var(--tv3-hair2)] overflow-y-auto">
       {list.map((x) => (
         <li key={x.id}>
-          <button type="button" onClick={() => onPick(x.id === "blank" ? t("isc.tpl.blank") : x.name, x.code)} className="block w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none dark:hover:bg-[#2a2e39]/60 dark:focus:bg-[#2a2e39]/60">
+          <button type="button" onClick={() => onPick(x.id === "blank" ? t("isc.tpl.blank") : x.name, x.code)} className="block w-full px-3 py-2 text-left hover:bg-[var(--tv3-fill3)] focus:bg-[var(--tv3-fill3)] focus:outline-none">
             <span className="block text-xs font-semibold">{t(`isc.tpl.${x.id}`)}</span>
-            <span className="mt-0.5 block text-[11px] text-gray-500 dark:text-gray-400">{t(`isc.tpl.${x.id}.d`)}</span>
+            <span className="mt-0.5 block text-[11px] text-[var(--tv3-muted)]">{t(`isc.tpl.${x.id}.d`)}</span>
           </button>
         </li>
       ))}
@@ -518,7 +518,7 @@ function CodeBlock({ code }: { code: string }) {
   const [done, setDone] = useState(false);
   return (
     <div className="group relative my-2">
-      <pre className="overflow-x-auto rounded border border-gray-200 bg-gray-50 p-2 font-mono text-[11px] leading-[16px] text-gray-800 dark:border-[#2a2e39] dark:bg-[#131722] dark:text-gray-200">{code}</pre>
+      <pre className="overflow-x-auto rounded border border-[var(--tv3-hair)] bg-[var(--tv3-fill3)] p-2 font-mono text-[11px] leading-[16px] text-[var(--tv3-text)]">{code}</pre>
       <button
         type="button"
         onClick={() => {
@@ -527,7 +527,7 @@ function CodeBlock({ code }: { code: string }) {
             setTimeout(() => setDone(false), 1400);
           });
         }}
-        className="absolute right-1.5 top-1.5 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] text-gray-600 opacity-0 hover:bg-gray-100 focus:opacity-100 group-hover:opacity-100 dark:border-[#363a45] dark:bg-[#1e222d] dark:text-gray-300"
+        className="absolute right-1.5 top-1.5 rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-1.5 py-0.5 text-[10px] text-[var(--tv3-text2)] opacity-0 hover:bg-[var(--tv3-fill)] focus:opacity-100 group-hover:opacity-100"
       >
         {done ? t("isc.copied") : t("isc.copy")}
       </button>
@@ -550,22 +550,22 @@ function DocsPanel({ locale }: { locale: string }) {
   }, [query, locale]);
 
   const body: ReactNode = sections.length === 0 ? (
-    <p className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">{t("isc.docs.empty")}</p>
+    <p className="p-4 text-center text-xs text-[var(--tv3-muted)]">{t("isc.docs.empty")}</p>
   ) : (
     sections.map((s) => (
       <section key={s.id} className="mb-5">
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{pick(s.title, locale)}</h4>
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{pick(s.title, locale)}</h4>
         {s.blocks.map((b, i) =>
           b.k === "p" ? (
-            <p key={i} className="my-1.5 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{pick(b.t, locale)}</p>
+            <p key={i} className="my-1.5 text-xs leading-relaxed text-[var(--tv3-text2)]">{pick(b.t, locale)}</p>
           ) : b.k === "code" ? (
             <CodeBlock key={i} code={b.c} />
           ) : (
-            <dl key={i} className="my-1.5 divide-y divide-gray-100 rounded border border-gray-100 dark:divide-[#2a2e39] dark:border-[#2a2e39]">
+            <dl key={i} className="my-1.5 divide-y divide-[var(--tv3-hair2)] rounded border border-[var(--tv3-hair)]">
               {b.rows.map(([sig, d]) => (
                 <div key={sig} className="px-2 py-1.5">
-                  <dt className="break-words font-mono text-[11px] font-semibold text-[#2962ff] dark:text-[#82aaff]">{sig}</dt>
-                  <dd className="mt-0.5 text-[11px] leading-snug text-gray-600 dark:text-gray-400">{pick(d, locale)}</dd>
+                  <dt className="break-words font-mono text-[11px] font-semibold text-[var(--tv3-accent)] dark:text-[#82aaff]">{sig}</dt>
+                  <dd className="mt-0.5 text-[11px] leading-snug text-[var(--tv3-text2)]">{pick(d, locale)}</dd>
                 </div>
               ))}
             </dl>
@@ -577,7 +577,7 @@ function DocsPanel({ locale }: { locale: string }) {
 
   return (
     <>
-      <div className="border-b border-gray-200 p-2 dark:border-[#2a2e39]">
+      <div className="border-b border-[var(--tv3-hair)] p-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("isc.docs.search")} aria-label={t("isc.docs.search")} className={`${field} w-full`} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">{body}</div>

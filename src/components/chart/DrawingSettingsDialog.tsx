@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n/client";
 import ColorPicker, { composeColor, parseColor } from "./ColorPicker";
 import { btnCls, clone, inputCls, LinePreview, Menu, NumInput, TemplateMenu } from "./DrawingControls";
 import { IND_ICONS } from "./icons";
+import { Segmented, Toggle } from "./tv3-ui";
 
 /* TradingView-like "Properties" modal of a drawing: Style and Text tabs are generated from the tool's property schema
    (drawings/props.ts), Coordinates edits the anchors, Visibility switches the drawing per timeframe.
@@ -93,7 +94,7 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
                     apply(propPatch(ctl, w));
                     close();
                   }}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${w === Math.round(cur) ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] hover:bg-[var(--tv3-fill)] ${w === Math.round(cur) ? "bg-[var(--tv3-fill)]" : ""}`}
                 >
                   <LinePreview width={w} dash="solid" />
                   <span>{w}px</span>
@@ -118,7 +119,7 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
                     apply(propPatch(ctl, k));
                     close();
                   }}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${k === cur ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] hover:bg-[var(--tv3-fill)] ${k === cur ? "bg-[var(--tv3-fill)]" : ""}`}
                 >
                   <LinePreview width={2} dash={k} />
                   <span>{t(`draw.style.${k}`)}</span>
@@ -137,8 +138,8 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
       const v = Number(readProp(d, ctl, ctl.def));
       return (
         <span className="flex items-center gap-2">
-          <input type="range" min={ctl.min} max={ctl.max} step={ctl.step ?? 1} value={v} onChange={(e) => apply(propPatch(ctl, Number(e.target.value)))} className="w-28 accent-[#2962ff]" />
-          <span className="w-5 text-[12px] tabular-nums text-gray-500">{v}</span>
+          <input type="range" min={ctl.min} max={ctl.max} step={ctl.step ?? 1} value={v} onChange={(e) => apply(propPatch(ctl, Number(e.target.value)))} className="w-28 accent-[var(--tv3-accent)]" />
+          <span className="w-5 text-[12px] tabular-nums text-[var(--tv3-muted)]">{v}</span>
         </span>
       );
     }
@@ -156,7 +157,7 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
     }
     case "bool": {
       const v = !!readProp(d, ctl, ctl.def);
-      return <input type="checkbox" checked={v} onChange={(e) => apply(propPatch(ctl, e.target.checked))} className="h-4 w-4 accent-[#2962ff]" />;
+      return <Toggle sm checked={v} onChange={(c) => apply(propPatch(ctl, c))} />;
     }
     case "toggle": {
       const v = !!readProp(d, ctl, ctl.def);
@@ -166,7 +167,7 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
           title={t(ctl.titleKey)}
           aria-pressed={v}
           onClick={() => apply(propPatch(ctl, !v))}
-          className={`${btnCls} w-7 !px-0 ${ctl.glyph === "B" ? "font-bold" : "italic"} ${v ? "!border-[#2962ff] bg-[#2962ff]/15 text-[#2962ff]" : ""}`}
+          className={`${btnCls} w-7 !px-0 ${ctl.glyph === "B" ? "font-bold" : "italic"} ${v ? "!border-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : ""}`}
         >
           {ctl.glyph}
         </button>
@@ -175,19 +176,7 @@ function ControlView({ ctl, ctx }: { ctl: Control; ctx: Ctx }) {
     case "segment": {
       const v = String(readProp(d, ctl, ctl.def));
       return (
-        <span className="inline-flex overflow-hidden rounded border border-gray-300 dark:border-[#363a45]">
-          {ctl.options.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              aria-pressed={v === o.value}
-              onClick={() => apply(propPatch(ctl, o.value))}
-              className={`h-7 px-2 text-[12px] ${v === o.value ? "bg-[#2962ff] text-white" : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-[#2a2e39]"}`}
-            >
-              {t(o.labelKey)}
-            </button>
-          ))}
-        </span>
+        <Segmented size="sm" value={v} options={ctl.options.map((o) => ({ id: o.value, label: t(o.labelKey) }))} onChange={(x) => apply(propPatch(ctl, x))} />
       );
     }
     case "text": {
@@ -215,10 +204,10 @@ function LevelsEditor({ kind, ctx }: { kind: "retr" | "ext" | "channel" | "pitch
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
         {levels.map((l, i) => (
           <div key={i} className="flex items-center gap-1.5 py-[3px]">
-            <input type="checkbox" checked={l.on} onChange={(e) => edit(i, { on: e.target.checked })} className="h-4 w-4 accent-[#2962ff]" aria-label={t("dp.levelOn")} />
+            <Toggle sm checked={l.on} onChange={(c) => edit(i, { on: c })} label={t("dp.levelOn")} />
             <NumInput value={l.v} min={-1000} max={1000} step={0.1} className="w-[64px]" onChange={(n) => edit(i, { v: n })} />
             <ColorPicker value={l.color || d.style.color} size={24} labels={cpLabels} onChange={(c) => edit(i, { color: c })} />
-            <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => set(levels.filter((_, k) => k !== i))} className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-[#2a2e39]">
+            <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => set(levels.filter((_, k) => k !== i))} className="flex h-6 w-6 items-center justify-center rounded-lg text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-down)]">
               {IND_ICONS.close(12)}
             </button>
           </div>
@@ -252,9 +241,9 @@ function RowView({ row, ctx }: { row: PropRow; ctx: Ctx }) {
   return (
     <div className={`flex ${full ? "flex-col items-stretch gap-1" : "items-center gap-2"} min-h-[34px] py-0.5`}>
       {(row.check || row.labelKey) && (
-        <label className={`flex shrink-0 items-center gap-2 ${full ? "" : "w-[108px] sm:w-[150px]"} text-[13px] text-gray-800 dark:text-gray-200`}>
+        <label className={`flex shrink-0 items-center gap-2 ${full ? "" : "w-[108px] sm:w-[150px]"} text-[13px] text-[var(--tv3-text)]`}>
           {row.check && (
-            <input type="checkbox" checked={checked} onChange={(e) => apply(propPatch(row.check as Ref, e.target.checked))} className="h-4 w-4 accent-[#2962ff]" />
+            <Toggle sm checked={checked} onChange={(c) => apply(propPatch(row.check as Ref, c))} />
           )}
           <span className="leading-tight">{row.labelKey ? t(row.labelKey) : ""}</span>
         </label>
@@ -274,8 +263,8 @@ function Sections({ sections, ctx }: { sections: PropSection[]; ctx: Ctx }) {
   return (
     <div className="flex flex-col gap-1">
       {sections.map((s, i) => (
-        <div key={i} className={i > 0 || s.titleKey ? "mt-2 border-t border-gray-200 pt-2 dark:border-[#2a2e39]" : ""}>
-          {s.titleKey && <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{ctx.t(s.titleKey)}</div>}
+        <div key={i} className={i > 0 || s.titleKey ? "mt-2 border-t border-[var(--tv3-hair)] pt-2" : ""}>
+          {s.titleKey && <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{ctx.t(s.titleKey)}</div>}
           {s.rows.map((r, k) => (
             <RowView key={k} row={r} ctx={ctx} />
           ))}
@@ -317,18 +306,18 @@ function CoordsTab({ controller, ctx, schema }: { controller: DrawingsController
       {shown.map((pt, i) => {
         const lk = schema.pointLabels?.[i];
         return (
-          <div key={i} className="rounded-md border border-gray-200 p-2 dark:border-[#2a2e39]">
-            <div className="mb-1.5 text-[12px] font-medium text-gray-500">{lk ? t(lk) : t("dp.point", { n: i + 1 })}</div>
+          <div key={i} className="rounded-lg border border-[var(--tv3-hair)] p-2">
+            <div className="mb-1.5 text-[12px] font-medium text-[var(--tv3-muted)]">{lk ? t(lk) : t("dp.point", { n: i + 1 })}</div>
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-0.5 text-[11px] text-gray-500">
+              <label className="flex flex-col gap-0.5 text-[11px] text-[var(--tv3-muted)]">
                 {t("dp.price")}
                 <NumInput value={Number(pt.p.toFixed(prec))} min={-1e15} max={1e15} step={Math.pow(10, -prec)} className="w-full" onChange={(n) => setPoint(i, { p: n })} />
               </label>
-              <label className="flex flex-col gap-0.5 text-[11px] text-gray-500">
+              <label className="flex flex-col gap-0.5 text-[11px] text-[var(--tv3-muted)]">
                 {t("dp.bar")}
                 <NumInput value={Math.round(controller.barIndexOf(pt.t))} min={-1e7} max={1e7} step={1} className="w-full" onChange={(n) => setPoint(i, { t: controller.timeOfBar(n) })} />
               </label>
-              <label className="col-span-2 flex flex-col gap-0.5 text-[11px] text-gray-500">
+              <label className="col-span-2 flex flex-col gap-0.5 text-[11px] text-[var(--tv3-muted)]">
                 {t("dp.datetime")}
                 <input
                   type="datetime-local"
@@ -345,7 +334,7 @@ function CoordsTab({ controller, ctx, schema }: { controller: DrawingsController
           </div>
         );
       })}
-      {d.points.length > shown.length && <div className="text-[12px] text-gray-500">{t("dp.morePoints", { n: d.points.length - shown.length })}</div>}
+      {d.points.length > shown.length && <div className="text-[12px] text-[var(--tv3-muted)]">{t("dp.morePoints", { n: d.points.length - shown.length })}</div>}
     </div>
   );
 }
@@ -353,7 +342,7 @@ function CoordsTab({ controller, ctx, schema }: { controller: DrawingsController
 /* ───────────── visibility ───────────── */
 
 const THUMB =
-  "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#2962ff] [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-white dark:[&::-webkit-slider-thumb]:ring-[#1e222d] [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#2962ff]";
+  "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--tv3-accent)] [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-white dark:[&::-webkit-slider-thumb]:ring-[#1e222d] [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[var(--tv3-accent)]";
 
 function VisTab({ controller, ctx }: { controller: DrawingsControllerLike; ctx: Ctx }) {
   const { d, apply, t } = ctx;
@@ -372,16 +361,16 @@ function VisTab({ controller, ctx }: { controller: DrawingsControllerLike; ctx: 
         const left = ((r.min - lo) / span) * 100;
         const right = ((r.max - lo) / span) * 100;
         return (
-          <div key={u} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-1.5 ${u === cur ? "bg-[#2962ff]/8" : ""}`}>
-            <label className="flex w-[110px] shrink-0 items-center gap-2 text-[13px] text-gray-800 dark:text-gray-200">
-              <input type="checkbox" checked={r.on} onChange={(e) => set(u, { on: e.target.checked })} className="h-4 w-4 accent-[#2962ff]" />
+          <div key={u} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2 py-1.5 ${u === cur ? "bg-[var(--tv3-accent-soft)]" : ""}`}>
+            <label className="flex w-[110px] shrink-0 items-center gap-2 text-[13px] text-[var(--tv3-text)]">
+              <Toggle sm checked={r.on} onChange={(c) => set(u, { on: c })} />
               {t(`dp.vis.${u}`)}
             </label>
             <div className={`flex min-w-[220px] flex-1 items-center gap-2 ${r.on ? "" : "opacity-45"}`}>
               <NumInput value={r.min} min={lo} max={r.max} className="w-[52px]" onChange={(n) => set(u, { min: Math.min(n, r.max) })} />
               <div className="relative h-5 min-w-[80px] flex-1">
-                <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded bg-gray-200 dark:bg-[#363a45]" />
-                <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[#2962ff]" style={{ left: `${left}%`, width: `${Math.max(0, right - left)}%` }} />
+                <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--tv3-fill2)]" />
+                <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-lg bg-[var(--tv3-accent)]" style={{ left: `${left}%`, width: `${Math.max(0, right - left)}%` }} />
                 <input type="range" min={lo} max={hi} value={r.min} aria-label={t("dp.min")} onChange={(e) => set(u, { min: Math.min(Number(e.target.value), r.max) })} className={`pointer-events-none absolute inset-0 h-5 w-full appearance-none bg-transparent ${THUMB}`} />
                 <input type="range" min={lo} max={hi} value={r.max} aria-label={t("dp.max")} onChange={(e) => set(u, { max: Math.max(Number(e.target.value), r.min) })} className={`pointer-events-none absolute inset-0 h-5 w-full appearance-none bg-transparent ${THUMB}`} />
               </div>
@@ -390,7 +379,7 @@ function VisTab({ controller, ctx }: { controller: DrawingsControllerLike; ctx: 
           </div>
         );
       })}
-      <p className="mt-1 px-2 text-[11px] text-gray-400">{t("dp.vis.hint")}</p>
+      <p className="mt-1 px-2 text-[11px] text-[var(--tv3-muted)]">{t("dp.vis.hint")}</p>
     </div>
   );
 }
@@ -497,8 +486,8 @@ function Dialog({ controller, id, onClose }: { controller: DrawingsControllerLik
         aria-label={t("dp.title", { tool: t(def.labelKey) })}
         className={
           mobile
-            ? "pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[72vh] flex-col rounded-t-2xl border border-b-0 border-gray-200 bg-white text-gray-800 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100"
-            : "pointer-events-auto absolute flex max-h-[80vh] w-[430px] max-w-[calc(100vw-16px)] flex-col rounded-xl border border-gray-200 bg-white text-gray-800 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100"
+            ? "pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[72vh] flex-col rounded-t-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
+            : "pointer-events-auto absolute flex max-h-[80vh] w-[430px] max-w-[calc(100vw-16px)] flex-col rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         }
         style={mobile ? undefined : { left: pos?.x ?? -9999, top: pos?.y ?? -9999 }}
       >
@@ -510,12 +499,12 @@ function Dialog({ controller, id, onClose }: { controller: DrawingsControllerLik
           className={`flex shrink-0 items-center justify-between gap-2 px-4 pb-1 pt-3 ${mobile ? "" : "cursor-move select-none"}`}
         >
           <h2 className="truncate text-[15px] font-semibold">{t(def.labelKey)}</h2>
-          <button type="button" onClick={cancel} title={t("dp.cancel")} aria-label={t("dp.cancel")} className="flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
+          <button type="button" onClick={cancel} title={t("dp.cancel")} aria-label={t("dp.cancel")} className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)]">
             {IND_ICONS.close(16)}
           </button>
         </div>
 
-        <div role="tablist" className="flex shrink-0 gap-4 overflow-x-auto border-b border-gray-200 px-4 dark:border-[#2a2e39] [scrollbar-width:none]">
+        <div role="tablist" className="flex shrink-0 gap-4 overflow-x-auto border-b border-[var(--tv3-hair)] px-4 [scrollbar-width:none]">
           {tabs.map((k) => (
             <button
               key={k}
@@ -523,7 +512,7 @@ function Dialog({ controller, id, onClose }: { controller: DrawingsControllerLik
               role="tab"
               aria-selected={activeTab === k}
               onClick={() => setTab(k)}
-              className={`-mb-px whitespace-nowrap border-b-2 py-2 text-[13px] ${activeTab === k ? "border-[#2962ff] font-medium text-gray-900 dark:text-white" : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"}`}
+              className={`-mb-px whitespace-nowrap border-b-2 py-2 text-[13px] ${activeTab === k ? "border-[var(--tv3-accent)] font-medium text-[var(--tv3-text)]" : "border-transparent text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
             >
               {tabLabel[k]}
             </button>
@@ -537,13 +526,13 @@ function Dialog({ controller, id, onClose }: { controller: DrawingsControllerLik
           {activeTab === "vis" && <VisTab controller={controller} ctx={ctx} />}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-200 px-4 py-3 dark:border-[#2a2e39]">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--tv3-hair)] px-4 py-3">
           <TemplateMenu d={d} controller={controller} apply={apply} t={t} factory={def.style} />
           <div className="flex gap-2">
             <button type="button" onClick={cancel} className={`${btnCls} px-3`}>
               {t("dp.cancel")}
             </button>
-            <button type="button" onClick={onClose} className="h-7 rounded bg-[#2962ff] px-4 text-[13px] font-medium text-white hover:bg-[#1e53e5]">
+            <button type="button" onClick={onClose} className="h-7 rounded-lg bg-[var(--tv3-accent)] px-4 text-[13px] font-medium text-white hover:bg-[var(--tv3-accent-hover)]">
               {t("dp.ok")}
             </button>
           </div>

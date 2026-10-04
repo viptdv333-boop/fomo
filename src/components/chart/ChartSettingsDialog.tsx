@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import ModalPortal from "./ModalPortal";
 import ColorPicker from "./ColorPicker";
+import { Toggle } from "./tv3-ui";
 import { CS_ICONS } from "./icons-cs";
 import { tzLabel } from "./tz";
 import { TIME_ZONES, applyPreset, defaultGradient, resetSettings, type ChartSettings, type ColorOverrides, type ThemePreset } from "@/lib/chart/settings";
@@ -34,14 +35,14 @@ const TABS: { id: SettingsTab; key: string }[] = [
 ];
 
 const inputCls =
-  "h-8 rounded border border-gray-300 dark:border-[#363a45] bg-white dark:bg-[#131722] px-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#2962ff] focus:ring-1 focus:ring-[#2962ff]";
+  "h-8 rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-2 text-[13px] text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)] focus:ring-1 focus:ring-[var(--tv3-accent)]";
 
 /* ───────────── small controls ───────────── */
 
 function Row({ label, children, hint }: { label: ReactNode; children: ReactNode; hint?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 min-h-9 py-0.5" title={hint}>
-      <span className="text-[13px] text-gray-800 dark:text-gray-200 min-w-0">{label}</span>
+      <span className="text-[13px] text-[var(--tv3-text)] min-w-0">{label}</span>
       <div className="flex items-center gap-2 shrink-0">{children}</div>
     </div>
   );
@@ -50,11 +51,11 @@ function Row({ label, children, hint }: { label: ReactNode; children: ReactNode;
 function Check({ checked, onChange, label, children }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 min-h-9 py-0.5">
-      <label className="flex items-center gap-2.5 cursor-pointer text-[13px] text-gray-800 dark:text-gray-200 min-w-0">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 accent-[#2962ff] shrink-0" />
-        <span className="min-w-0">{label}</span>
-      </label>
-      {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
+      <span className="text-[13px] text-[var(--tv3-text)] min-w-0">{label}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        {children}
+        <Toggle checked={checked} onChange={onChange} label={typeof label === "string" ? label : undefined} sm />
+      </div>
     </div>
   );
 }
@@ -94,13 +95,13 @@ function Num({ value, min, max, step = 1, onChange, suffix }: { value: number; m
         }}
         className={`${inputCls} w-[72px] text-right`}
       />
-      {suffix && <span className="text-xs text-gray-500 dark:text-gray-400 w-4">{suffix}</span>}
+      {suffix && <span className="text-xs text-[var(--tv3-muted)] w-4">{suffix}</span>}
     </span>
   );
 }
 
 function Section({ children }: { children: ReactNode }) {
-  return <div className="mt-4 mb-1 first:mt-0 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{children}</div>;
+  return <div className="mt-4 mb-1 first:mt-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{children}</div>;
 }
 
 /* ───────────── dialog ───────────── */
@@ -354,31 +355,31 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
 
   return (
     <ModalPortal>
-    <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-black/50 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
+    <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-black/40 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
       <div
         ref={panel}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t("cs.title")}
-        className="flex flex-col w-full sm:w-[720px] sm:max-w-full h-full sm:h-[600px] sm:max-h-full sm:rounded-xl overflow-hidden bg-white dark:bg-[#1e222d] text-gray-900 dark:text-gray-100 shadow-2xl border border-gray-200 dark:border-[#2a2e39] outline-none"
+        className="flex flex-col w-full sm:w-[720px] sm:max-w-full h-full sm:h-[600px] sm:max-h-full sm:rounded-2xl overflow-hidden bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] outline-none"
       >
-        <div className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-gray-200 dark:border-[#2a2e39]">
-          <h2 className="text-base font-semibold">{t("cs.title")}</h2>
-          <button onClick={cancel} aria-label={t("shell.close")} className="w-8 h-8 inline-flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+        <div className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-[var(--tv3-hair)]">
+          <h2 className="text-base font-bold">{t("cs.title")}</h2>
+          <button onClick={cancel} aria-label={t("shell.close")} className="w-8 h-8 inline-flex items-center justify-center rounded-lg hover:bg-[var(--tv3-fill)] cursor-pointer">
             {CS_ICONS.close}
           </button>
         </div>
 
         <div className="flex flex-col sm:flex-row flex-1 min-h-0">
-          <div className="flex sm:flex-col shrink-0 gap-0.5 p-2 overflow-x-auto sm:w-[170px] sm:border-r border-b sm:border-b-0 border-gray-200 dark:border-[#2a2e39] [scrollbar-width:none]">
+          <div className="flex sm:flex-col shrink-0 gap-0.5 p-2 overflow-x-auto sm:w-[170px] sm:border-r border-b sm:border-b-0 border-[var(--tv3-hair)] [scrollbar-width:none]">
             {TABS.map((x) => (
               <button
                 key={x.id}
                 onClick={() => setTab(x.id)}
                 aria-pressed={tab === x.id}
-                className={`h-9 px-3 rounded-md text-[13px] text-left whitespace-nowrap cursor-pointer transition ${
-                  tab === x.id ? "bg-[#2962ff]/10 text-[#2962ff] dark:text-[#6f95ff] font-medium" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2e39]"
+                className={`h-9 px-3 rounded-[10px] text-[13px] text-left whitespace-nowrap cursor-pointer transition ${
+                  tab === x.id ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)] font-semibold" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
                 }`}
               >
                 {t(x.key)}
@@ -393,7 +394,7 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 shrink-0 border-t border-gray-200 dark:border-[#2a2e39]">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 shrink-0 border-t border-[var(--tv3-hair)]">
           <div className="flex items-center gap-2 min-w-0">
             <Sel
               value={s.preset}
@@ -403,16 +404,16 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
             />
             <button
               onClick={() => api.replace(resetSettings(s))}
-              className="h-8 px-3 rounded-md text-[13px] border border-gray-300 dark:border-[#363a45] hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer whitespace-nowrap"
+              className="h-8 px-3 rounded-lg text-[13px] bg-[var(--tv3-fill)] hover:bg-[var(--tv3-fill2)] cursor-pointer whitespace-nowrap"
             >
               {t("cs.reset")}
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={cancel} className="h-8 px-3.5 rounded-md text-[13px] border border-gray-300 dark:border-[#363a45] hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+            <button onClick={cancel} className="h-8 px-3.5 rounded-lg text-[13px] bg-[var(--tv3-fill)] hover:bg-[var(--tv3-fill2)] cursor-pointer">
               {t("cs.cancel")}
             </button>
-            <button onClick={onClose} className="h-8 px-4 rounded-md text-[13px] font-medium bg-[#2962ff] text-white hover:bg-[#1e53e5] cursor-pointer">
+            <button onClick={onClose} className="h-8 px-4 rounded-lg text-[13px] font-semibold bg-[var(--tv3-accent)] text-white hover:bg-[var(--tv3-accent-hover)] cursor-pointer">
               {t("cs.ok")}
             </button>
           </div>

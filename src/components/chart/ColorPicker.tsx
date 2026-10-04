@@ -102,7 +102,7 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
         type="button"
         title={title}
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-gray-300 dark:border-gray-600 p-[3px] hover:border-gray-400 dark:hover:border-gray-400 transition-colors"
+        className="rounded-lg border border-[var(--tv3-fill2)] p-[3px] hover:border-[var(--tv3-fill2)] transition-colors"
         style={{ width: size, height: size }}
       >
         {children ?? (
@@ -113,7 +113,7 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
         )}
       </button>
       {open && (
-        <div className="absolute z-[80] mt-1 left-0 w-[226px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e222d] shadow-xl p-2.5 text-gray-700 dark:text-gray-200">
+        <div className="absolute z-[80] mt-1 left-0 w-[226px] rounded-xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] p-2.5 text-[var(--tv3-text2)]">
           <div className="flex flex-col gap-[3px]">
             {PALETTE_ROWS.map((row, ri) => (
               <div key={ri} className={`flex gap-[3px] ${ri === 0 ? "mb-1" : ""}`}>
@@ -132,7 +132,7 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
           </div>
           {recent.length > 0 && (
             <div className="mt-2">
-              <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">{L.recent}</div>
+              <div className="text-[10px] uppercase tracking-wide text-[var(--tv3-muted)] mb-1">{L.recent}</div>
               <div className="flex gap-[3px] flex-wrap">
                 {recent.map((c) => (
                   <button key={c} type="button" onClick={() => onChange(composeColor(parseColor(c).hex, a))} title={c} className="w-[18px] h-[18px] rounded-[3px] border border-black/10 dark:border-white/10" style={{ background: c }} />
@@ -141,7 +141,7 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
             </div>
           )}
           <div className="mt-2 flex items-center gap-2">
-            <label className="relative w-[18px] h-[18px] rounded-[3px] border border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer text-center text-[13px] leading-[16px]" title={L.custom}>
+            <label className="relative w-[18px] h-[18px] rounded-[3px] border border-[var(--tv3-fill2)] overflow-hidden cursor-pointer text-center text-[13px] leading-[16px]" title={L.custom}>
               +
               <input type="color" value={hex} onChange={(e) => pick(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
             </label>
@@ -149,12 +149,12 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
               value={hex}
               onChange={(e) => /^#[0-9a-f]{6}$/i.test(e.target.value) && pick(e.target.value.toLowerCase())}
               spellCheck={false}
-              className="flex-1 min-w-0 h-6 px-1.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-[12px] font-mono"
+              className="flex-1 min-w-0 h-6 px-1.5 rounded-[9px] border border-[var(--tv3-fill2)] bg-transparent text-[12px] font-mono"
             />
           </div>
           {opacity && (
             <div className="mt-2">
-              <div className="flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
+              <div className="flex justify-between text-[11px] text-[var(--tv3-muted)]">
                 <span>{L.opacity}</span>
                 <span>{Math.round(a * 100)}%</span>
               </div>

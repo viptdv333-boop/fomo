@@ -11,8 +11,8 @@ import { IND_ICONS } from "./icons";
 export const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export const inputCls =
-  "h-7 rounded border border-gray-300 bg-transparent px-1.5 text-[13px] text-gray-800 outline-none focus:border-[#2962ff] dark:border-[#363a45] dark:text-gray-100";
-export const btnCls = "flex h-7 items-center justify-center rounded border border-gray-300 px-2 text-[13px] text-gray-700 hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-200 dark:hover:bg-[#2a2e39]";
+  "h-7 rounded-[9px] border border-[var(--tv3-fill2)] bg-transparent px-1.5 text-[13px] text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)]";
+export const btnCls = "flex h-7 items-center justify-center rounded-[9px] border border-[var(--tv3-fill2)] px-2 text-[13px] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]";
 
 function fmtNum(v: number): string {
   return String(Math.round(v * 1e8) / 1e8);
@@ -68,7 +68,7 @@ export function NumInput({ value, min, max, step = 1, onChange, className = "w-[
           }
         }}
       />
-      {suffix && <span className="text-[12px] text-gray-500">{suffix}</span>}
+      {suffix && <span className="text-[12px] text-[var(--tv3-muted)]">{suffix}</span>}
     </span>
   );
 }
@@ -95,7 +95,7 @@ export function Menu({ trigger, children, title, up = false }: { trigger: ReactN
         <span className="opacity-60">{IND_ICONS.chevronDown(12)}</span>
       </button>
       {open && (
-        <div className={`absolute z-[80] ${up ? "bottom-full mb-1" : "mt-1"} left-0 min-w-[130px] rounded-lg border border-gray-200 bg-white p-1 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]`}>
+        <div className={`absolute z-[80] ${up ? "bottom-full mb-1" : "mt-1"} left-0 min-w-[130px] rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -193,7 +193,7 @@ export function TemplateMenu({
     flash(t("dp.tpl.resetDone"));
   };
 
-  const itemCls = "flex w-full items-center rounded px-2 py-1.5 text-left text-[13px] text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-[#2a2e39]";
+  const itemCls = "flex w-full items-center rounded-lg px-2 py-1.5 text-left text-[13px] text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]";
 
   return (
     <div ref={ref} className="relative">
@@ -202,7 +202,7 @@ export function TemplateMenu({
         <span className="opacity-60">{IND_ICONS.chevronDown(12)}</span>
       </button>
       {open && (
-        <div className={`absolute left-0 z-[80] w-[240px] ${down ? "top-full mt-1" : "bottom-full mb-1"} rounded-lg border border-gray-200 bg-white p-1 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]`}>
+        <div className={`absolute left-0 z-[80] w-[240px] ${down ? "top-full mt-1" : "bottom-full mb-1"} rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]`}>
           <div className="flex items-center gap-1 p-1">
             <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={t("dp.tpl.name")} className={`${inputCls} min-w-0 flex-1`} onKeyDown={(e) => e.stopPropagation()} />
             <button
@@ -223,7 +223,7 @@ export function TemplateMenu({
               {t("dp.tpl.saveAs")}
             </button>
           </div>
-          {items.length > 0 && <div className="my-1 border-t border-gray-200 dark:border-[#2a2e39]" />}
+          {items.length > 0 && <div className="my-1 border-t border-[var(--tv3-hair)]" />}
           <div className="max-h-40 overflow-y-auto">
             {items.map((it) => (
               <div key={it.name} className="flex items-center">
@@ -242,7 +242,7 @@ export function TemplateMenu({
                   type="button"
                   title={t("draw.style.delete")}
                   aria-label={t("draw.style.delete")}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-[#2a2e39]"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-down)]"
                   onClick={async () => {
                     await deleteUserData("drawing_template", `${prefix}${it.name}`);
                     void reload();
@@ -253,7 +253,7 @@ export function TemplateMenu({
               </div>
             ))}
           </div>
-          <div className="my-1 border-t border-gray-200 dark:border-[#2a2e39]" />
+          <div className="my-1 border-t border-[var(--tv3-hair)]" />
           <button
             type="button"
             className={itemCls}
@@ -279,7 +279,7 @@ export function TemplateMenu({
           <button type="button" className={itemCls} onClick={reset}>
             {t("dp.tpl.reset")}
           </button>
-          {note && <div className="px-2 pb-1 pt-0.5 text-[11px] text-[#2962ff]">{note}</div>}
+          {note && <div className="px-2 pb-1 pt-0.5 text-[11px] text-[var(--tv3-accent)]">{note}</div>}
         </div>
       )}
     </div>

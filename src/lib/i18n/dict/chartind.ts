@@ -5,6 +5,9 @@ const rows: [string, string, string, string][] = [
   /* dialog */
   ["ind.title", "Индикаторы", "Indicators", "技术指标"],
   ["ind.search", "Поиск индикатора", "Search indicators", "搜索指标"],
+  /* Terminal v3: compact popover under the «Индикаторы» button */
+  ["ind.pop.all", "Все индикаторы…", "All indicators…", "全部指标…"],
+  ["sym.compareWith", "Сравнить с", "Compare with", "对比"],
   ["ind.close", "Закрыть", "Close", "关闭"],
   ["ind.categories", "Категории индикаторов", "Indicator categories", "指标分类"],
   ["ind.cat.all", "Все", "All", "全部"],

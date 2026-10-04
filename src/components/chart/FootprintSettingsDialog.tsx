@@ -8,13 +8,14 @@ import { CS_ICONS } from "./icons-cs";
 import { UI_ICONS } from "./icons";
 import { DEFAULT_FOOTPRINT, type FootprintColors, type FootprintMode, type FootprintSettings } from "@/lib/chart/orderflow/types";
 import type { ChartSettingsApi } from "./useChartSettings";
+import { Toggle } from "./tv3-ui";
 
-const field = "h-8 rounded border border-gray-300 dark:border-[#363a45] bg-white dark:bg-[#131722] px-2 text-[13px] outline-none focus:border-[#2962ff]";
+const field = "h-8 rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-2 text-[13px] outline-none focus:border-[var(--tv3-accent)]";
 
 function Row({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 min-h-9" title={hint}>
-      <span className="text-[13px] text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="text-[13px] text-[var(--tv3-text2)]">{label}</span>
       <span className="flex items-center gap-2 shrink-0">{children}</span>
     </div>
   );
@@ -22,8 +23,8 @@ function Row({ label, children, hint }: { label: string; children: React.ReactNo
 
 function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className="flex items-center gap-2 min-h-9 cursor-pointer text-[13px] text-gray-700 dark:text-gray-300">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 accent-[#2962ff] cursor-pointer" />
+    <label className="flex items-center gap-2 min-h-9 cursor-pointer text-[13px] text-[var(--tv3-text2)]">
+      <Toggle sm checked={checked} onChange={onChange} />
       {label}
     </label>
   );
@@ -100,16 +101,16 @@ function FootprintSettingsDialog({ api, source, onClose }: { api: ChartSettingsA
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-black/50 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div role="dialog" aria-modal="true" aria-label={t("of.fp.title")} className="flex flex-col w-full sm:w-[560px] sm:max-w-full h-full sm:h-auto sm:max-h-[88vh] sm:rounded-xl overflow-hidden bg-white dark:bg-[#1e222d] border border-gray-200 dark:border-[#2a2e39] shadow-2xl text-gray-900 dark:text-gray-100">
-          <div className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-gray-200 dark:border-[#2a2e39]">
+      <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-black/40 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div role="dialog" aria-modal="true" aria-label={t("of.fp.title")} className="flex flex-col w-full sm:w-[560px] sm:max-w-full h-full sm:h-auto sm:max-h-[88vh] sm:rounded-2xl overflow-hidden bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] text-[var(--tv3-text)]">
+          <div className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-[var(--tv3-hair)]">
             <h2 className="text-base font-semibold">{t("of.fp.title")}</h2>
-            <button onClick={onClose} aria-label={t("shell.close")} className="w-8 h-8 inline-flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+            <button onClick={onClose} aria-label={t("shell.close")} className="w-8 h-8 inline-flex items-center justify-center rounded-lg hover:bg-[var(--tv3-fill)] cursor-pointer">
               {CS_ICONS.close}
             </button>
           </div>
           <div className="overflow-y-auto px-4 py-2">
-            <p className={`mb-2 rounded-md px-2.5 py-1.5 text-[12px] ${srcKey === "of.src.none" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>{t(srcKey)}</p>
+            <p className={`mb-2 rounded-lg px-2.5 py-1.5 text-[12px] ${srcKey === "of.src.none" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>{t(srcKey)}</p>
 
             <Row label={t("of.fp.mode")}>
               <select value={fp.mode} onChange={(e) => set({ mode: e.target.value as FootprintMode })} className={`${field} cursor-pointer max-w-[250px]`}>
@@ -141,7 +142,7 @@ function FootprintSettingsDialog({ api, source, onClose }: { api: ChartSettingsA
               )}
             </div>
 
-            <div className="mt-2 border-t border-gray-200 dark:border-[#2a2e39] pt-1">
+            <div className="mt-2 border-t border-[var(--tv3-hair)] pt-1">
               <Check checked={fp.imbalance} onChange={(v) => set({ imbalance: v })} label={t("of.fp.imb")} />
               {fp.imbalance && (
                 <div className="pl-6">
@@ -162,12 +163,12 @@ function FootprintSettingsDialog({ api, source, onClose }: { api: ChartSettingsA
               )}
             </div>
 
-            <div className="mt-2 border-t border-gray-200 dark:border-[#2a2e39] pt-2">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{t("of.fp.colors")}</div>
+            <div className="mt-2 border-t border-[var(--tv3-hair)] pt-2">
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("of.fp.colors")}</div>
               <div className="grid sm:grid-cols-2 gap-x-6">
                 {colorRows.map(([k, label, shown]) => (
                   <div key={k} className="flex items-center justify-between gap-2 min-h-9">
-                    <span className="text-[13px] text-gray-700 dark:text-gray-300">{t(label)}</span>
+                    <span className="text-[13px] text-[var(--tv3-text2)]">{t(label)}</span>
                     <span className="flex items-center gap-1.5">
                       <ColorPicker value={fp.colors[k] || shown} onChange={(c) => setColor(k, c)} opacity={false} labels={cpLabels} size={26} title={t(label)} />
                       {(k === "buy" || k === "sell" || k === "imbBuy" || k === "imbSell" || k === "text") && (
@@ -176,7 +177,7 @@ function FootprintSettingsDialog({ api, source, onClose }: { api: ChartSettingsA
                           onClick={() => setColor(k, "")}
                           disabled={!fp.colors[k]}
                           title={t("cs.reset")}
-                          className="w-6 h-6 inline-flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                          className="w-6 h-6 inline-flex items-center justify-center rounded-lg text-[var(--tv3-muted)] hover:text-[var(--tv3-text2)] disabled:opacity-30 cursor-pointer disabled:cursor-default"
                         >
                           ↺
                         </button>
@@ -187,11 +188,11 @@ function FootprintSettingsDialog({ api, source, onClose }: { api: ChartSettingsA
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2 px-4 h-12 shrink-0 border-t border-gray-200 dark:border-[#2a2e39]">
-            <button type="button" onClick={() => api.update((x) => ({ ...x, footprint: DEFAULT_FOOTPRINT }))} className="h-8 px-3 rounded text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+          <div className="flex items-center justify-between gap-2 px-4 h-12 shrink-0 border-t border-[var(--tv3-hair)]">
+            <button type="button" onClick={() => api.update((x) => ({ ...x, footprint: DEFAULT_FOOTPRINT }))} className="h-8 px-3 rounded text-[13px] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] cursor-pointer">
               {t("of.fp.reset")}
             </button>
-            <button type="button" onClick={onClose} className="h-8 px-4 rounded bg-[#2962ff] text-white text-[13px] font-medium hover:bg-[#1e53e5] cursor-pointer">
+            <button type="button" onClick={onClose} className="h-8 px-4 rounded-lg bg-[var(--tv3-accent)] text-white text-[13px] font-medium hover:bg-[var(--tv3-accent-hover)] cursor-pointer">
               OK
             </button>
           </div>

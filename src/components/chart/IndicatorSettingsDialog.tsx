@@ -11,6 +11,7 @@ import { TF_GROUPS, cloneStyle } from "@/lib/chart/indicators/style";
 import { deleteUserData, isSignedInForUserData, listUserData, saveUserData } from "@/lib/chart/userdata";
 import ColorPicker from "./ColorPicker";
 import { IND_ICONS } from "./icons";
+import { Toggle } from "./tv3-ui";
 
 /* TradingView-like indicator settings: Inputs / Style / Visibility tabs, live preview on the chart,
    Defaults, Template (save / apply) and OK / Cancel (Cancel restores what was there when the dialog opened). */
@@ -18,8 +19,7 @@ import { IND_ICONS } from "./icons";
 const TEMPLATE_KIND = "indicator_template";
 
 const fieldCls =
-  "h-7 rounded border border-gray-300 bg-white px-1.5 text-xs text-gray-900 outline-none focus:border-[#2962ff] focus:ring-1 focus:ring-[#2962ff] dark:border-[#2a2e39] dark:bg-[#131722] dark:text-gray-100";
-const checkCls = "h-3.5 w-3.5 shrink-0 cursor-pointer rounded accent-[#2962ff]";
+  "h-7 rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-1.5 text-xs text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)] focus:ring-1 focus:ring-[var(--tv3-accent)]";
 
 type Tab = "inputs" | "style" | "visibility";
 
@@ -73,8 +73,8 @@ function NumField({ min, max, step, value, onCommit, className = "w-full" }: { m
 
 function Check({ checked, onChange, label, title }: { checked: boolean; onChange: (v: boolean) => void; label?: ReactNode; title?: string }) {
   return (
-    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300" title={title}>
-      <input type="checkbox" className={checkCls} checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--tv3-text2)]" title={title}>
+      <Toggle sm checked={checked} onChange={onChange} />
       {label}
     </label>
   );
@@ -184,18 +184,18 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
       role="tab"
       aria-selected={tab === id}
       onClick={() => setTab(id)}
-      className={`relative px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] ${
-        tab === id ? "text-gray-900 dark:text-white" : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+      className={`relative px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] ${
+        tab === id ? "text-[var(--tv3-text)]" : "text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"
       }`}
     >
       {label}
-      {tab === id && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-[#2962ff]" />}
+      {tab === id && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-lg bg-[var(--tv3-accent)]" />}
     </button>
   );
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-2 sm:p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-2 sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cancel();
       }}
@@ -207,12 +207,12 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
         role="dialog"
         aria-modal="true"
         aria-label={t("ind2.set.title", { name })}
-        className="flex h-[min(640px,92vh)] w-full max-w-[480px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-2xl outline-none dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100"
+        className="flex h-[min(640px,92vh)] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] outline-none"
       >
         <div className="flex items-start gap-2 px-4 pb-1 pt-3">
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-sm font-semibold">{name}</h2>
-            <p className="truncate font-mono text-[11px] text-gray-500 dark:text-gray-400">{def.title(inst.params)}</p>
+            <p className="truncate font-mono text-[11px] text-[var(--tv3-muted)]">{def.title(inst.params)}</p>
           </div>
           {def.script && onEditSource && (
             <button
@@ -221,7 +221,7 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
                 onClose();
                 onEditSource(def.id);
               }}
-              className="mr-1 h-7 shrink-0 rounded border border-gray-300 px-2 text-[11px] font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:border-[#2a2e39] dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+              className="mr-1 h-7 shrink-0 rounded-[9px] border border-[var(--tv3-fill2)] px-2 text-[11px] font-medium text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]"
             >
               {t("isc.editSource")}
             </button>
@@ -231,13 +231,13 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
             onClick={cancel}
             aria-label={t("ind2.set.close")}
             title={t("ind2.set.close")}
-            className="-mr-1 rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#2a2e39] dark:hover:text-white"
+            className="-mr-1 rounded-lg p-1.5 text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]"
           >
             {IND_ICONS.close(16)}
           </button>
         </div>
 
-        <div role="tablist" className="flex gap-1 border-b border-gray-200 px-2 dark:border-[#2a2e39]">
+        <div role="tablist" className="flex gap-1 border-b border-[var(--tv3-hair)] px-2">
           {tabBtn("inputs", t("ind2.set.inputs"))}
           {tabBtn("style", t("ind2.set.style"))}
           {tabBtn("visibility", t("ind2.set.visibility"))}
@@ -260,11 +260,11 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
           {tab === "visibility" && <VisibilityTab style={style} onStyle={pushStyle} />}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-gray-200 px-3 py-2.5 dark:border-[#2a2e39]">
+        <div className="flex items-center gap-2 border-t border-[var(--tv3-hair)] px-3 py-2.5">
           <button
             type="button"
             onClick={resetDefaults}
-            className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]"
           >
             {IND_ICONS.reset(14)}
             {t("ind2.set.defaults")}
@@ -274,14 +274,14 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
           <button
             type="button"
             onClick={cancel}
-            className="h-8 rounded border border-gray-300 px-3 text-xs font-medium text-gray-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] dark:border-[#2a2e39] dark:text-gray-200 dark:hover:bg-[#2a2e39]"
+            className="h-8 rounded-[9px] border border-[var(--tv3-fill2)] px-3 text-xs font-medium text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]"
           >
             {t("ind2.set.cancel")}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded bg-[#2962ff] px-4 text-xs font-semibold text-white hover:bg-[#1e53e5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1e222d]"
+            className="h-8 rounded-lg bg-[var(--tv3-accent)] px-4 text-xs font-semibold text-white hover:bg-[var(--tv3-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] focus-visible:ring-offset-2"
           >
             {t("ind2.set.ok")}
           </button>
@@ -296,7 +296,7 @@ function Body({ controller, uid, onClose, onEditSource }: { controller: Indicato
 function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Record<string, ParamValue>; onSet: (k: string, v: ParamValue) => void; uid: string }) {
   const { t } = useT();
   const list = def.params.filter((p) => p.type !== "color" && !(def.hiddenParams ?? []).includes(p.key));
-  if (list.length === 0) return <p className="py-6 text-center text-xs text-gray-500 dark:text-gray-400">{t("ind2.set.noInputs")}</p>;
+  if (list.length === 0) return <p className="py-6 text-center text-xs text-[var(--tv3-muted)]">{t("ind2.set.noInputs")}</p>;
   const idOf = (k: string) => `indset-${uid}-${k}`;
   return (
     <div className="flex flex-col gap-2.5">
@@ -304,12 +304,12 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
         const v = params[p.key] ?? p.default;
         // sections of the Inputs tab (definitions with many parameters name a group per key)
         const grp = def.paramGroup?.[p.key];
-        const head = grp && grp !== (idx > 0 ? def.paramGroup?.[list[idx - 1].key] : undefined) ? <h3 key={`h-${p.key}`} className="mb-0.5 mt-2 border-b border-gray-200 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 first:mt-0 dark:border-[#2a2e39] dark:text-gray-400">{t(grp)}</h3> : null;
+        const head = grp && grp !== (idx > 0 ? def.paramGroup?.[list[idx - 1].key] : undefined) ? <h3 key={`h-${p.key}`} className="mb-0.5 mt-2 border-b border-[var(--tv3-hair)] pb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)] first:mt-0">{t(grp)}</h3> : null;
         if (p.type === "boolean") {
           return [head, (
             <div key={p.key} className="flex items-center gap-2">
-              <input id={idOf(p.key)} type="checkbox" className={checkCls} checked={Boolean(v)} onChange={(e) => onSet(p.key, e.target.checked)} />
-              <label htmlFor={idOf(p.key)} className="cursor-pointer text-xs text-gray-700 dark:text-gray-300">
+              <Toggle sm checked={Boolean(v)} onChange={(c) => onSet(p.key, c)} label={def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)} />
+              <label htmlFor={idOf(p.key)} className="text-xs text-[var(--tv3-text2)]">
                 {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
               </label>
             </div>
@@ -317,7 +317,7 @@ function InputsTab({ def, params, onSet, uid }: { def: IndicatorDef; params: Rec
         }
         return [head, (
           <div key={p.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3">
-            <label htmlFor={idOf(p.key)} className="text-xs text-gray-700 dark:text-gray-300">
+            <label htmlFor={idOf(p.key)} className="text-xs text-[var(--tv3-text2)]">
               {def.paramLabels?.[p.key] ?? t(`ind.p.${p.key}`)}
             </label>
             {p.type === "number" ? (
@@ -378,14 +378,14 @@ function StyleTab({
 
   const section = (title: string, children: ReactNode) => (
     <section className="mb-4 last:mb-0">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h3>
+      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{title}</h3>
       <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
 
   return (
     <div className="pb-40">
-      {nothing && !canMove && <p className="py-6 text-center text-xs text-gray-500 dark:text-gray-400">{t("ind2.set.noStyle")}</p>}
+      {nothing && !canMove && <p className="py-6 text-center text-xs text-[var(--tv3-muted)]">{t("ind2.set.noStyle")}</p>}
 
       {desc.plots.length > 0 &&
         section(
@@ -402,11 +402,11 @@ function StyleTab({
           def.styleParams.map((k, i) => {
             const grp = def.paramGroup?.[k];
             const sp = def.styleParams as string[];
-            const head = grp && grp !== (i > 0 ? def.paramGroup?.[sp[i - 1]] : undefined) ? <h4 key={`h-${k}`} className="mt-1.5 text-[10.5px] font-semibold text-gray-500 dark:text-gray-400">{t(grp)}</h4> : null;
+            const head = grp && grp !== (i > 0 ? def.paramGroup?.[sp[i - 1]] : undefined) ? <h4 key={`h-${k}`} className="mt-1.5 text-[10.5px] font-semibold text-[var(--tv3-muted)]">{t(grp)}</h4> : null;
             return [head, (
               <div key={k} className="flex items-center gap-2">
                 <ColorPicker value={String(params[k] ?? "#2962ff")} onChange={(c) => onParam(k, c)} opacity={false} title={def.paramLabels?.[k] ?? t(`ind.p.${k}`)} labels={labels} />
-                <span className="text-xs text-gray-700 dark:text-gray-300">{def.paramLabels?.[k] ?? t(`ind.p.${k}`)}</span>
+                <span className="text-xs text-[var(--tv3-text2)]">{def.paramLabels?.[k] ?? t(`ind.p.${k}`)}</span>
               </div>
             )];
           }),
@@ -421,7 +421,7 @@ function StyleTab({
               <div key={fd.index} className="flex items-center gap-2">
                 <Check checked={st.visible !== false} onChange={(v) => patchFill(fd.index, { visible: v })} />
                 <ColorPicker value={st.color ?? fd.color} onChange={(c) => patchFill(fd.index, { color: c })} title={fd.name} labels={labels} />
-                <span className="min-w-0 flex-1 truncate text-xs text-gray-700 dark:text-gray-300">{fd.name.startsWith("ind") ? t(fd.name) : fd.name}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-[var(--tv3-text2)]">{fd.name.startsWith("ind") ? t(fd.name) : fd.name}</span>
               </div>
             );
           }),
@@ -435,7 +435,7 @@ function StyleTab({
             return (
               <div key={ld.index} className="flex flex-wrap items-center gap-2">
                 <Check checked={st.visible !== false} onChange={(v) => patchLevel(ld.index, { visible: v })} />
-                <span className="w-24 min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">{ld.name.startsWith("ind") ? t(ld.name) : ld.name}</span>
+                <span className="w-24 min-w-0 truncate text-xs text-[var(--tv3-text2)]">{ld.name.startsWith("ind") ? t(ld.name) : ld.name}</span>
                 <NumField
                   min={-1e9}
                   max={1e9}
@@ -468,7 +468,7 @@ function StyleTab({
           <div className="flex items-center gap-2">
             <Check checked={style.band?.visible !== false} onChange={(v) => patchBand({ visible: v })} />
             <ColorPicker value={style.band?.color ?? desc.band.color} onChange={(c) => patchBand({ color: c })} title={t("ind2.st.bg")} labels={labels} />
-            <span className="text-xs text-gray-700 dark:text-gray-300">{t("ind2.st.bg")}</span>
+            <span className="text-xs text-[var(--tv3-text2)]">{t("ind2.st.bg")}</span>
           </div>,
         )}
 
@@ -514,10 +514,10 @@ function PlotRow({
   const isLineish = type === "line" || type === "step" || type === "area";
   const color = st.color ?? pd.color;
   return (
-    <div className="rounded border border-transparent px-1 py-1 hover:border-gray-200 dark:hover:border-[#2a2e39]">
+    <div className="rounded border border-transparent px-1 py-1 hover:border-[var(--tv3-hair)]">
       <div className="flex flex-wrap items-center gap-2">
         <Check checked={st.visible !== false} onChange={(v) => onPatch({ visible: v })} />
-        <span className="w-20 min-w-0 truncate text-xs font-medium text-gray-800 dark:text-gray-200" title={pd.key}>
+        <span className="w-20 min-w-0 truncate text-xs font-medium text-[var(--tv3-text)]" title={pd.key}>
           {pd.key}
         </span>
         {pd.perBar && pd.colorParams ? (
@@ -590,13 +590,13 @@ function VisibilityTab({ style, onStyle }: { style: IndicatorStyle; onStyle: (s:
   };
   return (
     <div>
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{t("ind2.vis.title")}</h3>
+      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ind2.vis.title")}</h3>
       <div className="flex flex-col gap-2.5">
         {TF_GROUPS.map((g) => (
           <Check key={g} checked={style.tf?.[g] !== false} onChange={(v) => setGroup(g, v)} label={t(`ind2.vis.${g}`)} />
         ))}
       </div>
-      <p className="mt-4 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">{t("ind2.vis.hint")}</p>
+      <p className="mt-4 text-[11px] leading-relaxed text-[var(--tv3-muted)]">{t("ind2.vis.hint")}</p>
     </div>
   );
 }
@@ -662,16 +662,16 @@ function TemplateMenu({ defId, params, style, onApply }: { defId: string; params
           setOpen((o) => !o);
         }}
         aria-expanded={open}
-        className={`flex h-8 items-center gap-1.5 rounded px-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2962ff] ${
-          open ? "bg-gray-100 dark:bg-[#2a2e39]" : "hover:bg-gray-100 dark:hover:bg-[#2a2e39]"
-        } text-gray-700 dark:text-gray-300`}
+        className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] ${
+          open ? "bg-[var(--tv3-fill)]" : "hover:bg-[var(--tv3-fill)]"
+        } text-[var(--tv3-text2)]`}
       >
         {IND_ICONS.template(14)}
         {t("ind2.set.template")}
         {IND_ICONS.chevronUp(12)}
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-[80] mb-1 w-64 rounded-lg border border-gray-200 bg-white p-2 text-gray-800 shadow-xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-200">
+        <div className="absolute bottom-full left-0 z-[80] mb-1 w-64 rounded-xl bg-[var(--tv3-card)] p-2 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
           <form
             className="flex items-center gap-1.5"
             onSubmit={(e) => {
@@ -683,18 +683,18 @@ function TemplateMenu({ defId, params, style, onApply }: { defId: string; params
             <button
               type="submit"
               disabled={!name.trim()}
-              className="h-7 shrink-0 rounded bg-[#2962ff] px-2.5 text-xs font-medium text-white hover:bg-[#1e53e5] disabled:opacity-40"
+              className="h-7 shrink-0 rounded-lg bg-[var(--tv3-accent)] px-2.5 text-xs font-medium text-white hover:bg-[var(--tv3-accent-hover)] disabled:opacity-40"
             >
               {t("ind2.tpl.save")}
             </button>
           </form>
-          {note && <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{note}</p>}
+          {note && <p className="mt-1.5 text-[11px] text-[var(--tv3-muted)]">{note}</p>}
           <div className="mt-2 max-h-48 overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-1 py-2 text-[11px] text-gray-500 dark:text-gray-400">{t("ind2.tpl.none")}</p>
+              <p className="px-1 py-2 text-[11px] text-[var(--tv3-muted)]">{t("ind2.tpl.none")}</p>
             ) : (
               items.map((tpl) => (
-                <div key={tpl.key} className="group flex items-center rounded hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
+                <div key={tpl.key} className="group flex items-center rounded-lg hover:bg-[var(--tv3-fill)]">
                   <button
                     type="button"
                     onClick={() => {
@@ -710,7 +710,7 @@ function TemplateMenu({ defId, params, style, onApply }: { defId: string; params
                     onClick={() => void remove(tpl.key)}
                     title={t("ind2.tpl.delete")}
                     aria-label={t("ind2.tpl.delete")}
-                    className="mr-1 rounded p-1 text-gray-400 opacity-0 hover:text-red-500 focus:opacity-100 group-hover:opacity-100"
+                    className="mr-1 rounded-lg p-1 text-[var(--tv3-muted)] opacity-0 hover:text-[var(--tv3-down)] focus:opacity-100 group-hover:opacity-100"
                   >
                     {IND_ICONS.trash(13)}
                   </button>
@@ -718,7 +718,7 @@ function TemplateMenu({ defId, params, style, onApply }: { defId: string; params
               ))
             )}
           </div>
-          {isSignedInForUserData() === false && <p className="mt-2 border-t border-gray-200 pt-2 text-[10px] text-gray-500 dark:border-[#2a2e39] dark:text-gray-400">{t("ind2.tpl.local")}</p>}
+          {isSignedInForUserData() === false && <p className="mt-2 border-t border-[var(--tv3-hair)] pt-2 text-[10px] text-[var(--tv3-muted)]">{t("ind2.tpl.local")}</p>}
         </div>
       )}
     </div>

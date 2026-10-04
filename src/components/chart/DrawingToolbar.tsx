@@ -53,10 +53,11 @@ function loadLast(): Record<string, string> {
   return defaults;
 }
 
+// Terminal v3 rail: 36px rounded-[10px] buttons on a 46px white card; active = soft green square (design: rgba(30,158,74,.16) + #17804D glyph)
 const btnBase =
-  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent";
-const btnActive = "bg-green-600/10 !text-green-600 dark:!text-green-500";
-const ICON = 28; // glyph size on the 44px hit area
+  "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
+const btnActive = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)] hover:!bg-[var(--tv3-accent-soft)]";
+const ICON = 24; // glyph size on the 36px hit area
 
 interface FlyoutState {
   groupId: string;
@@ -203,7 +204,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       role="toolbar"
       aria-orientation="vertical"
       aria-label={t("draw.toolbar")}
-      className={`flex w-[52px] shrink-0 select-none flex-col items-center gap-0.5 overflow-y-auto overflow-x-hidden border-r border-gray-200 bg-white py-1.5 dark:border-gray-700 dark:bg-gray-900 ${className ?? ""}`}
+      className={`flex w-[46px] shrink-0 select-none flex-col items-center gap-0.5 overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--tv3-card)] py-1.5 ${className ?? ""}`}
       style={{ scrollbarWidth: "none" }}
     >
       {DRAWING_GROUPS.map((g) => {
@@ -238,7 +239,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
               aria-label={`${t(g.labelKey)}: ${t("draw.moreTools")}`}
               aria-haspopup="menu"
               aria-expanded={flyout?.groupId === g.id}
-              className="absolute bottom-0 right-0 flex h-5 w-4 items-center justify-center rounded-md text-gray-400 hover:bg-gray-200/70 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+              className="absolute -bottom-px -right-1 flex h-4 w-3.5 items-center justify-center rounded-md text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill2)] hover:text-[var(--tv3-text)]"
               onClick={(e) => openFlyout(g.id, e.currentTarget.parentElement ?? e.currentTarget)}
             >
               <svg viewBox="0 0 8 8" width="7" height="7" aria-hidden="true">
@@ -249,7 +250,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         );
       })}
 
-      <div className="my-1 h-px w-7 shrink-0 bg-gray-200 dark:bg-gray-700" />
+      <div className="my-1 h-px w-6 shrink-0 bg-[var(--tv3-hair)]" />
 
       <button
         type="button"
@@ -311,7 +312,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         type="button"
         title={t("draw.act.removeAll")}
         aria-label={t("draw.act.removeAll")}
-        className={`${btnBase} hover:!text-red-500`}
+        className={`${btnBase} hover:!text-[var(--tv3-red)]`}
         onClick={() => {
           if (window.confirm(t("draw.act.removeConfirm"))) controller.removeAll();
         }}
@@ -320,7 +321,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       </button>
 
       <div className="mt-auto flex flex-col items-center gap-0.5 pt-1">
-        <div className="mb-1 h-px w-7 shrink-0 bg-gray-200 dark:bg-gray-700" />
+        <div className="mb-1 h-px w-6 shrink-0 bg-[var(--tv3-hair)]" />
         <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} className={btnBase} onClick={() => controller.undo()}>
           <DrawIcon id="undo" size={ICON} />
         </button>
@@ -336,13 +337,13 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           aria-label={t(flyGroup.labelKey)}
           style={{ position: "fixed", left: flyout.left, top: flyout.top }}
           onKeyDown={onMenuKey}
-          className="z-[100] max-h-[calc(100vh-16px)] min-w-[250px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+          className="z-[100] max-h-[calc(100vh-16px)] min-w-[250px] overflow-y-auto rounded-2xl bg-[var(--tv3-card)] py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         >
-          <div className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(flyGroup.labelKey)}</div>
+          <div className="px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t(flyGroup.labelKey)}</div>
           {(flyGroup.sections ?? [{ id: "all", labelKey: flyGroup.labelKey, tools: flyGroup.tools }]).map((sec, si, all) => (
             <div key={sec.id} role="group" aria-label={t(sec.labelKey)}>
               {all.length > 1 && (
-                <div className={`px-3 pb-0.5 pt-2 text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 ${si > 0 ? "mt-1 border-t border-gray-100 dark:border-gray-800" : ""}`}>
+                <div className={`px-3.5 pb-0.5 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)] ${si > 0 ? "mt-1 border-t border-[var(--tv3-hair2)]" : ""}`}>
                   {t(sec.labelKey)}
                 </div>
               )}
@@ -359,8 +360,8 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                         aria-label={t(tool.labelKey)}
                         aria-current={isActive ? "true" : undefined}
                         onClick={() => pickTool(flyGroup.id, tool.id)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800 ${
-                          isActive ? "bg-green-600/10 !text-green-600 dark:!text-green-500" : ""
+                        className={`flex h-9 w-9 items-center justify-center rounded-[10px] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] focus-visible:bg-[var(--tv3-fill)] ${
+                          isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
                         }`}
                       >
                         <DrawIcon id={tool.id} size={24} />
@@ -378,8 +379,8 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                       role="menuitem"
                       aria-current={isActive ? "true" : undefined}
                       onClick={() => pickTool(flyGroup.id, tool.id)}
-                      className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-[13.5px] text-gray-700 hover:bg-gray-100 focus-visible:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800 ${
-                        isActive ? "bg-green-600/10 !text-green-600 dark:!text-green-500" : ""
+                      className={`mx-1.5 flex w-[calc(100%-12px)] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left text-[13.5px] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] focus-visible:bg-[var(--tv3-fill)] ${
+                        isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
                       }`}
                     >
                       <DrawIcon id={tool.id} size={24} />

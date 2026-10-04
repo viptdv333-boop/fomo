@@ -22,6 +22,8 @@ interface Props {
   onClose: () => void;
   onPick: (inst: TerminalInstrument) => void;
   current?: { source: string; ticker: string };
+  /** "compare": the «СРАВНИТЬ С» list of the design (caption + teal dot instead of the instrument icon) */
+  variant?: "search" | "compare";
 }
 
 interface Row {
@@ -34,7 +36,7 @@ interface Row {
   expand?: string;
 }
 
-export default function SymbolSearch({ open, onClose, onPick, current }: Props) {
+export default function SymbolSearch({ open, onClose, onPick, current, variant = "search" }: Props) {
   const { t } = useT();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
@@ -134,16 +136,17 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
   let lastGroup = "";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[8vh] px-3 bg-black/40" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[8vh] px-3 bg-black/30" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-label={t("shell.symbol.searchTitle")}
-        className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden"
+        className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >
-        <div className="flex items-center gap-2 px-3 h-12 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <svg className="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        {variant === "compare" && <div className="px-4 pt-3 pb-0.5 text-xs font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)] shrink-0">{t("sym.compareWith")}</div>}
+        <div className="flex items-center gap-2 mx-2.5 mt-2.5 mb-1 px-3 h-10 rounded-[10px] bg-[var(--tv3-fill)] shrink-0">
+          <svg className="w-4 h-4 text-[var(--tv3-muted)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
           </svg>
@@ -152,22 +155,22 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("shell.symbol.placeholder")}
-            className="flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-[15px] text-[var(--tv3-text)] placeholder:text-[var(--tv3-muted)]"
             autoComplete="off"
             spellCheck={false}
           />
-          <button onClick={onClose} title={t("shell.close")} className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <button onClick={onClose} title={t("shell.close")} className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill2)]">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
         </div>
 
-        <GroupTabs value={tab} onChange={setTab} className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-800 shrink-0" />
+        <GroupTabs value={tab} onChange={setTab} className="px-3 py-1.5 shrink-0" />
 
         <div ref={listRef} className="flex-1 overflow-y-auto py-1">
-          {rows.length === 0 && !market.loading && <div className="px-4 py-8 text-center text-sm text-gray-400">{t("shell.symbol.empty")}</div>}
-          {market.loading && <div className="px-4 pt-2 text-[11px] text-gray-400">{t("ms.searching")}</div>}
+          {rows.length === 0 && !market.loading && <div className="px-4 py-8 text-center text-sm text-[var(--tv3-muted)]">{t("shell.symbol.empty")}</div>}
+          {market.loading && <div className="px-4 pt-2 text-[11px] text-[var(--tv3-muted)]">{t("ms.searching")}</div>}
           {rows.map((r, i) => {
             const head = r.group !== lastGroup;
             lastGroup = r.group;
@@ -179,19 +182,19 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
             return (
               <div key={`${r.inst.source}:${r.inst.dataTicker}:${i}`}>
                 {head && (
-                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{r.group}</div>
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{r.group}</div>
                 )}
                 <button
                   data-i={i}
                   onMouseMove={() => setIdx(i)}
                   onClick={() => void pick(r)}
-                  className={`w-full flex items-center gap-3 px-3 h-10 text-left ${active ? "bg-gray-100 dark:bg-gray-800" : ""}`}
+                  className={`mx-1.5 w-[calc(100%-12px)] flex items-center gap-3 px-2.5 h-11 rounded-[10px] text-left ${active ? "bg-[var(--tv3-fill)]" : ""}`}
                 >
-                  <InstIcon inst={r.inst} size={24} />
-                  <span className={`text-[13px] font-bold w-24 shrink-0 truncate ${isCurrent ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-gray-100"}`}>
+                  {variant === "compare" ? <span className="mx-1.5 h-2.5 w-2.5 rounded-full shrink-0" style={{ background: "var(--tv3-teal)" }} /> : <InstIcon inst={r.inst} size={24} />}
+                  <span className={`text-[14px] font-semibold w-24 shrink-0 truncate ${isCurrent ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-text)]"}`}>
                     {r.inst.ticker}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex-1 min-w-0 truncate text-xs text-[var(--tv3-muted)]">
                     {r.custom
                       ? t(r.inst.source === "moex" ? "shell.symbol.openMoex" : "shell.symbol.openBybit", { ticker: r.inst.ticker })
                       : it
@@ -200,10 +203,10 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
                   </span>
                   {it?.group === "future" && !it.auto && it.kind && <ContractBadge c={{ kind: it.kind, order: it.order ?? 0, badge: badgeText }} />}
                   {it?.group === "future" && it.auto && (it.contracts ?? 0) > 1 && (
-                    <span className="text-[10px] text-gray-400 shrink-0">{t("ct.contracts", { n: it.contracts ?? 0 })}</span>
+                    <span className="text-[10px] text-[var(--tv3-muted)] shrink-0">{t("ct.contracts", { n: it.contracts ?? 0 })}</span>
                   )}
-                  {it?.unit === "%" && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 shrink-0">%</span>}
-                  <span className="text-[11px] text-gray-400 shrink-0">{exchangeLabel(r.inst.source)}</span>
+                  {it?.unit === "%" && <span className="text-[10px] px-1 rounded bg-[var(--tv3-fill2)] text-[var(--tv3-text2)] shrink-0">%</span>}
+                  <span className="text-[11px] text-[var(--tv3-muted)] shrink-0">{exchangeLabel(r.inst.source)}</span>
                   {r.expand && <ExpandButton open={isOpen} onToggle={() => setExpanded((e) => ({ ...e, [r.expand as string]: !e[r.expand as string] }))} />}
                 </button>
                 {isOpen && r.expand && (
@@ -223,7 +226,7 @@ export default function SymbolSearch({ open, onClose, onPick, current }: Props) 
             );
           })}
         </div>
-        <div className="px-3 h-8 flex items-center text-[11px] text-gray-400 border-t border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="px-3 h-8 flex items-center text-[11px] text-[var(--tv3-muted)] border-t border-[var(--tv3-hair)] shrink-0">
           {t("shell.symbol.hint")}
         </div>
       </div>

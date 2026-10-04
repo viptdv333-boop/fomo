@@ -67,15 +67,15 @@ function Item({
       disabled={disabled}
       onClick={onClick}
       onMouseEnter={onEnter}
-      className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-left text-[13px] leading-none outline-none transition-colors disabled:cursor-default disabled:opacity-40 ${
-        danger ? "text-red-500" : "text-gray-800 dark:text-gray-100"
-      } ${active ? "bg-gray-100 dark:bg-[#2a2e39]" : ""} enabled:hover:bg-gray-100 enabled:focus-visible:bg-gray-100 dark:enabled:hover:bg-[#2a2e39] dark:enabled:focus-visible:bg-[#2a2e39]`}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] leading-none outline-none transition-colors disabled:cursor-default disabled:opacity-40 ${
+        danger ? "text-[var(--tv3-down)]" : "text-[var(--tv3-text)]"
+      } ${active ? "bg-[var(--tv3-fill)]" : ""} enabled:hover:bg-[var(--tv3-fill)] enabled:focus-visible:bg-[var(--tv3-fill)]`}
     >
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--tv3-muted)]">{icon}</span>
       <span className="flex-1 truncate">{label}</span>
-      {shortcut && <span className="shrink-0 pl-4 text-[11px] text-gray-400 dark:text-gray-500">{shortcut}</span>}
+      {shortcut && <span className="shrink-0 pl-4 text-[11px] text-[var(--tv3-muted)]">{shortcut}</span>}
       {arrow && (
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-[var(--tv3-muted)]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M9 6l6 6-6 6" />
         </svg>
       )}
@@ -83,7 +83,7 @@ function Item({
   );
 }
 
-const Sep = () => <div role="separator" className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />;
+const Sep = () => <div role="separator" className="my-1 h-px bg-[var(--tv3-hair)]" />;
 
 export default function ChartContextMenu({ state, controller, onClose, onResetView, onExportCsv, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings, eventsOn, onToggleEvents }: Props) {
   const { t } = useT();
@@ -193,11 +193,11 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
       onKeyDown={onMenuKey}
       onContextMenu={(e) => e.preventDefault()}
       style={{ position: "fixed", left: pos?.left ?? state.clientX, top: pos?.top ?? state.clientY, visibility: pos ? "visible" : "hidden" }}
-      className="z-[80] min-w-[230px] max-w-[92vw] select-none rounded-lg border border-gray-200 bg-white py-1 text-gray-900 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d]"
+      className="z-[80] min-w-[230px] max-w-[92vw] select-none rounded-xl bg-[var(--tv3-card)] p-1 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
     >
       {onDrawing && sel ? (
         <>
-          {many && <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">{t("cm.selectedN", { n: info?.count ?? 0 })}</div>}
+          {many && <div className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t("cm.selectedN", { n: info?.count ?? 0 })}</div>}
           {!many && (
             <Item label={t("cm.settings")} onClick={run(() => controller.openSettings(sel.id))} />
           )}
@@ -216,7 +216,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
             {orderOpen && (
               <div
                 role="menu"
-                className={`absolute top-[-5px] z-10 min-w-[200px] rounded-lg border border-gray-200 bg-white py-1 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
+                className={`absolute top-[-5px] z-10 min-w-[200px] rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
               >
                 {orderItems.map(([mode, key]) => (
                   <Item key={mode} label={t(key)} onClick={run(() => controller.zOrder(sel.id, mode))} />
@@ -278,7 +278,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
               <Sep />
               <Item
                 label={t("ec.chart.show")}
-                icon={eventsOn ? <svg viewBox="0 0 24 24" className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : undefined}
+                icon={eventsOn ? <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : undefined}
                 onClick={run(onToggleEvents)}
               />
             </>

@@ -63,7 +63,7 @@ export default function MenuPopover({
         <>
           <div className="fixed inset-0 z-[55]" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
           <div
-            className="fixed z-[56] py-1 rounded-lg bg-white dark:bg-[#1e222d] border border-gray-200 dark:border-[#2a2e39] shadow-xl overflow-y-auto overflow-x-hidden"
+            className="fixed z-[56] py-1.5 rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] overflow-y-auto overflow-x-hidden"
             style={{ ...pos, width, maxHeight: maxHeight ?? Math.min(560, typeof window !== "undefined" ? window.innerHeight - 70 : 560) }}
           >
             {children(close)}

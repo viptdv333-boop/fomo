@@ -29,9 +29,9 @@ function useController(c: DrawingsControllerLike) {
 }
 
 const btn =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800";
-const btnOn = "bg-[#2962ff]/15 !text-[#2962ff]";
-const sep = <div className="mx-0.5 hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />;
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)]";
+const btnOn = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]";
+const sep = <div className="mx-0.5 hidden h-5 w-px shrink-0 bg-[var(--tv3-fill2)] sm:block" />;
 
 /** Drawings an alert can follow (a level that moves with the line). */
 const ALERT_TOOLS = new Set<string>(ALERT_LINE_TOOLS);
@@ -44,7 +44,7 @@ function GlyphSwatch({ glyph, color }: { glyph: ReactNode; color: string }) {
   const p = parseColor(color);
   return (
     <span className="flex h-full w-full flex-col items-center justify-center gap-[2px]">
-      <span className="flex h-3.5 items-center text-gray-700 dark:text-gray-200">{glyph}</span>
+      <span className="flex h-3.5 items-center text-[var(--tv3-text2)]">{glyph}</span>
       <span className="h-[3px] w-4 rounded-sm" style={{ background: composeColor(p.hex, Math.max(0.35, p.a)) }} />
     </span>
   );
@@ -132,7 +132,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
     </button>
   ) : null;
   const delBtn = (
-    <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => controller.removeSelected()} className={`${btn} hover:!text-red-500`}>
+    <button type="button" title={t("draw.style.delete")} aria-label={t("draw.style.delete")} onClick={() => controller.removeSelected()} className={`${btn} hover:!text-[var(--tv3-down)]`}>
       <DrawIcon id="trash" />
     </button>
   );
@@ -141,7 +141,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
     <div
       role="toolbar"
       aria-label={t("draw.style.bar")}
-      className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-gray-200 bg-white px-2 py-1 shadow-lg dark:border-[#2a2e39] dark:bg-[#1e222d]"
+      className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-2 py-1 shadow-lg"
     >
       {ui.color && (
         <ColorPicker value={st.color} size={28} labels={cpLabels} title={isText ? t("dp.textColor") : t("draw.style.color")} onChange={(c) => patch({ color: c })}>
@@ -183,7 +183,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
                         patch({ fontSize: s });
                         close();
                       }}
-                      className={`flex w-full items-center rounded px-2 py-1 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${s === curSize ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                      className={`flex w-full items-center rounded-lg px-2 py-1 text-[12px] hover:bg-[var(--tv3-fill)] ${s === curSize ? "bg-[var(--tv3-fill)]" : ""}`}
                     >
                       {s}px
                     </button>
@@ -211,7 +211,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
                         patch({ width: w });
                         close();
                       }}
-                      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${Math.round(st.width) === w ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] hover:bg-[var(--tv3-fill)] ${Math.round(st.width) === w ? "bg-[var(--tv3-fill)]" : ""}`}
                     >
                       <LinePreview width={w} dash="solid" />
                       <span>{w}px</span>
@@ -236,7 +236,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
                     patch({ dash: k });
                     close();
                   }}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${st.dash === k ? "bg-gray-100 dark:bg-[#2a2e39]" : ""}`}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] hover:bg-[var(--tv3-fill)] ${st.dash === k ? "bg-[var(--tv3-fill)]" : ""}`}
                 >
                   <LinePreview width={2} dash={k} />
                   <span>{t(`draw.style.${k}`)}</span>
@@ -255,7 +255,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
               <DrawIcon id="text" size={18} />
             </button>
             {textOpen && (
-              <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[240px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]">
+              <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[240px] -translate-x-1/2 rounded-xl bg-[var(--tv3-card)] p-2 shadow-[var(--tv3-shadow-pop)]">
                 <textarea
                   ref={textRef}
                   value={st.text ?? ""}
@@ -271,7 +271,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
                     }
                     e.stopPropagation();
                   }}
-                  className="w-full resize-none rounded border border-gray-300 bg-transparent px-2 py-1 text-[13px] text-gray-800 outline-none focus:border-[#2962ff] dark:border-[#363a45] dark:text-gray-100"
+                  className="w-full resize-none rounded-[9px] border border-[var(--tv3-fill2)] bg-transparent px-2 py-1 text-[13px] text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)]"
                 />
               </div>
             )}
@@ -287,7 +287,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
             title={t("alerts.createFromLine")}
             aria-label={t("alerts.createFromLine")}
             onClick={onCreateAlert}
-            className="h-7 shrink-0 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="h-7 shrink-0 rounded-lg px-2 text-xs font-medium text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)]"
           >
             {t("alerts.create")}
           </button>
@@ -342,7 +342,7 @@ function MoreMenu({ children }: { children: ReactNode }) {
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={`${btnCls} !border-0 w-7 !px-0`}>
         {IND_ICONS.more(16)}
       </button>
-      {open && <div className="absolute right-0 top-full z-40 mt-1.5 flex gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-xl dark:border-[#363a45] dark:bg-[#1e222d]">{children}</div>}
+      {open && <div className="absolute right-0 top-full z-40 mt-1.5 flex gap-0.5 rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]">{children}</div>}
     </div>
   );
 }

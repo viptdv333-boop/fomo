@@ -12,13 +12,13 @@ export const ROLL_DAYS = 7;
 const KIND_COLOR: Record<string, string> = {
   perpetual: "bg-violet-500/15 text-violet-600 dark:text-violet-300",
   spot: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
-  quarterly: "bg-green-600/15 text-green-700 dark:text-green-400",
-  monthly: "bg-green-600/15 text-green-700 dark:text-green-400",
-  weekly: "bg-green-600/15 text-green-700 dark:text-green-400",
+  quarterly: "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]",
+  monthly: "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]",
+  weekly: "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]",
 };
 
 export function ContractBadge({ c, current }: { c: Pick<ContractInfo, "kind" | "order" | "badge">; current?: boolean }) {
-  const cls = c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-gray-200/70 dark:bg-gray-700/70 text-gray-600 dark:text-gray-300";
+  const cls = c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]";
   return <span className={`px-1.5 rounded text-[10px] leading-4 font-medium whitespace-nowrap ${cls} ${current ? "ring-1 ring-current" : ""}`}>{c.badge}</span>;
 }
 
@@ -99,12 +99,12 @@ export default function ContractPicker({
         title={t("ct.pick")}
         aria-label={t("ct.pick")}
         aria-expanded={open}
-        className={`${btn} gap-1.5 px-2 border border-gray-200 dark:border-gray-700`}
+        className={`${btn} gap-1.5 px-2 border border-[var(--tv3-hair)] !rounded-[9px]`}
       >
-        {isAuto && source === "moex" && <span className="hidden sm:inline text-[10px] font-normal text-gray-400">{t("ct.auto").split(" ")[0]}</span>}
+        {isAuto && source === "moex" && <span className="hidden sm:inline text-[10px] font-normal text-[var(--tv3-muted)]">{t("ct.auto").split(" ")[0]}</span>}
         <span className="font-semibold text-[13px]">{chipLabel}</span>
         {shown && <span className="hidden md:inline"><ContractBadge c={shown} /></span>}
-        <svg className="w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+        <svg className="w-3 h-3 text-[var(--tv3-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -126,7 +126,7 @@ export default function ContractPicker({
           <div
             role="listbox"
             aria-label={t("ct.title")}
-            className="fixed z-[56] py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl max-h-[calc(100vh-90px)] overflow-y-auto"
+            className="fixed z-[56] py-1.5 rounded-2xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-90px)] overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width: 340, maxWidth: "calc(100vw - 8px)" }}
           >
             {source === "moex" && (
@@ -134,11 +134,11 @@ export default function ContractPicker({
                 role="option"
                 aria-selected={isAuto}
                 onClick={() => pick(null)}
-                className={`w-full px-3 py-1.5 flex items-center gap-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${isAuto ? "text-green-600 dark:text-green-400" : "text-gray-800 dark:text-gray-200"}`}
+                className={`w-full px-3.5 py-2 flex items-center gap-2 text-left cursor-pointer hover:bg-[var(--tv3-fill3)] ${isAuto ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-text)]"}`}
               >
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block text-[13px] font-semibold">{t("ct.auto")}</span>
-                  <span className="block text-[10px] text-gray-400 truncate">{t("ct.autoHint")}</span>
+                  <span className="block text-[10px] text-[var(--tv3-muted)] truncate">{t("ct.autoHint")}</span>
                 </span>
                 {isAuto && <span className="text-xs">✓</span>}
               </button>
@@ -151,7 +151,7 @@ export default function ContractPicker({
                   role="option"
                   aria-selected={cur}
                   onClick={() => pick(c)}
-                  className={`w-full px-3 py-1.5 flex items-center gap-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${cur ? "text-green-600 dark:text-green-400" : "text-gray-800 dark:text-gray-200"}`}
+                  className={`w-full px-3.5 py-2 flex items-center gap-2 text-left cursor-pointer hover:bg-[var(--tv3-fill3)] ${cur ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-text)]"}`}
                 >
                   <span className="w-[70px] shrink-0">
                     <ContractBadge c={c} />
@@ -161,12 +161,12 @@ export default function ContractPicker({
                       {c.ticker}
                       {last === c.ticker && <span title={t("ct.last")} className="ml-1 text-amber-500">★</span>}
                     </span>
-                    <span className="block text-[10px] text-gray-400 truncate">{c.kind === "spot" ? t("ct.spot") : c.shortname}</span>
+                    <span className="block text-[10px] text-[var(--tv3-muted)] truncate">{c.kind === "spot" ? t("ct.spot") : c.shortname}</span>
                   </span>
                   <span className="text-right leading-tight shrink-0">
-                    <span className="block text-[11px] tabular-nums text-gray-600 dark:text-gray-300">{c.expiry ?? t("ct.noExpiry")}</span>
+                    <span className="block text-[11px] tabular-nums text-[var(--tv3-text2)]">{c.expiry ?? t("ct.noExpiry")}</span>
                     {c.daysLeft !== null && (
-                      <span className={`block text-[10px] tabular-nums ${c.daysLeft <= ROLL_DAYS ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>{t("ct.left", { n: c.daysLeft })}</span>
+                      <span className={`block text-[10px] tabular-nums ${c.daysLeft <= ROLL_DAYS ? "text-amber-600 dark:text-amber-400" : "text-[var(--tv3-muted)]"}`}>{t("ct.left", { n: c.daysLeft })}</span>
                     )}
                   </span>
                   {cur && <span className="text-xs">✓</span>}

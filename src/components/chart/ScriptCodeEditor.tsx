@@ -32,7 +32,7 @@ interface Tok {
 }
 
 const CLASS: Record<Cls, string> = {
-  c: "italic text-gray-400 dark:text-[#6b7280]",
+  c: "italic text-[var(--tv3-muted)] dark:text-[#6b7280]",
   s: "text-emerald-700 dark:text-[#a5d6a7]",
   n: "text-orange-600 dark:text-[#ffb74d]",
   k: "text-purple-700 dark:text-[#c792ea]",
@@ -317,7 +317,7 @@ export default function ScriptCodeEditor({ value, onChange, onSave, errorLine, g
   return (
     <div
       ref={scrollRef}
-      className="relative min-h-0 flex-1 overflow-auto bg-white font-mono text-[13px] dark:bg-[#131722]"
+      className="relative min-h-0 flex-1 overflow-auto bg-[var(--tv3-card)] font-mono text-[13px]"
       style={{ lineHeight: `${LH}px` }}
       onMouseDown={(e) => {
         // a click on the empty area below / beside the text focuses the editor
@@ -333,11 +333,11 @@ export default function ScriptCodeEditor({ value, onChange, onSave, errorLine, g
       <div className="relative flex min-w-full" style={{ minHeight: "100%" }}>
         <div
           aria-hidden="true"
-          className="sticky left-0 z-10 shrink-0 select-none border-r border-gray-200 bg-gray-50 pr-2 text-right text-gray-400 dark:border-[#2a2e39] dark:bg-[#1a1e29] dark:text-gray-500"
+          className="sticky left-0 z-10 shrink-0 select-none border-r border-[var(--tv3-hair)] bg-[var(--tv3-fill3)] pr-2 text-right text-[var(--tv3-muted)]"
           style={{ width: 46, paddingTop: PAD, minHeight: height }}
         >
           {Array.from({ length: lineCount }, (_, i) => (
-            <div key={i} style={{ height: LH }} className={errorLine === i + 1 ? "bg-red-500/20 font-semibold text-red-500" : ""}>
+            <div key={i} style={{ height: LH }} className={errorLine === i + 1 ? "bg-red-500/20 font-semibold text-[var(--tv3-down)]" : ""}>
               {i + 1}
             </div>
           ))}
@@ -346,7 +346,7 @@ export default function ScriptCodeEditor({ value, onChange, onSave, errorLine, g
           {errorLine ? <div className="pointer-events-none absolute inset-x-0 bg-red-500/10" style={{ top: PAD + (errorLine - 1) * LH, height: LH }} /> : null}
           <pre
             aria-hidden="true"
-            className="pointer-events-none m-0 whitespace-pre text-gray-800 dark:text-gray-200"
+            className="pointer-events-none m-0 whitespace-pre text-[var(--tv3-text)]"
             style={{ padding: PAD, paddingLeft: 10, font: "inherit", lineHeight: `${LH}px`, tabSize: 2 }}
           >
             {nodes}
@@ -364,7 +364,7 @@ export default function ScriptCodeEditor({ value, onChange, onSave, errorLine, g
             autoComplete="off"
             wrap="off"
             aria-label={ariaLabel}
-            className="absolute inset-0 h-full w-full resize-none overflow-hidden whitespace-pre border-0 bg-transparent text-transparent caret-gray-900 outline-none selection:bg-[#2962ff]/25 dark:caret-white"
+            className="absolute inset-0 h-full w-full resize-none overflow-hidden whitespace-pre border-0 bg-transparent text-transparent caret-gray-900 outline-none selection:bg-[var(--tv3-accent-soft)] dark:caret-white"
             style={{ padding: PAD, paddingLeft: 10, font: "inherit", lineHeight: `${LH}px`, tabSize: 2 }}
           />
         </div>

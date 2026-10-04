@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { alertLevel, type LineSpec } from "@/lib/alerts/evaluate";
 import { fmtPrice } from "@/lib/terminal-data";
+import { Toggle } from "./tv3-ui";
 import type { AlertItem, AlertResult, AlertsApi } from "./useAlerts";
 
 /** What the create form starts from: a price (cursor / last), optionally bound to a drawn line. */
@@ -34,17 +35,17 @@ const EXPIRY: { id: string; days: number }[] = [
 ];
 
 const inputCls =
-  "w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100";
+  "w-full rounded-[9px] border border-[var(--tv3-fill2)] bg-[var(--tv3-card)] px-2 py-1.5 text-sm text-[var(--tv3-text)] outline-none focus:border-[var(--tv3-accent)] focus:ring-1 focus:ring-[var(--tv3-accent)]";
 const smallBtn =
-  "rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 dark:text-gray-300 dark:hover:bg-gray-800";
+  "rounded-lg px-2 py-1 text-xs text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
 const primaryBtn =
-  "rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 disabled:opacity-50";
+  "rounded-lg bg-[var(--tv3-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--tv3-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] disabled:opacity-50";
 
 const STATUS_DOT: Record<AlertItem["status"], string> = {
   active: "bg-amber-500",
-  triggered: "bg-green-600",
+  triggered: "bg-[var(--tv3-accent)]",
   paused: "bg-gray-400",
-  expired: "bg-gray-300 dark:bg-gray-600",
+  expired: "bg-[var(--tv3-fill2)]",
 };
 
 export default function AlertsDialog({ open, onClose, api, symbol, draft }: Props) {
@@ -161,28 +162,28 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[a.status]}`} title={t(`alerts.status.${a.status}`)} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{a.ticker}</span>
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-semibold text-[var(--tv3-text)]">{a.ticker}</span>
+            <span className="text-sm text-[var(--tv3-text2)]">
               {cond} {what}
             </span>
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <div className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-[var(--tv3-muted)]">
             <span>{t(`alerts.status.${a.status}`)}</span>
             <span>{a.repeat ? t("alerts.repeatShort") : t("alerts.once")}</span>
             {a.expiresAt && <span>{t("alerts.expires", { date: new Date(a.expiresAt).toLocaleDateString(locale === "cn" ? "zh-CN" : locale === "en" ? "en-US" : "ru-RU") })}</span>}
             {a.triggerCount > 0 && <span>{t("alerts.triggeredTimes", { n: a.triggerCount })}</span>}
           </div>
-          {a.message && <div className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">{a.message}</div>}
+          {a.message && <div className="mt-0.5 truncate text-xs text-[var(--tv3-text2)]">{a.message}</div>}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            className={smallBtn}
-            onClick={() => act(api.update(a.id, { status: a.status === "active" ? "paused" : "active" }))}
-          >
-            {a.status === "active" ? t("alerts.pause") : t("alerts.resume")}
-          </button>
-          <button type="button" className={`${smallBtn} hover:!text-red-600`} onClick={() => act(api.remove(a.id))}>
+          <Toggle
+            sm
+            checked={a.status === "active"}
+            label={a.status === "active" ? t("alerts.pause") : t("alerts.resume")}
+            onChange={(on) => act(api.update(a.id, { status: on ? "active" : "paused" }))}
+            className="mr-1.5"
+          />
+          <button type="button" className={`${smallBtn} hover:!text-[var(--tv3-down)]`} onClick={() => act(api.remove(a.id))}>
             {t("alerts.delete")}
           </button>
         </div>
@@ -193,7 +194,7 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -204,10 +205,10 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
         role="dialog"
         aria-modal="true"
         aria-label={t("alerts.title")}
-        className="flex max-h-[min(640px,92vh)] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+        className="flex max-h-[min(640px,92vh)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)]"
       >
-        <div className="flex items-center gap-3 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center gap-3 border-b border-[var(--tv3-hair)] px-3 py-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-bold text-[var(--tv3-text)]">
             {creating ? `${t("alerts.new")} · ${symbol.ticker}` : t("alerts.title")}
           </h2>
           {!creating && !api.guest && supported && (
@@ -222,18 +223,18 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {api.guest ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-300">
+            <div className="px-4 py-6 text-center text-sm text-[var(--tv3-text2)]">
               <p>{t("alerts.signIn")}</p>
-              <Link href="/login" className="mt-3 inline-block rounded bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+              <Link href="/login" className="mt-3 inline-block rounded-lg bg-[var(--tv3-accent)] px-4 py-1.5 text-sm font-medium text-white hover:bg-[var(--tv3-accent-hover)]">
                 {t("nav.login")}
               </Link>
             </div>
           ) : creating ? (
             <div className="space-y-3 px-4 py-3">
-              {!supported && <p className="text-xs text-red-600 dark:text-red-400">{t("alerts.unsupported")}</p>}
+              {!supported && <p className="text-xs text-[var(--tv3-down)]">{t("alerts.unsupported")}</p>}
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-xs text-gray-600 dark:text-gray-400">
+                <label className="block text-xs text-[var(--tv3-text2)]">
                   {t("alerts.condition")}
                   <select className={`${inputCls} mt-1`} value={condition} onChange={(e) => setCondition(e.target.value as Condition)}>
                     {CONDITIONS.map((c) => (
@@ -244,12 +245,12 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
                   </select>
                 </label>
                 {line ? (
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="text-xs text-[var(--tv3-text2)]">
                     <div>{t("alerts.line", { tool: t(`alerts.tool.${line.tool}`) })}</div>
-                    {level?.state === "ok" && <div className="mt-1.5 text-sm text-gray-900 dark:text-gray-100">{t("alerts.lineNow", { price: fmtPrice(level.level, locale) })}</div>}
+                    {level?.state === "ok" && <div className="mt-1.5 text-sm text-[var(--tv3-text)]">{t("alerts.lineNow", { price: fmtPrice(level.level, locale) })}</div>}
                   </div>
                 ) : (
-                  <label className="block text-xs text-gray-600 dark:text-gray-400">
+                  <label className="block text-xs text-[var(--tv3-text2)]">
                     {t("alerts.price")}
                     <input
                       className={`${inputCls} mt-1`}
@@ -266,7 +267,7 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
                 )}
               </div>
 
-              <label className="block text-xs text-gray-600 dark:text-gray-400">
+              <label className="block text-xs text-[var(--tv3-text2)]">
                 {t("alerts.message")}
                 <input
                   className={`${inputCls} mt-1`}
@@ -278,14 +279,14 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-xs text-gray-600 dark:text-gray-400">
+                <label className="block text-xs text-[var(--tv3-text2)]">
                   {t("alerts.trigger")}
                   <select className={`${inputCls} mt-1`} value={repeat ? "repeat" : "once"} onChange={(e) => setRepeat(e.target.value === "repeat")}>
                     <option value="once">{t("alerts.once")}</option>
                     <option value="repeat">{t("alerts.repeat")}</option>
                   </select>
                 </label>
-                <label className="block text-xs text-gray-600 dark:text-gray-400">
+                <label className="block text-xs text-[var(--tv3-text2)]">
                   {t("alerts.expiry")}
                   <select className={`${inputCls} mt-1`} value={expiry} onChange={(e) => setExpiry(e.target.value)}>
                     {EXPIRY.map((e) => (
@@ -297,7 +298,7 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
                 </label>
               </div>
 
-              {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+              {error && <p className="text-xs text-[var(--tv3-down)]">{error}</p>}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
@@ -315,34 +316,34 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
               </div>
             </div>
           ) : api.loading ? (
-            <p className="px-4 py-6 text-center text-sm text-gray-500">{t("alerts.loading")}</p>
+            <p className="px-4 py-6 text-center text-sm text-[var(--tv3-muted)]">{t("alerts.loading")}</p>
           ) : api.alerts.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t("alerts.empty")}</p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("alerts.emptyHint")}</p>
-              {!supported && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{t("alerts.unsupported")}</p>}
+              <p className="text-sm font-medium text-[var(--tv3-text)]">{t("alerts.empty")}</p>
+              <p className="mt-1 text-xs text-[var(--tv3-muted)]">{t("alerts.emptyHint")}</p>
+              {!supported && <p className="mt-2 text-xs text-[var(--tv3-down)]">{t("alerts.unsupported")}</p>}
             </div>
           ) : (
             <>
               {here.length > 0 && (
                 <>
-                  <div className="bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+                  <div className="bg-[var(--tv3-fill3)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">
                     {t("alerts.forSymbol", { ticker: symbol.ticker })}
                   </div>
-                  <ul className="divide-y divide-gray-100 dark:divide-gray-800">{here.map(row)}</ul>
+                  <ul className="divide-y divide-[var(--tv3-hair2)]">{here.map(row)}</ul>
                 </>
               )}
               {others.length > 0 && (
                 <>
-                  <div className="bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+                  <div className="bg-[var(--tv3-fill3)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">
                     {t("alerts.others")}
                   </div>
-                  <ul className="divide-y divide-gray-100 dark:divide-gray-800">{others.map(row)}</ul>
+                  <ul className="divide-y divide-[var(--tv3-hair2)]">{others.map(row)}</ul>
                 </>
               )}
             </>
           )}
-          {!creating && error && <p className="px-4 py-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {!creating && error && <p className="px-4 py-2 text-xs text-[var(--tv3-down)]">{error}</p>}
         </div>
       </div>
     </div>
