@@ -128,12 +128,12 @@ async function main() {
     }) as typeof fetch;
     _setFetch(empty);
     const now = Date.UTC(2026, 9, 6, 12);
-    const r = await getCalendarRange("2026-10-19", "2026-11-15", now, { moex: false });
+    const r = await getCalendarRange("2026-10-19", "2026-11-15", now, { moex: false, agro: false });
     assert.equal(r.source, "tradingview");
     assert.equal(r.reason, "ok");
     assert.ok(r.coverage && r.coverage.to === Date.parse("2026-11-02T00:00:00Z") || r.coverage!.to > Date.parse("2026-10-26T00:00:00Z"), JSON.stringify(r.coverage));
     assert.ok(r.coverage!.to <= Date.parse("2026-11-16T00:00:00Z"));
-    const far = await getCalendarRange("2026-12-07", "2026-12-13", now, { moex: false });
+    const far = await getCalendarRange("2026-12-07", "2026-12-13", now, { moex: false, agro: false });
     assert.equal(far.source, "tradingview");
     assert.deepEqual(far.events, []);
     assert.ok(far.coverage && far.coverage.to <= Date.parse("2026-12-07T00:00:00Z"), "whole week unknown");
@@ -145,7 +145,7 @@ async function main() {
     _setFetch(route(calls, { tv: 503 }));
     process.env.FMP_API_KEY = "test-key-not-real";
     const t0 = Date.UTC(2026, 9, 6, 12);
-    const r = await getCalendarRange("2026-10-05", "2026-10-09", t0, { moex: false });
+    const r = await getCalendarRange("2026-10-05", "2026-10-09", t0, { moex: false, agro: false });
     assert.equal(r.source, "forexfactory");
     assert.ok(r.tried[0].startsWith("tradingview:") && r.tried[1] === "fmp:restricted", r.tried.join());
     assert.ok(r.events.length > 30 && r.events.every((e) => e.actual === null));
@@ -153,12 +153,12 @@ async function main() {
     const count = (s: string) => calls.filter((u) => u.includes(s)).length;
     assert.equal(count("nfs.faireconomy"), 2, "this week + next week once each (next week answers 404)");
     const tvFirst = count("economic-calendar.tradingview.com");
-    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 30_000, { moex: false });
-    await getCalendarRange("2026-10-06", "2026-10-08", t0 + 40_000, { moex: false });
+    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 30_000, { moex: false, agro: false });
+    await getCalendarRange("2026-10-06", "2026-10-08", t0 + 40_000, { moex: false, agro: false });
     assert.equal(count("nfs.faireconomy"), 2, "no refetch inside 5 minutes");
     assert.equal(count("financialmodelingprep"), 1, "FMP asked once, then the negative cache (restricted: 10 min)");
     assert.equal(count("economic-calendar.tradingview.com"), tvFirst, "TradingView back-off");
-    const out = await getCalendarRange("2026-11-02", "2026-11-08", t0 + 180_000, { moex: false });
+    const out = await getCalendarRange("2026-11-02", "2026-11-08", t0 + 180_000, { moex: false, agro: false });
     assert.equal(out.reason, "range-unsupported");
     assert.deepEqual(out.events, []);
     assert.equal(out.source, "forexfactory");
@@ -168,15 +168,15 @@ async function main() {
       return u.includes("nfs.faireconomy") ? new Response("busy", { status: 429, headers: { "Retry-After": "900" } }) : new Response("busy", { status: 503 });
     }) as typeof fetch;
     _setFetch(failing);
-    const st = await getCalendarRange("2026-10-05", "2026-10-09", t0 + 25 * 60_000, { moex: false });
+    const st = await getCalendarRange("2026-10-05", "2026-10-09", t0 + 25 * 60_000, { moex: false, agro: false });
     assert.equal(st.source, "forexfactory");
     assert.ok(st.stale && st.events.length > 30, "stale-if-error");
     const before = count("nfs.faireconomy");
-    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 26 * 60_000, { moex: false });
+    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 26 * 60_000, { moex: false, agro: false });
     assert.equal(count("nfs.faireconomy"), before, "a failed attempt is not retried within 5 minutes");
-    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 36 * 60_000, { moex: false });
+    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 36 * 60_000, { moex: false, agro: false });
     assert.equal(count("nfs.faireconomy"), before, "Retry-After (15 min) is honoured, longer than the 5 minute minimum");
-    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 42 * 60_000, { moex: false });
+    await getCalendarRange("2026-10-05", "2026-10-09", t0 + 42 * 60_000, { moex: false, agro: false });
     assert.ok(count("nfs.faireconomy") > before, "and the feed is tried again afterwards");
     delete process.env.FMP_API_KEY;
   });
@@ -184,7 +184,7 @@ async function main() {
     _resetCalendarCache();
     _setFetch(route([], { tv: 500 }));
     process.env.ECON_CALENDAR_PROVIDERS = "tradingview";
-    const r = await getCalendarRange("2026-11-02", "2026-11-08", Date.UTC(2026, 9, 6, 12));
+    const r = await getCalendarRange("2026-11-02", "2026-11-08", Date.UTC(2026, 9, 6, 12), { agro: false });
     assert.equal(r.source, "none");
     assert.equal(r.reason, "partial");
     assert.ok(r.events.length > 0 && r.events.every((e) => e.category === "moex"));
@@ -195,7 +195,7 @@ async function main() {
   await ok("providers can be replaced", async () => {
     _resetCalendarCache();
     _setProviders([{ id: "none", range: async () => ({ events: [], reason: "restricted", stale: false, coverage: null }) }]);
-    const r = await getCalendarRange("2026-10-05", "2026-10-06", Date.now(), { moex: false });
+    const r = await getCalendarRange("2026-10-05", "2026-10-06", Date.now(), { moex: false, agro: false });
     assert.equal(r.reason, "restricted");
     _setProviders(null);
     _setFetch(null);

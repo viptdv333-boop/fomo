@@ -152,7 +152,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           onOpenDay(c.date, e.id);
                         }}
                         title={`${e.allDay ? "" : formatClock(e.ts, zone) + " "}${e.event}${briefOf(e) ? `\n${briefOf(e)}` : ""}`}
-                        className={`flex w-full min-w-0 flex-col rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : ""}`}
+                        className={`flex w-full min-w-0 flex-col rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : e.category === "ru" ? "border-l-2 border-teal-600 pl-1" : ""}`}
                       >
                         <span className="flex w-full min-w-0 items-center gap-1">
                           <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-[var(--tv3-muted)]">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
@@ -168,7 +168,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                   </div>
                   <div className="mt-auto flex flex-wrap gap-[3px] sm:hidden">
                     {(b?.events ?? []).slice(0, 8).map((e) => (
-                      <span key={e.id} className="h-[7px] w-[7px] rounded-full" style={{ background: e.category === "moex" ? "#0ea5e9" : e.category === "commodity" ? "#65a30d" : IMPACT_COLOR[e.impact] }} />
+                      <span key={e.id} className="h-[7px] w-[7px] rounded-full" style={{ background: e.category === "moex" ? "#0ea5e9" : e.category === "commodity" ? "#65a30d" : e.category === "ru" ? "#0d9488" : IMPACT_COLOR[e.impact] }} />
                     ))}
                   </div>
                 </>
