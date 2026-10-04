@@ -508,12 +508,12 @@ function overlapArea(a: Rect, b: Rect): number {
 }
 
 function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avoid: Rect[]) {
-  if (sc.paneWidth < 380) return;
+  if (sc.paneWidth < 640) return; // design: the note only shows on a wide chart (it would cover the status line otherwise)
   const sum = summaryOf(r, sc.options.locale);
   const { ctx, theme } = sc;
   const lines: { text: string; color: string; bold?: boolean; size?: number }[] = [];
   const title = indT("ind.ew.short", "Elliott") + (r.multi ? "" : " · " + degText(r.degrees[0]?.degree ?? "intermediate"));
-  lines.push({ text: title, color: theme.text, bold: true, size: 12 });
+  lines.push({ text: title, color: theme.text, bold: true, size: 13 });
   if (!sum) {
     lines.push({ text: indT("ind.ew.none", "no count ≥ {min}%", { min: r.minConfidence }), color: theme.textMuted });
   } else {
@@ -524,15 +524,15 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
     if (live?.proj.next && B(p, "ewTargets")) lines.push({ text: sum.nextText, color: k.target });
     if (sum.invalidText && B(p, "ewInvalid")) lines.push({ text: `${indT("ind.ew.invalid", "Invalidation")}: ${sum.invalidText}`, color: k.invalid });
   }
-  lines.push({ text: indT("ind.ew.hyp", "A hypothesis, not a forecast."), color: theme.textMuted, size: 9 });
+  lines.push({ text: indT("ind.ew.hyp", "A hypothesis, not a forecast."), color: theme.textMuted, size: 12 });
   ctx.save();
   let w = 0;
   for (const l of lines) {
-    ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 11}px ${sc.options.fontFamily}`;
+    ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 12}px ${sc.options.fontFamily}`;
     w = Math.max(w, ctx.measureText(l.text).width);
   }
   w = Math.min(w + 20, sc.paneWidth * 0.5);
-  const lh = 15;
+  const lh = 17;
   const h = lines.length * lh + 8;
   // the corner where the card hides the fewest candles and none of the projection labels
   const corners: Rect[] = [
@@ -579,7 +579,7 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
   ctx.rect(x, y, w, h);
   ctx.clip();
   lines.forEach((l, i) => {
-    ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 11}px ${sc.options.fontFamily}`;
+    ctx.font = `${l.bold ? 700 : 500} ${l.size ?? 12}px ${sc.options.fontFamily}`;
     ctx.fillStyle = l.color;
     ctx.fillText(l.text, x + 10, y + 4 + lh * i + lh / 2);
   });

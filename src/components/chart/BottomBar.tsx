@@ -78,8 +78,8 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
   };
   return (
     <span className="inline-flex">
-      <button ref={ref} onClick={() => (open ? setOpen(false) : openIt())} title={t("cs.goto")} aria-label={t("cs.goto")} aria-expanded={open} className={`${btn} inline-flex items-center gap-1`}>
-        <span className="scale-[0.72] inline-flex -mx-1">{CS_ICONS.calendar}</span>
+      <button ref={ref} onClick={() => (open ? setOpen(false) : openIt())} title={t("cs.goto")} aria-label={t("cs.goto")} aria-expanded={open} className={`${btn} inline-flex items-center gap-[5px] !py-1`}>
+        <span className="inline-flex">{CS_ICONS.calendar}</span>
         <span className="hidden sm:inline">{t("cs.gotoShort")}</span>
       </button>
       {open && (
@@ -113,12 +113,12 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
   const clock = useExchangeClock(source, zone);
 
   // design v3: grey pills (segmented ranges + tiny buttons), the active toggle is tinted green
-  const btn = "h-[26px] px-2.5 rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
-  const seg = "h-[22px] px-2 rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
-  const on = "!bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]";
+  const btn = "px-2.5 py-[3px] rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
+  const seg = "px-2 py-[3px] rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
+  const on = "!bg-[var(--tv3-accent-soft)]"; // design: only the tint (rgba(30,158,74,.18)), the label keeps its colour
 
   return (
-    <div className="flex items-center gap-2 min-h-[38px] px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex items-center gap-2 px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 shrink-0">
         {RANGES.map((r) => (
           <button key={r} onClick={() => onRange(r)} disabled={rangeBusy} title={t("shell.range.tip")} className={`${seg} disabled:opacity-50 disabled:cursor-wait`}>
@@ -138,7 +138,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
       {onTz && tz !== undefined ? (
         <MenuPopover
           title={t("cs.timezone")}
-          className="h-[26px] px-2 rounded-[7px] text-xs tabular-nums shrink-0 cursor-pointer text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
+          className="px-2 py-[3px] rounded-[7px] text-xs tabular-nums shrink-0 cursor-pointer text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
           width={250}
           align="right"
           up

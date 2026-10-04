@@ -7,6 +7,7 @@ import { ELLIOTT_DEFS } from "./elliott-defs";
 import { SWINGS_DEFS } from "./swings-defs";
 import { PATTERN_DEFS } from "./patterns-def";
 import { ALGOPACK_DEFS } from "./algopack-defs";
+import { formatPrice, inferPrecision } from "../format";
 import type { OrderFlowStore } from "../orderflow/store";
 import type { AlgoNeed, AlgoStore } from "../algopack/store";
 
@@ -939,7 +940,40 @@ const defs: IndicatorDef[] = [
     title: (p) => `ZigZag ${N(p, "deviation")}%`,
     compute(cs, p) {
       const cols = toCols(cs);
-      return { plots: [line("ZigZag", M.zigzag(cols.h, cols.l, N(p, "deviation")), S(p, "color"), { width: 1.8, connect: true, flag: false })] };
+      return { plots: [line("ZigZag", M.zigzag(cols.h, cols.l, N(p, "deviation")), S(p, "color"), { width: 1.8, connect: true, flag: false })], extra: { prec: inferPrecision(cs) } };
+    },
+    // design v3: the price of every pivot on a small yellow tag (above a high, below a low)
+    drawExtra(sc, _p, res) {
+      const plot = res?.plots[0];
+      if (!plot || plot.hidden) return;
+      const prec = sc.options.pricePrecision ?? (res?.extra as { prec?: number } | undefined)?.prec ?? 2;
+      const piv: { i: number; p: number }[] = [];
+      for (let i = 0; i < plot.data.length; i++) if (Number.isFinite(plot.data[i])) piv.push({ i, p: plot.data[i] });
+      const { ctx } = sc;
+      ctx.save();
+      ctx.font = `600 12px ${sc.options.fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const placed: { x: number; y: number }[] = [];
+      piv.forEach((q, k) => {
+        if (q.i < sc.from || q.i > sc.to) return;
+        const prev = piv[k - 1];
+        const next = piv[k + 1];
+        const high = prev ? q.p > prev.p : next ? q.p > next.p : true;
+        const x = sc.x(q.i);
+        const y = sc.y(q.p) + (high ? -21 : 4);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 24 || x > sc.paneWidth - 24) return;
+        if (placed.some((z) => Math.abs(z.x - x) < 54 && Math.abs(z.y - y) < 19)) return;
+        placed.push({ x, y });
+        ctx.fillStyle = "#ffe55c";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x - 24, y, 48, 17, 4);
+        else ctx.rect(x - 24, y, 48, 17);
+        ctx.fill();
+        ctx.fillStyle = "#1c1c1e";
+        ctx.fillText(formatPrice(q.p, prec, sc.options.locale), x, y + 9);
+      });
+      ctx.restore();
     },
   },
   {
