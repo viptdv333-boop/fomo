@@ -162,7 +162,7 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
 
   if (!ladder || status !== "ok") {
     return (
-      <div className="flex-1 min-h-0 flex items-center justify-center px-6 text-center text-xs text-gray-500 dark:text-gray-400" data-testid="ob-note">
+      <div className="flex-1 min-h-0 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="ob-note">
         {note}
       </div>
     );
@@ -184,49 +184,49 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
         type="button"
         onClick={() => void copy(p)}
         title={t("ap.ob.copy")}
-        className="group relative grid w-full grid-cols-3 items-center gap-1 px-2 h-[22px] md:h-[20px] text-[11px] tabular-nums cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="group relative grid w-full grid-cols-3 items-center gap-1 px-2 h-[22px] md:h-[20px] text-[11px] tabular-nums cursor-pointer hover:bg-[var(--tv3-fill3)]"
         data-side={side}
       >
         <span className={`absolute inset-y-0 right-0 ${cbar}`} style={{ width: `${wc}%` }} />
         <span className={`absolute inset-y-0 right-0 ${bar}`} style={{ width: `${w}%` }} />
-        <span className={`relative text-left font-medium ${side === "bid" ? "text-green-600" : "text-red-500"}`}>{fmtP(p)}</span>
-        <span className="relative text-right text-gray-800 dark:text-gray-200">{fmtQty(q)}</span>
-        <span className="relative text-right text-gray-400">{fmtQty(cum)}</span>
+        <span className={`relative text-left font-medium ${side === "bid" ? "text-[var(--tv3-up)]" : "text-[var(--tv3-down)]"}`}>{fmtP(p)}</span>
+        <span className="relative text-right text-[var(--tv3-text)]">{fmtQty(q)}</span>
+        <span className="relative text-right text-[var(--tv3-muted)]">{fmtQty(cum)}</span>
       </button>
     );
   };
 
   return (
-    <div className="relative flex-1 min-h-0 flex flex-col text-gray-800 dark:text-gray-200" data-testid="orderbook">
+    <div className="relative flex-1 min-h-0 flex flex-col text-[var(--tv3-text)]" data-testid="orderbook">
       {/* summary */}
-      <div className="shrink-0 grid grid-cols-3 gap-1 px-2 pt-2 pb-1.5 text-[10px] text-gray-500">
+      <div className="shrink-0 grid grid-cols-3 gap-1 px-2 pt-2 pb-1.5 text-[10px] text-[var(--tv3-muted)]">
         <div>
           <div>{t("ap.ob.spread")}</div>
-          <div className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 tabular-nums" data-testid="ob-spread">
+          <div className="text-[12px] font-semibold text-[var(--tv3-text)] tabular-nums" data-testid="ob-spread">
             {ladder.spread !== null ? ladder.spread.toFixed(dec) : "—"}
-            {ladder.spreadPct !== null && <span className="ml-1 text-[10px] font-normal text-gray-400">{ladder.spreadPct.toFixed(3)}%</span>}
+            {ladder.spreadPct !== null && <span className="ml-1 text-[10px] font-normal text-[var(--tv3-muted)]">{ladder.spreadPct.toFixed(3)}%</span>}
           </div>
         </div>
         <div className="text-center">
           <div>{t("ap.ob.mid")}</div>
-          <div className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 tabular-nums" data-testid="ob-mid">
+          <div className="text-[12px] font-semibold text-[var(--tv3-text)] tabular-nums" data-testid="ob-mid">
             {ladder.mid !== null ? (Math.abs(ladder.mid * 10 ** dec - Math.round(ladder.mid * 10 ** dec)) > 1e-6 ? ladder.mid.toFixed(dec + 1) : ladder.mid.toFixed(dec)) : "—"}
           </div>
         </div>
         <div className="text-right">
           <div>{t("ap.ob.imb")}</div>
-          <div className={`text-[12px] font-semibold tabular-nums ${imbPct === null ? "" : imbPct >= 0 ? "text-green-600" : "text-red-500"}`} data-testid="ob-imb">
+          <div className={`text-[12px] font-semibold tabular-nums ${imbPct === null ? "" : imbPct >= 0 ? "text-[var(--tv3-up)]" : "text-[var(--tv3-down)]"}`} data-testid="ob-imb">
             {imbPct === null ? "—" : `${imbPct > 0 ? "+" : ""}${imbPct.toFixed(1)}%`}
           </div>
         </div>
       </div>
-      <div className="shrink-0 mx-2 mb-1.5 flex h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" aria-hidden>
+      <div className="shrink-0 mx-2 mb-1.5 flex h-1.5 overflow-hidden rounded-full bg-[var(--tv3-fill2)]" aria-hidden>
         <div className="bg-green-500" style={{ width: `${bidShare}%` }} />
         <div className="bg-red-500" style={{ width: `${100 - bidShare}%` }} />
       </div>
 
       {/* column heads */}
-      <div className="shrink-0 grid grid-cols-3 gap-1 px-2 pb-0.5 text-[10px] uppercase tracking-wide text-gray-400">
+      <div className="shrink-0 grid grid-cols-3 gap-1 px-2 pb-0.5 text-[10px] uppercase tracking-wide text-[var(--tv3-muted)]">
         <span>{t("ap.ob.price")}</span>
         <span className="text-right">{t("ap.ob.size")}</span>
         <span className="text-right">{t("ap.ob.total")}</span>
@@ -236,17 +236,17 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
       <div className="flex-1 min-h-0 overflow-y-auto" data-testid="ob-ladder">
         <div className="flex flex-col justify-end min-h-full">
           {asksTopDown.map((a) => row(a.p, a.q, a.cum, "ask"))}
-          <div className="my-0.5 flex items-center justify-between border-y border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold tabular-nums dark:border-gray-700 dark:bg-gray-800/60">
-            <span className="text-green-600">{ladder.bestBid !== null ? fmtP(ladder.bestBid) : "—"}</span>
-            <span className="text-[10px] font-normal text-gray-400">{ladder.spread !== null ? ladder.spread.toFixed(dec) : ""}</span>
-            <span className="text-red-500">{ladder.bestAsk !== null ? fmtP(ladder.bestAsk) : "—"}</span>
+          <div className="my-0.5 flex items-center justify-between rounded-lg bg-[var(--tv3-fill3)] px-2 py-1 text-[11px] font-semibold tabular-nums">
+            <span className="text-[var(--tv3-up)]">{ladder.bestBid !== null ? fmtP(ladder.bestBid) : "—"}</span>
+            <span className="text-[10px] font-normal text-[var(--tv3-muted)]">{ladder.spread !== null ? ladder.spread.toFixed(dec) : ""}</span>
+            <span className="text-[var(--tv3-down)]">{ladder.bestAsk !== null ? fmtP(ladder.bestAsk) : "—"}</span>
           </div>
           {ladder.bids.map((b) => row(b.p, b.q, b.cum, "bid"))}
         </div>
       </div>
 
       {/* footer */}
-      <div className="shrink-0 flex items-center gap-2 border-t border-gray-100 px-2 py-1.5 text-[10px] text-gray-400 dark:border-gray-800">
+      <div className="shrink-0 flex items-center gap-2 border-t border-[var(--tv3-hair2)] px-2 py-1.5 text-[10px] text-[var(--tv3-muted)]">
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
           {t("ap.ob.live")}
@@ -259,7 +259,7 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
               key={n}
               type="button"
               onClick={() => pickLevels(n)}
-              className={`rounded px-1.5 py-0.5 cursor-pointer ${levels === n ? "bg-green-600/15 text-green-600" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`rounded-md px-1.5 py-0.5 cursor-pointer ${levels === n ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "hover:bg-[var(--tv3-fill3)]"}`}
             >
               {n}
             </button>
@@ -267,7 +267,7 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
         </span>
       </div>
       {copied && (
-        <div className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded bg-gray-900/90 px-2 py-1 text-[11px] text-white shadow dark:bg-gray-100/90 dark:text-gray-900" role="status">
+        <div className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-[var(--tv3-pill-dark)] px-3 py-1.5 text-[12px] text-white" role="status">
           {copied.ok ? t("ap.ob.copied") : t("ap.ob.copyFail")}: {copied.s}
         </div>
       )}

@@ -80,7 +80,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       role="tab"
       aria-selected={prefs.view === id}
       onClick={() => update((p) => ({ ...p, view: id }))}
-      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] cursor-pointer transition ${prefs.view === id ? "bg-white font-semibold text-gray-900 shadow-sm dark:bg-[#363a45] dark:text-gray-100" : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"}`}
+      className={`inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${prefs.view === id ? "bg-[var(--tv3-card)] font-semibold text-[var(--tv3-text)] shadow-sm" : "text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
     >
       <span className="scale-[0.72]">{icon}</span>
       {label}
@@ -110,16 +110,16 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   })();
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-white text-gray-900 dark:bg-[#1e222d] dark:text-gray-100">
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-200 px-3 py-2 dark:border-[#2a2e39] sm:px-4">
+    <div className="flex h-full min-h-0 w-full flex-col bg-[var(--tv3-card)] text-[var(--tv3-text)]">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--tv3-hair)] px-3 py-2 sm:px-4">
         {mode === "layer" && (
-          <button type="button" onClick={onClose} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 px-2.5 text-[12px] font-medium cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]">
+          <button type="button" onClick={onClose} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] px-2.5 text-[12px] font-medium cursor-pointer hover:bg-[var(--tv3-fill)]">
             <span className="scale-[0.8]">{EC_ICONS.prev}</span>
             {t("ec.back")}
           </button>
         )}
         <h2 className="text-base font-semibold sm:text-lg">{t("ec.title")}</h2>
-        <div className="flex rounded-lg bg-gray-100 p-0.5 dark:bg-[#262a36]" role="tablist" aria-label={t("ec.view")}>
+        <div className="flex rounded-[9px] bg-[var(--tv3-fill2)] p-0.5" role="tablist" aria-label={t("ec.view")}>
           {seg("grid", EC_ICONS.grid, t("ec.view.grid"))}
           {seg("list", EC_ICONS.list, t("ec.view.list"))}
         </div>
@@ -127,14 +127,14 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           <NextChip zone={zone} enabled={visible} onPick={openDetails} />
         </div>
         <span className="ml-auto flex items-center gap-1.5">
-          <span className="hidden text-[11px] text-gray-400 sm:inline">{t("ec.tz")}: {zone}</span>
+          <span className="hidden text-[11px] text-[var(--tv3-muted)] sm:inline">{t("ec.tz")}: {zone}</span>
           {zoneSlot}
           {grid && (
             <button type="button" onClick={data.refresh} title={t("ec.refresh")} aria-label={t("ec.refresh")} className={iconBtn}>
               <span className={`inline-flex scale-[0.8] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
             </button>
           )}
-          {mode === "layer" && <ChartEventsButton className={iconBtn} onClassName="bg-green-600/12! text-green-700! dark:text-green-400!" />}
+          {mode === "layer" && <ChartEventsButton className={iconBtn} onClassName="bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" />}
           {mode === "layer" && (
             <button type="button" onClick={onClose} aria-label={t("shell.close")} className={iconBtn}>
               <span className="scale-[0.8]">{EC_ICONS.close}</span>
@@ -143,19 +143,19 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         </span>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 px-3 py-2 dark:border-[#2a2e39] sm:px-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--tv3-hair2)] px-3 py-2 sm:px-4">
         {grid && (
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => setOffset((o) => o - 1)} aria-label={t("ec.prevPeriod")} title={t("ec.prevPeriod")} className={iconBtn}>
               <span className="scale-[0.8]">{EC_ICONS.prev}</span>
             </button>
-            <button type="button" onClick={() => setOffset(0)} disabled={offset === 0} className="h-7 rounded-md border border-gray-200 px-2 text-[12px] cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-default dark:border-[#363a45] dark:hover:bg-[#2a2e39]">
+            <button type="button" onClick={() => setOffset(0)} disabled={offset === 0} className="h-7 rounded-[9px] bg-[var(--tv3-fill)] px-2 text-[12px] cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-50 disabled:cursor-default">
               {t("ec.tab.today")}
             </button>
             <button type="button" onClick={() => setOffset((o) => o + 1)} aria-label={t("ec.nextPeriod")} title={t("ec.nextPeriod")} className={iconBtn}>
               <span className="scale-[0.8]">{EC_ICONS.next}</span>
             </button>
-            <span className="ml-1 text-[12px] font-medium tabular-nums text-gray-700 dark:text-gray-200">{rangeTitle}</span>
+            <span className="ml-1 text-[12px] font-medium tabular-nums text-[var(--tv3-text2)]">{rangeTitle}</span>
           </div>
         )}
         <ImpactToggles />
@@ -171,7 +171,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
 
       <div className="relative min-h-0 flex-1 overflow-auto" aria-busy={data.status === "loading"}>
         {grid && data.status === "loading" && data.events.length === 0 && (
-          <div role="status" className="pointer-events-none absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 shadow-lg dark:border-[#363a45] dark:bg-[#262a36] dark:text-gray-300">
+          <div role="status" className="pointer-events-none absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full border border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-4 py-2 text-sm text-[var(--tv3-text2)] shadow-lg">
             {t("ec.loading")}
           </div>
         )}
@@ -181,7 +181,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           <CalendarView variant="embedded" zone={zone} visible={visible} query={q} />
         )}
       </div>
-      {grid && <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-gray-100 dark:border-[#2a2e39]" />}
+      {grid && <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-[var(--tv3-hair2)]" />}
 
       {openDay && (
         <DayModal

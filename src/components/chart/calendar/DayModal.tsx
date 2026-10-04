@@ -72,9 +72,9 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
           role="dialog"
           aria-modal="true"
           aria-label={heading}
-          className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] text-gray-900 shadow-2xl dark:bg-[#1e222d] dark:text-gray-100 sm:max-h-[86vh] sm:max-w-[1040px] sm:rounded-xl sm:border sm:border-gray-200 sm:pb-0 sm:dark:border-[#2a2e39]"
+          className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)] text-[var(--tv3-text)] shadow-2xl sm:max-h-[86vh] sm:max-w-[1040px] sm:rounded-2xl sm:pb-0 sm:shadow-[var(--tv3-shadow-pop)]"
         >
-          <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-3 py-2 dark:border-[#2a2e39]">
+          <div className="flex shrink-0 items-center gap-1 border-b border-[var(--tv3-hair)] px-3 py-2">
             <button type="button" onClick={onPrev} disabled={!canPrev} aria-label={t("ec.prevDay")} title={t("ec.prevDay")} className={iconBtn}>
               <span className="scale-[0.8]">{EC_ICONS.prev}</span>
             </button>
@@ -83,7 +83,7 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
             </button>
             <div className="ml-1 min-w-0 flex-1">
               <h2 className="truncate text-[15px] font-semibold first-letter:uppercase">{heading}</h2>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">
+              <div className="text-[11px] text-[var(--tv3-muted)]">
                 {t("ec.nEvents", { n: events.length })} · {zone}
               </div>
             </div>
@@ -92,7 +92,7 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
             </button>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-gray-100 px-3 py-2 dark:border-[#2a2e39]">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2">
             <ImpactToggles />
             <div className="flex w-[170px] max-w-full"><CountryFilter seen={seen} /></div>
             <QuickChips />
@@ -103,11 +103,11 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
 
           <div ref={bodyRef} className="min-h-0 flex-1 overflow-auto">
             {events.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">{noData ? t("ec.nodata") : t("ec.emptyFiltered")}</div>
+              <div className="px-5 py-12 text-center text-sm text-[var(--tv3-muted)]">{noData ? t("ec.nodata") : t("ec.emptyFiltered")}</div>
             ) : (
               <div className={narrow ? "" : "min-w-[760px]"}>
                 {!narrow && (
-                  <div className={`sticky top-0 z-[6] grid h-8 items-center ${DAY_COLS} gap-x-2 border-b border-gray-200 bg-white px-3 text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 dark:border-[#2a2e39] dark:bg-[#1e222d]`}>
+                  <div className={`sticky top-0 z-[6] grid h-8 items-center ${DAY_COLS} gap-x-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-3 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]`}>
                     <span>{t("ec.col.time")}</span>
                     <span>{t("ec.col.country")}</span>
                     <span>{t("ec.col.event")}</span>

@@ -21,8 +21,8 @@ export function GroupTabs({ value, onChange, className = "" }: { value: GroupTab
           role="tab"
           aria-selected={value === g}
           onClick={() => onChange(g)}
-          className={`h-6 px-2 rounded-full text-[11px] font-medium shrink-0 cursor-pointer ${
-            value === g ? "bg-green-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+          className={`h-6 px-2.5 rounded-full text-[12px] font-semibold shrink-0 cursor-pointer ${
+            value === g ? "bg-[var(--tv3-text)] text-[var(--tv3-card)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"
           }`}
         >
           {t(`ms.tab.${g}`)}
@@ -104,13 +104,13 @@ export function ContractSubRows({
     };
   }, [asset, locale]);
 
-  if (data === undefined) return <div className="pl-7 pr-3 py-1.5 text-[11px] text-gray-400">{t("ct.loading")}</div>;
-  if (!data || data.contracts.length === 0) return <div className="pl-7 pr-3 py-1.5 text-[11px] text-gray-400">{t("ct.unavailable")}</div>;
+  if (data === undefined) return <div className="pl-7 pr-3 py-1.5 text-[11px] text-[var(--tv3-muted)]">{t("ct.loading")}</div>;
+  if (!data || data.contracts.length === 0) return <div className="pl-7 pr-3 py-1.5 text-[11px] text-[var(--tv3-muted)]">{t("ct.unavailable")}</div>;
 
-  const rowCls = "w-full flex items-center gap-2 pl-7 pr-2 h-8 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800";
+  const rowCls = "w-full flex items-center gap-2 pl-7 pr-2 h-8 text-left cursor-pointer hover:bg-[var(--tv3-fill)]";
   const last = getLastContract(data.asset);
   return (
-    <div className="bg-gray-50/70 dark:bg-gray-800/30">
+    <div className="bg-[var(--tv3-fill3)]">
       {includeAuto && (
         <button
           onClick={() => {
@@ -120,9 +120,9 @@ export function ContractSubRows({
           }}
           className={rowCls}
         >
-          <span className="w-[66px] shrink-0"><span className="px-1.5 rounded text-[10px] leading-4 font-medium whitespace-nowrap bg-green-600/15 text-green-700 dark:text-green-400">{t("ct.autoRow")}</span></span>
-          <span className="flex-1 min-w-0 truncate text-[11px] text-gray-500">{autoTicker}</span>
-          {mark?.(autoTicker) && <span className="text-xs text-green-600">✓</span>}
+          <span className="w-[66px] shrink-0"><span className="px-1.5 rounded text-[10px] leading-4 font-medium whitespace-nowrap bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]">{t("ct.autoRow")}</span></span>
+          <span className="flex-1 min-w-0 truncate text-[11px] text-[var(--tv3-muted)]">{autoTicker}</span>
+          {mark?.(autoTicker) && <span className="text-xs text-[var(--tv3-accent)]">✓</span>}
         </button>
       )}
       {data.contracts.map((c: ContractInfo) => (
@@ -130,13 +130,13 @@ export function ContractSubRows({
           <span className="w-[66px] shrink-0">
             <ContractBadge c={c} />
           </span>
-          <span className="text-[12px] font-semibold text-gray-900 dark:text-gray-100 w-16 shrink-0 truncate">
+          <span className="text-[12px] font-semibold text-[var(--tv3-text)] w-16 shrink-0 truncate">
             {c.ticker}
             {last === c.ticker && <span className="ml-0.5 text-amber-500">★</span>}
           </span>
-          <span className="flex-1 min-w-0 truncate text-[11px] text-gray-500">{c.expiry ?? t("ct.noExpiry")}</span>
-          {c.daysLeft !== null && <span className={`text-[10px] tabular-nums shrink-0 ${c.daysLeft <= ROLL_DAYS ? "text-amber-600" : "text-gray-400"}`}>{t("ct.left", { n: c.daysLeft })}</span>}
-          {mark?.(c.ticker) && <span className="text-xs text-green-600">✓</span>}
+          <span className="flex-1 min-w-0 truncate text-[11px] text-[var(--tv3-muted)]">{c.expiry ?? t("ct.noExpiry")}</span>
+          {c.daysLeft !== null && <span className={`text-[10px] tabular-nums shrink-0 ${c.daysLeft <= ROLL_DAYS ? "text-amber-600" : "text-[var(--tv3-muted)]"}`}>{t("ct.left", { n: c.daysLeft })}</span>}
+          {mark?.(c.ticker) && <span className="text-xs text-[var(--tv3-accent)]">✓</span>}
         </button>
       ))}
     </div>
@@ -164,7 +164,7 @@ export function ExpandButton({ open, onToggle }: { open: boolean; onToggle: () =
           onToggle();
         }
       }}
-      className="w-6 h-6 shrink-0 inline-flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+      className="w-6 h-6 shrink-0 inline-flex items-center justify-center rounded-md text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill2)] cursor-pointer"
     >
       <svg className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 9l6 6 6-6" />

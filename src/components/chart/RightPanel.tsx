@@ -1,21 +1,21 @@
 "use client";
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
-import { PANEL_TAB_ICONS } from "./icons";
+import { ui } from "./icons";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
+import { AlertsPanelView, OwnAlertsPanel } from "./AlertsPanel";
+import type { AlertsApi } from "./useAlerts";
 import type { DrawingsController } from "@/lib/chart/drawings/controller";
 import type { IndicatorsControllerLike } from "@/lib/chart/contracts";
 import {
   ALL_INSTRUMENTS,
-  CATEGORY_ICONS,
-  CATEGORY_I18N,
   CATEGORY_NEWS,
-  TERMINAL_DATA,
   categoryOf,
   exchangeLabel,
   findInstrument,
@@ -30,8 +30,9 @@ import { fetchContractInfo, itemToInstrument, lookupSecid, type ContractBadgeInf
 import type { MarketItem } from "@/lib/market-types";
 import { ContractBadge } from "./ContractPicker";
 import { ContractSubRows, ExpandButton, GroupTabs, useMarketSearch, iconFor, type GroupTab } from "./MarketRows";
+import "./terminal-v3.css";
 
-export type PanelTab = "watchlist" | "info" | "news" | "calendar" | "objects" | "orderbook" | "algo";
+export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
 
 export interface Quote {
   price: number;
@@ -56,7 +57,7 @@ export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?:
   }
   return (
     <span
-      className="rounded-full shrink-0 flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold"
+      className="rounded-full shrink-0 flex items-center justify-center bg-[var(--tv3-fill2)] text-[var(--tv3-text2)] font-bold"
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.42) }}
     >
       {inst.ticker.slice(0, 2).toUpperCase()}
@@ -64,14 +65,28 @@ export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?:
   );
 }
 
-const tabIcons = PANEL_TAB_ICONS as Record<PanelTab, ReactNode>;
+/** Rail icons of the design (24 grid, stroke 1.8, shown at 20 px). */
+const rail = (d: string) => ui(<path d={d} />, 20, 1.8);
+const tabIcons: Record<PanelTab, ReactNode> = {
+  watchlist: rail("M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"),
+  info: rail("M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1"),
+  ideas: rail("M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"),
+  news: rail("M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2zM18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3.5"),
+  calendar: rail("M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4"),
+  objects: rail("M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"),
+  alerts: rail("M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"),
+  orderbook: rail("M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11"),
+  algo: rail("M12 3.5l8.5 15.5h-17zM12 10v4M12 16.6h.01"),
+};
 
-const TABS: { id: PanelTab; key: string }[] = [
+const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "watchlist", key: "shell.tab.watchlist" },
-  { id: "info", key: "shell.tab.info" },
+  { id: "info", key: "shell.tab.info", titleKey: "p3.title.info" },
+  { id: "ideas", key: "p3.tab.ideas" },
   { id: "news", key: "shell.tab.news" },
   { id: "calendar", key: "shell.tab.calendar" },
-  { id: "objects", key: "cm.tab.objects" },
+  { id: "objects", key: "cm.tab.objects", titleKey: "p3.title.objects" },
+  { id: "alerts", key: "p3.tab.alerts" },
   { id: "orderbook", key: "shell.tab.orderbook" },
   { id: "algo", key: "shell.tab.algo" },
 ];
@@ -131,9 +146,84 @@ function useBatchQuotes(instruments: TerminalInstrument[], enabled: boolean) {
 
 const chgDigits = (p: number) => (p >= 1 ? 2 : p >= 0.01 ? 4 : 6);
 
+/* Mini sparklines (30 daily closes): fetched lazily, two at a time, remembered for 10 minutes. */
+const SPARK_TTL = 10 * 60_000;
+const sparkCache = new Map<string, { t: number; v: number[] | null }>();
+const sparkInflight = new Set<string>();
+const sparkQueue: (() => Promise<void>)[] = [];
+let sparkActive = 0;
+function sparkPump() {
+  while (sparkActive < 2 && sparkQueue.length) {
+    const job = sparkQueue.shift()!;
+    sparkActive++;
+    job().finally(() => {
+      sparkActive--;
+      sparkPump();
+    });
+  }
+}
+
+function useSparklines(items: TerminalInstrument[], enabled: boolean): Record<string, number[]> {
+  const [data, setData] = useState<Record<string, number[]>>({});
+  const key = useMemo(() => items.map(qKey).join(","), [items]);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    const ready: Record<string, number[]> = {};
+    for (const inst of items) {
+      const k = qKey(inst);
+      const c = sparkCache.get(k);
+      if (c && Date.now() - c.t < SPARK_TTL) {
+        if (c.v) ready[k] = c.v;
+        continue;
+      }
+      if (sparkInflight.has(k)) continue;
+      sparkInflight.add(k);
+      sparkQueue.push(async () => {
+        let v: number[] | null = null;
+        try {
+          const r = await fetch(`/api/klines?source=${inst.source}&ticker=${encodeURIComponent(inst.dataTicker)}&interval=D&limit=30`);
+          if (r.ok) {
+            const j = await r.json();
+            const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
+            const closes = rows.map((d) => Number(d?.close)).filter((x) => Number.isFinite(x) && x > 0);
+            if (closes.length >= 3) v = closes.slice(-30);
+          }
+        } catch {
+          /* no sparkline */
+        }
+        sparkCache.set(k, { t: Date.now(), v });
+        sparkInflight.delete(k);
+        if (v && !cancelled) setData((prev) => ({ ...prev, [k]: v as number[] }));
+      });
+    }
+    if (Object.keys(ready).length) setData((prev) => ({ ...prev, ...ready }));
+    sparkPump();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+  return data;
+}
+
+function Spark({ values, color }: { values: number[] | undefined; color: string }) {
+  if (!values || values.length < 2) return <span className="block h-6 w-[52px] shrink-0" aria-hidden />;
+  const mn = Math.min(...values);
+  const mx = Math.max(...values);
+  const n = values.length - 1;
+  const d = values.map((v, j) => `${j ? "L" : "M"}${((j * 64) / n).toFixed(1)} ${(26 - ((v - mn) / (mx - mn || 1)) * 24).toFixed(1)}`).join("");
+  return (
+    <svg width="52" height="24" viewBox="0 0 64 28" className="shrink-0" aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const WatchRow = memo(function WatchRow({
   inst,
   q,
+  spark,
   selected,
   onSelect,
   onRemove,
@@ -144,6 +234,7 @@ const WatchRow = memo(function WatchRow({
 }: {
   inst: TerminalInstrument;
   q: Quote | undefined;
+  spark: number[] | undefined;
   selected: boolean;
   onSelect: (i: TerminalInstrument) => void;
   onRemove: (i: TerminalInstrument) => void;
@@ -166,49 +257,50 @@ const WatchRow = memo(function WatchRow({
   }, [price]);
 
   const up = (q?.change ?? 0) >= 0;
-  const color = q ? (q.change === 0 ? "text-gray-500 dark:text-gray-400" : up ? "text-green-600 dark:text-green-500" : "text-red-500") : "text-gray-400";
-  const digits = q ? chgDigits(q.price) : 2;
+  const flat = !!q && q.change === 0;
+  const color = !q ? "var(--tv3-muted)" : flat ? "var(--tv3-muted)" : up ? "var(--tv3-up)" : "var(--tv3-down)";
+  const sparkUp = spark && spark.length > 1 ? spark[spark.length - 1] >= spark[0] : up;
 
   return (
     <div className="relative group">
-    <button
-      onClick={() => onSelect(inst)}
-      className={`w-full grid grid-cols-[minmax(0,1fr)_68px_50px_54px] items-center h-8 pl-2 pr-2 text-left cursor-pointer border-l-2 ${
-        selected
-          ? "bg-green-50 dark:bg-green-900/20 border-green-600"
-          : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/60"
-      }`}
-    >
-      <span className="flex items-center gap-1.5 min-w-0">
-        <InstIcon inst={inst} size={18} />
-        <span className="min-w-0 leading-tight">
-          <span className={`block text-xs font-bold truncate ${selected ? "text-green-700 dark:text-green-400" : "text-gray-900 dark:text-gray-100"}`}>{inst.ticker}</span>
-          <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
+      <button
+        onClick={() => onSelect(inst)}
+        className={`w-full flex items-center gap-2.5 rounded-xl px-2 py-[9px] text-left cursor-pointer ${selected ? "bg-[var(--tv3-fill)]" : "hover:bg-[var(--tv3-fill3)]"}`}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold leading-tight text-[var(--tv3-text)]">{inst.ticker}</span>
+          <span className="flex items-center gap-1 text-[12px] leading-tight text-[var(--tv3-muted)]">
             {contract && <ContractBadge c={contract} />}
-            <span className="truncate">{label}</span>
+            <span className="truncate">
+              {label} · {exchangeLabel(inst.source)}
+            </span>
           </span>
         </span>
-      </span>
-      <span
-        className={`text-right text-xs font-medium tabular-nums px-1 rounded-sm transition-colors duration-500 ${
-          flash === "up" ? "bg-green-500/30" : flash === "down" ? "bg-red-500/30" : "bg-transparent"
-        } ${q ? "text-gray-900 dark:text-gray-100" : "text-gray-400"}`}
+        <Spark values={spark} color={sparkUp ? "var(--tv3-up)" : "var(--tv3-down)"} />
+        <span className="w-[78px] shrink-0 text-right">
+          <span
+            className={`block rounded-sm px-0.5 text-[14px] font-semibold leading-tight tabular-nums transition-colors duration-500 ${
+              flash === "up" ? "bg-[var(--tv3-up)]/25" : flash === "down" ? "bg-[var(--tv3-down)]/25" : "bg-transparent"
+            } ${q ? "text-[var(--tv3-text)]" : "text-[var(--tv3-muted)]"}`}
+          >
+            {q ? fmtPrice(q.price, locale) : "…"}
+          </span>
+          <span className="block text-[12px] font-semibold leading-tight tabular-nums" style={{ color }}>
+            {q ? `${fmtSigned(q.changePercent, 2, locale)}%` : ""}
+          </span>
+        </span>
+      </button>
+      <button
+        onClick={() => onRemove(inst)}
+        title={removeTitle}
+        aria-label={removeTitle}
+        className="absolute right-1 top-1 w-5 h-5 hidden group-hover:flex items-center justify-center rounded-md bg-[var(--tv3-card)] text-[var(--tv3-muted)] hover:text-[var(--tv3-red)] cursor-pointer"
+        style={{ boxShadow: "var(--tv3-shadow-sm)" }}
       >
-        {q ? fmtPrice(q.price, locale) : "…"}
-      </span>
-      <span className={`text-right text-[11px] tabular-nums ${color}`}>{q ? fmtSigned(q.change, digits, locale) : ""}</span>
-      <span className={`text-right text-[11px] tabular-nums font-medium ${color}`}>{q ? `${fmtSigned(q.changePercent, 2, locale)}%` : ""}</span>
-    </button>
-    <button
-      onClick={() => onRemove(inst)}
-      title={removeTitle}
-      aria-label={removeTitle}
-      className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 hidden group-hover:flex items-center justify-center rounded bg-white/90 dark:bg-gray-800/90 text-gray-400 hover:text-red-500 cursor-pointer shadow-sm"
-    >
-      <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-        <path d="M6 6l12 12M18 6L6 18" />
-      </svg>
-    </button>
+        <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
     </div>
   );
 });
@@ -431,8 +523,8 @@ function AddTicker({
   }, [q]);
 
   return (
-    <div ref={boxRef} className="absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl">
-      <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+    <div ref={boxRef} className="absolute left-2 right-2 top-full z-20 mt-1 rounded-2xl bg-[var(--tv3-card)]" style={{ boxShadow: "var(--tv3-shadow-pop)" }}>
+      <div className="p-2">
         <input
           ref={inputRef}
           value={q}
@@ -442,13 +534,13 @@ function AddTicker({
           }}
           placeholder={t("shell.watch.addPlaceholder")}
           aria-label={t("shell.watch.addPlaceholder")}
-          className="w-full h-7 px-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:border-green-600"
+          className="w-full h-9 px-3 rounded-[10px] bg-[var(--tv3-fill2)] text-[14px] text-[var(--tv3-text)] outline-none"
         />
       </div>
-      <GroupTabs value={tab} onChange={setTab} className="px-2 py-1.5 border-b border-gray-100 dark:border-gray-800" />
+      <GroupTabs value={tab} onChange={setTab} className="px-2 pb-1.5" />
       <div className="max-h-64 overflow-y-auto py-1">
-        {merged === null && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading || market.loading ? "…" : t("shell.watch.addHint")}</div>}
-        {merged !== null && merged.length === 0 && <div className="px-3 py-4 text-center text-xs text-gray-400">{loading || market.loading ? "…" : t("shell.watch.noResults")}</div>}
+        {merged === null && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.addHint")}</div>}
+        {merged !== null && merged.length === 0 && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.noResults")}</div>}
         {merged?.map(({ inst, item, expand }) => {
           const inList = existing.some((i) => wlKey(i) === wlKey(inst));
           const isOpen = !!(expand && expanded[expand]);
@@ -457,20 +549,20 @@ function AddTicker({
               <button
                 onClick={() => onAdd(inst)}
                 disabled={inList}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60 disabled:opacity-50 disabled:cursor-default cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--tv3-fill3)] disabled:opacity-50 disabled:cursor-default cursor-pointer"
               >
                 <InstIcon inst={inst} size={18} />
                 <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{inst.ticker}</span>
-                  <span className="block text-[10px] text-gray-400 truncate">{inst.name}</span>
+                  <span className="block text-[13px] font-semibold text-[var(--tv3-text)] truncate">{inst.ticker}</span>
+                  <span className="block text-[11px] text-[var(--tv3-muted)] truncate">{inst.name}</span>
                 </span>
                 {item?.group === "future" && !item.auto && item.kind && (
                   <ContractBadge c={{ kind: item.kind, order: item.order ?? 0, badge: item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }} />
                 )}
-                {item?.group === "future" && item.auto && (item.contracts ?? 0) > 1 && <span className="text-[10px] text-gray-400 shrink-0">{t("ct.contracts", { n: item.contracts ?? 0 })}</span>}
-                <span className="text-[10px] text-gray-400 shrink-0">{exchangeLabel(inst.source)}</span>
+                {item?.group === "future" && item.auto && (item.contracts ?? 0) > 1 && <span className="text-[10px] text-[var(--tv3-muted)] shrink-0">{t("ct.contracts", { n: item.contracts ?? 0 })}</span>}
+                <span className="text-[10px] text-[var(--tv3-muted)] shrink-0">{exchangeLabel(inst.source)}</span>
                 {expand && <ExpandButton open={isOpen} onToggle={() => setExpanded((e) => ({ ...e, [expand]: !e[expand] }))} />}
-                <span className={`text-xs shrink-0 ${inList ? "text-green-600" : "text-gray-400"}`}>{inList ? "✓" : "+"}</span>
+                <span className={`text-xs shrink-0 ${inList ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)]"}`}>{inList ? "✓" : "+"}</span>
               </button>
               {isOpen && expand && (
                 <ContractSubRows
@@ -497,6 +589,7 @@ function Watchlist({
   quotes,
   selected,
   onSelect,
+  visible,
 }: {
   items: TerminalInstrument[];
   onAdd: (i: TerminalInstrument) => void;
@@ -504,6 +597,8 @@ function Watchlist({
   quotes: Record<string, Quote>;
   selected: TerminalInstrument;
   onSelect: (i: TerminalInstrument) => void;
+  /** the tab is on screen: sparklines are fetched only then */
+  visible: boolean;
 }) {
   const { t, locale } = useT();
   const [filter, setFilter] = useState("");
@@ -536,13 +631,14 @@ function Watchlist({
   );
   const [addSeed, setAddSeed] = useState("");
 
-  const headCls = "text-[11px] font-medium text-gray-500 dark:text-gray-400";
+  const sparks = useSparklines(shown, visible);
+  const btn = "mt-3 inline-flex items-center gap-1 px-3.5 h-8 rounded-[10px] bg-[var(--tv3-accent)] text-white text-[13px] font-semibold hover:bg-[var(--tv3-accent-hover)] cursor-pointer";
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      <div className="relative px-2 pt-2 pb-1.5 shrink-0">
+      <div className="relative px-2.5 pb-2 shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1 min-w-0">
-            <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--tv3-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="7" />
               <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
             </svg>
@@ -551,7 +647,7 @@ function Watchlist({
               onChange={(e) => setFilter(e.target.value)}
               placeholder={t("shell.watch.filter")}
               aria-label={t("shell.watch.filter")}
-              className="w-full h-7 pl-7 pr-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none focus:border-green-600"
+              className="w-full h-8 pl-8 pr-2 rounded-[10px] bg-[var(--tv3-fill)] text-[13px] text-[var(--tv3-text)] outline-none"
             />
           </div>
           <button
@@ -561,8 +657,8 @@ function Watchlist({
             }}
             title={t("shell.watch.add")}
             aria-label={t("shell.watch.add")}
-            className={`w-7 h-7 shrink-0 flex items-center justify-center rounded border cursor-pointer ${
-              adding ? "border-green-600 text-green-600 bg-green-600/10" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[10px] cursor-pointer ${
+              adding ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"
             }`}
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
@@ -580,21 +676,12 @@ function Watchlist({
           />
         )}
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_68px_50px_54px] items-center h-6 px-2 bg-white dark:bg-gray-900 border-y border-gray-100 dark:border-gray-800">
-          <span className={headCls}>{t("shell.watch.instrument")}</span>
-          <span className={`${headCls} text-right`}>{t("shell.watch.price")}</span>
-          <span className={`${headCls} text-right`}>{t("shell.watch.change")}</span>
-          <span className={`${headCls} text-right`}>{t("shell.watch.changePct")}</span>
-        </div>
+      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
         {items.length === 0 && (
           <div className="px-4 py-8 text-center">
-            <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("shell.watch.emptyList")}</div>
-            <div className="mt-1 text-[11px] text-gray-400">{t("shell.watch.emptyHint")}</div>
-            <button
-              onClick={() => setAdding(true)}
-              className="mt-3 inline-flex items-center gap-1 px-3 h-7 rounded bg-green-600 text-white text-xs font-medium hover:bg-green-700 cursor-pointer"
-            >
+            <div className="text-[14px] font-semibold text-[var(--tv3-text2)]">{t("shell.watch.emptyList")}</div>
+            <div className="mt-1 text-[12px] text-[var(--tv3-muted)]">{t("shell.watch.emptyHint")}</div>
+            <button onClick={() => setAdding(true)} className={btn}>
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
               </svg>
@@ -603,14 +690,14 @@ function Watchlist({
           </div>
         )}
         {items.length > 0 && shown.length === 0 && (
-          <div className="px-3 py-6 text-center text-xs text-gray-400">
+          <div className="px-3 py-6 text-center text-[13px] text-[var(--tv3-muted)]">
             <div>{t("shell.watch.empty")}</div>
             <button
               onClick={() => {
                 setAddSeed(filter.trim());
                 setAdding(true);
               }}
-              className="mt-3 inline-flex items-center gap-1 px-3 h-7 rounded bg-green-600 text-white text-xs font-medium hover:bg-green-700 cursor-pointer"
+              className={btn}
             >
               {t("shell.watch.searchExchange", { q: filter.trim() })}
             </button>
@@ -621,6 +708,7 @@ function Watchlist({
             key={qKey(inst)}
             inst={inst}
             q={quotes[qKey(inst)]}
+            spark={sparks[qKey(inst)]}
             selected={selected.source === inst.source && selected.dataTicker === inst.dataTicker}
             onSelect={onSelect}
             onRemove={onRemove}
@@ -734,74 +822,81 @@ function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; q
           ? t(`ms.group.${inst.group}`)
           : t("shell.info.future");
   const pos = high != null && low != null && high > low && price != null ? Math.min(100, Math.max(0, ((price - low) / (high - low)) * 100)) : null;
-  const label = "text-gray-500 dark:text-gray-400";
-  const val = "text-gray-900 dark:text-gray-100 tabular-nums";
+  const label = "text-[var(--tv3-muted)]";
+  const rowCls = "flex items-center justify-between gap-3 border-b border-[var(--tv3-hair2)] px-2 py-[9px] text-[14px]";
+  const valCls = "font-semibold tabular-nums text-[var(--tv3-text)] text-right";
 
   return (
-    <div className="px-3 py-3 space-y-2.5 text-xs">
-      <div className="flex items-center gap-2">
-        <InstIcon inst={inst} size={28} />
+    <div className="px-2.5 pb-2.5 text-[14px]">
+      <div className="flex items-center gap-2.5 px-2 py-2">
+        <InstIcon inst={inst} size={32} />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{inst.ticker}</div>
-          <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{instName(inst, t)}</div>
+          <div className="text-[16px] font-bold text-[var(--tv3-text)] truncate">{inst.ticker}</div>
+          <div className="text-[12px] text-[var(--tv3-muted)] truncate">{instName(inst, t)}</div>
         </div>
         <span
-          className={`shrink-0 inline-flex items-center gap-1 px-1.5 h-5 rounded text-[10px] font-medium ${
-            open_ ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-gray-200/70 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300"
+          className={`shrink-0 inline-flex items-center gap-1 px-2 h-[22px] rounded-full text-[11px] font-semibold ${
+            open_ ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-muted)]"
           }`}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${open_ ? "bg-green-500" : "bg-gray-400"}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${open_ ? "bg-[var(--tv3-up)]" : "bg-[var(--tv3-muted)]"}`} />
           {open_ ? t("shell.info.open") : t("shell.info.closed")}
         </span>
       </div>
 
       {price != null ? (
-        <div>
+        <div className="px-2 pb-2">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">{fmtPrice(price, locale)}</span>
-            {cur && <span className="text-xs text-gray-400">{cur}</span>}
+            <span className="text-[26px] font-bold tabular-nums text-[var(--tv3-text)]">{fmtPrice(price, locale)}</span>
+            {cur && <span className="text-[12px] text-[var(--tv3-muted)]">{cur}</span>}
           </div>
-          <div className={`text-xs font-medium tabular-nums ${change === 0 ? label : up ? "text-green-600 dark:text-green-500" : "text-red-500"}`}>
+          <div className="text-[13px] font-semibold tabular-nums" style={{ color: change === 0 ? "var(--tv3-muted)" : up ? "var(--tv3-up)" : "var(--tv3-down)" }}>
             {fmtSigned(change, chgDigits(price), locale)}&nbsp;&nbsp;{fmtSigned(pct, 2, locale)}%
           </div>
         </div>
       ) : (
-        <div className="text-sm text-gray-400 py-2">{t("shell.info.noQuote")}</div>
+        <div className="px-2 py-2 text-[14px] text-[var(--tv3-muted)]">{t("shell.info.noQuote")}</div>
       )}
 
       {pos !== null && high != null && low != null && (
-        <div>
-          <div className={`flex justify-between mb-1 ${label}`}>
-            <span>{t(inst.source === "bybit" ? "shell.info.range24" : "shell.info.range")}</span>
+        <div className="px-2 pb-2.5 text-[12px]">
+          <div className={`mb-1.5 ${label}`}>{t(inst.source === "bybit" ? "shell.info.range24" : "shell.info.range")}</div>
+          <div className="relative h-1 rounded-full bg-[var(--tv3-fill2)]">
+            <span className="absolute top-1/2 w-2.5 h-2.5 rounded-full bg-[var(--tv3-accent)] -translate-y-1/2 -translate-x-1/2" style={{ left: `${pos}%` }} />
           </div>
-          <div className="relative h-1 rounded bg-gray-200 dark:bg-gray-700">
-            <span className="absolute top-1/2 w-2 h-2 rounded-full bg-green-600 -translate-y-1/2 -translate-x-1/2" style={{ left: `${pos}%` }} />
-          </div>
-          <div className={`flex justify-between mt-1 ${val}`}>
+          <div className="mt-1.5 flex justify-between font-semibold tabular-nums text-[var(--tv3-text)]">
             <span>{fmtPrice(low, locale)}</span>
             <span>{fmtPrice(high, locale)}</span>
           </div>
         </div>
       )}
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+      <div>
+        <div className={rowCls}>
+          <span className={label}>{t("p3.info.ticker")}</span>
+          <span className={valCls}>{inst.ticker}</span>
+        </div>
         {open != null && (
-          <>
-            <dt className={label}>{t("shell.info.dayOpen")}</dt>
-            <dd className={`text-right ${val}`}>{fmtPrice(open, locale)}</dd>
-          </>
+          <div className={rowCls}>
+            <span className={label}>{t("shell.info.dayOpen")}</span>
+            <span className={valCls}>{fmtPrice(open, locale)}</span>
+          </div>
         )}
         {volume > 0 && (
-          <>
-            <dt className={label}>{t("shell.info.volume")}</dt>
-            <dd className={`text-right ${val}`}>{fmtCompact(volume, locale)}</dd>
-          </>
+          <div className={rowCls}>
+            <span className={label}>{t("shell.info.volume")}</span>
+            <span className={valCls}>{fmtCompact(volume, locale)}</span>
+          </div>
         )}
-        <dt className={label}>{t("shell.info.type")}</dt>
-        <dd className={`text-right ${val}`}>{type}</dd>
-        <dt className={label}>{t("shell.info.exchange")}</dt>
-        <dd className={`text-right ${val}`}>{exchangeLabel(inst.source)}</dd>
-      </dl>
+        <div className={rowCls}>
+          <span className={label}>{t("shell.info.type")}</span>
+          <span className={valCls}>{type}</span>
+        </div>
+        <div className={rowCls}>
+          <span className={label}>{t("shell.info.exchange")}</span>
+          <span className={valCls}>{exchangeLabel(inst.source)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -826,9 +921,12 @@ interface Props {
   indicators?: IndicatorsControllerLike;
   /** IANA zone of the chart time axis: the economic calendar shows release times in it. */
   calendarZone?: string;
+  /** Alerts tab: the alerts state shared with the alerts dialog (without it the tab keeps its own) and the opener of the create form. */
+  alertsApi?: AlertsApi;
+  onOpenAlerts?: () => void;
 }
 
-export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone }: Props) {
+export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone, alertsApi, onOpenAlerts }: Props) {
   const { t } = useT();
   const cat = categoryOf(selected);
 
@@ -840,48 +938,47 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
   }, [watchlist.items, selected]);
   const quotes = useBatchQuotes(instruments, visible && instruments.length > 0);
   const quote = quotes[qKey(selected)];
+  const cur = TABS.find((x) => x.id === tab) ?? TABS[0];
+  const createAlert = () => onOpenAlerts?.();
 
   return (
     <>
       {mobileOpen && <div className="md:hidden absolute inset-0 z-40 bg-black/40" onClick={onCloseMobile} />}
       <aside
-        className={`${mobileOpen ? "flex" : "hidden"} md:flex absolute md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 z-50 md:z-auto shrink-0 h-[78%] md:h-full w-full md:w-auto rounded-t-2xl md:rounded-none shadow-2xl md:shadow-none bg-white dark:bg-gray-900 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-800 pb-[env(safe-area-inset-bottom)] md:pb-0`}
+        className={`${mobileOpen ? "flex" : "hidden"} md:flex absolute md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 z-50 md:z-auto shrink-0 h-[78%] md:h-full w-full md:w-auto md:gap-2 rounded-t-2xl md:rounded-none bg-[var(--tv3-card)] md:bg-transparent text-[var(--tv3-text)] shadow-2xl md:shadow-none pb-[env(safe-area-inset-bottom)] md:pb-0`}
       >
         {/* content */}
-        <div className={`w-full md:w-[280px] flex-col min-h-0 min-w-0 flex ${open ? "md:flex" : "md:hidden"}`}>
-          <button type="button" onClick={onCloseMobile} aria-label={t("shell.close")} className="md:hidden shrink-0 flex justify-center pt-2 pb-1 cursor-pointer"><span className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" /></button>
+        <div className={`w-full md:w-[340px] flex-col min-h-0 min-w-0 flex md:rounded-2xl md:bg-[var(--tv3-card)] ${open ? "md:flex" : "md:hidden"}`}>
+          <button type="button" onClick={onCloseMobile} aria-label={t("shell.close")} className="md:hidden shrink-0 flex justify-center pt-2 pb-1 cursor-pointer">
+            <span className="h-1 w-10 rounded-full bg-[var(--tv3-fill2)]" />
+          </button>
           {visible && (
             <>
-              <div className="flex items-center gap-1 h-9 px-2 shrink-0 border-b border-gray-100 dark:border-gray-800">
-                <div className="md:hidden flex items-center gap-0.5">
+              <div className="flex items-center gap-2 shrink-0 px-3 pt-1 md:pt-3 pb-2">
+                <div className="md:hidden flex items-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none]">
                   {TABS.map((tb) => (
                     <button
                       key={tb.id}
                       onClick={() => onTab(tb.id)}
                       title={t(tb.key)}
-                      className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${tab === tb.id ? "text-green-600 bg-green-600/10" : "text-gray-500"}`}
+                      className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[9px] cursor-pointer ${tab === tb.id ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"}`}
                     >
                       {tabIcons[tb.id]}
                     </button>
                   ))}
                 </div>
-                <span className="hidden md:block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 truncate">
-                  {t(TABS.find((x) => x.id === tab)?.key ?? "shell.tab.watchlist")}
-                </span>
+                <span className="hidden md:block flex-1 min-w-0 truncate text-[13px] font-bold uppercase tracking-[.5px] text-[var(--tv3-text2)]">{t(cur.titleKey ?? cur.key)}</span>
                 <button
                   onClick={onCollapse}
                   title={t("shell.panel.collapse")}
-                  className="hidden md:flex ml-auto w-6 h-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  aria-label={t("shell.panel.collapse")}
+                  className="hidden md:flex ml-auto w-7 h-7 items-center justify-center rounded-lg bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer"
                 >
-                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 6l6 6-6 6" />
                   </svg>
                 </button>
-                <button
-                  onClick={onCloseMobile}
-                  title={t("shell.close")}
-                  className="md:hidden ml-auto w-8 h-8 flex items-center justify-center rounded text-gray-400 cursor-pointer"
-                >
+                <button onClick={onCloseMobile} title={t("shell.close")} className="md:hidden ml-auto w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--tv3-muted)] cursor-pointer">
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                     <path d="M6 6l12 12M18 6L6 18" />
                   </svg>
@@ -889,16 +986,23 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
               </div>
 
               {tab === "watchlist" && (
-                <>
-                  <Watchlist items={watchlist.items} onAdd={watchlist.add} onRemove={watchlist.remove} quotes={quotes} selected={selected} onSelect={onSelect} />
-                  <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 max-h-[46%] overflow-y-auto">
-                    <InfoCard inst={selected} quote={quote} visible={visible && tab === "watchlist"} />
-                  </div>
-                </>
+                <Watchlist items={watchlist.items} onAdd={watchlist.add} onRemove={watchlist.remove} quotes={quotes} selected={selected} onSelect={onSelect} visible={visible && tab === "watchlist"} />
               )}
               {tab === "info" && (
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <InfoCard inst={selected} quote={quote} visible={visible && tab === "info"} />
+                </div>
+              )}
+              {tab === "ideas" && (
+                <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
+                  <div className="rounded-[14px] bg-[var(--tv3-fill3)] p-3.5 text-[14px] leading-[1.45] text-[var(--tv3-text)]">
+                    {t("p3.ideas.text", { ticker: selected.ticker })}
+                    <div className="mt-2.5">
+                      <Link href="/feed" className="font-semibold text-[var(--tv3-accent)] hover:text-[var(--tv3-accent-hover)]">
+                        {t("p3.ideas.open")}
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               )}
               {tab === "news" && (
@@ -907,15 +1011,21 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                 </div>
               )}
               {tab === "objects" && drawings && indicators && <ObjectTree drawings={drawings} indicators={indicators} />}
+              {tab === "alerts" && (
+                <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
+                  {alertsApi ? <AlertsPanelView api={alertsApi} symbol={selected} onCreate={createAlert} /> : <OwnAlertsPanel symbol={selected} onCreate={createAlert} />}
+                </div>
+              )}
               {tab === "orderbook" && <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} />}
               {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
               {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}
+              {tab !== "calendar" && <div className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5 pb-2.5 pt-2 text-[11px] leading-snug text-[var(--tv3-muted)]">{t("p3.footer")}</div>}
             </>
           )}
         </div>
 
-        {/* icon strip (desktop) */}
-        <div className="hidden md:flex flex-col items-center gap-1 w-12 shrink-0 py-2 border-l border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900">
+        {/* icon rail (desktop) */}
+        <div className="hidden md:flex flex-col items-center gap-0.5 w-[46px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
           {TABS.map((tb) => {
             const on = open && tab === tb.id;
             return (
@@ -925,8 +1035,8 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                 title={t(tb.key)}
                 aria-label={t(tb.key)}
                 aria-pressed={on}
-                className={`w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer transition ${
-                  on ? "text-green-600 bg-green-600/10" : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800"
+                className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-[10px] cursor-pointer transition-colors ${
+                  on ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
                 }`}
               >
                 {tabIcons[tb.id]}

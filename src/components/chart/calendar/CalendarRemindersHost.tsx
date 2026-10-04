@@ -63,16 +63,16 @@ export default function CalendarRemindersHost() {
         {toasts.map((r) => {
           const left = r.ts - now;
           return (
-            <div key={r.id} className="rounded-lg border border-amber-400/60 bg-white p-3 shadow-2xl dark:border-amber-500/50 dark:bg-[#1e222d]">
+            <div key={r.id} className="rounded-lg border border-amber-400/60 bg-[var(--tv3-card)] p-3 shadow-2xl dark:border-amber-500/50">
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 text-amber-500">{EC_ICONS.bellOn}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">{t("ec.rem.notifTitle")}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-[var(--tv3-text)]">
                     <Flag code={r.country} width={16} />
                     <span className="truncate">{r.event}</span>
                   </div>
-                  <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{left > 0 ? t("ec.rem.in", { time: formatCountdown(left) }) : t("ec.rem.now")}</div>
+                  <div className="mt-0.5 text-xs text-[var(--tv3-muted)]">{left > 0 ? t("ec.rem.in", { time: formatCountdown(left) }) : t("ec.rem.now")}</div>
                 </div>
                 <button
                   type="button"
@@ -81,7 +81,7 @@ export default function CalendarRemindersHost() {
                     removeReminder(r.id);
                   }}
                   aria-label={t("shell.close")}
-                  className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)]"
                 >
                   <span className="scale-75">{EC_ICONS.close}</span>
                 </button>

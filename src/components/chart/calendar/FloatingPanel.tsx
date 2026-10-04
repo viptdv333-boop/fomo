@@ -90,8 +90,8 @@ export default function FloatingPanel({
         style={sheet ? undefined : { position: "fixed", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom, width: Math.min(width, 9999), visibility: pos ? "visible" : "hidden" }}
         className={
           sheet
-            ? "fixed inset-x-0 bottom-0 z-[85] max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] text-gray-900 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100"
-            : "z-[85] max-h-[min(80vh,640px)] overflow-y-auto rounded-lg border border-gray-200 bg-white text-gray-900 shadow-2xl dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-100"
+            ? "fixed inset-x-0 bottom-0 z-[85] max-h-[80vh] overflow-y-auto rounded-t-2xl bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)] text-[var(--tv3-text)] shadow-2xl"
+            : "z-[85] max-h-[min(80vh,640px)] overflow-y-auto rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         }
       >
         {children}

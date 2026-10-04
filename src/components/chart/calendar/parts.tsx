@@ -6,31 +6,36 @@ import { formatValue, surprise, type Surprise } from "@/lib/calendar/surprise";
 import type { CalEvent } from "@/lib/calendar/types";
 import { mayHaveBrief, useBriefs } from "@/lib/calendar/useBriefs";
 
-export const IMPACT_COLOR: Record<number, string> = { 3: "#ef4444", 2: "#f59e0b", 1: "#9ca3af" };
+export const IMPACT_COLOR: Record<number, string> = { 3: "#e5322d", 2: "#ff9f0a", 1: "#8e8e93" };
 
 /** Three dots, `level` of them filled in the importance colour. */
 export function ImpactDots({ level, size = 6 }: { level: number; size?: number }) {
   return (
     <span className="inline-flex shrink-0 items-center gap-[2px]" aria-label={`impact ${level}`}>
       {[1, 2, 3].map((i) => (
-        <span key={i} className={i <= level ? "" : "bg-gray-300 dark:bg-gray-600"} style={{ width: size, height: size, borderRadius: "50%", background: i <= level ? IMPACT_COLOR[level] : undefined }} />
+        <span key={i} className={i <= level ? "" : "bg-[var(--tv3-fill2)]"} style={{ width: size, height: size, borderRadius: "50%", background: i <= level ? IMPACT_COLOR[level] : undefined }} />
       ))}
     </span>
   );
 }
 
+/** The single importance dot of the design (event rows of the side panel). */
+export function ImpactDot({ level, size = 8 }: { level: number; size?: number }) {
+  return <span className="inline-block shrink-0 rounded-full" style={{ width: size, height: size, background: IMPACT_COLOR[level] }} aria-label={`impact ${level}`} />;
+}
+
 export const SURPRISE_CLASS: Record<Surprise, string> = {
-  better: "text-green-600 dark:text-green-400",
-  worse: "text-red-600 dark:text-red-400",
-  inline: "text-gray-900 dark:text-gray-100",
+  better: "text-[var(--tv3-up)]",
+  worse: "text-[var(--tv3-down)]",
+  inline: "text-[var(--tv3-text)]",
 };
 
 /** The actual figure, coloured by the surprise against the forecast. */
 export function ActualValue({ ev, locale }: { ev: CalEvent; locale: string }) {
   const s = surprise(ev);
   const text = formatValue(ev.actual, ev.unit, locale);
-  if (!text) return <span className="text-gray-400">—</span>;
-  return <span className={`font-semibold ${s ? SURPRISE_CLASS[s] : "text-gray-900 dark:text-gray-100"}`}>{text}</span>;
+  if (!text) return <span className="text-[var(--tv3-muted)]">—</span>;
+  return <span className={`font-semibold ${s ? SURPRISE_CLASS[s] : "text-[var(--tv3-text)]"}`}>{text}</span>;
 }
 
 /** Re-renders every `ms` while mounted (clock for "now" markers and countdowns). */
@@ -59,7 +64,7 @@ export function useNarrow(): boolean {
 }
 
 /** "Source: TradingView · Moscow Exchange" and the note for sources without actual values. */
-export function SourceFooter({ source, moex, commodity = false, className = "" }: { source: string; moex: boolean; commodity?: boolean; className?: string }) {
+export function SourceFooter({ source, moex, commodity = false, className = "", disclaimer = false }: { source: string; moex: boolean; commodity?: boolean; className?: string; disclaimer?: boolean }) {
   const { t } = useT();
   if (source === "none" && !moex && !commodity) return null;
   const parts: string[] = [];
@@ -67,8 +72,8 @@ export function SourceFooter({ source, moex, commodity = false, className = "" }
   if (moex) parts.push(t("ec.moex"));
   if (commodity) parts.push(t("ec.src.commodity"));
   return (
-    <div className={`px-3 py-1 text-[10.5px] leading-snug text-gray-400 dark:text-gray-500 ${className}`}>
-      <span>{t("ec.src.label")} {parts.join(" · ")}</span>
+    <div className={`px-3 py-1 text-[10.5px] leading-snug text-[var(--tv3-muted)] ${className}`}>
+      <span>{t("ec.src.label")} {parts.join(" · ")}{disclaimer ? `. ${t("p3.disclaimer")}` : ""}</span>
       {source === "forexfactory" && <span className="block text-amber-600/90 dark:text-amber-400/80">{t("ec.src.noactual")}</span>}
     </div>
   );
@@ -105,7 +110,7 @@ export function BriefLine({ ev, className = "" }: { ev: CalEvent; className?: st
   const text = ready ? get(ev) : null;
   if (ready && !text) return null;
   return (
-    <span title={text ?? undefined} className={`block h-[15px] truncate text-[11px] leading-[15px] text-gray-500 dark:text-gray-400 ${className}`}>
+    <span title={text ?? undefined} className={`block h-[15px] truncate text-[11px] leading-[15px] text-[var(--tv3-muted)] ${className}`}>
       {text}
     </span>
   );

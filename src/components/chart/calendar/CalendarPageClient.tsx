@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { TIME_ZONES, localZone } from "@/lib/chart/settings";
 import WorldCalendar from "./WorldCalendar";
+import "../terminal-v3.css";
 
 const TZ_LS = "fomo-calendar-tz";
 
@@ -43,7 +44,7 @@ export default function CalendarPageClient() {
   }, [local]);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-[#1e222d]" style={{ top }}>
+    <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-card)]" style={{ top }}>
       <WorldCalendar
         zone={zone}
         mode="page"
@@ -57,7 +58,7 @@ export default function CalendarPageClient() {
                 localStorage.setItem(TZ_LS, e.target.value);
               } catch {}
             }}
-            className="h-7 max-w-[170px] rounded-md border border-gray-200 bg-transparent px-1.5 text-[12px] outline-none dark:border-[#363a45] dark:bg-[#1e222d]"
+            className="h-7 max-w-[170px] rounded-[9px] bg-[var(--tv3-fill2)] px-1.5 text-[12px] font-semibold text-[var(--tv3-text)] outline-none"
           >
             {zones.map((z) => (
               <option key={z} value={z}>

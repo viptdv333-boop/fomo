@@ -8,7 +8,11 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import CountryPicker from "./CountryPicker";
 import { anchorOf, type Anchor } from "./FloatingPanel";
-import { ImpactDots } from "./parts";
+import { IMPACT_COLOR } from "./parts";
+
+/** the pill of a quick filter: dark when on, soft grey when off (design) */
+const chipCls = (on: boolean) =>
+  `inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-semibold cursor-pointer transition ${on ? "bg-[var(--tv3-text)] text-[var(--tv3-card)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"}`;
 
 /* The filter controls shared by the side panel, the list, the month grid and the day modal. They all read and write the same
    calendar preferences, so a change in one place applies everywhere (grid squares, list, modal, chart). */
@@ -23,7 +27,7 @@ export function ImpactToggles() {
       return next.length ? { ...p, impacts: next } : p;
     });
   return (
-    <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={t("ec.importance")}>
+    <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] bg-[var(--tv3-fill)] px-2" role="group" aria-label={t("ec.importance")}>
       {[3, 2, 1].map((lv) => {
         const on = prefs.impacts.includes(lv);
         return (
@@ -33,10 +37,9 @@ export function ImpactToggles() {
             aria-pressed={on}
             title={t(`ec.impact.${lv}`)}
             onClick={() => toggle(lv)}
-            className={`flex h-7 w-9 items-center justify-center rounded-md border cursor-pointer transition ${on ? "border-transparent bg-gray-100 dark:bg-[#2a2e39]" : "border-gray-200 opacity-45 hover:opacity-80 dark:border-[#363a45]"}`}
-          >
-            <ImpactDots level={lv} size={5} />
-          </button>
+            className="h-[14px] w-[14px] cursor-pointer rounded-full border-2"
+            style={{ borderColor: IMPACT_COLOR[lv], background: on ? IMPACT_COLOR[lv] : "var(--tv3-card)" }}
+          />
         );
       })}
     </div>
@@ -52,7 +55,7 @@ export function CountryFilter({ seen = [], className = "" }: { seen?: string[]; 
       <button
         type="button"
         onClick={(e) => setAnchor(anchor ? null : anchorOf(e.currentTarget))}
-        className={`inline-flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-gray-200 px-2 text-[12px] cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39] ${className}`}
+        className={`inline-flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] bg-[var(--tv3-fill)] px-2.5 text-[13px] font-semibold text-[var(--tv3-text)] cursor-pointer hover:bg-[var(--tv3-fill2)] ${className}`}
       >
         {prefs.countries.length === 0 ? (
           <>
@@ -69,7 +72,7 @@ export function CountryFilter({ seen = [], className = "" }: { seen?: string[]; 
             <span className="truncate">{prefs.countries.length === 1 ? countryName(prefs.countries[0], locale, t) : t("ec.nCountries", { n: prefs.countries.length })}</span>
           </>
         )}
-        <span className="ml-auto text-gray-400">{EC_ICONS.chevron}</span>
+        <span className="ml-auto text-[var(--tv3-muted)]">{EC_ICONS.chevron}</span>
       </button>
       {anchor && (
         <CountryPicker
@@ -86,7 +89,7 @@ export function CountryFilter({ seen = [], className = "" }: { seen?: string[]; 
   );
 }
 
-export function QuickChips() {
+export function QuickChips({ wrap = false }: { wrap?: boolean }) {
   const { t, locale } = useT();
   const [prefs, update] = useCalPrefs();
   const toggle = (c: string) =>
@@ -95,7 +98,7 @@ export function QuickChips() {
       return { ...p, countries: p.countries.includes(c) ? p.countries.filter((x) => x !== c) : [...p.countries, c] };
     });
   return (
-    <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className={wrap ? "contents" : "flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"}>
       {QUICK.map((c) => {
         const on = prefs.countries.includes(c);
         return (
@@ -105,7 +108,7 @@ export function QuickChips() {
             aria-pressed={on}
             title={countryName(c, locale, t)}
             onClick={() => toggle(c)}
-            className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${on ? "border-green-600 bg-green-600/10 text-green-700 dark:text-green-400" : "border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+            className={chipCls(on)}
           >
             <Flag code={c} width={14} />
             {c}
@@ -116,7 +119,7 @@ export function QuickChips() {
         <button
           type="button"
           onClick={() => update((p) => ({ ...p, countries: p.mine }))}
-          className="inline-flex h-6 shrink-0 items-center rounded-full border border-gray-200 px-2 text-[11px] text-gray-600 cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+          className={chipCls(false)}
         >
           {t("ec.mine")}
         </button>
@@ -135,7 +138,7 @@ export function MoexChip() {
       aria-pressed={prefs.moex}
       title={t("ec.moex.hint")}
       onClick={() => update((p) => ({ ...p, moex: !p.moex }))}
-      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.moex ? "border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300" : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]"}`}
+      className={chipCls(prefs.moex)}
     >
       <span className="inline-block h-2 w-2 rotate-45 bg-sky-500" />
       {t("ec.moex")}
@@ -153,7 +156,7 @@ export function CommodityChip() {
       aria-pressed={prefs.commodities}
       title={t("ec.commodity.hint")}
       onClick={() => update((p) => ({ ...p, commodities: !p.commodities }))}
-      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.commodities ? "border-lime-600 bg-lime-600/10 text-lime-800 dark:text-lime-300" : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]"}`}
+      className={chipCls(prefs.commodities)}
     >
       <span aria-hidden className="inline-block h-2 w-2 rounded-sm bg-lime-600" />
       {t("ec.commodity")}
@@ -171,7 +174,7 @@ export function EnergyChip() {
       aria-pressed={prefs.energy}
       title={t("ec.energy.hint")}
       onClick={() => update((p) => ({ ...p, energy: !p.energy }))}
-      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.energy ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+      className={chipCls(prefs.energy)}
     >
       <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-amber-500" />
       {t("ec.energy")}
@@ -183,13 +186,13 @@ export function SearchBox({ q, setQ }: { q: string; setQ: (v: string) => void })
   const { t } = useT();
   return (
     <div className="relative min-w-0 flex-1">
-      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">{EC_ICONS.search}</span>
+      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[var(--tv3-muted)]">{EC_ICONS.search}</span>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("ec.search")}
         aria-label={t("ec.search")}
-        className="h-7 w-full rounded-md border border-gray-200 bg-transparent pl-7 pr-2 text-[12px] outline-none focus:border-green-600 dark:border-[#363a45]"
+        className="h-8 w-full rounded-[10px] bg-[var(--tv3-fill)] pl-7 pr-2 text-[14px] text-[var(--tv3-text)] outline-none"
       />
     </div>
   );

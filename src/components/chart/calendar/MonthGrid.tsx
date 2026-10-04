@@ -84,7 +84,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
 
   return (
     <div role="grid" aria-label={t("ec.title")} className={`flex min-h-0 flex-col ${fill ? "h-full" : ""}`}>
-      <div role="row" className="sticky top-0 z-[8] grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-[#2a2e39] dark:bg-[#1e222d] dark:text-gray-400 sm:text-[11px]">
+      <div role="row" className="sticky top-0 z-[8] grid shrink-0 grid-cols-7 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-center text-[10px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)] sm:text-[11px]">
         {heads.map((h, i) => (
           <div key={i} role="columnheader" className={`py-1.5 ${i >= 5 ? "opacity-60" : ""}`} title={h.long}>
             <span className="sm:hidden">{h.short.slice(0, 2)}</span>
@@ -113,31 +113,31 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
               onClick={() => !none && onOpenDay(c.date)}
               onFocus={() => setFocusDate(c.date)}
               onKeyDown={(e) => onKey(e, c.date)}
-              className={`relative flex min-w-0 flex-col gap-0.5 overflow-hidden border-b border-r border-gray-200 p-1 outline-none transition focus-visible:z-[2] focus-visible:ring-2 focus-visible:ring-green-600 dark:border-[#2a2e39] sm:gap-1 sm:p-1.5 ${none ? "cursor-default" : "cursor-pointer hover:bg-gray-50 dark:hover:bg-[#222633]"} ${
-                c.weekend ? "bg-gray-50/70 dark:bg-white/[.025]" : ""
-              } ${c.today ? "bg-green-600/[.06] ring-1 ring-inset ring-green-600" : ""} ${c.past && !c.today ? "opacity-75" : ""}`}
+              className={`relative flex min-w-0 flex-col gap-0.5 overflow-hidden border-b border-r border-[var(--tv3-hair)] p-1 outline-none transition focus-visible:z-[2] focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] sm:gap-1 sm:p-1.5 ${none ? "cursor-default" : "cursor-pointer hover:bg-[var(--tv3-fill3)]"} ${
+                c.weekend ? "bg-[var(--tv3-fill3)]" : ""
+              } ${c.today ? "bg-[var(--tv3-accent-soft)] ring-1 ring-inset ring-[var(--tv3-accent)]" : ""} ${c.past && !c.today ? "opacity-75" : ""}`}
             >
               <div className="flex items-center gap-1">
                 <span
                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums sm:text-xs ${
-                    c.today ? "bg-green-600 text-white" : c.weekend ? "text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-200"
+                    c.today ? "bg-[var(--tv3-accent)] text-white" : c.weekend ? "text-[var(--tv3-muted)]" : "text-[var(--tv3-text2)]"
                   }`}
                 >
                   {day}
                 </span>
-                {(c.first || c.date === cells[0].date) && <span className="text-[10px] font-semibold uppercase text-gray-400">{formatDayHeading(c.date, locale, { month: "short" })}</span>}
+                {(c.first || c.date === cells[0].date) && <span className="text-[10px] font-semibold uppercase text-[var(--tv3-muted)]">{formatDayHeading(c.date, locale, { month: "short" })}</span>}
                 <span className="ml-auto flex items-center gap-1">
                   {high > 0 && (
                     <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white" title={t("ec.impact.3")}>
                       {high}
                     </span>
                   )}
-                  {total > 0 && <span className="hidden text-[10px] tabular-nums text-gray-400 sm:inline">{total}</span>}
+                  {total > 0 && <span className="hidden text-[10px] tabular-nums text-[var(--tv3-muted)] sm:inline">{total}</span>}
                 </span>
               </div>
 
               {none ? (
-                <span className="mt-auto pb-1 text-center text-[10px] leading-tight text-gray-400 dark:text-gray-600">{t("ec.nodata")}</span>
+                <span className="mt-auto pb-1 text-center text-[10px] leading-tight text-[var(--tv3-muted)]">{t("ec.nodata")}</span>
               ) : (
                 <>
                   <div className="hidden min-h-0 flex-col gap-px sm:flex">
@@ -152,19 +152,19 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           onOpenDay(c.date, e.id);
                         }}
                         title={`${e.allDay ? "" : formatClock(e.ts, zone) + " "}${e.event}${briefOf(e) ? `\n${briefOf(e)}` : ""}`}
-                        className={`flex w-full min-w-0 flex-col rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 dark:hover:bg-white/10 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : ""}`}
+                        className={`flex w-full min-w-0 flex-col rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : ""}`}
                       >
                         <span className="flex w-full min-w-0 items-center gap-1">
-                          <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-gray-400">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
+                          <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-[var(--tv3-muted)]">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
                           <Flag code={e.country} width={14} />
-                          <span className="min-w-0 flex-1 truncate text-gray-800 dark:text-gray-200">{e.event}</span>
+                          <span className="min-w-0 flex-1 truncate text-[var(--tv3-text)]">{e.event}</span>
                           <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} />
                         </span>
                         {/* the market impact in one line for the important events; the rest have it in the tooltip / list */}
-                        {e.impact >= 3 && briefOf(e) && <span className="truncate pl-[30px] text-[10px] leading-tight text-gray-500 dark:text-gray-400">{briefOf(e)}</span>}
+                        {e.impact >= 3 && briefOf(e) && <span className="truncate pl-[30px] text-[10px] leading-tight text-[var(--tv3-muted)]">{briefOf(e)}</span>}
                       </button>
                     ))}
-                    {more > 0 && <span className="px-0.5 text-[10.5px] font-medium text-gray-500 dark:text-gray-400">{t("ec.more", { n: more })}</span>}
+                    {more > 0 && <span className="px-0.5 text-[10.5px] font-medium text-[var(--tv3-muted)]">{t("ec.more", { n: more })}</span>}
                   </div>
                   <div className="mt-auto flex flex-wrap gap-[3px] sm:hidden">
                     {(b?.events ?? []).slice(0, 8).map((e) => (

@@ -17,7 +17,7 @@ import EventDetails from "./EventDetails";
 import { CommodityChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
-import { ActualValue, BriefLine, CommodityMark, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
+import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
 
 const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
   { id: "yesterday", key: "ec.tab.yesterday" },
@@ -28,7 +28,7 @@ const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
 ];
 
 export const iconBtn =
-  "h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer disabled:opacity-40 disabled:cursor-default transition";
+  "h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-lg bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer disabled:opacity-40 disabled:cursor-default transition";
 
 /* ───────────── "next event in ..." chip ───────────── */
 
@@ -42,18 +42,18 @@ export function NextChip({ zone, enabled, onPick }: { zone: string; enabled: boo
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
   const impacts = useMemo(() => new Set(prefs.impacts), [prefs.impacts]);
   const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex, noCommodity: !prefs.commodities, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, prefs.commodities, prefs.energy, now]);
-  if (!next) return <span className="flex-1 truncate text-[11px] text-gray-400">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
+  if (!next) return <span className="flex-1 truncate text-[12px] text-[var(--tv3-muted)]">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
   return (
     <button
       type="button"
       onClick={(e) => onPick(next, anchorOf(e.currentTarget))}
       title={`${countryName(next.country, locale, t)}: ${next.event}`}
-      className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md bg-gray-100 px-2 text-left text-[11px] cursor-pointer hover:bg-gray-200 dark:bg-[#262a36] dark:hover:bg-[#2f3341]"
+      className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] bg-[var(--tv3-fill)] px-2.5 text-left text-[12px] cursor-pointer hover:bg-[var(--tv3-fill2)]"
     >
-      <span className="shrink-0 text-gray-400">{EC_ICONS.clock}</span>
+      <span className="shrink-0 text-[var(--tv3-muted)]">{EC_ICONS.clock}</span>
       <Flag code={next.country} width={15} />
-      <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">{next.event}</span>
-      <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{formatCountdown(next.ts - now)}</span>
+      <span className="min-w-0 flex-1 truncate text-[var(--tv3-text2)]">{next.event}</span>
+      <span className="shrink-0 font-semibold tabular-nums text-[var(--tv3-text)]">{formatCountdown(next.ts - now)}</span>
     </button>
   );
 }
@@ -81,30 +81,31 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const hasFigures = ev.actual !== null || ev.forecast !== null || ev.previous !== null;
+  const lab = "uppercase";
   return (
     <button
       type="button"
       data-ev={ev.id}
       onClick={(e) => onOpen(ev, anchorOf(e.currentTarget))}
-      className={`block w-full border-b border-gray-100 px-3 py-1.5 text-left cursor-pointer hover:bg-gray-50 dark:border-[#242833] dark:hover:bg-[#222633] ${ev.category === "moex" ? "border-l-2 border-l-sky-500" : ev.category === "commodity" ? "border-l-2 border-l-lime-600" : ""} ${focus ? "bg-sky-50 dark:bg-sky-500/10" : ""} ${past ? "opacity-60 hover:opacity-100" : ""}`}
+      className={`mb-1.5 block w-full rounded-xl px-2.5 py-[9px] text-left cursor-pointer hover:bg-[var(--tv3-fill)] ${focus ? "bg-[var(--tv3-fill)] outline outline-1 -outline-offset-1 outline-sky-500" : "bg-[var(--tv3-fill3)]"} ${past ? "opacity-60 hover:opacity-100" : ""}`}
     >
-      <div className="flex items-start gap-2">
-        <span className="w-[38px] shrink-0 pt-px text-[11px] tabular-nums text-gray-500 dark:text-gray-400">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
-        <Flag code={ev.country} width={16} className="mt-[2px]" />
+      <div className="flex items-start gap-2.5">
+        <span className="w-[34px] shrink-0 pt-0.5 text-[12px] tabular-nums text-[var(--tv3-muted)]">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
+        <Flag code={ev.country} width={16} className="mt-[3px]" />
         <span className="min-w-0 flex-1">
-          <span className="text-[12px] leading-snug text-gray-900 dark:text-gray-100 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+          <span className="text-[14px] font-medium leading-snug text-[var(--tv3-text)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
             {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}{ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />} {ev.event}
           </span>
           {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
         </span>
         {reminded && <span className="mt-px shrink-0 text-amber-500"><span className="scale-[0.62] inline-block origin-center">{EC_ICONS.bellOn}</span></span>}
-        <span className="pt-[3px]"><ImpactDots level={ev.impact} size={5} /></span>
+        <span className="pt-[6px]" title={t(`ec.impact.${ev.impact}`)}><ImpactDot level={ev.impact} /></span>
       </div>
       {hasFigures && (
-        <div className="mt-1 grid grid-cols-3 gap-1 pl-[56px] text-[11px] tabular-nums">
-          <span className="min-w-0 truncate"><span className="block text-[9px] uppercase leading-tight tracking-wide text-gray-400">{t("ec.act")}</span><ActualValue ev={ev} locale={locale} /></span>
-          <span className="min-w-0 truncate"><span className="block text-[9px] uppercase leading-tight tracking-wide text-gray-400">{t("ec.fcst")}</span><span className="text-gray-700 dark:text-gray-300">{formatValue(ev.forecast, ev.unit, locale) || "—"}</span></span>
-          <span className="min-w-0 truncate"><span className="block text-[9px] uppercase leading-tight tracking-wide text-gray-400">{t("ec.prev")}</span><span className="text-gray-700 dark:text-gray-300">{formatValue(ev.previous, ev.unit, locale) || "—"}</span></span>
+        <div className="mt-1.5 flex gap-[18px] pl-[44px] text-[12px] tabular-nums text-[var(--tv3-muted)]">
+          <span className="min-w-0 truncate"><span className={lab}>{t("ec.act")}</span> <ActualValue ev={ev} locale={locale} /></span>
+          <span className="min-w-0 truncate"><span className={lab}>{t("ec.fcst")}</span> <b className="font-semibold text-[var(--tv3-text)]">{formatValue(ev.forecast, ev.unit, locale) || "—"}</b></span>
+          <span className="min-w-0 truncate"><span className={lab}>{t("ec.prev")}</span> <b className="font-semibold text-[var(--tv3-text)]">{formatValue(ev.previous, ev.unit, locale) || "—"}</b></span>
         </div>
       )}
     </button>
@@ -119,20 +120,20 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const change = ev.change ?? (ev.actual !== null && ev.previous !== null ? ev.actual - ev.previous : null);
-  const val = "text-gray-700 dark:text-gray-300";
+  const val = "text-[var(--tv3-text2)]";
   return (
     <button
       type="button"
       data-ev={ev.id}
       onClick={(e) => onOpen(ev, anchorOf(e.currentTarget))}
-      className={`grid w-full ${compact ? DAY_COLS : WIDE_COLS} items-center gap-x-2 border-b border-gray-100 px-3 py-1.5 text-left text-[12.5px] cursor-pointer hover:bg-gray-50 dark:border-[#242833] dark:hover:bg-[#222633] ${ev.category === "moex" ? "border-l-2 border-l-sky-500" : ev.category === "commodity" ? "border-l-2 border-l-lime-600" : ""} ${focus ? "bg-sky-50 dark:bg-sky-500/10" : ""} ${past ? "opacity-60 hover:opacity-100" : ""}`}
+      className={`grid w-full ${compact ? DAY_COLS : WIDE_COLS} items-center gap-x-2 border-b border-[var(--tv3-hair2)] px-3 py-1.5 text-left text-[12.5px] cursor-pointer hover:bg-[var(--tv3-fill3)] ${ev.category === "moex" ? "border-l-2 border-l-sky-500" : ev.category === "commodity" ? "border-l-2 border-l-lime-600" : ""} ${focus ? "bg-sky-50 dark:bg-sky-500/10" : ""} ${past ? "opacity-60 hover:opacity-100" : ""}`}
     >
-      <span className="tabular-nums text-gray-500 dark:text-gray-400">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
+      <span className="tabular-nums text-[var(--tv3-muted)]">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
       <span className="flex items-center gap-1.5">
         <Flag code={ev.country} width={20} />
-        <span className="text-[11px] text-gray-500">{ev.country || "—"}</span>
+        <span className="text-[11px] text-[var(--tv3-muted)]">{ev.country || "—"}</span>
       </span>
-      <span className="min-w-0 text-gray-900 dark:text-gray-100">
+      <span className="min-w-0 text-[var(--tv3-text)]">
         <span className="flex min-w-0 items-center gap-1.5">
           {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}
           {ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />}
@@ -141,13 +142,13 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
         </span>
         {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
       </span>
-      {!compact && <span className="truncate text-[11px] text-gray-500 dark:text-gray-400">{t(`ec.cat.${ev.category}`)}</span>}
+      {!compact && <span className="truncate text-[11px] text-[var(--tv3-muted)]">{t(`ec.cat.${ev.category}`)}</span>}
       <span title={t(`ec.impact.${ev.impact}`)}><ImpactDots level={ev.impact} /></span>
       <span className="text-right tabular-nums"><ActualValue ev={ev} locale={locale} /></span>
       <span className={`text-right tabular-nums ${val}`}>{formatValue(ev.forecast, ev.unit, locale) || "—"}</span>
       <span className={`text-right tabular-nums ${val}`}>{formatValue(ev.previous, ev.unit, locale) || "—"}</span>
-      <span className={`text-right tabular-nums ${change === null ? "text-gray-400" : val}`}>{change === null ? "—" : formatChange(change, ev.unit, locale)}</span>
-      {!compact && <span className="text-center text-[11px] text-gray-500">{ev.unit || "—"}</span>}
+      <span className={`text-right tabular-nums ${change === null ? "text-[var(--tv3-muted)]" : val}`}>{change === null ? "—" : formatChange(change, ev.unit, locale)}</span>
+      {!compact && <span className="text-center text-[11px] text-[var(--tv3-muted)]">{ev.unit || "—"}</span>}
     </button>
   );
 });
@@ -242,7 +243,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
   const rangeTabs = (
-    <div className={`flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${wide ? "px-3 py-2" : ""}`} role="tablist" aria-label={t("ec.range")}>
+    <div className={`flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${wide ? "mx-3 my-2 w-fit rounded-[9px] bg-[var(--tv3-fill2)] p-0.5" : "rounded-[9px] bg-[var(--tv3-fill2)] p-0.5"}`} role="tablist" aria-label={t("ec.range")}>
       {TABS.map((tb) => {
         const on = prefs.preset === tb.id;
         return (
@@ -252,7 +253,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             role="tab"
             aria-selected={on}
             onClick={() => update((p) => ({ ...p, preset: tb.id }))}
-            className={`h-7 shrink-0 rounded-md px-2 text-[12px] cursor-pointer transition ${on ? "bg-green-600/12 font-semibold text-green-700 dark:text-green-400" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+            className={`h-6 shrink-0 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${wide ? "" : "flex-1"} ${on ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
           >
             {t(tb.key)}
           </button>
@@ -264,7 +265,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
         aria-label={t("ec.tab.custom")}
         aria-selected={prefs.preset === "custom"}
         onClick={(e) => setRangeAnchor(anchorOf(e.currentTarget))}
-        className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] cursor-pointer transition ${prefs.preset === "custom" ? "bg-green-600/12 font-semibold text-green-700 dark:text-green-400" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+        className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${prefs.preset === "custom" ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
       >
         {EC_ICONS.calendarRange}
         {prefs.preset === "custom" && <span className="tabular-nums">{rf.from.slice(5)}{rf.to !== rf.from ? `…${rf.to.slice(5)}` : ""}</span>}
@@ -278,7 +279,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       return (
         <div className="space-y-2 p-3" aria-busy="true">
           {Array.from({ length: wide ? 10 : 7 }, (_, i) => (
-            <div key={i} className="h-9 animate-pulse rounded bg-gray-100 dark:bg-[#262a36]" style={{ opacity: 1 - i * 0.08 }} />
+            <div key={i} className="h-9 animate-pulse rounded-xl bg-[var(--tv3-fill)]" style={{ opacity: 1 - i * 0.08 }} />
           ))}
         </div>
       );
@@ -287,9 +288,9 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       const msg = t(errKey);
       return (
         <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-          <div className="text-sm font-medium text-gray-800 dark:text-gray-100">{t(data.reason === "range-unsupported" ? "ec.err.rangeTitle" : "ec.err.title")}</div>
-          <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{msg === errKey ? t("ec.err.upstream-error") : msg}</p>
-          <button type="button" onClick={data.refresh} className="mt-1 h-8 rounded-md border border-gray-200 px-3 text-xs cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]">
+          <div className="text-sm font-medium text-[var(--tv3-text)]">{t(data.reason === "range-unsupported" ? "ec.err.rangeTitle" : "ec.err.title")}</div>
+          <p className="text-xs leading-relaxed text-[var(--tv3-muted)]">{msg === errKey ? t("ec.err.upstream-error") : msg}</p>
+          <button type="button" onClick={data.refresh} className="mt-1 h-8 rounded-[10px] bg-[var(--tv3-fill)] px-3 text-xs font-semibold cursor-pointer hover:bg-[var(--tv3-fill2)]">
             {t("ec.retry")}
           </button>
         </div>
@@ -298,9 +299,9 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     if (list.length === 0) {
       return (
         <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-          <div className="text-sm text-gray-600 dark:text-gray-300">{t(filtersActive ? "ec.emptyFiltered" : "ec.empty")}</div>
+          <div className="text-sm text-[var(--tv3-text2)]">{t(filtersActive ? "ec.emptyFiltered" : "ec.empty")}</div>
           {filtersActive && (
-            <button type="button" onClick={resetFilters} className="h-8 rounded-md border border-gray-200 px-3 text-xs cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]">
+            <button type="button" onClick={resetFilters} className="h-8 rounded-[10px] bg-[var(--tv3-fill)] px-3 text-xs font-semibold cursor-pointer hover:bg-[var(--tv3-fill2)]">
               {t("ec.resetFilters")}
             </button>
           )}
@@ -308,16 +309,16 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       );
     }
     return (
-      <div>
+      <div className={wide ? "" : "px-2.5 pb-2.5"}>
         {groups.map(([day, evs]) => {
           const isToday = day === today;
           const firstFuture = isToday ? evs.findIndex((e) => !isPast(e, now, zone)) : -1;
           return (
             <section key={day}>
-              <h3 className={`sticky z-[5] flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-[#2a2e39] dark:bg-[#1b1f2a] dark:text-gray-400 ${wide ? "top-8" : "top-0"}`}>
-                <span className={isToday ? "text-green-700 dark:text-green-400" : ""}>{formatDayHeading(day, loc)}</span>
-                {isToday && <span className="rounded bg-green-600/15 px-1 text-[10px] normal-case text-green-700 dark:text-green-400">{t("ec.tab.today")}</span>}
-                <span className="ml-auto font-normal normal-case text-gray-400">{evs.length}</span>
+              <h3 className={`sticky z-[5] flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)] ${wide ? "top-8 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill3)] px-3 py-1" : "top-0 bg-[var(--tv3-card)] px-1 pb-1.5 pt-2 text-[12px] tracking-[.3px]"}`}>
+                <span className={isToday ? "text-[var(--tv3-accent)]" : ""}>{formatDayHeading(day, loc)}</span>
+                {isToday && <span className="rounded bg-[var(--tv3-accent-soft)] px-1 text-[10px] normal-case text-[var(--tv3-accent)]">{t("ec.tab.today")}</span>}
+                <span className="ml-auto font-normal normal-case text-[var(--tv3-muted)]">{evs.length}</span>
               </h3>
               {evs.map((e, i) => (
                 <div key={e.id}>
@@ -335,9 +336,9 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
 
   const notices = (
     <>
-      {data.stale && <div className="border-b border-amber-300/40 bg-amber-50 px-3 py-1 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">{t("ec.stale")}</div>}
-      {data.reason === "partial" && <div className="border-b border-amber-300/40 bg-amber-50 px-3 py-1 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">{t("ec.partial")}</div>}
-      {data.reason === "mock" && <div className="border-b border-sky-300/40 bg-sky-50 px-3 py-1 text-[11px] text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">{t("ec.mock")}</div>}
+      {data.stale && <div className="mx-2.5 mb-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-300">{t("ec.stale")}</div>}
+      {data.reason === "partial" && <div className="mx-2.5 mb-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-300">{t("ec.partial")}</div>}
+      {data.reason === "mock" && <div className="mx-2.5 mb-1.5 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-700 dark:text-sky-300">{t("ec.mock")}</div>}
     </>
   );
 
@@ -346,7 +347,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       <div className="space-y-2 p-3 text-[13px]">
         {(["from", "to"] as const).map((k) => (
           <label key={k} className="flex items-center justify-between gap-3">
-            <span className="text-gray-500 dark:text-gray-400">{t(k === "from" ? "ec.from" : "ec.to")}</span>
+            <span className="text-[var(--tv3-muted)]">{t(k === "from" ? "ec.from" : "ec.to")}</span>
             <input
               type="date"
               value={rf[k]}
@@ -359,11 +360,11 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
                 if (to > addDays(from, 30)) to = addDays(from, 30);
                 update((p) => ({ ...p, preset: "custom", custom: { from, to } }));
               }}
-              className="h-8 rounded-md border border-gray-200 bg-transparent px-2 text-[13px] outline-none focus:border-green-600 dark:border-[#363a45] dark:[color-scheme:dark]"
+              className="h-8 rounded-[9px] bg-[var(--tv3-fill)] px-2 text-[13px] text-[var(--tv3-text)] outline-none dark:[color-scheme:dark]"
             />
           </label>
         ))}
-        <p className="text-[11px] text-gray-400">{t("ec.maxRange")}</p>
+        <p className="text-[11px] text-[var(--tv3-muted)]">{t("ec.maxRange")}</p>
       </div>
     </FloatingPanel>
   );
@@ -371,21 +372,21 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   /* the side panel */
   if (!wide) {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-white dark:bg-[#1e222d] dark:md:bg-transparent">
-        <div className="shrink-0 space-y-1.5 border-b border-gray-100 px-2 py-2 dark:border-[#2a2e39]">
-          <div className="flex items-center gap-1">
+      <div className="flex h-full min-h-0 flex-col bg-[var(--tv3-card)] md:bg-transparent">
+        <div className="shrink-0 space-y-2.5 px-2.5 pb-2.5">
+          <div className="flex items-center gap-1.5">
             <NextChip zone={zone} enabled={visible} onPick={openDetails} />
             <button type="button" onClick={data.refresh} title={t("ec.refresh")} aria-label={t("ec.refresh")} className={iconBtn}>
               <span className={`inline-flex scale-[0.8] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
             </button>
-            <ChartEventsButton className={iconBtn} onClassName="bg-green-600/12! text-green-700! dark:text-green-400!" />
+            <ChartEventsButton className={iconBtn} onClassName="bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" />
             <button
               type="button"
               onClick={() => update((p) => ({ ...p, panelGrid: !p.panelGrid }))}
               title={t(prefs.panelGrid ? "ec.view.list" : "ec.view.grid")}
               aria-label={t(prefs.panelGrid ? "ec.view.list" : "ec.view.grid")}
               aria-pressed={prefs.panelGrid}
-              className={`${iconBtn} ${prefs.panelGrid ? "bg-green-600/12! text-green-700! dark:text-green-400!" : ""}`}
+              className={`${iconBtn} ${prefs.panelGrid ? "bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" : ""}`}
             >
               <span className="scale-[0.8]">{EC_ICONS.grid}</span>
             </button>
@@ -396,12 +397,12 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             )}
           </div>
           {!prefs.panelGrid && rangeTabs}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <ImpactToggles />
             <CountryFilter seen={seen} />
           </div>
-          <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1"><QuickChips /></div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <QuickChips wrap />
             <EnergyChip />
             <MoexChip />
             <CommodityChip />
@@ -418,7 +419,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">{body}</div>
           </>
         )}
-        <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-gray-100 dark:border-[#2a2e39]" />
+        <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} disclaimer className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5! pb-2.5! pt-2! text-[11px]!" />
         {rangePopover}
         {details && <EventDetails ev={details.ev} anchor={details.anchor} zone={zone} onClose={() => setDetails(null)} />}
       </div>
@@ -428,11 +429,11 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   /* the list of the full page */
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-gray-200 dark:border-[#2a2e39]">{rangeTabs}</div>
+      <div className="shrink-0 border-b border-[var(--tv3-hair)]">{rangeTabs}</div>
       {notices}
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
         <div className="min-w-[960px]">
-          <div className={`sticky top-0 z-[6] grid h-8 items-center ${WIDE_COLS} gap-x-2 border-b border-gray-200 bg-white px-3 text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 dark:border-[#2a2e39] dark:bg-[#1e222d]`}>
+          <div className={`sticky top-0 z-[6] grid h-8 items-center ${WIDE_COLS} gap-x-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-3 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]`}>
             <span>{t("ec.col.time")}</span>
             <span>{t("ec.col.country")}</span>
             <span>{t("ec.col.event")}</span>
@@ -447,7 +448,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
           {body}
         </div>
       </div>
-      <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-gray-100 dark:border-[#2a2e39]" />
+      <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-[var(--tv3-hair2)]" />
       {rangePopover}
       {details && <EventDetails ev={details.ev} anchor={details.anchor} zone={zone} onClose={() => setDetails(null)} />}
     </div>

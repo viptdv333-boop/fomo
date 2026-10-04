@@ -122,9 +122,9 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
     };
   }, [visible, isMoex, ticker]);
 
-  if (!isMoex) return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-gray-500">{t("ap.panel.moexOnly")}</div>;
-  if (alertsSt === "denied" || hi2St === "denied") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-gray-500" data-testid="algo-note">{t("ap.panel.denied")}</div>;
-  if (alertsSt === "unsupported" && hi2St === "unsupported") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-gray-500">{t("ap.panel.unsupported")}</div>;
+  if (!isMoex) return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.moexOnly")}</div>;
+  if (alertsSt === "denied" || hi2St === "denied") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="algo-note">{t("ap.panel.denied")}</div>;
+  if (alertsSt === "unsupported" && hi2St === "unsupported") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.unsupported")}</div>;
 
   // HI2: the latest trading day, one row per metric
   let hiDay = "";
@@ -134,35 +134,35 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
     hiDay = isoDay(lastW);
     for (const [w, mi, v] of hi2.rows) if (w === lastW) hiRows.push({ metric: hi2.metrics[mi], value: v });
   }
-  const bandCls = { low: "bg-green-500/15 text-green-600", moderate: "bg-amber-500/15 text-amber-500", high: "bg-red-500/15 text-red-500" } as const;
+  const bandCls = { low: "bg-green-500/15 text-[var(--tv3-up)]", moderate: "bg-amber-500/15 text-amber-500", high: "bg-red-500/15 text-[var(--tv3-down)]" } as const;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" data-testid="algo-panel">
       {/* Mega Alerts */}
-      <h3 className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{t("ap.panel.alerts")}</h3>
-      {alertsSt === "loading" && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.loading")}</p>}
-      {alertsSt === "error" && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.error")}</p>}
-      {alertsSt === "unsupported" && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.unsupported")}</p>}
-      {alertsSt === "ok" && alerts && alerts.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.alertsEmpty")}</p>}
+      <h3 className="px-3 pt-3 pb-1 text-[12px] font-semibold uppercase text-[var(--tv3-muted)]">{t("ap.panel.alerts")}</h3>
+      {alertsSt === "loading" && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.loading")}</p>}
+      {alertsSt === "error" && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.error")}</p>}
+      {alertsSt === "unsupported" && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.unsupported")}</p>}
+      {alertsSt === "ok" && alerts && alerts.length === 0 && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.alertsEmpty")}</p>}
       {alertsSt === "ok" && alerts && alerts.length > 0 && (
         <ul className="px-1" data-testid="algo-alerts">
           {alerts.slice(0, 60).map((a, i) => {
-            const c = a.dir > 0 ? "text-green-600" : a.dir < 0 ? "text-red-500" : "text-amber-500";
+            const c = a.dir > 0 ? "text-[var(--tv3-up)]" : a.dir < 0 ? "text-[var(--tv3-down)]" : "text-amber-500";
             const r = a.ref;
             const tip = r?.m5 || r?.h1 ? t("ap.panel.ref", { m5: pct(r?.m5?.[4] ?? null), m15: pct(r?.m15?.[4] ?? null), h1: pct(r?.h1?.[4] ?? null) }) : undefined;
             const label = t(`ap.al.${a.type}`);
             return (
-              <li key={`${a.w}${a.type}${i}`} title={tip} className="flex items-start gap-2 rounded px-2 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800">
+              <li key={`${a.w}${a.type}${i}`} title={tip} className="flex items-start gap-2 rounded-[10px] px-2 py-1.5 text-xs hover:bg-[var(--tv3-fill3)]">
                 <span className={`mt-px w-3 shrink-0 text-center ${c}`}>{a.dir > 0 ? "▲" : a.dir < 0 ? "▼" : "◆"}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block leading-snug text-gray-800 dark:text-gray-200">{label === `ap.al.${a.type}` ? a.type : label}</span>
-                  <span className="block text-[10px] text-gray-400">
+                  <span className="block leading-snug text-[var(--tv3-text)]">{label === `ap.al.${a.type}` ? a.type : label}</span>
+                  <span className="block text-[10px] text-[var(--tv3-muted)]">
                     {ddmm(a.w)} {hhmm(a.w)}
                     {a.val !== null && ` · ${t("ap.panel.value")} ${fmtN(a.val)}`}
                     {a.thr !== null && ` · ${t("ap.panel.threshold")} ${fmtN(a.thr)}`}
                   </span>
                 </span>
-                <span className="shrink-0 tabular-nums text-gray-700 dark:text-gray-300">{a.price != null ? fmtN(a.price) : ""}</span>
+                <span className="shrink-0 tabular-nums text-[var(--tv3-text2)]">{a.price != null ? fmtN(a.price) : ""}</span>
               </li>
             );
           })}
@@ -170,22 +170,22 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
       )}
 
       {/* HI2 */}
-      <h3 className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+      <h3 className="px-3 pt-4 pb-1 text-[12px] font-semibold uppercase text-[var(--tv3-muted)]">
         {t("ap.panel.hi2")}
-        {hiDay && <span className="ml-2 font-normal normal-case text-gray-400">{t("ap.hi2.date", { date: hiDay })}</span>}
+        {hiDay && <span className="ml-2 font-normal normal-case text-[var(--tv3-muted)]">{t("ap.hi2.date", { date: hiDay })}</span>}
       </h3>
-      {hi2St === "loading" && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.loading")}</p>}
-      {hi2St === "error" && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.error")}</p>}
-      {hi2St === "ok" && hiRows.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">{t("ap.panel.hi2Empty")}</p>}
+      {hi2St === "loading" && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.loading")}</p>}
+      {hi2St === "error" && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.error")}</p>}
+      {hi2St === "ok" && hiRows.length === 0 && <p className="px-3 py-2 text-xs text-[var(--tv3-muted)]">{t("ap.panel.hi2Empty")}</p>}
       {hiRows.length > 0 && (
         <table className="mb-3 w-full text-xs" data-testid="algo-hi2">
           <tbody>
             {hiRows.map((r) => {
               const band = hi2Band(r.value);
               return (
-                <tr key={r.metric} className="border-t border-gray-100 dark:border-gray-800">
-                  <td className="px-3 py-1.5 text-gray-600 dark:text-gray-300">{r.metric}</td>
-                  <td className="px-1 py-1.5 text-right tabular-nums text-gray-800 dark:text-gray-100">{Math.round(r.value)}</td>
+                <tr key={r.metric} className="border-t border-[var(--tv3-hair2)]">
+                  <td className="px-3 py-1.5 text-[var(--tv3-text2)]">{r.metric}</td>
+                  <td className="px-1 py-1.5 text-right tabular-nums text-[var(--tv3-text)]">{Math.round(r.value)}</td>
                   <td className="px-3 py-1.5 text-right">
                     <span className={`rounded px-1.5 py-0.5 text-[10px] ${bandCls[band]}`}>{t(`ap.hi2.${band}`)}</span>
                   </td>

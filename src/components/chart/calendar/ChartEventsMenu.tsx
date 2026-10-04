@@ -43,17 +43,17 @@ export default function ChartEventsButton({ className, onClassName = "", label =
               <input type="checkbox" className="accent-green-600" checked={on} onChange={(e) => update((p) => ({ ...p, chart: { ...p.chart, on: e.target.checked } }))} />
               <span className="font-medium">{t("ec.chart.show")}</span>
             </label>
-            <div className="mt-3 text-[11px] uppercase tracking-wide text-gray-400">{t("ec.chart.impact")}</div>
+            <div className="mt-3 text-[11px] uppercase tracking-wide text-[var(--tv3-muted)]">{t("ec.chart.impact")}</div>
             <div className="mt-1 flex flex-col">
               {[3, 2, 1].map((lv) => (
-                <label key={lv} className="flex h-8 cursor-pointer items-center gap-2.5 rounded px-1 hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
+                <label key={lv} className="flex h-8 cursor-pointer items-center gap-2.5 rounded px-1 hover:bg-[var(--tv3-fill)]">
                   <input type="checkbox" className="accent-green-600" checked={prefs.chart.impacts.includes(lv)} onChange={() => toggleImpact(lv)} />
                   <ImpactDots level={lv} />
                   <span>{t(`ec.impact.${lv}`)}</span>
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-gray-400">
+            <p className="mt-2 text-[11px] leading-snug text-[var(--tv3-muted)]">
               {prefs.countries.length === 0 ? t("ec.chart.countriesAll") : t("ec.chart.countriesN", { n: prefs.countries.length })}
             </p>
           </div>

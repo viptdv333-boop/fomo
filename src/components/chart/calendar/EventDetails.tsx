@@ -79,9 +79,9 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
   };
 
   const cell = (label: string, value: string, cls = "") => (
-    <div className="rounded-md bg-gray-50 px-2 py-1.5 dark:bg-[#262a36]">
-      <div className="text-[10px] uppercase tracking-wide text-gray-400">{label}</div>
-      <div className={`mt-0.5 text-sm font-medium ${cls || "text-gray-900 dark:text-gray-100"}`}>{value || "—"}</div>
+    <div className="rounded-[10px] bg-[var(--tv3-fill3)] px-2.5 py-1.5">
+      <div className="text-[10px] uppercase tracking-wide text-[var(--tv3-muted)]">{label}</div>
+      <div className={`mt-0.5 text-sm font-medium ${cls || "text-[var(--tv3-text)]"}`}>{value || "—"}</div>
     </div>
   );
 
@@ -91,27 +91,27 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
         <div className="flex items-start gap-2">
           <Flag code={ev.country} width={24} className="mt-0.5" />
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-gray-500 dark:text-gray-400">
+            <div className="text-[11px] text-[var(--tv3-muted)]">
               {countryName(ev.country, locale, t)}
               {ev.currency ? ` · ${ev.currency}` : ""}
             </div>
             <div className="text-[15px] font-semibold leading-snug">{ev.event}</div>
           </div>
-          <button type="button" onClick={onClose} aria-label={t("shell.close")} className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t("shell.close")} className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
             <span className="scale-75">{EC_ICONS.close}</span>
           </button>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--tv3-text2)]">
           <span className="inline-flex items-center gap-1.5">
             <ImpactDots level={ev.impact} />
             {t(`ec.impact.${ev.impact}`)}
           </span>
-          {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : ev.category === "commodity" ? <CommodityMark title={t("ec.commodity")} /> : <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] dark:bg-[#2a2e39]">{t(`ec.cat.${ev.category}`)}</span>}
-          {ev.period && <span className="text-[11px] text-gray-400">{ev.period}</span>}
+          {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : ev.category === "commodity" ? <CommodityMark title={t("ec.commodity")} /> : <span className="rounded-full bg-[var(--tv3-fill)] px-2 py-0.5 text-[11px]">{t(`ec.cat.${ev.category}`)}</span>}
+          {ev.period && <span className="text-[11px] text-[var(--tv3-muted)]">{ev.period}</span>}
         </div>
         {ev.eventEn && ev.eventEn !== ev.event && (
-          <div className="mt-1 text-[11px] leading-snug text-gray-400" title={t("ec.originalName")}>
+          <div className="mt-1 text-[11px] leading-snug text-[var(--tv3-muted)]" title={t("ec.originalName")}>
             {ev.eventEn}
           </div>
         )}
@@ -120,7 +120,7 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
             {ev.tags.map((tag) => (
               <span
                 key={tag}
-                className={`rounded-full px-1.5 py-0.5 text-[10.5px] ${tag === "oil" || tag === "gas" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-gray-100 text-gray-600 dark:bg-[#2a2e39] dark:text-gray-300"}`}
+                className={`rounded-full px-1.5 py-0.5 text-[10.5px] ${tag === "oil" || tag === "gas" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)]"}`}
               >
                 {gl.tagLabel(tag, locale)}
               </span>
@@ -128,10 +128,10 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
           </div>
         )}
 
-        <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+        <div className="mt-2 text-xs text-[var(--tv3-text2)]">
           <div>{when}{ev.allDay ? ` · ${t("ec.allDay")}` : ""}</div>
           {!ev.allDay && (
-            <div className="mt-0.5 tabular-nums text-gray-400">
+            <div className="mt-0.5 tabular-nums text-[var(--tv3-muted)]">
               {future ? t("ec.rem.in", { time: formatCountdown(ev.ts - now) }) : t("ec.ago", { time: formatAgo(now - ev.ts) })}
             </div>
           )}
@@ -147,38 +147,38 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
         {explain && (
           <div className="mt-3 space-y-2 text-xs leading-relaxed">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("ec.about")}</div>
-              <p className="mt-0.5 text-gray-700 dark:text-gray-200">{explain.about}</p>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ec.about")}</div>
+              <p className="mt-0.5 text-[var(--tv3-text2)]">{explain.about}</p>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t("ec.affects")}</div>
-              <p className="mt-0.5 text-gray-700 dark:text-gray-200">{explain.affects}</p>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ec.affects")}</div>
+              <p className="mt-0.5 text-[var(--tv3-text2)]">{explain.affects}</p>
             </div>
           </div>
         )}
         {ev.hasDesc &&
           (explain ? (
             // the English text of the source stays available, but folded away: the Russian explanation above is the main one
-            <details className="mt-2 rounded-md bg-gray-50 p-2 text-xs text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
-              <summary className="cursor-pointer select-none text-[11px] text-gray-400">{t("ec.original")}</summary>
+            <details className="mt-2 rounded-[10px] bg-[var(--tv3-fill3)] p-2.5 text-xs text-[var(--tv3-text2)]">
+              <summary className="cursor-pointer select-none text-[11px] text-[var(--tv3-muted)]">{t("ec.original")}</summary>
               <div className="mt-1.5 max-h-40 overflow-y-auto leading-relaxed">
-                {desc || <span className="text-gray-400">…</span>}
-                {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+                {desc || <span className="text-[var(--tv3-muted)]">…</span>}
+                {ev.origin && desc && <div className="mt-1.5 text-[11px] text-[var(--tv3-muted)]">{t("ec.origin")}: {ev.origin}</div>}
               </div>
             </details>
           ) : (
-            <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
-              {desc || <span className="text-gray-400">…</span>}
-              {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+            <div className="mt-3 max-h-40 overflow-y-auto rounded-[10px] bg-[var(--tv3-fill3)] p-2.5 text-xs leading-relaxed text-[var(--tv3-text2)]">
+              {desc || <span className="text-[var(--tv3-muted)]">…</span>}
+              {ev.origin && desc && <div className="mt-1.5 text-[11px] text-[var(--tv3-muted)]">{t("ec.origin")}: {ev.origin}</div>}
             </div>
           ))}
 
         {future && (
-          <div className="mt-3 border-t border-gray-100 pt-3 dark:border-[#2a2e39]">
+          <div className="mt-3 border-t border-[var(--tv3-hair2)] pt-3">
             {existing ? (
               <div className="flex items-center gap-2">
-                <span className="flex-1 text-xs text-gray-600 dark:text-gray-300">{t("ec.rem.set", { min: existing.minutes })}</span>
-                <button type="button" onClick={() => removeReminder(ev.id)} className="h-8 rounded-md border border-gray-200 px-2.5 text-xs cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]">
+                <span className="flex-1 text-xs text-[var(--tv3-text2)]">{t("ec.rem.set", { min: existing.minutes })}</span>
+                <button type="button" onClick={() => removeReminder(ev.id)} className="h-8 rounded-[10px] bg-[var(--tv3-fill)] px-2.5 text-xs font-semibold cursor-pointer hover:bg-[var(--tv3-fill2)]">
                   {t("ec.rem.remove")}
                 </button>
               </div>
@@ -188,7 +188,7 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
                   value={minutes}
                   onChange={(e) => setMinutes(+e.target.value)}
                   aria-label={t("ec.rem.before")}
-                  className="h-8 rounded-md border border-gray-200 bg-transparent px-1.5 text-xs outline-none dark:border-[#363a45] dark:bg-[#1e222d]"
+                  className="h-8 rounded-[10px] bg-[var(--tv3-fill)] px-1.5 text-xs text-[var(--tv3-text)] outline-none"
                 >
                   {MINUTES.map((m) => (
                     <option key={m} value={m}>
@@ -196,13 +196,13 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
                     </option>
                   ))}
                 </select>
-                <button type="button" onClick={remind} className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-green-600 px-3 text-xs font-semibold text-white cursor-pointer hover:bg-green-700">
+                <button type="button" onClick={remind} className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[var(--tv3-accent)] px-3 text-xs font-semibold text-white cursor-pointer hover:bg-[var(--tv3-accent-hover)]">
                   <span className="scale-[0.72]">{EC_ICONS.bell}</span>
                   {t("ec.rem.add")}
                 </button>
               </div>
             )}
-            <p className="mt-1.5 text-[11px] leading-snug text-gray-400">{t("ec.rem.note")}</p>
+            <p className="mt-1.5 text-[11px] leading-snug text-[var(--tv3-muted)]">{t("ec.rem.note")}</p>
           </div>
         )}
       </div>

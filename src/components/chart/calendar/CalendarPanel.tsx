@@ -32,7 +32,7 @@ export function CalendarLayer({ zone, onClose }: { zone: string; onClose: () => 
   }, []);
   return (
     <ModalPortal>
-      <div role="dialog" aria-label={t("ec.title")} className="fixed inset-x-0 bottom-0 z-[70] bg-white dark:bg-[#1e222d]" style={{ top }}>
+      <div role="dialog" aria-label={t("ec.title")} className="fixed inset-x-0 bottom-0 z-[70] bg-[var(--tv3-card)]" style={{ top }}>
         <WorldCalendar zone={zone} mode="layer" onClose={onClose} />
       </div>
     </ModalPortal>

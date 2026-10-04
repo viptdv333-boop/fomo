@@ -29,7 +29,7 @@ export default function MiniMonth({ zone, visible, q }: { zone: string; visible:
 
   return (
     <div className="p-2">
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-gray-400">
+      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-[var(--tv3-muted)]">
         {heads.map((h, i) => (
           <span key={i} className={i >= 5 ? "opacity-60" : ""}>{h}</span>
         ))}
@@ -47,8 +47,8 @@ export default function MiniMonth({ zone, visible, q }: { zone: string; visible:
               onClick={() => update((p) => ({ ...p, preset: "custom", custom: { from: c.date, to: c.date }, panelGrid: false }))}
               title={`${formatDayHeading(c.date, loc)}${none ? ` — ${t("ec.nodata")}` : b ? ` — ${b.total}` : ""}`}
               className={`flex aspect-square min-w-0 flex-col items-center justify-between rounded-md border p-1 text-[11px] cursor-pointer transition disabled:cursor-default ${
-                c.today ? "border-green-600 bg-green-600/10 font-bold text-green-700 dark:text-green-400" : "border-gray-200 hover:bg-gray-100 dark:border-[#2d3140] dark:hover:bg-[#262a36]"
-              } ${c.weekend && !c.today ? "bg-gray-50 text-gray-400 dark:bg-white/[.03]" : ""} ${none ? "opacity-35" : c.past && !c.today ? "opacity-70" : ""}`}
+                c.today ? "border-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)] font-bold text-[var(--tv3-accent)]" : "border-[var(--tv3-hair)] hover:bg-[var(--tv3-fill)]"
+              } ${c.weekend && !c.today ? "bg-[var(--tv3-fill3)] text-[var(--tv3-muted)]" : ""} ${none ? "opacity-35" : c.past && !c.today ? "opacity-70" : ""}`}
             >
               <span className="leading-none">{Number(c.date.slice(8))}</span>
               <span className="flex h-2 items-center gap-[2px]">
@@ -60,7 +60,7 @@ export default function MiniMonth({ zone, visible, q }: { zone: string; visible:
           );
         })}
       </div>
-      {data.status === "error" && <p className="mt-2 text-center text-[11px] text-gray-400">{t("ec.err.title")}</p>}
+      {data.status === "error" && <p className="mt-2 text-center text-[11px] text-[var(--tv3-muted)]">{t("ec.err.title")}</p>}
     </div>
   );
 }
