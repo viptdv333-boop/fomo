@@ -1405,7 +1405,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {!embedded && <CalendarRemindersHost />}
-      <SymbolSearch open={comparePick} onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
+      <SymbolSearch open={comparePick} variant="compare" onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <SymbolSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} />

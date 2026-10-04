@@ -230,7 +230,7 @@ export default function TopToolbar(p: Props) {
           {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
         </button>
       )}
-      <button onClick={p.onOpenIndicators} title={t("shell.indicators")} className={btn}>
+      <button onClick={p.onOpenIndicators} title={t("shell.indicators")} data-tv3-anchor="indicators" className={btn}>
         {I.indicators}
         <span className={lbl}>{t("shell.indicators")}</span>
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
