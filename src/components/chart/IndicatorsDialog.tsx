@@ -397,8 +397,13 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                           <button
                             type="button"
                             data-nav
-                            onClick={() => addIndicator(def.id)}
-                            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-[var(--tv3-fill3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)]"
+                            onClick={() => {
+                              // one instance of an indicator: already on the chart -> nothing to add
+                              if (n === 0) addIndicator(def.id);
+                            }}
+                            aria-disabled={n > 0}
+                            title={n > 0 ? t("ind.added") : undefined}
+                            className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-[var(--tv3-fill3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)] ${n > 0 ? "cursor-default" : ""}`}
                           >
                             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatch && swatch.type === "color" ? swatch.default : "#9ca3af" }} />
                             <span className="min-w-0 flex-1">
@@ -415,11 +420,11 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                             )}
                             <span
                               className={`flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[11px] font-medium ${
-                                just ? "text-[#26a69a]" : "text-[var(--tv3-muted)] group-hover:text-[var(--tv3-accent)]"
+                                just || n > 0 ? "text-[#26a69a]" : "text-[var(--tv3-muted)] group-hover:text-[var(--tv3-accent)]"
                               }`}
                             >
-                              {just ? IND_ICONS.check(14) : IND_ICONS.plus(14)}
-                              <span className="hidden sm:inline">{just ? t("ind.added") : t("ind.add")}</span>
+                              {just || n > 0 ? IND_ICONS.check(14) : IND_ICONS.plus(14)}
+                              <span className="hidden sm:inline">{just || n > 0 ? t("ind.added") : t("ind.add")}</span>
                             </span>
                           </button>
                           <button

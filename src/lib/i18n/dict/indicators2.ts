@@ -13,7 +13,7 @@ const rows: [string, string, string, string][] = [
   ["ind2.fav.remove", "Убрать из избранного", "Remove from favorites", "取消收藏"],
   ["ind2.fav.empty", "В избранном пусто. Нажмите звёздочку у индикатора, чтобы добавить его сюда.", "No favorites yet. Click the star next to an indicator to add it here.", "暂无收藏。点击指标旁的星标即可添加。"],
   ["ind2.recent.empty", "Здесь появятся индикаторы, которые вы добавляли", "Indicators you add will show up here", "您添加过的指标会显示在这里"],
-  ["ind2.multi", "Окно остаётся открытым: добавляйте сколько нужно", "The window stays open: add as many as you need", "窗口保持打开，可连续添加多个指标"],
+  ["ind2.multi", "Окно остаётся открытым: добавляйте индикаторы один за другим. Добавленный отмечен галочкой", "The window stays open: add indicators one after another. Added ones are checked", "窗口保持打开，可连续添加指标，已添加的会显示对勾"],
   ["ind2.onChart", "На графике: {n}", "On chart: {n}", "已在图表上: {n}"],
 
   /* level / fill names */
