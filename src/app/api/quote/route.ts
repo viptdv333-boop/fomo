@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { frontSecid } from "@/lib/moex-contracts";
 import { issQuote, resolveMoex } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
+import { getViewer } from "@/lib/algopack-access";
 
 /**
- * Real-time quote proxy for MOEX instruments via Tinkoff Invest API.
+ * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
  * Usage: /api/quote?source=moex&ticker=SBER
  */
 
@@ -269,7 +270,9 @@ export async function GET(request: NextRequest) {
   let quote: Quote | null = null;
 
   if (source === "moex") {
-    quote = (await fetchTinkoffQuote(ticker)) ?? (await fetchIssFallback(ticker));
+    // real-time T-Invest quote for a signed-in session (or GUEST_REALTIME=1); a guest gets the ISS marketdata (15 min delayed)
+    const { realtime } = await getViewer();
+    quote = (realtime ? await fetchTinkoffQuote(ticker) : null) ?? (await fetchIssFallback(ticker));
   } else if (source === "bybit") {
     quote = await fetchBybitQuote(ticker);
   } else if (source === "fmp") {
@@ -281,6 +284,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(quote, {
-    headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+    headers: { "Cache-Control": "no-cache, no-store, must-revalidate", Vary: "Cookie" },
   });
 }

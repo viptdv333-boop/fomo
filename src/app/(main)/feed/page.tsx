@@ -7,6 +7,7 @@ import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
+import DemoGate from "@/components/shared/DemoGate";
 
 interface Instrument {
   id: string;
@@ -88,9 +89,12 @@ export default function FeedPageWrapper() {
           </Link>
         )}
       </div>
-      <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>
-        <FeedPage />
-      </Suspense>
+      {/* a guest browses the board freely for a limited daily demo time (shared with the terminal and the calendar), then sees it blurred under a sign-in card */}
+      <DemoGate kind="feed" path="/feed" layout="flow">
+        <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>
+          <FeedPage />
+        </Suspense>
+      </DemoGate>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { applyTinkoffTail, type TailResult } from "@/lib/tinkoff-candles";
 import { algopackEnabled } from "@/lib/algopack";
 import { getIssJson, labelTail, type Feed } from "@/lib/algopack-feed";
-import { getAlgopackAccess, PRIVATE_HEADERS } from "@/lib/algopack-access";
+import { getAlgopackAccess, getViewer, PRIVATE_HEADERS } from "@/lib/algopack-access";
+import { guestRealtimeFlag } from "@/lib/guest-delay";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -311,7 +312,7 @@ interface MoexResult {
   tail?: TailResult;
 }
 
-async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs: number | undefined, feed: Feed): Promise<MoexResult> {
+async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs: number | undefined, feed: Feed, realtime: boolean): Promise<MoexResult> {
   const synth = MOEX_SYNTHESIZE[interval];
   const fetchInterval = synth ? synth.native : interval;
   const moexInterval = MOEX_INTERVALS[fetchInterval] || 24;
@@ -347,7 +348,8 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
     let candles = filterAndDedupe(rawRows, toMs);
     // Real-time tail: ISS is ~15 minutes behind. Only for the live edge (not for a scroll-back page ending in the past).
     if (withTail && toMs === undefined && candles.length > 0) {
-      tail = labelTail(await applyTinkoffTail(withTail, moexInterval, candles), feed);
+      // a requester without a session (and no GUEST_REALTIME=1) gets the public delayed ISS rows only, no T-Invest tail
+      tail = realtime ? labelTail(await applyTinkoffTail(withTail, moexInterval, candles), feed) : { rows: candles, tail: "iss", reason: "guest-delayed" };
       candles = tail.rows;
     }
     if (synth) candles = aggregateCandles(candles, synth.bucketMs);
@@ -516,10 +518,12 @@ export async function GET(request: NextRequest) {
   // the server. Without the key none of this runs (the session is not even read) and the route behaves exactly as before.
   const apActive = source === "moex" && algopackEnabled();
   const privileged = apActive && (await getAlgopackAccess()).allowed;
+  // real-time MOEX data (the T-Invest tail) is for a signed-in session; a guest gets the delayed ISS feed (GUEST_REALTIME=1: everybody)
+  const realtime = source === "moex" ? (await getViewer()).realtime : true;
   const feed: Feed = { ap: privileged, apHits: 0, apMiss: 0, apReason: "" };
 
   if (source === "moex") {
-    const result = await fetchMoexCandles(ticker, interval, limit, toMs, feed);
+    const result = await fetchMoexCandles(ticker, interval, limit, toMs, feed, realtime);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
     sec = result.sec;
@@ -541,11 +545,14 @@ export async function GET(request: NextRequest) {
     : limit <= 5
       ? { "Cache-Control": "no-cache, no-store, must-revalidate" }
       : tail?.tail === "tinkoff"
-        ? // a real-time tail must not be served from a shared cache for a minute
-          { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=3" }
+        ? // a real-time tail must not be served from a shared cache for a minute; and never to a guest (licensing): only with
+          // GUEST_REALTIME=1 (everybody is entitled, the old behaviour) may it sit in a shared cache for a moment
+          guestRealtimeFlag()
+          ? { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=3" }
+          : { "Cache-Control": "private, no-store" }
         : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" };
-  // the public answer differs from the privileged one: a shared cache must key it by the session cookie
-  if (apActive && !privileged) headers["Vary"] = "Cookie";
+  // the answer of a MOEX request differs by who asks (real-time tail / online gateway / delayed): a shared cache must key it by the session cookie
+  if (source === "moex") headers["Vary"] = "Cookie";
   // diagnostics: which feed provided the last minutes of a MOEX chart
   if (tail) {
     headers["X-Candle-Tail"] = tail.tail;

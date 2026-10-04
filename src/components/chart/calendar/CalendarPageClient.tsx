@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import DemoGate from "@/components/shared/DemoGate";
 import { TIME_ZONES, localZone } from "@/lib/chart/settings";
 import CalendarRemindersHost from "./CalendarRemindersHost";
 import WorldCalendar from "./WorldCalendar";
@@ -48,29 +49,32 @@ export default function CalendarPageClient() {
     <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-card)]" style={{ top }}>
       {/* reminders kept in this browser (guests) and the pop-up for server notifications fire here too */}
       <CalendarRemindersHost />
-      <WorldCalendar
-        zone={zone}
-        mode="page"
-        zoneSlot={
-          <select
-            value={zone}
-            aria-label={t("ec.tz")}
-            onChange={(e) => {
-              setZone(e.target.value);
-              try {
-                localStorage.setItem(TZ_LS, e.target.value);
-              } catch {}
-            }}
-            className="h-7 max-w-[170px] rounded-[9px] bg-[var(--tv3-fill2)] px-1.5 text-[12px] font-semibold text-[var(--tv3-text)] outline-none"
-          >
-            {zones.map((z) => (
-              <option key={z} value={z}>
-                {z === local ? `${z} (${t("ec.local")})` : z}
-              </option>
-            ))}
-          </select>
-        }
-      />
+      {/* a guest uses the calendar freely for a limited daily demo time, then sees it blurred under a sign-in card */}
+      <DemoGate kind="calendar" path="/calendar">
+        <WorldCalendar
+          zone={zone}
+          mode="page"
+          zoneSlot={
+            <select
+              value={zone}
+              aria-label={t("ec.tz")}
+              onChange={(e) => {
+                setZone(e.target.value);
+                try {
+                  localStorage.setItem(TZ_LS, e.target.value);
+                } catch {}
+              }}
+              className="h-7 max-w-[170px] rounded-[9px] bg-[var(--tv3-fill2)] px-1.5 text-[12px] font-semibold text-[var(--tv3-text)] outline-none"
+            >
+              {zones.map((z) => (
+                <option key={z} value={z}>
+                  {z === local ? `${z} (${t("ec.local")})` : z}
+                </option>
+              ))}
+            </select>
+          }
+        />
+      </DemoGate>
     </div>
   );
 }

@@ -3,13 +3,14 @@ import { aggregateBars } from "@/lib/orderflow/aggregate";
 import { prepareBybit, bybitSupported } from "@/lib/orderflow/bybit";
 import { prepareMoex } from "@/lib/orderflow/moex";
 import { algopackEnabled } from "@/lib/algopack";
-import { getAlgopackAccess } from "@/lib/algopack-access";
+import { getAlgopackAccess, getViewer } from "@/lib/algopack-access";
 
 /* Order flow (footprint) data: for a list of bars, the traded volume per price level split into bid (market sells) and
    ask (market buys). POST { source, ticker, starts: number[] (real UTC ms, ascending), end: number, tick?: number }.
    Answer: { supported, bars:[{ i, lv:[price,bid,ask,...], dh, dl }], tick, nativeTick, cov:[[from,to]], pending, live }.
-   Sources: Bybit spot (daily trade files + live WebSocket) and MOEX (ISS trades of the current session). Anything else is
-   not supported and the client approximates from candles. Read-only, no auth, rate limited per IP. */
+   Sources: Bybit spot (daily trade files + live WebSocket) and MOEX (ISS trades of the current session; real-time T-Invest
+   minutes only for a signed-in session, a guest gets the delayed ISS trades). Anything else is not supported and the client
+   approximates from candles. Read-only, rate limited per IP. */
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,9 @@ export async function POST(req: NextRequest) {
   const noStore = { headers: { "Cache-Control": "no-store" } };
   // online trades from ALGOPACK for entitled requesters only (admins, or ALGOPACK_PUBLIC=1): checked on the server, per request
   const privileged = source === "moex" && algopackEnabled() && (await getAlgopackAccess()).allowed;
-  const answerHeaders = privileged ? { "Cache-Control": "private, no-store", Vary: "Cookie" } : noStore.headers;
+  // real-time T-Invest trades only for a session user (or GUEST_REALTIME=1); a guest gets the delayed ISS trades
+  const realtime = source === "moex" ? (await getViewer()).realtime : true;
+  const answerHeaders = privileged || source === "moex" ? { "Cache-Control": "private, no-store", Vary: "Cookie" } : noStore.headers;
   const unsupported = NextResponse.json({ supported: false, bars: [], tick: 0, nativeTick: 0, cov: [], pending: false, live: false }, noStore);
 
   try {
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
       if (!bybitSupported(ticker)) return unsupported;
       prep = await prepareBybit(ticker, starts[0], end);
     } else if (source === "moex") {
-      prep = await prepareMoex(ticker, starts[0], end, { privileged });
+      prep = await prepareMoex(ticker, starts[0], end, { privileged, realtime });
     } else return unsupported;
     if (!prep) return unsupported;
 

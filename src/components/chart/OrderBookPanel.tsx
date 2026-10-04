@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { buildLadder, priceDecimals } from "@/lib/orderbook-math";
 import type { TerminalInstrument } from "@/lib/terminal-data";
@@ -52,6 +53,7 @@ async function copyText(s: string): Promise<boolean> {
 
 export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstrument; visible: boolean }) {
   const { t } = useT();
+  const { status: sessionStatus } = useSession();
   const [levels, setLevels] = useState(10);
   const [data, setData] = useState<BookData | null>(null);
   const [status, setStatus] = useState<Status>("loading");
@@ -149,7 +151,7 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
   const note = !isMoex
     ? t("ap.ob.moexOnly")
     : status === "denied"
-      ? t("ap.ob.denied")
+      ? t(sessionStatus === "unauthenticated" ? "dg.guestOnly" : "ap.ob.denied")
       : status === "unsupported"
         ? t("ap.ob.unsupported")
         : status === "error"

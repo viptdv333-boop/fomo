@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBatchQuotes, type QuoteRequest } from "@/lib/quotes";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { getViewer } from "@/lib/algopack-access";
 
 /**
  * Batch quotes for the terminal watchlist.
  * GET /api/quotes?items=moex:SBER,moex:GAZP,bybit:BTCUSDT
  *   -> { "moex:SBER": { price, change, changePercent, volume, time }, ... }
- * Instruments without a quote are simply absent from the response.
+ * Instruments without a quote are simply absent from the response. MOEX quotes are real time (T-Invest) for a signed-in
+ * session; a guest gets the delayed ISS marketdata (GUEST_REALTIME=1 restores real time for everybody).
  */
 
 const MAX_ITEMS = 80;
@@ -38,8 +40,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const quotes = await getBatchQuotes(items);
+  const { realtime } = await getViewer();
+  const quotes = await getBatchQuotes(items, { realtime });
   return NextResponse.json(quotes, {
-    headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+    headers: { "Cache-Control": "no-cache, no-store, must-revalidate", Vary: "Cookie" },
   });
 }

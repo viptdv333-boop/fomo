@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { hi2Band } from "@/lib/algopack-parse";
 import type { TerminalInstrument } from "@/lib/terminal-data";
@@ -63,6 +64,7 @@ function stateOf(r: { status: number; j: any } | null): St {
 
 export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument; visible: boolean }) {
   const { t } = useT();
+  const { status: sessionStatus } = useSession();
   const isMoex = inst.source === "moex";
   const ticker = inst.dataTicker;
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
@@ -123,7 +125,7 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
   }, [visible, isMoex, ticker]);
 
   if (!isMoex) return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.moexOnly")}</div>;
-  if (alertsSt === "denied" || hi2St === "denied") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="algo-note">{t("ap.panel.denied")}</div>;
+  if (alertsSt === "denied" || hi2St === "denied") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="algo-note">{t(sessionStatus === "unauthenticated" ? "dg.guestOnly" : "ap.panel.denied")}</div>;
   if (alertsSt === "unsupported" && hi2St === "unsupported") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.unsupported")}</div>;
 
   // HI2: the latest trading day, one row per metric

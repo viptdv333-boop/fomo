@@ -334,7 +334,7 @@ async function prepareAlgopack(ticker: string, fromMs: number): Promise<PrepareR
   return { source, big: (from, to, limit) => c.big.range(from, to, limit), nativeTick: c.tick, cov, pending: !c.done && fromMs < covFrom, live: true, delayed: false, bounds: [c.book.minMinute, Math.floor(now / 60_000)] };
 }
 
-export async function prepareMoex(ticker: string, fromMs: number, _toMs: number, opts?: { privileged?: boolean }): Promise<PrepareResult | null> {
+export async function prepareMoex(ticker: string, fromMs: number, _toMs: number, opts?: { privileged?: boolean; realtime?: boolean }): Promise<PrepareResult | null> {
   if (opts?.privileged) {
     const online = await prepareAlgopack(ticker, fromMs);
     if (online) return online;
@@ -346,7 +346,8 @@ export async function prepareMoex(ticker: string, fromMs: number, _toMs: number,
   const now = Date.now();
   // ISS trades are ~15 minutes late: the Tinkoff feed (when a token is configured) supplies the newest minutes
   const issMax = c.book.maxMinute;
-  const feed = getTinkoffFeed(r.secid, r.cls, isFinite(issMax) ? (issMax - 3) * 60_000 : now - 3_600_000);
+  // a requester without a session (opts.realtime === false) gets the delayed ISS trades only: no T-Invest real-time minutes
+  const feed = opts?.realtime === false ? null : getTinkoffFeed(r.secid, r.cls, isFinite(issMax) ? (issMax - 3) * 60_000 : now - 3_600_000);
   if (feed) await Promise.race([feed.ready, new Promise((res) => setTimeout(res, 4000))]);
   const rt = !!feed && feed.ok;
   const covList = c.coverage(isFinite(issMax) ? (issMax + 1) * 60_000 : now);

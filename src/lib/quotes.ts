@@ -161,9 +161,9 @@ async function loadCloses(uids: string[]): Promise<void> {
   for (const u of need) if (!closeCache.has(u)) closeCache.set(u, { price: 0, at: now });
 }
 
-async function fetchMoex(tickers: string[]): Promise<Map<string, BatchQuote>> {
+async function fetchMoex(tickers: string[], realtime = true): Promise<Map<string, BatchQuote>> {
   const out = new Map<string, BatchQuote>();
-  const shares = await getShareTickers();
+  const shares = realtime ? await getShareTickers() : new Set<string>();
 
   // ticker -> uid
   const uidByTicker = new Map<string, string>();
@@ -181,12 +181,15 @@ async function fetchMoex(tickers: string[]): Promise<Map<string, BatchQuote>> {
           secByTicker.set(ticker, sec);
           resolved = sec.secid;
           classCode = sec.classCode;
+        } else if (!realtime) {
+          return; // delayed feed: only what ISS knows
         } else if (FUTURES_PREFIX[ticker]) {
           const contract = await findActiveContract(ticker);
           if (!contract) return;
           resolved = contract;
         }
       }
+      if (!realtime) return; // no T-Invest lookup for a guest: the ISS fallback below answers
       const uid = await resolveUid(resolved, classCode);
       if (uid) uidByTicker.set(ticker, uid);
     })
@@ -312,7 +315,13 @@ async function fetchFmpOne(ticker: string): Promise<BatchQuote | null> {
 }
 let moexInflight: { key: string; p: Promise<Map<string, BatchQuote>> } | null = null;
 
-export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<string, BatchQuote>> {
+/**
+ * `opts.realtime === false` (a guest): MOEX quotes come from the delayed ISS marketdata only, never from T-Invest, and are
+ * cached apart from the real-time ones so a delayed answer is never served as real time or the other way round.
+ */
+export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: boolean } = {}): Promise<Record<string, BatchQuote>> {
+  const realtime = opts.realtime !== false;
+  const moexKey = (ticker: string) => (realtime ? `moex:${ticker}` : `delayed:moex:${ticker}`);
   const out: Record<string, BatchQuote> = {};
   const now = Date.now();
   const staleMoex: string[] = [];
@@ -321,7 +330,7 @@ export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<stri
 
   for (const it of items) {
     const key = `${it.source}:${it.ticker}`;
-    const hit = cache.get(key);
+    const hit = cache.get(it.source === "moex" ? moexKey(it.ticker) : key);
     if (hit && now - hit.at < (it.source === "fmp" ? FMP_TTL_MS : QUOTE_TTL_MS)) {
       if (hit.q) out[key] = hit.q;
       continue;
@@ -335,12 +344,12 @@ export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<stri
 
   if (staleMoex.length) {
     const list = [...new Set(staleMoex)].sort();
-    const jobKey = list.join(",");
+    const jobKey = `${realtime ? "rt" : "dl"}|${list.join(",")}`;
     jobs.push(
       (async () => {
         let job = moexInflight && moexInflight.key === jobKey ? moexInflight : null;
         if (!job) {
-          job = { key: jobKey, p: fetchMoex(list) };
+          job = { key: jobKey, p: fetchMoex(list, realtime) };
           moexInflight = job;
         }
         const map = await job.p;
@@ -349,9 +358,9 @@ export async function getBatchQuotes(items: QuoteRequest[]): Promise<Record<stri
         for (const ticker of list) {
           const q = map.get(ticker) ?? null;
           // A failed fetch keeps serving the previous value for a while instead of blanking the row.
-          const prev = cache.get(`moex:${ticker}`)?.q ?? null;
-          const keep = q ?? (prev && at - (cache.get(`moex:${ticker}`)?.at ?? 0) < 60_000 ? prev : null);
-          cache.set(`moex:${ticker}`, { at, q: keep });
+          const prev = cache.get(moexKey(ticker))?.q ?? null;
+          const keep = q ?? (prev && at - (cache.get(moexKey(ticker))?.at ?? 0) < 60_000 ? prev : null);
+          cache.set(moexKey(ticker), { at, q: keep });
           if (keep) out[`moex:${ticker}`] = keep;
         }
       })()
