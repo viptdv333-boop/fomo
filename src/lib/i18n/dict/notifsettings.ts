@@ -6,8 +6,8 @@ import type { SectionDict } from "./types";
 // request's language, "ns.bot.*" what the Telegram / MAX / VK bots answer.
 const dict: SectionDict = {
   ru: {
-    "ns.tab": "Уведомления",
-    "ns.title": "Уведомления",
+    "ns.tab": "Настройки уведомлений",
+    "ns.title": "Настройки уведомлений",
     "ns.subtitle": "Подключите удобные каналы и выберите, о чём и куда вам писать.",
     "ns.loading": "Загрузка…",
     "ns.loadFailed": "Не удалось загрузить настройки уведомлений",
@@ -17,7 +17,7 @@ const dict: SectionDict = {
     "ns.channels.title": "Каналы доставки",
     "ns.channels.desc": "Колокольчик на сайте работает всегда. Остальные каналы подключаются здесь и включаются отдельно по каждому событию в таблице ниже.",
     "ns.ch.inapp": "На сайте",
-    "ns.ch.webpush": "Браузер и приложение",
+    "ns.ch.webpush": "В приложении",
     "ns.ch.email": "E-mail",
     "ns.ch.telegram": "Telegram",
     "ns.ch.whatsapp": "WhatsApp",
@@ -191,8 +191,8 @@ const dict: SectionDict = {
     "ns.bot.used": "Эта ссылка уже использована. Если нужно подключить заново, создайте новую на сайте.",
   },
   en: {
-    "ns.tab": "Notifications",
-    "ns.title": "Notifications",
+    "ns.tab": "Notification settings",
+    "ns.title": "Notification settings",
     "ns.subtitle": "Connect the channels you like and choose what to be told, and where.",
     "ns.loading": "Loading…",
     "ns.loadFailed": "Couldn't load notification settings",
@@ -201,7 +201,7 @@ const dict: SectionDict = {
     "ns.channels.title": "Delivery channels",
     "ns.channels.desc": "The bell on the site always works. Connect other channels here, then switch them on per event in the table below.",
     "ns.ch.inapp": "On the site",
-    "ns.ch.webpush": "Browser & app",
+    "ns.ch.webpush": "In the app",
     "ns.ch.email": "E-mail",
     "ns.ch.telegram": "Telegram",
     "ns.ch.whatsapp": "WhatsApp",
@@ -371,8 +371,8 @@ const dict: SectionDict = {
     "ns.bot.used": "This link was already used. To connect again, create a new one on the site.",
   },
   cn: {
-    "ns.tab": "通知",
-    "ns.title": "通知",
+    "ns.tab": "通知设置",
+    "ns.title": "通知设置",
     "ns.subtitle": "连接您常用的渠道，并选择接收哪些通知、发送到哪里。",
     "ns.loading": "加载中…",
     "ns.loadFailed": "无法加载通知设置",

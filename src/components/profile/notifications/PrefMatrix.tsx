@@ -43,9 +43,10 @@ export default function PrefMatrix({ data, overrides, onSetCells, onReset, saveS
   const { t } = useT();
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  // Channels the admin has not set up have no column (their card explains why).
+  // The four everyday channels always have a column (site / app / e-mail / Telegram), even when not connected yet;
+  // the rest appear once the admin has set them up (their card explains why otherwise).
   const columns = useMemo(
-    () => CHANNEL_IDS.filter((c) => c === "inapp" || c === "webpush" || data.channels.find((x) => x.channel === c)?.configured),
+    () => CHANNEL_IDS.filter((c) => c === "inapp" || c === "webpush" || c === "email" || c === "telegram" || data.channels.find((x) => x.channel === c)?.configured),
     [data.channels]
   );
   const connected = useMemo(() => Object.fromEntries(columns.map((c) => [c, channelConnected(data, c)])) as Record<ChannelId, boolean>, [columns, data]);
