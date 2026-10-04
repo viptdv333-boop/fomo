@@ -3,7 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
-import EconomicCalendar from "@/components/instruments/EconomicCalendar";
+import CalendarPanel from "./calendar/CalendarPanel";
 import { PANEL_TAB_ICONS } from "./icons";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
@@ -824,9 +824,11 @@ interface Props {
   /** Object tree tab: the chart's drawings and indicators. */
   drawings?: DrawingsController;
   indicators?: IndicatorsControllerLike;
+  /** IANA zone of the chart time axis: the economic calendar shows release times in it. */
+  calendarZone?: string;
 }
 
-export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators }: Props) {
+export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone }: Props) {
   const { t } = useT();
   const cat = categoryOf(selected);
 
@@ -907,11 +909,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
               {tab === "objects" && drawings && indicators && <ObjectTree drawings={drawings} indicators={indicators} />}
               {tab === "orderbook" && <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} />}
               {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
-              {tab === "calendar" && (
-                <div className="flex-1 min-h-0 overflow-y-auto [&>div]:shadow-none! [&>div]:rounded-none! [&>div]:p-3! [&_h2]:text-sm! [&_h2]:mb-2!">
-                  <EconomicCalendar country={cat?.name === "Акции ММВБ" ? "RU" : undefined} />
-                </div>
-              )}
+              {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}
             </>
           )}
         </div>

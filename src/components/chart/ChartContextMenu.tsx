@@ -31,6 +31,9 @@ interface Props {
   onCreateAlertFromDrawing?: () => void;
   /** Provided by the chart settings work; the entry is hidden when absent. */
   onOpenChartSettings?: () => void;
+  /** Economic calendar events on the chart: current state and the switch (entry hidden when absent). */
+  eventsOn?: boolean;
+  onToggleEvents?: () => void;
 }
 
 const ALERT_TOOLS = new Set<string>(ALERT_LINE_TOOLS);
@@ -82,7 +85,7 @@ function Item({
 
 const Sep = () => <div role="separator" className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />;
 
-export default function ChartContextMenu({ state, controller, onClose, onResetView, onExportCsv, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings }: Props) {
+export default function ChartContextMenu({ state, controller, onClose, onResetView, onExportCsv, onAlertAtPrice, onCreateAlertFromDrawing, onOpenChartSettings, eventsOn, onToggleEvents }: Props) {
   const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -270,6 +273,16 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
               if (window.confirm(t("cm.removeAllConfirm"))) controller.removeAll();
             })}
           />
+          {onToggleEvents && (
+            <>
+              <Sep />
+              <Item
+                label={t("ec.chart.show")}
+                icon={eventsOn ? <svg viewBox="0 0 24 24" className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : undefined}
+                onClick={run(onToggleEvents)}
+              />
+            </>
+          )}
           {onOpenChartSettings && (
             <>
               <Sep />

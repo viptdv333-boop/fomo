@@ -32,5 +32,6 @@ import vpro from "./vpro";
 import swings from "./swings";
 import contracts from "./contracts";
 import algopack from "./algopack";
+import econcal from "./econcal";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal];

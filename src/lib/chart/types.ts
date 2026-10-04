@@ -333,6 +333,8 @@ export interface OverlayLayer {
   /** While captured: the drag. Otherwise: hover; returning true means the layer handles hover and the crosshair is hidden. */
   pointerMove?(p: PointerInfo): boolean;
   pointerUp?(p: PointerInfo): void;
+  /** The pointer left the chart canvas (hover state of the layer should be cleared). */
+  pointerLeave?(): void;
   /** CSS cursor for the pointer position, or null to use the default. */
   cursor?(p: PointerInfo): string | null;
 }

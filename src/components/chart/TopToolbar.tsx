@@ -12,6 +12,7 @@ import IntervalControl from "./IntervalControl";
 import ContractPicker from "./ContractPicker";
 import ChartTypeSettings from "./ChartTypeSettings";
 import TemplatesMenu from "./TemplatesMenu";
+import ChartEventsButton from "./calendar/ChartEventsMenu";
 import type { ChartSettingsApi } from "./useChartSettings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { exchangeLabel, type TerminalInstrument } from "@/lib/terminal-data";
@@ -229,6 +230,7 @@ export default function TopToolbar(p: Props) {
         <span className="hidden lg:inline">{t("shell.alerts")}</span>
         {(p.alertCount ?? 0) > 0 && <span className="text-[10px] px-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{p.alertCount}</span>}
       </button>
+      <ChartEventsButton className={btn} onClassName={btnOn} />
       <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} ${replayOn ? btnOn : ""}`}>
         {I.replay}
         <span className="hidden lg:inline">{t("shell.replay")}</span>

@@ -2578,6 +2578,7 @@ export class ChartEngine {
 
   private onPointerLeave = () => {
     if (this.drag || this.touchCrosshair) return;
+    for (const l of this.layers) l.pointerLeave?.();
     this.hover = null;
     this.invalidateOver();
   };

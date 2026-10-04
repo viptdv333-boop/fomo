@@ -8,6 +8,9 @@ import { useT } from "@/lib/i18n/client";
 import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
+import { EventsLayer } from "@/lib/chart/events-layer";
+import { useCalPrefs } from "@/lib/calendar/prefs";
+import CalendarRemindersHost from "@/components/chart/calendar/CalendarRemindersHost";
 import { OrderFlowClient } from "@/lib/chart/orderflow/client";
 import { AlgoClient } from "@/lib/chart/algopack/client";
 import type { AlgoNeed } from "@/lib/chart/algopack/store";
@@ -196,6 +199,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [drawings] = useState(() => new DrawingsController());
   const [indicators] = useState(() => new IndicatorsController());
   const [alertsLayer] = useState(() => new AlertsLayer());
+  const [eventsLayer] = useState(() => new EventsLayer());
+  const [calPrefs, updateCalPrefs] = useCalPrefs();
   const [avwapLayer] = useState(() => new AnchoredVwapLayer(indicators));
   const [vpLayer] = useState(() => new VpLayer(indicators));
   const alertsApi = useAlerts();
@@ -301,6 +306,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     engineRef.current = engine;
     drawings.attach(engine);
     alertsLayer.attach(engine);
+    eventsLayer.attach(engine);
     indicators.attach(engine);
     avwapLayer.attach(engine);
     vpLayer.attach(engine);
@@ -332,6 +338,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       unsubDraw();
       drawings.detach();
       alertsLayer.detach();
+      eventsLayer.detach();
       avwapLayer.detach();
       vpLayer.detach();
       indicators.detach();
@@ -339,7 +346,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       engineRef.current = null;
       setEngineReady(false);
     };
-  }, [drawings, indicators, alertsLayer, avwapLayer, vpLayer, indKey]);
+  }, [drawings, indicators, alertsLayer, eventsLayer, avwapLayer, vpLayer, indKey]);
 
   useEffect(() => {
     avwapLayer.hint = t("of.avwap.pick");
@@ -667,6 +674,21 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         .map((a) => ({ id: a.id, kind: a.kind, price: a.price, line: a.line }))
     );
   }, [allAlerts, source, ticker, alertsLayer]);
+
+  /* economic calendar events on the time axis (chart time = real UTC + offsetMs; the layer fetches the visible range lazily) */
+  useEffect(() => {
+    eventsLayer.setLabels({ act: t("ec.act"), fcst: t("ec.fcst"), prev: t("ec.prev"), more: t("ec.ov.more", { n: "{n}" }) });
+  }, [eventsLayer, t]);
+  useEffect(() => {
+    eventsLayer.setTimeOffset(offsetMs);
+  }, [eventsLayer, offsetMs]);
+  useEffect(() => {
+    eventsLayer.setZone(resolveZone(cs.tz, source), LOCALES[locale] ?? "ru-RU");
+  }, [eventsLayer, cs.tz, source, locale]);
+  useEffect(() => {
+    eventsLayer.setFilter(calPrefs.chart.impacts, calPrefs.countries);
+    eventsLayer.setEnabled(calPrefs.chart.on);
+  }, [eventsLayer, calPrefs.chart.on, calPrefs.chart.impacts, calPrefs.countries]);
 
   const openAlerts = useCallback((draft: AlertDraft | null) => {
     setAlertDraft(draft);
@@ -1341,6 +1363,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           onSelect={handleSelect}
           drawings={drawings}
           indicators={indicators}
+          calendarZone={resolveZone(cs.tz, source)}
         />
         </div>
       </div>
@@ -1354,6 +1377,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onAlertAtPrice={(price) => openAlerts({ price: Number(price.toFixed(engineRef.current?.getPrecision() ?? 2)) })}
         onCreateAlertFromDrawing={openAlertFromDrawing}
         onOpenChartSettings={() => openSettings()}
+        eventsOn={calPrefs.chart.on}
+        onToggleEvents={() => updateCalPrefs((p) => ({ ...p, chart: { ...p.chart, on: !p.chart.on } }))}
       />
       <ChartSettingsDialog
         open={csOpen}
@@ -1375,6 +1400,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onSettings={() => openSettings("scales")}
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      {!embedded && <CalendarRemindersHost />}
       <SymbolSearch open={comparePick} onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <SymbolSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
