@@ -40,8 +40,10 @@ const serverSnapshot = () => null;
 
 /** The brief of an event, or null (no text for it, MOEX, not Russian). Needs the glossary loaded. */
 const OBVIOUS = /stocks|storage|inventor|rig count/i;
-/** Energy inventories and rig counts need no comment: «how stocks affect oil» is clear from the title. */
-const isInventory = (ev: CalEvent) => (ev.tags ?? []).some((t) => t === "oil" || t === "gas") && OBVIOUS.test(ev.eventEn ?? "");
+/** Energy inventories, rig counts and the USDA stock reports (Grain Stocks, Cold Storage) need no comment: clear from the title. */
+const STOCK_KEYS = new Set(["agro.grainstocks", "agro.coldstorage"]);
+const isInventory = (ev: CalEvent) =>
+  ((ev.tags ?? []).some((t) => t === "oil" || t === "gas") && OBVIOUS.test(ev.eventEn ?? "")) || (!!ev.gk && STOCK_KEYS.has(ev.gk));
 
 export function briefOf(g: Glossary | null, ev: CalEvent, locale: string): string | null {
   if (!g || locale !== "ru" || ev.category === "moex" || isInventory(ev)) return null;
