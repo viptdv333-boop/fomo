@@ -14,7 +14,7 @@ import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
@@ -164,6 +164,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         <EnergyChip />
         <MoexChip />
         <CommodityChip />
+        <CorpChip />
         <div className="flex min-w-[150px] max-w-[260px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
       </div>
 

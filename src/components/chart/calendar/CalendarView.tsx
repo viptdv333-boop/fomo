@@ -14,7 +14,7 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
 import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
@@ -235,10 +235,10 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     } else el.scrollTop = 0;
   }, [visible, data.status, range, wide, list.length]);
 
-  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || prefs.energy;
+  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.corp || prefs.energy;
   const resetFilters = () => {
     setQLocal("");
-    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, commodities: true, energy: false }));
+    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, commodities: true, corp: true, energy: false }));
   };
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
@@ -406,6 +406,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             <EnergyChip />
             <MoexChip />
             <CommodityChip />
+            <CorpChip />
           </div>
           <div className="flex"><SearchBox q={qLocal} setQ={setQLocal} /></div>
         </div>

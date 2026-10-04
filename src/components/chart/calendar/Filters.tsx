@@ -164,6 +164,24 @@ export function CommodityChip() {
   );
 }
 
+/** The «Dividends and reporting» layer switch (default on): dividends, bond coupons and company reporting dates of Russian issuers (T-Invest API). */
+export function CorpChip() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  return (
+    <button
+      type="button"
+      aria-pressed={prefs.corp}
+      title={t("ec.corp.hint")}
+      onClick={() => update((p) => ({ ...p, corp: !p.corp }))}
+      className={chipCls(prefs.corp)}
+    >
+      <span aria-hidden className="inline-block h-2 w-2 rounded-sm bg-violet-500" />
+      {t("ec.corp")}
+    </button>
+  );
+}
+
 /** «Нефть и газ»: one click shows only oil / gas events (EIA / API inventories, Baker Hughes rigs, OPEC, IEA) from every country. */
 export function EnergyChip() {
   const { t } = useT();
