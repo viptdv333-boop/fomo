@@ -48,6 +48,7 @@ export const TAGS: Record<Exclude<Tag, "ccy">, { ru: string; en: string; cn: str
   div: { ru: "Дивиденды", en: "Dividends", cn: "股息" },
   coupon: { ru: "Купоны", en: "Coupons", cn: "票息" },
   earnings: { ru: "Отчётность", en: "Earnings", cn: "财报" },
+  ofz: { ru: "ОФЗ", en: "OFZ (RU gov bonds)", cn: "俄联邦债券" },
 };
 
 export function tagLabel(tag: string, lang: GlossaryLang | string): string {
@@ -346,7 +347,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
 
 export function localizeEvent(ev: { event: string; category?: string; country?: string; impact: number }, lang: GlossaryLang = "ru"): LocalizedEvent {
   const name = typeof ev.event === "string" ? ev.event : "";
-  if (!name.trim() || ev.category === "moex" || ev.category === "commodity" || ev.category === "corp") return { title: name, impact: ev.impact };
+  if (!name.trim() || ev.category === "moex" || ev.category === "commodity" || ev.category === "ru" || ev.category === "corp") return { title: name, impact: ev.impact };
   const country = ev.country ?? "";
   const ck = `${country}|${ev.category ?? ""}|${name}`;
   let r = cache.get(ck);
@@ -398,6 +399,22 @@ export function explicitKey(name: string, category = "other", country = ""): str
   return r.fallback ? null : r.key;
 }
 
+/**
+ * Minimum importance of the Russian rows of the feed (raw English names): the feed marks almost all of them "low", so with the default
+ * filter (medium and high) the country «Россия» looked empty. The scheduled Russia layer (russia.ts) has the same figures for the future.
+ */
+const RU_FEED_IMPACT: [RegExp, 2 | 3][] = [
+  [/^Interest Rate Decision$/i, 3],
+  [/^Inflation Rate (YoY|MoM)\b/i, 3],
+  [/^GDP Growth Rate\b/i, 3],
+  [/^(CBR Press Conference|Summary of the Key Rate Discussion|PPI|Industrial Production|Unemployment Rate|Retail Sales|Real Wage Growth|Balance of Trade|GDP YoY|Current Account)\b/i, 2],
+];
+export function ruFeedImpact(name: string): 0 | 2 | 3 {
+  const n = name.trim();
+  for (const [re, v] of RU_FEED_IMPACT) if (re.test(n)) return v;
+  return 0;
+}
+
 const memo = new WeakMap<CalEvent, Partial<Record<GlossaryLang, CalEvent>>>();
 
 /**
@@ -407,13 +424,15 @@ const memo = new WeakMap<CalEvent, Partial<Record<GlossaryLang, CalEvent>>>();
  */
 export function localizeCalEvent(e: CalEvent, lang: GlossaryLang = "ru"): CalEvent {
   // the Moscow Exchange, commodity and corporate layers are built already titled / keyed / tagged (lib/calendar/moex.ts, commodities.ts, corporate.ts)
-  if (e.category === "moex" || e.category === "commodity" || e.category === "corp") return e;
+  if (e.category === "moex" || e.category === "commodity" || e.category === "ru" || e.category === "corp") return e;
   let per = memo.get(e);
   if (!per) memo.set(e, (per = {}));
   const hit = per[lang];
   if (hit) return hit;
   const l = localizeEvent(e, lang);
-  const out: CalEvent = { ...e, impact: (l.impact >= 3 ? 3 : l.impact >= 2 ? 2 : 1) as 1 | 2 | 3 };
+  // Russian rows of the feed carry the lowest importance (TradingView marks nearly all of them -1): raise the ones that move the ruble
+  const imp = e.country === "RU" ? Math.max(l.impact, ruFeedImpact(e.event)) : l.impact;
+  const out: CalEvent = { ...e, impact: (imp >= 3 ? 3 : imp >= 2 ? 2 : 1) as 1 | 2 | 3 };
   if (l.title && l.title !== e.event) {
     out.event = l.title;
     out.eventEn = e.event;

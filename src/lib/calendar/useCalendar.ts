@@ -23,6 +23,8 @@ export interface CalData {
   commodity: boolean;
   /** The corporate-events layer (dividends, coupons, reports) is part of the answer. */
   corp: boolean;
+  /** The Russia layer is part of the answer. */
+  russia: boolean;
   /** The span the provider knows about (Forex Factory: this + next week); null = unlimited. */
   coverage: { from: number; to: number } | null;
   refresh: () => void;
@@ -37,6 +39,7 @@ interface CacheEntry {
   moex: boolean;
   commodity: boolean;
   corp: boolean;
+  russia: boolean;
   coverage: { from: number; to: number } | null;
 }
 const memo = new Map<string, CacheEntry>();
@@ -98,6 +101,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
         moex: (res.headers.get("X-Calendar-Layers") || "").includes("moex"),
         commodity: (res.headers.get("X-Calendar-Layers") || "").includes("commodity"),
         corp: (res.headers.get("X-Calendar-Layers") || "").includes("corp"),
+        russia: (res.headers.get("X-Calendar-Layers") || "").includes("russia"),
         coverage: parseCoverage(res.headers.get("X-Calendar-Coverage")),
       };
       if (failed && memo.get(k)?.events.length) {
@@ -113,7 +117,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
       if ((e as { name?: string })?.name === "AbortError") return;
       if (keyRef.current !== k) return;
       if (!memo.get(k)?.events.length) {
-        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, commodity: false, corp: false, coverage: null });
+        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, commodity: false, corp: false, russia: false, coverage: null });
         setStatus("error");
       }
       lastRef.current = Date.now();
@@ -163,6 +167,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     moex: cur?.moex ?? false,
     commodity: cur?.commodity ?? false,
     corp: cur?.corp ?? false,
+    russia: cur?.russia ?? false,
     coverage: cur?.coverage ?? null,
     refresh,
   };
@@ -190,6 +195,7 @@ export function useCalendarWindow(start: string, zone: string, enabled: boolean,
     moex: a.moex || b.moex,
     commodity: a.commodity || b.commodity,
     corp: a.corp || b.corp,
+    russia: a.russia || b.russia,
     coverage: a.coverage ?? b.coverage,
     refresh: () => {
       a.refresh();

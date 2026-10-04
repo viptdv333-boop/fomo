@@ -56,6 +56,8 @@ export type CalCategory =
   | "moex"
   /** Scheduled reports of agriculture / soft commodities (USDA, CONAB, cocoa grindings, MPOB ...): lib/calendar/commodities.ts. */
   | "commodity"
+  /** The Russia layer, scheduled macro releases (Bank of Russia, Rosstat, Minfin OFZ auctions): lib/calendar/russia.ts. Dividends, coupons and reports are the "corp" layer. */
+  | "ru"
   /** Corporate events of Russian issuers (dividends, bond coupons, reporting dates), T-Invest API cache: lib/calendar/corporate.ts. */
   | "corp"
   | "other";
@@ -73,6 +75,8 @@ export interface CalFilter {
   noCommodity?: boolean;
   /** Hide the corporate-events layer (dividends, coupons, reports). */
   noCorp?: boolean;
+  /** Hide the Russia layer (category "ru"). */
+  noRu?: boolean;
   /** "Oil and gas" quick filter: only events tagged oil / gas, from any country (the country filter does not apply). */
   energy?: boolean;
 }

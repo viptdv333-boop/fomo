@@ -26,6 +26,8 @@ export interface CalPrefs {
   commodities: boolean;
   /** The corporate-events layer (dividends, bond coupons, reporting dates of Russian issuers): the data hook asks the API for it (corp=0 when off). */
   corp: boolean;
+  /** The Russia layer (Bank of Russia, Rosstat, Minfin OFZ auction schedules): list, grid and chart. */
+  russia: boolean;
   /** «Нефть и газ» quick filter: only oil / gas events (EIA, API, Baker Hughes, OPEC, IEA ...) from any country. */
   energy: boolean;
   /** Full-page calendar view: month squares or the list. */
@@ -46,6 +48,7 @@ export const DEFAULT_CAL_PREFS: CalPrefs = {
   moex: true,
   commodities: true,
   corp: true,
+  russia: true,
   energy: false,
   view: "grid",
   panelGrid: false,
@@ -79,6 +82,7 @@ export function normalizeCalPrefs(raw: unknown): CalPrefs {
     moex: r.moex !== false,
     commodities: r.commodities !== false,
     corp: r.corp !== false,
+    russia: r.russia !== false,
     energy: r.energy === true,
     view: r.view === "list" ? "list" : "grid",
     panelGrid: r.panelGrid === true,

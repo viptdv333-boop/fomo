@@ -687,9 +687,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     eventsLayer.setZone(resolveZone(cs.tz, source), LOCALES[locale] ?? "ru-RU");
   }, [eventsLayer, cs.tz, source, locale]);
   useEffect(() => {
-    eventsLayer.setFilter(calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities);
+    eventsLayer.setFilter(calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities, calPrefs.russia);
     eventsLayer.setEnabled(calPrefs.chart.on);
-  }, [eventsLayer, calPrefs.chart.on, calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities]);
+  }, [eventsLayer, calPrefs.chart.on, calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities, calPrefs.russia]);
 
   const openAlerts = useCallback((draft: AlertDraft | null) => {
     setAlertDraft(draft);

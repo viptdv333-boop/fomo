@@ -14,10 +14,10 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
-import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
+import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, RuMark, SourceFooter, useNow } from "./parts";
 
 const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
   { id: "yesterday", key: "ec.tab.yesterday" },
@@ -41,7 +41,7 @@ export function NextChip({ zone, enabled, onPick }: { zone: string; enabled: boo
   const data = useCalendarRange(range, zone, enabled, locale);
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
   const impacts = useMemo(() => new Set(prefs.impacts), [prefs.impacts]);
-  const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex, noCommodity: !prefs.commodities, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, prefs.commodities, prefs.energy, now]);
+  const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, now]);
   if (!next) return <span className="flex-1 truncate text-[12px] text-[var(--tv3-muted)]">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
   return (
     <button
@@ -94,7 +94,7 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
         <Flag code={ev.country} width={16} className="mt-[3px]" />
         <span className="min-w-0 flex-1">
           <span className="text-[14px] font-medium leading-snug text-[var(--tv3-text)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
-            {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}{ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />} {ev.event}
+            {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}{ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />}{ev.category === "ru" && <RuMark title={t("ec.russia")} />} {ev.event}
           </span>
           {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
         </span>
@@ -126,7 +126,7 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
       type="button"
       data-ev={ev.id}
       onClick={(e) => onOpen(ev, anchorOf(e.currentTarget))}
-      className={`grid w-full ${compact ? DAY_COLS : WIDE_COLS} items-center gap-x-2 border-b border-[var(--tv3-hair2)] px-3 py-1.5 text-left text-[12.5px] cursor-pointer hover:bg-[var(--tv3-fill3)] ${ev.category === "moex" ? "border-l-2 border-l-sky-500" : ev.category === "commodity" ? "border-l-2 border-l-lime-600" : ""} ${focus ? "bg-sky-50 dark:bg-sky-500/10" : ""} ${past ? "opacity-60 hover:opacity-100" : ""}`}
+      className={`grid w-full ${compact ? DAY_COLS : WIDE_COLS} items-center gap-x-2 border-b border-[var(--tv3-hair2)] px-3 py-1.5 text-left text-[12.5px] cursor-pointer hover:bg-[var(--tv3-fill3)] ${ev.category === "moex" ? "border-l-2 border-l-sky-500" : ev.category === "commodity" ? "border-l-2 border-l-lime-600" : ev.category === "ru" ? "border-l-2 border-l-teal-600" : ""} ${focus ? "bg-sky-50 dark:bg-sky-500/10" : ""} ${past ? "opacity-60 hover:opacity-100" : ""}`}
     >
       <span className="tabular-nums text-[var(--tv3-muted)]">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
       <span className="flex items-center gap-1.5">
@@ -137,6 +137,7 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
         <span className="flex min-w-0 items-center gap-1.5">
           {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}
           {ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />}
+          {ev.category === "ru" && <RuMark title={t("ec.russia")} />}
           <span className="truncate">{ev.event}</span>
           {reminded && <span className="shrink-0 text-amber-500"><span className="inline-block scale-[0.62]">{EC_ICONS.bellOn}</span></span>}
         </span>
@@ -203,8 +204,8 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       const d = eventDay(e, zone);
       return d >= range.from && d <= range.to;
     });
-    return filterEvents(inRange, { countries, impacts, q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, energy: prefs.energy });
-  }, [data.events, zone, range, countries, impacts, q, prefs.moex, prefs.commodities, prefs.energy]);
+    return filterEvents(inRange, { countries, impacts, q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy });
+  }, [data.events, zone, range, countries, impacts, q, prefs.moex, prefs.commodities, prefs.russia, prefs.energy]);
 
   const groups = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
@@ -235,10 +236,10 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     } else el.scrollTop = 0;
   }, [visible, data.status, range, wide, list.length]);
 
-  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.corp || prefs.energy;
+  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.russia || !prefs.corp || prefs.energy;
   const resetFilters = () => {
     setQLocal("");
-    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, commodities: true, corp: true, energy: false }));
+    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, commodities: true, russia: true, corp: true, energy: false }));
   };
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
@@ -406,6 +407,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             <EnergyChip />
             <MoexChip />
             <CommodityChip />
+            <RussiaChip />
             <CorpChip />
           </div>
           <div className="flex"><SearchBox q={qLocal} setQ={setQLocal} /></div>
@@ -420,7 +422,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">{body}</div>
           </>
         )}
-        <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} disclaimer className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5! pb-2.5! pt-2! text-[11px]!" />
+        <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} russia={data.russia} disclaimer className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5! pb-2.5! pt-2! text-[11px]!" />
         {rangePopover}
         {details && <EventDetails ev={details.ev} anchor={details.anchor} zone={zone} onClose={() => setDetails(null)} />}
       </div>
@@ -449,7 +451,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
           {body}
         </div>
       </div>
-      <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-[var(--tv3-hair2)]" />
+      <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} russia={data.russia} className="shrink-0 border-t border-[var(--tv3-hair2)]" />
       {rangePopover}
       {details && <EventDetails ev={details.ev} anchor={details.anchor} zone={zone} onClose={() => setDetails(null)} />}
     </div>

@@ -164,6 +164,24 @@ export function CommodityChip() {
   );
 }
 
+/** The «Russia» layer switch (default on): Bank of Russia key-rate meetings and releases, Rosstat schedule, Minfin OFZ auctions. */
+export function RussiaChip() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  return (
+    <button
+      type="button"
+      aria-pressed={prefs.russia}
+      title={t("ec.russia.hint")}
+      onClick={() => update((p) => ({ ...p, russia: !p.russia }))}
+      className={chipCls(prefs.russia)}
+    >
+      <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-teal-600" />
+      {t("ec.russia")}
+    </button>
+  );
+}
+
 /** The «Dividends and reporting» layer switch (default on): dividends, bond coupons and company reporting dates of Russian issuers (T-Invest API). */
 export function CorpChip() {
   const { t } = useT();

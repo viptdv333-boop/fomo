@@ -24,11 +24,15 @@ import type { CalReason } from "@/lib/calendar/types";
  *   corp       0 switches the corporate-events layer off (default on): dividends, bond coupons and reporting dates of Russian issuers from
  *              the T-Invest API, category "corp", country RU, aggregated coupons; served from a cache, never waits for the refresh
  *              (lib/calendar/corporate.ts); the `q` search also matches tickers and company names
+ *   ru         0 switches the Russia layer off (default on): the published schedules of the Bank of Russia (key-rate meetings, summaries, inflation
+ *              expectations, reserves ...), Rosstat (weekly / monthly CPI, PPI, industrial production, GDP, unemployment / retail / wages) and the
+ *              Ministry of Finance OFZ auctions, category "ru", country RU, titles and glossary key (gk) already set; see lib/calendar/russia.ts.
+ *              Where the feed has the same release on the same day the feed's event (with the figures) stays and ours is dropped
  *   desc       1 keeps the long event descriptions (otherwise stripped; events carry hasDesc)
  * Returns a plain array of normalised events (see lib/calendar/types). Never throws: on any failure the array is empty and the
  * reason is in X-Calendar-Reason (ok | mock | no-key | restricted | unauthorized | upstream-error | rate-limited | partial | clamped | bad-range | range-unsupported);
  * X-Calendar-Source: tradingview | fmp | forexfactory | mock | none (+ X-Calendar-Tried with what every provider said,
- * X-Calendar-Layers: moex,commodity,corp (the extra layers present in the answer), X-Calendar-Coverage: "fromMs..toMs" when the provider knows only a window, e.g. Forex Factory);
+ * X-Calendar-Layers: moex,commodity,russia,corp (the extra layers present in the answer), X-Calendar-Coverage: "fromMs..toMs" when the provider knows only a window, e.g. Forex Factory);
  * X-Calendar-Stale: 1 marks an old copy served because the refresh failed.
  */
 
@@ -108,8 +112,9 @@ export async function GET(request: NextRequest) {
     const lang = ["ru", "en", "cn"].includes(sp.get("lang") || "") ? (sp.get("lang") as "ru" | "en" | "cn") : "ru";
     const moex = sp.get("moex") !== "0";
     const agro = sp.get("agro") !== "0";
+    const ru = sp.get("ru") !== "0";
     const corp = sp.get("corp") !== "0";
-    const res = await getCalendarRange(from, to, now, { moex, agro, corp, lang });
+    const res = await getCalendarRange(from, to, now, { moex, agro, ru, corp, lang });
     const wantDesc = sp.get("desc") === "1";
     // localise BEFORE filtering: the importance of energy events is raised by the glossary, and the search matches both names
     const localized = res.events.map((e) => localizeCalEvent(e, lang));
@@ -125,7 +130,7 @@ export async function GET(request: NextRequest) {
       ...(res.stale ? { "X-Calendar-Stale": "1" } : {}),
       "X-Calendar-Source": res.source,
       "X-Calendar-Tried": res.tried.join(","),
-      ...(res.moex || res.commodity || res.corp ? { "X-Calendar-Layers": [res.moex ? "moex" : "", res.commodity ? "commodity" : "", res.corp ? "corp" : ""].filter(Boolean).join(",") } : {}),
+      ...(res.moex || res.commodity || res.russia || res.corp ? { "X-Calendar-Layers": [res.moex ? "moex" : "", res.commodity ? "commodity" : "", res.russia ? "russia" : "", res.corp ? "corp" : ""].filter(Boolean).join(",") } : {}),
       ...(res.coverage ? { "X-Calendar-Coverage": `${res.coverage.from}..${res.coverage.to}` } : {}),
       "X-Calendar-Range": `${from}..${to}`,
     }, 200, acceptsGzip(request.headers.get("accept-encoding")));

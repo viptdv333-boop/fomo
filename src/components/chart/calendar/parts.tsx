@@ -64,13 +64,14 @@ export function useNarrow(): boolean {
 }
 
 /** "Source: TradingView · Moscow Exchange" and the note for sources without actual values. */
-export function SourceFooter({ source, moex, commodity = false, className = "", disclaimer = false }: { source: string; moex: boolean; commodity?: boolean; className?: string; disclaimer?: boolean }) {
+export function SourceFooter({ source, moex, commodity = false, russia = false, className = "", disclaimer = false }: { source: string; moex: boolean; commodity?: boolean; russia?: boolean; className?: string; disclaimer?: boolean }) {
   const { t } = useT();
-  if (source === "none" && !moex && !commodity) return null;
+  if (source === "none" && !moex && !commodity && !russia) return null;
   const parts: string[] = [];
   if (source !== "none") parts.push(t(`ec.src.${source}`));
   if (moex) parts.push(t("ec.moex"));
   if (commodity) parts.push(t("ec.src.commodity"));
+  if (russia) parts.push(t("ec.src.russia"));
   return (
     <div className={`px-3 py-1 text-[10.5px] leading-snug text-[var(--tv3-muted)] ${className}`}>
       <span>{t("ec.src.label")} {parts.join(" · ")}{disclaimer ? `. ${t("p3.disclaimer")}` : ""}</span>
@@ -95,6 +96,16 @@ export function CommodityMark({ title }: { title?: string }) {
     <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-lime-600/15 px-1 text-[9px] font-bold uppercase leading-none text-lime-700 dark:text-lime-300">
       <span className="inline-block h-[5px] w-[5px] rounded-sm bg-lime-600" />
       AGRO
+    </span>
+  );
+}
+
+/** Badge of the Russia layer (Bank of Russia, Rosstat, Minfin OFZ auction schedules). */
+export function RuMark({ title }: { title?: string }) {
+  return (
+    <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-teal-600/15 px-1 text-[9px] font-bold uppercase leading-none text-teal-700 dark:text-teal-300">
+      <span className="inline-block h-[5px] w-[5px] rounded-full bg-teal-600" />
+      RU
     </span>
   );
 }

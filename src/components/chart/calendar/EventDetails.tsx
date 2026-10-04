@@ -10,7 +10,7 @@ import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import FloatingPanel, { type Anchor } from "./FloatingPanel";
-import { CommodityMark, ImpactDots, MoexMark, SURPRISE_CLASS, useNow } from "./parts";
+import { CommodityMark, ImpactDots, MoexMark, RuMark, SURPRISE_CLASS, useNow } from "./parts";
 
 /** descriptions are fetched on demand (the list answers carry only `hasDesc`) and remembered */
 const descMemo = new Map<string, string>();
@@ -107,7 +107,7 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
             <ImpactDots level={ev.impact} />
             {t(`ec.impact.${ev.impact}`)}
           </span>
-          {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : ev.category === "commodity" ? <CommodityMark title={t("ec.commodity")} /> : <span className="rounded-full bg-[var(--tv3-fill)] px-2 py-0.5 text-[11px]">{t(`ec.cat.${ev.category}`)}</span>}
+          {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : ev.category === "commodity" ? <CommodityMark title={t("ec.commodity")} /> : ev.category === "ru" ? <RuMark title={t("ec.russia")} /> : <span className="rounded-full bg-[var(--tv3-fill)] px-2 py-0.5 text-[11px]">{t(`ec.cat.${ev.category}`)}</span>}
           {ev.period && <span className="text-[11px] text-[var(--tv3-muted)]">{ev.period}</span>}
         </div>
         {ev.eventEn && ev.eventEn !== ev.event && (

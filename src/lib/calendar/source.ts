@@ -3,6 +3,7 @@ import { corpHasData, getCorporateEvents } from "./corporate";
 import { filterEvents, mergeEvents, normalizeFmpRows } from "./normalize";
 import { ffCoverage, normalizeForexFactory } from "./forexfactory";
 import { buildMoexExpirations, buildMoexHolidays, DAYOFF_URL, ISS_FORTS_URL, parseForts, type ForstRow, type MoexLang } from "./moex";
+import { buildRussiaScheduled, dropCoveredByFeed } from "./russia";
 import { normalizeTradingView, TV_HEADERS, TV_URL } from "./tradingview";
 import { addDays, utcWeekBlocks, type DateRange } from "./time";
 import type { CalEvent, CalReason, CalSource } from "./types";
@@ -366,6 +367,8 @@ export interface RangeResult {
   moex: boolean;
   /** The commodities / agriculture layer is part of the answer. */
   commodity: boolean;
+  /** The Russia layer (Bank of Russia, Rosstat, Minfin schedules) is part of the answer. */
+  russia: boolean;
   /** The corporate-events layer (dividends, coupons, reports) is part of the answer. */
   corp: boolean;
 }
@@ -374,6 +377,8 @@ export interface RangeOptions {
   moex?: boolean;
   /** false switches the commodities / agriculture layer off (API: agro=0). */
   agro?: boolean;
+  /** true adds the Russia layer (Bank of Russia, Rosstat, Minfin OFZ auctions); the API route passes it (default on there, ru=0 switches it off). */
+  ru?: boolean;
   /** false switches the corporate-events layer (dividends, coupons, reports) off (API: corp=0). */
   corp?: boolean;
   lang?: MoexLang;
@@ -407,11 +412,15 @@ export async function getCalendarRange(from: string, to: string, now = Date.now(
   const useCorp = opts.corp !== false && !mockMode();
   const corpEvents = useCorp ? await getCorporateEvents(from, to, opts.lang ?? "ru", now) : [];
   const main = part ?? last;
+  // the Russia layer keeps its dates and importance; where the feed has the same release on the same day, the feed's event (with the figures) stays
+  const useRu = opts.ru === true && !mockMode();
+  const ruAll = useRu ? buildRussiaScheduled(from, to, opts.lang ?? "ru") : [];
+  const ruEvents = dropCoveredByFeed(ruAll, main.events);
   // the official WASDE / Grain Stocks of the commodity layer replace the same reports of the feed (same UTC day)
-  const events = mergeEvents([dropOfficialDuplicates(main.events, agroEvents), moexEvents, agroEvents, corpEvents]);
+  const events = mergeEvents([dropOfficialDuplicates(main.events, agroEvents), moexEvents, agroEvents, ruEvents, corpEvents]);
   let reason: CalReason = main.reason;
-  if (!part && (moexEvents.length || agroEvents.length || corpEvents.length)) reason = "partial"; // the chain failed but an extra layer is there
-  if (!part && !moexEvents.length && !agroEvents.length && !corpEvents.length) reason = last.reason;
+  if (!part && (moexEvents.length || agroEvents.length || ruEvents.length || corpEvents.length)) reason = "partial"; // the chain failed but an extra layer is there
+  if (!part && !moexEvents.length && !agroEvents.length && !ruEvents.length && !corpEvents.length) reason = last.reason;
   return {
     events,
     reason,
@@ -421,6 +430,7 @@ export async function getCalendarRange(from: string, to: string, now = Date.now(
     coverage: main.coverage,
     moex: useMoex && (moexEvents.length > 0 || (fortsCache?.rows.length ?? 0) > 0),
     commodity: agroEvents.length > 0,
+    russia: ruAll.length > 0,
     corp: useCorp && (corpEvents.length > 0 || corpHasData()),
   };
 }
