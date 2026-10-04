@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useT } from "@/lib/i18n/client";
 import { intlLocale } from "@/lib/calendar/countries";
 import { buildMonthCells, monthWindowStart, outsideCoverage } from "@/lib/calendar/grid";
+import { parseCalendarHash, offsetForDay } from "@/lib/calendar/hash";
 import { filterEvents } from "@/lib/calendar/normalize";
 import { useCalPrefs } from "@/lib/calendar/prefs";
 import { addDays, dayKey, eventDay, formatDayHeading } from "@/lib/calendar/time";
@@ -60,6 +61,17 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const dayEvents = useMemo(() => (openDay ? events.filter((e) => eventDay(e, zone) === openDay.date) : []), [events, openDay, zone]);
   const idx = openDay ? cells.findIndex((c) => c.date === openDay.date) : -1;
   const goDay = useCallback((delta: number) => setOpenDay((d) => (d ? { date: addDays(d.date, delta) } : d)), []);
+
+  // the link of a reminder notification, /calendar#2026-10-05, opens that day
+  useEffect(() => {
+    if (mode !== "page") return;
+    const day = parseCalendarHash(window.location.hash);
+    if (!day) return;
+    update((p) => (p.view === "grid" ? p : { ...p, view: "grid" }));
+    setOffset(offsetForDay(monthWindowStart(dayKey(Date.now(), zone)), day));
+    setOpenDay({ date: day });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Esc closes the layer (a day modal or a popup inside stops it first)
   useEffect(() => {

@@ -9,6 +9,7 @@ import { realApi, type NotifApi } from "./notifications/api";
 import ChannelCards from "./notifications/ChannelCards";
 import PrefMatrix, { type Cell, type SaveState } from "./notifications/PrefMatrix";
 import QuietHours from "./notifications/QuietHours";
+import TerminalNotifyCard from "./notifications/TerminalNotifyCard";
 
 /**
  * Profile → «Уведомления»: channel cards (connect / status / test), the
@@ -142,6 +143,7 @@ export default function NotificationSettings({ api = realApi, showOwnBot = true 
       </div>
       <ChannelCards data={data} api={api} reload={reload} ownBot={showOwnBot ? <LegacyTelegramBlock /> : null} />
       <PrefMatrix data={data} overrides={overrides} onSetCells={onSetCells} onReset={onReset} saveState={saveState} />
+      <TerminalNotifyCard />
       <QuietHours
         value={data.quiet}
         onSave={async (q) => {

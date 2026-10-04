@@ -28,6 +28,8 @@ export const createSchema = z
     line: lineSchema.optional(),
     message: z.string().trim().max(200).optional(),
     repeat: z.boolean().default(false),
+    /** minutes between two firings of a repeating alert */
+    cooldownMin: z.number().int().min(1).max(1440).default(1),
     expiresAt: expiresSchema.optional(),
   })
   .refine((v) => (v.kind === "price" ? v.price !== undefined : v.line !== undefined), { message: "level required" });
@@ -38,5 +40,6 @@ export const patchSchema = z.object({
   price: num.positive().optional(),
   message: z.string().trim().max(200).nullable().optional(),
   repeat: z.boolean().optional(),
+  cooldownMin: z.number().int().min(1).max(1440).optional(),
   expiresAt: expiresSchema.optional(),
 });

@@ -4,6 +4,7 @@ import { renderNotifText, isKeyed, type NotifText } from "@/lib/notif-render";
 import {
   eventForType,
   isExternalChannel,
+  prefEventsFor,
   prefKey,
   type EventId,
   type ExternalChannel,
@@ -70,7 +71,7 @@ async function loadContext(userIds: string[], event: EventId): Promise<DeliveryC
         where: { userId: { in: userIds }, verified: true, enabled: true },
         select: { id: true, userId: true, channel: true, address: true, verified: true, enabled: true, secret: true, failCount: true, lastError: true, lastSentAt: true },
       }),
-      prisma.notificationPref.findMany({ where: { userId: { in: userIds }, event }, select: { userId: true, event: true, channel: true, enabled: true } }),
+      prisma.notificationPref.findMany({ where: { userId: { in: userIds }, event: { in: prefEventsFor(event) } }, select: { userId: true, event: true, channel: true, enabled: true } }),
       prisma.notificationSetting.findMany({ where: { userId: { in: userIds }, quietEnabled: true } }),
     ]);
     for (const c of channels) {

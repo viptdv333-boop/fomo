@@ -20,6 +20,11 @@ const TICK_MS = 15_000;
 
 const globalForScheduler = globalThis as unknown as { alertSchedulerTimer?: ReturnType<typeof setInterval> };
 
+/** Notification.type of a trigger: kind=line → "line_alert", everything else → "price_alert" (the old, still valid type). */
+export function alertNotifType(kind: string): "price_alert" | "line_alert" {
+  return kind === "line" ? "line_alert" : "price_alert";
+}
+
 /** Compact price text for notifications: no float noise, no forced decimals. */
 function fmt(n: number): string {
   return String(Number(n.toPrecision(7)));
@@ -50,6 +55,7 @@ async function tick() {
         expiresAt: a.expiresAt ? a.expiresAt.getTime() : null,
         lastTriggerAt: a.lastTriggerAt ? a.lastTriggerAt.getTime() : null,
         triggerCount: a.triggerCount,
+        cooldownMin: a.cooldownMin,
       };
       const price = quotes[`${a.source}:${a.dataTicker}`]?.price ?? 0;
       // no quote: still let expiry / ended lines be handled (price 0 never crosses)
@@ -82,7 +88,8 @@ async function notifyOwner(
   const body = translate(locale, `alerts.notif.body.${a.kind}.${a.condition}`, { price: fmt(price), level: fmt(level) });
   const link = `/terminal?symbol=${encodeURIComponent(a.dataTicker)}&source=${a.source}`;
 
-  await dispatchNotification({ recipients: [a.userId], type: "price_alert", title, body, link });
+  // two switchable events in the preference matrix: a level reached ("price_alert") and a drawn line touched ("line_alert")
+  await dispatchNotification({ recipients: [a.userId], type: alertNotifType(a.kind), title, body, link });
 }
 
 function toRow(p: AlertPatch) {

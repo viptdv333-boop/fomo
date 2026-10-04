@@ -43,6 +43,8 @@ export const EVENT_IDS = [
   "subscription_expiring",
   "payment_events",
   "price_alert",
+  "line_alert",
+  "calendar_reminder",
   "system",
 ] as const;
 export type EventId = (typeof EVENT_IDS)[number];
@@ -96,8 +98,10 @@ export const EVENTS: EventDef[] = [
     externalDefault: true,
     webpushDefault: false,
   },
-  // --- Терминал
+  // --- Терминал и календарь
   { id: "price_alert", group: "terminal", labelKey: "ns.ev.price_alert", descKey: "ns.ev.price_alert.d", externalDefault: true, webpushDefault: true },
+  { id: "line_alert", group: "terminal", labelKey: "ns.ev.line_alert", descKey: "ns.ev.line_alert.d", externalDefault: true, webpushDefault: true },
+  { id: "calendar_reminder", group: "terminal", labelKey: "ns.ev.calendar_reminder", descKey: "ns.ev.calendar_reminder.d", externalDefault: true, webpushDefault: true },
 ];
 
 const EVENT_BY_ID = new Map<EventId, EventDef>(EVENTS.map((e) => [e.id, e]));
@@ -132,6 +136,8 @@ export const EVENT_FOR_TYPE: Record<string, EventId> = {
   payment: "payment_events",
   subscription_expiring: "subscription_expiring",
   price_alert: "price_alert",
+  line_alert: "line_alert",
+  calendar_reminder: "calendar_reminder",
   // admin / moderation / announcements
   report: "system",
   broadcast: "system",
@@ -161,6 +167,19 @@ export function defaultEnabled(event: EventId, channel: ChannelId): boolean {
   return def.externalDefault;
 }
 
+/**
+ * Events that were split out of an older one: until the user sets their own switch for the new event, it follows the
+ * switch of the old one. "price_alert" used to carry line alerts too, so someone who had switched price alerts off
+ * for Telegram does not suddenly start getting line alerts there.
+ */
+export const LEGACY_PREF_FALLBACK: Partial<Record<EventId, EventId>> = { line_alert: "price_alert" };
+
+/** Events whose stored overrides matter for `event` (itself first, then its legacy fallback). Used to load prefs from the DB. */
+export function prefEventsFor(event: EventId): EventId[] {
+  const fb = LEGACY_PREF_FALLBACK[event];
+  return fb ? [event, fb] : [event];
+}
+
 /** key for a flat override map: `${event}:${channel}` */
 export function prefKey(event: EventId | string, channel: ChannelId | string): string {
   return `${event}:${channel}`;
@@ -181,7 +200,11 @@ export function isEnabled(event: EventId, channel: ChannelId, overrides?: PrefOv
   if (!channelAllowed(event, channel)) return false;
   const def = EVENT_BY_ID.get(event)!;
   if (def.alwaysOn) return channel === "inapp" || channel === "email";
-  const o = lookup(overrides, prefKey(event, channel));
+  let o = lookup(overrides, prefKey(event, channel));
+  if (o === undefined) {
+    const fb = LEGACY_PREF_FALLBACK[event];
+    if (fb) o = lookup(overrides, prefKey(fb, channel));
+  }
   return o !== undefined ? o : defaultEnabled(event, channel);
 }
 

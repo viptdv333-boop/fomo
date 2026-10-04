@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { countryName, intlLocale } from "@/lib/calendar/countries";
-import { addReminder, removeReminder, useReminders } from "@/lib/calendar/reminders";
 import { formatChange, formatValue, surprise } from "@/lib/calendar/surprise";
 import { formatAgo, formatCountdown } from "@/lib/calendar/time";
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
+import { ReminderBlock } from "./CalendarBell";
 import FloatingPanel, { type Anchor } from "./FloatingPanel";
 import { CommodityMark, ImpactDots, MoexMark, RuMark, SURPRISE_CLASS, useNow } from "./parts";
 
@@ -17,15 +17,10 @@ const descMemo = new Map<string, string>();
 
 type Glossary = typeof import("@/lib/calendar/glossary");
 
-const MINUTES = [5, 15, 30, 60];
-
 export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEvent; anchor: Anchor; zone: string; onClose: () => void }) {
   const { t, locale } = useT();
   const loc = intlLocale(locale);
   const now = useNow(1000);
-  const reminders = useReminders();
-  const existing = reminders.find((r) => r.id === ev.id);
-  const [minutes, setMinutes] = useState(existing?.minutes ?? 15);
   const future = ev.ts > now && !ev.allDay;
   const [desc, setDesc] = useState<string>(ev.description ?? descMemo.get(ev.id) ?? "");
   useEffect(() => {
@@ -69,14 +64,6 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
       return new Date(ev.ts).toISOString();
     }
   })();
-
-  const remind = () => {
-    // the reminder is stored at once; the permission prompt (user gesture) must not hold it up
-    addReminder(ev, minutes);
-    try {
-      if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission();
-    } catch {}
-  };
 
   const cell = (label: string, value: string, cls = "") => (
     <div className="rounded-[10px] bg-[var(--tv3-fill3)] px-2.5 py-1.5">
@@ -173,38 +160,7 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
             </div>
           ))}
 
-        {future && (
-          <div className="mt-3 border-t border-[var(--tv3-hair2)] pt-3">
-            {existing ? (
-              <div className="flex items-center gap-2">
-                <span className="flex-1 text-xs text-[var(--tv3-text2)]">{t("ec.rem.set", { min: existing.minutes })}</span>
-                <button type="button" onClick={() => removeReminder(ev.id)} className="h-8 rounded-[10px] bg-[var(--tv3-fill)] px-2.5 text-xs font-semibold cursor-pointer hover:bg-[var(--tv3-fill2)]">
-                  {t("ec.rem.remove")}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <select
-                  value={minutes}
-                  onChange={(e) => setMinutes(+e.target.value)}
-                  aria-label={t("ec.rem.before")}
-                  className="h-8 rounded-[10px] bg-[var(--tv3-fill)] px-1.5 text-xs text-[var(--tv3-text)] outline-none"
-                >
-                  {MINUTES.map((m) => (
-                    <option key={m} value={m}>
-                      {t("ec.rem.opt", { min: m })}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={remind} className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[var(--tv3-accent)] px-3 text-xs font-semibold text-white cursor-pointer hover:bg-[var(--tv3-accent-hover)]">
-                  <span className="scale-[0.72]">{EC_ICONS.bell}</span>
-                  {t("ec.rem.add")}
-                </button>
-              </div>
-            )}
-            <p className="mt-1.5 text-[11px] leading-snug text-[var(--tv3-muted)]">{t("ec.rem.note")}</p>
-          </div>
-        )}
+        {future && <ReminderBlock ev={ev} />}
       </div>
     </FloatingPanel>
   );

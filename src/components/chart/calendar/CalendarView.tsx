@@ -12,6 +12,7 @@ import { addDays, dayKey, eventDay, formatClock, formatCountdown, formatDayHeadi
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
+import CalendarBell from "./CalendarBell";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
 import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
@@ -93,7 +94,7 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
           </span>
           <BriefLine ev={ev} />
         </span>
-        {reminded && <span className="mt-px shrink-0 text-amber-500"><span className="scale-[0.62] inline-block origin-center">{EC_ICONS.bellOn}</span></span>}
+        <CalendarBell ev={ev} className="mt-px" />
         <span className="pt-[6px]" title={t(`ec.impact.${ev.impact}`)}><ImpactDot level={ev.impact} /></span>
       </div>
       {hasFigures && (
@@ -134,7 +135,7 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
           {ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />}
           {ev.category === "ru" && <RuMark title={t("ec.russia")} />}
           <span className="truncate">{ev.event}</span>
-          {reminded && <span className="shrink-0 text-amber-500"><span className="inline-block scale-[0.62]">{EC_ICONS.bellOn}</span></span>}
+          <CalendarBell ev={ev} className="ml-auto" />
         </span>
         <BriefLine ev={ev} />
       </span>

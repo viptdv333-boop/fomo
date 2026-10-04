@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
+import { onlyTerminalAlerts } from "@/lib/terminal-alert-defaults";
 
 interface Notification {
   id: string;
@@ -47,6 +48,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number>(0);
+  const knownIdsRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const res = await fetch("/api/notifications?limit=10");
@@ -55,10 +57,14 @@ export default function NotificationBell() {
       setNotifications(data.notifications);
       const newCount = data.unreadCount;
 
-      // Play sound if unread count increased
+      // Play sound if unread count increased. While the terminal is open it announces alerts and calendar reminders itself,
+      // with its own sound switch (Settings -> Notifications -> Terminal), so the bell stays quiet for those.
       if (newCount > prevUnreadRef.current && prevUnreadRef.current >= 0) {
-        playNotificationSound();
+        const fresh = (data.notifications as Notification[]).filter((n) => !n.isRead && !knownIdsRef.current.has(n.id));
+        const byTerminal = (window as unknown as { __fomoTerminalSound?: boolean }).__fomoTerminalSound === true && onlyTerminalAlerts(fresh);
+        if (!byTerminal) playNotificationSound();
       }
+      for (const n of data.notifications as Notification[]) knownIdsRef.current.add(n.id);
       prevUnreadRef.current = newCount;
       setUnreadCount(newCount);
     }
@@ -144,6 +150,8 @@ export default function NotificationBell() {
       case "comment_reply": return "↩️";
       case "payment": return "💰";
       case "price_alert": return "⏰";
+      case "line_alert": return "📈";
+      case "calendar_reminder": return "📅";
       default: return "🔔";
     }
   }

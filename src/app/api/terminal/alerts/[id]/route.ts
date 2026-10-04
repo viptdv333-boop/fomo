@@ -30,6 +30,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   if (v.price !== undefined) data.price = v.price;
   if (v.message !== undefined) data.message = v.message || null;
   if (v.repeat !== undefined) data.repeat = v.repeat;
+  if (v.cooldownMin !== undefined) data.cooldownMin = v.cooldownMin;
   if (v.expiresAt !== undefined) data.expiresAt = v.expiresAt ? new Date(v.expiresAt) : null;
 
   const rearm = v.status === "active" || v.price !== undefined || v.condition !== undefined;

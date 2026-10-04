@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { TIME_ZONES, localZone } from "@/lib/chart/settings";
+import CalendarRemindersHost from "./CalendarRemindersHost";
 import WorldCalendar from "./WorldCalendar";
 import "../terminal-v3.css";
 
@@ -45,6 +46,8 @@ export default function CalendarPageClient() {
 
   return (
     <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-card)]" style={{ top }}>
+      {/* reminders kept in this browser (guests) and the pop-up for server notifications fire here too */}
+      <CalendarRemindersHost />
       <WorldCalendar
         zone={zone}
         mode="page"

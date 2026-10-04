@@ -5,13 +5,16 @@
 import {
   EVENTS,
   EVENT_FOR_TYPE,
+  EVENT_GROUPS,
   EVENT_IDS,
+  LEGACY_PREF_FALLBACK,
   channelAllowed,
   defaultEnabled,
   eventForType,
   isEnabled,
   isQuietNow,
   localMinutes,
+  prefEventsFor,
   prefKey,
   type QuietHours,
 } from "../src/lib/notification-events";
@@ -19,6 +22,7 @@ import { SendGate, decide, type ChannelLite } from "../src/lib/notify-decide";
 import { renderNotifText } from "../src/lib/notif-render";
 import { MAX_HARD_FAILS, nextChannelState } from "../src/lib/notify-dispatch";
 import { channelStatus, maskAddress } from "../src/lib/notify-link";
+import { translate } from "../src/lib/i18n/dictionaries";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -79,7 +83,7 @@ eq("quiet hours: only the bell is delivered", decide({ event: "dm", channels: [t
 eq("outside quiet hours: everything flows", decide({ event: "dm", channels: [tg], quiet, now: new Date("2026-10-04T12:00:00Z") }).webpush, true);
 
 /* ---- 6. every type string used in the codebase maps to a real event ---- */
-const usedTypes = ["chat_mention", "chat_reply", "chat_room_message", "new_comment", "comment_reply", "new_message", "new_idea", "channel_post", "channel_comment", "new_follower", "subscription_extended", "subscription_removed", "subscription", "payment", "room_join", "price_alert", "report", "broadcast", "email_broadcast"];
+const usedTypes = ["chat_mention", "chat_reply", "chat_room_message", "new_comment", "comment_reply", "new_message", "new_idea", "channel_post", "channel_comment", "new_follower", "subscription_extended", "subscription_removed", "subscription", "payment", "room_join", "price_alert", "line_alert", "calendar_reminder", "report", "broadcast", "email_broadcast"];
 eq("all known types are mapped explicitly", usedTypes.filter((t) => !(t in EVENT_FOR_TYPE)), []);
 eq("all mapped events exist in the catalog", Object.values(EVENT_FOR_TYPE).filter((e) => !EVENT_IDS.includes(e)), []);
 eq("unknown type falls back to system", eventForType("something_new"), "system");
@@ -121,6 +125,33 @@ eq("{key} var translated per locale", renderNotifText({ key: "notif.newFollower.
   const hardN = nextChannelState({ ...base, failCount: MAX_HARD_FAILS - 1 }, { ok: false, error: "blocked", permanent: true })!;
   eq("Nth consecutive hard failure disables the channel", [hardN.data.enabled, hardN.disabled], [false, true]);
   eq("long errors are truncated", nextChannelState(base, { ok: false, error: "x".repeat(1000) })!.data.lastError!.length, 300);
+}
+
+/* ---- 9b. terminal group: price_alert / line_alert / calendar_reminder are separate switchable events ---- */
+{
+  const terminal = EVENTS.filter((e) => e.group === "terminal").map((e) => e.id);
+  eq("terminal group holds the three events", terminal, ["price_alert", "line_alert", "calendar_reminder"]);
+  eq("types map to their own events (price_alert rows keep working)", [eventForType("price_alert"), eventForType("line_alert"), eventForType("calendar_reminder")], ["price_alert", "line_alert", "calendar_reminder"]);
+  eq("group list still has the terminal group", EVENT_GROUPS.includes("terminal"), true);
+  for (const ev of ["price_alert", "line_alert", "calendar_reminder"] as const) {
+    const def = EVENTS.find((e) => e.id === ev)!;
+    eq(`${ev}: not always-on, every channel allowed`, [Boolean(def.alwaysOn), ["inapp", "webpush", "email", "telegram", "whatsapp", "max", "vk", "webhook"].every((c) => channelAllowed(ev, c as never))], [false, true]);
+    eq(`${ev}: defaults = bell + push on (as price alerts always were), connected channel opts in`, [defaultEnabled(ev, "inapp"), defaultEnabled(ev, "webpush"), defaultEnabled(ev, "telegram")], [true, true, true]);
+    eq(`${ev}: label + description exist in ru / en / cn`, ["ru", "en", "cn"].map((l) => [translate(l, def.labelKey) !== def.labelKey, translate(l, def.descKey) !== def.descKey]), [[true, true], [true, true], [true, true]]);
+  }
+  eq("group heading «Терминал и календарь»", [translate("ru", "ns.group.terminal"), translate("en", "ns.group.terminal"), translate("cn", "ns.group.terminal")], ["Терминал и календарь", "Terminal and calendar", "终端与日历"]);
+  eq("ru labels: «Достижение цены» / «Касание линий и уровней» / «Напоминания о событиях календаря»", ["price_alert", "line_alert", "calendar_reminder"].map((e) => translate("ru", EVENTS.find((x) => x.id === e)!.labelKey)), ["Достижение цены", "Касание линий и уровней", "Напоминания о событиях календаря"]);
+
+  // backward compatibility: line alerts used to be part of price_alert, so its switches carry over until line_alert is set itself
+  eq("fallback table: line_alert follows price_alert", [LEGACY_PREF_FALLBACK.line_alert, prefEventsFor("line_alert"), prefEventsFor("price_alert")], ["price_alert", ["line_alert", "price_alert"], ["price_alert"]]);
+  const old = new Map([[prefKey("price_alert", "telegram"), false], [prefKey("price_alert", "webpush"), false]]);
+  eq("old price_alert=off for telegram/push also silences line alerts there", [isEnabled("line_alert", "telegram", old), isEnabled("line_alert", "webpush", old), isEnabled("line_alert", "inapp", old)], [false, false, true]);
+  const own = new Map([...old, [prefKey("line_alert", "telegram"), true]]);
+  eq("an explicit line_alert switch wins over the inherited one", [isEnabled("line_alert", "telegram", own), isEnabled("price_alert", "telegram", own)], [true, false]);
+  eq("price_alert and calendar_reminder never inherit from anything", [isEnabled("price_alert", "telegram", { "line_alert:telegram": false }), isEnabled("calendar_reminder", "telegram", old)], [true, true]);
+  eq("decide: a line alert with price_alert off for push goes to the bell only", decide({ event: "line_alert", overrides: old, channels: [tg] }), { inapp: true, webpush: false, external: [], heldByQuiet: false });
+  eq("decide: calendar reminder reaches telegram by default once connected", decide({ event: "calendar_reminder", channels: [tg] }).external, [tg]);
+  eq("decide: calendar reminder in quiet hours is held back except the bell", decide({ event: "calendar_reminder", channels: [tg], quiet, now: new Date("2026-10-04T02:00:00Z") }), { inapp: true, webpush: false, external: [], heldByQuiet: true });
 }
 
 /* ---- 10. card status + masking ---- */

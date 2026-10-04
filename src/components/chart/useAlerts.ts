@@ -15,6 +15,8 @@ export interface AlertItem {
   line: LineSpec | null;
   message: string | null;
   repeat: boolean;
+  /** minutes between two firings of a repeating alert */
+  cooldownMin?: number;
   status: "active" | "triggered" | "paused" | "expired";
   expiresAt: string | null;
   triggeredAt: string | null;
@@ -34,6 +36,7 @@ export interface CreateAlertInput {
   line?: LineSpec;
   message?: string;
   repeat: boolean;
+  cooldownMin?: number;
   expiresAt: string | null;
 }
 

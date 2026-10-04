@@ -7,6 +7,8 @@ import { addDays, formatClock, formatDayHeading } from "@/lib/calendar/time";
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
 import { mayHaveBrief, useBriefs } from "@/lib/calendar/useBriefs";
+import { useReminders } from "@/lib/calendar/reminders";
+import { EC_ICONS } from "../icons-econ";
 import { IMPACT_COLOR } from "./parts";
 
 interface Props {
@@ -41,6 +43,9 @@ const MORE_ROW = 16;
 export default function MonthGrid({ cells, events, zone, locale, coverage, fill = true, onOpenDay }: Props) {
   const { t, locale: appLocale } = useT();
   const { ready, get: briefOf } = useBriefs();
+  // a set reminder shows as a tiny amber bell (the bell itself, to set / remove, is in the day modal and the event popup)
+  const reminders = useReminders();
+  const remindedIds = useMemo(() => new Set(reminders.map((r) => r.id)), [reminders]);
   const gridRef = useRef<HTMLDivElement>(null);
   const [cellH, setCellH] = useState(150);
   const by = useMemo(() => dayCounts(events, zone), [events, zone]);
@@ -186,6 +191,11 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-[var(--tv3-muted)]">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
                           <Flag code={e.country} width={14} />
                           <span className="min-w-0 flex-1 truncate text-[var(--tv3-text)]">{e.event}</span>
+                          {remindedIds.has(e.id) && (
+                            <span className="inline-flex h-[11px] w-[11px] shrink-0 items-center justify-center text-amber-500" aria-hidden="true">
+                              <span className="inline-block scale-[0.5]">{EC_ICONS.bellOn}</span>
+                            </span>
+                          )}
                           <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} />
                         </span>
                         {/* the market impact in one line under every title (the full text is in the tooltip) */}

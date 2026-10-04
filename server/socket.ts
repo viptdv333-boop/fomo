@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
 import { startAlertScheduler } from "./alert-scheduler";
 import { startSubscriptionExpiryNotices } from "./subscription-expiry";
+import { startCalendarReminders } from "./calendar-reminders";
 import { canAccessRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
 import { dispatchNotification } from "../src/lib/notify-dispatch";
@@ -197,6 +198,10 @@ export function initSocket(httpServer: HTTPServer) {
 
   // "Subscription ending soon" reminders (opt-in: SUBSCRIPTION_EXPIRY_NOTICE=1).
   startSubscriptionExpiryNotices();
+
+  // Calendar reminders («колокольчик» on an event): sends "calendar_reminder" notifications when their time comes
+  // (CalendarReminder rows; idle without any). CALENDAR_REMINDERS=0 switches it off.
+  if (process.env.CALENDAR_REMINDERS !== "0") startCalendarReminders();
 
   return io;
 }

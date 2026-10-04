@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { alertLevel, type LineSpec } from "@/lib/alerts/evaluate";
 import { fmtPrice } from "@/lib/terminal-data";
+import { COOLDOWN_OPTIONS, type TerminalNotifyDefaults } from "@/lib/terminal-alert-defaults";
+import { getTerminalNotifyDefaults, loadTerminalNotifyDefaults } from "@/lib/terminal-alert-defaults-client";
 import { Toggle } from "./tv3-ui";
 import type { AlertItem, AlertResult, AlertsApi } from "./useAlerts";
 
@@ -56,7 +58,10 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
   const [priceText, setPriceText] = useState("");
   const [message, setMessage] = useState("");
   const [repeat, setRepeat] = useState(false);
+  const [cooldownMin, setCooldownMin] = useState(1);
   const [expiry, setExpiry] = useState("none");
+  /** the user changed trigger / cooldown / expiry in this form: late-arriving account defaults must not overwrite it */
+  const touched = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [line, setLine] = useState<LineSpec | null>(null);
@@ -64,15 +69,25 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
   const supported = symbol.source === "moex" || symbol.source === "bybit";
   const { refetch } = api;
 
+  /** Settings → Notifications → «Терминал»: what a NEW alert starts from. */
+  const applyDefaults = (d: TerminalNotifyDefaults) => {
+    setRepeat(d.repeat);
+    setCooldownMin(d.cooldownMin);
+    setExpiry(EXPIRY.find((e) => e.days === d.expiryDays)?.id ?? "none");
+  };
+
   // every opening: fresh data, and either the list or the form prefilled from the draft
   useEffect(() => {
     if (!open) return;
     refetch();
     setError(null);
     setMessage("");
-    setRepeat(false);
-    setExpiry("none");
     setCondition("cross");
+    touched.current = false;
+    applyDefaults(getTerminalNotifyDefaults());
+    void loadTerminalNotifyDefaults().then((d) => {
+      if (!touched.current) applyDefaults(d);
+    });
     if (draft) {
       setCreating(true);
       setLine(draft.line ?? null);
@@ -100,9 +115,9 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
     setError(null);
     setLine(null);
     setMessage("");
-    setRepeat(false);
-    setExpiry("none");
     setCondition("cross");
+    touched.current = false;
+    applyDefaults(getTerminalNotifyDefaults());
     setCreating(true);
   };
 
@@ -125,6 +140,7 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
       ...(line ? { line } : { price: price as number }),
       message: message.trim() || undefined,
       repeat,
+      ...(repeat ? { cooldownMin } : {}),
       expiresAt: days > 0 ? new Date(Date.now() + days * 86_400_000).toISOString() : null,
     });
     setBusy(false);
@@ -281,14 +297,22 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-xs text-[var(--tv3-text2)]">
                   {t("alerts.trigger")}
-                  <select className={`${inputCls} mt-1`} value={repeat ? "repeat" : "once"} onChange={(e) => setRepeat(e.target.value === "repeat")}>
+                  <select className={`${inputCls} mt-1`} value={repeat ? "repeat" : "once"} onChange={(e) => {
+                      touched.current = true;
+                      setRepeat(e.target.value === "repeat");
+                    }}
+                  >
                     <option value="once">{t("alerts.once")}</option>
                     <option value="repeat">{t("alerts.repeat")}</option>
                   </select>
                 </label>
                 <label className="block text-xs text-[var(--tv3-text2)]">
                   {t("alerts.expiry")}
-                  <select className={`${inputCls} mt-1`} value={expiry} onChange={(e) => setExpiry(e.target.value)}>
+                  <select className={`${inputCls} mt-1`} value={expiry} onChange={(e) => {
+                      touched.current = true;
+                      setExpiry(e.target.value);
+                    }}
+                  >
                     {EXPIRY.map((e) => (
                       <option key={e.id} value={e.id}>
                         {t(`alerts.exp.${e.id}`)}
@@ -297,6 +321,26 @@ export default function AlertsDialog({ open, onClose, api, symbol, draft }: Prop
                   </select>
                 </label>
               </div>
+
+              {repeat && (
+                <label className="flex items-center gap-2 text-xs text-[var(--tv3-text2)]">
+                  {t("alerts.cooldown")}
+                  <select
+                    className={`${inputCls} !w-auto`}
+                    value={cooldownMin}
+                    onChange={(e) => {
+                      touched.current = true;
+                      setCooldownMin(Number(e.target.value));
+                    }}
+                  >
+                    {COOLDOWN_OPTIONS.map((m) => (
+                      <option key={m} value={m}>
+                        {m >= 60 ? t("alerts.cd.hour") : t("alerts.cd.min", { min: m })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               {error && <p className="text-xs text-[var(--tv3-down)]">{error}</p>}
               <div className="flex justify-end gap-2 pt-1">

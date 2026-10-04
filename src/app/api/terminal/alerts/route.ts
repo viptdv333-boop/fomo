@@ -43,10 +43,11 @@ export async function POST(request: NextRequest) {
       kind: v.kind,
       condition: v.condition,
       price: isLine ? null : v.price,
-      // a horizontal line has one anchor: keep the second equal so the evaluator needs no special case
-      line: isLine && v.line ? { ...v.line, p2: v.line.tool === "hline" ? v.line.p1 : v.line.p2 } : undefined,
+      // a horizontal line / ray has one anchor: keep the second equal so the evaluator needs no special case
+      line: isLine && v.line ? { ...v.line, p2: v.line.tool === "hline" || v.line.tool === "hray" ? v.line.p1 : v.line.p2 } : undefined,
       message: v.message || null,
       repeat: v.repeat,
+      cooldownMin: v.cooldownMin,
       expiresAt: v.expiresAt ? new Date(v.expiresAt) : null,
     },
   });

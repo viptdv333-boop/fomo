@@ -30,6 +30,8 @@ export interface AlertState {
   expiresAt: number | null;
   lastTriggerAt: number | null;
   triggerCount: number;
+  /** Minimum minutes between two firings of a repeating alert (default 1). */
+  cooldownMin?: number | null;
 }
 
 /** Fields the scheduler writes back; only the keys that changed are present. */
@@ -48,8 +50,14 @@ export interface EvalResult {
   patch: AlertPatch | null;
 }
 
-/** Cooldown between two firings of a repeating alert. */
+/** Default cooldown between two firings of a repeating alert (the alert's own `cooldownMin` overrides it). */
 export const REPEAT_COOLDOWN_MS = 60_000;
+
+/** Cooldown of one alert in ms: its own `cooldownMin` (1..1440), else the default minute. */
+export function cooldownMs(a: Pick<AlertState, "cooldownMin">): number {
+  const m = a.cooldownMin;
+  return typeof m === "number" && Number.isFinite(m) && m >= 1 ? Math.min(Math.round(m), 1440) * 60_000 : REPEAT_COOLDOWN_MS;
+}
 
 export type LineLevel = { state: "ok"; level: number } | { state: "pending" } | { state: "ended" };
 
@@ -120,7 +128,7 @@ export function evaluateAlert(a: AlertState, price: number, now: number): EvalRe
 
   if (a.repeat) {
     // inside the cooldown the flip is remembered but silent
-    if (a.lastTriggerAt !== null && now - a.lastTriggerAt < REPEAT_COOLDOWN_MS) {
+    if (a.lastTriggerAt !== null && now - a.lastTriggerAt < cooldownMs(a)) {
       return { triggered: false, level, patch: { lastSide: side } };
     }
     return {
@@ -141,7 +149,7 @@ function isFiniteNum(v: unknown): v is number {
 }
 
 /** Tools an alert can follow (kind = "line"). */
-export const ALERT_LINE_TOOLS = ["hline", "trend", "ray", "extended"] as const;
+export const ALERT_LINE_TOOLS = ["hline", "hray", "trend", "ray", "extended"] as const;
 
 /** Parses the Json column defensively. */
 export function parseLineSpec(raw: unknown): LineSpec | null {

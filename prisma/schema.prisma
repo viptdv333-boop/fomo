@@ -69,6 +69,7 @@ model User {
   terminalWatch          TerminalWatchItem[]
   priceAlerts            PriceAlert[]
   terminalUserData       TerminalUserData[]
+  calendarReminders      CalendarReminder[]
   mutedByFeedOf          FeedMute[]     @relation("FeedMuteAuthor")
   education              Education[]
   directConversations    DirectConversationParticipant[]
@@ -819,6 +820,8 @@ model PriceAlert {
   message       String?
   /// re-arm after each trigger (with a cooldown) instead of firing once
   repeat        Boolean   @default(false)
+  /// minimum minutes between two firings of a repeating alert
+  cooldownMin   Int       @default(1)
   /// "active" | "triggered" | "paused" | "expired"
   status        String    @default("active")
   /// side of the level the last checked price was on: 1 above, -1 below, 0 not checked yet
@@ -834,6 +837,34 @@ model PriceAlert {
 
   @@index([userId, status])
   @@index([status, source, dataTicker])
+}
+
+/// «Колокольчик» on an economic-calendar event: a server-side reminder that goes out through the notification dispatcher
+/// (bell, Web Push, e-mail, Telegram ... per the user's "calendar_reminder" event preferences) `leadMin` minutes before the
+/// release (server/calendar-reminders.ts). The event itself is not stored in the DB, so its display fields are copied here.
+/// eventId = CalEvent.id (stable hash of time + country + title). notifiedAt = claimed/sent (set atomically before sending).
+model CalendarReminder {
+  id         String    @id @default(cuid())
+  userId     String
+  eventId    String
+  /// release time (real UTC)
+  eventTs    DateTime
+  title      String
+  country    String    @default("")
+  impact     Int       @default(1)
+  category   String    @default("other")
+  /// glossary key (src/lib/calendar/glossary): the server looks the brief «на что влияет» up by it
+  gk         String?
+  /// minutes before the release; 0 = at the time
+  leadMin    Int       @default(15)
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId, leadMin])
+  @@index([eventTs])
+  @@index([userId, notifiedAt])
 }
 
 /// Per-user terminal data stored as JSON blobs: drawing templates, indicator templates, custom indicator scripts,
