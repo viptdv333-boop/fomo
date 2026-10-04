@@ -40,6 +40,11 @@ function limited(ip: string, now: number): number {
   return h.n > LIMIT ? Math.max(1, Math.ceil((h.reset - now) / 1000)) : 0;
 }
 
+/* nginx in front of the app may strip Accept-Encoding, so an absent header counts as "yes": every browser takes gzip */
+function acceptsGzip(h: string | null): boolean {
+  return !h || /gzip|[*]/i.test(h);
+}
+
 function reply(events: unknown[], reason: CalReason, extra: Record<string, string> = {}, status = 200, gzip = false) {
   const ok = reason === "ok" || reason === "mock" || reason === "clamped" || reason === "partial";
   const headers: Record<string, string> = {
@@ -109,7 +114,7 @@ export async function GET(request: NextRequest) {
       ...(res.moex ? { "X-Calendar-Layers": "moex" } : {}),
       ...(res.coverage ? { "X-Calendar-Coverage": `${res.coverage.from}..${res.coverage.to}` } : {}),
       "X-Calendar-Range": `${from}..${to}`,
-    }, 200, /gzip/i.test(request.headers.get("accept-encoding") || ""));
+    }, 200, acceptsGzip(request.headers.get("accept-encoding")));
   } catch {
     return reply([], "upstream-error");
   }
