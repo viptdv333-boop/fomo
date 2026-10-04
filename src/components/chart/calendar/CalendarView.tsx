@@ -253,7 +253,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             role="tab"
             aria-selected={on}
             onClick={() => update((p) => ({ ...p, preset: tb.id }))}
-            className={`h-6 shrink-0 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${wide ? "" : "flex-1"} ${on ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
+            className={`h-6 shrink-0 whitespace-nowrap rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${wide ? "px-2.5" : "flex-auto"} ${on ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
           >
             {t(tb.key)}
           </button>
