@@ -15,6 +15,7 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
+import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
@@ -32,11 +33,12 @@ function instrumentFromUrl(): TerminalInstrument {
   const symbol = sp.get("symbol")?.trim();
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
   const src = sp.get("source");
-  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" ? src : null;
+  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" || src === "forex" ? src : null;
   if (source) return findInstrument(source, symbol) ?? adHocInstrument(source, symbol);
   // no source given: take the curated instrument with that ticker, or guess Bybit for USDT pairs
   const known = ALL_INSTRUMENTS.find((i) => i.ticker.toLowerCase() === symbol.toLowerCase());
   if (known) return known;
+  if (isForexSymbol(symbol)) return adHocInstrument("forex", symbol.toUpperCase());
   return adHocInstrument(/USDT$|USDC$|\.[PI]$|-\d{1,2}[A-Z]{3}\d{2}$/i.test(symbol) ? "bybit" : "moex", symbol);
 }
 

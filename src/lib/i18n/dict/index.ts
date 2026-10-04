@@ -38,5 +38,6 @@ import termv3 from "./termv3";
 import panelv3 from "./panelv3";
 import calrem from "./calrem";
 import demogate from "./demogate";
+import forex from "./forex";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate, forex];

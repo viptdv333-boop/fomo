@@ -6,6 +6,8 @@ import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
 import { panelTabIcon } from "./icons";
+import Flag from "./Flag";
+import { FX_CURRENCIES, fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
@@ -23,6 +25,7 @@ import {
   fmtPrice,
   fmtSigned,
   instName,
+  priceDigits,
   rememberInstrument,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
@@ -50,7 +53,25 @@ const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dat
 
 /* ───────────── small pieces ───────────── */
 
+/** Two overlapping flags of a currency pair (EUR/USD); the metals have artwork and never get here. */
+function PairIcon({ symbol, size }: { symbol: string; size: number }) {
+  const p = parseFxSymbol(symbol);
+  const fw = Math.round(size * 0.72);
+  const fh = Math.round((fw * 20) / 30);
+  return (
+    <span className="relative shrink-0 inline-block" style={{ width: size, height: size }} aria-hidden>
+      <span className="absolute left-0 top-0 leading-none">
+        <Flag code={p ? FX_CURRENCIES[p.base]?.flag ?? "" : ""} width={fw} />
+      </span>
+      <span className="absolute right-0 leading-none" style={{ top: size - fh }}>
+        <Flag code={p ? FX_CURRENCIES[p.quote]?.flag ?? "" : ""} width={fw} />
+      </span>
+    </span>
+  );
+}
+
 export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?: number }) {
+  if (!inst.emoji && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
   if (inst.emoji) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={inst.emoji} alt="" width={size} height={size} className="rounded-full shrink-0" style={{ width: size, height: size }} />;
@@ -269,7 +290,7 @@ const WatchRow = memo(function WatchRow({
               flash === "up" ? "bg-[var(--tv3-up)]/25" : flash === "down" ? "bg-[var(--tv3-down)]/25" : "bg-transparent"
             } ${q ? "text-[var(--tv3-text)]" : "text-[var(--tv3-muted)]"}`}
           >
-            {q ? fmtPrice(q.price, locale) : "…"}
+            {q ? fmtPrice(q.price, locale, priceDigits(inst)) : "…"}
           </span>
           <span className="block text-[12px] font-semibold leading-tight tabular-nums" style={{ color }}>
             {q ? `${fmtSigned(q.changePercent, 2, locale)}%` : ""}
@@ -295,7 +316,7 @@ const WL_KEY = "fomo-terminal-watchlist-v1";
 const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
-const WL_SOURCES = ["moex", "bybit", "fmp"];
+const WL_SOURCES = ["moex", "bybit", "fmp", "forex"];
 
 function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   if (!Array.isArray(raw)) return [];
@@ -426,6 +447,7 @@ function AddTicker({
     const out: { inst: TerminalInstrument; item?: MarketItem; expand?: string }[] = [];
     const seen = new Set<string>();
     for (const inst of results ?? []) {
+      if (inst.source === "forex") continue; // forex rows come ranked from the market search (a substring match on «usd» would list every pair)
       const cat = categoryOf(inst);
       const grp: GroupTab | null = inst.source === "bybit" ? "crypto" : inst.source !== "moex" ? null : cat ? (cat.name === "Акции ММВБ" ? "stock" : "future") : "stock";
       if (tab !== "all" && grp !== tab) continue;
@@ -470,6 +492,7 @@ function AddTicker({
         const norm = (x: string) => x.toLowerCase().replace(/ё/g, "е");
         const nd = norm(needle);
         for (const inst of ALL_INSTRUMENTS) {
+          if (inst.source === "forex") continue;
           if (norm(inst.name).includes(nd) || norm(inst.ticker).includes(nd) || norm(inst.dataTicker).includes(nd)) {
             const key = `${inst.source}:${inst.dataTicker}`;
             if (!seen.has(key)) {
@@ -489,7 +512,7 @@ function AddTicker({
               dataTicker = alias.dataTicker;
             }
           }
-          if ((source !== "moex" && source !== "bybit" && source !== "fmp") || !dataTicker) continue;
+          if ((source !== "moex" && source !== "bybit" && source !== "fmp" && source !== "forex") || !dataTicker) continue;
           const key = `${source}:${dataTicker}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -720,6 +743,7 @@ function moscowNow(): [number, number] {
 
 function isMarketOpen(inst: TerminalInstrument): boolean {
   if (inst.source === "bybit") return true;
+  if (inst.source === "forex") return fxMarketOpen(new Date());
   if (inst.source !== "moex") return true;
   const [dow, m] = moscowNow();
   if (dow === 0 || dow === 6) return false;
@@ -734,6 +758,7 @@ const POINT_TICKERS = new Set(["MIX", "RTS", "SPYF", "NASD"]);
 const POINT_CONTRACT = /^(MX|MM|RI|RM|SF|NA)[FGHJKMNQUVXZ]\d$|^(IMOEXF|SP500F|QQQF)$/;
 
 function currencyOf(inst: TerminalInstrument, t: (k: string) => string): string {
+  if (inst.source === "forex") return parseFxSymbol(inst.dataTicker)?.quote ?? "";
   if (inst.source === "bybit") return inst.ticker.endsWith("USDT") ? "USDT" : inst.ticker.endsWith("USDC") ? "USDC" : "";
   if (inst.source === "moex") return inst.unit === "%" ? "%" : POINT_TICKERS.has(inst.dataTicker) || POINT_CONTRACT.test(inst.dataTicker) || inst.group === "index" ? t("shell.info.points") : "RUB";
   return "";
@@ -800,8 +825,11 @@ function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; q
   const open_ = isMarketOpen(inst);
   const cur = currencyOf(inst, t);
   const cat = categoryOf(inst);
+  const pd = priceDigits(inst);
   const type =
-    inst.source === "bybit"
+    inst.source === "forex"
+      ? t("ms.group.forex")
+      : inst.source === "bybit"
       ? t("shell.info.spot")
       : cat?.name === "Акции ММВБ" || inst.group === "stock"
         ? t("shell.info.stock")
@@ -834,11 +862,11 @@ function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; q
       {price != null ? (
         <div className="px-2 pb-2">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[26px] font-bold tabular-nums text-[var(--tv3-text)]">{fmtPrice(price, locale)}</span>
+            <span className="text-[26px] font-bold tabular-nums text-[var(--tv3-text)]">{fmtPrice(price, locale, pd)}</span>
             {cur && <span className="text-[12px] text-[var(--tv3-muted)]">{cur}</span>}
           </div>
           <div className="text-[13px] font-semibold tabular-nums" style={{ color: change === 0 ? "var(--tv3-muted)" : up ? "var(--tv3-up)" : "var(--tv3-down)" }}>
-            {fmtSigned(change, chgDigits(price), locale)}&nbsp;&nbsp;{fmtSigned(pct, 2, locale)}%
+            {fmtSigned(change, pd ?? chgDigits(price), locale)}&nbsp;&nbsp;{fmtSigned(pct, 2, locale)}%
           </div>
         </div>
       ) : (
@@ -852,8 +880,8 @@ function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; q
             <span className="absolute top-1/2 w-2.5 h-2.5 rounded-full bg-[var(--tv3-accent)] -translate-y-1/2 -translate-x-1/2" style={{ left: `${pos}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between font-semibold tabular-nums text-[var(--tv3-text)]">
-            <span>{fmtPrice(low, locale)}</span>
-            <span>{fmtPrice(high, locale)}</span>
+            <span>{fmtPrice(low, locale, pd)}</span>
+            <span>{fmtPrice(high, locale, pd)}</span>
           </div>
         </div>
       )}
@@ -866,10 +894,10 @@ function InfoCard({ inst: inst0, quote, visible }: { inst: TerminalInstrument; q
         {open != null && (
           <div className={rowCls}>
             <span className={label}>{t("shell.info.dayOpen")}</span>
-            <span className={valCls}>{fmtPrice(open, locale)}</span>
+            <span className={valCls}>{fmtPrice(open, locale, pd)}</span>
           </div>
         )}
-        {volume > 0 && (
+        {volume > 0 && inst.source !== "forex" && (
           <div className={rowCls}>
             <span className={label}>{t("shell.info.volume")}</span>
             <span className={valCls}>{fmtCompact(volume, locale)}</span>
@@ -921,7 +949,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
   // the selected symbol may not be in the list; its quote is still needed for the info card
   const instruments = useMemo(() => {
     const inList = watchlist.items.some((i) => i.source === selected.source && i.dataTicker === selected.dataTicker);
-    return inList || (selected.source !== "moex" && selected.source !== "bybit") ? watchlist.items : [...watchlist.items, selected];
+    return inList || (selected.source !== "moex" && selected.source !== "bybit" && selected.source !== "forex") ? watchlist.items : [...watchlist.items, selected];
   }, [watchlist.items, selected]);
   const quotes = useBatchQuotes(instruments, visible && instruments.length > 0);
   const quote = quotes[qKey(selected)];

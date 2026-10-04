@@ -5,6 +5,7 @@ import { frontSecid } from "@/lib/moex-contracts";
 import { issQuote, resolveMoex } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { getViewer } from "@/lib/algopack-access";
+import { getForexQuote } from "@/lib/forex";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -277,6 +278,10 @@ export async function GET(request: NextRequest) {
     quote = await fetchBybitQuote(ticker);
   } else if (source === "fmp") {
     quote = await fetchFmpQuote(ticker);
+  } else if (source === "forex") {
+    // spot FX (provider layer: cached ~8 s, one upstream request shared by every client)
+    const fx = await getForexQuote(ticker);
+    if (fx) return NextResponse.json({ ...fx.quote, ticker, provider: fx.provider, ...(fx.proxy ? { proxy: fx.proxy } : {}) }, { headers: { "Cache-Control": "no-cache, no-store, must-revalidate" } });
   }
 
   if (!quote) {

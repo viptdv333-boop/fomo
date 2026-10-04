@@ -1,6 +1,6 @@
 /* Shapes shared by the market search / contracts APIs and the terminal UI (no runtime imports: safe on the client). */
 
-export type MarketGroup = "stock" | "bond" | "fund" | "future" | "currency" | "index" | "crypto" | "other";
+export type MarketGroup = "stock" | "bond" | "fund" | "future" | "currency" | "index" | "crypto" | "forex" | "other";
 export type ContractKind = "perpetual" | "quarterly" | "monthly" | "weekly" | "spot";
 
 /** One selectable thing: a share, a bond, a fund, a currency pair, a futures underlying (auto front) or an exact contract. */
@@ -12,7 +12,7 @@ export interface MarketItem {
   name: string;
   isin?: string;
   group: MarketGroup;
-  source: "moex" | "bybit";
+  source: "moex" | "bybit" | "forex";
   engine?: string;
   market?: string;
   board?: string;

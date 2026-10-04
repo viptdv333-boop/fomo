@@ -9,6 +9,7 @@ import { algopackEnabled } from "@/lib/algopack";
 import { getIssJson, labelTail, type Feed } from "@/lib/algopack-feed";
 import { getAlgopackAccess, getViewer, PRIVATE_HEADERS } from "@/lib/algopack-access";
 import { guestRealtimeFlag } from "@/lib/guest-delay";
+import { getForexCandles, type ForexCandlesResult } from "@/lib/forex";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -513,6 +514,7 @@ export async function GET(request: NextRequest) {
   let resolvedTicker = ticker;
   let sec: MoexSecurity | undefined;
   let tail: TailResult | undefined;
+  let fx: ForexCandlesResult | undefined;
 
   // ALGOPACK (online ISS gateway) is for entitled requesters only: admins, or everyone with ALGOPACK_PUBLIC=1. Decided here, on
   // the server. Without the key none of this runs (the session is not even read) and the route behaves exactly as before.
@@ -532,6 +534,10 @@ export async function GET(request: NextRequest) {
     candles = await fetchFmpCandles(ticker, interval, limit, toMs);
   } else if (source === "bybit") {
     candles = await fetchBybitCandles(ticker, interval, limit, toMs);
+  } else if (source === "forex") {
+    // spot FX through the provider layer (FMP, then keyless fallbacks): UTC epoch bars, continuous 24x5, tick volume or none
+    fx = await getForexCandles(ticker, interval, undefined, toMs, Math.min(Math.max(limit, 1), 5000));
+    candles = fx.candles;
   }
 
   candles = cleanRows(candles);
@@ -544,6 +550,9 @@ export async function GET(request: NextRequest) {
       { ...PRIVATE_HEADERS }
     : limit <= 5
       ? { "Cache-Control": "no-cache, no-store, must-revalidate" }
+      : fx
+        ? // FX bars move every second: a shared cache may hold them briefly; an empty answer is not cached at all
+          { "Cache-Control": candles.length === 0 ? "no-store" : /^[DWM]$/.test(interval) ? "public, s-maxage=60, stale-while-revalidate=30" : "public, s-maxage=10, stale-while-revalidate=10" }
       : tail?.tail === "tinkoff"
         ? // a real-time tail must not be served from a shared cache for a minute; and never to a guest (licensing): only with
           // GUEST_REALTIME=1 (everybody is entitled, the old behaviour) may it sit in a shared cache for a moment
@@ -554,6 +563,10 @@ export async function GET(request: NextRequest) {
   // the answer of a MOEX request differs by who asks (real-time tail / online gateway / delayed): a shared cache must key it by the session cookie
   if (source === "moex") headers["Vary"] = "Cookie";
   // diagnostics: which feed provided the last minutes of a MOEX chart
+  if (fx) {
+    headers["X-Forex-Provider"] = fx.provider;
+    if (fx.reason) headers["X-Forex-Reason"] = fx.reason.replace(/[^ -~]/g, "?").slice(0, 200);
+  }
   if (tail) {
     headers["X-Candle-Tail"] = tail.tail;
     headers["X-Candle-Tail-Reason"] = tail.reason.replace(/[^\x20-\x7e]/g, "?").slice(0, 200);
@@ -572,6 +585,8 @@ export async function GET(request: NextRequest) {
       ...(tail ? { tail: tail.tail, tailReason: tail.reason } : {}),
       // the newest bars are the 15-minute delayed ISS ones (nothing real-time was added): the chart shows a small "delayed" badge
       ...(tail ? { delayed: tail.tail === "iss" && !/no-new-data/.test(tail.reason) } : {}),
+      // spot FX: who served the bars, whether the volume is a tick count ("tick") or absent ("none"), and a proxy instrument (metals)
+      ...(fx ? { provider: fx.provider, volumeKind: fx.volume, ...(fx.proxy ? { proxy: fx.proxy } : {}) } : {}),
       candles,
     },
     { headers }

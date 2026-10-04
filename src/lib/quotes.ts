@@ -3,6 +3,7 @@ import { frontSecid } from "./moex-contracts";
 import { issQuote, resolveMoex, type MoexSecurity } from "./moex-resolve";
 import { parseBybitTicker, type BybitCategory } from "./bybit-symbol";
 import { fmpSymbol } from "@/lib/fmp-alias";
+import { getForexQuotes } from "@/lib/forex";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -25,7 +26,7 @@ export interface BatchQuote {
 }
 
 export interface QuoteRequest {
-  source: "moex" | "bybit" | "fmp";
+  source: "moex" | "bybit" | "fmp" | "forex";
   ticker: string;
 }
 
@@ -326,10 +327,15 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   const now = Date.now();
   const staleMoex: string[] = [];
   const staleFmp: string[] = [];
+  const fxTickers: string[] = [];
   let needBybit = false;
 
   for (const it of items) {
     const key = `${it.source}:${it.ticker}`;
+    if (it.source === "forex") {
+      fxTickers.push(it.ticker); // cached inside the forex layer (about 8 s, shared in-flight requests)
+      continue;
+    }
     const hit = cache.get(it.source === "moex" ? moexKey(it.ticker) : key);
     if (hit && now - hit.at < (it.source === "fmp" ? FMP_TTL_MS : QUOTE_TTL_MS)) {
       if (hit.q) out[key] = hit.q;
@@ -380,6 +386,18 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
           cache.set(key, { at, q: keep });
           if (keep) out[key] = keep;
         });
+      })()
+    );
+  }
+
+  if (fxTickers.length) {
+    jobs.push(
+      (async () => {
+        const res = await getForexQuotes(fxTickers);
+        for (const t of fxTickers) {
+          const r = res[t.toUpperCase()];
+          if (r) out[`forex:${t}`] = { ...r.quote };
+        }
       })()
     );
   }

@@ -1,8 +1,9 @@
 /* Terminal instrument list (hardcoded, not from DB) and helpers shared by the terminal page and the chart shell. */
 
 import type { MarketGroup } from "./market-types";
+import { FX_PAIRS, fxDigits, fxIcon, fxSlash } from "./forex-meta";
 
-export type ChartSource = "moex" | "fmp" | "bybit" | "none";
+export type ChartSource = "moex" | "fmp" | "bybit" | "forex" | "none";
 
 export interface TerminalInstrument {
   ticker: string;
@@ -31,6 +32,7 @@ export const CATEGORY_I18N: Record<string, string> = {
   "Валюта": "terminal.currencies",
   "Индексы": "terminal.indices",
   "Криптовалюты": "terminal.crypto",
+  "Форекс": "terminal.forex",
 };
 
 export const CATEGORY_ICONS: Record<string, string> = {
@@ -40,6 +42,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
   "Валюта": "/icons/categories/currencies.svg",
   "Индексы": "/icons/categories/indices.svg",
   "Криптовалюты": "/icons/categories/crypto.svg",
+  "Форекс": "/icons/categories/forex.svg",
 };
 
 /** Category -> news feed category understood by /api/news (see RuNews). */
@@ -50,6 +53,7 @@ export const CATEGORY_NEWS: Record<string, string> = {
   "Валюта": "general",
   "Индексы": "general",
   "Криптовалюты": "crypto",
+  "Форекс": "general",
 };
 
 // Crypto pairs have no translation key and keep their own name.
@@ -127,6 +131,11 @@ export const TERMINAL_DATA: TerminalCategory[] = [
       { ticker: "SUIUSDT", name: "Sui", source: "bybit", dataTicker: "SUIUSDT", emoji: "/icons/instruments/sui-crypto.svg" },
     ],
   },
+  {
+    // international currency pairs and metals vs USD (data: src/lib/forex.ts; names: instname.<PAIR> / fxName)
+    name: "Форекс", emoji: "", color: "#06b6d4",
+    instruments: FX_PAIRS.map((p) => ({ ticker: p.symbol, name: fxSlash(p), source: "forex" as const, dataTicker: p.symbol, emoji: fxIcon(p.symbol), group: "forex" as const })),
+  },
 ];
 
 export const ALL_INSTRUMENTS: TerminalInstrument[] = TERMINAL_DATA.flatMap((c) => c.instruments);
@@ -158,7 +167,12 @@ export function adHocInstrument(source: ChartSource, ticker: string): TerminalIn
 }
 
 export function exchangeLabel(source: string): string {
-  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "fmp" ? "FMP" : "";
+  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : "";
+}
+
+/** Decimals a price of this instrument is shown with when they are fixed by the market (forex pips); undefined = by magnitude. */
+export function priceDigits(inst: { source: string; dataTicker: string }): number | undefined {
+  return inst.source === "forex" ? fxDigits(inst.dataTicker) : undefined;
 }
 
 /* ── price formatting shared by the watchlist and the info card ── */
@@ -166,10 +180,11 @@ export function exchangeLabel(source: string): string {
 const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
 const nfCache = new Map<string, Intl.NumberFormat>();
 
-export function fmtPrice(p: number, locale: string): string {
+/** `digits`: fixed decimals (forex pip precision, see fxDigits); without it the count follows the magnitude of the price. */
+export function fmtPrice(p: number, locale: string, fixedDigits?: number): string {
   if (!isFinite(p)) return "-";
   const abs = Math.abs(p);
-  const digits = abs >= 10 ? 2 : abs >= 1 ? 4 : abs >= 0.01 ? 5 : 7;
+  const digits = fixedDigits ?? (abs >= 10 ? 2 : abs >= 1 ? 4 : abs >= 0.01 ? 5 : 7);
   const loc = LOCALES[locale] ?? "ru-RU";
   const key = `${loc}|${digits}`;
   let nf = nfCache.get(key);

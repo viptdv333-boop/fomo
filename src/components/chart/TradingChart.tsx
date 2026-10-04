@@ -15,6 +15,7 @@ import { OrderFlowClient } from "@/lib/chart/orderflow/client";
 import { AlgoClient } from "@/lib/chart/algopack/client";
 import type { AlgoNeed } from "@/lib/chart/algopack/store";
 import { delayedNow } from "@/lib/chart/algopack/delayed";
+import { fxMarketOpen } from "@/lib/forex-meta";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { AnchoredVwapLayer } from "@/lib/chart/orderflow/avwap-layer";
 import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
@@ -121,11 +122,18 @@ function lsSet(key: string, value: string) {
   } catch {}
 }
 
+/** Spot FX facts of a /api/klines answer: who served the bars, what the volume is, a proxy instrument (metals). */
+interface FxInfo {
+  provider: string;
+  volumeKind: string;
+  proxy?: string;
+}
+
 async function fetchCandles(source: string, ticker: string, interval: string, limit: number, to?: number) {
   let url = `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`;
   if (to) url += `&to=${to}`;
   const res = await fetch(url);
-  if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined };
+  if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined };
   const j = await res.json();
   const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
   // isFinite(null) is true and null reads as 0: a bar with a null open used to get through and was drawn as a solid body
@@ -136,7 +144,8 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
       .map((d) => ({ t: d.timestamp, o: d.open, h: d.high, l: d.low, c: d.close, v: d.volume }) as Candle),
   );
   // `delayed`: the newest bars are the 15-minute delayed ISS ones (no real-time tail was added); absent for scroll-back pages
-  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined };
+  const fx: FxInfo | undefined = typeof j.provider === "string" ? { provider: j.provider, volumeKind: String(j.volumeKind ?? "none"), proxy: typeof j.proxy === "string" ? j.proxy : undefined } : undefined;
+  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx };
 }
 
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
@@ -144,7 +153,7 @@ async function fetchBars(source: string, ticker: string, interval: string, limit
   const plan = intervalPlan(interval, source);
   if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
   const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
-  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed };
+  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx };
 }
 
 const COMPARE_COLORS = ["#f5a623", "#e91e63", "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722"];
@@ -212,6 +221,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [empty, setEmpty] = useState(false);
   /** MOEX bars up to the 15-minute delay of the public ISS (no online feed for this requester) */
   const [candlesDelayed, setCandlesDelayed] = useState(false);
+  /** spot FX: provider / volume kind of the bars on the chart (drives the "no exchange volume" badge) */
+  const [fxInfo, setFxInfo] = useState<FxInfo | null>(null);
   const [autoScale, setAutoScale] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -433,7 +444,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const label = formatInterval(iv, t);
 
     (async () => {
-      const { candles, tzMin, delayed } = await fetchBars(source, ticker, iv, 600);
+      const { candles, tzMin, delayed, fx } = await fetchBars(source, ticker, iv, 600);
       if (cancelled) return;
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
@@ -442,6 +453,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
       setCandlesDelayed(delayedNow(source, delayed, candles[candles.length - 1]?.t, offsetMs, iv));
+      setFxInfo(source === "forex" ? fx ?? null : null);
       // sessions / days of the order flow indicators follow the exchange clock
       engine.flow.wallShiftMs = source === "moex" ? tzMs : 0;
       engine.flow.sourceName = source;
@@ -504,6 +516,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       const engine = engineRef.current;
       // the chart still shows the previous symbol / interval until its bars have been loaded: its bars must not get this one's price
       if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
+      // spot FX is closed on the weekend: a quote then would only draw flat bars; during the Sunday evening open the daily / weekly
+      // bar is the Monday one (the data layer merges the short Sunday bar into Monday)
+      if (source === "forex" && !fxMarketOpen(new Date())) return;
       quoteBusy = true;
       try {
         const r = await fetch(`/api/quote?source=${source}&ticker=${encodeURIComponent(ticker)}&_t=${Date.now()}`, { cache: "no-store" });
@@ -527,7 +542,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         }
         badQuoteRef.current = 0;
         const { tzMs, offsetMs: off } = shiftRef.current;
-        const nowWall = Date.now() + (source === "moex" ? MSK_MS : 0);
+        const nowWall = Date.now() + (source === "moex" ? MSK_MS : 0) + (source === "forex" && !intraday && new Date().getUTCDay() === 0 ? DAY_MS : 0);
         const plan = intervalPlan(iv, source);
         let bucketT: number;
         if (plan.ratio > 1) {
@@ -1265,8 +1280,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 {t("ap.delayed")}
               </div>
             )}
+            {source === "forex" && fxInfo && !loading && !empty && (
+              <div
+                className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)]"
+                title={`${t("fx.tip", { provider: fxInfo.provider === "yahoo" ? "Yahoo Finance" : fxInfo.provider === "fmp" ? "FMP" : fxInfo.provider === "stooq" ? "Stooq" : fxInfo.provider, volume: t(`fx.vol.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`) })}${fxInfo.proxy ? ` ${t("fx.proxy", { proxy: fxInfo.proxy })}` : ""}`}
+              >
+                {t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}
+              </div>
+            )}
             {!loading && empty && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t("chart.noData")}</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} />}

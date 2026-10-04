@@ -7,6 +7,7 @@
 import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
 import type { MarketGroup, MarketItem } from "./market-types";
+import { parseFxSymbol, POPULAR_FOREX, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
 import { getBybitSpotList, looksLikeCoin, pairToItem, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
 
 const ISS = "https://iss.moex.com/iss";
@@ -56,6 +57,8 @@ const ruName = (f: ContractFamily) => RU_NAMES[f.asset] ?? RU_NAMES[f.name];
 
 const SEARCH_TTL = 60_000;
 const CRYPTO_IN_ALL = 5;
+/** «Все» + a query that names a currency pair or one currency exactly («eurusd», «eur», «евро»): this many forex rows at the end */
+const FOREX_IN_ALL = 4;
 const searchCache = new Map<string, { at: number; items: MarketItem[] }>();
 
 function norm(s: string): string {
@@ -185,6 +188,7 @@ function rank(items: MarketItem[], q: string): MarketItem[] {
 export async function searchMarket(q: string, group: MarketGroup | "all" = "all", limit = 30): Promise<MarketItem[]> {
   q = q.trim();
   if (group === "crypto") return searchCrypto(q, limit); // the whole Bybit spot list (has its own 1 h cache)
+  if (group === "forex") return q ? searchForex(q, limit) : POPULAR_FOREX.slice(0, limit).map(fxPairToItem); // static curated list, no network
   if (q.length < 1) return [];
   const key = `${group}|${limit}|${norm(q)}`;
   const hit = searchCache.get(key);
@@ -206,6 +210,10 @@ export async function searchMarket(q: string, group: MarketGroup | "all" = "all"
     const spot = await getBybitSpotList();
     items.push(...searchSpotPairs(spot, q, CRYPTO_IN_ALL).map(pairToItem));
   }
+  if (group === "all") {
+    const have = new Set(items.map((i) => `${i.source}:${i.secid}`));
+    items.push(...searchForex(q, FOREX_IN_ALL, 75).filter((i) => !have.has(`${i.source}:${i.secid}`)));
+  }
   if (searchCache.size > 500) searchCache.clear();
   searchCache.set(key, { at: Date.now(), items });
   return items;
@@ -215,6 +223,8 @@ export async function searchMarket(q: string, group: MarketGroup | "all" = "all"
 export async function lookupMarket(id: string): Promise<MarketItem | null> {
   id = id.trim();
   if (!id) return null;
+  const fx = parseFxSymbol(id);
+  if (fx && /^[A-Za-z]{6}$/.test(id)) return fxPairToItem(fx);
   const families = await getFortsFamilies();
   for (const raw of families) {
     const f = refreshDays(raw);

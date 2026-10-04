@@ -82,7 +82,9 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
       const shares = cat.name === "Акции ММВБ";
       for (const inst of cat.instruments) {
         // tabs: shares -> Акции, the other MOEX entries are futures, Bybit pairs -> Крипто
-        if (tab === "crypto" ? inst.source !== "bybit" : tab !== "all" && !(inst.source === "moex" && (tab === "stock" ? shares : tab === "future" ? !shares : false))) continue;
+        // forex rows of the curated list: under the «Форекс» tab only (the exchange search ranks them for «Все»)
+        if (inst.source === "forex" && tab !== "forex") continue;
+        if (tab === "forex" ? inst.source !== "forex" : tab === "crypto" ? inst.source !== "bybit" : tab !== "all" && !(inst.source === "moex" && (tab === "stock" ? shares : tab === "future" ? !shares : false))) continue;
         if (
           !needle ||
           inst.ticker.toLowerCase().includes(needle) ||
