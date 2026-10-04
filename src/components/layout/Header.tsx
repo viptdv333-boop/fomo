@@ -7,6 +7,7 @@ import { stripLocale } from "@/lib/i18n/locale-url";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
+import MessengerButton from "./MessengerButton";
 import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
 import { ensurePushSubscription } from "@/lib/push-client";
@@ -97,6 +98,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
         <div className="hidden md:flex items-center gap-3 shrink-0">
           <LanguageSelector />
           <ThemeToggle />
+          {session && <MessengerButton />}
           {session && <NotificationBell />}
           {session ? (
             <>
@@ -192,6 +194,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
         {/* Mobile right section */}
         <div className="flex md:hidden items-center gap-2 ml-auto">
           <ThemeToggle />
+          {session && <MessengerButton />}
           {session && <NotificationBell />}
           <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
             {menuOpen ? (

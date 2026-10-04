@@ -271,6 +271,8 @@ function MessagesPage() {
     if (res.ok) {
       const data = await res.json();
       setMessages(data.messages);
+      // the server marks the conversation read when it is fetched: refresh the header badge
+      window.dispatchEvent(new Event("fomo:unread-changed"));
     }
   }
 
