@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { DESIGN_PATHS, ui } from "./icons";
+import { DESIGN_PATHS, rr, ui } from "./icons";
 
 /* Icons of the chart settings / chart types / layouts (kept apart from icons.tsx to avoid edit clashes). */
 
@@ -92,39 +92,41 @@ export const CHART_TYPE_ICONS_EXTRA: Record<string, ReactNode> = {
 };
 
 export const CS_ICONS = {
-  compare: ui(<path d={DESIGN_PATHS.compare} />, 17, 1.8),
+  compare: ui(<path d={DESIGN_PATHS.compare} />, 20, 1.8),
   layout: ui(
     <>
-      <path d="M4 5h16v14H4zM12 5v14M4 12h8" />
+      <path d={rr(3.5, 4.5, 17, 15, 3) + "M12 4.5v15M3.5 12H12"} />
     </>,
-    17,
+    20,
     1.8
   ),
-  template: ui(<path d={DESIGN_PATHS.templates} />, 17, 1.8),
-  star: ui(<path d={DESIGN_PATHS.star} />, 16, 1.8),
-  starFilled: ui(<path d={DESIGN_PATHS.star} fill="currentColor" />, 16, 1.8),
-  calendar: ui(<path d={DESIGN_PATHS.calendar} />, 14, 2),
-  clock: ui(<path d="M12 5a8 8 0 100 16 8 8 0 000-16zM12 9v4l2 2M9 3h6" />, 15, 2),
-  eye: ui(<path d={DESIGN_PATHS.eye} />, 14, 2),
-  eyeOff: ui(<path d={DESIGN_PATHS.eye + "M4 4l16 16"} />, 14, 2),
-  close: ui(<path d={DESIGN_PATHS.close} />, 16, 1.8),
+  template: ui(<path d={DESIGN_PATHS.templates} />, 20, 1.8),
+  star: ui(<path d={DESIGN_PATHS.star} />, 18, 1.8),
+  starFilled: ui(<path d={DESIGN_PATHS.star} fill="currentColor" />, 18, 1.8),
+  calendar: ui(<path d={DESIGN_PATHS.calendar} />, 16, 2),
+  clock: ui(<path d="M12 5a8 8 0 100 16 8 8 0 000-16zM12 9v4l2 2M9 3h6" />, 17, 2),
+  eye: ui(<path d={DESIGN_PATHS.eye} />, 16, 2),
+  eyeOff: ui(<path d={DESIGN_PATHS.eye + "M4.6 4.6l14.8 14.8"} />, 16, 2),
+  close: ui(<path d={DESIGN_PATHS.close} />, 18, 1.8),
   copy: ui(
     <>
-      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
-      <path d="M15.5 8.5V6A1.5 1.5 0 0014 4.5H6A1.5 1.5 0 004.5 6v8A1.5 1.5 0 006 15.5h2.5" />
-    </>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" />
+      <path d="M15.5 8.5V6.5A2 2 0 0013.5 4.5h-7a2 2 0 00-2 2v7a2 2 0 002 2h2" />
+    </>,
+    20
   ),
-  download: ui(<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />),
+  download: ui(<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />, 20),
   keyboard: ui(
     <>
-      <rect x="2.5" y="6.5" width="19" height="11" rx="2" />
+      <rect x="2.5" y="6.5" width="19" height="11" rx="3" />
       <path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M7 14h10" />
-    </>
+    </>,
+    20
   ),
-  zoomIn: ui(<path d="M12 5v14M5 12h14" />, 18, 2),
-  zoomOut: ui(<path d="M5 12h14" />, 18, 2),
-  toLatest: ui(<path d="M6 6l6 6-6 6M13 6l6 6-6 6" />, 18, 1.9),
-  resetView: ui(<path d={DESIGN_PATHS.refresh} />, 18, 1.8),
-  trash: ui(<path d={DESIGN_PATHS.trash} />, 16, 1.8),
-  check: ui(<path d={DESIGN_PATHS.check} />, 16, 2.4),
+  zoomIn: ui(<path d="M12 5v14M5 12h14" />, 21, 2),
+  zoomOut: ui(<path d="M5 12h14" />, 21, 2),
+  toLatest: ui(<path d="M6 6l6 6-6 6M13 6l6 6-6 6" />, 21, 1.9),
+  resetView: ui(<path d={DESIGN_PATHS.refresh} />, 21, 1.8),
+  trash: ui(<path d={DESIGN_PATHS.trash} />, 18, 1.8),
+  check: ui(<path d={DESIGN_PATHS.check} />, 18, 2.4),
 };

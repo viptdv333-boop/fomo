@@ -59,7 +59,7 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
       <div className="fixed inset-0 z-[60]" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
         ref={ref}
-        className="fixed z-[61] w-[270px] py-1 rounded-2xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)]"
+        className="fixed z-[61] w-[270px] py-1 rounded-2xl tv3-pop shadow-[var(--tv3-shadow-pop)]"
         style={{ left: at?.left ?? pos.x, top: at?.top ?? pos.y, visibility: at ? "visible" : "hidden" }}
       >
         <Item checked={autoScale} onClick={() => { onAuto(!autoScale); onClose(); }}>{t("cs.autoScale")}</Item>

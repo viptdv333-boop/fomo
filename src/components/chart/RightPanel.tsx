@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
-import { ui } from "./icons";
+import { panelTabIcon } from "./icons";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
@@ -64,20 +64,6 @@ export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?:
     </span>
   );
 }
-
-/** Rail icons of the design (24 grid, stroke 1.8, shown at 23 px = the design 20 px + 15%). */
-const rail = (d: string) => ui(<path d={d} />, 23, 1.8);
-const tabIcons: Record<PanelTab, ReactNode> = {
-  watchlist: rail("M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"),
-  info: rail("M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1"),
-  ideas: rail("M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"),
-  news: rail("M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2zM18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3.5"),
-  calendar: rail("M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4"),
-  objects: rail("M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"),
-  alerts: rail("M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"),
-  orderbook: rail("M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11"),
-  algo: rail("M12 3.5l8.5 15.5h-17zM12 10v4M12 16.6h.01"),
-};
 
 const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "watchlist", key: "shell.tab.watchlist" },
@@ -961,9 +947,11 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                       key={tb.id}
                       onClick={() => onTab(tb.id)}
                       title={t(tb.key)}
-                      className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[9px] cursor-pointer [&>svg]:h-5 [&>svg]:w-5 ${tab === tb.id ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"}`}
+                      aria-label={t(tb.key)}
+                      aria-pressed={tab === tb.id}
+                      className={`tv3-press h-10 w-10 shrink-0 flex items-center justify-center rounded-xl cursor-pointer ${tab === tb.id ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"}`}
                     >
-                      {tabIcons[tb.id]}
+                      {panelTabIcon(tb.id, tab === tb.id, 24)}
                     </button>
                   ))}
                 </div>
@@ -972,14 +960,14 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                   onClick={onCollapse}
                   title={t("shell.panel.collapse")}
                   aria-label={t("shell.panel.collapse")}
-                  className="hidden md:flex ml-auto w-7 h-7 items-center justify-center rounded-lg bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer"
+                  className="tv3-press hidden md:flex ml-auto w-8 h-8 items-center justify-center rounded-[10px] bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer"
                 >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 6l6 6-6 6" />
                   </svg>
                 </button>
-                <button onClick={onCloseMobile} title={t("shell.close")} className="md:hidden ml-auto w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--tv3-muted)] cursor-pointer">
-                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <button onClick={onCloseMobile} title={t("shell.close")} aria-label={t("shell.close")} className="tv3-press md:hidden ml-auto w-10 h-10 shrink-0 flex items-center justify-center rounded-xl text-[var(--tv3-muted)] cursor-pointer">
+                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                     <path d="M6 6l12 12M18 6L6 18" />
                   </svg>
                 </button>
@@ -1025,8 +1013,8 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
         </div>
 
         {/* icon rail (desktop) */}
-        <div className="hidden md:flex flex-col items-center w-[58px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
-          <span className="flex-1 min-h-0.5" />
+        <div className="hidden md:flex flex-col items-center w-[66px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
+          <span className="tv3-rgap" />
           {/* icons spread evenly over the card height (flexible spacers shrink to 2px on short screens, then the rail scrolls) */}
           {TABS.map((tb) => {
             const on = open && tab === tb.id;
@@ -1037,13 +1025,13 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                   title={t(tb.key)}
                   aria-label={t(tb.key)}
                   aria-pressed={on}
-                  className={`tv3-rbtn shrink-0 flex items-center justify-center rounded-[11px] cursor-pointer transition-colors ${
-                    on ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
+                  className={`tv3-rbtn tv3-press tv3-hov shrink-0 flex items-center justify-center cursor-pointer ${
+                    on ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)] hover:!bg-[var(--tv3-accent-soft)] active:!bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"
                   }`}
                 >
-                  {tabIcons[tb.id]}
+                  {panelTabIcon(tb.id, on, 26)}
                 </button>
-                <span className="flex-1 min-h-0.5" />
+                <span className="tv3-rgap" />
               </Fragment>
             );
           })}

@@ -29,7 +29,7 @@ const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
 ];
 
 export const iconBtn =
-  "h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-lg bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer disabled:opacity-40 disabled:cursor-default transition";
+  "tv3-press h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-[10px] bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer disabled:opacity-40 disabled:cursor-default";
 
 /* ───────────── "next event in ..." chip ───────────── */
 
@@ -373,7 +373,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
           <div className="flex items-center gap-1.5">
             <NextChip zone={zone} enabled={visible} onPick={openDetails} />
             <button type="button" onClick={data.refresh} title={t("ec.refresh")} aria-label={t("ec.refresh")} className={iconBtn}>
-              <span className={`inline-flex scale-[0.8] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
+              <span className={`inline-flex scale-[0.92] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
             </button>
             <ChartEventsButton className={iconBtn} onClassName="bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" />
             <button
@@ -384,11 +384,11 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
               aria-pressed={prefs.panelGrid}
               className={`${iconBtn} ${prefs.panelGrid ? "bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" : ""}`}
             >
-              <span className="scale-[0.8]">{EC_ICONS.grid}</span>
+              <span className="scale-[0.92]">{EC_ICONS.grid}</span>
             </button>
             {onExpand && (
               <button type="button" onClick={onExpand} title={t("ec.expand")} aria-label={t("ec.expand")} className={iconBtn}>
-                <span className="scale-[0.8]">{EC_ICONS.expand}</span>
+                <span className="scale-[0.92]">{EC_ICONS.expand}</span>
               </button>
             )}
           </div>

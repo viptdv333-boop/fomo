@@ -133,7 +133,7 @@ function Menu({
         <>
           <div className="fixed inset-0 z-[55]" onClick={close} />
           <div
-            className="fixed z-[56] py-1.5 rounded-[14px] bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-70px)] overflow-y-auto"
+            className="tv3-pop fixed z-[56] py-1.5 rounded-2xl text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-70px)] overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width }}
           >
             {children(close)}
@@ -152,12 +152,15 @@ export default function TopToolbar(p: Props) {
   useEffect(() => p.drawings.subscribe(() => setV((v) => v + 1)), [p.drawings]);
 
   // design v3: grey rounded buttons on the white card, the "on" state is a darker grey (not green)
+  // iOS look: 31px-high rounded-[11px] buttons (design 27px +15%), press = scale .96 + tint, hover = tint (see terminal-v3.css)
   const btn =
-    "min-h-[27px] px-2.5 py-[5px] inline-flex items-center justify-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125 disabled:opacity-40 disabled:cursor-default disabled:hover:brightness-100";
+    "tv3-press min-h-[31px] min-w-[31px] px-3 py-[5px] inline-flex items-center justify-center gap-1.5 rounded-[11px] bg-[var(--tv3-fill)] text-[13.5px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125 disabled:opacity-40 disabled:cursor-default disabled:hover:brightness-100";
   const btnOn = "!bg-[var(--tv3-fill-on)]";
-  // icon-only square buttons on the right
-  const ibtn = `${btn} !h-8 !w-8 !px-0 !py-0`;
-  const lbl = "hidden md:inline";
+  // icon-only square buttons on the right (design 32px +15% = 37px)
+  const ibtn = `${btn} !h-[37px] !w-[37px] !px-0 !py-0`;
+  // text labels hide progressively as the toolbar gets narrow (container width, not the viewport)
+  const lbl = "hidden @[780px]:inline"; // compare / indicators keep their label longest
+  const lbl2 = "hidden @[1000px]:inline"; // alerts / simulator labels go first
   const badge = (n: number) => (
     <span className="min-w-[17px] h-[17px] px-[3px] rounded-full bg-[var(--tv3-text)] text-[var(--tv3-card)] text-[11px] font-semibold leading-none inline-flex items-center justify-center box-border">{n}</span>
   );
@@ -172,29 +175,29 @@ export default function TopToolbar(p: Props) {
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
 
   return (
-    <div className="flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto md:overflow-visible md:flex-wrap border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
+    <div className="@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto md:overflow-visible md:flex-wrap border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
         {I.tools}
       </button>
 
-      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} !h-auto !gap-[7px] !rounded-[10px] !py-1 !pl-[5px] !pr-2.5`}>
-        <InstIcon inst={p.instrument} size={24} />
-        <span className="font-bold text-[15px]">{p.instrument.ticker}</span>
+      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
+        <InstIcon inst={p.instrument} size={28} />
+        <span className="font-bold text-[16px]">{p.instrument.ticker}</span>
         <span className="hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
-        <span className="text-[var(--tv3-text2)] scale-90 inline-flex">{I.search}</span>
+        <span className="text-[var(--tv3-text2)] inline-flex">{I.search}</span>
       </button>
       {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={btn} />}
 
       {p.favIntervals && p.onFavIntervals ? (
         <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} />
       ) : (
-        <div className="flex items-center shrink-0 rounded-[9px] bg-[var(--tv3-fill2)] p-0.5">
+        <div className="flex items-center shrink-0 rounded-[11px] bg-[var(--tv3-fill2)] p-0.5">
           {INTERVALS.map((i) => (
             <button
               key={i.id}
               onClick={() => p.onInterval(i.id)}
               aria-pressed={p.interval === i.id}
-              className={`px-[9px] py-1 text-[13px] font-semibold rounded-[7px] cursor-pointer ${p.interval === i.id ? "bg-[var(--tv3-card)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : ""}`}
+              className={`tv3-press px-[10px] py-[5.5px] text-[13.5px] font-semibold rounded-[9px] cursor-pointer ${p.interval === i.id ? "bg-[var(--tv3-card)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : ""}`}
             >
               {t(i.key)}
             </button>
@@ -211,8 +214,8 @@ export default function TopToolbar(p: Props) {
                 p.onChartType(c.id);
                 close();
               }}
-              className={`w-full h-9 px-3.5 flex items-center gap-2.5 text-sm text-left cursor-pointer hover:bg-[var(--tv3-fill)] ${
-                p.chartType === c.id ? "text-[var(--tv3-accent)] font-semibold" : "font-medium text-[var(--tv3-text)]"
+              className={`tv3-press tv3-hov mx-1 h-10 w-[calc(100%-8px)] rounded-[10px] px-3 flex items-center gap-2.5 text-sm text-left cursor-pointer ${
+                p.chartType === c.id ? "text-[var(--tv3-accent)] font-semibold bg-[var(--tv3-accent-soft)]" : "font-medium text-[var(--tv3-text)]"
               }`}
             >
               {typeIcon[c.id]}
@@ -236,20 +239,20 @@ export default function TopToolbar(p: Props) {
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
-        {I.alert}
-        <span className={lbl}>{t("shell.alerts")}</span>
+        {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}
+        <span className={lbl2}>{t("shell.alerts")}</span>
         {(p.alertCount ?? 0) > 0 && badge(p.alertCount ?? 0)}
       </button>
       <ChartEventsButton className={btn} onClassName={btnOn} />
       <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} ${replayOn ? btnOn : ""}`}>
         {I.replay}
-        <span className={lbl}>{t("shell.replay")}</span>
+        <span className={lbl2}>{t("shell.replay")}</span>
       </button>
 
-      <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} className={btn}>
+      <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} aria-label={t("shell.undo")} className={btn}>
         {I.undo}
       </button>
-      <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} className={btn}>
+      <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} aria-label={t("shell.redo")} className={btn}>
         {I.redo}
       </button>
 
@@ -258,7 +261,7 @@ export default function TopToolbar(p: Props) {
       {p.extra}
       {p.templates && <TemplatesMenu btn={btn} {...p.templates} />}
       {p.onOpenSettings ? (
-        <button onClick={p.onOpenSettings} title={t("chart.settings")} className={ibtn}>
+        <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={ibtn}>
           {I.gear}
         </button>
       ) : (
@@ -291,11 +294,11 @@ export default function TopToolbar(p: Props) {
       </Menu>
       )}
       {p.onOpenShortcuts && (
-        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} className={`${ibtn} hidden lg:inline-flex`}>
+        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} aria-label={t("shortcuts.title")} className={`${ibtn} hidden lg:inline-flex`}>
           {CS_ICONS.keyboard}
         </button>
       )}
-      <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
+      <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
       </button>
       {p.onScreenshotCopy ? (
@@ -326,11 +329,11 @@ export default function TopToolbar(p: Props) {
           )}
         </Menu>
       ) : (
-        <button onClick={p.onScreenshot} title={t("chart.screenshot")} className={ibtn}>
+        <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ibtn}>
           {I.camera}
         </button>
       )}
-      <button onClick={p.onTogglePanel} title={t("shell.panel")} aria-pressed={p.panelOpen} className={`${btn} md:hidden ${p.panelOpen ? btnOn : ""}`}>
+      <button onClick={p.onTogglePanel} title={t("shell.panel")} aria-label={t("shell.panel")} aria-pressed={p.panelOpen} className={`${btn} md:hidden ${p.panelOpen ? btnOn : ""}`}>
         {I.panel}
       </button>
     </div>

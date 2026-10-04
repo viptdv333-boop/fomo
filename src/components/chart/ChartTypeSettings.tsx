@@ -34,7 +34,7 @@ export default function ChartTypeSettings({ type, api, box, btn, source }: { typ
   };
 
   return (
-    <MenuPopover title={t("cs.type.settings")} className={`${btn} px-1.5`} width={260} trigger={<span className="scale-[0.8] inline-flex">{UI_ICONS.gear}</span>}>
+    <MenuPopover title={t("cs.type.settings")} className={`${btn} px-1.5`} width={260} trigger={<span className="scale-[0.92] inline-flex">{UI_ICONS.gear}</span>}>
       {() => (
         <div className="px-3 py-1.5">
           {type === "baseline" && (

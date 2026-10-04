@@ -38,7 +38,7 @@ export const EC_ICONS: Record<string, ReactNode> = {
       <path d="M17.5 3.5h3l-1 1.4 1 1.4h-3" fill="currentColor" />
     </>
   ,
-    17
+    20
   ),
   grid: ui(
     <>

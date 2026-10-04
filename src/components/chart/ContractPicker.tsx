@@ -126,7 +126,7 @@ export default function ContractPicker({
           <div
             role="listbox"
             aria-label={t("ct.title")}
-            className="fixed z-[56] py-1.5 rounded-2xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-90px)] overflow-y-auto"
+            className="fixed z-[56] py-1.5 rounded-2xl tv3-pop shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-90px)] overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width: 340, maxWidth: "calc(100vw - 8px)" }}
           >
             {source === "moex" && (

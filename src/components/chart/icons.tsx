@@ -293,34 +293,188 @@ const DRAW_ICONS: Record<string, ReactNode> = {
 DRAW_ICONS.measureBtn = DRAW_ICONS.measure;
 Object.assign(DRAW_ICONS, EXTRA_DRAW_ICONS);
 
-/* Glyphs of the Claude Design handoff ("FOMO Terminal Desktop v3"): 24 grid, stroke 1.8, round caps/joins, 20px in a 36px button.
-   Anchor dots are zero-length strokes (`h.01`) that the round caps turn into dots. They win over the older 28-grid drawings above. */
-export const DESIGN_DRAW_PATHS: Record<string, string> = {
-  cursor_cross: "M12 4v16M4 12h16",
-  trend: "M4 20L20 4M4 20h.01M20 4h.01",
-  hline: "M3 12h18M7 12h.01M17 12h.01",
-  fib_retr: "M3 5h18M3 11h12M3 16h18M3 21h12",
-  rect: "M5 7h14v10H5z",
-  brush: "M14 4l6 6-9 9H5v-6z",
-  text: "M5 6V4h14v2M12 4v16M9 20h6",
-  measure: "M3 17L17 3l4 4L7 21zM8 12l2 2M11 9l2 2M14 6l2 2",
-  stamp_star: "M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z",
-  magnet: "M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4z",
-  stay: "M4 20l4-1 11-11-3-3L5 16z",
-  lock: "M6 11h12v9H6zM8 11V8a4 4 0 018 0v3",
-  unlock: "M6 11h12v9H6zM8 11V8a4 4 0 017.6-1.7",
-  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
-  eyeOff: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6zM4 4l16 16",
-  trash: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
-  undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
-  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
-};
-DESIGN_DRAW_PATHS.measureBtn = DESIGN_DRAW_PATHS.measure;
+/* ───────────── SF-Symbols-like glyph set (iOS style) ─────────────
+   24 grid, stroke 1.8, round caps/joins, simple shapes. The active tool / tab shows a FILLED variant (iOS tab-bar convention):
+   solid glyph with cut-outs (SVG masks) in the accent colour on a tinted rounded square. Anchor dots of lines are small hollow circles. */
 
-export function DrawIcon({ id, className, size = 20 }: { id: string; className?: string; size?: number }) {
+/** Path of a rounded rectangle (SF-like corners). */
+export const rr = (x: number, y: number, w: number, h: number, r: number) =>
+  `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}z`;
+
+const CUR = "currentColor";
+
+/** Solid shape with transparent cut-outs: `cut` is drawn black into a mask (strokes are 1.8 round by default, add fill="#000" for solids). */
+function Cutout({ id, cut, children }: { id: string; cut: ReactNode; children: ReactNode }) {
+  return (
+    <>
+      <mask id={id} maskUnits="userSpaceOnUse" x="-12" y="-12" width="48" height="48">
+        <rect x="-12" y="-12" width="48" height="48" fill="#fff" stroke="none" />
+        <g fill="none" stroke="#000" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          {cut}
+        </g>
+      </mask>
+      <g mask={`url(#${id})`} fill={CUR} stroke={CUR} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round">
+        {children}
+      </g>
+    </>
+  );
+}
+
+/* shared outlines (also used by the filled variants) */
+const P = {
+  bell: "M12 3.8a5.6 5.6 0 00-5.6 5.6v2.9c0 .8-.3 1.6-.8 2.2L4.5 16c-.5.7 0 1.5.9 1.5h13.2c.9 0 1.4-.8.9-1.5l-1.1-1.5c-.5-.6-.8-1.4-.8-2.2V9.4A5.6 5.6 0 0012 3.8z",
+  bellClapper: "M9.6 20.2a2.6 2.6 0 004.8 0",
+  doc: "M7 3.5h6L18.5 9v10a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 19V5A1.5 1.5 0 017 3.5z",
+  docFold: "M13 3.5V8a1 1 0 001 1h4.5",
+  docLines: "M8.8 13.2h6.4M8.8 16.6h6.4",
+  circle: "M12 3a9 9 0 100 18 9 9 0 000-18z",
+  magnet: "M5.5 4.5h4v7.3a2.5 2.5 0 005 0V4.5h4V12a6.5 6.5 0 01-13 0z",
+  pencil: "M4.6 19.4l.9-3.9 9.6-9.6a1.7 1.7 0 012.4 0l1.1 1.1a1.7 1.7 0 010 2.4l-9.6 9.6z",
+  star: "M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z",
+  almond: "M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z",
+  lockBody: rr(5.5, 10.5, 13, 9.5, 2.6),
+  calendar: rr(4, 5, 16, 15, 3.2),
+  newsBody: "M5 5.5A1.5 1.5 0 016.5 4h9A1.5 1.5 0 0117 5.5V19H7a2 2 0 01-2-2z",
+  newsSide: "M17 9h1.5a1.5 1.5 0 011.5 1.5V17a2 2 0 01-2 2",
+  layerTop: "M12 3.5l8.5 4.6-8.5 4.7-8.5-4.7z",
+  layerBottom: "M3.5 12.6L12 17.3l8.5-4.7",
+  triangle: "M12 3.8l8.4 15H3.6z",
+  brush: "M20 4.2l-7.6 7.6M12.4 11.8c-2.4-.3-4.4 1.2-4.6 3.5-.1 1.3-.8 2.2-2.2 2.6 2.7 1.8 6.6 1.3 8-1.2.9-1.6.6-3.1-1.2-4.9z",
+};
+
+type SfDraw = (on: boolean) => ReactNode;
+const sw = (on: boolean, base = 1.8) => (on ? base + 0.5 : base);
+const hollow = (on: boolean) => (on ? CUR : "none");
+
+/** Rail / toolbar drawing glyphs: [id] -> (active) => svg children. */
+export const SF_DRAW: Record<string, SfDraw> = {
+  cursor_cross: (on) => <path d="M12 4.5v15M4.5 12h15" strokeWidth={sw(on, 1.9)} />,
+  trend: (on) => (
+    <>
+      <path d="M6.6 17.4L17.4 6.6" strokeWidth={sw(on)} />
+      <circle cx="5" cy="19" r="2.2" fill={hollow(on)} />
+      <circle cx="19" cy="5" r="2.2" fill={hollow(on)} />
+    </>
+  ),
+  hline: (on) => (
+    <>
+      <path d="M3.5 12h6.1M14.4 12h6.1" strokeWidth={sw(on)} />
+      <circle cx="12" cy="12" r="2.4" fill={hollow(on)} />
+    </>
+  ),
+  fib_retr: (on) => <path d="M4 5.5h16M4 10.2h11M4 14.8h16M4 19.5h11" strokeWidth={sw(on)} />,
+  rect: (on) => <path d={rr(4.5, 6.5, 15, 11, 2.6)} fill={hollow(on)} />,
+  brush: (on) => (on ? (
+    <>
+      <path d={P.brush} fill={CUR} />
+      <path d="M20 4.2l-7.6 7.6" strokeWidth={2.4} />
+    </>
+  ) : <path d={P.brush} />),
+  text: (on) => <path d="M5.5 7.5V5h13v2.5M12 5v14.5M9 19.5h6" strokeWidth={sw(on)} />,
+  measure: (on) =>
+    on ? (
+      <g transform="rotate(-45 12 12)">
+        <Cutout id="tv3m-ruler" cut={<path d="M7.5 7.6v3.2M11 7.6v4.6M14.5 7.6v3.2M18 7.6v4.6" strokeWidth={1.6} />}>
+          <path d={rr(2.5, 7.6, 19, 8.8, 2.2)} />
+        </Cutout>
+      </g>
+    ) : (
+      <g transform="rotate(-45 12 12)">
+        <path d={rr(2.5, 7.6, 19, 8.8, 2.2)} />
+        <path d="M7.5 7.6v3.2M11 7.6v4.6M14.5 7.6v3.2M18 7.6v4.6" />
+      </g>
+    ),
+  stamp_star: (on) => <path d={P.star} fill={hollow(on)} />,
+  magnet: (on) =>
+    on ? (
+      <Cutout id="tv3m-magnet" cut={<path d="M5.5 8.6h4M14.5 8.6h4" />}>
+        <path d={P.magnet} />
+      </Cutout>
+    ) : (
+      <>
+        <path d={P.magnet} />
+        <path d="M5.5 8.6h4M14.5 8.6h4" />
+      </>
+    ),
+  stay: (on) =>
+    on ? (
+      <Cutout id="tv3m-pencil" cut={<path d="M12.9 7.6l3.5 3.5" />}>
+        <path d={P.pencil} />
+      </Cutout>
+    ) : (
+      <>
+        <path d={P.pencil} />
+        <path d="M12.9 7.6l3.5 3.5" />
+      </>
+    ),
+  lock: (on) =>
+    on ? (
+      <Cutout id="tv3m-lock" cut={<path d="M12 14.2h.01" strokeWidth={2.8} />}>
+        <path d={P.lockBody} />
+        <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" fill="none" strokeWidth={1.8} />
+      </Cutout>
+    ) : (
+      <>
+        <path d={P.lockBody} />
+        <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" />
+      </>
+    ),
+  unlock: (on) =>
+    on ? (
+      <Cutout id="tv3m-unlock" cut={<path d="M12 14.2h.01" strokeWidth={2.8} />}>
+        <path d={P.lockBody} />
+        <path d="M8.5 10.5V8a3.5 3.5 0 016.9-1.1" fill="none" strokeWidth={1.8} />
+      </Cutout>
+    ) : (
+      <>
+        <path d={P.lockBody} />
+        <path d="M8.5 10.5V8a3.5 3.5 0 016.9-1.1" />
+      </>
+    ),
+  eye: (on) =>
+    on ? (
+      <Cutout id="tv3m-eye" cut={<circle cx="12" cy="12" r="3.1" fill="#000" stroke="none" />}>
+        <path d={P.almond} />
+      </Cutout>
+    ) : (
+      <>
+        <path d={P.almond} />
+        <circle cx="12" cy="12" r="3.1" />
+      </>
+    ),
+  eyeOff: (on) =>
+    on ? (
+      <>
+        <Cutout id="tv3m-eyeoff" cut={
+          <>
+            <circle cx="12" cy="12" r="3.1" fill="#000" stroke="none" />
+            <path d="M4.6 4.6l14.8 14.8" strokeWidth={4.6} />
+          </>
+        }>
+          <path d={P.almond} />
+        </Cutout>
+        <path d="M4.6 4.6l14.8 14.8" />
+      </>
+    ) : (
+      <>
+        <path d={P.almond} />
+        <circle cx="12" cy="12" r="3.1" />
+        <path d="M4.6 4.6l14.8 14.8" />
+      </>
+    ),
+  trash: () => <path d="M4.5 7h15M9.5 7V5a1 1 0 011-1h3a1 1 0 011 1v2M6.5 7l.9 11.4A2 2 0 009.4 20.2h5.2a2 2 0 002-1.8L17.5 7M10 11v5M14 11v5" />,
+  undo: () => <path d="M9 4.5L4.5 9 9 13.5M5 9h9.5a5 5 0 010 10H10" />,
+  redo: () => <path d="M15 4.5L19.5 9 15 13.5M19 9H9.5a5 5 0 000 10H14" />,
+};
+SF_DRAW.measureBtn = SF_DRAW.measure;
+
+/** Back-compat export (path strings of the former 20px design set; the SF set above wins in DrawIcon). */
+export const DESIGN_DRAW_PATHS: Record<string, string> = {};
+
+export function DrawIcon({ id, className, size = 20, filled = false }: { id: string; className?: string; size?: number; filled?: boolean }) {
   const def = getToolDef(id);
-  const design = DESIGN_DRAW_PATHS[id];
-  if (def?.glyph && !design) {
+  const sf = (SF_DRAW as Record<string, SfDraw | undefined>)[id];
+  if (def?.glyph && !sf) {
     return (
       <span className={`inline-flex items-center justify-center leading-none ${className ?? ""}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.72) }} aria-hidden="true">
         {def.glyph}
@@ -329,7 +483,7 @@ export function DrawIcon({ id, className, size = 20 }: { id: string; className?:
   }
   return (
     <svg
-      viewBox={design ? "0 0 24 24" : "0 0 28 28"}
+      viewBox={sf ? "0 0 24 24" : "0 0 28 28"}
       width={size}
       height={size}
       className={className}
@@ -337,19 +491,19 @@ export function DrawIcon({ id, className, size = 20 }: { id: string; className?:
       focusable="false"
       fill="none"
       stroke="currentColor"
-      // 28-grid drawings get the same rendered line weight as the 24-grid design glyphs (1.8 / 24 * 28)
-      strokeWidth={design ? 1.8 : 2.1}
+      // 28-grid drawings get the same rendered line weight as the 24-grid glyphs (1.8 / 24 * 28)
+      strokeWidth={sf ? 1.8 : 2.1}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {design ? <path d={design} /> : (DRAW_ICONS[id] ?? <circle cx="14" cy="14" r="5" />)}
+      {sf ? sf(filled) : (DRAW_ICONS[id] ?? <circle cx="14" cy="14" r="5" />)}
     </svg>
   );
 }
 
 /* ───────────── UI icons (24 grid) ───────────── */
 
-export function ui(children: ReactNode, size = 17, sw = 1.8) {
+export function ui(children: ReactNode, size = 20, sw = 1.8) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -369,98 +523,238 @@ export function ui(children: ReactNode, size = 17, sw = 1.8) {
   );
 }
 
-/** One design glyph (a single path string from design/FOMO Terminal Desktop v3.dc.html). */
-const g = (d: string, size = 17, sw = 1.8) => ui(<path d={d} />, size, sw);
+/** One glyph (a single path string). */
+const g = (d: string, size = 20, sw = 1.8) => ui(<path d={d} />, size, sw);
 
-/* Design glyph paths shared by several places (top toolbar 17px, right-hand buttons 18px, rail 20px) */
+/* Glyph paths shared by several places (top toolbar 20px, right-hand buttons 21px, rail 26px) */
 export const DESIGN_PATHS = {
-  indicators: "M3 16l5-6 4 3 5-8 4 4",
+  indicators: "M3.5 17L9 11l4 3.5L20 6.5M15.5 6.5H20V11",
   compare: "M3 17l5-5 4 3 8-9M3 7l5 5 4-3 8 8",
-  alert: "M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0",
-  templates: "M3 5h8v8H3zM13 5h8v4h-8zM13 11h8v8h-8zM3 15h8v4H3z",
-  replay: "M12 6v6l4 2M4 12a8 8 0 108-8M4 4v4h4",
-  undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
-  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
+  alert: `${P.bell}${P.bellClapper}`,
+  templates: `${rr(3.5, 3.5, 7.5, 7.5, 2)}${rr(13, 3.5, 7.5, 7.5, 2)}${rr(3.5, 13, 7.5, 7.5, 2)}${rr(13, 13, 7.5, 7.5, 2)}`,
+  replay: "M12 7v5l3.5 2M4 12a8 8 0 108-8M4 4v4h4",
+  undo: "M9 4.5L4.5 9 9 13.5M5 9h9.5a5 5 0 010 10H10",
+  redo: "M15 4.5L19.5 9 15 13.5M19 9H9.5a5 5 0 000 10H14",
   gear: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.7h4l.4-2.7a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z",
-  fullscreen: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
-  camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z",
-  search: "M20 20l-4-4",
-  calendar: "M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4",
-  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
+  fullscreen: "M4 9V6.5A2.5 2.5 0 016.5 4H9M20 9V6.5A2.5 2.5 0 0017.5 4H15M4 15v2.5A2.5 2.5 0 006.5 20H9M20 15v2.5a2.5 2.5 0 01-2.5 2.5H15",
+  camera: "M4 9a2 2 0 012-2h1.7l1.3-2h6l1.3 2H18a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2zM12 16.2a3.6 3.6 0 100-7.2 3.6 3.6 0 000 7.2z",
+  search: "M16 16l4.5 4.5",
+  calendar: `${P.calendar}M4 10h16M8 3v3.5M16 3v3.5`,
+  eye: `${P.almond}M12 8.9a3.1 3.1 0 100 6.2 3.1 3.1 0 000-6.2z`,
   refresh: "M20 11a8 8 0 10-2.3 5.7M20 4v7h-7",
   expand: "M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7",
-  star: "M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z",
-  watchlist: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
-  info: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1",
-  ideas: "M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6",
-  objects: "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5",
-  trash: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
-  close: "M6 6l12 12M18 6L6 18",
-  check: "M5 12l5 5L20 7",
+  star: P.star,
+  watchlist: "M8.5 6.5H20M8.5 12H20M8.5 17.5H20M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01",
+  info: `${P.circle}M12 7.9h.01M12 11.3v5.2`,
+  ideas: `${P.doc}${P.docFold}${P.docLines}`,
+  objects: `${P.layerTop}${P.layerBottom}`,
+  trash: "M4.5 7h15M9.5 7V5a1 1 0 011-1h3a1 1 0 011 1v2M6.5 7l.9 11.4A2 2 0 009.4 20.2h5.2a2 2 0 002-1.8L17.5 7M10 11v5M14 11v5",
+  close: "M6.5 6.5l11 11M17.5 6.5l-11 11",
+  check: "M5 12.5l4.5 4.5L19 7.5",
 } as const;
+
+/** Bell: solid when there is something armed (iOS: filled = on). */
+export const bellIcon = (filled: boolean, size = 20) =>
+  ui(
+    filled ? (
+      <>
+        <path d={P.bell} fill={CUR} />
+        <path d={P.bellClapper} />
+      </>
+    ) : (
+      <>
+        <path d={P.bell} />
+        <path d={P.bellClapper} />
+      </>
+    ),
+    size
+  );
 
 export const UI_ICONS = {
   search: ui(
     <>
-      <circle cx="11" cy="11" r="7" />
+      <circle cx="10.8" cy="10.8" r="6.6" />
       <path d={DESIGN_PATHS.search} />
     </>,
-    15,
+    17,
     2
   ),
   indicators: g(DESIGN_PATHS.indicators),
-  alert: g(DESIGN_PATHS.alert),
+  alert: bellIcon(false),
+  alertOn: bellIcon(true),
   replay: g(DESIGN_PATHS.replay),
   undo: g(DESIGN_PATHS.undo),
   redo: g(DESIGN_PATHS.redo),
-  gear: g(DESIGN_PATHS.gear, 18),
-  fullscreen: g(DESIGN_PATHS.fullscreen, 18),
-  camera: g(DESIGN_PATHS.camera, 18),
-  tools: g("M4 20l4-1 11-11-3-3L5 16z", 18),
+  gear: g(DESIGN_PATHS.gear, 21),
+  fullscreen: g(DESIGN_PATHS.fullscreen, 21),
+  camera: g(DESIGN_PATHS.camera, 21),
+  tools: g(P.pencil, 21),
   panel: ui(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d={rr(3.5, 4.5, 17, 15, 3)} />
       <path d="M15 4.5v15" />
     </>,
-    18
+    21
   ),
   chevron: (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9l6 6 6-6" />
     </svg>
   ),
 };
 
+const candle = (hollowBody: boolean) => (
+  <>
+    <path d="M7 4v3M7 17v3M17 8v3M17 18v2" />
+    <path d={rr(5, 7, 4, 10, 1.2)} fill={hollowBody ? "none" : CUR} />
+    <path d={rr(15, 11, 4, 7, 1.2)} fill={hollowBody ? "none" : CUR} />
+  </>
+);
+
 export const CHART_TYPE_ICONS: Record<string, ReactNode> = {
-  candles: g("M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z"),
-  hollow: g("M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z"),
+  candles: ui(candle(false)),
+  hollow: ui(candle(true)),
   bars: g("M7 4v16M4 8h3M7 15h3M17 4v16M14 6h3M17 12h3"),
-  line: g("M3 17l5-5 4 3 8-9"),
-  area: g("M3 17l5-5 4 3 8-9v11H3z"),
+  line: g("M3.5 17l5-5 4 3 8-9"),
+  area: ui(
+    <>
+      <path d="M3.5 17l5-5 4 3 8-9v12.5a1.5 1.5 0 01-1.5 1.5H5a1.5 1.5 0 01-1.5-1.5z" fill={CUR} fillOpacity={0.18} />
+      <path d="M3.5 17l5-5 4 3 8-9" />
+    </>
+  ),
   heikin: ui(
     <>
-      <path d="M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z" />
-      <path d="M5 7h4v10H5zM15 11h4v7h-4z" fill="currentColor" fillOpacity={0.3} stroke="none" />
+      <path d="M7 4v3M7 17v3M17 8v3M17 18v2" />
+      <path d={rr(5, 7, 4, 10, 1.2)} fill={CUR} fillOpacity={0.3} />
+      <path d={rr(15, 11, 4, 7, 1.2)} fill={CUR} fillOpacity={0.3} />
     </>
   ),
 };
 
-/* right panel tab icons (design rail: 20px, stroke 1.8) */
-const rail = (d: string) => ui(<path d={d} />, 20, 1.8);
-export const PANEL_TAB_ICONS: Record<string, ReactNode> = {
-  watchlist: rail(DESIGN_PATHS.watchlist),
-  info: rail(DESIGN_PATHS.info),
-  news: rail("M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2zM18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3.5"),
-  calendar: rail(DESIGN_PATHS.calendar),
-  objects: rail(DESIGN_PATHS.objects),
-  orderbook: rail("M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11"),
-  algo: rail("M12 3.5l8.5 15.5h-17zM12 10v4M12 16.6h.01"),
+/* right panel tab icons (rail: 26px, stroke 1.8); the active tab shows the filled variant */
+const railSvg = (children: ReactNode, size: number, strokeW = 1.8) => ui(children, size, strokeW);
+
+const TAB_OFF: Record<string, () => ReactNode> = {
+  watchlist: () => (
+    <>
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" />
+      <circle cx="4.7" cy="6.5" r="1.1" fill={CUR} />
+      <circle cx="4.7" cy="12" r="1.1" fill={CUR} />
+      <circle cx="4.7" cy="17.5" r="1.1" fill={CUR} />
+    </>
+  ),
+  info: () => (
+    <>
+      <path d={P.circle} />
+      <path d="M12 7.9h.01M12 11.3v5.2" />
+    </>
+  ),
+  ideas: () => (
+    <>
+      <path d={P.doc} />
+      <path d={P.docFold} />
+      <path d={P.docLines} />
+    </>
+  ),
+  news: () => (
+    <>
+      <path d={P.newsBody} />
+      <path d={P.newsSide} />
+      <path d="M8.5 9h5.5M8.5 12.4h5.5M8.5 15.8h3" />
+    </>
+  ),
+  calendar: () => (
+    <>
+      <path d={P.calendar} />
+      <path d="M4 10h16M8 3v3.5M16 3v3.5" />
+    </>
+  ),
+  objects: () => (
+    <>
+      <path d={P.layerTop} />
+      <path d={P.layerBottom} />
+    </>
+  ),
+  alerts: () => (
+    <>
+      <path d={P.bell} />
+      <path d={P.bellClapper} />
+    </>
+  ),
+  orderbook: () => <path d="M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11" />,
+  algo: () => (
+    <>
+      <path d={P.triangle} />
+      <path d="M12 9.8v3.6M12 16.1h.01" />
+    </>
+  ),
 };
+
+const TAB_ON: Record<string, () => ReactNode> = {
+  watchlist: () => (
+    <>
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" strokeWidth={2.4} />
+      <circle cx="4.7" cy="6.5" r="1.5" fill={CUR} />
+      <circle cx="4.7" cy="12" r="1.5" fill={CUR} />
+      <circle cx="4.7" cy="17.5" r="1.5" fill={CUR} />
+    </>
+  ),
+  info: () => (
+    <Cutout id="tv3m-info" cut={<path d="M12 7.9h.01M12 11.3v5.2" strokeWidth={2} />}>
+      <path d={P.circle} />
+    </Cutout>
+  ),
+  ideas: () => (
+    <Cutout id="tv3m-doc" cut={<><path d={P.docFold} /><path d={P.docLines} /></>}>
+      <path d={P.doc} />
+    </Cutout>
+  ),
+  news: () => (
+    <Cutout id="tv3m-news" cut={<path d="M8.5 9h5.5M8.5 12.4h5.5M8.5 15.8h3" />}>
+      <path d={P.newsBody} />
+      <path d={P.newsSide} fill="none" strokeWidth={1.8} />
+    </Cutout>
+  ),
+  calendar: () => (
+    <>
+      <Cutout id="tv3m-cal" cut={<path d="M4 10h16" strokeWidth={1.6} />}>
+        <path d={P.calendar} />
+      </Cutout>
+      <path d="M8 3v3.5M16 3v3.5" />
+    </>
+  ),
+  objects: () => (
+    <>
+      <path d={P.layerTop} fill={CUR} />
+      <path d={P.layerBottom} strokeWidth={2.2} />
+    </>
+  ),
+  alerts: () => (
+    <>
+      <path d={P.bell} fill={CUR} />
+      <path d={P.bellClapper} />
+    </>
+  ),
+  orderbook: () => <path d="M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11" strokeWidth={2.4} />,
+  algo: () => (
+    <Cutout id="tv3m-algo" cut={<path d="M12 9.8v3.6M12 16.1h.01" strokeWidth={2} />}>
+      <path d={P.triangle} />
+    </Cutout>
+  ),
+};
+
+/** Rail / mobile tab-bar icon of a panel tab; `on` = filled variant. */
+export function panelTabIcon(id: string, on: boolean, size = 26): ReactNode {
+  const f = (on ? TAB_ON[id] : TAB_OFF[id]) ?? TAB_OFF[id];
+  return f ? railSvg(f(), size) : null;
+}
+
+export const PANEL_TAB_ICONS: Record<string, ReactNode> = Object.fromEntries(Object.keys(TAB_OFF).map((k) => [k, panelTabIcon(k, false, 26)]));
 
 /* ───────────── indicator UI icons (legend, catalog, settings) ───────────── */
 
 const indIcon = (body: ReactNode, filled = false) =>
-  function IndIcon(size = 16) {
+  function IndIcon(size = 18) {
     return filled ? (
       <svg viewBox="0 0 24 24" width={size} height={size} className="shrink-0" aria-hidden="true" focusable="false" fill="currentColor" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round">
         {body}
@@ -498,7 +792,7 @@ export const IND_ICONS = {
   check: indIcon(<path d={DESIGN_PATHS.check} />),
   search: indIcon(
     <>
-      <circle cx="11" cy="11" r="7" />
+      <circle cx="10.8" cy="10.8" r="6.6" />
       <path d={DESIGN_PATHS.search} />
     </>
   ),

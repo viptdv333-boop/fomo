@@ -195,7 +195,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   }
 
   const btn =
-    "flex h-[18px] w-[18px] items-center justify-center rounded text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tv3-accent)]";
+    "tv3-press flex h-[21px] w-[21px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
 
   const renderRow = (uid: string, ownPane = false) => {
     const info = controller.legendInfo(uid, index);
@@ -237,11 +237,11 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               </span>
             ))}
           <span className={`items-center gap-0.5 ${ownPane ? "flex rounded-lg bg-[var(--tv3-glass)] px-[3px]" : active ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}>
-            <button type="button" className={`${btn} ${ownPane ? "!h-5 !w-[22px]" : ""}`} title={info.visible ? t("ind.hide") : t("ind.show")} aria-label={info.visible ? t("ind.hide") : t("ind.show")} onClick={() => controller.update(uid, { visible: !info.visible })}>
-              {info.visible ? IND_ICONS.eye(14) : IND_ICONS.eyeOff(14)}
+            <button type="button" className={`${btn} ${ownPane ? "!h-[23px] !w-[25px]" : ""}`} title={info.visible ? t("ind.hide") : t("ind.show")} aria-label={info.visible ? t("ind.hide") : t("ind.show")} onClick={() => controller.update(uid, { visible: !info.visible })}>
+              {info.visible ? IND_ICONS.eye(16) : IND_ICONS.eyeOff(16)}
             </button>
             <button type="button" className={`${btn} ${ownPane ? "hidden group-hover:flex" : ""}`} title={t("ind.settings")} aria-label={t("ind.settings")} onClick={() => setSettingsUid(uid)}>
-              {IND_ICONS.gear(14)}
+              {IND_ICONS.gear(16)}
             </button>
             <button
               type="button"
@@ -251,17 +251,17 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               aria-expanded={menuUid === uid}
               onClick={() => setMenuUid((m) => (m === uid ? null : uid))}
             >
-              {IND_ICONS.more(14)}
+              {IND_ICONS.more(16)}
             </button>
-            <button type="button" className={`${btn} ${ownPane ? "!h-5 !w-[22px]" : ""} hover:!text-red-500`} title={t("ind.remove")} aria-label={t("ind.remove")} onClick={() => controller.remove(uid)}>
-              {IND_ICONS.close(ownPane ? 12 : 13)}
+            <button type="button" className={`${btn} ${ownPane ? "!h-[23px] !w-[25px]" : ""} hover:!text-red-500`} title={t("ind.remove")} aria-label={t("ind.remove")} onClick={() => controller.remove(uid)}>
+              {IND_ICONS.close(ownPane ? 14 : 15)}
             </button>
           </span>
         </div>
         {menuUid === uid && (
-          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-56 rounded-xl bg-[var(--tv3-card)] py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
+          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
             <MenuItem
-              icon={IND_ICONS.gear(14)}
+              icon={IND_ICONS.gear(16)}
               label={t("ind2.lg.settings")}
               onClick={() => {
                 setMenuUid(null);
@@ -269,7 +269,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               }}
             />
             <MenuItem
-              icon={IND_ICONS.copy(14)}
+              icon={IND_ICONS.copy(16)}
               label={t("ind2.lg.clone")}
               onClick={() => {
                 setMenuUid(null);
@@ -278,7 +278,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             />
             {move && (
               <MenuItem
-                icon={IND_ICONS.pane(14)}
+                icon={IND_ICONS.pane(16)}
                 label={inOwn ? t("ind2.lg.moveMain") : t("ind2.lg.moveOwn")}
                 onClick={() => {
                   setMenuUid(null);
@@ -288,7 +288,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             )}
             {getIndicatorDef(inst.id)?.script && (
               <MenuItem
-                icon={IND_ICONS.template(14)}
+                icon={IND_ICONS.template(16)}
                 label={t("isc.editSource")}
                 onClick={() => {
                   setMenuUid(null);
@@ -297,7 +297,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               />
             )}
             <MenuItem
-              icon={info.visible ? IND_ICONS.eyeOff(14) : IND_ICONS.eye(14)}
+              icon={info.visible ? IND_ICONS.eyeOff(16) : IND_ICONS.eye(16)}
               label={info.visible ? t("ind.hide") : t("ind.show")}
               onClick={() => {
                 setMenuUid(null);
@@ -306,7 +306,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             />
             <div className="my-1 h-px bg-[var(--tv3-hair)]" />
             <MenuItem
-              icon={IND_ICONS.trash(14)}
+              icon={IND_ICONS.trash(16)}
               label={t("ind.remove")}
               danger
               onClick={() => {
@@ -333,12 +333,12 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="flex items-center gap-[5px] rounded-[9px] bg-[var(--tv3-fill)]/95 px-[9px] py-[3px] text-[13px] font-semibold text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
+                className="tv3-press flex cursor-pointer items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-semibold text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
                 aria-expanded={!collapsed}
                 title={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d={collapsed ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
                 </svg>
                 <span>{t("v3.indicators", { n: list.length })}</span>

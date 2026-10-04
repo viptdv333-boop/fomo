@@ -95,7 +95,7 @@ export function Menu({ trigger, children, title, up = false }: { trigger: ReactN
         <span className="opacity-60">{IND_ICONS.chevronDown(12)}</span>
       </button>
       {open && (
-        <div className={`absolute z-[80] ${up ? "bottom-full mb-1" : "mt-1"} left-0 min-w-[130px] rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]`}>
+        <div className={`absolute z-[80] ${up ? "bottom-full mb-1" : "mt-1"} left-0 min-w-[130px] rounded-xl tv3-pop p-1 shadow-[var(--tv3-shadow-pop)]`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -202,7 +202,7 @@ export function TemplateMenu({
         <span className="opacity-60">{IND_ICONS.chevronDown(12)}</span>
       </button>
       {open && (
-        <div className={`absolute left-0 z-[80] w-[240px] ${down ? "top-full mt-1" : "bottom-full mb-1"} rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]`}>
+        <div className={`absolute left-0 z-[80] w-[240px] ${down ? "top-full mt-1" : "bottom-full mb-1"} rounded-xl tv3-pop p-1 shadow-[var(--tv3-shadow-pop)]`}>
           <div className="flex items-center gap-1 p-1">
             <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={t("dp.tpl.name")} className={`${inputCls} min-w-0 flex-1`} onKeyDown={(e) => e.stopPropagation()} />
             <button

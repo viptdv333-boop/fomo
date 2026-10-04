@@ -671,7 +671,7 @@ function TemplateMenu({ defId, params, style, onApply }: { defId: string; params
         {IND_ICONS.chevronUp(12)}
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-[80] mb-1 w-64 rounded-xl bg-[var(--tv3-card)] p-2 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
+        <div className="absolute bottom-full left-0 z-[80] mb-1 w-64 rounded-xl tv3-pop p-2 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
           <form
             className="flex items-center gap-1.5"
             onSubmit={(e) => {

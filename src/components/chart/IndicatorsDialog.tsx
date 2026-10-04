@@ -497,7 +497,7 @@ function ScriptsList({
             {IND_ICONS.chevronDown(12)}
           </button>
           {tplOpen && (
-            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-xl bg-[var(--tv3-card)] py-1 shadow-[var(--tv3-shadow-pop)]">
+            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-xl tv3-pop py-1 shadow-[var(--tv3-shadow-pop)]">
               {SCRIPT_TEMPLATES.map((x) => (
                 <button
                   key={x.id}

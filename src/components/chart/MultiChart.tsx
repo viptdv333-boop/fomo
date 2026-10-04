@@ -82,28 +82,28 @@ const I = (children: ReactNode) => (
   </svg>
 );
 const LAYOUT_ICONS: Record<LayoutId, ReactNode> = {
-  "1": I(<rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />),
+  "1": I(<rect x="3.5" y="4.5" width="17" height="15" rx="3" />),
   "2c": I(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
       <path d="M12 4.5v15" />
     </>
   ),
   "2r": I(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
       <path d="M3.5 12h17" />
     </>
   ),
   "3": I(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
       <path d="M12 4.5v15M12 12h8.5" />
     </>
   ),
   "4": I(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
       <path d="M12 4.5v15M3.5 12h17" />
     </>
   ),
@@ -203,10 +203,10 @@ export default function MultiChart(props: Props) {
   const picker = (
     <MenuPopover
       title={t("cs.ml.title")}
-      className="min-h-[27px] min-w-[37px] px-2.5 py-[5px] inline-flex items-center justify-center rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
+      className="tv3-press min-h-[31px] min-w-[44px] px-3 py-[5px] inline-flex items-center justify-center rounded-[11px] bg-[var(--tv3-fill)] text-[13.5px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
       width={250}
       align="right"
-      trigger={<span className="inline-flex h-[17px] w-[17px] items-center justify-center"><span className="scale-[0.654] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span>}
+      trigger={<span className="inline-flex h-[20px] w-[20px] items-center justify-center"><span className="scale-[0.77] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span>}
     >
       {() => (
         <div className="px-3 py-2">

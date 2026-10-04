@@ -84,7 +84,7 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
         role="dialog"
         aria-label={t("ind.title")}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`absolute flex max-h-[min(70vh,640px)] flex-col overflow-hidden py-1.5 ${TV3.sheet}`}
+        className={`absolute flex max-h-[min(70vh,640px)] flex-col overflow-hidden py-1.5 ${TV3.popover}`}
         style={{ left: pos.left, top: pos.top, width: Math.min(WIDTH, typeof window !== "undefined" ? window.innerWidth - 16 : WIDTH) }}
       >
         <div className="px-3.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t("ind.title")}</div>

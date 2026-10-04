@@ -27,6 +27,11 @@
   --tv3-on: #34c759;
   --tv3-pill-dark: rgba(28, 28, 30, 0.92);
   --tv3-glass: rgba(255, 255, 255, 0.94);
+  /* iOS translucent popover surface (blurred) + hairline */
+  --tv3-pop-bg: rgba(255, 255, 255, 0.8);
+  --tv3-pop-border: rgba(60, 60, 67, 0.18);
+  --tv3-press: rgba(60, 60, 67, 0.14);
+  --tv3-hover: rgba(120, 120, 128, 0.12);
   --tv3-shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
   --tv3-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.1);
   --tv3-shadow-tiny: 0 2px 4px rgba(0, 0, 0, 0.25);
@@ -60,6 +65,10 @@
   --tv3-on: #30d158;
   --tv3-pill-dark: rgba(58, 58, 60, 0.95);
   --tv3-glass: rgba(28, 28, 30, 0.92);
+  --tv3-pop-bg: rgba(44, 44, 46, 0.78);
+  --tv3-pop-border: rgba(255, 255, 255, 0.14);
+  --tv3-press: rgba(235, 235, 245, 0.18);
+  --tv3-hover: rgba(235, 235, 245, 0.1);
   --tv3-shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
   --tv3-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.5);
   --tv3-shadow-tiny: 0 2px 4px rgba(0, 0, 0, 0.5);
@@ -82,23 +91,80 @@
   color: var(--tv3-muted);
 }
 
-/* left drawing toolbar + right icon rail buttons: design 36px / 20px glyph +15% = 42px / 23px; on short screens they shrink back to the design size
-   (the columns spread their buttons over the full card height, see DrawingToolbar / RightPanel) */
+/* ───────── iOS layer: rails, press feedback, focus ring, translucent popovers ───────── */
+
+/* left drawing toolbar + right icon rail buttons: design 36px / 20px glyph, +15% (previous round) +15% = 48px wide / 26px glyph.
+   The height follows the viewport (18 buttons must fit in the left card): 48px on tall screens, ~36px at 1366x768. */
 .tv3 .tv3-rbtn {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: clamp(36px, calc((100vh - 124px) / 18), 48px);
+  border-radius: 12px;
 }
 .tv3 .tv3-rbtn svg {
-  width: 23px;
-  height: 23px;
+  width: 26px;
+  height: 26px;
+}
+/* flexible spacers between the rail buttons spread them evenly over the card */
+.tv3 .tv3-rgap {
+  flex: 1 1 0;
+  min-height: 0;
 }
 @media (max-height: 830px) {
   .tv3 .tv3-rbtn {
-    width: 36px;
-    height: 36px;
+    width: 41px;
   }
   .tv3 .tv3-rbtn svg {
-    width: 20px;
-    height: 20px;
+    width: 23px;
+    height: 23px;
+  }
+}
+
+/* iOS press feedback: scale .96 + tint, 140ms ease-out; hover tint on devices that hover */
+.tv3 .tv3-press {
+  transition: background-color 140ms ease-out, color 140ms ease-out, transform 140ms ease-out, opacity 140ms ease-out, filter 140ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.tv3 .tv3-press:not(:disabled):active {
+  transform: scale(0.96);
+  background-color: var(--tv3-press);
+}
+@media (hover: hover) {
+  .tv3 .tv3-hov:not(:disabled):hover {
+    background-color: var(--tv3-hover);
+  }
+}
+
+/* keyboard focus: 2px accent ring for every control of the terminal (mouse clicks do not show it) */
+.tv3 button:focus-visible,
+.tv3 a:focus-visible,
+.tv3 [role="menuitem"]:focus-visible,
+.tv3 [role="switch"]:focus-visible,
+.tv3 select:focus-visible,
+.tv3 summary:focus-visible {
+  outline: 2px solid var(--tv3-accent);
+  outline-offset: 1px;
+}
+
+/* translucent blurred surface of popovers / menus (iOS "material"), hairline border */
+.tv3 .tv3-pop {
+  background-color: var(--tv3-pop-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border: 0.5px solid var(--tv3-pop-border);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tv3 .tv3-pop {
+    background-color: var(--tv3-glass);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv3 .tv3-press,
+  .tv3 button {
+    transition-duration: 0.01ms !important;
+  }
+  .tv3 .tv3-press:not(:disabled):active {
+    transform: none;
   }
 }

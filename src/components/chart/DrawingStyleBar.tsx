@@ -255,7 +255,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
               <DrawIcon id="text" size={18} />
             </button>
             {textOpen && (
-              <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[240px] -translate-x-1/2 rounded-xl bg-[var(--tv3-card)] p-2 shadow-[var(--tv3-shadow-pop)]">
+              <div className="absolute left-1/2 top-full z-40 mt-1.5 w-[240px] -translate-x-1/2 rounded-xl tv3-pop p-2 shadow-[var(--tv3-shadow-pop)]">
                 <textarea
                   ref={textRef}
                   value={st.text ?? ""}
@@ -342,7 +342,7 @@ function MoreMenu({ children }: { children: ReactNode }) {
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={`${btnCls} !border-0 w-7 !px-0`}>
         {IND_ICONS.more(16)}
       </button>
-      {open && <div className="absolute right-0 top-full z-40 mt-1.5 flex gap-0.5 rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)]">{children}</div>}
+      {open && <div className="absolute right-0 top-full z-40 mt-1.5 flex gap-0.5 rounded-xl tv3-pop p-1 shadow-[var(--tv3-shadow-pop)]">{children}</div>}
     </div>
   );
 }

@@ -37,8 +37,8 @@ import PriceScaleMenu from "@/components/chart/PriceScaleMenu";
 import ShortcutsDialog from "@/components/chart/ShortcutsDialog";
 import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegend";
 import { useChartSettings } from "@/components/chart/useChartSettings";
+import { DESIGN_PATHS, DrawIcon, panelTabIcon, ui } from "@/components/chart/icons";
 import { CS_ICONS } from "@/components/chart/icons-cs";
-import { DESIGN_PATHS, DrawIcon, ui } from "@/components/chart/icons";
 import { aggregateCandles, formatInterval, intervalPlan } from "@/lib/chart/intervals";
 import { cleanCandles } from "@/lib/chart/candles";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
@@ -1291,19 +1291,19 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             />
             {cs.navButtons !== "never" && (
               <div
-                className={`absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-[11px] bg-[var(--tv3-glass)] shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
+                className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
                   cs.scale.side === "left" ? "left-[76px]" : "left-2.5"
                 } ${cs.navButtons === "hover" ? "opacity-0 group-hover:opacity-100 focus-within:opacity-100" : ""}`}
               >
                 {(
                   [
-                    ["zoomOut", "−", "cs.nav.zoomOut", () => engineRef.current?.zoomBy(0.8)],
-                    ["zoomIn", "+", "cs.nav.zoomIn", () => engineRef.current?.zoomBy(1.25)],
-                    ["toLatest", "»", "cs.nav.toLatest", () => engineRef.current?.scrollToLatest()],
-                    ["resetView", "↻", "cs.nav.resetView", () => engineRef.current?.resetView()],
+                    ["zoomOut", CS_ICONS.zoomOut, "cs.nav.zoomOut", () => engineRef.current?.zoomBy(0.8)],
+                    ["zoomIn", CS_ICONS.zoomIn, "cs.nav.zoomIn", () => engineRef.current?.zoomBy(1.25)],
+                    ["toLatest", CS_ICONS.toLatest, "cs.nav.toLatest", () => engineRef.current?.scrollToLatest()],
+                    ["resetView", CS_ICONS.resetView, "cs.nav.resetView", () => engineRef.current?.resetView()],
                   ] as const
                 ).map(([k, glyph, label, fn]) => (
-                  <button key={k} onClick={fn} title={t(label)} aria-label={t(label)} className="w-[34px] h-[30px] inline-flex items-center justify-center text-base font-semibold text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] cursor-pointer">
+                  <button key={k} onClick={fn} title={t(label)} aria-label={t(label)} className="tv3-press w-[39px] h-[35px] inline-flex items-center justify-center text-[var(--tv3-text2)] hover:bg-[var(--tv3-hover)] cursor-pointer">
                     {glyph}
                   </button>
                 ))}
@@ -1331,18 +1331,20 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             <nav className="md:hidden shrink-0 flex items-stretch border-t border-[var(--tv3-hair)] bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)]">
               {(
                 [
-                  ["watchlist", "mnav.watchlist", ui(<path d={DESIGN_PATHS.watchlist} />, 22), () => onTab("watchlist"), mobilePanel],
-                  ["indicators", "mnav.indicators", ui(<path d={DESIGN_PATHS.indicators} />, 22), () => setIndOpen(true), false],
-                  ["tools", "mnav.tools", <DrawIcon key="d" id="trend" size={22} />, () => setToolsOpen((v) => !v), toolsOpen],
-                  ["alerts", "mnav.alerts", ui(<path d={DESIGN_PATHS.alert} />, 22), () => openAlerts(null), false],
-                  ["settings", "mnav.settings", ui(<path d={DESIGN_PATHS.gear} />, 22), () => openSettings(), false],
+                  ["watchlist", "mnav.watchlist", panelTabIcon("watchlist", mobilePanel, 25), () => onTab("watchlist"), mobilePanel],
+                  ["indicators", "mnav.indicators", ui(<path d={DESIGN_PATHS.indicators} />, 25), () => setIndOpen(true), false],
+                  ["tools", "mnav.tools", <DrawIcon key="d" id="trend" size={25} filled={toolsOpen} />, () => setToolsOpen((v) => !v), toolsOpen],
+                  ["alerts", "mnav.alerts", ui(<path d={DESIGN_PATHS.alert} />, 25), () => openAlerts(null), false],
+                  ["settings", "mnav.settings", ui(<path d={DESIGN_PATHS.gear} />, 25), () => openSettings(), false],
                 ] as const
               ).map(([k, label, icon, fn, on]) => (
                 <button
                   key={k}
                   type="button"
                   onClick={fn}
-                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] leading-tight cursor-pointer ${on ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)]"}`}
+                  aria-label={t(label)}
+                  aria-pressed={on}
+                  className={`tv3-press flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] leading-tight cursor-pointer ${on ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)]"}`}
                 >
                   {icon}
                   <span className="truncate max-w-full">{t(label)}</span>

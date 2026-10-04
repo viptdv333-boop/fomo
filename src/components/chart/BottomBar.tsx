@@ -78,14 +78,14 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
   };
   return (
     <span className="inline-flex">
-      <button ref={ref} onClick={() => (open ? setOpen(false) : openIt())} title={t("cs.goto")} aria-label={t("cs.goto")} aria-expanded={open} className={`${btn} inline-flex items-center gap-[5px] !py-1`}>
+      <button ref={ref} onClick={() => (open ? setOpen(false) : openIt())} title={t("cs.goto")} aria-label={t("cs.goto")} aria-expanded={open} className={`${btn} inline-flex items-center gap-[6px]`}>
         <span className="inline-flex">{CS_ICONS.calendar}</span>
         <span className="hidden sm:inline">{t("cs.gotoShort")}</span>
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
-          <div style={pos} className="fixed z-[56] w-[240px] rounded-[14px] bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] p-3">
+          <div style={pos} className="tv3-pop fixed z-[56] w-[240px] rounded-2xl shadow-[var(--tv3-shadow-pop)] p-3">
             <div className="text-xs font-semibold text-[var(--tv3-muted)] mb-1.5">{t("cs.gotoTitle")}</div>
             <input
               type="date"
@@ -113,13 +113,13 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
   const clock = useExchangeClock(source, zone);
 
   // design v3: grey pills (segmented ranges + tiny buttons), the active toggle is tinted green
-  const btn = "px-2.5 py-[3px] rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
-  const seg = "px-2 py-[3px] rounded-[7px] text-xs font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
+  const btn = "tv3-press px-3 py-1 rounded-[9px] text-[13px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
+  const seg = "tv3-press px-2.5 py-1 rounded-[9px] text-[13px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
   const on = "!bg-[var(--tv3-accent-soft)]"; // design: only the tint (rgba(30,158,74,.18)), the label keeps its colour
 
   return (
     <div className="flex items-center gap-2 px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex items-center rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 shrink-0">
+      <div className="flex items-center rounded-[11px] bg-[var(--tv3-fill2)] p-0.5 shrink-0">
         {RANGES.map((r) => (
           <button key={r} onClick={() => onRange(r)} disabled={rangeBusy} title={t("shell.range.tip")} className={`${seg} disabled:opacity-50 disabled:cursor-wait`}>
             {t(`shell.range.${r}`)}
@@ -129,7 +129,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
       {rangeBusy && <span className="ml-1 inline-block w-3 h-3 border-2 border-[var(--tv3-fill2)] border-t-[var(--tv3-accent)] rounded-full animate-spin shrink-0" title={t("shell.loadingHistory")} />}
       {onGoToDate && (
         <>
-          <GoToDate btn={`${btn} !rounded-lg !px-2.5`} onGo={onGoToDate} signal={gotoSignal} />
+          <GoToDate btn={`${btn} !px-3`} onGo={onGoToDate} signal={gotoSignal} />
         </>
       )}
 
@@ -138,7 +138,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
       {onTz && tz !== undefined ? (
         <MenuPopover
           title={t("cs.timezone")}
-          className="px-2 py-[3px] rounded-[7px] text-xs tabular-nums shrink-0 cursor-pointer text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
+          className="tv3-press px-2.5 py-1 rounded-[9px] text-[13px] tabular-nums shrink-0 cursor-pointer text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
           width={250}
           align="right"
           up
@@ -170,7 +170,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
           )}
         </MenuPopover>
       ) : (
-        <span className="text-xs tabular-nums text-[var(--tv3-text2)] shrink-0 px-2" title={source === "moex" ? t("shell.tz.moscow") : t("shell.tz.local")}>
+        <span className="text-[13px] tabular-nums text-[var(--tv3-text2)] shrink-0 px-2" title={source === "moex" ? t("shell.tz.moscow") : t("shell.tz.local")}>
           {clock.time}
           {clock.zone && <span className="ml-1.5">{clock.zone}</span>}
         </span>

@@ -126,7 +126,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--tv3-hair)] px-3 py-2 sm:px-4">
         {mode === "layer" && (
           <button type="button" onClick={onClose} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] px-2.5 text-[12px] font-medium cursor-pointer hover:bg-[var(--tv3-fill)]">
-            <span className="scale-[0.8]">{EC_ICONS.prev}</span>
+            <span className="scale-[0.92]">{EC_ICONS.prev}</span>
             {t("ec.back")}
           </button>
         )}
@@ -143,13 +143,13 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           {zoneSlot}
           {grid && (
             <button type="button" onClick={data.refresh} title={t("ec.refresh")} aria-label={t("ec.refresh")} className={iconBtn}>
-              <span className={`inline-flex scale-[0.8] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
+              <span className={`inline-flex scale-[0.92] ${data.status === "loading" ? "animate-spin" : ""}`}>{EC_ICONS.refresh}</span>
             </button>
           )}
           {mode === "layer" && <ChartEventsButton className={iconBtn} onClassName="bg-[var(--tv3-accent-soft)]! text-[var(--tv3-accent)]!" />}
           {mode === "layer" && (
             <button type="button" onClick={onClose} aria-label={t("shell.close")} className={iconBtn}>
-              <span className="scale-[0.8]">{EC_ICONS.close}</span>
+              <span className="scale-[0.92]">{EC_ICONS.close}</span>
             </button>
           )}
         </span>
@@ -159,13 +159,13 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         {grid && (
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => setOffset((o) => o - 1)} aria-label={t("ec.prevPeriod")} title={t("ec.prevPeriod")} className={iconBtn}>
-              <span className="scale-[0.8]">{EC_ICONS.prev}</span>
+              <span className="scale-[0.92]">{EC_ICONS.prev}</span>
             </button>
             <button type="button" onClick={() => setOffset(0)} disabled={offset === 0} className="h-7 rounded-[9px] bg-[var(--tv3-fill)] px-2 text-[12px] cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-50 disabled:cursor-default">
               {t("ec.tab.today")}
             </button>
             <button type="button" onClick={() => setOffset((o) => o + 1)} aria-label={t("ec.nextPeriod")} title={t("ec.nextPeriod")} className={iconBtn}>
-              <span className="scale-[0.8]">{EC_ICONS.next}</span>
+              <span className="scale-[0.92]">{EC_ICONS.next}</span>
             </button>
             <span className="ml-1 text-[12px] font-medium tabular-nums text-[var(--tv3-text2)]">{rangeTitle}</span>
           </div>

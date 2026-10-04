@@ -193,7 +193,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
       onKeyDown={onMenuKey}
       onContextMenu={(e) => e.preventDefault()}
       style={{ position: "fixed", left: pos?.left ?? state.clientX, top: pos?.top ?? state.clientY, visibility: pos ? "visible" : "hidden" }}
-      className="z-[80] min-w-[230px] max-w-[92vw] select-none rounded-xl bg-[var(--tv3-card)] p-1 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
+      className="z-[80] min-w-[230px] max-w-[92vw] select-none rounded-xl tv3-pop p-1 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
     >
       {onDrawing && sel ? (
         <>
@@ -216,7 +216,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
             {orderOpen && (
               <div
                 role="menu"
-                className={`absolute top-[-5px] z-10 min-w-[200px] rounded-xl bg-[var(--tv3-card)] p-1 shadow-[var(--tv3-shadow-pop)] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
+                className={`absolute top-[-5px] z-10 min-w-[200px] rounded-xl tv3-pop p-1 shadow-[var(--tv3-shadow-pop)] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
               >
                 {orderItems.map(([mode, key]) => (
                   <Item key={mode} label={t(key)} onClick={run(() => controller.zOrder(sel.id, mode))} />
