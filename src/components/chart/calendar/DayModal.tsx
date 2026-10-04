@@ -8,7 +8,7 @@ import type { CalEvent } from "@/lib/calendar/types";
 import { EC_ICONS } from "../icons-econ";
 import ModalPortal from "../ModalPortal";
 import EventDetails from "./EventDetails";
-import { CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips } from "./Filters";
+import { CommodityChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import { DAY_COLS, NowMarker, PanelRow, WideRow, iconBtn, isPast } from "./CalendarView";
 import { useNarrow, useNow } from "./parts";
@@ -98,6 +98,7 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
             <QuickChips />
             <EnergyChip />
             <MoexChip />
+            <CommodityChip />
           </div>
 
           <div ref={bodyRef} className="min-h-0 flex-1 overflow-auto">

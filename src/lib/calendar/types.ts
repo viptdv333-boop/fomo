@@ -52,6 +52,8 @@ export type CalCategory =
   | "holiday"
   /** Events built from the Moscow Exchange itself (trading calendar, expirations): own badge and colour in the UI. */
   | "moex"
+  /** Scheduled reports of agriculture / soft commodities (USDA, CONAB, cocoa grindings, MPOB ...): lib/calendar/commodities.ts. */
+  | "commodity"
   | "other";
 
 export type ImpactLevel = 1 | 2 | 3;
@@ -63,6 +65,8 @@ export interface CalFilter {
   q?: string;
   /** Hide the Moscow Exchange layer. */
   noMoex?: boolean;
+  /** Hide the commodities / agriculture layer. */
+  noCommodity?: boolean;
   /** "Oil and gas" quick filter: only events tagged oil / gas, from any country (the country filter does not apply). */
   energy?: boolean;
 }

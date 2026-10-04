@@ -45,6 +45,7 @@ export class EventsLayer implements OverlayLayer {
   private impacts = new Set<number>([3]);
   private countries: Set<string> | null = null;
   private moexOn = true;
+  private commodityOn = true;
   private lang = "ru";
   private labels: EventsLabels = { act: "Act", fcst: "Fcst", prev: "Prev", more: "{n} more" };
   /** every loaded event, sorted, deduplicated */
@@ -82,10 +83,11 @@ export class EventsLayer implements OverlayLayer {
     this.redraw();
   }
 
-  setFilter(impacts: readonly number[], countries: readonly string[], moex = true): void {
+  setFilter(impacts: readonly number[], countries: readonly string[], moex = true, commodity = true): void {
     this.impacts = new Set(impacts);
     this.countries = countries.length ? new Set(countries) : null;
     this.moexOn = moex;
+    this.commodityOn = commodity;
     this.rebuild();
   }
 
@@ -124,8 +126,10 @@ export class EventsLayer implements OverlayLayer {
     const imp = this.impacts;
     const c = this.countries;
     const moex = this.moexOn;
+    const commodity = this.commodityOn;
     // the Moscow Exchange layer follows its own switch (and shows from medium importance up), not the country filter
-    this.shown = this.all.filter((e) => (e.category === "moex" ? moex && (e.impact >= 2 || imp.has(e.impact)) : imp.has(e.impact) && (!c || c.has(e.country))));
+    // the commodity layer has its own switch and follows the importance filter, not the country filter
+    this.shown = this.all.filter((e) => (e.category === "moex" ? moex && (e.impact >= 2 || imp.has(e.impact)) : e.category === "commodity" ? commodity && imp.has(e.impact) : imp.has(e.impact) && (!c || c.has(e.country))));
     this.hover = null;
     this.redraw();
   }

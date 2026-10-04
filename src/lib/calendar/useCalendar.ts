@@ -18,6 +18,8 @@ export interface CalData {
   source: string;
   /** The Moscow Exchange layer is part of the answer. */
   moex: boolean;
+  /** The commodities / agriculture layer is part of the answer. */
+  commodity: boolean;
   /** The span the provider knows about (Forex Factory: this + next week); null = unlimited. */
   coverage: { from: number; to: number } | null;
   refresh: () => void;
@@ -30,6 +32,7 @@ interface CacheEntry {
   at: number;
   source: string;
   moex: boolean;
+  commodity: boolean;
   coverage: { from: number; to: number } | null;
 }
 const memo = new Map<string, CacheEntry>();
@@ -87,6 +90,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
         at: Date.now(),
         source: res.headers.get("X-Calendar-Source") || "none",
         moex: (res.headers.get("X-Calendar-Layers") || "").includes("moex"),
+        commodity: (res.headers.get("X-Calendar-Layers") || "").includes("commodity"),
         coverage: parseCoverage(res.headers.get("X-Calendar-Coverage")),
       };
       if (failed && memo.get(k)?.events.length) {
@@ -102,7 +106,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
       if ((e as { name?: string })?.name === "AbortError") return;
       if (keyRef.current !== k) return;
       if (!memo.get(k)?.events.length) {
-        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, coverage: null });
+        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, commodity: false, coverage: null });
         setStatus("error");
       }
       lastRef.current = Date.now();
@@ -150,6 +154,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     fetchedAt: cur?.at ?? 0,
     source: cur?.source ?? "none",
     moex: cur?.moex ?? false,
+    commodity: cur?.commodity ?? false,
     coverage: cur?.coverage ?? null,
     refresh,
   };
@@ -175,6 +180,7 @@ export function useCalendarWindow(start: string, zone: string, enabled: boolean,
     fetchedAt: Math.max(a.fetchedAt, b.fetchedAt),
     source: best.source,
     moex: a.moex || b.moex,
+    commodity: a.commodity || b.commodity,
     coverage: a.coverage ?? b.coverage,
     refresh: () => {
       a.refresh();

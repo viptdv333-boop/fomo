@@ -22,6 +22,8 @@ export interface CalPrefs {
   chart: { on: boolean; impacts: number[] };
   /** The Moscow Exchange layer (trading calendar, expirations): list, grid and chart. */
   moex: boolean;
+  /** The commodities / agriculture layer (USDA, CONAB, cocoa grindings, MPOB ... report dates): list, grid and chart. */
+  commodities: boolean;
   /** «Нефть и газ» quick filter: only oil / gas events (EIA, API, Baker Hughes, OPEC, IEA ...) from any country. */
   energy: boolean;
   /** Full-page calendar view: month squares or the list. */
@@ -40,6 +42,7 @@ export const DEFAULT_CAL_PREFS: CalPrefs = {
   custom: null,
   chart: { on: false, impacts: [3] },
   moex: true,
+  commodities: true,
   energy: false,
   view: "grid",
   panelGrid: false,
@@ -71,6 +74,7 @@ export function normalizeCalPrefs(raw: unknown): CalPrefs {
     custom: custom && isDate(custom.from) && isDate(custom.to) ? { from: custom.from, to: custom.to } : null,
     chart: { on: chart.on === true, impacts: levels(chart.impacts, DEFAULT_CAL_PREFS.chart.impacts) },
     moex: r.moex !== false,
+    commodities: r.commodities !== false,
     energy: r.energy === true,
     view: r.view === "list" ? "list" : "grid",
     panelGrid: r.panelGrid === true,

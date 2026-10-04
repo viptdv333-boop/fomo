@@ -1,3 +1,4 @@
+import { buildCommodityEvents, dropOfficialDuplicates } from "./commodities";
 import { filterEvents, mergeEvents, normalizeFmpRows } from "./normalize";
 import { ffCoverage, normalizeForexFactory } from "./forexfactory";
 import { buildMoexExpirations, buildMoexHolidays, DAYOFF_URL, ISS_FORTS_URL, parseForts, type ForstRow, type MoexLang } from "./moex";
@@ -10,7 +11,8 @@ import type { CalEvent, CalReason, CalSource } from "./types";
  *   1. TradingView's calendar endpoint (unofficial, all countries, descriptions, 31 days per request)
  *   2. FMP stable/economic-calendar (key from process.env.FMP_API_KEY only; a paid plan takes over automatically)
  *   3. Forex Factory weekly feeds (unofficial, last resort: this + next week, no actual values)
- * The first provider that answers (ok, or returns events) wins; the Moscow Exchange layer is merged on top of any of them.
+ * The first provider that answers (ok, or returns events) wins; the Moscow Exchange layer and the commodities / agriculture layer
+ * (commodities.ts: static, verified report schedule) are merged on top of any of them.
  * Block providers (1, 2) are fetched in Monday-aligned 7-day UTC blocks, so every tab, range and the chart overlay share the
  * same few upstream calls; cached per block with stale-if-error and a negative cache, one in-flight request per key.
  * Override the chain with ECON_CALENDAR_PROVIDERS="fmp,forexfactory" (comma list); ECON_CALENDAR_MOCK is for development only.
@@ -360,10 +362,14 @@ export interface RangeResult {
   tried: string[];
   coverage: { from: number; to: number } | null;
   moex: boolean;
+  /** The commodities / agriculture layer is part of the answer. */
+  commodity: boolean;
 }
 
 export interface RangeOptions {
   moex?: boolean;
+  /** false switches the commodities / agriculture layer off (API: agro=0). */
+  agro?: boolean;
   lang?: MoexLang;
 }
 
@@ -390,12 +396,24 @@ export async function getCalendarRange(from: string, to: string, now = Date.now(
   }
   const useMoex = opts.moex !== false && !mockMode();
   const moexEvents = useMoex ? await getMoexEvents(from, to, opts.lang ?? "ru", now) : [];
+  const useAgro = opts.agro !== false && !mockMode();
+  const agroEvents = useAgro ? buildCommodityEvents(from, to, opts.lang ?? "ru") : [];
   const main = part ?? last;
-  const events = mergeEvents([main.events, moexEvents]);
+  // the official WASDE / Grain Stocks of the commodity layer replace the same reports of the feed (same UTC day)
+  const events = mergeEvents([dropOfficialDuplicates(main.events, agroEvents), moexEvents, agroEvents]);
   let reason: CalReason = main.reason;
-  if (!part && moexEvents.length) reason = "partial"; // the chain failed but the exchange layer is there
-  if (!part && !moexEvents.length) reason = last.reason;
-  return { events, reason, stale: main.stale, source, tried, coverage: main.coverage, moex: useMoex && (moexEvents.length > 0 || (fortsCache?.rows.length ?? 0) > 0) };
+  if (!part && (moexEvents.length || agroEvents.length)) reason = "partial"; // the chain failed but an extra layer is there
+  if (!part && !moexEvents.length && !agroEvents.length) reason = last.reason;
+  return {
+    events,
+    reason,
+    stale: main.stale,
+    source,
+    tried,
+    coverage: main.coverage,
+    moex: useMoex && (moexEvents.length > 0 || (fortsCache?.rows.length ?? 0) > 0),
+    commodity: agroEvents.length > 0,
+  };
 }
 
 /** Test hook. */

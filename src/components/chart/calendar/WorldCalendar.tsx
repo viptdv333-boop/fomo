@@ -14,7 +14,7 @@ import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
-import { CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
+import { CommodityChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
@@ -52,8 +52,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const cells = useMemo(() => buildMonthCells(start, today, DAYS), [start, today]);
 
   const events = useMemo(
-    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex, energy: prefs.energy }),
-    [data.events, prefs.countries, prefs.impacts, prefs.moex, prefs.energy, q]
+    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, energy: prefs.energy }),
+    [data.events, prefs.countries, prefs.impacts, prefs.moex, prefs.commodities, prefs.energy, q]
   );
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
@@ -163,6 +163,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         <div className="hidden sm:block"><QuickChips /></div>
         <EnergyChip />
         <MoexChip />
+        <CommodityChip />
         <div className="flex min-w-[150px] max-w-[260px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
       </div>
 
@@ -180,7 +181,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           <CalendarView variant="embedded" zone={zone} visible={visible} query={q} />
         )}
       </div>
-      {grid && <SourceFooter source={data.source} moex={data.moex} className="shrink-0 border-t border-gray-100 dark:border-[#2a2e39]" />}
+      {grid && <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} className="shrink-0 border-t border-gray-100 dark:border-[#2a2e39]" />}
 
       {openDay && (
         <DayModal

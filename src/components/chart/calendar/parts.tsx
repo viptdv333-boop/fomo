@@ -59,12 +59,13 @@ export function useNarrow(): boolean {
 }
 
 /** "Source: TradingView · Moscow Exchange" and the note for sources without actual values. */
-export function SourceFooter({ source, moex, className = "" }: { source: string; moex: boolean; className?: string }) {
+export function SourceFooter({ source, moex, commodity = false, className = "" }: { source: string; moex: boolean; commodity?: boolean; className?: string }) {
   const { t } = useT();
-  if (source === "none" && !moex) return null;
+  if (source === "none" && !moex && !commodity) return null;
   const parts: string[] = [];
   if (source !== "none") parts.push(t(`ec.src.${source}`));
   if (moex) parts.push(t("ec.moex"));
+  if (commodity) parts.push(t("ec.src.commodity"));
   return (
     <div className={`px-3 py-1 text-[10.5px] leading-snug text-gray-400 dark:text-gray-500 ${className}`}>
       <span>{t("ec.src.label")} {parts.join(" · ")}</span>
@@ -79,6 +80,16 @@ export function MoexMark({ title }: { title?: string }) {
     <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-sky-500/15 px-1 text-[9px] font-bold uppercase leading-none text-sky-600 dark:text-sky-300">
       <span className="inline-block h-[5px] w-[5px] rotate-45 bg-sky-500" />
       MOEX
+    </span>
+  );
+}
+
+/** Badge of the commodities / agriculture layer (USDA, CONAB, cocoa, palm oil ... report dates). */
+export function CommodityMark({ title }: { title?: string }) {
+  return (
+    <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-lime-600/15 px-1 text-[9px] font-bold uppercase leading-none text-lime-700 dark:text-lime-300">
+      <span className="inline-block h-[5px] w-[5px] rounded-sm bg-lime-600" />
+      AGRO
     </span>
   );
 }

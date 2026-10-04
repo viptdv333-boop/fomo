@@ -19,11 +19,13 @@ import type { CalReason } from "@/lib/calendar/types";
  *              and natural gas storage 3). The about / affects texts are not in the list: the client reads them from lib/calendar/glossary.
  *   limit      max events (default 3000)
  *   moex       0 switches the Moscow Exchange layer off (default on); lang = ru | en | cn for its texts
+ *   agro       0 switches the commodities / agriculture layer off (default on): USDA, CONAB, cocoa grindings, MPOB ... report dates, category
+ *              "commodity", country = the issuer's, titles and glossary key (gk) already set; see lib/calendar/commodities.ts
  *   desc       1 keeps the long event descriptions (otherwise stripped; events carry hasDesc)
  * Returns a plain array of normalised events (see lib/calendar/types). Never throws: on any failure the array is empty and the
  * reason is in X-Calendar-Reason (ok | mock | no-key | restricted | unauthorized | upstream-error | rate-limited | partial | clamped | bad-range | range-unsupported);
  * X-Calendar-Source: tradingview | fmp | forexfactory | mock | none (+ X-Calendar-Tried with what every provider said,
- * X-Calendar-Layers: moex, X-Calendar-Coverage: "fromMs..toMs" when the provider knows only a window, e.g. Forex Factory);
+ * X-Calendar-Layers: moex,commodity (the extra layers present in the answer), X-Calendar-Coverage: "fromMs..toMs" when the provider knows only a window, e.g. Forex Factory);
  * X-Calendar-Stale: 1 marks an old copy served because the refresh failed.
  */
 
@@ -102,7 +104,8 @@ export async function GET(request: NextRequest) {
 
     const lang = ["ru", "en", "cn"].includes(sp.get("lang") || "") ? (sp.get("lang") as "ru" | "en" | "cn") : "ru";
     const moex = sp.get("moex") !== "0";
-    const res = await getCalendarRange(from, to, now, { moex, lang });
+    const agro = sp.get("agro") !== "0";
+    const res = await getCalendarRange(from, to, now, { moex, agro, lang });
     const wantDesc = sp.get("desc") === "1";
     // localise BEFORE filtering: the importance of energy events is raised by the glossary, and the search matches both names
     const localized = res.events.map((e) => localizeCalEvent(e, lang));
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
       ...(res.stale ? { "X-Calendar-Stale": "1" } : {}),
       "X-Calendar-Source": res.source,
       "X-Calendar-Tried": res.tried.join(","),
-      ...(res.moex ? { "X-Calendar-Layers": "moex" } : {}),
+      ...(res.moex || res.commodity ? { "X-Calendar-Layers": [res.moex ? "moex" : "", res.commodity ? "commodity" : ""].filter(Boolean).join(",") } : {}),
       ...(res.coverage ? { "X-Calendar-Coverage": `${res.coverage.from}..${res.coverage.to}` } : {}),
       "X-Calendar-Range": `${from}..${to}`,
     }, 200, acceptsGzip(request.headers.get("accept-encoding")));

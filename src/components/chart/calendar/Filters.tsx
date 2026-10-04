@@ -143,6 +143,24 @@ export function MoexChip() {
   );
 }
 
+/** The «Commodities and agro» layer switch (default on): USDA, CONAB, cocoa grindings, MPOB ... report dates. */
+export function CommodityChip() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  return (
+    <button
+      type="button"
+      aria-pressed={prefs.commodities}
+      title={t("ec.commodity.hint")}
+      onClick={() => update((p) => ({ ...p, commodities: !p.commodities }))}
+      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.commodities ? "border-lime-600 bg-lime-600/10 text-lime-800 dark:text-lime-300" : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]"}`}
+    >
+      <span aria-hidden className="inline-block h-2 w-2 rounded-sm bg-lime-600" />
+      {t("ec.commodity")}
+    </button>
+  );
+}
+
 /** «Нефть и газ»: one click shows only oil / gas events (EIA / API inventories, Baker Hughes rigs, OPEC, IEA) from every country. */
 export function EnergyChip() {
   const { t } = useT();

@@ -298,7 +298,7 @@ async function main() {
     delete process.env.ECON_CALENDAR_MOCK;
     delete process.env.FMP_API_KEY;
     process.env.ECON_CALENDAR_PROVIDERS = "fmp";
-    const nokey = await getCalendarRange("2026-10-06", "2026-10-07", now, { moex: false });
+    const nokey = await getCalendarRange("2026-10-06", "2026-10-07", now, { moex: false, agro: false });
     assert.equal(nokey.reason, "no-key");
     assert.deepEqual(nokey.events, []);
     delete process.env.ECON_CALENDAR_PROVIDERS;
