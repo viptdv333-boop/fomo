@@ -1,4 +1,4 @@
-import { GENERIC_BRIEFS, HOLIDAY_BRIEF, SPEECH_BRIEF, briefFromTags } from "./glossary-briefs";
+import { GENERIC_BRIEFS, HOLIDAY_BRIEF, SPEECH_BRIEF, briefForCountry, briefFromTags } from "./glossary-briefs";
 import { COUNTRY_ORG, RULES, type Tag } from "./glossary-rules";
 import type { CalCategory, CalEvent } from "./types";
 
@@ -320,7 +320,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
     return { title: ru ?? name, key: "holiday", about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS, brief: HOLIDAY_BRIEF, tags: [], minImpact: 0, fallback: !ru, periodic: false };
   }
   const sp = speechTitle(name, country);
-  if (sp) return { title: sp.title, key: "cb.speech", about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: SPEECH_BRIEF, tags: resolveTags(["ccy", "bonds", "stocks"], country), minImpact: 0, fallback: false, periodic: false };
+  if (sp) return { title: sp.title, key: "cb.speech", about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: briefForCountry("cb.speech", SPEECH_BRIEF, country), tags: resolveTags(["ccy", "bonds", "stocks"], country), minImpact: 0, fallback: false, periodic: false };
   const { base, mods } = splitMods(name);
   const periodic = mods.some((m) => PERIODIC.includes(m));
   for (const r of RULES) {
@@ -332,7 +332,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
       key: r.key,
       about: r.about,
       affects: r.affects,
-      brief: r.brief,
+      brief: briefForCountry(r.key, r.brief, country),
       tags: resolveTags(r.tags, country),
       minImpact: r.minImpact ?? 0,
       category: r.category,
@@ -342,7 +342,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
   }
   const cat = GENERIC[categoryIn] ? categoryIn : "other";
   const g = GENERIC[cat];
-  return { title: translateFallback(base) + modsRu(mods), key: `~${cat}`, about: g.about, affects: g.affects, brief: genericBrief(cat), tags: resolveTags(g.tags, country), minImpact: 0, fallback: true, periodic };
+  return { title: translateFallback(base) + modsRu(mods), key: `~${cat}`, about: g.about, affects: g.affects, brief: briefForCountry(`~${cat}`, genericBrief(cat), country), tags: resolveTags(g.tags, country), minImpact: 0, fallback: true, periodic };
 }
 
 export function localizeEvent(ev: { event: string; category?: string; country?: string; impact: number }, lang: GlossaryLang = "ru"): LocalizedEvent {
@@ -369,28 +369,33 @@ export function localizeEvent(ev: { event: string; category?: string; country?: 
 
 /**
  * The one-line impact summary of a glossary key (Russian only): shown right in the event rows. The client looks it up by `gk`
- * (or `~<category>` for the generic fallbacks), so it never travels in the list payload.
+ * (or `~<category>` for the generic fallbacks), so it never travels in the list payload. `country` "RU" gives the wording with
+ * the ruble / OFZ / Russian stocks named instead of «валюта страны».
  */
-export function glossaryBrief(key: string | undefined, lang: GlossaryLang | string = "ru"): string | null {
+export function glossaryBrief(key: string | undefined, lang: GlossaryLang | string = "ru", country?: string): string | null {
   if (!key || lang !== "ru") return null;
-  if (key === "cb.speech") return SPEECH_BRIEF;
+  if (key === "cb.speech") return briefForCountry(key, SPEECH_BRIEF, country);
   if (key === "holiday") return HOLIDAY_BRIEF;
-  if (key.startsWith("~")) return GENERIC[key.slice(1)] ? genericBrief(key.slice(1)) : null;
+  if (key.startsWith("~")) {
+    const cat = key.slice(1);
+    const base = GENERIC[cat] ? genericBrief(cat) : GENERIC_BRIEFS[cat];
+    return base ? briefForCountry(key, base, country) : null;
+  }
   const r = RULES.find((x) => x.key === key);
-  return r ? r.brief : null;
+  return r ? briefForCountry(key, r.brief, country) : null;
 }
 
 /** The texts of a glossary key (Russian only): for the event popup on the client. */
-export function glossaryText(key: string | undefined, lang: GlossaryLang | string = "ru"): { about: string; affects: string; brief: string } | null {
+export function glossaryText(key: string | undefined, lang: GlossaryLang | string = "ru", country?: string): { about: string; affects: string; brief: string } | null {
   if (!key || lang !== "ru") return null;
-  if (key === "cb.speech") return { about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: SPEECH_BRIEF };
+  if (key === "cb.speech") return { about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: briefForCountry(key, SPEECH_BRIEF, country) };
   if (key === "holiday") return { about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS, brief: HOLIDAY_BRIEF };
   if (key.startsWith("~")) {
     const g = GENERIC[key.slice(1)];
-    return g ? { about: g.about, affects: g.affects, brief: genericBrief(key.slice(1)) } : null;
+    return g ? { about: g.about, affects: g.affects, brief: briefForCountry(key, genericBrief(key.slice(1)), country) } : null;
   }
   const r = RULES.find((x) => x.key === key);
-  return r ? { about: r.about, affects: r.affects, brief: r.brief } : null;
+  return r ? { about: r.about, affects: r.affects, brief: briefForCountry(key, r.brief, country) } : null;
 }
 
 /** For the check script: the hand-written rule behind a name, if any (speeches and holidays included). */

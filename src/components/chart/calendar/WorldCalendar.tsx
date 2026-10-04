@@ -14,7 +14,7 @@ import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
@@ -52,8 +52,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const cells = useMemo(() => buildMonthCells(start, today, DAYS), [start, today]);
 
   const events = useMemo(
-    () => filterEvents(data.events, { countries: new Set(prefs.countries), impacts: new Set(prefs.impacts), q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }),
-    [data.events, prefs.countries, prefs.impacts, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, q]
+    () => filterEvents(data.events, { countries: new Set(prefs.countries), q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }),
+    [data.events, prefs.countries, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, q]
   );
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
@@ -158,7 +158,6 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
             <span className="ml-1 text-[12px] font-medium tabular-nums text-[var(--tv3-text2)]">{rangeTitle}</span>
           </div>
         )}
-        <ImpactToggles />
         <div className="flex w-[190px] max-w-full"><CountryFilter seen={seen} /></div>
         <div className="hidden sm:block"><QuickChips /></div>
         <EnergyChip />

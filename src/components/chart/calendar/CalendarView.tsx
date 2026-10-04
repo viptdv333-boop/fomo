@@ -14,7 +14,7 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
 import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, RuMark, SourceFooter, useNow } from "./parts";
@@ -40,8 +40,7 @@ export function NextChip({ zone, enabled, onPick }: { zone: string; enabled: boo
   const range = useMemo(() => ({ from: today, to: addDays(today, 6) }), [today]);
   const data = useCalendarRange(range, zone, enabled, locale);
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
-  const impacts = useMemo(() => new Set(prefs.impacts), [prefs.impacts]);
-  const next = useMemo(() => filterEvents(data.events, { countries, impacts, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, impacts, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, now]);
+  const next = useMemo(() => filterEvents(data.events, { countries, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, now]);
   if (!next) return <span className="flex-1 truncate text-[12px] text-[var(--tv3-muted)]">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
   return (
     <button
@@ -69,15 +68,11 @@ export interface RowProps {
   onOpen: (ev: CalEvent, a: Anchor) => void;
   /** highlighted (the event the day modal was opened on) */
   focus?: boolean;
-  /** the one-line impact summary under the title: for events of importance >= 2 ("important", default) or for all of them */
-  brief?: "important" | "all";
 }
-
-const wantsBrief = (ev: CalEvent, mode: RowProps["brief"]) => mode === "all" || ev.impact >= 2;
 
 export const isPast = (ev: CalEvent, now: number, zone: string) => (ev.allDay ? eventDay(ev, zone) < dayKey(now, zone) : ev.ts <= now);
 
-export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded, onOpen, focus, brief }: RowProps) {
+export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded, onOpen, focus }: RowProps) {
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const hasFigures = ev.actual !== null || ev.forecast !== null || ev.previous !== null;
@@ -96,7 +91,7 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
           <span className="text-[14px] font-medium leading-snug text-[var(--tv3-text)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
             {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}{ev.category === "commodity" && <CommodityMark title={t("ec.commodity")} />}{ev.category === "ru" && <RuMark title={t("ec.russia")} />} {ev.event}
           </span>
-          {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
+          <BriefLine ev={ev} />
         </span>
         {reminded && <span className="mt-px shrink-0 text-amber-500"><span className="scale-[0.62] inline-block origin-center">{EC_ICONS.bellOn}</span></span>}
         <span className="pt-[6px]" title={t(`ec.impact.${ev.impact}`)}><ImpactDot level={ev.impact} /></span>
@@ -116,7 +111,7 @@ export const WIDE_COLS = "grid-cols-[52px_60px_minmax(200px,1fr)_110px_50px_84px
 /** the day modal: no category / unit columns */
 export const DAY_COLS = "grid-cols-[52px_64px_minmax(180px,1fr)_50px_88px_88px_88px_88px]";
 
-export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, onOpen, focus, compact, brief }: RowProps & { compact?: boolean }) {
+export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, onOpen, focus, compact }: RowProps & { compact?: boolean }) {
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const change = ev.change ?? (ev.actual !== null && ev.previous !== null ? ev.actual - ev.previous : null);
@@ -141,7 +136,7 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
           <span className="truncate">{ev.event}</span>
           {reminded && <span className="shrink-0 text-amber-500"><span className="inline-block scale-[0.62]">{EC_ICONS.bellOn}</span></span>}
         </span>
-        {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
+        <BriefLine ev={ev} />
       </span>
       {!compact && <span className="truncate text-[11px] text-[var(--tv3-muted)]">{t(`ec.cat.${ev.category}`)}</span>}
       <span title={t(`ec.impact.${ev.impact}`)}><ImpactDots level={ev.impact} /></span>
@@ -196,7 +191,6 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   const data = useCalendarRange(range, zone, visible, locale);
 
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
-  const impacts = useMemo(() => new Set(prefs.impacts), [prefs.impacts]);
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
   const list = useMemo(() => {
@@ -204,8 +198,8 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       const d = eventDay(e, zone);
       return d >= range.from && d <= range.to;
     });
-    return filterEvents(inRange, { countries, impacts, q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy });
-  }, [data.events, zone, range, countries, impacts, q, prefs.moex, prefs.commodities, prefs.russia, prefs.energy]);
+    return filterEvents(inRange, { countries, q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy });
+  }, [data.events, zone, range, countries, q, prefs.moex, prefs.commodities, prefs.russia, prefs.energy]);
 
   const groups = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
@@ -236,10 +230,10 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     } else el.scrollTop = 0;
   }, [visible, data.status, range, wide, list.length]);
 
-  const filtersActive = prefs.impacts.length < 3 || prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.russia || !prefs.corp || prefs.energy;
+  const filtersActive = prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.russia || !prefs.corp || prefs.energy;
   const resetFilters = () => {
     setQLocal("");
-    update((p) => ({ ...p, impacts: [1, 2, 3], countries: [], moex: true, commodities: true, russia: true, corp: true, energy: false }));
+    update((p) => ({ ...p, countries: [], moex: true, commodities: true, russia: true, corp: true, energy: false }));
   };
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
@@ -399,7 +393,6 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
           </div>
           {!prefs.panelGrid && rangeTabs}
           <div className="flex items-center gap-2">
-            <ImpactToggles />
             <CountryFilter seen={seen} />
           </div>
           <div className="flex flex-wrap items-center gap-1.5">

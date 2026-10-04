@@ -60,6 +60,27 @@ export function pickForCell(events: readonly CalEvent[], max: number): { shown: 
   return { shown, more: events.length - max, total: events.length };
 }
 
+/**
+ * The events a square has room for: the most important ones (then the earliest), shown in time order, plus how many are hidden.
+ * `budget` is the height (px) left for the list, `cost(e)` the height of one row, `moreCost` the height of the «+N more» line, which
+ * is reserved as soon as something does not fit. At least one row is always shown.
+ */
+export function pickFit(events: readonly CalEvent[], budget: number, cost: (e: CalEvent) => number, moreCost: number): { shown: CalEvent[]; more: number; total: number } {
+  const total = events.length;
+  if (events.reduce((s, e) => s + cost(e), 0) <= budget) return { shown: events.slice(), more: 0, total };
+  const ranked = events.map((e, i) => ({ e, i })).sort((a, b) => b.e.impact - a.e.impact || a.e.ts - b.e.ts || a.i - b.i);
+  let left = budget - moreCost;
+  const take: CalEvent[] = [];
+  for (const r of ranked) {
+    const c = cost(r.e);
+    if (take.length > 0 && c > left) break;
+    take.push(r.e);
+    left -= c;
+  }
+  const shown = take.sort((a, b) => a.ts - b.ts || b.impact - a.impact);
+  return { shown, more: total - shown.length, total };
+}
+
 /** True when the whole day lies outside the span a provider covers (Forex Factory: this + next week). */
 export function outsideCoverage(date: string, coverage: { from: number; to: number } | null, zone: string): boolean {
   if (!coverage) return false;

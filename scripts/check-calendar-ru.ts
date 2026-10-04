@@ -269,9 +269,9 @@ async function main() {
     assert.equal(loc("Interest Rate Decision", "US"), 1);
     assert.equal(ruFeedImpact("Foreign Exchange Reserves"), 0);
     assert.equal(ruFeedImpact("  Interest Rate Decision "), 3);
-    const defaults = new Set(DEFAULT_CAL_PREFS.impacts);
+    const defaults = new Set([2, 3]); // impact=medium,high of the API / the instrument widget
     const shown = ["Interest Rate Decision", "Inflation Rate YoY", "Unemployment Rate"].map((nme) => localizeCalEvent({ ...feedEvent(nme, "2026-10-09T16:00:00Z"), impact: 1 }, "ru")).filter((e) => defaults.has(e.impact));
-    assert.equal(shown.length, 3, "with the default filter (medium + high) the Russian rows are visible");
+    assert.equal(shown.length, 3, "with impact=medium,high the Russian rows are visible");
   });
   await ok("filterEvents: noRu hides the layer, the country filter does not, the oil-and-gas filter excludes it, impacts apply, search finds the Russian title", () => {
     const sample = buildRussiaScheduled("2026-10-01", "2026-10-31", "ru");

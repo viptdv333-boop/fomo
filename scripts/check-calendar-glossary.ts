@@ -6,7 +6,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { explicitKey, glossaryBrief, glossaryText, localizeCalEvent, localizeEvent, localizePeriod, splitMods, tagLabel, TAGS } from "../src/lib/calendar/glossary";
-import { BRIEFS } from "../src/lib/calendar/glossary-briefs";
+import { BRIEFS, GENERIC_BRIEFS, RU_BRIEFS, RU_GENERIC_BRIEFS } from "../src/lib/calendar/glossary-briefs";
+import { briefOf, mayHaveBrief } from "../src/lib/calendar/useBriefs";
+import * as glossaryModule from "../src/lib/calendar/glossary";
 import { RULES } from "../src/lib/calendar/glossary-rules";
 import { categoryOf, filterEvents } from "../src/lib/calendar/normalize";
 import { surprise } from "../src/lib/calendar/surprise";
@@ -195,9 +197,70 @@ ok("speeches, holidays and every generic fallback category have a non-empty Russ
   for (const r of FIXTURE) {
     const l = loc(r);
     assert.ok(l.brief && hasCyr(l.brief) && l.brief.length <= 90, `${r[0]} (${l.key}) brief: ${l.brief}`);
-    assert.equal(l.brief, glossaryBrief(l.key, "ru"), `${r[0]}: localizeEvent brief differs from the lookup by key`);
+    assert.equal(l.brief, glossaryBrief(l.key, "ru", r[1]), `${r[0]}: localizeEvent brief differs from the lookup by key`);
     assert.equal(loc(r, "en").brief, undefined);
   }
+});
+ok("Russian events: every name of the TradingView feed has a brief that names the ruble / OFZ / Russian stocks (no «валюта страны»)", () => {
+  const RU_NAMES = [
+    "M2 Money Supply YoY", "Unemployment Rate", "Business Confidence", "Corporate Profits", "Retail Sales YoY", "Retail Sales MoM", "S&P Global Manufacturing PMI", "S&P Global Services PMI",
+    "S&P Global Composite PMI", "Vehicle Sales YoY", "Foreign Exchange Reserves", "Inflation Rate YoY", "Inflation Rate MoM", "Balance of Trade", "Current Account", "Interest Rate Decision",
+    "CBR Press Conference", "Summary of the Key Rate Discussion", "PPI MoM", "PPI YoY", "GDP YoY", "GDP Growth Rate", "Industrial Production YoY", "Real Wage Growth YoY",
+    "Consumer Confidence", "Government Budget Value", "Exports", "Imports", "Loan Growth YoY", "Manufacturing Production YoY", "Wholesale Prices YoY", "Core Inflation Rate YoY",
+    "Inflation Expectations", "Real Disposable Income YoY", "Federal Budget Balance", "Capital Flows", "Gold Reserves", "Bank Lending Rate", "Services Business Activity", "Weekly Inflation", "Employment Change",
+  ];
+  for (const name of RU_NAMES) {
+    const ev = mk(name, "RU", 1);
+    const out = localizeCalEvent(ev, "ru");
+    const b = briefOf(glossaryModule as never, out, "ru");
+    assert.ok(b && b.length >= 10 && b.length <= 90 && hasCyr(b), `${name}: ${b}`);
+    assert.ok(/рубл|ОФЗ|акци|нефт|газ/i.test(b!), `${name}: no asset named: ${b}`);
+    assert.ok(!/валюты? страны|валюту страны|национальн/i.test(b!), `${name}: generic currency wording left: ${b}`);
+  }
+  // other countries keep the generic wording
+  assert.equal(glossaryBrief("retail", "ru", "US"), glossaryBrief("retail", "ru"));
+  assert.notEqual(glossaryBrief("retail", "ru", "RU"), glossaryBrief("retail", "ru"));
+  assert.ok(/валют/.test(glossaryBrief("~growth", "ru", "DE")!));
+  // layers keep their own texts for RU
+  assert.equal(glossaryBrief("corp.coupon", "ru", "RU"), glossaryBrief("corp.coupon", "ru"));
+  assert.equal(glossaryBrief("ru.cbr.rate", "ru", "RU"), glossaryBrief("ru.cbr.rate", "ru"));
+});
+ok("RU_BRIEFS / RU_GENERIC_BRIEFS: known keys, 10..90 characters, Cyrillic; every rule and fallback category resolves for country RU without the generic currency wording", () => {
+  const keys = new Set(RULES.map((r) => r.key));
+  for (const [k, v] of Object.entries(RU_BRIEFS)) {
+    assert.ok(keys.has(k), `RU_BRIEFS: unknown rule ${k}`);
+    assert.ok(v.length >= 10 && v.length <= 90 && hasCyr(v), `RU_BRIEFS ${k} (${v.length}): ${v}`);
+  }
+  for (const [k, v] of Object.entries(RU_GENERIC_BRIEFS)) assert.ok(v.length >= 10 && v.length <= 90 && hasCyr(v), `RU_GENERIC_BRIEFS ${k}: ${v}`);
+  for (const r of RULES) {
+    const b = glossaryBrief(r.key, "ru", "RU")!;
+    assert.ok(b.length >= 10 && b.length <= 90, `${r.key} (RU) brief length ${b.length}: ${b}`);
+    if (!/^(ru|corp|agro)\./.test(r.key)) assert.ok(!/валюты? страны|валюту страны|национальн/i.test(b), `${r.key} (RU): ${b}`);
+  }
+  for (const c of ["centralbank", "inflation", "employment", "growth", "manufacturing", "consumer", "housing", "trade", "energy", "auction", "other"]) {
+    const b = glossaryBrief(`~${c}`, "ru", "RU")!;
+    assert.ok(b && /рубл|ОФЗ|акци|нефт/i.test(b), `~${c} (RU): ${b}`);
+  }
+});
+ok("no event is left without a brief: every category (layers included) and every fixture row resolves through briefOf; only inventories and MOEX rows are exempt", () => {
+  const cats = ["centralbank", "inflation", "employment", "growth", "manufacturing", "consumer", "housing", "trade", "energy", "auction", "holiday", "other", "ru", "corp", "commodity", "something-new"];
+  for (const c of cats) {
+    for (const country of ["US", "RU", ""]) {
+      const ev = mk("Some Unknown Release", country, 1, 0, { category: c as CalEvent["category"] });
+      const b = briefOf(glossaryModule as never, ev, "ru");
+      assert.ok(b && b.length <= 90 && hasCyr(b), `category ${c} / ${country}: ${b}`);
+    }
+  }
+  for (const r of FIXTURE) {
+    const out = localizeCalEvent(mk(r[0], r[1], r[2], 0, r[3] ? { category: "holiday" } : {}), "ru");
+    const b = briefOf(glossaryModule as never, out, "ru");
+    if (mayHaveBrief(out, "ru")) assert.ok(b && hasCyr(b), `${r[0]}: no brief`);
+    else assert.equal(b, null, `${r[0]}: exempt row must have none`);
+  }
+  assert.equal(briefOf(glossaryModule as never, mk("EIA Crude Oil Stocks Change", "US", 3, 0, { category: "energy", tags: ["oil"], eventEn: "EIA Crude Oil Stocks Change" }), "ru"), null);
+  assert.equal(briefOf(glossaryModule as never, mk("Экспирация фьючерса", "RU", 2, 0, { category: "moex" }), "ru"), null);
+  assert.equal(briefOf(glossaryModule as never, mk("Non Farm Payrolls", "US", 3), "en"), null);
+  assert.ok(GENERIC_BRIEFS.ru && GENERIC_BRIEFS.corp && GENERIC_BRIEFS.commodity);
 });
 ok("energy events' briefs mention oil or gas; the NFP / CPI / FOMC / rate briefs mention volatility", () => {
   for (const r of FIXTURE.filter((x) => /EIA|API Crude|Baker Hughes|IEA|OPEC/.test(x[0]))) {
@@ -233,11 +296,12 @@ ok("every energy event has importance >= 2, EIA crude and natural gas storage 3"
   assert.equal(loc(find("Baker Hughes Oil Rig Count")).impact, 2);
   assert.equal(loc(find("OPEC Monthly Report")).impact, 3);
 });
-ok("the default filter [2,3] shows every energy event after localisation", () => {
+ok("the API filter impact=medium,high (instrument widget) shows every energy event after localisation", () => {
+  const midHigh = new Set([2, 3]);
   const evs = FIXTURE.filter((r) => /EIA|API Crude|Baker Hughes|IEA|OPEC/.test(r[0])).map((r, i) => mk(r[0], r[1], r[2], i));
-  const shown = filterEvents(evs.map((e) => localizeCalEvent(e, "ru")), { impacts: new Set(DEFAULT_CAL_PREFS.impacts) });
+  const shown = filterEvents(evs.map((e) => localizeCalEvent(e, "ru")), { impacts: midHigh });
   assert.equal(shown.length, evs.length);
-  assert.ok(filterEvents(evs, { impacts: new Set(DEFAULT_CAL_PREFS.impacts) }).length < evs.length, "before the glossary most of them were hidden");
+  assert.ok(filterEvents(evs, { impacts: midHigh }).length < evs.length, "before the glossary most of them were hidden");
 });
 ok("non-energy events are not promoted; periodic variants keep their importance; \"Non-Oil Exports\" is trade", () => {
   assert.equal(loc(find("Fed Beige Book")).impact, 1);

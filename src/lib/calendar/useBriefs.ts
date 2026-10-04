@@ -38,16 +38,17 @@ function subscribe(l: () => void) {
 const snapshot = () => gl;
 const serverSnapshot = () => null;
 
-/** The brief of an event, or null (no text for it, MOEX, not Russian). Needs the glossary loaded. */
 const OBVIOUS = /stocks|storage|inventor|rig count/i;
 /** Energy inventories, rig counts and the USDA stock reports (Grain Stocks, Cold Storage) need no comment: clear from the title. */
 const STOCK_KEYS = new Set(["agro.grainstocks", "agro.coldstorage"]);
 const isInventory = (ev: CalEvent) =>
   ((ev.tags ?? []).some((t) => t === "oil" || t === "gas") && OBVIOUS.test(ev.eventEn ?? "")) || (!!ev.gk && STOCK_KEYS.has(ev.gk));
 
+/** The brief of an event, or null (energy inventories, MOEX rows, not Russian). Needs the glossary loaded. */
 export function briefOf(g: Glossary | null, ev: CalEvent, locale: string): string | null {
   if (!g || locale !== "ru" || ev.category === "moex" || isInventory(ev)) return null;
-  return g.glossaryBrief(ev.gk ?? `~${ev.category}`, locale);
+  // every event has a line: its own rule, else the generic text of its category (the ruble wording for Russia), else the catch-all
+  return g.glossaryBrief(ev.gk ?? `~${ev.category}`, locale, ev.country) ?? g.glossaryBrief("~other", locale, ev.country);
 }
 
 /** Whether an event can have a brief at all (so a row can reserve its line while the glossary chunk is still loading). */

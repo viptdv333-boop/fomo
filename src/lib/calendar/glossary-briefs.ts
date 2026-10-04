@@ -212,6 +212,7 @@ export const BRIEFS: Record<string, string> = {
 /** Speeches of central bankers and officials. */
 export const SPEECH_BRIEF = "Возможна волатильность в валюте страны и облигациях при намёках на ставку";
 export const HOLIDAY_BRIEF = "Торги местных площадок встают или идут при низкой ликвидности";
+const RU_SPEECH_BRIEF = "Намёки на ставку двигают рубль, ОФЗ и акции: жёстче — рубль вверх, ОФЗ вниз";
 
 /** Generic fallbacks by category (unknown names). */
 export const GENERIC_BRIEFS: Record<string, string> = {
@@ -226,8 +227,106 @@ export const GENERIC_BRIEFS: Record<string, string> = {
   energy: "Нефть и газ: двигает цены энергоносителей, рубль и акции нефтегазового сектора",
   auction: "Слабый спрос и рост доходности давят на облигации, сильный — поддерживает",
   holiday: HOLIDAY_BRIEF,
-  other: "Влияние зависит от того, насколько результат отличается от прогноза",
+  other: "Неожиданный результат двигает валюту страны и рынок; важно отклонение от прогноза",
 };
+
+/** Generic fallbacks of the layers (their rows normally carry their own keys). */
+GENERIC_BRIEFS.ru = "Данные и решения Банка России, Росстата, Минфина двигают рубль, ОФЗ и акции РФ";
+GENERIC_BRIEFS.corp = "Корпоративное событие эмитента: влияет на цену его акций и облигаций";
+GENERIC_BRIEFS.commodity = "Данные по сырью и агропродукции: сюрприз к ожиданиям двигает цены фьючерсов";
+
+/*
+ * Briefs of the events of Russia (country RU, TradingView feed: Rosstat, Bank of Russia, S&P Global): the generic texts say
+ * «валюта страны», here the assets are named: the ruble, OFZ, Russian stocks. Keyed by the rule key; a key that is not here goes
+ * through ruize() (the generic words replaced by the ruble), the generic fallbacks by category through RU_GENERIC_BRIEFS.
+ */
+export const RU_BRIEFS: Record<string, string> = {
+  "cb.rate": BRIEFS["ru.cbr.rate"],
+  "cb.presser": "Жёсткий тон главы ЦБ — рубль вверх, ОФЗ и акции вниз; мягкий — наоборот",
+  "cb.minutes": "Жёсткий тон протокола — рубль вверх, ОФЗ и акции вниз; мягкий — наоборот",
+  "cb.report": "Новый прогноз по ставке и инфляции двигает рубль, ОФЗ и акции РФ",
+  "cb.facility": "Повышение ставки по инструментам ЦБ — рубль вверх, ОФЗ и акции вниз",
+  "cpi.main": "Выше прогноза — ставка надолго: рубль вверх, ОФЗ и акции вниз; ниже — наоборот",
+  "cpi.core": "Выше прогноза — ставка надолго: рубль вверх, ОФЗ и акции вниз; ниже — наоборот",
+  "cpi.sub": "Ускорение цен выше прогноза: рубль вверх, ОФЗ и акции вниз; замедление — наоборот",
+  "cpi.exp": BRIEFS["ru.cbr.inflexp"],
+  "cpi.misc": "Ускорение цен выше прогноза: рубль вверх, ОФЗ и акции вниз; замедление — наоборот",
+  "ppi": BRIEFS["ru.rosstat.ppi"],
+  "ppi.core": BRIEFS["ru.rosstat.ppi"],
+  "gdp": BRIEFS["ru.rosstat.gdp"],
+  "gdp.comp": BRIEFS["ru.rosstat.gdpu"],
+  "gdp.spend": BRIEFS["ru.rosstat.gdpu"],
+  "gdp.price": "Дефлятор выше прогноза — риск инфляции: рубль вверх, ОФЗ и акции вниз",
+  "act.idx": "Выше прогноза — экономика растёт: акции РФ вверх, снижение ставки откладывается",
+  "unemp.rate": "Безработица ниже прогноза — рынок труда перегрет: рубль вверх, ОФЗ вниз",
+  "unemp.chg": "Рост безработицы выше прогноза — спрос слабеет: рубль вниз, акции под давлением",
+  "emp.chg": "Занятость выше прогноза — спрос и инфляция сильнее: рубль вверх, ОФЗ вниз",
+  "wages.gen": "Рост зарплат выше прогноза — давление на цены: ставка выше, рубль вверх, ОФЗ вниз",
+  "income": "Рост доходов населения поддерживает спрос и инфляцию: рубль вверх, ОФЗ вниз",
+  "household": "Спрос выше прогноза — довод за высокую ставку: рубль вверх, ОФЗ вниз",
+  "retail": "Продажи выше прогноза — спрос и инфляция сильнее: рубль вверх, ОФЗ вниз",
+  "retail.core": "Продажи выше прогноза — спрос и инфляция сильнее: рубль вверх, ОФЗ вниз",
+  "conf.cb": "Выше прогноза — потребитель уверен: поддержка акций розницы и рубля; ниже — давление",
+  "ip": BRIEFS["ru.rosstat.ip"],
+  "pmi.pmi": "Выше 50 и прогноза — активность растёт: акции РФ и рубль вверх; ниже 50 — давление",
+  "biz.conf": "Выше прогноза — бизнес оптимистичен: акции РФ и рубль вверх, ниже — давление",
+  "profit": "Прибыль компаний выше прогноза поддерживает акции РФ, ниже — давит на рынок",
+  "misc.lmi": "Продажи автомобилей — сигнал спроса: рост поддерживает акции РФ и рубль, спад давит",
+  "fx.res": "Рост резервов — рубль устойчивее; быстрое падение — давление на курс рубля",
+  "trade.bal": "Профицит выше ожиданий — больше валютной выручки, рубль крепче; сокращение — давит",
+  "trade.flows": "Экспорт выше ожиданий — больше валютной выручки: рубль крепче; спад — давит",
+  "tic": "Приток капитала выше прогноза поддерживает рубль и ОФЗ, отток — давит",
+  "money": BRIEFS["ru.cbr.m2"],
+  "credit": "Быстрый рост кредита — риск инфляции, довод за высокую ставку: рубль вверх, ОФЗ вниз",
+  "budget": "Дефицит бюджета больше плана — больше ОФЗ: доходности вверх, рубль под давлением",
+  "debt": "Рост госдолга выше прогноза давит на ОФЗ и рубль",
+  "auction": BRIEFS["ru.ofz.auction"],
+  "hous.price": "Быстрый рост цен на жильё — риск инфляции; падение давит на банки и застройщиков",
+  "hous.mort": "Выше прогноза — спрос на ипотеку крепкий: поддержка банков и застройщиков РФ",
+  "hous.sales": "Выше прогноза — спрос на жильё крепкий: акции застройщиков вверх, ниже — вниз",
+  "hous.starts": "Выше прогноза — подъём стройки: акции застройщиков вверх, ниже — вниз",
+  "constr": "Выше прогноза — подъём отрасли: поддержка акций РФ и спроса на сырьё",
+  "jobs.misc": "Рост спроса на работников — признак сильной экономики: рубль и акции РФ вверх",
+};
+
+/** Generic fallbacks by category for the events of Russia. */
+export const RU_GENERIC_BRIEFS: Record<string, string> = {
+  centralbank: "Жёстче ожиданий — рубль вверх, ОФЗ и акции вниз; мягче — наоборот",
+  inflation: "Выше прогноза — ставка надолго: рубль вверх, ОФЗ и акции вниз; ниже — наоборот",
+  employment: "Сильнее прогноза — спрос и инфляция выше: рубль вверх, ОФЗ вниз",
+  growth: "Выше прогноза — экономика сильна: акции РФ вверх, но ставка снизится позже",
+  manufacturing: "Выше прогноза — активность растёт: поддержка акций РФ и рубля, ниже — давление",
+  consumer: "Выше прогноза — спрос сильный: поддержка рубля и акций РФ, ОФЗ слабеют",
+  housing: "Выше прогноза — подъём рынка жилья: акции застройщиков и банков вверх",
+  trade: "Приток валюты выше ожиданий поддерживает рубль, снижение — давит",
+  energy: "Нефть и газ: двигает цены энергоносителей, рубль и акции нефтегаза РФ",
+  auction: "Слабый спрос и рост доходности давят на ОФЗ, рубль и банки; сильный — поддерживает",
+  holiday: HOLIDAY_BRIEF,
+  other: "Выше прогноза поддерживает рубль и акции РФ, ниже — давит; важно отклонение от ожиданий",
+};
+
+const RUIZE: [string, string][] = [
+  ["валюты страны", "рубля"], ["валюте страны", "рубле"], ["валюту страны", "рубль"], ["валюта страны", "рубль"],
+  ["национальную валюту", "рубль"], ["национальной валюты", "рубля"], ["валюта вверх", "рубль вверх"],
+];
+
+/** A generic text with «валюта страны» turned into the ruble, for the rows of Russia without their own text. */
+export function ruize(text: string): string {
+  let out = text;
+  for (const [a, b] of RUIZE) out = out.split(a).join(b);
+  return out;
+}
+
+/**
+ * The brief for a country: Russian rows get the ruble / OFZ / Russian stocks wording (RU_BRIEFS by rule key, RU_GENERIC_BRIEFS by
+ * category for the `~category` keys, ruize() of the generic text otherwise); the others keep the generic text.
+ */
+export function briefForCountry(key: string, base: string, country?: string): string {
+  if (country !== "RU" || /^(ru|corp|agro)\./.test(key)) return base; // other countries and the layers keep their own texts
+  if (key.startsWith("~")) return RU_GENERIC_BRIEFS[key.slice(1)] ?? ruize(base);
+  if (key === "cb.speech") return RU_SPEECH_BRIEF;
+  return RU_BRIEFS[key] ?? ruize(base);
+}
 
 const BRIEF_TAG_ORDER = ["oil", "gas", "gold", "crypto", "rub", "usd", "eur", "gbp", "jpy", "cny", "cad", "aud", "nzd", "chf", "bonds", "stocks", "agro"];
 const BRIEF_TAG_RU: Record<string, string> = {

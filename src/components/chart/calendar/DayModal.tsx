@@ -8,7 +8,7 @@ import type { CalEvent } from "@/lib/calendar/types";
 import { EC_ICONS } from "../icons-econ";
 import ModalPortal from "../ModalPortal";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, RussiaChip } from "./Filters";
+import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import { DAY_COLS, NowMarker, PanelRow, WideRow, iconBtn, isPast } from "./CalendarView";
 import { useNarrow, useNow } from "./parts";
@@ -93,7 +93,6 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2">
-            <ImpactToggles />
             <div className="flex w-[170px] max-w-full"><CountryFilter seen={seen} /></div>
             <QuickChips />
             <EnergyChip />
@@ -124,9 +123,9 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
                   <div key={e.id}>
                     {isToday && i === firstFuture && <NowMarker now={now} zone={zone} />}
                     {narrow ? (
-                      <PanelRow brief="all" ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
+                      <PanelRow ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
                     ) : (
-                      <WideRow compact brief="all" ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
+                      <WideRow compact ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
                     )}
                   </div>
                 ))}

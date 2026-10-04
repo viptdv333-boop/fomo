@@ -28,7 +28,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
   const { t, locale } = useT();
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const { get: briefOf } = useBriefs(); // compact list: the impact summary is a tooltip only
+  const { get: briefOf } = useBriefs(); // the one-line impact summary under every title
 
   useEffect(() => {
     // the API answers with normalised events (see lib/calendar/types); the page shows the next week of the major economies
@@ -70,7 +70,10 @@ export default function EconomicCalendar({ country }: { country?: string }) {
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${IMPACT_COLORS[e.impact] || "bg-gray-400"}`} />
                   <span className="text-xs text-gray-400 w-10 shrink-0">{e.allDay ? "—" : formatTime(e.ts, locale)}</span>
                   <Flag code={e.country} width={18} />
-                  <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate">{e.event}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-xs text-gray-700 dark:text-gray-300 truncate">{e.event}</span>
+                    {briefOf(e) && <span className="block text-[11px] leading-snug text-gray-400 dark:text-gray-500 truncate">{briefOf(e)}</span>}
+                  </span>
                   <div className="flex items-center gap-3 shrink-0 text-[11px]">
                     {e.actual !== null && (
                       <span className="font-medium text-gray-900 dark:text-gray-100">{formatValue(e.actual, e.unit, intlLocale(locale))}</span>

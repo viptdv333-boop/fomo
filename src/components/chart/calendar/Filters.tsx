@@ -8,7 +8,6 @@ import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import CountryPicker from "./CountryPicker";
 import { anchorOf, type Anchor } from "./FloatingPanel";
-import { IMPACT_COLOR } from "./parts";
 
 /** the pill of a quick filter: dark when on, soft grey when off (design) */
 const chipCls = (on: boolean) =>
@@ -16,35 +15,6 @@ const chipCls = (on: boolean) =>
 
 /* The filter controls shared by the side panel, the list, the month grid and the day modal. They all read and write the same
    calendar preferences, so a change in one place applies everywhere (grid squares, list, modal, chart). */
-
-export function ImpactToggles() {
-  const { t } = useT();
-  const [prefs, update] = useCalPrefs();
-  const toggle = (lv: number) =>
-    update((p) => {
-      const has = p.impacts.includes(lv);
-      const next = has ? p.impacts.filter((x) => x !== lv) : [...p.impacts, lv].sort();
-      return next.length ? { ...p, impacts: next } : p;
-    });
-  return (
-    <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] bg-[var(--tv3-fill)] px-2" role="group" aria-label={t("ec.importance")}>
-      {[3, 2, 1].map((lv) => {
-        const on = prefs.impacts.includes(lv);
-        return (
-          <button
-            key={lv}
-            type="button"
-            aria-pressed={on}
-            title={t(`ec.impact.${lv}`)}
-            onClick={() => toggle(lv)}
-            className="h-[14px] w-[14px] cursor-pointer rounded-full border-2"
-            style={{ borderColor: IMPACT_COLOR[lv], background: on ? IMPACT_COLOR[lv] : "var(--tv3-card)" }}
-          />
-        );
-      })}
-    </div>
-  );
-}
 
 export function CountryFilter({ seen = [], className = "" }: { seen?: string[]; className?: string }) {
   const { t, locale } = useT();

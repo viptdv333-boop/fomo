@@ -5,13 +5,13 @@ import { listUserData, saveUserData } from "@/lib/chart/userdata";
 import type { DateRange, RangePreset } from "./time";
 
 /* Calendar preferences shared by the side panel, the wide dialog and the chart overlay.
-   localStorage first (no flicker), the account copy (userdata 'calendar_prefs'/'default') merged in when it is newer. */
+   localStorage first (no flicker), the account copy (userdata 'calendar_prefs'/'default') merged in when it is newer.
+   There is no importance filter any more: the list, grid, modal and page always show every event (a stored `impacts` of older
+   versions is ignored; only the chart overlay keeps its own `chart.impacts`). */
 
 export interface CalPrefs {
   v: 1;
   at: number;
-  /** Importance levels shown in the list (1 low, 2 medium, 3 high). */
-  impacts: number[];
   /** Selected countries; empty = all. */
   countries: string[];
   /** The "My countries" preset: saved with the "save as mine" action. */
@@ -39,7 +39,6 @@ export interface CalPrefs {
 export const DEFAULT_CAL_PREFS: CalPrefs = {
   v: 1,
   at: 0,
-  impacts: [2, 3],
   countries: [],
   mine: [],
   preset: "today",
@@ -73,7 +72,6 @@ export function normalizeCalPrefs(raw: unknown): CalPrefs {
   return {
     v: 1,
     at: typeof r.at === "number" ? r.at : 0,
-    impacts: levels(r.impacts, DEFAULT_CAL_PREFS.impacts),
     countries: codes(r.countries),
     mine: codes(r.mine),
     preset: PRESETS.includes(r.preset as RangePreset) ? (r.preset as RangePreset) : "today",

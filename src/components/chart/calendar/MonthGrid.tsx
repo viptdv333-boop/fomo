@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
-import { dayCounts, outsideCoverage, pickForCell, type GridCell } from "@/lib/calendar/grid";
+import { dayCounts, outsideCoverage, pickFit, type GridCell } from "@/lib/calendar/grid";
 import { addDays, formatClock, formatDayHeading } from "@/lib/calendar/time";
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
-import { useBriefs } from "@/lib/calendar/useBriefs";
+import { mayHaveBrief, useBriefs } from "@/lib/calendar/useBriefs";
 import { IMPACT_COLOR } from "./parts";
 
 interface Props {
@@ -21,22 +21,45 @@ interface Props {
   onOpenDay: (date: string, eventId?: string) => void;
 }
 
-const MAX_ROWS = 5;
+/* Heights (px) of the parts of a square on a desktop: the day number line + paddings, an event row without / with the brief line,
+   the «+N more» line. Rows that do not fit in the measured square are folded into «+N more». */
+const CELL_CHROME = 36;
+const ROW_PLAIN = 17;
+const ROW_BRIEF = 31;
+const MORE_ROW = 16;
 
 /**
  * The month of squares: 7 columns (Mon..Sun), a list of the day's events in every square (most important kept when there are
- * many, shown in time order, "+N more" for the rest), weekends dimmed, today ringed. Click / Enter opens the day; a click on an
+ * many, shown in time order, "+N more" for the rest; the number of rows follows the height of the squares), weekends dimmed, today ringed. Click / Enter opens the day; a click on an
  * event row opens the day on that event. Arrow keys move between squares. On a phone the lists become impact dots.
  */
 export default function MonthGrid({ cells, events, zone, locale, coverage, fill = true, onOpenDay }: Props) {
-  const { t } = useT();
-  const { get: briefOf } = useBriefs();
+  const { t, locale: appLocale } = useT();
+  const { ready, get: briefOf } = useBriefs();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [cellH, setCellH] = useState(150);
   const by = useMemo(() => dayCounts(events, zone), [events, zone]);
   const refs = useRef(new Map<string, HTMLElement>());
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const todayCell = cells.find((c) => c.today)?.date ?? cells[0]?.date;
   const tab = focusDate && cells.some((c) => c.date === focusDate) ? focusDate : todayCell;
   const heads = useMemo(() => cells.slice(0, 7).map((c) => ({ long: formatDayHeading(c.date, locale, { weekday: "long" }), short: formatDayHeading(c.date, locale, { weekday: "short" }) })), [cells, locale]);
+
+  // the squares share the free height (at least 150px): measure one, so a day shows as many rows as really fit
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const measure = () => {
+      const c = el.querySelector<HTMLElement>('[role="gridcell"]');
+      if (c && c.offsetHeight > 0) setCellH((h) => (h === c.offsetHeight ? h : c.offsetHeight));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const rowCost = (e: CalEvent) => (mayHaveBrief(e, appLocale) ? ROW_BRIEF : ROW_PLAIN);
 
   const move = (date: string, delta: number) => {
     const next = addDays(date, delta);
@@ -92,11 +115,11 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
           </div>
         ))}
       </div>
-      <div className={`grid flex-1 grid-cols-7 auto-rows-[minmax(64px,1fr)] sm:auto-rows-[minmax(150px,1fr)]`}>
+      <div ref={gridRef} className={`grid flex-1 grid-cols-7 auto-rows-[minmax(64px,1fr)] sm:auto-rows-[minmax(150px,1fr)]`}>
         {cells.map((c) => {
           const b = by.get(c.date);
           const none = outsideCoverage(c.date, coverage, zone);
-          const { shown, more, total } = b ? pickForCell(b.events, MAX_ROWS) : { shown: [] as CalEvent[], more: 0, total: 0 };
+          const { shown, more, total } = b ? pickFit(b.events, cellH - CELL_CHROME, rowCost, MORE_ROW) : { shown: [] as CalEvent[], more: 0, total: 0 };
           const high = b?.byImpact[2] ?? 0;
           const day = Number(c.date.slice(8));
           return (
@@ -160,8 +183,8 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           <span className="min-w-0 flex-1 truncate text-[var(--tv3-text)]">{e.event}</span>
                           <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} />
                         </span>
-                        {/* the market impact in one line for the important events; the rest have it in the tooltip / list */}
-                        {e.impact >= 3 && briefOf(e) && <span className="truncate pl-[30px] text-[10px] leading-tight text-[var(--tv3-muted)]">{briefOf(e)}</span>}
+                        {/* the market impact in one line under every title (the full text is in the tooltip) */}
+                        {ready && briefOf(e) && <span className="block w-full truncate pl-[30px] text-[11px] leading-[14px] text-[var(--tv3-muted)]">{briefOf(e)}</span>}
                       </button>
                     ))}
                     {more > 0 && <span className="px-0.5 text-[10.5px] font-medium text-[var(--tv3-muted)]">{t("ec.more", { n: more })}</span>}
