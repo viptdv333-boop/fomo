@@ -21,6 +21,11 @@ interface Props {
   onOpenDay: (date: string, eventId?: string) => void;
 }
 
+/* Which rows a square shows first when it cannot show all: the important ones, bond-coupon rows last (there are dozens of them), then time order.
+   The day modal keeps the plain time order. */
+const weight = (e: CalEvent) => (e.gk === "corp.coupon" ? -1 : e.impact);
+const byWeight = (list: CalEvent[]): CalEvent[] => [...list].sort((a, b) => weight(b) - weight(a) || a.ts - b.ts);
+
 /* Heights (px) of the parts of a square on a desktop: the day number line + paddings, an event row without / with the brief line,
    the «+N more» line. Rows that do not fit in the measured square are folded into «+N more». */
 const CELL_CHROME = 36;
@@ -119,7 +124,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
         {cells.map((c) => {
           const b = by.get(c.date);
           const none = outsideCoverage(c.date, coverage, zone);
-          const { shown, more, total } = b ? pickFit(b.events, cellH - CELL_CHROME, rowCost, MORE_ROW) : { shown: [] as CalEvent[], more: 0, total: 0 };
+          const { shown, more, total } = b ? pickFit(byWeight(b.events), cellH - CELL_CHROME, rowCost, MORE_ROW) : { shown: [] as CalEvent[], more: 0, total: 0 };
           const high = b?.byImpact[2] ?? 0;
           const day = Number(c.date.slice(8));
           return (
