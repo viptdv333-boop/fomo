@@ -293,9 +293,34 @@ const DRAW_ICONS: Record<string, ReactNode> = {
 DRAW_ICONS.measureBtn = DRAW_ICONS.measure;
 Object.assign(DRAW_ICONS, EXTRA_DRAW_ICONS);
 
+/* Glyphs of the Claude Design handoff ("FOMO Terminal Desktop v3"): 24 grid, stroke 1.8, round caps/joins, 20px in a 36px button.
+   Anchor dots are zero-length strokes (`h.01`) that the round caps turn into dots. They win over the older 28-grid drawings above. */
+export const DESIGN_DRAW_PATHS: Record<string, string> = {
+  cursor_cross: "M12 4v16M4 12h16",
+  trend: "M4 20L20 4M4 20h.01M20 4h.01",
+  hline: "M3 12h18M7 12h.01M17 12h.01",
+  fib_retr: "M3 5h18M3 11h12M3 16h18M3 21h12",
+  rect: "M5 7h14v10H5z",
+  brush: "M14 4l6 6-9 9H5v-6z",
+  text: "M5 6V4h14v2M12 4v16M9 20h6",
+  measure: "M3 17L17 3l4 4L7 21zM8 12l2 2M11 9l2 2M14 6l2 2",
+  stamp_star: "M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z",
+  magnet: "M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4z",
+  stay: "M4 20l4-1 11-11-3-3L5 16z",
+  lock: "M6 11h12v9H6zM8 11V8a4 4 0 018 0v3",
+  unlock: "M6 11h12v9H6zM8 11V8a4 4 0 017.6-1.7",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
+  eyeOff: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6zM4 4l16 16",
+  trash: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
+  undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
+  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
+};
+DESIGN_DRAW_PATHS.measureBtn = DESIGN_DRAW_PATHS.measure;
+
 export function DrawIcon({ id, className, size = 20 }: { id: string; className?: string; size?: number }) {
   const def = getToolDef(id);
-  if (def?.glyph) {
+  const design = DESIGN_DRAW_PATHS[id];
+  if (def?.glyph && !design) {
     return (
       <span className={`inline-flex items-center justify-center leading-none ${className ?? ""}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.72) }} aria-hidden="true">
         {def.glyph}
@@ -304,7 +329,7 @@ export function DrawIcon({ id, className, size = 20 }: { id: string; className?:
   }
   return (
     <svg
-      viewBox="0 0 28 28"
+      viewBox={design ? "0 0 24 24" : "0 0 28 28"}
       width={size}
       height={size}
       className={className}
@@ -312,18 +337,19 @@ export function DrawIcon({ id, className, size = 20 }: { id: string; className?:
       focusable="false"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.6}
+      // 28-grid drawings get the same rendered line weight as the 24-grid design glyphs (1.8 / 24 * 28)
+      strokeWidth={design ? 1.8 : 2.1}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {DRAW_ICONS[id] ?? <circle cx="14" cy="14" r="5" />}
+      {design ? <path d={design} /> : (DRAW_ICONS[id] ?? <circle cx="14" cy="14" r="5" />)}
     </svg>
   );
 }
 
 /* ───────────── UI icons (24 grid) ───────────── */
 
-export function ui(children: ReactNode, size = 22, sw = 1.7) {
+export function ui(children: ReactNode, size = 17, sw = 1.8) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -343,68 +369,60 @@ export function ui(children: ReactNode, size = 22, sw = 1.7) {
   );
 }
 
+/** One design glyph (a single path string from design/FOMO Terminal Desktop v3.dc.html). */
+const g = (d: string, size = 17, sw = 1.8) => ui(<path d={d} />, size, sw);
+
+/* Design glyph paths shared by several places (top toolbar 17px, right-hand buttons 18px, rail 20px) */
+export const DESIGN_PATHS = {
+  indicators: "M3 16l5-6 4 3 5-8 4 4",
+  compare: "M3 17l5-5 4 3 8-9M3 7l5 5 4-3 8 8",
+  alert: "M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0",
+  templates: "M3 5h8v8H3zM13 5h8v4h-8zM13 11h8v8h-8zM3 15h8v4H3z",
+  replay: "M12 6v6l4 2M4 12a8 8 0 108-8M4 4v4h4",
+  undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
+  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
+  gear: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.7h4l.4-2.7a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z",
+  fullscreen: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z",
+  search: "M20 20l-4-4",
+  calendar: "M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
+  refresh: "M20 11a8 8 0 10-2.3 5.7M20 4v7h-7",
+  expand: "M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7",
+  star: "M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z",
+  watchlist: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
+  info: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1",
+  ideas: "M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6",
+  objects: "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5",
+  trash: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
+  close: "M6 6l12 12M18 6L6 18",
+  check: "M5 12l5 5L20 7",
+} as const;
+
 export const UI_ICONS = {
   search: ui(
     <>
-      <circle cx="10.5" cy="10.5" r="6.5" />
-      <path d="M15.5 15.5L21 21" />
-    </>
+      <circle cx="11" cy="11" r="7" />
+      <path d={DESIGN_PATHS.search} />
+    </>,
+    15,
+    2
   ),
-  indicators: ui(
-    <>
-      <path d="M3 14.5c2.6-8 5.4-8 8-2.5s5.4 5.5 10-4" />
-      <path d="M3 20h18" opacity={0.5} />
-    </>
-  ),
-  alert: ui(
-    <>
-      <path d="M6 17.5V11a6 6 0 0112 0v6.5l1.6 2H4.4z" />
-      <path d="M12 3v2M10 22a2 2 0 004 0" />
-    </>
-  ),
-  replay: ui(
-    <>
-      <path d="M4.8 12a7.2 7.2 0 107.2-7.2H8.5" />
-      <path d="M11.5 2l-3 2.8 3 2.8" />
-      <path d="M10.5 9.3v5.4l4.3-2.7z" fill="currentColor" stroke="none" />
-    </>
-  ),
-  undo: ui(
-    <>
-      <path d="M9 6l-5 5 5 5" />
-      <path d="M4 11h10a5 5 0 010 10h-3" />
-    </>
-  ),
-  redo: ui(
-    <>
-      <path d="M15 6l5 5-5 5" />
-      <path d="M20 11H10a5 5 0 000 10h3" />
-    </>
-  ),
-  gear: ui(
-    <>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2.8l1.7 2.4 2.9-.7 1 2.8 2.8 1-.7 2.9L21.2 12l-2.4 1.7.7 2.9-2.8 1-1 2.8-2.9-.7L12 21.2l-1.7-2.4-2.9.7-1-2.8-2.8-1 .7-2.9L2.8 12l2.4-1.7-.7-2.9 2.8-1 1-2.8 2.9.7z" />
-    </>
-  ),
-  fullscreen: ui(<path d="M4 9V5.5A1.5 1.5 0 015.5 4H9M15 4h3.5A1.5 1.5 0 0120 5.5V9M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15M9 20H5.5A1.5 1.5 0 014 18.5V15" />),
-  camera: ui(
-    <>
-      <path d="M3.5 9a1.5 1.5 0 011.5-1.5h2.3l1.4-2.5h6.6l1.4 2.5H19a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 18z" />
-      <circle cx="12" cy="13" r="3.5" />
-    </>
-  ),
-  tools: ui(
-    <>
-      <path d="M4 20l1-4.2L16.5 4.3a2 2 0 012.8 0l.4.4a2 2 0 010 2.8L8.2 19z" />
-      <path d="M14 7l3 3" />
-    </>
-  ),
+  indicators: g(DESIGN_PATHS.indicators),
+  alert: g(DESIGN_PATHS.alert),
+  replay: g(DESIGN_PATHS.replay),
+  undo: g(DESIGN_PATHS.undo),
+  redo: g(DESIGN_PATHS.redo),
+  gear: g(DESIGN_PATHS.gear, 18),
+  fullscreen: g(DESIGN_PATHS.fullscreen, 18),
+  camera: g(DESIGN_PATHS.camera, 18),
+  tools: g("M4 20l4-1 11-11-3-3L5 16z", 18),
   panel: ui(
     <>
       <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
       <path d="M15 4.5v15" />
-    </>
+    </>,
+    18
   ),
   chevron: (
     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
@@ -414,78 +432,29 @@ export const UI_ICONS = {
 };
 
 export const CHART_TYPE_ICONS: Record<string, ReactNode> = {
-  candles: ui(
-    <>
-      <path d="M6 4v3.5M6 15v5M12 3v4M12 13v4M18 7v3M18 17v4" />
-      <rect x="4.2" y="7.5" width="3.6" height="7.5" rx=".6" fill="currentColor" />
-      <rect x="10.2" y="7" width="3.6" height="6" rx=".6" fill="currentColor" />
-      <rect x="16.2" y="10" width="3.6" height="7" rx=".6" fill="currentColor" />
-    </>
-  ),
-  hollow: ui(
-    <>
-      <path d="M6 4v3.5M6 15v5M12 3v4M12 13v4M18 7v3M18 17v4" />
-      <rect x="4.2" y="7.5" width="3.6" height="7.5" rx=".6" />
-      <rect x="10.2" y="7" width="3.6" height="6" rx=".6" />
-      <rect x="16.2" y="10" width="3.6" height="7" rx=".6" />
-    </>
-  ),
-  bars: ui(<path d="M6 4v16M3.5 8H6M6 16h2.5M12 3v14M9.5 6H12M12 13h2.5M18 7v14M15.5 10H18M18 17h2.5" />),
-  line: ui(
-    <>
-      <path d="M3 17l5-6 4 3 4-7 5 4" />
-      <Dot x={21} y={11} r={1.6} />
-    </>
-  ),
-  area: ui(
-    <>
-      <path d="M3 17l5-6 4 3 4-7 5 4v7H3z" fill="currentColor" fillOpacity={0.22} stroke="none" />
-      <path d="M3 17l5-6 4 3 4-7 5 4" />
-      <path d="M3 21h18" opacity={0.5} />
-    </>
-  ),
+  candles: g("M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z"),
+  hollow: g("M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z"),
+  bars: g("M7 4v16M4 8h3M7 15h3M17 4v16M14 6h3M17 12h3"),
+  line: g("M3 17l5-5 4 3 8-9"),
+  area: g("M3 17l5-5 4 3 8-9v11H3z"),
   heikin: ui(
     <>
-      <path d="M6 3v3M6 16v4M12 4v3M12 17v3M18 6v3M18 16v4" />
-      <rect x="4.2" y="6" width="3.6" height="10" rx=".6" fill="currentColor" fillOpacity={0.35} />
-      <rect x="10.2" y="7" width="3.6" height="10" rx=".6" fill="currentColor" fillOpacity={0.35} />
-      <rect x="16.2" y="9" width="3.6" height="7" rx=".6" fill="currentColor" fillOpacity={0.35} />
+      <path d="M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z" />
+      <path d="M5 7h4v10H5zM15 11h4v7h-4z" fill="currentColor" fillOpacity={0.3} stroke="none" />
     </>
   ),
 };
 
-/* right panel tab icons */
+/* right panel tab icons (design rail: 20px, stroke 1.8) */
+const rail = (d: string) => ui(<path d={d} />, 20, 1.8);
 export const PANEL_TAB_ICONS: Record<string, ReactNode> = {
-  watchlist: ui(
-    <>
-      <path d="M9 6h11M9 12h11M9 18h11" />
-      <Dot x={4.5} y={6} r={1.3} />
-      <Dot x={4.5} y={12} r={1.3} />
-      <Dot x={4.5} y={18} r={1.3} />
-    </>
-  ),
-  info: ui(
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v5.5" />
-      <Dot x={12} y={7.8} r={1.1} />
-    </>
-  ),
-  news: ui(
-    <>
-      <path d="M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2z" />
-      <path d="M18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3.5" />
-    </>
-  ),
-  calendar: ui(
-    <>
-      <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" />
-      <path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5" />
-      <Dot x={8.5} y={14} r={1} />
-      <Dot x={12} y={14} r={1} />
-      <Dot x={15.5} y={14} r={1} />
-    </>
-  ),
+  watchlist: rail(DESIGN_PATHS.watchlist),
+  info: rail(DESIGN_PATHS.info),
+  news: rail("M5 5h11a2 2 0 012 2v12H7a2 2 0 01-2-2zM18 9h1a1 1 0 011 1v7a2 2 0 01-2 2M8.5 9h6M8.5 12.5h6M8.5 16h3.5"),
+  calendar: rail(DESIGN_PATHS.calendar),
+  objects: rail(DESIGN_PATHS.objects),
+  orderbook: rail("M4 5.5h9M4 9h6M4 12.5h11M20 11.5h-9M20 15h-6M20 18.5h-11"),
+  algo: rail("M12 3.5l8.5 15.5h-17zM12 10v4M12 16.6h.01"),
 };
 
 /* ───────────── indicator UI icons (legend, catalog, settings) ───────────── */
@@ -502,24 +471,9 @@ const indIcon = (body: ReactNode, filled = false) =>
   };
 
 export const IND_ICONS = {
-  eye: indIcon(
-    <>
-      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
-      <circle cx="12" cy="12" r="3" />
-    </>
-  ),
-  eyeOff: indIcon(
-    <>
-      <path d="M3 3l18 18" />
-      <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3.2 4M6.3 7.6A16 16 0 002.5 12S6 18.5 12 18.5c1.2 0 2.3-.3 3.3-.7M9.9 9.9a3 3 0 004.2 4.2" />
-    </>
-  ),
-  gear: indIcon(
-    <>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2.8l1.7 2.4 2.9-.7 1 2.8 2.8 1-.7 2.9L21.2 12l-2.4 1.7.7 2.9-2.8 1-1 2.8-2.9-.7L12 21.2l-1.7-2.4-2.9.7-1-2.8-2.8-1 .7-2.9L2.8 12l2.4-1.7-.7-2.9 2.8-1 1-2.8 2.9.7z" />
-    </>
-  ),
+  eye: indIcon(<path d={DESIGN_PATHS.eye} />),
+  eyeOff: indIcon(<path d={DESIGN_PATHS.eye + "M4 4l16 16"} />),
+  gear: indIcon(<path d={DESIGN_PATHS.gear} />),
   more: indIcon(
     <>
       <circle cx="5.5" cy="12" r="1.3" fill="currentColor" />
@@ -527,25 +481,25 @@ export const IND_ICONS = {
       <circle cx="18.5" cy="12" r="1.3" fill="currentColor" />
     </>
   ),
-  close: indIcon(<path d="M6 6l12 12M18 6L6 18" />),
+  close: indIcon(<path d={DESIGN_PATHS.close} />),
   chevronDown: indIcon(<path d="M6 9l6 6 6-6" />),
   chevronUp: indIcon(<path d="M6 15l6-6 6 6" />),
   chevronRight: indIcon(<path d="M9 6l6 6-6 6" />),
-  star: indIcon(<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z" />),
-  starFilled: indIcon(<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z" />, true),
+  star: indIcon(<path d={DESIGN_PATHS.star} />),
+  starFilled: indIcon(<path d={DESIGN_PATHS.star} />, true),
   copy: indIcon(
     <>
       <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
       <path d="M15.5 8.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7.5a2 2 0 002 2h2.5" />
     </>
   ),
-  trash: indIcon(<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7M10 10.5v6M14 10.5v6" />),
+  trash: indIcon(<path d={DESIGN_PATHS.trash} />),
   plus: indIcon(<path d="M12 5v14M5 12h14" />),
-  check: indIcon(<path d="M5 12.5l4.5 4.5L19 7" />),
+  check: indIcon(<path d={DESIGN_PATHS.check} />),
   search: indIcon(
     <>
-      <circle cx="10.5" cy="10.5" r="6.5" />
-      <path d="M15.5 15.5L21 21" />
+      <circle cx="11" cy="11" r="7" />
+      <path d={DESIGN_PATHS.search} />
     </>
   ),
   pane: indIcon(
@@ -554,42 +508,13 @@ export const IND_ICONS = {
       <path d="M3.5 13.5h17" />
     </>
   ),
-  reset: indIcon(<path d="M4.5 12a7.5 7.5 0 107.5-7.5c-2.2 0-4.2.9-5.6 2.4M4.5 4v4h4" />),
-  template: indIcon(
-    <>
-      <path d="M5 4.5h10l4 4V19a1 1 0 01-1 1H5a1 1 0 01-1-1V5.5a1 1 0 011-1z" />
-      <path d="M8 4.5v5h6v-5M8 20v-6h8v6" />
-    </>
-  ),
+  reset: indIcon(<path d={DESIGN_PATHS.refresh} />),
+  template: indIcon(<path d={DESIGN_PATHS.templates} />),
   recent: indIcon(
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 7.5V12l3 2" />
     </>
   ),
-  layers: indIcon(<path d="M12 4l9 5-9 5-9-5zM3 14l9 5 9-5" />),
+  layers: indIcon(<path d={DESIGN_PATHS.objects} />),
 };
-
-/* object tree tab (layers of drawings and indicators) */
-PANEL_TAB_ICONS.objects = ui(
-  <>
-    <path d="M12 4l8.5 4.5L12 13 3.5 8.5z" />
-    <path d="M3.5 12.5L12 17l8.5-4.5" />
-    <path d="M3.5 16.5L12 21l8.5-4.5" opacity={0.55} />
-  </>
-);
-
-/* order book tab (depth ladder) and ALGOPACK tab (alerts + concentration) */
-PANEL_TAB_ICONS.orderbook = ui(
-  <>
-    <path d="M4 5.5h9M4 9h6M4 12.5h11" opacity={0.9} />
-    <path d="M20 11.5h-9M20 15h-6M20 18.5h-11" opacity={0.55} />
-  </>
-);
-PANEL_TAB_ICONS.algo = ui(
-  <>
-    <path d="M12 3.5l8.5 15.5h-17z" />
-    <path d="M12 10v4" />
-    <Dot x={12} y={16.6} r={0.9} />
-  </>
-);

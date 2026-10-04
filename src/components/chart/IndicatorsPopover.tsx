@@ -10,8 +10,9 @@ import { TV3, Toggle } from "./tv3-ui";
    (indicators that are on the chart first, then the popular ones), and a green «All indicators…» button that opens the
    full searchable catalog (IndicatorsDialog). */
 
-const POPULAR = ["sma", "ema", "vwap", "bb", "macd", "rsi", "volume", "vprofile", "cvd", "zigzag", "elliott_auto", "linreg", "atr", "supertrend"];
-const WIDTH = 328;
+// design order: averages, VWAP, ZigZag, Elliott, regression channel, volume profile, volumes, CVD, RSI; then the extra ones
+const POPULAR = ["sma", "ema", "vwap", "zigzag", "elliott_auto", "linreg", "vprofile", "volume", "cvd", "rsi", "bb", "macd", "atr", "supertrend"];
+const WIDTH = 320;
 
 function colorOf(id: string): string {
   const def = getIndicatorDef(id);

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ui } from "./icons";
+import { DESIGN_PATHS, ui } from "./icons";
 
 /* Icons of the chart settings / chart types / layouts (kept apart from icons.tsx to avoid edit clashes). */
 
@@ -92,52 +92,22 @@ export const CHART_TYPE_ICONS_EXTRA: Record<string, ReactNode> = {
 };
 
 export const CS_ICONS = {
-  compare: ui(
-    <>
-      <path d="M3 17l5-5 4 3 5-8 4 4" />
-      <path d="M3 8l5 3 4-5 5 7 4-2" opacity={0.55} />
-      <Dot x={12} y={15} />
-    </>
-  ),
+  compare: ui(<path d={DESIGN_PATHS.compare} />, 17, 1.8),
   layout: ui(
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-      <path d="M12 4.5v15M3.5 12H12" />
-    </>
+      <path d="M4 5h16v14H4zM12 5v14M4 12h8" />
+    </>,
+    17,
+    1.8
   ),
-  template: ui(
-    <>
-      <rect x="4" y="3.5" width="16" height="17" rx="2" />
-      <path d="M8 8h8M8 12h8M8 16h5" />
-    </>
-  ),
-  star: ui(<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z" />, 16, 1.6),
-  starFilled: ui(<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z" fill="currentColor" />, 16, 1.6),
-  calendar: ui(
-    <>
-      <rect x="4" y="5.5" width="16" height="14.5" rx="2" />
-      <path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5" />
-    </>
-  ),
-  clock: ui(
-    <>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
-    </>
-  ),
-  eye: ui(
-    <>
-      <path d="M2.8 12S6 6 12 6s9.2 6 9.2 6-3.2 6-9.2 6S2.8 12 2.8 12z" />
-      <circle cx="12" cy="12" r="2.6" />
-    </>
-  ),
-  eyeOff: ui(
-    <>
-      <path d="M4 5l16 14" />
-      <path d="M9.8 6.3A9.6 9.6 0 0112 6c6 0 9.2 6 9.2 6a15 15 0 01-3.4 4M6.3 8A15 15 0 002.8 12S6 18 12 18a9 9 0 003.4-.7" />
-    </>
-  ),
-  close: ui(<path d="M6 6l12 12M18 6L6 18" />, 16, 1.8),
+  template: ui(<path d={DESIGN_PATHS.templates} />, 17, 1.8),
+  star: ui(<path d={DESIGN_PATHS.star} />, 16, 1.8),
+  starFilled: ui(<path d={DESIGN_PATHS.star} fill="currentColor" />, 16, 1.8),
+  calendar: ui(<path d={DESIGN_PATHS.calendar} />, 14, 2),
+  clock: ui(<path d="M12 5a8 8 0 100 16 8 8 0 000-16zM12 9v4l2 2M9 3h6" />, 15, 2),
+  eye: ui(<path d={DESIGN_PATHS.eye} />, 14, 2),
+  eyeOff: ui(<path d={DESIGN_PATHS.eye + "M4 4l16 16"} />, 14, 2),
+  close: ui(<path d={DESIGN_PATHS.close} />, 16, 1.8),
   copy: ui(
     <>
       <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
@@ -154,14 +124,7 @@ export const CS_ICONS = {
   zoomIn: ui(<path d="M12 5v14M5 12h14" />, 18, 2),
   zoomOut: ui(<path d="M5 12h14" />, 18, 2),
   toLatest: ui(<path d="M6 6l6 6-6 6M13 6l6 6-6 6" />, 18, 1.9),
-  resetView: ui(
-    <>
-      <path d="M4.5 12a7.5 7.5 0 107.5-7.5" />
-      <path d="M4.5 4.5V9H9" />
-    </>,
-    18,
-    1.8
-  ),
-  trash: ui(<path d="M5 7h14M9.5 7V4.5h5V7M7 7l1 12.5h8L17 7" />, 16, 1.6),
-  check: ui(<path d="M5 12.5l4.5 4.5L19 7.5" />, 16, 2),
+  resetView: ui(<path d={DESIGN_PATHS.refresh} />, 18, 1.8),
+  trash: ui(<path d={DESIGN_PATHS.trash} />, 16, 1.8),
+  check: ui(<path d={DESIGN_PATHS.check} />, 16, 2.4),
 };

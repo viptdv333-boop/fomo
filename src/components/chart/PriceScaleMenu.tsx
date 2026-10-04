@@ -18,16 +18,16 @@ interface Props {
 
 function Item({ checked, radio, onClick, children }: { checked?: boolean; radio?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} className="w-full h-8 pl-2 pr-4 flex items-center gap-2 text-[13px] text-left whitespace-nowrap cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
-      <span className="w-4 h-4 inline-flex items-center justify-center text-[#2962ff]">
-        {checked ? radio ? <span className="w-1.5 h-1.5 rounded-full bg-[#2962ff]" /> : CS_ICONS.check : null}
+    <button onClick={onClick} className="w-full h-8 pl-2 pr-4 flex items-center gap-2 text-[13px] text-left whitespace-nowrap cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]">
+      <span className="w-4 h-4 inline-flex items-center justify-center text-[var(--tv3-accent)]">
+        {checked ? radio ? <span className="w-1.5 h-1.5 rounded-full bg-[var(--tv3-accent)]" /> : CS_ICONS.check : null}
       </span>
       {children}
     </button>
   );
 }
 
-const Sep = () => <div className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />;
+const Sep = () => <div className="my-1 h-px bg-[var(--tv3-hair)]" />;
 
 /** Right-click menu of the price scale: auto / lock / invert, scale mode, labels, side. */
 export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, onSettings }: Props) {
@@ -59,7 +59,7 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
       <div className="fixed inset-0 z-[60]" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
         ref={ref}
-        className="fixed z-[61] w-[270px] py-1 rounded-lg bg-white dark:bg-[#1e222d] border border-gray-200 dark:border-[#2a2e39] shadow-xl"
+        className="fixed z-[61] w-[270px] py-1 rounded-2xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)]"
         style={{ left: at?.left ?? pos.x, top: at?.top ?? pos.y, visibility: at ? "visible" : "hidden" }}
       >
         <Item checked={autoScale} onClick={() => { onAuto(!autoScale); onClose(); }}>{t("cs.autoScale")}</Item>

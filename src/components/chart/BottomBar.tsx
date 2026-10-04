@@ -126,7 +126,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
           </button>
         ))}
       </div>
-      {rangeBusy && <span className="ml-1 inline-block w-3 h-3 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin shrink-0" title={t("shell.loadingHistory")} />}
+      {rangeBusy && <span className="ml-1 inline-block w-3 h-3 border-2 border-[var(--tv3-fill2)] border-t-[var(--tv3-accent)] rounded-full animate-spin shrink-0" title={t("shell.loadingHistory")} />}
       {onGoToDate && (
         <>
           <GoToDate btn={`${btn} !rounded-lg !px-2.5`} onGo={onGoToDate} signal={gotoSignal} />
@@ -158,8 +158,8 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
                     onTz(id);
                     close();
                   }}
-                  className={`w-full h-8 pl-3 pr-3 flex items-center gap-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${
-                    tz === id ? "text-[#2962ff] dark:text-[#6f95ff] font-medium" : "text-gray-800 dark:text-gray-200"
+                  className={`w-full h-8 pl-3 pr-3 flex items-center gap-2 text-left cursor-pointer hover:bg-[var(--tv3-fill)] ${
+                    tz === id ? "text-[var(--tv3-accent)] font-medium" : "text-[var(--tv3-text)]"
                   }`}
                 >
                   <span className="w-4">{tz === id ? CS_ICONS.check : null}</span>

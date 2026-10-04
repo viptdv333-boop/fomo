@@ -199,16 +199,24 @@ export default function ReplayControls({ api, hostRef, getEngine }: { api: Repla
   const nextSpeed = REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(api.speed) + 1) % REPLAY_SPEEDS.length] ?? 1;
   return (
     <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full bg-[var(--tv3-pill-dark)] px-2 py-[5px] text-[13px] text-white max-w-[96%] shadow-[0_2px_12px_rgba(0,0,0,.25)]">
-      <span className="hidden sm:inline px-2 whitespace-nowrap text-[#c7c7cc] tabular-nums">
+      {/* the label doubles as the speed control (click = next speed); the speed shows only when it is not 1x, so the pill reads like the design */}
+      <button
+        type="button"
+        onClick={() => api.setSpeed(nextSpeed)}
+        title={t("v3.sim.speed", { s: api.speed })}
+        aria-label={t("shell.replay.speed")}
+        className="hidden sm:inline cursor-pointer px-2 whitespace-nowrap text-[#c7c7cc] tabular-nums"
+      >
         {api.atEnd ? t("v3.sim.end") : t("v3.sim", { n: Math.max(0, api.total - api.pos) })}
-      </span>
+        {api.speed !== 1 && <span className="ml-1 text-white">{api.speed}x</span>}
+      </button>
       <button onClick={api.togglePlay} disabled={api.atEnd} title={api.playing ? t("shell.replay.pause") : t("shell.replay.play")} className={pill}>
         {api.playing ? t("v3.sim.pause") : t("v3.sim.play")}
       </button>
       <button onClick={api.step} disabled={api.atEnd} title={t("shell.replay.step")} className={pill}>
         {t("v3.sim.step")}
       </button>
-      <button onClick={() => api.setSpeed(nextSpeed)} title={t("v3.sim.speed", { s: api.speed })} aria-label={t("shell.replay.speed")} className={`${pill} tabular-nums`}>
+      <button onClick={() => api.setSpeed(nextSpeed)} title={t("v3.sim.speed", { s: api.speed })} aria-label={t("shell.replay.speed")} className={`${pill} tabular-nums sm:hidden`}>
         {api.speed}x
       </button>
       <button onClick={() => api.exit(true)} title={t("shell.replay.exit")} className={pill}>

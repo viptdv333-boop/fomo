@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import {
   ALL_INSTRUMENTS,
@@ -45,6 +45,25 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const market = useMarketSearch(q, tab, open);
+
+  // design: the list hangs under its toolbar button (symbol chip / «Сравнить») as a popover; on a phone it stays a centred sheet
+  const [anchorPos, setAnchorPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    if (window.innerWidth < 640) {
+      setAnchorPos(null);
+      return;
+    }
+    const sel = variant === "compare" ? `button[title="${t("cs.compare").replace(/"/g, '\\"')}"]` : `button[title="${t("shell.symbol.searchTitle").replace(/"/g, '\\"')}"]`;
+    const r = document.querySelector<HTMLElement>(sel)?.getBoundingClientRect();
+    if (!r) {
+      setAnchorPos(null);
+      return;
+    }
+    const width = 380;
+    setAnchorPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: r.bottom + 6, width });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, variant]);
 
   useEffect(() => {
     if (open) {
@@ -136,11 +155,12 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
   let lastGroup = "";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[8vh] px-3 bg-black/30" onMouseDown={onClose}>
+    <div className={anchorPos ? "fixed inset-0 z-[60]" : "fixed inset-0 z-[60] flex items-start justify-center pt-[8vh] px-3 bg-black/30"} onMouseDown={onClose}>
       <div
         role="dialog"
         aria-label={t("shell.symbol.searchTitle")}
-        className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] overflow-hidden"
+        className={`flex flex-col rounded-2xl bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] overflow-hidden ${anchorPos ? "absolute" : "w-full max-w-md max-h-[80vh]"}`}
+        style={anchorPos ? { left: anchorPos.left, top: anchorPos.top, width: anchorPos.width, maxHeight: Math.max(240, window.innerHeight - anchorPos.top - 16) } : undefined}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >

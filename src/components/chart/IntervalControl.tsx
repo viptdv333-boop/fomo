@@ -71,9 +71,9 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
               if (items.length === 0) return null;
               return (
                 <div key={sec.id}>
-                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t(sec.key)}</div>
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t(sec.key)}</div>
                   {items.map((id) => (
-                    <div key={id} className={`group flex items-center h-8 pl-3 pr-1 hover:bg-gray-100 dark:hover:bg-[#2a2e39] ${interval === id ? "text-[#2962ff] dark:text-[#6f95ff] font-medium" : "text-gray-800 dark:text-gray-200"}`}>
+                    <div key={id} className={`group flex items-center h-8 pl-3 pr-1 hover:bg-[var(--tv3-fill)] ${interval === id ? "text-[var(--tv3-accent)] font-medium" : "text-[var(--tv3-text)]"}`}>
                       <button
                         className="flex-1 text-left h-full cursor-pointer"
                         onClick={() => {
@@ -87,7 +87,7 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
                         onClick={() => toggleFav(id)}
                         title={favs.includes(id) ? t("cs.iv.unfav") : t("cs.iv.fav")}
                         aria-pressed={favs.includes(id)}
-                        className={`w-7 h-7 inline-flex items-center justify-center rounded cursor-pointer ${favs.includes(id) ? "text-amber-400" : "text-gray-400 sm:opacity-0 group-hover:opacity-100"}`}
+                        className={`w-7 h-7 inline-flex items-center justify-center rounded cursor-pointer ${favs.includes(id) ? "text-amber-400" : "text-[var(--tv3-muted)] sm:opacity-0 group-hover:opacity-100"}`}
                       >
                         {favs.includes(id) ? CS_ICONS.starFilled : CS_ICONS.star}
                       </button>
@@ -96,8 +96,8 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
                 </div>
               );
             })}
-            <div className="mt-1 border-t border-gray-200 dark:border-[#2a2e39] px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">{t("cs.iv.custom")}</div>
+            <div className="mt-1 border-t border-[var(--tv3-hair)] px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)] mb-1.5">{t("cs.iv.custom")}</div>
               <div className="flex items-center gap-1.5">
                 <input
                   type="number"
@@ -107,17 +107,17 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
                   onChange={(e) => setNum(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCustom(close)}
                   placeholder="45"
-                  className="h-8 w-16 rounded border border-gray-300 dark:border-[#363a45] bg-transparent px-2 text-[13px] outline-none focus:border-[#2962ff]"
+                  className="h-8 w-16 rounded-[9px] border border-[#e5e5ea] dark:border-[#3a3a3c] bg-transparent px-2 text-[13px] outline-none focus:border-[var(--tv3-accent)]"
                 />
                 <select
                   value={unit}
                   onChange={(e) => setUnit(e.target.value as "m" | "h")}
-                  className="h-8 rounded border border-gray-300 dark:border-[#363a45] bg-white dark:bg-[#131722] px-1.5 text-[13px] cursor-pointer"
+                  className="h-8 rounded-[9px] border border-[#e5e5ea] dark:border-[#3a3a3c] bg-[var(--tv3-card)] px-1.5 text-[13px] cursor-pointer"
                 >
                   <option value="m">{t("cs.iv.unitMin")}</option>
                   <option value="h">{t("cs.iv.unitHour")}</option>
                 </select>
-                <button onClick={() => addCustom(close)} className="h-8 px-3 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5]">
+                <button onClick={() => addCustom(close)} className="h-8 px-3 rounded-[9px] bg-[var(--tv3-accent)] text-white text-[13px] cursor-pointer hover:bg-[var(--tv3-accent-hover)]">
                   {t("cs.iv.add")}
                 </button>
               </div>

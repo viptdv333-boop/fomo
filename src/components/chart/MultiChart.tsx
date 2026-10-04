@@ -77,7 +77,7 @@ function loadLocal(): MultiState {
 }
 
 const I = (children: ReactNode) => (
-  <svg viewBox="0 0 24 24" width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" aria-hidden="true">
+  <svg viewBox="0 0 24 24" width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {children}
   </svg>
 );
@@ -203,14 +203,14 @@ export default function MultiChart(props: Props) {
   const picker = (
     <MenuPopover
       title={t("cs.ml.title")}
-      className="h-8 w-8 inline-flex items-center justify-center rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
+      className="min-h-[27px] min-w-[37px] px-2.5 py-[5px] inline-flex items-center justify-center rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
       width={250}
       align="right"
-      trigger={<span className="scale-[0.85] inline-flex">{LAYOUT_ICONS[state.layout]}</span>}
+      trigger={<span className="inline-flex h-[17px] w-[17px] items-center justify-center"><span className="scale-[0.654] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span>}
     >
       {() => (
         <div className="px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">{t("cs.ml.layout")}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)] mb-1.5">{t("cs.ml.layout")}</div>
           <div className="flex gap-1">
             {LAYOUTS.map((l) => (
               <button
@@ -218,17 +218,15 @@ export default function MultiChart(props: Props) {
                 onClick={() => setLayout(l.id)}
                 title={t(l.key)}
                 aria-pressed={state.layout === l.id}
-                className={`w-10 h-10 inline-flex items-center justify-center rounded-md border cursor-pointer ${
-                  state.layout === l.id
-                    ? "border-[#2962ff] text-[#2962ff] bg-[#2962ff]/10"
-                    : "border-gray-200 dark:border-[#363a45] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2e39]"
+                className={`w-10 h-10 inline-flex items-center justify-center rounded-[10px] cursor-pointer ${
+                  state.layout === l.id ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
                 }`}
               >
                 {LAYOUT_ICONS[l.id]}
               </button>
             ))}
           </div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-400 mt-3 mb-1">{t("cs.ml.sync")}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)] mt-3 mb-1">{t("cs.ml.sync")}</div>
           {(
             [
               ["symbol", "cs.ml.syncSymbol"],
@@ -237,8 +235,8 @@ export default function MultiChart(props: Props) {
               ["range", "cs.ml.syncRange"],
             ] as const
           ).map(([k, label]) => (
-            <label key={k} className={`flex items-center gap-2 h-8 text-[13px] text-gray-800 dark:text-gray-200 ${count > 1 ? "cursor-pointer" : "opacity-50"}`}>
-              <input type="checkbox" checked={state.sync[k]} onChange={(e) => setSyncFlag(k, e.target.checked)} className="w-4 h-4 accent-[#2962ff]" />
+            <label key={k} className={`flex items-center gap-2 h-8 text-[13px] text-[var(--tv3-text)] ${count > 1 ? "cursor-pointer" : "opacity-50"}`}>
+              <input type="checkbox" checked={state.sync[k]} onChange={(e) => setSyncFlag(k, e.target.checked)} className="w-4 h-4 accent-[var(--tv3-accent)]" />
               {t(label)}
             </label>
           ))}

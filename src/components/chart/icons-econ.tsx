@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { ui } from "./icons";
+import { DESIGN_PATHS, ui as baseUi } from "./icons";
+
+/* calendar icons keep their 22px default size (the shared `ui` default is the 17px of the top toolbar) */
+const ui = (children: ReactNode, size = 22, sw = 1.8) => baseUi(children, size, sw);
 
 /* Icons of the economic calendar (kept apart from icons.tsx to avoid edit clashes; same 24 grid / 1.7 stroke). */
 
@@ -13,14 +16,7 @@ export const EC_ICONS: Record<string, ReactNode> = {
     </>
   ),
   close: ui(<path d="M6 6l12 12M18 6L6 18" />),
-  refresh: ui(
-    <>
-      <path d="M20 11a8 8 0 00-14.3-4.2L4 9" />
-      <path d="M4 4v5h5" />
-      <path d="M4 13a8 8 0 0014.3 4.2L20 15" />
-      <path d="M20 20v-5h-5" />
-    </>
-  ),
+  refresh: ui(<path d={DESIGN_PATHS.refresh} />),
   bell: ui(
     <>
       <path d="M6 16.5V11a6 6 0 1112 0v5.5l1.5 2h-15z" />
@@ -41,6 +37,8 @@ export const EC_ICONS: Record<string, ReactNode> = {
       <path d="M17.5 3.5v5" />
       <path d="M17.5 3.5h3l-1 1.4 1 1.4h-3" fill="currentColor" />
     </>
+  ,
+    17
   ),
   grid: ui(
     <>

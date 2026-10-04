@@ -67,6 +67,8 @@
 .tv3 {
   font-family: var(--tv3-font);
   color: var(--tv3-text);
+  /* the design runs on the browser default (Tailwind preflight's 1.5 inflates every 12-13px label by 4px) */
+  line-height: normal;
 }
 /* hidden scrollbars inside terminal panels (design) */
 .tv3 *::-webkit-scrollbar {
@@ -78,4 +80,25 @@
 }
 .tv3 input::placeholder {
   color: var(--tv3-muted);
+}
+
+/* left drawing toolbar + right icon rail buttons: design 36px / 20px glyph +15% = 42px / 23px; on short screens they shrink back to the design size
+   (the columns spread their buttons over the full card height, see DrawingToolbar / RightPanel) */
+.tv3 .tv3-rbtn {
+  width: 42px;
+  height: 42px;
+}
+.tv3 .tv3-rbtn svg {
+  width: 23px;
+  height: 23px;
+}
+@media (max-height: 830px) {
+  .tv3 .tv3-rbtn {
+    width: 36px;
+    height: 36px;
+  }
+  .tv3 .tv3-rbtn svg {
+    width: 20px;
+    height: 20px;
+  }
 }

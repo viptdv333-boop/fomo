@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import { DRAWING_GROUPS, getToolDef } from "@/lib/chart/drawings/tools";
 import { DRAW_TEXT_DEFAULTS, setDrawTexts } from "@/lib/chart/drawings/tools-kit";
@@ -53,11 +53,27 @@ function loadLast(): Record<string, string> {
   return defaults;
 }
 
-// Terminal v3 rail: 36px rounded-[10px] buttons on a 46px white card; active = soft green square (design: rgba(30,158,74,.16) + #17804D glyph)
+// Terminal v3 rail: 42px rounded-[11px] buttons (design 36px + 15%) on a 58px white card; active = soft green square (design: rgba(30,158,74,.16) + #17804D glyph)
 const btnBase =
-  "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
+  "tv3-rbtn relative flex shrink-0 items-center justify-center rounded-[11px] text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
 const btnActive = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)] hover:!bg-[var(--tv3-accent-soft)]";
-const ICON = 24; // glyph size on the 36px hit area
+const ICON = 23; // design: 20px glyph on a 36px hit area; +15% = 23px on 42px
+
+/** Rail order of the design: cursor, trend, horizontal line, fib, (extra pattern / forecast groups), rectangle, brush, text, ruler, star, then the actions.
+ *  `fixed` = a slot bound to one tool (its group flyout opens from the caret / right click), otherwise the slot shows the last tool used of the group. */
+const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] = [
+  { key: "cursors", group: "cursors" },
+  { key: "lines", group: "lines" },
+  { key: "hline", group: "lines", fixed: "hline" },
+  { key: "fib", group: "fib" },
+  { key: "patterns", group: "patterns" },
+  { key: "forecast", group: "forecast" },
+  { key: "rect", group: "shapes", fixed: "rect" },
+  { key: "brush", group: "shapes", fixed: "brush" },
+  { key: "text", group: "text" },
+  { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
+  { key: "stamps", group: "stamps" },
+];
 
 interface FlyoutState {
   groupId: string;
@@ -199,21 +215,38 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   const nextMagnet = magnet === "off" ? "weak" : magnet === "weak" ? "strong" : "off";
   const magnetTitle = t(`draw.act.magnet.${magnet}`);
 
+  // tools that own a rail slot of their own (design: horizontal line, rectangle, brush, ruler); their group slot is not lit for them
+  const slotTools = new Set(RAIL.filter((r) => r.fixed).map((r) => r.fixed as string));
+  const groupOf = (id: string) => DRAWING_GROUPS.find((g) => g.id === id);
+
   return (
     <div
       role="toolbar"
       aria-orientation="vertical"
       aria-label={t("draw.toolbar")}
-      className={`flex w-[46px] shrink-0 select-none flex-col items-center gap-0.5 overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--tv3-card)] py-1.5 ${className ?? ""}`}
+      className={`flex w-[58px] shrink-0 select-none flex-col items-center overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--tv3-card)] py-1.5 ${className ?? ""}`}
       style={{ scrollbarWidth: "none" }}
     >
-      {DRAWING_GROUPS.map((g) => {
+      {/* icons are spread evenly over the card height: flexible spacers shrink to 2px on short screens and the rail scrolls */}
+      <span className="min-h-0.5 flex-1" />
+      {RAIL.map((slot) => {
+        const g = groupOf(slot.group);
+        if (!g) return null;
         const lastId = last[g.id] ?? g.tools[0].id;
         const lastTool = g.tools.find((x) => x.id === lastId) ?? g.tools[0];
-        const active = g.id === "cursors" ? activeTool === null : activeTool !== null && g.tools.some((x) => x.id === activeTool);
-        const title = `${t(g.labelKey)}: ${t(lastTool.labelKey)}`;
+        const shown = slot.fixed ?? lastTool.id;
+        const toolDef = slot.fixed ? { id: slot.fixed, labelKey: `draw.tool.${slot.fixed}` } : lastTool;
+        const active = slot.fixed
+          ? activeTool === slot.fixed
+          : g.id === "cursors"
+            ? activeTool === null
+            : activeTool !== null && g.tools.some((x) => x.id === activeTool) && !slotTools.has(activeTool);
+        const title = slot.fixed ? t(toolDef.labelKey) : `${t(g.labelKey)}: ${t(lastTool.labelKey)}`;
+        // the star slot (design: favourites) shows the outlined star until another stamp is picked
+        const iconId = slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown;
         return (
-          <div key={g.id} className="relative flex items-center">
+          <Fragment key={slot.key}>
+          <div className="group/slot relative flex shrink-0 items-center">
             <button
               type="button"
               title={title}
@@ -221,8 +254,9 @@ export default function DrawingToolbar({ controller, className }: { controller: 
               aria-pressed={active}
               className={`${btnBase} ${active ? btnActive : ""}`}
               onClick={() => {
-                if (g.id !== "cursors" && activeTool !== null && g.tools.some((x) => x.id === activeTool)) controller.setTool(null);
-                else controller.setTool(lastTool.id);
+                const inGroup = slot.fixed ? activeTool === slot.fixed : activeTool !== null && g.tools.some((x) => x.id === activeTool) && !slotTools.has(activeTool);
+                if (g.id !== "cursors" && inGroup) controller.setTool(null);
+                else controller.setTool(shown);
                 setFlyout(null);
               }}
               onContextMenu={(e) => {
@@ -230,38 +264,30 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 openFlyout(g.id, e.currentTarget);
               }}
             >
-              <DrawIcon id={lastTool.id} size={ICON} />
+              <DrawIcon id={iconId} size={ICON} />
             </button>
-            <button
-              type="button"
-              data-draw-caret
-              title={t("draw.moreTools")}
-              aria-label={`${t(g.labelKey)}: ${t("draw.moreTools")}`}
-              aria-haspopup="menu"
-              aria-expanded={flyout?.groupId === g.id}
-              className="absolute -bottom-px -right-1 flex h-4 w-3.5 items-center justify-center rounded-md text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill2)] hover:text-[var(--tv3-text)]"
-              onClick={(e) => openFlyout(g.id, e.currentTarget.parentElement ?? e.currentTarget)}
-            >
-              <svg viewBox="0 0 8 8" width="7" height="7" aria-hidden="true">
-                <path d="M1 2.5h6L4 6z" fill="currentColor" />
-              </svg>
-            </button>
+            {!slot.noMenu && (
+              <button
+                type="button"
+                data-draw-caret
+                title={t("draw.moreTools")}
+                aria-label={`${t(g.labelKey)}: ${t("draw.moreTools")}`}
+                aria-haspopup="menu"
+                aria-expanded={flyout?.groupId === g.id}
+                className="absolute -bottom-px -right-1 flex h-4 w-3.5 items-center justify-center rounded-md text-[var(--tv3-muted)] opacity-0 transition-opacity hover:bg-[var(--tv3-fill2)] hover:text-[var(--tv3-text)] focus-visible:opacity-100 group-hover/slot:opacity-100"
+                onClick={(e) => openFlyout(g.id, e.currentTarget.parentElement ?? e.currentTarget)}
+              >
+                <svg viewBox="0 0 8 8" width="7" height="7" aria-hidden="true">
+                  <path d="M1 2.5h6L4 6z" fill="currentColor" />
+                </svg>
+              </button>
+            )}
           </div>
+          <span className="min-h-0.5 flex-1" />
+          </Fragment>
         );
       })}
 
-      <div className="my-1 h-px w-6 shrink-0 bg-[var(--tv3-hair)]" />
-
-      <button
-        type="button"
-        title={t("draw.tool.measure")}
-        aria-label={t("draw.tool.measure")}
-        aria-pressed={activeTool === "measure"}
-        className={`${btnBase} ${activeTool === "measure" ? btnActive : ""}`}
-        onClick={() => controller.setTool(activeTool === "measure" ? null : "measure")}
-      >
-        <DrawIcon id="measureBtn" size={ICON} />
-      </button>
       <button
         type="button"
         title={magnetTitle}
@@ -278,6 +304,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           </span>
         )}
       </button>
+      <span className="min-h-0.5 flex-1" />
       <button
         type="button"
         title={stay ? t("draw.act.stay.on") : t("draw.act.stay")}
@@ -288,6 +315,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       >
         <DrawIcon id="stay" size={ICON} />
       </button>
+      <span className="min-h-0.5 flex-1" />
       <button
         type="button"
         title={lockedAll ? t("draw.act.unlockAll") : t("draw.act.lockAll")}
@@ -298,6 +326,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       >
         <DrawIcon id={lockedAll ? "lock" : "unlock"} size={ICON} />
       </button>
+      <span className="min-h-0.5 flex-1" />
       <button
         type="button"
         title={hidden ? t("draw.act.showAll") : t("draw.act.hideAll")}
@@ -308,6 +337,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       >
         <DrawIcon id={hidden ? "eyeOff" : "eye"} size={ICON} />
       </button>
+      <span className="min-h-0.5 flex-1" />
       <button
         type="button"
         title={t("draw.act.removeAll")}
@@ -319,16 +349,16 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       >
         <DrawIcon id="trash" size={ICON} />
       </button>
+      <span className="min-h-0.5 flex-1" />
 
-      <div className="mt-auto flex flex-col items-center gap-0.5 pt-1">
-        <div className="mb-1 h-px w-6 shrink-0 bg-[var(--tv3-hair)]" />
-        <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} className={btnBase} onClick={() => controller.undo()}>
-          <DrawIcon id="undo" size={ICON} />
-        </button>
-        <button type="button" title={t("draw.act.redo")} aria-label={t("draw.act.redo")} disabled={!controller.canRedo()} className={btnBase} onClick={() => controller.redo()}>
-          <DrawIcon id="redo" size={ICON} />
-        </button>
-      </div>
+      <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} className={btnBase} onClick={() => controller.undo()}>
+        <DrawIcon id="undo" size={ICON} />
+      </button>
+      <span className="min-h-0.5 flex-1" />
+      <button type="button" title={t("draw.act.redo")} aria-label={t("draw.act.redo")} disabled={!controller.canRedo()} className={btnBase} onClick={() => controller.redo()}>
+        <DrawIcon id="redo" size={ICON} />
+      </button>
+      <span className="min-h-0.5 flex-1" />
 
       {flyout && flyGroup && (
         <div
@@ -364,7 +394,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                           isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
                         }`}
                       >
-                        <DrawIcon id={tool.id} size={24} />
+                        <DrawIcon id={tool.id} size={22} />
                       </button>
                     );
                   })}
@@ -383,7 +413,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                         isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
                       }`}
                     >
-                      <DrawIcon id={tool.id} size={24} />
+                      <DrawIcon id={tool.id} size={22} />
                       <span className="truncate">{t(tool.labelKey)}</span>
                     </button>
                   );

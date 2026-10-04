@@ -34,23 +34,23 @@ export default function CompareLegend({ items, onToggle, onRemove, onColor, onMo
       {items.map((c) => (
         <div
           key={c.id}
-          className={`pointer-events-auto flex items-center gap-1 h-7 pl-1.5 pr-1 rounded-md border border-gray-200 dark:border-[#2a2e39] bg-white/90 dark:bg-[#1e222d]/90 backdrop-blur text-[12px] ${c.visible ? "" : "opacity-60"}`}
+          className={`pointer-events-auto flex items-center gap-1 h-7 pl-1.5 pr-1 rounded-md border border-[var(--tv3-hair)] bg-[var(--tv3-glass)] backdrop-blur text-[12px] ${c.visible ? "" : "opacity-60"}`}
         >
           <ColorPicker value={c.color} onChange={(col) => onColor(c.id, col)} opacity={false} size={16} title={t("cs.cmp.color")} labels={labels} />
-          <span className="font-semibold text-gray-800 dark:text-gray-100 max-w-[110px] truncate">{c.label}</span>
-          {c.loading && <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-[#2962ff] rounded-full animate-spin" />}
+          <span className="font-semibold text-[var(--tv3-text)] max-w-[110px] truncate">{c.label}</span>
+          {c.loading && <span className="inline-block w-3 h-3 border-2 border-[var(--tv3-fill2)] border-t-[var(--tv3-accent)] rounded-full animate-spin" />}
           {c.failed && <span className="text-red-500" title={t("cs.cmp.failed")}>!</span>}
           <button
             onClick={() => onMode(c.id, c.mode === "percent" ? "own" : "percent")}
             title={c.mode === "percent" ? t("cs.cmp.toOwn") : t("cs.cmp.toPercent")}
-            className="h-5 px-1 rounded text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer"
+            className="h-5 px-1 rounded text-[10px] font-medium text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer"
           >
             {c.mode === "percent" ? "%" : t("cs.cmp.own")}
           </button>
-          <button onClick={() => onToggle(c.id)} title={t("cs.cmp.toggle")} className="w-6 h-6 inline-flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+          <button onClick={() => onToggle(c.id)} title={t("cs.cmp.toggle")} className="w-6 h-6 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
             {c.visible ? CS_ICONS.eye : CS_ICONS.eyeOff}
           </button>
-          <button onClick={() => onRemove(c.id)} title={t("cs.cmp.remove")} className="w-6 h-6 inline-flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-[#2a2e39] cursor-pointer">
+          <button onClick={() => onRemove(c.id)} title={t("cs.cmp.remove")} className="w-6 h-6 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
             {CS_ICONS.close}
           </button>
         </div>

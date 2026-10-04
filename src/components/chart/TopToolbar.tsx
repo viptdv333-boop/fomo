@@ -153,10 +153,10 @@ export default function TopToolbar(p: Props) {
 
   // design v3: grey rounded buttons on the white card, the "on" state is a darker grey (not green)
   const btn =
-    "h-8 min-w-8 px-2.5 inline-flex items-center justify-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125 disabled:opacity-40 disabled:cursor-default disabled:hover:brightness-100";
+    "min-h-[27px] px-2.5 py-[5px] inline-flex items-center justify-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] text-[13px] font-semibold shrink-0 transition cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125 disabled:opacity-40 disabled:cursor-default disabled:hover:brightness-100";
   const btnOn = "!bg-[var(--tv3-fill-on)]";
   // icon-only square buttons on the right
-  const ibtn = `${btn} !w-8 !px-0`;
+  const ibtn = `${btn} !h-8 !w-8 !px-0 !py-0`;
   const lbl = "hidden md:inline";
   const badge = (n: number) => (
     <span className="min-w-[17px] h-[17px] px-[3px] rounded-full bg-[var(--tv3-text)] text-[var(--tv3-card)] text-[11px] font-semibold leading-none inline-flex items-center justify-center box-border">{n}</span>
@@ -256,7 +256,7 @@ export default function TopToolbar(p: Props) {
       <span className="flex-1 min-w-2 hidden md:block" />
 
       {p.extra}
-      {p.templates && <TemplatesMenu btn={ibtn} {...p.templates} />}
+      {p.templates && <TemplatesMenu btn={btn} {...p.templates} />}
       {p.onOpenSettings ? (
         <button onClick={p.onOpenSettings} title={t("chart.settings")} className={ibtn}>
           {I.gear}

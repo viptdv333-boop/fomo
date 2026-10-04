@@ -1221,9 +1221,9 @@ export class ChartEngine {
       // labels
       ctx.font = `${fs}px ${ff}`;
       ctx.fillStyle = th.textMuted;
-      ctx.textAlign = "left";
+      ctx.textAlign = "right"; // design: price labels hug the right edge (cw - 6)
       ctx.textBaseline = "middle";
-      const ax = this.axisEdge() + 8;
+      const ax = this.axisEdge() + this.axisW - 6;
       for (const v of ticks) {
         const y = pane.top + this.paneY(pane, v);
         if (y < pane.top + 6 || y > pane.top + pane.height - 6) continue;
@@ -1243,13 +1243,7 @@ export class ChartEngine {
 
     this.drawMainExtras(ctx, from, to);
 
-    // axis border
-    ctx.strokeStyle = th.axisBorder;
-    ctx.beginPath();
-    const abx = this.snap(this.opts.scaleSide === "left" ? 0 : plotW);
-    ctx.moveTo(abx, 0);
-    ctx.lineTo(abx, plotH);
-    ctx.stroke();
+    // axis border: the design has none (the price tags and the soft grid are enough)
 
     // time labels
     ctx.fillStyle = th.textMuted;
@@ -1942,7 +1936,7 @@ export class ChartEngine {
     if (this.opts.showLastPriceLabel) {
       this.axisLabel(ctx, this.fmtAxis(main, price), y, color, "#fff");
       if (this.opts.showSymbolLabel) {
-        const h = Math.max(18, this.opts.scaleFontSize + 7);
+        const h = Math.max(20, this.opts.scaleFontSize + 8);
         this.axisLabel(ctx, this.opts.scaleSymbol || this.opts.symbolLabel, y - h - 1, this.opts.theme.labelBg, this.opts.theme.labelText, main);
       }
     }
@@ -1974,7 +1968,7 @@ export class ChartEngine {
     ctx.save();
     const fs = this.opts.scaleFontSize;
     ctx.font = `600 ${fs}px ${this.opts.fontFamily}`;
-    const h = Math.max(18, fs + 7);
+    const h = Math.max(20, fs + 8); // design: 20px high tags
     const lo = pane ? pane.top : 0;
     const hi = pane ? pane.top + pane.height : this.plotH();
     const top = Math.max(lo, Math.min(hi - h, y - h / 2));
@@ -1985,9 +1979,9 @@ export class ChartEngine {
     else ctx.rect(x0, top, this.axisW, h);
     ctx.fill();
     ctx.fillStyle = fg;
-    ctx.textAlign = "left";
+    ctx.textAlign = "center"; // design: tag text centred
     ctx.textBaseline = "middle";
-    ctx.fillText(text, x0 + 8, top + h / 2 + 0.5);
+    ctx.fillText(text, x0 + this.axisW / 2, top + h / 2 + 0.5);
     ctx.restore();
   }
 
@@ -2024,7 +2018,7 @@ export class ChartEngine {
     const hh = Math.floor(secs / 3600);
     const p = (v: number) => String(v).padStart(2, "0");
     const text = `${p(hh)}:${p(Math.floor((secs % 3600) / 60))}:${p(secs % 60)}`;
-    const h = Math.max(18, this.opts.scaleFontSize + 7);
+    const h = Math.max(20, this.opts.scaleFontSize + 8);
     const th = this.opts.theme;
     this.axisLabel(ctx, text, y + h, th.labelBg, th.labelText, main);
   }
@@ -2210,8 +2204,10 @@ export class ChartEngine {
     ctx.save();
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    let x = 10;
-    const y = pane.top + 8;
+    // design: the status chip sits at (10, 8) with 9px / 4px padding, so its text starts at (19, 12)
+    const x0 = pane.id === "main" ? 19 : 10;
+    let x = x0;
+    const y = pane.top + (pane.id === "main" ? 12 : 8);
     const put = (text: string, color: string, weight = 400, size = 12) => {
       ctx.font = `${weight} ${size}px ${this.opts.fontFamily}`;
       ctx.fillStyle = color;
@@ -2223,8 +2219,8 @@ export class ChartEngine {
     if (pane.id === "main") {
       let cy = y;
       if (st.symbol) {
-        put(`${this.opts.symbolLabel}${this.opts.intervalLabel ? " · " + this.opts.intervalLabel : ""}`, th.text, 700, 13);
-        cy += 18;
+        put(`${this.opts.symbolLabel}${this.opts.intervalLabel ? " · " + this.opts.intervalLabel : ""}`, th.text, 600, 14);
+        cy += 17;
         chipRight = Math.max(chipRight, x - 8);
       }
       const prev = index > 0 ? this.bars[index - 1] : c;
@@ -2233,14 +2229,15 @@ export class ChartEngine {
       const p = (v: number) => formatPrice(v, this.precision, this.opts.locale);
       const showVol = st.volume && this.opts.showVolume;
       if (st.ohlc || st.barChange || st.change || showVol) {
-        x = 10;
-        ctx.font = `12px ${this.opts.fontFamily}`;
+        x = x0;
+        ctx.font = `13px ${this.opts.fontFamily}`;
         const put2 = (label: string, val: string) => {
-          ctx.font = `12px ${this.opts.fontFamily}`;
+          ctx.font = `13px ${this.opts.fontFamily}`;
           ctx.fillStyle = th.textMuted;
           ctx.fillText(label, x, cy);
-          x += ctx.measureText(label).width + 3;
+          x += ctx.measureText(label).width + 4;
           ctx.fillStyle = col;
+          ctx.font = `600 13px ${this.opts.fontFamily}`;
           ctx.fillText(val, x, cy);
           x += ctx.measureText(val).width + 9;
         };
@@ -2259,28 +2256,30 @@ export class ChartEngine {
           if (st.barChange) parts.push(`${sign}${formatPrice(diff, this.precision, this.opts.locale)}`);
           if (st.change) parts.push(st.barChange ? `(${sign}${pct.toFixed(2)}%)` : `${sign}${pct.toFixed(2)}%`);
           const chg = parts.join(" ");
-          ctx.font = `12px ${this.opts.fontFamily}`;
+          ctx.font = `600 13px ${this.opts.fontFamily}`;
           ctx.fillText(chg, x, cy);
           x += ctx.measureText(chg).width + 12;
         }
         if (showVol) {
           ctx.fillStyle = th.textMuted;
+          ctx.font = `13px ${this.opts.fontFamily}`;
           ctx.fillText("Vol", x, cy);
-          x += ctx.measureText("Vol").width + 3;
-          ctx.fillStyle = col;
+          x += ctx.measureText("Vol").width + 4;
+          ctx.fillStyle = th.text;
+          ctx.font = `600 13px ${this.opts.fontFamily}`;
           ctx.fillText(formatVolume(c.v, this.opts.locale), x, cy);
           x += ctx.measureText(formatVolume(c.v, this.opts.locale)).width;
         }
         chipRight = Math.max(chipRight, x);
-        cy += 18;
+        cy += 15;
       }
       // design v3: the status block sits on a soft rounded chip (drawn behind the text already on this layer)
       if (chipRight > 0 && cy > y) {
         ctx.globalCompositeOperation = "destination-over";
         ctx.fillStyle = withAlpha(th.bg, 0.88);
         ctx.beginPath();
-        if (typeof ctx.roundRect === "function") ctx.roundRect(4, y - 4, chipRight + 6, cy - y + 5, 9);
-        else ctx.rect(4, y - 4, chipRight + 6, cy - y + 5);
+        if (typeof ctx.roundRect === "function") ctx.roundRect(10, y - 4, chipRight - 10 + 9, cy - y + 8, 10);
+        else ctx.rect(10, y - 4, chipRight - 10 + 9, cy - y + 8);
         ctx.fill();
         ctx.globalCompositeOperation = "source-over";
       }

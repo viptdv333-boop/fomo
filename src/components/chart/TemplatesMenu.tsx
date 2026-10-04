@@ -15,7 +15,7 @@ interface Props {
   applyLayout: (d: ChartLayoutData) => void;
 }
 
-const field = "h-8 flex-1 min-w-0 rounded border border-gray-300 dark:border-[#363a45] bg-transparent px-2 text-[13px] outline-none focus:border-[#2962ff]";
+const field = "h-8 flex-1 min-w-0 rounded-[9px] border border-[#e5e5ea] dark:border-[#3a3a3c] bg-transparent px-2 text-[13px] outline-none focus:border-[var(--tv3-accent)]";
 
 function Panel({ close, getTemplate, applyTemplate, getLayout, applyLayout }: Omit<Props, "btn"> & { close: () => void }) {
   const { t } = useT();
@@ -58,7 +58,7 @@ function Panel({ close, getTemplate, applyTemplate, getLayout, applyLayout }: Om
   };
 
   const row = (key: string, sub: string | undefined, onApply: () => void, onDelete: () => void) => (
-    <div key={key} className="group flex items-center h-8 pl-3 pr-1 hover:bg-gray-100 dark:hover:bg-[#2a2e39]">
+    <div key={key} className="group flex items-center h-8 pl-3 pr-1 hover:bg-[var(--tv3-fill)]">
       <button
         onClick={() => {
           onApply();
@@ -67,42 +67,42 @@ function Panel({ close, getTemplate, applyTemplate, getLayout, applyLayout }: Om
         className="flex-1 min-w-0 text-left h-full cursor-pointer flex items-baseline gap-2"
         title={t("cs.tpl.apply")}
       >
-        <span className="truncate text-[13px] text-gray-800 dark:text-gray-200">{key}</span>
-        {sub && <span className="text-[11px] text-gray-400 shrink-0">{sub}</span>}
+        <span className="truncate text-[13px] text-[var(--tv3-text)]">{key}</span>
+        {sub && <span className="text-[11px] text-[var(--tv3-muted)] shrink-0">{sub}</span>}
       </button>
-      <button onClick={onDelete} title={t("cs.tpl.delete")} className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-400 hover:text-red-500 cursor-pointer">
+      <button onClick={onDelete} title={t("cs.tpl.delete")} className="w-7 h-7 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:text-red-500 cursor-pointer">
         {CS_ICONS.trash}
       </button>
     </div>
   );
 
-  const label = "px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400";
+  const label = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]";
 
   return (
     <div>
       <div className={label}>{t("cs.tpl.layouts")}</div>
       <div className="flex items-center gap-1.5 px-3 pb-1.5">
         <input value={layoutName} onChange={(e) => setLayoutName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveLayout()} placeholder={t("cs.tpl.namePlaceholder")} maxLength={80} className={field} />
-        <button onClick={saveLayout} disabled={!layoutName.trim()} className="h-8 px-3 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5] disabled:opacity-40 disabled:cursor-default">
+        <button onClick={saveLayout} disabled={!layoutName.trim()} className="h-8 px-3 rounded-[9px] bg-[var(--tv3-accent)] text-white text-[13px] cursor-pointer hover:bg-[var(--tv3-accent-hover)] disabled:opacity-40 disabled:cursor-default">
           {t("cs.tpl.save")}
         </button>
       </div>
-      {layouts.length === 0 && <div className="px-3 pb-1 text-[12px] text-gray-400">{t("cs.tpl.noLayouts")}</div>}
+      {layouts.length === 0 && <div className="px-3 pb-1 text-[12px] text-[var(--tv3-muted)]">{t("cs.tpl.noLayouts")}</div>}
       {layouts.map((i) => row(i.key, `${i.data.ticker} · ${i.data.interval}`, () => applyLayout(i.data), async () => { await deleteUserData(LAYOUT_KIND, i.key); void reload(); }))}
 
-      <div className="my-1 h-px bg-gray-200 dark:bg-[#2a2e39]" />
+      <div className="my-1 h-px bg-[var(--tv3-hair)]" />
       <div className={label}>{t("cs.tpl.templates")}</div>
       <div className="flex items-center gap-1.5 px-3 pb-1">
         <input value={tplName} onChange={(e) => setTplName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveTemplate()} placeholder={t("cs.tpl.namePlaceholder")} maxLength={80} className={field} />
-        <button onClick={saveTemplate} disabled={!tplName.trim()} className="h-8 px-3 rounded bg-[#2962ff] text-white text-[13px] cursor-pointer hover:bg-[#1e53e5] disabled:opacity-40 disabled:cursor-default">
+        <button onClick={saveTemplate} disabled={!tplName.trim()} className="h-8 px-3 rounded-[9px] bg-[var(--tv3-accent)] text-white text-[13px] cursor-pointer hover:bg-[var(--tv3-accent-hover)] disabled:opacity-40 disabled:cursor-default">
           {t("cs.tpl.save")}
         </button>
       </div>
-      <label className="flex items-center gap-2 px-3 pb-1.5 text-[12px] text-gray-600 dark:text-gray-300 cursor-pointer">
-        <input type="checkbox" checked={withDrawings} onChange={(e) => setWithDrawings(e.target.checked)} className="accent-[#2962ff]" />
+      <label className="flex items-center gap-2 px-3 pb-1.5 text-[12px] text-[var(--tv3-text2)] cursor-pointer">
+        <input type="checkbox" checked={withDrawings} onChange={(e) => setWithDrawings(e.target.checked)} className="accent-[var(--tv3-accent)]" />
         {t("cs.tpl.withDrawings")}
       </label>
-      {templates.length === 0 && <div className="px-3 pb-1 text-[12px] text-gray-400">{t("cs.tpl.noTemplates")}</div>}
+      {templates.length === 0 && <div className="px-3 pb-1 text-[12px] text-[var(--tv3-muted)]">{t("cs.tpl.noTemplates")}</div>}
       {templates.map((i) => row(i.key, i.data.drawings ? t("cs.tpl.hasDrawings") : undefined, () => applyTemplate(i.data), async () => { await deleteUserData(TEMPLATE_KIND, i.key); void reload(); }))}
       {msg && <div className="px-3 py-1 text-[12px] text-green-600">{msg}</div>}
     </div>

@@ -9,12 +9,12 @@ import FootprintSettingsButton from "./FootprintSettingsDialog";
 
 const WITH_SETTINGS: ChartType[] = ["baseline", "renko", "kagi", "linebreak", "range", "pnf"];
 
-const field = "h-8 rounded border border-gray-300 dark:border-[#363a45] bg-white dark:bg-[#131722] px-2 text-[13px] outline-none focus:border-[#2962ff]";
+const field = "h-8 rounded-[9px] border border-[#e5e5ea] dark:border-[#3a3a3c] bg-[var(--tv3-card)] px-2 text-[13px] outline-none focus:border-[var(--tv3-accent)]";
 
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 min-h-9">
-      <span className="text-[13px] text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="text-[13px] text-[var(--tv3-text2)]">{label}</span>
       {children}
     </div>
   );
@@ -40,10 +40,10 @@ export default function ChartTypeSettings({ type, api, box, btn, source }: { typ
           {type === "baseline" && (
             <>
               <Line label={t("cs.baselineLevel")}>
-                <span className="text-xs tabular-nums text-gray-500">{Math.round(s.baselinePercent)}%</span>
+                <span className="text-xs tabular-nums text-[var(--tv3-muted)]">{Math.round(s.baselinePercent)}%</span>
               </Line>
-              <input type="range" min={5} max={95} value={s.baselinePercent} onChange={(e) => api.update((x) => ({ ...x, baselinePercent: +e.target.value }))} className="w-full accent-[#2962ff]" />
-              <p className="mt-1 text-[11px] text-gray-400">{t("cs.baselineHint")}</p>
+              <input type="range" min={5} max={95} value={s.baselinePercent} onChange={(e) => api.update((x) => ({ ...x, baselinePercent: +e.target.value }))} className="w-full accent-[var(--tv3-accent)]" />
+              <p className="mt-1 text-[11px] text-[var(--tv3-muted)]">{t("cs.baselineHint")}</p>
             </>
           )}
           {type === "linebreak" && (
@@ -81,7 +81,7 @@ export default function ChartTypeSettings({ type, api, box, btn, source }: { typ
                 </Line>
               )}
               {box > 0 && (
-                <p className="mt-1 text-[11px] text-gray-400">
+                <p className="mt-1 text-[11px] text-[var(--tv3-muted)]">
                   {t("cs.tr.current")}: {box >= 1 ? box.toFixed(2) : box.toPrecision(3)}
                 </p>
               )}

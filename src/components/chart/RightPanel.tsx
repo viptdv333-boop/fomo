@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
@@ -65,8 +65,8 @@ export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?:
   );
 }
 
-/** Rail icons of the design (24 grid, stroke 1.8, shown at 20 px). */
-const rail = (d: string) => ui(<path d={d} />, 20, 1.8);
+/** Rail icons of the design (24 grid, stroke 1.8, shown at 23 px = the design 20 px + 15%). */
+const rail = (d: string) => ui(<path d={d} />, 23, 1.8);
 const tabIcons: Record<PanelTab, ReactNode> = {
   watchlist: rail("M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"),
   info: rail("M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1"),
@@ -277,7 +277,7 @@ const WatchRow = memo(function WatchRow({
           </span>
         </span>
         <Spark values={spark} color={sparkUp ? "var(--tv3-up)" : "var(--tv3-down)"} />
-        <span className="w-[78px] shrink-0 text-right">
+        <span className="w-[86px] shrink-0 text-right">
           <span
             className={`block rounded-sm px-0.5 text-[14px] font-semibold leading-tight tabular-nums transition-colors duration-500 ${
               flash === "up" ? "bg-[var(--tv3-up)]/25" : flash === "down" ? "bg-[var(--tv3-down)]/25" : "bg-transparent"
@@ -961,7 +961,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                       key={tb.id}
                       onClick={() => onTab(tb.id)}
                       title={t(tb.key)}
-                      className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[9px] cursor-pointer ${tab === tb.id ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"}`}
+                      className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[9px] cursor-pointer [&>svg]:h-5 [&>svg]:w-5 ${tab === tb.id ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)]"}`}
                     >
                       {tabIcons[tb.id]}
                     </button>
@@ -1019,28 +1019,32 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
               {tab === "orderbook" && <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} />}
               {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
               {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}
-              {tab !== "calendar" && <div className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5 pb-2.5 pt-2 text-[11px] leading-snug text-[var(--tv3-muted)]">{t("p3.footer")}</div>}
+              {tab !== "calendar" && <div className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5 pb-2.5 pt-2 text-[11px] text-[var(--tv3-muted)]">{t("p3.footer")}</div>}
             </>
           )}
         </div>
 
         {/* icon rail (desktop) */}
-        <div className="hidden md:flex flex-col items-center gap-0.5 w-[46px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
+        <div className="hidden md:flex flex-col items-center w-[58px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
+          <span className="flex-1 min-h-0.5" />
+          {/* icons spread evenly over the card height (flexible spacers shrink to 2px on short screens, then the rail scrolls) */}
           {TABS.map((tb) => {
             const on = open && tab === tb.id;
             return (
-              <button
-                key={tb.id}
-                onClick={() => onTab(tb.id)}
-                title={t(tb.key)}
-                aria-label={t(tb.key)}
-                aria-pressed={on}
-                className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-[10px] cursor-pointer transition-colors ${
-                  on ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
-                }`}
-              >
-                {tabIcons[tb.id]}
-              </button>
+              <Fragment key={tb.id}>
+                <button
+                  onClick={() => onTab(tb.id)}
+                  title={t(tb.key)}
+                  aria-label={t(tb.key)}
+                  aria-pressed={on}
+                  className={`tv3-rbtn shrink-0 flex items-center justify-center rounded-[11px] cursor-pointer transition-colors ${
+                    on ? "text-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
+                  }`}
+                >
+                  {tabIcons[tb.id]}
+                </button>
+                <span className="flex-1 min-h-0.5" />
+              </Fragment>
             );
           })}
         </div>

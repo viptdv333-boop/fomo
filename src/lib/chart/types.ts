@@ -261,7 +261,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   showPrevCloseLine: false,
   showCountdown: false,
   showHighLow: false,
-  scaleFontSize: 11,
+  scaleFontSize: 12,
   marginTop: 8,
   marginBottom: 8,
   rightOffset: 8,
