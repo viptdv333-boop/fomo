@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FMP_KEY = process.env.FMP_API_KEY || "wOf19MzBRcmOUUBXVTQwUecPujpb81JU";
+const FMP_KEY = process.env.FMP_API_KEY || "";
 
 const cache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 15 * 60 * 1000; // 15 min

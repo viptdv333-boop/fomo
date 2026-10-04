@@ -326,20 +326,21 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-gray-700 dark:text-gray-300 [--ind-legend-title:#787b86]">
         {mainUids.length > 0 && (
           <div className="absolute left-2 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: mainTop }}>
-            <div className="pointer-events-auto flex items-center">
+            {!collapsed && mainUids.map(renderRow)}
+            {/* TradingView style: the arrow sits under the list; collapsed it shows how many indicators are hidden */}
+            <div className="pointer-events-auto mt-0.5 flex items-center">
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="flex h-[18px] items-center gap-1 rounded px-1 text-[11px] text-gray-500 hover:bg-white/70 hover:text-gray-900 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2962ff] dark:text-gray-400 dark:hover:bg-[#1e222d]/80 dark:hover:text-white"
+                className="flex h-[22px] items-center gap-1 rounded-md border border-gray-300 bg-white/85 px-1.5 text-[11px] text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2962ff] dark:border-[#2a2e39] dark:bg-[#1e222d]/90 dark:text-gray-300 dark:hover:bg-[#2a2e39] dark:hover:text-white"
                 aria-expanded={!collapsed}
                 title={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                {collapsed ? IND_ICONS.chevronDown(13) : IND_ICONS.chevronUp(13)}
+                {collapsed ? IND_ICONS.chevronDown(14) : IND_ICONS.chevronUp(14)}
                 {collapsed && <span>{t("ind2.lg.count", { n: mainUids.length })}</span>}
               </button>
             </div>
-            {!collapsed && mainUids.map(renderRow)}
           </div>
         )}
         {others.map(([pid, uids]) =>
