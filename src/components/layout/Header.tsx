@@ -79,6 +79,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
             { href: "/terminal", label: t("nav.terminal") },
             { href: "/calendar", label: t("nav.calendar") },
             { href: "/calculator", label: t("nav.calculator") },
+            { href: "/help", label: t("nav.help") },
             // { href: "/messages", label: "Сообщения" },
           ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link
@@ -238,6 +239,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
             { href: "/terminal", label: t("nav.terminal") },
             { href: "/calendar", label: t("nav.calendar") },
             { href: "/calculator", label: t("nav.calculator") },
+            { href: "/help", label: t("nav.help") },
             // { href: "/messages", label: "Сообщения" },
           ].filter((link) => !hiddenPages.includes(link.href.slice(1))).map((link) => (
             <Link
