@@ -446,8 +446,7 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                   </ul>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--tv3-hair)] px-3 py-1.5 text-[11px] text-[var(--tv3-muted)]">
-                <span className="truncate">{t("ind2.multi")}</span>
+              <div className="flex items-center justify-end gap-3 border-t border-[var(--tv3-hair)] px-3 py-1.5 text-[11px] text-[var(--tv3-muted)]">
                 <span className="shrink-0">{t("ind2.onChart", { n: active.length })}</span>
               </div>
             </div>
