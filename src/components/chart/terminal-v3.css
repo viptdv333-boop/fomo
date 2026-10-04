@@ -1,0 +1,79 @@
+/* Terminal redesign "FOMO Terminal Desktop v3": shared tokens (see design/SPEC.md).
+   Everything is scoped under `.tv3`: the terminal page root carries it, and ModalPortal wraps its portaled content in it
+   (portals render outside the page root), so popovers/dialogs get the same variables. Dark follows the site's `html.dark`. */
+.tv3 {
+  --tv3-canvas: #f2f2f7;
+  --tv3-card: #ffffff;
+  --tv3-text: #1c1c1e;
+  --tv3-text2: #3c3c43;
+  --tv3-muted: #8e8e93;
+  --tv3-hair: #e9e9ee;
+  --tv3-hair2: #f0f0f4;
+  --tv3-fill: #f2f2f7;
+  --tv3-fill2: #e9e9ee;
+  --tv3-fill3: #f7f7fa;
+  --tv3-accent: #17804d;
+  --tv3-accent-hover: #0f6038;
+  --tv3-accent-soft: rgba(30, 158, 74, 0.16);
+  --tv3-up: #1e9e4a;
+  --tv3-down: #e5322d;
+  --tv3-blue: #0a84ff;
+  --tv3-orange: #ff9f0a;
+  --tv3-red: #ff3b30;
+  --tv3-purple: #af52de;
+  --tv3-teal: #00b8a9;
+  --tv3-pink: #d63aa8;
+  --tv3-on: #34c759;
+  --tv3-pill-dark: rgba(28, 28, 30, 0.92);
+  --tv3-glass: rgba(255, 255, 255, 0.94);
+  --tv3-shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  --tv3-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.1);
+  --tv3-shadow-tiny: 0 2px 4px rgba(0, 0, 0, 0.25);
+  --tv3-radius-card: 16px;
+  --tv3-radius-ctl: 8px;
+  --tv3-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.dark .tv3 {
+  --tv3-canvas: #0b0b0e;
+  --tv3-card: #1c1c1e;
+  --tv3-text: #f2f2f7;
+  --tv3-text2: #d1d1d6;
+  --tv3-muted: #8e8e93;
+  --tv3-hair: #2c2c2e;
+  --tv3-hair2: #262628;
+  --tv3-fill: #2c2c2e;
+  --tv3-fill2: #3a3a3c;
+  --tv3-fill3: #242426;
+  --tv3-accent: #30d158;
+  --tv3-accent-hover: #4ae071;
+  --tv3-accent-soft: rgba(48, 209, 88, 0.2);
+  --tv3-up: #30c15c;
+  --tv3-down: #ff453a;
+  --tv3-blue: #0a84ff;
+  --tv3-orange: #ff9f0a;
+  --tv3-red: #ff453a;
+  --tv3-purple: #bf5af2;
+  --tv3-teal: #19d3c5;
+  --tv3-pink: #e0457b;
+  --tv3-on: #30d158;
+  --tv3-pill-dark: rgba(58, 58, 60, 0.95);
+  --tv3-glass: rgba(28, 28, 30, 0.92);
+  --tv3-shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --tv3-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.5);
+  --tv3-shadow-tiny: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.tv3 {
+  font-family: var(--tv3-font);
+  color: var(--tv3-text);
+}
+/* hidden scrollbars inside terminal panels (design) */
+.tv3 *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.tv3 * {
+  scrollbar-width: none;
+}
+.tv3 input::placeholder {
+  color: var(--tv3-muted);
+}

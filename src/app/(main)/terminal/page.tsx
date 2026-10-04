@@ -16,6 +16,7 @@ import {
   type ChartSource,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
+import "@/components/chart/terminal-v3.css";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
@@ -100,7 +101,7 @@ export default function TerminalPage() {
   }, []);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-gray-900" style={{ top }}>
+    <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-canvas)]" style={{ top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
       {selected && (
