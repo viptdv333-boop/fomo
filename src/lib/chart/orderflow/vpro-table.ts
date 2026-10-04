@@ -3,13 +3,11 @@ import { formatPrice } from "../format";
 import { indT } from "../indicators/ind-text";
 import { SIZE_PX, type VpCfg, type VpView } from "../indicators/vpro-def";
 import { fmtVolShort } from "../analysis/vprofile";
+import { availableHeight, fitRows, placeTable, tableMetrics, type PlaceIn } from "./vpro-layout";
 
 /* The statistics table of the configurable volume profile (canvas, main pane): Profile High, Value Area High, Point of Control,
    Value Area Low, Profile Low, total volume, average volume per bar, volume MA, number of bars, where the data comes from, delta
    and buy % (real trades only). Pure painting; the overlay layer decides when and where. */
-
-/** Width kept free on the left of a top-right table for the indicator legend, px. */
-const LEGEND_ROOM = 440;
 
 export interface TableRow {
   label: string;
@@ -31,7 +29,40 @@ export function dataFromText(v: VpView): string {
   return indT("vp.d.mixed", "trades in {pct}% of bars, rest ≈", { pct: Math.round(st.realPct) });
 }
 
-export function tableRows(cfg: VpCfg, v: VpView, locale: string): TableRow[] {
+/** One-word value for the "Data From" row of the narrow (phone) table. */
+function dataFromShort(v: VpView): string {
+  const st = v.stats;
+  if (st.kind === "approx") return "≈";
+  if (st.kind === "mixed") return Math.round(st.realPct) > 0 ? `${Math.round(st.realPct)}% + ≈` : "≈";
+  return st.source === "bybit" ? indT("vp.d.bybit", "Bybit") : st.source === "moex" ? indT("vp.d.moex", "MOEX") : indT("vp.ts.real", "real");
+}
+
+/** Short labels for the narrow table: the usual trader abbreviations, so the whole table fits a phone-width plot. */
+function tableRowsShort(cfg: VpCfg, v: VpView, locale: string): TableRow[] {
+  const out: TableRow[] = [];
+  const f = (x: number) => formatPrice(x, v.dec, locale);
+  const r = cfg.rows;
+  const L = v.levels;
+  const st = v.stats;
+  if (r.High) out.push({ label: "High", value: f(L.high) });
+  if (r.Vah) out.push({ label: "VAH", value: f(L.vah) });
+  if (r.Poc) out.push({ label: "POC", value: f(L.poc) });
+  if (r.Val) out.push({ label: "VAL", value: f(L.val) });
+  if (r.Low) out.push({ label: "Low", value: f(L.low) });
+  if (r.Total) out.push({ label: indT("vp.ts.total", "Volume"), value: fmtVolShort(st.total, locale) });
+  if (r.Avg) out.push({ label: indT("vp.ts.avg", "Avg/bar"), value: fmtVolShort(st.avg, locale) });
+  if (r.Ma) out.push({ label: `MA ${cfg.maLen}`, value: fmtVolShort(st.ma, locale) });
+  if (r.Bars) out.push({ label: indT("vp.ts.bars", "Bars"), value: String(st.bars) });
+  if (r.From) out.push({ label: indT("vp.ts.from", "Data"), value: dataFromShort(v) });
+  if (st.kind !== "approx") {
+    if (r.Delta) out.push({ label: "Δ", value: (st.delta > 0 ? "+" : "") + fmtVolShort(st.delta, locale) });
+    if (r.Buy && isFinite(st.buyPct)) out.push({ label: "Buy%", value: st.buyPct.toFixed(1) });
+  }
+  return out;
+}
+
+export function tableRows(cfg: VpCfg, v: VpView, locale: string, narrow = false): TableRow[] {
+  if (narrow) return tableRowsShort(cfg, v, locale);
   const out: TableRow[] = [];
   const f = (x: number) => formatPrice(x, v.dec, locale);
   const r = cfg.rows;
@@ -91,14 +122,9 @@ export function tableColors(cfg: VpCfg, theme: ChartTheme): TableColors {
   return { bg: rgba(cfg.c.vpTblBg, cfg.tblAlpha), text: cfg.c.vpTblText, muted: cfg.c.vpTblText, border: cfg.c.vpTblBorder, sep: rgba(cfg.c.vpTblText, 0.14) };
 }
 
-export interface TablePlace {
-  /** Plot size. */
-  W: number;
-  H: number;
-  /** Space kept free at the top (indicator legend) for the left corner; px. */
-  insetTop: number;
-  /** Space already used in the same corner by earlier tables; px. */
-  stack: number;
+export interface TablePlace extends PlaceIn {
+  /** Phone-width plot: small font, tight spacing, rows cut to the room that is left. */
+  narrow?: boolean;
 }
 
 /**
@@ -106,12 +132,9 @@ export interface TablePlace {
  * Layout follows the TradingView table: label on the left, value on the right, a thin line between rows.
  */
 export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fontFamily: string, cfg: VpCfg, rows: TableRow[], title: string, place: TablePlace): Rect {
-  const fs = SIZE_PX[cfg.tblSize];
+  const narrow = !!place.narrow;
   const col = tableColors(cfg, theme);
-  const compact = cfg.tblCompact;
-  const rowH = Math.round(fs * (compact ? 1.55 : 2.05));
-  const padX = compact ? 5 : 8;
-  const gap = compact ? 8 : 14;
+  const { fontPx: fs, rowH, padX, gap } = tableMetrics(SIZE_PX[cfg.tblSize], cfg.tblCompact, narrow);
   const head = `${cfg.tblCollapsed ? "▸" : "▾"} ${title}`;
   ctx.save();
   ctx.font = `600 ${fs}px ${fontFamily}`;
@@ -119,21 +142,17 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   ctx.font = `${fs}px ${fontFamily}`;
   let lw = 0;
   let vw = 0;
-  const showRows = cfg.tblCollapsed ? [] : rows;
+  let showRows = cfg.tblCollapsed ? [] : rows;
   for (const r of showRows) {
     lw = Math.max(lw, ctx.measureText(r.label).width);
   }
   ctx.font = `600 ${fs}px ${fontFamily}`;
   for (const r of showRows) vw = Math.max(vw, ctx.measureText(r.value).width);
   const w = Math.ceil(Math.max(headW + padX * 2, padX * 2 + lw + gap + vw));
+  // on a phone the table must not grow past the room that is left under the legend: the last rows are dropped
+  if (narrow && showRows.length > 0) showRows = showRows.slice(0, fitRows(showRows.length, rowH, availableHeight(cfg.tblPos, w, place)));
   const h = rowH * (1 + showRows.length);
-  const m = 8;
-  const right = cfg.tblPos === "tr" || cfg.tblPos === "br";
-  const bottom = cfg.tblPos === "br" || cfg.tblPos === "bl";
-  const x = Math.round(right ? place.W - w - m : m);
-  // the legend of the indicators lives at the top left: a table that would reach over it goes below it
-  const belowLegend = !bottom && (!right || place.W - w - m < LEGEND_ROOM);
-  const y = Math.round(bottom ? place.H - h - m - place.stack : (belowLegend ? place.insetTop : m) + place.stack);
+  const { x, y } = placeTable(cfg.tblPos, w, h, place);
   // background and frame
   if (col.soft && typeof ctx.roundRect === "function") {
     // design v3: white rounded card, soft shadow, grey header strip

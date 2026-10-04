@@ -7,14 +7,15 @@ import { indT } from "../indicators/ind-text";
 import { getVpView, readVpCfg, type VpView } from "../indicators/vpro-def";
 import { formatChartTime } from "../analysis/vprofile";
 import { paintTable, tableRows, type Rect } from "./vpro-table";
+import { isNarrowPlot, narrowCorner, VP_TABLE_MIN_WIDTH } from "./vpro-layout";
 
 /* Overlay of the configurable volume profile ("vprofile_pro"): the statistics table (click to collapse), the draggable edges of the
    profile's bar range, and the click-to-place anchor of the "from a point" range (same mechanics as the Anchored VWAP layer).
    The histogram and the level lines are painted by the indicator itself; both read the profile through getVpView(). */
 
 const ID = "vprofile_pro";
-/** The table is hidden when the plot is narrower than this. */
-export const VP_TABLE_MIN_WIDTH = 380;
+/** A plot narrower than this (a phone) gets the compact chip table instead of the full one. */
+export { VP_TABLE_MIN_WIDTH };
 
 type Edge = "start" | "end";
 
@@ -33,6 +34,8 @@ export class VpLayer implements OverlayLayer {
   private hits = new Map<string, Hit>();
   private hoverEdge: { uid: string; edge: Edge } | null = null;
   private hoverTable: string | null = null;
+  /** Narrow (phone) plots show the table as a chip; the uids whose chip is opened right now (not saved with the indicator). */
+  private narrowOpen = new Set<string>();
   private drag: { uid: string; edge: Edge; last: number } | null = null;
   private legendSig = new Map<string, string>();
   private notifyRaf = 0;
@@ -155,17 +158,21 @@ export class VpLayer implements OverlayLayer {
         }
       }
       /* statistics table */
-      if (cfg.table && W >= VP_TABLE_MIN_WIDTH) {
-        const rows = tableRows(cfg, view, engine.opts.locale);
-        const title = `${indT("vp.t.title", "Volume Profile")} · ${cfg.opts.valueArea}%`;
-        const corner = cfg.tblPos;
-        const rect = paintTable(ctx, theme, font, cfg, rows, title, { W, H, insetTop, stack: stack[corner] });
+      if (cfg.table) {
+        const narrow = isNarrowPlot(W);
+        const rows = tableRows(cfg, view, engine.opts.locale, narrow);
+        const title = narrow ? `VP ${cfg.opts.valueArea}%` : `${indT("vp.t.title", "Volume Profile")} · ${cfg.opts.valueArea}%`;
+        // phone: a chip that opens on tap (the saved "collapsed" flag is for the wide table), on the side away from the histogram
+        const tcfg = narrow ? { ...cfg, tblCollapsed: !this.narrowOpen.has(it.uid), tblPos: narrowCorner(cfg.tblPos, cfg.placement) } : cfg;
+        const corner = tcfg.tblPos;
+        const rect = paintTable(ctx, theme, font, tcfg, rows, title, { W, H, insetTop, stack: stack[corner], narrow });
         stack[corner] += rect.h + 6;
         hit.table = rect;
       }
       idx++;
     }
     for (const k of Array.from(this.hits.keys())) if (!seen.has(k)) this.hits.delete(k);
+    for (const k of Array.from(this.narrowOpen)) if (!seen.has(k)) this.narrowOpen.delete(k);
 
     /* anchor placement in progress */
     const p = this.pending();
@@ -258,7 +265,9 @@ export class VpLayer implements OverlayLayer {
   private tableAt(x: number, y: number): string | null {
     for (const [uid, h] of this.hits) {
       const t = h.table;
-      if (t && x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h) return uid;
+      // a finger needs a bigger target than a mouse: the phone chip is only ~16 px high
+      const pad = this.engine && isNarrowPlot(this.engine.getPlotSize().width) ? 8 : 0;
+      if (t && x >= t.x - pad && x <= t.x + t.w + pad && y >= t.y - pad && y <= t.y + t.h + pad) return uid;
     }
     return null;
   }
@@ -305,7 +314,10 @@ export class VpLayer implements OverlayLayer {
     const uidT = this.tableAt(p.x, p.y);
     if (uidT) {
       const inst = this.list().find((i) => i.uid === uidT);
-      if (inst) this.controller.update(uidT, { params: { vpTblCollapsed: !inst.params.vpTblCollapsed } });
+      if (inst && eng && isNarrowPlot(eng.getPlotSize().width)) {
+        if (!this.narrowOpen.delete(uidT)) this.narrowOpen.add(uidT);
+        eng.requestOverlayRedraw();
+      } else if (inst) this.controller.update(uidT, { params: { vpTblCollapsed: !inst.params.vpTblCollapsed } });
       return true;
     }
     const e = this.edgeAt(p.x, p.y, touch);

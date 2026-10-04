@@ -160,6 +160,12 @@ const rows: [string, string, string, string][] = [
   ["vp.t.from", "Данные", "Data From", "数据来源"],
   ["vp.t.delta", "Дельта", "Delta", "Delta"],
   ["vp.t.buy", "Покупки, %", "Buy %", "买入 %"],
+  /* short labels of the phone-width table */
+  ["vp.ts.total", "Объём", "Volume", "成交量"],
+  ["vp.ts.avg", "Ср./бар", "Avg/bar", "均量/根"],
+  ["vp.ts.bars", "Баров", "Bars", "K线数"],
+  ["vp.ts.from", "Данные", "Data", "数据"],
+  ["vp.ts.real", "сделки", "real", "成交"],
   ["vp.d.real", "реальные сделки {src}", "real trades {src}", "真实成交 {src}"],
   ["vp.d.approx", "≈ оценка по свечам", "≈ candle estimate", "≈ K线估算"],
   ["vp.d.mixed", "сделки {pct}% баров, остальное ≈", "trades in {pct}% of bars, rest ≈", "{pct}% K线为成交, 其余 ≈"],
