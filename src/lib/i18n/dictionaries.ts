@@ -27,6 +27,7 @@ export const ru: Record<string, string> = {
 
   // Feed
   "feed.title": "Доска",
+  "feed.publish": "Разместить",
   "feed.subtitle": "Идеи и аналитика от профессиональных трейдеров",
   "feed.paid": "Платные",
   "feed.free": "Бесплатные",
@@ -149,6 +150,7 @@ export const en: Record<string, string> = {
   "profile.logout": "Log out",
 
   "feed.title": "Board",
+  "feed.publish": "Post",
   "feed.subtitle": "Ideas and analytics from professional traders",
   "feed.paid": "Paid",
   "feed.free": "Free",
@@ -264,6 +266,7 @@ export const cn: Record<string, string> = {
   "profile.logout": "退出",
 
   "feed.title": "主页",
+  "feed.publish": "发布",
   "feed.subtitle": "专业交易员的想法和分析",
   "feed.paid": "付费",
   "feed.free": "免费",
