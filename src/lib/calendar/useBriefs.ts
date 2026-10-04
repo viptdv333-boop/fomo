@@ -39,13 +39,17 @@ const snapshot = () => gl;
 const serverSnapshot = () => null;
 
 /** The brief of an event, or null (no text for it, MOEX, not Russian). Needs the glossary loaded. */
+const OBVIOUS = /stocks|storage|inventor|rig count/i;
+/** Energy inventories and rig counts need no comment: «how stocks affect oil» is clear from the title. */
+const isInventory = (ev: CalEvent) => (ev.tags ?? []).some((t) => t === "oil" || t === "gas") && OBVIOUS.test(ev.eventEn ?? "");
+
 export function briefOf(g: Glossary | null, ev: CalEvent, locale: string): string | null {
-  if (!g || locale !== "ru" || ev.category === "moex") return null;
+  if (!g || locale !== "ru" || ev.category === "moex" || isInventory(ev)) return null;
   return g.glossaryBrief(ev.gk ?? `~${ev.category}`, locale);
 }
 
 /** Whether an event can have a brief at all (so a row can reserve its line while the glossary chunk is still loading). */
-export const mayHaveBrief = (ev: CalEvent, locale: string) => locale === "ru" && ev.category !== "moex";
+export const mayHaveBrief = (ev: CalEvent, locale: string) => locale === "ru" && ev.category !== "moex" && !isInventory(ev);
 
 /**
  * `get(ev)` returns the brief of an event (null when there is none); `ready` is false until the glossary chunk has arrived.
