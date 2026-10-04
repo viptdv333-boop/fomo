@@ -34,6 +34,9 @@ export const prismaLinkStore: LinkStore = {
         attempts: 0,
         failCount: 0,
         lastError: null,
+        // The deep link goes through the SITE bot: drop a previously stored own-bot
+        // token so the adapter does not send the new chat's messages via the old bot.
+        secret: null,
       },
     });
     return r.count === 1;

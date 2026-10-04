@@ -100,6 +100,20 @@ async function main() {
       m = mockFetch(() => ({ throws: new Error("fetch failed") }));
       globalThis.fetch = m.f;
       eq("telegram: network error = transient", (await telegram.send({ id: "c", userId: "u", address: "555" }, msg)).permanent, undefined);
+      // own bot: the row's token wins over TELEGRAM_BOT_TOKEN; no secret -> env token (site bot)
+      m = mockFetch(() => ({ json: { ok: true, result: {} } }));
+      globalThis.fetch = m.f;
+      await telegram.send({ id: "c", userId: "u", address: "555", secret: "777777:OWN_bot_token_OWN_bot_token_1234567" }, msg);
+      eq("telegram own bot: row token used in the URL", m.calls[0].url, "https://tg.example.test/bot777777:OWN_bot_token_OWN_bot_token_1234567/sendMessage");
+      eq("telegram: always configured (own-bot mode), site bot flag follows env", [telegram.isConfigured(), telegram.siteBotConfigured()], [true, true]);
+      m = mockFetch(() => ({ throws: new Error("request to https://tg.example.test/bot777777:OWN_bot_token_OWN_bot_token_1234567/sendMessage failed") }));
+      globalThis.fetch = m.f;
+      const leak = await telegram.send({ id: "c", userId: "u", address: "555", secret: "777777:OWN_bot_token_OWN_bot_token_1234567" }, msg);
+      eq("telegram own bot: token redacted from errors", [leak.ok, String(leak.error).includes("OWN_bot_token")], [false, false]);
+      m = mockFetch(() => ({ status: 401, json: { ok: false, error_code: 401, description: "Unauthorized" } }));
+      globalThis.fetch = m.f;
+      eq("telegram own bot: revoked token (401) = permanent", (await telegram.send({ id: "c", userId: "u", address: "555", secret: "777777:OWN_bot_token_OWN_bot_token_1234567" }, msg)).permanent, true);
+      eq("telegram site bot: 401 is not marked permanent", (await telegram.send({ id: "c", userId: "u", address: "555" }, msg)).permanent, false);
       eq("telegram: permanent classifier", [telegram.isPermanentTelegramError(400, "Bad Request: chat not found"), telegram.isPermanentTelegramError(400, "Bad Request: can't parse entities"), telegram.isPermanentTelegramError(502, "")], [true, false, false]);
     } finally {
       globalThis.fetch = realFetch;

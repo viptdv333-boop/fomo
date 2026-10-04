@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getT, tFor } from "@/lib/i18n/server";
 import { renderNotifText, type NotifText } from "@/lib/notifications";
 import { escapeTelegramHtml, tgCall } from "@/lib/tg-transport";
+import { isEnabled, type EventId } from "@/lib/notification-events";
 
 // Transport (relay / proxy / escaping) lives in tg-transport.ts so the site-bot
 // notification channel can share it without pulling next/headers.
@@ -112,7 +113,12 @@ async function deliverToUser(userId: string, text: NotifText, locale: string | u
 
 /// `text`: a plain string (already HTML-escaped by the caller) or
 /// `{ key, vars }` with RAW vars — escaped per value in deliverToUser.
-export async function notifyChannelTelegramSubscribers(tariffId: string, text: NotifText): Promise<void> {
+///
+/// `opts.dedupeEvent`: the caller ALSO runs the preference-aware dispatcher for this
+/// event (notifyChannelSubscribers). A subscriber whose Telegram channel in Notification
+/// settings is connected, on and enabled for that event, with the SAME bot and chat as the
+/// legacy account, already gets it there — skip the legacy copy so they get one message.
+export async function notifyChannelTelegramSubscribers(tariffId: string, text: NotifText, opts: { dedupeEvent?: EventId } = {}): Promise<void> {
   const tariff = await prisma.subscriptionTariff.findUnique({
     where: { id: tariffId },
     select: {
@@ -131,16 +137,41 @@ export async function notifyChannelTelegramSubscribers(tariffId: string, text: N
   // подписчик собственного канала, поэтому не попадает в список выше.
   if (tariff.authorTelegramNotify) recipientIds.push(tariff.authorId);
 
+  let recipients = [...new Set(recipientIds)];
+  if (opts.dedupeEvent && recipients.length > 0) {
+    const event = opts.dedupeEvent;
+    const [legacy, channels, prefs] = await Promise.all([
+      prisma.telegramAccount.findMany({ where: { userId: { in: recipients } }, select: { userId: true, botToken: true, chatId: true } }),
+      prisma.notificationChannel.findMany({
+        where: { userId: { in: recipients }, channel: "telegram", verified: true, enabled: true, secret: { not: null } },
+        select: { userId: true, address: true, secret: true },
+      }),
+      prisma.notificationPref.findMany({ where: { userId: { in: recipients }, event, channel: "telegram" }, select: { userId: true, event: true, channel: true, enabled: true } }),
+    ]).catch(() => [[], [], []] as [never[], never[], never[]]);
+    const acc = new Map(legacy.map((a) => [a.userId, a]));
+    const prefByUser = new Map(prefs.map((p) => [p.userId, { [`${p.event}:${p.channel}`]: p.enabled }]));
+    const covered = new Set(
+      channels
+        .filter((c) => {
+          const a = acc.get(c.userId);
+          // The author is not a dispatcher recipient of their own post.
+          return a && c.userId !== tariff.authorId && a.botToken === c.secret && a.chatId === c.address && isEnabled(event, "telegram", prefByUser.get(c.userId));
+        })
+        .map((c) => c.userId)
+    );
+    recipients = recipients.filter((id) => !covered.has(id));
+  }
+
   const locales = new Map<string, string>();
   // Always loaded (one query): even a plain-string message needs the
   // recipient's language for a translated lastError fallback.
-  if (recipientIds.length > 0) {
+  if (recipients.length > 0) {
     const users = await prisma.user.findMany({
-      where: { id: { in: [...new Set(recipientIds)] } },
+      where: { id: { in: recipients } },
       select: { id: true, locale: true },
     });
     for (const u of users) locales.set(u.id, u.locale);
   }
 
-  await Promise.all(recipientIds.map((userId) => deliverToUser(userId, text, locales.get(userId))));
+  await Promise.all(recipients.map((userId) => deliverToUser(userId, text, locales.get(userId))));
 }

@@ -505,7 +505,9 @@ export async function POST(request: NextRequest) {
     await notifyChannelTelegramSubscribers(
       tariffId,
       // Raw vars: telegram.ts escapes them per recipient.
-      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } }
+      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } },
+      // notifyChannelSubscribers above already delivers this event via Notification settings.
+      { dedupeEvent: "new_post_in_subscribed_channel" }
     ).catch(() => {});
   }
 

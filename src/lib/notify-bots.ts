@@ -56,7 +56,8 @@ export async function handleBotStart(input: {
 /** The user blocked / stopped the bot: switch the channel off so we stop trying. */
 export async function markChannelBlocked(channel: ExternalChannel, address: string, reason: string) {
   await prisma.notificationChannel.updateMany({
-    where: { channel, address },
+    // secret = a user's own Telegram bot: blocking the SITE bot (same private chat id) must not switch it off.
+    where: { channel, address, secret: null },
     data: { enabled: false, lastError: reason.slice(0, 200) },
   });
 }

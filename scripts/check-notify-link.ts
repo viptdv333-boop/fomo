@@ -6,6 +6,7 @@ import {
   checkSecret,
   consumeLinkToken,
   hashSecret,
+  isTelegramBotToken,
   looksLikeToken,
   newCode,
   newLinkToken,
@@ -92,6 +93,10 @@ async function main() {
     eq("race: exactly one of two concurrent uses succeeds", [x.ok, y.ok].filter(Boolean).length, 1);
     eq("race: the loser is told 'used' or 'unknown'", [x, y].filter((r) => !r.ok).map((r) => (r as any).reason).every((r) => r === "used" || r === "unknown"), true);
   }
+
+  /* ---- Telegram own-bot token shape ---- */
+  eq("bot token: real-looking token accepted", isTelegramBotToken("123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw0"), true);
+  eq("bot token: junk rejected", ["", "abc", "123:short", "123456789:AAH/../etc", "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw0" + String.fromCharCode(10), " 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw0", 5, null].map(isTelegramBotToken), [false, false, false, false, false, false, false, false]);
 
   /* ---- bot update helpers ---- */
   eq("start text: with token", tokenFromStartText("/start abcDEF123_-xyzabcdef1234"), "abcDEF123_-xyzabcdef1234");

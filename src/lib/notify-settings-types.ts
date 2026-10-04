@@ -15,6 +15,10 @@ export interface ChannelState {
   enabled: boolean;
   lastError: string | null;
   lastSentAt: string | null;
+  /** telegram only: the row uses the user's own bot (its token is stored server-side, never returned) */
+  ownBot?: boolean;
+  /** telegram only: the optional site bot (TELEGRAM_BOT_TOKEN + USERNAME) is available as an alternative */
+  siteBot?: boolean;
   /** a code / deep link is waiting to be confirmed until this moment */
   pendingUntil: string | null;
 }

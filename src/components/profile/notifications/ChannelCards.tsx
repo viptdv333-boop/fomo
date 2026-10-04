@@ -306,7 +306,7 @@ function EmailCard(p: CardProps & { accountEmail: string | null }) {
 // Telegram / MAX / VK — deep link
 // ---------------------------------------------------------------------------
 
-function DeepLinkCard(p: CardProps & { channel: "telegram" | "max" | "vk"; openLabelKey: string; hintKey: string; extra?: React.ReactNode }) {
+function DeepLinkCard(p: CardProps & { channel: "max" | "vk"; openLabelKey: string; hintKey: string; extra?: React.ReactNode }) {
   const { t } = useT();
   const { st, api, reload, channel } = p;
   const { busy, msg, setMsg, run } = useAction();
@@ -383,6 +383,203 @@ function DeepLinkCard(p: CardProps & { channel: "telegram" | "max" | "vk"; openL
           <Note msg={msg} />
         </>
       )}
+      {p.extra}
+    </CardShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Telegram — the user's OWN bot (no server config needed)
+// ---------------------------------------------------------------------------
+
+const TG_TOKEN_RE = /^\d{6,}:[A-Za-z0-9_-]{30,}$/;
+const TG_POLL_MS = 5000;
+
+function TelegramCard(p: CardProps & { extra?: React.ReactNode }) {
+  const { t } = useT();
+  const { st, api, reload } = p;
+  const { busy, msg, setMsg, run } = useAction();
+  const [token, setToken] = useState("");
+  const [changing, setChanging] = useState(false);
+  const [siteLink, setSiteLink] = useState<string | null>(null);
+
+  const botName = st.ownBot && st.label ? st.label.replace(/^@/, "") : "";
+  const waitingOwn = st.status === "pending" && st.ownBot && Boolean(botName);
+  const waitingSite = (st.status === "pending" && !st.ownBot) || Boolean(siteLink && !st.verified);
+  const showSetup = (!st.verified && !waitingOwn && !waitingSite) || changing;
+
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
+  // After "Check": poll for the Start press (own bot: we resolve the chat id ourselves).
+  useEffect(() => {
+    if (!waitingOwn) return;
+    let stop = false;
+    const id = setInterval(async () => {
+      if (stop || document.hidden) return;
+      const r = await apiRef.current.confirmTelegram();
+      if (!stop && r.ok && r.verified) {
+        setMsg(r.testError ? { kind: "err", text: t("ns.tg.bot.connectedNoTest", { reason: r.testError }) } : { kind: "ok", text: t("ns.tg.bot.connected") });
+        await reloadRef.current();
+      }
+    }, TG_POLL_MS);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingOwn]);
+
+  // Site bot (optional): its webhook completes the link, we only watch the status.
+  useEffect(() => {
+    if (!waitingSite) return;
+    const id = setInterval(() => void reloadRef.current(), 4000);
+    return () => clearInterval(id);
+  }, [waitingSite]);
+  useEffect(() => {
+    if (st.verified) {
+      setSiteLink(null);
+      setChanging(false);
+    }
+  }, [st.verified]);
+
+  const tokenOk = TG_TOKEN_RE.test(token.trim());
+
+  const check = () =>
+    run(async () => {
+      const r = await api.start("telegram", { botToken: token.trim() });
+      if (!r.ok) {
+        setMsg({ kind: "err", text: r.error ?? "" });
+        return;
+      }
+      setToken("");
+      setChanging(false);
+      setMsg({ kind: "ok", text: t("ns.tg.bot.found", { bot: r.botUsername ?? "" }) });
+      await reload();
+    });
+
+  const pressed = () =>
+    run(async () => {
+      const r = await api.confirmTelegram();
+      if (!r.ok) {
+        setMsg({ kind: "err", text: r.error ?? "" });
+        return;
+      }
+      setMsg(r.testError ? { kind: "err", text: t("ns.tg.bot.connectedNoTest", { reason: r.testError }) } : { kind: "ok", text: t("ns.tg.bot.connected") });
+      await reload();
+    });
+
+  const connectSite = () =>
+    run(async () => {
+      const r = await api.start("telegram");
+      if (!r.ok || !r.deepLink) {
+        setMsg({ kind: "err", text: r.error ?? "" });
+        return;
+      }
+      setSiteLink(r.deepLink);
+      try {
+        window.open(r.deepLink, "_blank", "noopener,noreferrer");
+      } catch {
+        /* popup blocked — the visible button below does the same */
+      }
+      await reload();
+    });
+
+  const cancel = () =>
+    run(async () => {
+      await api.remove("telegram");
+      setSiteLink(null);
+      setChanging(false);
+      await reload();
+    });
+
+  const muted = "text-xs text-gray-500 dark:text-gray-400";
+  const linkCls = "font-medium text-green-700 underline hover:no-underline dark:text-green-400";
+
+  return (
+    <CardShell channel="telegram" name={t("ns.ch.telegram")} desc={t("ns.ch.telegram.d")} badge={<StatusBadge st={st} />} toggle={<EnableToggle {...p} />}>
+      {st.verified && !changing && (
+        <ConnectedFooter {...p} extra={<button type="button" className={btnGhost} disabled={busy} onClick={() => setChanging(true)}>{t("ns.tg.bot.changeBot")}</button>} />
+      )}
+
+      {showSetup && (
+        <div className="flex flex-col gap-2">
+          <p className={muted}>
+            {t("ns.tg.bot.step1")}{" "}
+            <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className={linkCls}>{t("ns.tg.bot.openBotFather")}</a>
+          </p>
+          <label htmlFor="ns-tg-token" className={muted}>{t("ns.tg.bot.step2")}</label>
+          <div className="flex gap-2">
+            <input
+              id="ns-tg-token"
+              type="password"
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              className={`${inputCls} font-mono`}
+              aria-label={t("ns.tg.bot.tokenLabel")}
+              placeholder={t("ns.tg.bot.tokenPlaceholder")}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && tokenOk && !busy) void check();
+              }}
+            />
+            <button type="button" className={btnPrimary} disabled={busy || !tokenOk} onClick={check}>{t("ns.tg.bot.check")}</button>
+          </div>
+          <p className={muted}>{t("ns.tg.bot.privacy")}</p>
+          <div className="flex flex-wrap gap-2">
+            {changing && (
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => {
+                  setChanging(false);
+                  setToken("");
+                  setMsg(null);
+                }}
+              >
+                {t("ns.btn.cancel")}
+              </button>
+            )}
+            {!changing && st.siteBot && (
+              <button type="button" className={btnGhost} disabled={busy} onClick={connectSite}>{t("ns.tg.bot.siteBot")}</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {waitingOwn && !changing && (
+        <div className="flex flex-col gap-2">
+          <p className={muted}>{t("ns.tg.bot.step3", { bot: botName })}</p>
+          <p className={muted}>{t("ns.tg.bot.step4")}</p>
+          <div className="flex flex-wrap gap-2">
+            <a href={`https://t.me/${botName}`} target="_blank" rel="noopener noreferrer" className={btnGhost}>{t("ns.tg.bot.openBot", { bot: botName })}</a>
+            <button type="button" className={btnPrimary} disabled={busy} onClick={pressed}>{t("ns.tg.bot.pressed")}</button>
+            <button type="button" className={btnGhost} disabled={busy} onClick={cancel}>{t("ns.tg.bot.otherToken")}</button>
+          </div>
+          <p className={muted}>{t("ns.tg.bot.auto")}</p>
+        </div>
+      )}
+
+      {waitingSite && !changing && (
+        <div className="flex flex-col gap-2">
+          <p className={muted}>{t("ns.link.waiting")}</p>
+          <div className="flex flex-wrap gap-2">
+            {siteLink ? (
+              <a href={siteLink} target="_blank" rel="noopener noreferrer" className={btnPrimary}>{t("ns.btn.openTelegram")}</a>
+            ) : (
+              <button type="button" className={btnPrimary} disabled={busy} onClick={connectSite}>{t("ns.btn.connect")}</button>
+            )}
+            <button type="button" className={btnGhost} onClick={() => void reload()}>{t("ns.link.refresh")}</button>
+            <button type="button" className={btnGhost} disabled={busy} onClick={cancel}>{t("ns.btn.cancel")}</button>
+          </div>
+        </div>
+      )}
+
+      <Note msg={msg} />
       {p.extra}
     </CardShell>
   );
@@ -647,7 +844,7 @@ export default function ChannelCards({
   data: SettingsResponse;
   api: NotifApi;
   reload: () => Promise<void>;
-  /** the legacy "my own Telegram bot" settings, rendered collapsed inside the Telegram card */
+  /** the legacy TelegramAccount block (only shown to users who still have one), rendered under the Telegram card */
   ownBot?: React.ReactNode;
 }) {
   const { t } = useT();
@@ -661,21 +858,7 @@ export default function ChannelCards({
       <div className="grid gap-3 md:grid-cols-2">
         <WebPushCard data={data} api={api} reload={reload} />
         <EmailCard {...common("email")} accountEmail={data.accountEmail} />
-        <DeepLinkCard
-          {...common("telegram")}
-          channel="telegram"
-          openLabelKey="ns.btn.openTelegram"
-          hintKey="ns.tg.hint"
-          extra={
-            ownBot ? (
-              <details className="group rounded-lg border border-dashed border-gray-200 p-2 text-xs dark:border-gray-700">
-                <summary className="cursor-pointer select-none font-medium text-gray-600 dark:text-gray-300">{t("ns.tg.own.title")}</summary>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">{t("ns.tg.own.desc")}</p>
-                <div className="mt-2">{ownBot}</div>
-              </details>
-            ) : null
-          }
-        />
+        <TelegramCard {...common("telegram")} extra={ownBot} />
         <WhatsAppCard {...common("whatsapp")} />
         <DeepLinkCard {...common("max")} channel="max" openLabelKey="ns.btn.openMax" hintKey="ns.max.hint" />
         <DeepLinkCard {...common("vk")} channel="vk" openLabelKey="ns.btn.openVk" hintKey="ns.vk.hint" />

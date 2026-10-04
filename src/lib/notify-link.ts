@@ -32,6 +32,13 @@ export function looksLikeToken(s: unknown): s is string {
   return typeof s === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(s);
 }
 
+/** Shape of a Telegram bot token from @BotFather: "<bot id>:<35-char secret>". */
+export const TELEGRAM_BOT_TOKEN_RE = /^\d{6,}:[A-Za-z0-9_-]{30,}$/;
+
+export function isTelegramBotToken(s: unknown): s is string {
+  return typeof s === "string" && s.length <= 100 && TELEGRAM_BOT_TOKEN_RE.test(s);
+}
+
 export function safeEqualHex(a: string, b: string): boolean {
   const ba = Buffer.from(a, "hex");
   const bb = Buffer.from(b, "hex");

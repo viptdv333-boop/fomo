@@ -20,6 +20,17 @@ export interface StartResult {
   codeSent?: boolean;
   verified?: boolean;
   secret?: string;
+  /** telegram own bot: @name (without @) of the checked bot and its t.me link */
+  botUsername?: string;
+  botLink?: string;
+}
+
+export interface TelegramConfirmResult {
+  ok: boolean;
+  verified?: boolean;
+  error?: string;
+  /** connected, but the welcome test message could not be delivered */
+  testError?: string;
 }
 
 export interface NotifApi {
@@ -27,6 +38,8 @@ export interface NotifApi {
   patch(body: PatchBody): Promise<SettingsResponse>;
   start(channel: ExternalChannel, body?: Record<string, unknown>): Promise<StartResult>;
   confirm(channel: ExternalChannel, code: string): Promise<{ ok: boolean; error?: string }>;
+  /** Telegram own bot: "I pressed Start" — find the chat id, verify the channel, send a test message. */
+  confirmTelegram(): Promise<TelegramConfirmResult>;
   test(channel: ExternalChannel | "webpush"): Promise<{ ok: boolean; error?: string }>;
   setEnabled(channel: ExternalChannel, enabled: boolean): Promise<{ ok: boolean; error?: string }>;
   remove(channel: ExternalChannel): Promise<{ ok: boolean }>;
@@ -69,6 +82,10 @@ export const realApi: NotifApi = {
   async confirm(channel, code) {
     const r = await send("POST", `${BASE}/channels/${channel}/confirm`, { code });
     return r.ok ? { ok: true } : { ok: false, error: r.data?.error || `HTTP ${r.status}` };
+  },
+  async confirmTelegram() {
+    const r = await send("POST", `${BASE}/channels/telegram/confirm`, {});
+    return r.ok ? { ok: true, verified: Boolean(r.data?.verified), testError: r.data?.testError } : { ok: false, error: r.data?.error || `HTTP ${r.status}` };
   },
   async test(channel) {
     const r = await send("POST", `${BASE}/channels/${channel}/test`);

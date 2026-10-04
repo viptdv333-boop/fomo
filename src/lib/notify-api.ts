@@ -5,6 +5,7 @@ import { getT } from "@/lib/i18n/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { EXTERNAL_CHANNELS, isExternalChannel, type ExternalChannel } from "@/lib/notification-events";
 import { ADAPTERS } from "@/lib/notify-channels";
+import { siteBotConfigured } from "@/lib/notify-channels/telegram";
 import { isPushConfigured } from "@/lib/push";
 import { channelStatus, maskAddress } from "@/lib/notify-link";
 import type { ChannelState, SettingsResponse } from "@/lib/notify-settings-types";
@@ -56,6 +57,8 @@ export async function loadSettings(userId: string): Promise<SettingsResponse> {
       enabled: Boolean(row?.enabled),
       lastError: row?.lastError ?? null,
       lastSentAt: row?.lastSentAt?.toISOString() ?? null,
+      // Telegram only: connected through the user's own bot (token in `secret`, which is never sent to the client) / site bot also available.
+      ...(channel === "telegram" ? { ownBot: Boolean(row?.secret), siteBot: siteBotConfigured() } : {}),
       pendingUntil: row && !row.verified && row.linkExpiresAt && row.linkExpiresAt.getTime() > now ? row.linkExpiresAt.toISOString() : null,
     };
   });

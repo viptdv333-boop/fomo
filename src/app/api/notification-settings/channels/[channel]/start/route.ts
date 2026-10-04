@@ -5,6 +5,8 @@ import { getT } from "@/lib/i18n/server";
 import { limited, parseChannelParam, requireUserId, unauthorized } from "@/lib/notify-api";
 import { ADAPTERS } from "@/lib/notify-channels";
 import * as whatsapp from "@/lib/notify-channels/whatsapp";
+import * as telegram from "@/lib/notify-channels/telegram";
+import { startOwnBot } from "@/lib/notify-own-bot";
 import { sendNotificationEmailCode } from "@/lib/email";
 import { connectAccountEmail, newWebhookSecret, startCode, startDeepLink } from "@/lib/notify-connect";
 import { sendThroughChannel } from "@/lib/notify-dispatch";
@@ -16,6 +18,9 @@ const stripAt = (s: string | undefined) => (s ?? "").replace(/^@/, "").trim();
 
 /**
  * POST — begin connecting a channel.
+ *   telegram            : { botToken } — the user's OWN bot (no server config needed): the token is checked with getMe,
+ *                         returns { botUsername, botLink }; the user presses Start in it, POST .../confirm finishes.
+ *                         Without botToken (and with the site bot configured) → { deepLink } like max / vk.
  *   telegram / max / vk : returns { deepLink } — the user taps it, the bot webhook completes the link
  *   email               : { useAccountEmail: true } connects at once; { email } sends a 6-digit code
  *   whatsapp            : { phone } sends a code in a template message
@@ -35,6 +40,15 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: t("ns.err.notConfigured") }, { status: 503 });
   }
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  if (channel === "telegram" && body.botToken !== undefined) {
+    const r = await startOwnBot(userId, typeof body.botToken === "string" ? body.botToken : "", locale);
+    if (!r.ok) return NextResponse.json({ error: r.badToken ? t("ns.tg.bot.badToken") : r.error }, { status: r.badToken ? 400 : 502 });
+    return NextResponse.json({ ok: true, botUsername: r.username, botLink: `https://t.me/${r.username}`, expiresAt: r.expiresAt.toISOString() });
+  }
+  if (channel === "telegram" && !telegram.siteBotConfigured()) {
+    return NextResponse.json({ error: t("ns.err.notConfigured") }, { status: 503 });
+  }
 
   switch (channel) {
     case "telegram":

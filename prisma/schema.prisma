@@ -874,7 +874,8 @@ model NotificationChannel {
   linkExpiresAt DateTime?
   /// Wrong guesses of the 6-digit code (e-mail / WhatsApp); the code is burned at the cap.
   attempts      Int       @default(0)
-  /// Webhook channel only: HMAC key for the X-Fomo-Signature header.
+  /// Webhook channel: HMAC key for the X-Fomo-Signature header.
+  /// Telegram channel: the user's OWN bot token (empty = connected through the site bot). Never returned to the client.
   secret        String?
   lastError     String?
   /// Consecutive hard failures (bot blocked, number not on WhatsApp...).

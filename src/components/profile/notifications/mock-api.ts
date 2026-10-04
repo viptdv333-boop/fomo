@@ -24,9 +24,11 @@ export function createMockApi(opts: { failPatch?: boolean; slowMs?: number } = {
       lastError: r?.lastError ?? null,
       lastSentAt: r?.verified ? new Date(Date.now() - 3600_000).toISOString() : null,
       pendingUntil: null,
+      ...(channel === "telegram" ? { ownBot: Boolean(row?.ownBot), siteBot: true } : {}),
     };
   };
 
+  let mockPolls = 0;
   let state: SettingsResponse = {
     channels: [
       base("email", true, { address: "a***@gmail.com" }),
@@ -63,6 +65,11 @@ export function createMockApi(opts: { failPatch?: boolean; slowMs?: number } = {
     },
     async start(channel, body) {
       await wait();
+      if (channel === "telegram" && typeof body?.botToken === "string") {
+        if (!/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test(body.botToken)) return { ok: false, error: "Неверный токен бота" };
+        set("telegram", (c) => recompute({ ...c, verified: false, enabled: true, ownBot: true, address: null, label: "@mock_notify_bot", pendingUntil: new Date(Date.now() + 1800_000).toISOString() }));
+        return { ok: true, botUsername: "mock_notify_bot", botLink: "https://t.me/mock_notify_bot" };
+      }
       if (channel === "telegram" || channel === "max" || channel === "vk") {
         set(channel, (c) => recompute({ ...c, verified: false, enabled: true, pendingUntil: new Date(Date.now() + 1800_000).toISOString() }));
         // The "bot webhook" completes the link a few seconds later.
@@ -90,6 +97,16 @@ export function createMockApi(opts: { failPatch?: boolean; slowMs?: number } = {
       set(channel, (c) => recompute({ ...c, verified: true, enabled: true }));
       return { ok: true };
     },
+    async confirmTelegram() {
+      await wait();
+      const c = state.channels.find((x) => x.channel === "telegram");
+      if (!c?.ownBot) return { ok: false, error: "Сначала подключите бота" };
+      // The mock "user" presses Start the second time the button/poll asks.
+      if (++mockPolls < 2) return { ok: false, error: "Напишите боту любое сообщение в Telegram и попробуйте снова" };
+      mockPolls = 0;
+      set("telegram", (x) => recompute({ ...x, verified: true, address: "•••123", pendingUntil: null }));
+      return { ok: true, verified: true };
+    },
     async test(channel) {
       await wait();
       if (channel === "webpush") return { ok: true };
@@ -103,7 +120,7 @@ export function createMockApi(opts: { failPatch?: boolean; slowMs?: number } = {
     },
     async remove(channel) {
       await wait();
-      set(channel, (c) => recompute({ ...c, verified: false, enabled: false, address: null, label: null, lastError: null, lastSentAt: null }));
+      set(channel, (c) => recompute({ ...c, verified: false, enabled: false, ownBot: false, address: null, label: null, lastError: null, lastSentAt: null }));
       return { ok: true };
     },
   };

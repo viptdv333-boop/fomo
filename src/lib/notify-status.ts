@@ -3,7 +3,8 @@
 export type ChannelStatus = "not_configured" | "not_connected" | "pending" | "connected" | "paused" | "error";
 
 /**
- * not_configured — the admin has not set the env vars for this channel;
+ * not_configured — the admin has not set the env vars for this channel (never for Telegram:
+ *                  it runs on the user's own bot, no env needed);
  * not_connected  — the user has no row; pending — waiting for the code / the
  * deep-link tap; connected — verified and on; paused — verified but switched off
  * (by the user, or by the dispatcher after repeated hard failures: then lastError is set);
