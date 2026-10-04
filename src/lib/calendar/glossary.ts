@@ -45,6 +45,9 @@ export const TAGS: Record<Exclude<Tag, "ccy">, { ru: string; en: string; cn: str
   palm: { ru: "Пальмовое масло", en: "Palm oil", cn: "棕榈油" },
   cotton: { ru: "Хлопок", en: "Cotton", cn: "棉花" },
   cattle: { ru: "Скот", en: "Cattle", cn: "牲畜" },
+  div: { ru: "Дивиденды", en: "Dividends", cn: "股息" },
+  coupon: { ru: "Купоны", en: "Coupons", cn: "票息" },
+  earnings: { ru: "Отчётность", en: "Earnings", cn: "财报" },
 };
 
 export function tagLabel(tag: string, lang: GlossaryLang | string): string {
@@ -343,7 +346,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
 
 export function localizeEvent(ev: { event: string; category?: string; country?: string; impact: number }, lang: GlossaryLang = "ru"): LocalizedEvent {
   const name = typeof ev.event === "string" ? ev.event : "";
-  if (!name.trim() || ev.category === "moex" || ev.category === "commodity") return { title: name, impact: ev.impact };
+  if (!name.trim() || ev.category === "moex" || ev.category === "commodity" || ev.category === "corp") return { title: name, impact: ev.impact };
   const country = ev.country ?? "";
   const ck = `${country}|${ev.category ?? ""}|${name}`;
   let r = cache.get(ck);
@@ -403,8 +406,8 @@ const memo = new WeakMap<CalEvent, Partial<Record<GlossaryLang, CalEvent>>>();
  * them up by `gk` (the one-line brief too). Never mutates its argument (the source blocks are shared between requests).
  */
 export function localizeCalEvent(e: CalEvent, lang: GlossaryLang = "ru"): CalEvent {
-  // the Moscow Exchange and commodity layers are built already titled / keyed / tagged (lib/calendar/moex.ts, commodities.ts)
-  if (e.category === "moex" || e.category === "commodity") return e;
+  // the Moscow Exchange, commodity and corporate layers are built already titled / keyed / tagged (lib/calendar/moex.ts, commodities.ts, corporate.ts)
+  if (e.category === "moex" || e.category === "commodity" || e.category === "corp") return e;
   let per = memo.get(e);
   if (!per) memo.set(e, (per = {}));
   const hit = per[lang];

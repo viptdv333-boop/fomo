@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mergeEvents } from "./normalize";
+import { useCalPrefs } from "./prefs";
 import { rangeBounds, MAX_RANGE_DAYS, daySpan, addDays, type DateRange } from "./time";
 import type { CalEvent } from "./types";
 
@@ -20,6 +21,8 @@ export interface CalData {
   moex: boolean;
   /** The commodities / agriculture layer is part of the answer. */
   commodity: boolean;
+  /** The corporate-events layer (dividends, coupons, reports) is part of the answer. */
+  corp: boolean;
   /** The span the provider knows about (Forex Factory: this + next week); null = unlimited. */
   coverage: { from: number; to: number } | null;
   refresh: () => void;
@@ -33,6 +36,7 @@ interface CacheEntry {
   source: string;
   moex: boolean;
   commodity: boolean;
+  corp: boolean;
   coverage: { from: number; to: number } | null;
 }
 const memo = new Map<string, CacheEntry>();
@@ -59,7 +63,9 @@ const EMPTY: CalEvent[] = [];
 /** Events of a date range (in the display zone) with auto refresh: every minute while visible, every 15 s around releases. */
 export function useCalendarRange(range: DateRange, zone: string, enabled: boolean, lang = "ru"): CalData {
   const { from, to } = apiRange(range, zone);
-  const key = `${lang}|${from}..${to}`;
+  // the «Dividends and reporting» chip is a server side switch (corp=0): part of the cache key, so toggling it refetches once and then flips instantly
+  const [prefs] = useCalPrefs();
+  const key = `${lang}|${from}..${to}|${prefs.corp ? 1 : 0}`;
   const [, bump] = useState(0);
   const entry = memo.get(key);
   const [status, setStatus] = useState<CalStatus>(entry ? "ok" : "loading");
@@ -75,9 +81,9 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     abortRef.current = ctl;
     if (!silent && !memo.has(k)) setStatus("loading");
     try {
-      const [lg, span] = k.split("|");
+      const [lg, span, corpOn] = k.split("|");
       const [f, t] = span.split("..");
-      const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}&lang=${lg}`, { signal: ctl.signal });
+      const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}&lang=${lg}${corpOn === "0" ? "&corp=0" : ""}`, { signal: ctl.signal });
       const reason = res.headers.get("X-Calendar-Reason") || (res.ok ? "ok" : "upstream-error");
       const body: unknown = await res.json().catch(() => []);
       if (ctl.signal.aborted || keyRef.current !== k) return;
@@ -91,6 +97,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
         source: res.headers.get("X-Calendar-Source") || "none",
         moex: (res.headers.get("X-Calendar-Layers") || "").includes("moex"),
         commodity: (res.headers.get("X-Calendar-Layers") || "").includes("commodity"),
+        corp: (res.headers.get("X-Calendar-Layers") || "").includes("corp"),
         coverage: parseCoverage(res.headers.get("X-Calendar-Coverage")),
       };
       if (failed && memo.get(k)?.events.length) {
@@ -106,7 +113,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
       if ((e as { name?: string })?.name === "AbortError") return;
       if (keyRef.current !== k) return;
       if (!memo.get(k)?.events.length) {
-        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, commodity: false, coverage: null });
+        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, commodity: false, corp: false, coverage: null });
         setStatus("error");
       }
       lastRef.current = Date.now();
@@ -155,6 +162,7 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     source: cur?.source ?? "none",
     moex: cur?.moex ?? false,
     commodity: cur?.commodity ?? false,
+    corp: cur?.corp ?? false,
     coverage: cur?.coverage ?? null,
     refresh,
   };
@@ -181,6 +189,7 @@ export function useCalendarWindow(start: string, zone: string, enabled: boolean,
     source: best.source,
     moex: a.moex || b.moex,
     commodity: a.commodity || b.commodity,
+    corp: a.corp || b.corp,
     coverage: a.coverage ?? b.coverage,
     refresh: () => {
       a.refresh();

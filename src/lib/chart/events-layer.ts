@@ -173,7 +173,7 @@ export class EventsLayer implements OverlayLayer {
     if (have) return have;
     const p = (async () => {
       try {
-        const res = await fetch(`/api/economic-calendar?from=${from}&to=${to}&lang=${lang}`);
+        const res = await fetch(`/api/economic-calendar?from=${from}&to=${to}&lang=${lang}&corp=0`);
         const body: unknown = await res.json().catch(() => []);
         const reason = res.headers.get("X-Calendar-Reason") || "ok";
         const events = Array.isArray(body) ? (body as CalEvent[]) : [];

@@ -36,6 +36,8 @@ export interface CalEvent {
   gk?: string;
   /** Markets the indicator moves (usd, oil, gas, stocks ...), labels in glossary TAGS. */
   tags?: string[];
+  /** Extra lower-case text the search box matches besides the title (corporate layer: tickers and names of an aggregated event). */
+  search?: string;
 }
 
 export type CalCategory =
@@ -54,6 +56,8 @@ export type CalCategory =
   | "moex"
   /** Scheduled reports of agriculture / soft commodities (USDA, CONAB, cocoa grindings, MPOB ...): lib/calendar/commodities.ts. */
   | "commodity"
+  /** Corporate events of Russian issuers (dividends, bond coupons, reporting dates), T-Invest API cache: lib/calendar/corporate.ts. */
+  | "corp"
   | "other";
 
 export type ImpactLevel = 1 | 2 | 3;
@@ -67,6 +71,8 @@ export interface CalFilter {
   noMoex?: boolean;
   /** Hide the commodities / agriculture layer. */
   noCommodity?: boolean;
+  /** Hide the corporate-events layer (dividends, coupons, reports). */
+  noCorp?: boolean;
   /** "Oil and gas" quick filter: only events tagged oil / gas, from any country (the country filter does not apply). */
   energy?: boolean;
 }

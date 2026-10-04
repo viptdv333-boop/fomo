@@ -32,7 +32,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
 
   useEffect(() => {
     // the API answers with normalised events (see lib/calendar/types); the page shows the next week of the major economies
-    const params = new URLSearchParams({ days: "7", countries: country || MAJOR, limit: "30", lang: locale });
+    const params = new URLSearchParams({ days: "7", countries: country || MAJOR, limit: "30", lang: locale, corp: "0" }); // macro only: no coupons / dividends here
     if (!country) params.set("impact", "high,medium");
     fetch(`/api/economic-calendar?${params}`)
       .then((r) => r.json())

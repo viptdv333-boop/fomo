@@ -920,3 +920,22 @@ model NotificationSetting {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+/// Corporate events of Russian issuers for the economic calendar (src/lib/calendar/corporate.ts): dividends, bond coupons and
+/// reporting dates fetched from the T-Invest API and refreshed lazily (at most every 6 h). A cache, not a source of truth:
+/// the table can be emptied at any time. kind: 'div' | 'coupon' | 'report' | 'meta' (the single 'meta:refresh' row, its
+/// updatedAt is the time of the last completed refresh). date = the event day (UTC midnight), extra = kind specific details.
+model CorporateEvent {
+  id        String   @id
+  kind      String
+  ticker    String
+  name      String
+  date      DateTime
+  amount    Float?
+  currency  String?
+  extra     Json?
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, date])
+  @@index([ticker])
+}
