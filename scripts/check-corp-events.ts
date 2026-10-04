@@ -180,9 +180,9 @@ async function main() {
   const evs = buildCorporateEvents(rows, "2026-07-01", "2027-12-31", "ru");
   const by = (re: RegExp) => evs.filter((e) => re.test(e.event));
   await ok("dividend titles: Russian, ticker, amount with comma, yield; importance 3 for blue chips, 2 for the rest", () => {
-    const s = by(/^Дивиденды: SBER — 33,3 ₽ на акцию/)[0];
+    const s = by(/^Дивиденды: Сбер Банк \(SBER\) — 33,3 ₽ на акцию/)[0];
     assert.ok(s, evs.map((e) => e.event).join("\n"));
-    assert.equal(s.event, "Дивиденды: SBER — 33,3 ₽ на акцию (10,74%)");
+    assert.equal(s.event, "Дивиденды: Сбер Банк (SBER) — 33,3 ₽ на акцию (10,74%)");
     assert.equal(s.impact, 3);
     assert.equal(s.period, "последний день покупки");
     assert.equal(s.country, "RU");
@@ -193,11 +193,11 @@ async function main() {
     assert.ok(s.description!.includes("Последний день покупки"));
     assert.equal(s.gk, "corp.div");
     assert.deepEqual(s.tags, ["div", "stocks", "rub"]);
-    assert.equal(by(/^Дивиденды: VTBR/)[0].impact, 3);
-    const k = by(/^Дивиденды: KMAZ/)[0];
+    assert.equal(by(/^Дивиденды: Банк ВТБ \(VTBR\)/)[0].impact, 3);
+    const k = by(/^Дивиденды: КАМАЗ \(KMAZ\)/)[0];
     assert.equal(k.impact, 2);
     assert.ok(k.event.includes("1 234,5 ₽"));
-    const sem = by(/^Дивиденды: SBER — 0,045 ₽/)[0];
+    const sem = by(/^Дивиденды: Сбер Банк \(SBER\) — 0,045 ₽/)[0];
     assert.equal(sem.period, "закрытие реестра", "no last-buy day: the record day is named as such");
   });
   await ok("coupons are aggregated per day and group: two OFZ on 14 Oct -> one line with a list, the corporate bond and the floating OFZ separate", () => {
@@ -253,7 +253,7 @@ async function main() {
   });
   await ok("lang=en gives English titles; cn falls back to English", () => {
     const en = buildCorporateEvents(rows, "2026-07-01", "2027-12-31", "en");
-    assert.ok(en.some((e) => e.event === "Dividends: SBER — RUB 33.3 per share (10.74%)"), en.map((e) => e.event).join("\n"));
+    assert.ok(en.some((e) => e.event === "Dividends: Сбер Банк (SBER) — RUB 33.3 per share (10.74%)"), en.map((e) => e.event).join("\n"));
     assert.ok(en.some((e) => e.event === "Earnings report: Сбер Банк (SBER), Q3 2026"));
     assert.ok(en.some((e) => e.event === "OFZ coupons: 3 issues"));
     assert.equal(buildCorporateEvents(rows, "2026-07-01", "2026-07-31", "cn").length, buildCorporateEvents(rows, "2026-07-01", "2026-07-31", "en").length);
@@ -484,7 +484,7 @@ async function main() {
     const asOf = Date.UTC(2026, 6, 10, 12);
     const withCorp = await getCalendarRange("2026-07-15", "2026-07-20", asOf, { moex: false, agro: false });
     assert.equal(withCorp.corp, true);
-    assert.ok(withCorp.events.some((e) => e.category === "corp" && e.event.startsWith("Дивиденды: SBER")));
+    assert.ok(withCorp.events.some((e) => e.category === "corp" && e.event.startsWith("Дивиденды: Сбер Банк (SBER)")));
     const without = await getCalendarRange("2026-07-15", "2026-07-20", asOf, { moex: false, agro: false, corp: false });
     assert.equal(without.corp, false);
     assert.ok(!without.events.some((e) => e.category === "corp"));

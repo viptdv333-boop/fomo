@@ -376,7 +376,8 @@ export function buildCorporateEvents(rows: readonly CorpRow[], from: string, to:
       if (seen.has(key)) continue;
       seen.add(key);
       const y = num(x.yield);
-      const title = `${l.div}: ${r.ticker} — ${fmtMoney(r.amount, r.currency, lang)} ${l.perShare}${y ? ` (${fmtNum(y, lang)}%)` : ""}`;
+      const who = r.name && r.name !== r.ticker ? `${r.name} (${r.ticker})` : r.ticker;
+      const title = `${l.div}: ${who} — ${fmtMoney(r.amount, r.currency, lang)} ${l.perShare}${y ? ` (${fmtNum(y, lang)}%)` : ""}`;
       const basis = x.basis === "lastBuy" ? l.basisLastBuy : l.basisRecord;
       const parts: string[] = [];
       if (ru) {
