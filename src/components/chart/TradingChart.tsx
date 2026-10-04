@@ -1225,7 +1225,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
-        onOpenAlerts={() => openAlerts(null)}
+        onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
         replay={replay}
@@ -1366,6 +1366,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           drawings={drawings}
           indicators={indicators}
           calendarZone={resolveZone(cs.tz, source)}
+          alertsApi={alertsApi}
+          onOpenAlerts={() => openAlerts(null)}
         />
         </div>
       </div>
