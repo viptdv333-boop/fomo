@@ -199,6 +199,10 @@ const dict: SectionDict = {
 
     "ns.suppressed": "(ещё {n} уведомлений не отправлено — слишком много сообщений подряд)",
     "ns.open": "Открыть",
+    "ns.openSite": "Открыть на сайте",
+    "ns.readFull": "… читать полностью на сайте",
+    "ns.email.settings": "Настройки уведомлений",
+    "ns.email.why": "Вы получили это письмо, потому что включили e-mail-уведомления FOMO.",
     "ns.test.title": "Тест уведомлений FOMO",
     "ns.test.body": "Если вы видите это сообщение, канал подключён и работает.",
     "ns.notif.chatReply.title": "{name} ответил на ваше сообщение в «{room}»",
@@ -419,6 +423,10 @@ const dict: SectionDict = {
 
     "ns.suppressed": "({n} more notifications were not sent — too many messages in a row)",
     "ns.open": "Open",
+    "ns.openSite": "Open on the site",
+    "ns.readFull": "… read the full text on the site",
+    "ns.email.settings": "Notification settings",
+    "ns.email.why": "You received this email because you turned on FOMO e-mail notifications.",
     "ns.test.title": "FOMO notification test",
     "ns.test.body": "If you can see this message, the channel is connected and working.",
     "ns.notif.chatReply.title": "{name} replied to your message in “{room}”",
@@ -637,6 +645,10 @@ const dict: SectionDict = {
 
     "ns.suppressed": "（另有 {n} 条通知未发送——连续消息过多）",
     "ns.open": "打开",
+    "ns.openSite": "在网站上打开",
+    "ns.readFull": "… 在网站上阅读全文",
+    "ns.email.settings": "通知设置",
+    "ns.email.why": "您收到此邮件，是因为您开启了 FOMO 邮件通知。",
     "ns.test.title": "FOMO 通知测试",
     "ns.test.body": "如果您看到这条消息，说明渠道已连接并正常工作。",
     "ns.notif.chatReply.title": "{name} 回复了您在“{room}”中的消息",

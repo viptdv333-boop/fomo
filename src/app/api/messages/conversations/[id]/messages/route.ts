@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
+import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -178,6 +179,13 @@ export async function POST(
       : message.text
     : { key: "notif.dm.file" };
 
+  // Full message for e-mail / Telegram of the OTHER participants of this conversation only
+  // (otherParticipants above) — the bell and push keep the 80-char preview.
+  const dmText = toPlainText(message.text ?? "");
+  const full = dmText
+    ? { fullText: dmText, author: senderName, images: imageUrlsFromAttachments(message.fileUrl ? [{ url: message.fileUrl, name: message.fileUrl }] : []) }
+    : undefined;
+
   for (const p of otherParticipants) {
     await createNotification({
       userId: p.userId,
@@ -185,6 +193,7 @@ export async function POST(
       title: { key: "notif.dm.title", vars: { name: senderName } },
       body: preview,
       link: "/messages",
+      full,
     });
   }
 

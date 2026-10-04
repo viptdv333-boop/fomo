@@ -13,6 +13,7 @@ import {
 import { decide, SendGate, type ChannelLite } from "@/lib/notify-decide";
 import { ADAPTERS } from "@/lib/notify-channels";
 import type { ChannelMessage, SendResult } from "@/lib/notify-channels/types";
+import type { NotifFull } from "@/lib/notify-text";
 
 /**
  * The notification dispatcher. For every recipient it decides — from the event's
@@ -165,6 +166,11 @@ export interface DispatchInput {
   title: NotifText;
   body?: NotifText;
   link?: string;
+  /**
+   * Full content of the item (see NotifFull). The bell row and Web Push keep the short title/body;
+   * the external channels get `fullText` only for recipients that may read it.
+   */
+  full?: NotifFull;
 }
 
 export interface DispatchedRow {
@@ -176,6 +182,30 @@ export interface DispatchedRow {
   link: string | null;
   isRead: boolean;
   createdAt: Date;
+}
+
+const allowedSets = new WeakMap<string[], Set<string>>();
+
+/**
+ * ACCESS GATE for the full text. The full content goes into the message only when the caller
+ * supplied it AND this recipient is allowed to read it: `full.fullTextFor` lists them (undefined =
+ * the caller asserts the content is readable by every recipient of the call). Anyone else keeps the teaser.
+ */
+export function withFullContent(base: ChannelMessage, full: NotifFull | undefined, userId: string): ChannelMessage {
+  if (!full?.fullText) return base;
+  if (full.fullTextFor) {
+    let set = allowedSets.get(full.fullTextFor);
+    if (!set) allowedSets.set(full.fullTextFor, (set = new Set(full.fullTextFor)));
+    if (!set.has(userId)) return base;
+  }
+  return { ...base, fullText: full.fullText, ...(full.author ? { author: full.author } : {}), ...(full.images?.length ? { images: full.images } : {}) };
+}
+
+/** Short fingerprint so two messages sharing a teaser but differing in the full text are not collapsed as duplicates. */
+function fullTextSig(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return `${s.length}:${h.toString(36)}`;
 }
 
 async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
@@ -244,13 +274,12 @@ export async function dispatchNotification(input: DispatchInput): Promise<Dispat
     const d = decisions.get(userId)!;
     if (d.external.length === 0) continue;
     const r = render(userId);
-    for (const ch of d.external) {
-      jobs.push({ row: ch as ChannelRow, msg: { title: r.title, body: r.body, link: input.link, locale: r.locale } });
-    }
+    const msg = withFullContent({ title: r.title, body: r.body, link: input.link, locale: r.locale }, input.full, userId);
+    for (const ch of d.external) jobs.push({ row: ch as ChannelRow, msg });
   }
   if (jobs.length > 0) {
     void mapLimit(jobs, 8, async ({ row, msg }) => {
-      const verdict = gate().check(row.id, `${msg.title}|${msg.body ?? ""}|${msg.link ?? ""}`);
+      const verdict = gate().check(row.id, `${msg.title}|${msg.body ?? ""}|${msg.link ?? ""}${msg.fullText ? "|" + fullTextSig(msg.fullText) : ""}`);
       if (!verdict.allowed) return;
       const message = verdict.suppressedBefore ? { ...msg, suppressed: verdict.suppressedBefore } : msg;
       let result: SendResult;

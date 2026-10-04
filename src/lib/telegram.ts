@@ -3,6 +3,8 @@ import { getT, tFor } from "@/lib/i18n/server";
 import { renderNotifText, type NotifText } from "@/lib/notifications";
 import { escapeTelegramHtml, tgCall } from "@/lib/tg-transport";
 import { isEnabled, type EventId } from "@/lib/notification-events";
+import { sendTelegramBundle } from "@/lib/notify-channels/telegram";
+import type { ChannelMessage } from "@/lib/notify-channels/types";
 
 // Transport (relay / proxy / escaping) lives in tg-transport.ts so the site-bot
 // notification channel can share it without pulling next/headers.
@@ -89,9 +91,41 @@ export async function sendTelegramMessage(
 /// channel's discussion) to every active subscriber who opted in and has a
 /// verified bot. Best-effort per recipient, mirroring src/lib/push.ts: one
 /// subscriber's dead/blocked bot never blocks delivery to the others.
-async function deliverToUser(userId: string, text: NotifText, locale: string | undefined): Promise<void> {
+/// The FULL content of a channel post for the legacy own-bot forwarding. Recipients here are the
+/// channel's active subscribers (+ its owner) — exactly the audience that may read the post.
+export interface RichChannelPost {
+  /// Heading, rendered per recipient (RAW vars — it is escaped when the message is built).
+  title: NotifText;
+  author?: string;
+  /// Full plain text of the post.
+  fullText: string;
+  /// Site path of the post ("/ideas/<id>"); becomes the «Open on the site» button.
+  link: string;
+  images?: string[];
+}
+
+async function deliverToUser(userId: string, text: NotifText, locale: string | undefined, rich?: RichChannelPost): Promise<void> {
   const acc = await prisma.telegramAccount.findUnique({ where: { userId } });
   if (!acc?.chatId) return;
+
+  if (rich) {
+    // Full text: several messages (<= 4096 each) + the first picture, via the shared builder.
+    const msg: ChannelMessage = {
+      title: renderNotifText(rich.title, locale),
+      link: rich.link,
+      locale: locale ?? "ru",
+      fullText: rich.fullText,
+      author: rich.author,
+      images: rich.images,
+    };
+    const r = await sendTelegramBundle(acc.botToken, acc.chatId, msg).catch((e) => ({ ok: false as const, description: e instanceof Error ? e.message : String(e) }));
+    if (r.ok) {
+      if (acc.lastError) await prisma.telegramAccount.update({ where: { userId }, data: { lastError: null } }).catch(() => {});
+    } else {
+      await prisma.telegramAccount.update({ where: { userId }, data: { lastError: r.description || tFor(locale)("notif.err.tgRejected") } }).catch(() => {});
+    }
+    return;
+  }
 
   // Keyed texts are rendered in the recipient's language; every substituted
   // value is HTML-escaped here, so callers pass raw user content in vars and
@@ -118,7 +152,14 @@ async function deliverToUser(userId: string, text: NotifText, locale: string | u
 /// event (notifyChannelSubscribers). A subscriber whose Telegram channel in Notification
 /// settings is connected, on and enabled for that event, with the SAME bot and chat as the
 /// legacy account, already gets it there — skip the legacy copy so they get one message.
-export async function notifyChannelTelegramSubscribers(tariffId: string, text: NotifText, opts: { dedupeEvent?: EventId } = {}): Promise<void> {
+///
+/// `opts.rich`: send the whole post (title + author + full text, split into <= 4096-char messages,
+/// button to the site) instead of the `text` teaser.
+export async function notifyChannelTelegramSubscribers(
+  tariffId: string,
+  text: NotifText,
+  opts: { dedupeEvent?: EventId; rich?: RichChannelPost } = {}
+): Promise<void> {
   const tariff = await prisma.subscriptionTariff.findUnique({
     where: { id: tariffId },
     select: {
@@ -173,5 +214,5 @@ export async function notifyChannelTelegramSubscribers(tariffId: string, text: N
     for (const u of users) locales.set(u.id, u.locale);
   }
 
-  await Promise.all(recipients.map((userId) => deliverToUser(userId, text, locales.get(userId))));
+  await Promise.all(recipients.map((userId) => deliverToUser(userId, text, locales.get(userId), opts.rich)));
 }

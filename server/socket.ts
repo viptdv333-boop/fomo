@@ -8,6 +8,7 @@ import { startCalendarReminders } from "./calendar-reminders";
 import { canAccessRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
 import { dispatchNotification } from "../src/lib/notify-dispatch";
+import { toPlainText } from "../src/lib/notify-text";
 
 const prisma = new PrismaClient();
 
@@ -157,7 +158,18 @@ export function initSocket(httpServer: HTTPServer) {
           select: { id: true, locale: true },
         });
 
+        const fullMsg = toPlainText(text);
         for (const u of mentionedUsers) {
+          // Full text for e-mail / Telegram only when the mentioned user may read this room
+          // (private-room member, paid-channel subscriber); otherwise the 80-char teaser as before.
+          let readable = false;
+          try {
+            readable =
+              (!room.ownerId || Boolean(await prisma.chatRoomMember.findUnique({ where: { roomId_userId: { roomId, userId: u.id } } }))) &&
+              (await canAccessRoom(prisma, roomId, u.id));
+          } catch {
+            readable = false;
+          }
           // Bell + push + the user's channels per their "mention" preferences
           // (the dispatcher also pings the socket room).
           await dispatchNotification({
@@ -167,6 +179,7 @@ export function initSocket(httpServer: HTTPServer) {
             title: translate(u.locale, "notif.chatMention.title", { name: socket.data.displayName }),
             body: text.length > 80 ? text.slice(0, 80) + "…" : text,
             link: "/chat",
+            full: readable && fullMsg ? { fullText: fullMsg } : undefined,
           });
         }
       }

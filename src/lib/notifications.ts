@@ -3,6 +3,7 @@ import { canAccessRoom } from "@/lib/channel-access";
 import { dispatchNotification } from "@/lib/notify-dispatch";
 import { isKeyed, renderNotifText, type NotifText, type NotifVar } from "@/lib/notif-render";
 import type { EventId } from "@/lib/notification-events";
+import type { NotifFull } from "@/lib/notify-text";
 
 // The rendering helpers moved to notif-render.ts (Next-free) so the custom
 // server can use them; re-exported here for the existing importers.
@@ -36,9 +37,10 @@ async function deliver(
   title: NotifText,
   body: NotifText | undefined,
   link: string | undefined,
-  event?: EventId
+  event?: EventId,
+  full?: NotifFull
 ) {
-  await dispatchNotification({ recipients, type, title, body, link, event });
+  await dispatchNotification({ recipients, type, title, body, link, event, full });
 }
 
 interface CreateNotificationParams {
@@ -49,6 +51,8 @@ interface CreateNotificationParams {
   link?: string;
   /// Preference event; defaults to the one mapped from `type`.
   event?: EventId;
+  /// Full content for the external channels (e-mail / Telegram / ...); the bell keeps `body`.
+  full?: NotifFull;
 }
 
 export async function createNotification({
@@ -58,8 +62,9 @@ export async function createNotification({
   body,
   link,
   event,
+  full,
 }: CreateNotificationParams) {
-  const rows = await dispatchNotification({ recipients: [userId], type, title, body, link, event });
+  const rows = await dispatchNotification({ recipients: [userId], type, title, body, link, event, full });
   // null when the user switched the bell off for this event.
   return rows[0] ?? null;
 }
@@ -69,7 +74,12 @@ export async function notifyFollowers(
   type: string,
   title: NotifText,
   body?: NotifText,
-  link?: string
+  link?: string,
+  full?: NotifFull & {
+    /// The item is a single paid idea: its text is readable only with an active subscription to the
+    /// author (the same rule as GET /api/ideas/[id]). Followers without one keep the teaser.
+    paywalled?: boolean;
+  }
 ) {
   const followers = await prisma.follow.findMany({
     where: { authorId },
@@ -77,14 +87,18 @@ export async function notifyFollowers(
   });
 
   if (followers.length === 0) return;
+  const recipients = followers.map((f) => f.followerId);
 
-  await deliver(
-    followers.map((f) => f.followerId),
-    type,
-    title,
-    body,
-    link
-  );
+  let fullOut: NotifFull | undefined = full;
+  if (full?.paywalled) {
+    const subs = await prisma.subscription.findMany({
+      where: { authorId, subscriberId: { in: recipients }, status: "active", endDate: { gt: new Date() } },
+      select: { subscriberId: true },
+    });
+    fullOut = { ...full, fullTextFor: [...new Set(subs.map((s) => s.subscriberId))] };
+  }
+
+  await deliver(recipients, type, title, body, link, undefined, fullOut);
 }
 
 // Every message in a room, not just @mentions — opt-in via the болталка bell
@@ -96,7 +110,8 @@ export async function notifyRoomSubscribers(
   type: string,
   title: NotifText,
   body?: NotifText,
-  link?: string
+  link?: string,
+  full?: NotifFull
 ) {
   const subscribers = await prisma.chatRoomNotify.findMany({
     where: { roomId, userId: { notIn: excludeUserIds } },
@@ -127,7 +142,8 @@ export async function notifyRoomSubscribers(
   const recipients = allowed.filter((id): id is string => id !== null);
   if (recipients.length === 0) return;
 
-  await deliver(recipients, type, title, body, link);
+  // Every recipient passed the member + canAccessRoom check above, so the message text is theirs to read.
+  await deliver(recipients, type, title, body, link, undefined, full);
 }
 
 // New post in a paid channel — every active subscriber, not just those who
@@ -138,7 +154,8 @@ export async function notifyChannelSubscribers(
   title: NotifText,
   body?: NotifText,
   link?: string,
-  type = "channel_post"
+  type = "channel_post",
+  full?: NotifFull
 ) {
   const subs = await prisma.subscription.findMany({
     where: {
@@ -152,5 +169,6 @@ export async function notifyChannelSubscribers(
   const recipients = [...new Set(subs.map((s) => s.subscriberId))];
   if (recipients.length === 0) return;
 
-  await deliver(recipients, type, title, body, link);
+  // Recipients are exactly the channel's active subscribers — the audience that may read its posts.
+  await deliver(recipients, type, title, body, link, undefined, full);
 }

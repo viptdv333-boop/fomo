@@ -2,6 +2,8 @@ import { randomInt } from "crypto";
 // for-locale (not i18n/server): this file is also loaded by the notification
 // dispatcher inside the custom server, where next/headers must not be imported.
 import { tFor } from "@/lib/i18n/for-locale";
+import { isLocale, localizedPath } from "@/lib/i18n/locale-url";
+import { renderNotificationEmail } from "@/lib/notify-email-render";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
@@ -106,39 +108,55 @@ export interface EmailSendResult {
   permanent?: boolean;
 }
 
-function escHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 /**
  * One notification as a mail, for the notification-channels dispatcher.
  * Unlike sendBroadcastEmail it escapes user-generated text, never throws, has a
  * timeout and reports whether a failure is permanent. `fetchImpl` is injectable for tests.
+ * With `fullText` the mail carries the whole item (responsive HTML + plain-text alternative,
+ * <= ~100 KB, see notify-email-render.ts); `body` is then only the short teaser.
  */
 export async function sendNotificationEmail(
   to: string,
-  msg: { title: string; body?: string | null; link?: string | null; locale?: string; footerNote?: string },
+  msg: {
+    title: string;
+    body?: string | null;
+    link?: string | null;
+    locale?: string;
+    footerNote?: string;
+    fullText?: string | null;
+    author?: string | null;
+    images?: string[];
+  },
   fetchImpl: typeof fetch = fetch
 ): Promise<EmailSendResult> {
   if (!RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY is not configured" };
-  const t = tFor(msg.locale ?? "ru");
+  const locale = isLocale(msg.locale) ? msg.locale : "ru";
   const link = msg.link ? (msg.link.startsWith("http") ? msg.link : BASE_URL + msg.link) : null;
-  const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
-      <h2 style="text-align: center; color: #111; margin-bottom: 16px;">FOMO</h2>
-      <h3 style="color: #111; margin-bottom: 8px;">${escHtml(msg.title)}</h3>
-      ${msg.body ? `<p style="color: #444; font-size: 15px; line-height: 1.6;">${escHtml(msg.body).replace(/\n/g, "<br>")}</p>` : ""}
-      ${link ? `<p style="text-align: center; margin-top: 24px;"><a href="${escHtml(link)}" style="display: inline-block; padding: 12px 32px; background: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">${t("api.email.open")}</a></p>` : ""}
-      <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;" />
-      <p style="text-align: center; color: #999; font-size: 11px; margin-top: 16px;">
-        ${msg.footerNote ? escHtml(msg.footerNote) + "<br>" : ""}${t("api.email.footer", { link: `<a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>` })}
-      </p>
-    </div>`;
+  const settingsUrl = BASE_URL + localizedPath(locale, "/profile?tab=notifications");
+  const mail = renderNotificationEmail({
+    title: msg.title,
+    body: msg.body,
+    fullText: msg.fullText,
+    author: msg.author,
+    images: msg.images,
+    link,
+    settingsUrl,
+    locale,
+    footerNote: msg.footerNote,
+    baseUrl: BASE_URL,
+  });
   try {
     const res = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
-      body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject: msg.title.slice(0, 200), html }),
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: [to],
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        headers: { "List-Unsubscribe": `<${settingsUrl}>` },
+      }),
       signal: AbortSignal.timeout(10_000),
     });
     if (res.ok) return { ok: true };

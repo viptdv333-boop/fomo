@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { assertResolvesPublic, safeLookup, validateOutboundUrl } from "@/lib/ssrf";
+import { absoluteAsset } from "@/lib/notify-text";
 import { absoluteLink, errMsg, suppressedNote, SEND_TIMEOUT_MS, type AdapterDeps, type ChannelMessage, type ChannelRowLite, type SendResult } from "./types";
 
 /**
@@ -32,6 +33,11 @@ export function buildWebhookBody(msg: ChannelMessage, now: number = Date.now()) 
     ts: Math.floor(now / 1000),
     title: msg.title,
     body: msg.body ?? "",
+    // Additive: the FULL text of the item ("" when the notification has none or this recipient
+    // may not read it), its author and picture URLs. `body`/`text`/`content` keep the short form.
+    fullText: msg.fullText ?? "",
+    author: msg.author ?? null,
+    images: msg.fullText ? (msg.images ?? []).map(absoluteAsset).filter((u): u is string => Boolean(u)) : [],
     link: link ?? null,
     locale: msg.locale,
     suppressed: msg.suppressed ?? 0,

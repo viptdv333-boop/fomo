@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification, notifyChannelSubscribers } from "@/lib/notifications";
+import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 
 // GET — list comments for an idea
 export async function GET(
@@ -67,6 +68,12 @@ export async function POST(
   // shouldn't ping you about your own action.
   const preview = comment.text.length > 80 ? comment.text.slice(0, 80) + "…" : comment.text;
   const authorName = comment.user.displayName;
+  // Full comment text for e-mail / Telegram (the bell keeps the 80-char preview). Comments are
+  // public (GET above lists them for anyone), so every recipient may read them.
+  const commentText = toPlainText(comment.text);
+  const full = commentText
+    ? { fullText: commentText, author: authorName, images: imageUrlsFromAttachments(comment.fileUrl ? [{ url: comment.fileUrl, name: comment.fileUrl }] : []) }
+    : undefined;
   const notified = new Set<string>([session.user.id]);
 
   const idea = await prisma.idea.findUnique({
@@ -81,6 +88,7 @@ export async function POST(
       title: { key: "notif.newComment.title", vars: { name: authorName } },
       body: preview,
       link: `/ideas/${ideaId}`,
+      full,
     });
   }
 
@@ -97,6 +105,7 @@ export async function POST(
         title: { key: "notif.commentReply.title", vars: { name: authorName } },
         body: preview,
         link: `/ideas/${ideaId}`,
+        full,
       });
     }
   }
@@ -110,7 +119,8 @@ export async function POST(
       { key: "notif.channelComment.title", vars: { name: authorName, channel: idea.tariff?.name ?? { key: "notif.fallback.channel" } } },
       preview || { key: "notif.attachment" },
       `/ideas/${ideaId}`,
-      "channel_comment"
+      "channel_comment",
+      full
     ).catch(() => {});
   }
 

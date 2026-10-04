@@ -58,6 +58,7 @@ const dict: SectionDict = {
 
     // Telegram (HTML)
     "notif.tg.newSetup": "🔔 Новый сетап: <b>{title}</b>\n{preview}\n\n{url}",
+    "notif.tg.newSetupHead": "🔔 Новый сетап: {title}",
     "notif.tg.chatMessage": "💬 <b>{name}</b>: {text}",
     "notif.tg.chatMessageAttach": "💬 <b>{name}</b>: {text} {attachment}",
     "notif.tg.attachPhoto": "🖼 фото",
@@ -138,6 +139,7 @@ const dict: SectionDict = {
     "notif.subscription.removed.title": "The author removed your access to the channel",
 
     "notif.tg.newSetup": "🔔 New setup: <b>{title}</b>\n{preview}\n\n{url}",
+    "notif.tg.newSetupHead": "🔔 New setup: {title}",
     "notif.tg.chatMessage": "💬 <b>{name}</b>: {text}",
     "notif.tg.chatMessageAttach": "💬 <b>{name}</b>: {text} {attachment}",
     "notif.tg.attachPhoto": "🖼 photo",
@@ -217,6 +219,7 @@ const dict: SectionDict = {
     "notif.subscription.removed.title": "作者已关闭你的频道访问权限",
 
     "notif.tg.newSetup": "🔔 新交易设置：<b>{title}</b>\n{preview}\n\n{url}",
+    "notif.tg.newSetupHead": "🔔 新交易设置：{title}",
     "notif.tg.chatMessage": "💬 <b>{name}</b>：{text}",
     "notif.tg.chatMessageAttach": "💬 <b>{name}</b>：{text} {attachment}",
     "notif.tg.attachPhoto": "🖼 图片",

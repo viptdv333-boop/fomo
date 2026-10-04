@@ -1,5 +1,6 @@
 import { SITE_URL, localizedPath, isLocale } from "@/lib/i18n/locale-url";
 import { tFor } from "@/lib/i18n/for-locale";
+import { fullLayout } from "@/lib/notify-text";
 
 /** What an adapter gets: already rendered in the recipient's language. */
 export interface ChannelMessage {
@@ -10,6 +11,16 @@ export interface ChannelMessage {
   locale: string;
   /** notifications dropped by the anti-spam gate since the previous delivery */
   suppressed?: number;
+  /**
+   * FULL plain text of the item that triggered the notification (idea, post, comment, message).
+   * Present only when this recipient may read it (src/lib/notify-text.ts, NotifFull.fullTextFor);
+   * `body` stays the short teaser. Adapters that cannot carry it simply ignore it.
+   */
+  fullText?: string;
+  /** author's display name, when the title does not already say it */
+  author?: string;
+  /** image URLs of the item (site-relative "/uploads/…" or absolute); only set together with fullText */
+  images?: string[];
 }
 
 export interface SendResult {
@@ -65,6 +76,17 @@ export function suppressedNote(msg: ChannelMessage): string {
 /** Plain-text rendering used by the chat-like channels (MAX, VK, ...). */
 export function plainText(msg: ChannelMessage, max = 3500): string {
   const link = absoluteLink(msg.link, msg.locale);
+  if (msg.fullText) {
+    // Full content within the channel's limit: title, author, text, then the link — the text is
+    // what gets shortened, never the link or the anti-spam note.
+    const { title, author, subtitle, text } = fullLayout(msg);
+    const head = [title, author ?? "", subtitle ?? ""].filter(Boolean).join("\n");
+    const tail = [link ?? "", suppressedNote(msg)].filter(Boolean).join("\n");
+    const room = Math.max(0, max - head.length - tail.length - 4);
+    const readMore = text.length > room ? "\n" + tFor(msg.locale)("ns.readFull") : "";
+    const body = readMore ? text.slice(0, Math.max(0, room - readMore.length)).trimEnd() : text;
+    return [head, body + readMore, tail].filter(Boolean).join("\n\n").slice(0, max);
+  }
   const parts = [msg.title, msg.body ? truncate(msg.body, 1500) : "", link ?? "", suppressedNote(msg)].filter(Boolean);
   return truncate(parts.join("\n"), max);
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
+import { toPlainText } from "@/lib/notify-text";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
 // без браузерной NextAuth-сессии, автор зафиксирован (bot-auth.ts) — эндпоинт
@@ -109,10 +110,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (tariffId) {
+    // Подписчики канала САМИ включили пересылку в свой бот — им уходит ПОЛНЫЙ текст сетапа
+    // (несколькими сообщениями, если длинный), а не только анонс со ссылкой.
     await notifyChannelTelegramSubscribers(
       tariffId,
       // Raw vars: telegram.ts escapes them and renders per recipient's language.
-      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } }
+      { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } },
+      { rich: { title: { key: "notif.tg.newSetupHead", vars: { title } }, fullText: toPlainText(content), link: `/ideas/${idea.id}` } }
     ).catch(() => {});
   }
 

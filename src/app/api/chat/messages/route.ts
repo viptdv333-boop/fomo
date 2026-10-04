@@ -7,6 +7,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { canAccessRoom } from "@/lib/channel-access";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { getT } from "@/lib/i18n/server";
+import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -188,6 +189,18 @@ export async function POST(req: NextRequest) {
   const senderName = message.user.displayName;
   const roomLink = room.ownerId ? `/rooms/${room.id}` : `/chat?room=${room.id}`;
   const bodyPreview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+  // Full message text for e-mail / Telegram (the bell keeps the 80-char preview). The sender's name
+  // is already in every title. Each branch below only passes it on to people who may read this room.
+  const fullMsg = toPlainText(text);
+  const full = fullMsg
+    ? {
+        fullText: fullMsg,
+        images: parsed.data.fileType === "image" && parsed.data.fileUrl ? imageUrlsFromAttachments([{ url: parsed.data.fileUrl, name: parsed.data.fileName ?? parsed.data.fileUrl }]) : [],
+      }
+    : undefined;
+  const canReadRoom = async (uid: string) =>
+    (!room.ownerId || Boolean(await prisma.chatRoomMember.findUnique({ where: { roomId_userId: { roomId: room.id, userId: uid } } }))) &&
+    (await canAccessRoom(prisma, room.id, uid));
 
   // @mentions — targeted, regardless of whether the mentioned user has the
   // room's bell on.
@@ -215,6 +228,8 @@ export async function POST(req: NextRequest) {
         title: { key: "notif.chatMention.title", vars: { name: senderName } },
         body: bodyPreview,
         link: roomLink,
+        // A mention can reach someone outside a private / paid room: they get the teaser only.
+        full: full && (await canReadRoom(u.id).catch(() => false)) ? full : undefined,
       });
     }
   }
@@ -240,6 +255,7 @@ export async function POST(req: NextRequest) {
         title: { key: "ns.notif.chatReply.title", vars: { name: senderName, room: room.name } },
         body: bodyPreview,
         link: roomLink,
+        full, // access re-checked above (stillIn)
       }).catch(() => {});
     }
   }
@@ -252,7 +268,8 @@ export async function POST(req: NextRequest) {
     "chat_room_message",
     { key: "notif.roomMessage.title", vars: { name: senderName, room: room.name } },
     bodyPreview,
-    roomLink
+    roomLink,
+    full // recipients are access-checked inside notifyRoomSubscribers
   ).catch(() => {});
 
   return NextResponse.json(message);

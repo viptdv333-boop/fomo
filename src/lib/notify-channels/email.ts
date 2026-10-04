@@ -10,7 +10,16 @@ export async function send(row: ChannelRowLite, msg: ChannelMessage, deps?: Adap
   if (!row.address) return { ok: false, error: "no address", permanent: true };
   return sendNotificationEmail(
     row.address,
-    { title: msg.title, body: msg.body, link: absoluteLink(msg.link, msg.locale), locale: msg.locale, footerNote: suppressedNote(msg) || undefined },
+    {
+      title: msg.title,
+      body: msg.body,
+      link: absoluteLink(msg.link, msg.locale),
+      locale: msg.locale,
+      footerNote: suppressedNote(msg) || undefined,
+      fullText: msg.fullText,
+      author: msg.author,
+      images: msg.images,
+    },
     deps?.fetch ?? fetch
   );
 }

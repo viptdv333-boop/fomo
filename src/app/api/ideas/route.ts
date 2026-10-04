@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
 import { notifyFollowers, notifyChannelSubscribers } from "@/lib/notifications";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
+import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { getT } from "@/lib/i18n/server";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -484,6 +485,11 @@ export async function POST(request: NextRequest) {
     where: { id: userId },
     select: { displayName: true },
   });
+  // Полный текст для e-mail / Telegram (колокольчик и push остаются короткими). Кто имеет право
+  // его читать — решают получатели ниже: подписчики канала (читают пост по определению),
+  // фолловеры (для платной идеи — только с активной подпиской на автора, см. notifyFollowers).
+  const fullText = toPlainText(content);
+  const images = imageUrlsFromAttachments(attachments);
   // Пост канала — для подписчиков канала, не для всех фолловеров автора.
   if (author && !tariffId) {
     await notifyFollowers(
@@ -491,7 +497,8 @@ export async function POST(request: NextRequest) {
       "new_idea",
       { key: "notif.newIdea.title", vars: { name: author.displayName } },
       title,
-      `/ideas/${idea.id}`
+      `/ideas/${idea.id}`,
+      { fullText, author: author.displayName, images, paywalled: idea.isPaid }
     );
   } else if (tariffId) {
     const channel = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId }, select: { name: true } });
@@ -500,14 +507,19 @@ export async function POST(request: NextRequest) {
       [userId],
       { key: "notif.channelPost.title", vars: { channel: channel?.name ?? { key: "notif.fallback.channel" } } },
       title,
-      `/ideas/${idea.id}`
+      `/ideas/${idea.id}`,
+      "channel_post",
+      { fullText, author: author?.displayName, images }
     ).catch(() => {});
     await notifyChannelTelegramSubscribers(
       tariffId,
       // Raw vars: telegram.ts escapes them per recipient.
       { key: "notif.tg.newSetup", vars: { title, preview, url: `https://fomo.spot/ideas/${idea.id}` } },
       // notifyChannelSubscribers above already delivers this event via Notification settings.
-      { dedupeEvent: "new_post_in_subscribed_channel" }
+      {
+        dedupeEvent: "new_post_in_subscribed_channel",
+        rich: { title: { key: "notif.tg.newSetupHead", vars: { title } }, author: author?.displayName, fullText, link: `/ideas/${idea.id}`, images },
+      }
     ).catch(() => {});
   }
 
