@@ -17,7 +17,7 @@ import EventDetails from "./EventDetails";
 import { CountryFilter, EnergyChip, ImpactToggles, MoexChip, QuickChips, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
-import { ActualValue, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
+import { ActualValue, BriefLine, ImpactDots, MoexMark, SourceFooter, useNow } from "./parts";
 
 const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
   { id: "yesterday", key: "ec.tab.yesterday" },
@@ -69,11 +69,15 @@ export interface RowProps {
   onOpen: (ev: CalEvent, a: Anchor) => void;
   /** highlighted (the event the day modal was opened on) */
   focus?: boolean;
+  /** the one-line impact summary under the title: for events of importance >= 2 ("important", default) or for all of them */
+  brief?: "important" | "all";
 }
+
+const wantsBrief = (ev: CalEvent, mode: RowProps["brief"]) => mode === "all" || ev.impact >= 2;
 
 export const isPast = (ev: CalEvent, now: number, zone: string) => (ev.allDay ? eventDay(ev, zone) < dayKey(now, zone) : ev.ts <= now);
 
-export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded, onOpen, focus }: RowProps) {
+export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded, onOpen, focus, brief }: RowProps) {
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const hasFigures = ev.actual !== null || ev.forecast !== null || ev.previous !== null;
@@ -87,8 +91,11 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
       <div className="flex items-start gap-2">
         <span className="w-[38px] shrink-0 pt-px text-[11px] tabular-nums text-gray-500 dark:text-gray-400">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
         <Flag code={ev.country} width={16} className="mt-[2px]" />
-        <span className="min-w-0 flex-1 text-[12px] leading-snug text-gray-900 dark:text-gray-100 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
-          {ev.category === "moex" && <MoexMark title={t("ec.moex")} />} {ev.event}
+        <span className="min-w-0 flex-1">
+          <span className="text-[12px] leading-snug text-gray-900 dark:text-gray-100 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+            {ev.category === "moex" && <MoexMark title={t("ec.moex")} />} {ev.event}
+          </span>
+          {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
         </span>
         {reminded && <span className="mt-px shrink-0 text-amber-500"><span className="scale-[0.62] inline-block origin-center">{EC_ICONS.bellOn}</span></span>}
         <span className="pt-[3px]"><ImpactDots level={ev.impact} size={5} /></span>
@@ -108,7 +115,7 @@ export const WIDE_COLS = "grid-cols-[52px_60px_minmax(200px,1fr)_110px_50px_84px
 /** the day modal: no category / unit columns */
 export const DAY_COLS = "grid-cols-[52px_64px_minmax(180px,1fr)_50px_88px_88px_88px_88px]";
 
-export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, onOpen, focus, compact }: RowProps & { compact?: boolean }) {
+export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, onOpen, focus, compact, brief }: RowProps & { compact?: boolean }) {
   const { t } = useT();
   const past = isPast(ev, now, zone);
   const change = ev.change ?? (ev.actual !== null && ev.previous !== null ? ev.actual - ev.previous : null);
@@ -125,10 +132,13 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
         <Flag code={ev.country} width={20} />
         <span className="text-[11px] text-gray-500">{ev.country || "—"}</span>
       </span>
-      <span className="flex min-w-0 items-center gap-1.5 text-gray-900 dark:text-gray-100">
-        {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}
-        <span className="truncate">{ev.event}</span>
-        {reminded && <span className="shrink-0 text-amber-500"><span className="inline-block scale-[0.62]">{EC_ICONS.bellOn}</span></span>}
+      <span className="min-w-0 text-gray-900 dark:text-gray-100">
+        <span className="flex min-w-0 items-center gap-1.5">
+          {ev.category === "moex" && <MoexMark title={t("ec.moex")} />}
+          <span className="truncate">{ev.event}</span>
+          {reminded && <span className="shrink-0 text-amber-500"><span className="inline-block scale-[0.62]">{EC_ICONS.bellOn}</span></span>}
+        </span>
+        {wantsBrief(ev, brief) && <BriefLine ev={ev} />}
       </span>
       {!compact && <span className="truncate text-[11px] text-gray-500 dark:text-gray-400">{t(`ec.cat.${ev.category}`)}</span>}
       <span title={t(`ec.impact.${ev.impact}`)}><ImpactDots level={ev.impact} /></span>

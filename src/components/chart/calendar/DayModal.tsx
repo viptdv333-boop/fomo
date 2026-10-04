@@ -121,9 +121,9 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
                   <div key={e.id}>
                     {isToday && i === firstFuture && <NowMarker now={now} zone={zone} />}
                     {narrow ? (
-                      <PanelRow ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
+                      <PanelRow brief="all" ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
                     ) : (
-                      <WideRow compact ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
+                      <WideRow compact brief="all" ev={e} zone={zone} now={now} locale={locale} reminded={remindedIds.has(e.id)} onOpen={open} focus={e.id === focusId} />
                     )}
                   </div>
                 ))}

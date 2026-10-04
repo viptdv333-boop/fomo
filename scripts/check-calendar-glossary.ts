@@ -5,7 +5,8 @@
    Optional: CAL_NAMES_FILE=names.json (array of {k,imp,cat,c}) prints the coverage of a bigger sample. */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { explicitKey, glossaryText, localizeCalEvent, localizeEvent, localizePeriod, splitMods, tagLabel, TAGS } from "../src/lib/calendar/glossary";
+import { explicitKey, glossaryBrief, glossaryText, localizeCalEvent, localizeEvent, localizePeriod, splitMods, tagLabel, TAGS } from "../src/lib/calendar/glossary";
+import { BRIEFS } from "../src/lib/calendar/glossary-briefs";
 import { RULES } from "../src/lib/calendar/glossary-rules";
 import { categoryOf, filterEvents } from "../src/lib/calendar/normalize";
 import { surprise } from "../src/lib/calendar/surprise";
@@ -167,6 +168,52 @@ ok("country currency tag is resolved from the event country", () => {
   assert.ok(loc(find("Inflation Rate YoY Flash")).tags!.includes("eur"));
   assert.ok(!loc(find("Consumer Confidence")).tags!.includes("ccy"));
   assert.ok(!(loc(find("Balance of Trade")).tags ?? []).includes("ccy"), "SI has no currency tag");
+});
+
+console.log("briefs (one line in the event rows)");
+ok("every explicit rule has its own brief: 10..90 characters, Cyrillic, one line; no orphan entries in BRIEFS", () => {
+  for (const r of RULES) {
+    assert.ok(r.key in BRIEFS, `${r.key}: no hand-written brief`);
+    assert.ok(r.brief.length >= 10 && r.brief.length <= 90, `${r.key}: brief length ${r.brief.length}: ${r.brief}`);
+    assert.ok(hasCyr(r.brief), `${r.key}: brief without Cyrillic`);
+    assert.ok(!/[\u0000-\u001f]/.test(r.brief), `${r.key}: control chars in the brief`);
+    assert.equal(glossaryBrief(r.key, "ru"), r.brief);
+  }
+  const keys = new Set(RULES.map((r) => r.key));
+  for (const k of Object.keys(BRIEFS)) assert.ok(keys.has(k), `BRIEFS has an entry for an unknown rule ${k}`);
+});
+ok("speeches, holidays and every generic fallback category have a non-empty Russian brief; en / cn get none", () => {
+  for (const k of ["cb.speech", "holiday", "~centralbank", "~inflation", "~employment", "~growth", "~manufacturing", "~consumer", "~housing", "~trade", "~energy", "~auction", "~holiday", "~other"]) {
+    const b = glossaryBrief(k, "ru");
+    assert.ok(b && b.length >= 10 && b.length <= 90 && hasCyr(b), `${k}: ${b}`);
+    assert.equal(glossaryText(k, "ru")!.brief, b);
+    assert.equal(glossaryBrief(k, "en"), null);
+  }
+  assert.equal(glossaryBrief("~nonsense", "ru"), null);
+  assert.equal(glossaryBrief("no.such.rule", "ru"), null);
+  assert.equal(glossaryBrief(undefined, "ru"), null);
+  for (const r of FIXTURE) {
+    const l = loc(r);
+    assert.ok(l.brief && hasCyr(l.brief) && l.brief.length <= 90, `${r[0]} (${l.key}) brief: ${l.brief}`);
+    assert.equal(l.brief, glossaryBrief(l.key, "ru"), `${r[0]}: localizeEvent brief differs from the lookup by key`);
+    assert.equal(loc(r, "en").brief, undefined);
+  }
+});
+ok("energy events' briefs mention oil or gas; the NFP / CPI / FOMC / rate briefs mention volatility", () => {
+  for (const r of FIXTURE.filter((x) => /EIA|API Crude|Baker Hughes|IEA|OPEC/.test(x[0]))) {
+    const b = loc(r).brief!;
+    assert.ok(/нефт|газ/i.test(b), `${r[0]}: ${b}`);
+  }
+  for (const r of RULES.filter((x) => x.category === "energy")) assert.ok(/нефт|газ/i.test(r.brief), `${r.key}: ${r.brief}`);
+  for (const name of ["Non Farm Payrolls", "Fed Interest Rate Decision", "Inflation Rate MoM", "Core PCE Price Index MoM", "ECB Interest Rate Decision", "ISM Manufacturing PMI", "Fed Press Conference"]) {
+    assert.ok(/волатильн/i.test(loc(find(name)).brief!), `${name}: ${loc(find(name)).brief}`);
+  }
+  assert.ok(/волатильн/i.test(loc(find("Fed Logan Speech")).brief!));
+});
+ok("the brief never travels in the list payload", () => {
+  const out = localizeCalEvent(mk("Non Farm Payrolls", "US", 3), "ru") as unknown as Record<string, unknown>;
+  assert.equal(out.brief, undefined);
+  assert.ok(!JSON.stringify(out).includes("волатильн"));
 });
 
 console.log("energy");

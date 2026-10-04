@@ -6,6 +6,7 @@ import { intlLocale } from "@/lib/calendar/countries";
 import { formatValue } from "@/lib/calendar/surprise";
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "@/components/chart/Flag";
+import { useBriefs } from "@/lib/calendar/useBriefs";
 
 const IMPACT_COLORS: Record<number, string> = {
   3: "bg-red-500",
@@ -27,6 +28,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
   const { t, locale } = useT();
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const { get: briefOf } = useBriefs(); // compact list: the impact summary is a tooltip only
 
   useEffect(() => {
     // the API answers with normalised events (see lib/calendar/types); the page shows the next week of the major economies
@@ -64,7 +66,7 @@ export default function EconomicCalendar({ country }: { country?: string }) {
             <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-2 uppercase">{day}</div>
             <div className="space-y-1">
               {dayEvents.map((e) => (
-                <div key={e.id} className="flex items-center gap-2 py-1.5 border-b border-gray-50 dark:border-gray-800/30 last:border-b-0">
+                <div key={e.id} title={briefOf(e) ? `${e.event}\n${briefOf(e)}` : undefined} className="flex items-center gap-2 py-1.5 border-b border-gray-50 dark:border-gray-800/30 last:border-b-0">
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${IMPACT_COLORS[e.impact] || "bg-gray-400"}`} />
                   <span className="text-xs text-gray-400 w-10 shrink-0">{e.allDay ? "—" : formatTime(e.ts, locale)}</span>
                   <Flag code={e.country} width={18} />

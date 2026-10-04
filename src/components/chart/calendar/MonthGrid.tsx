@@ -6,6 +6,7 @@ import { dayCounts, outsideCoverage, pickForCell, type GridCell } from "@/lib/ca
 import { addDays, formatClock, formatDayHeading } from "@/lib/calendar/time";
 import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
+import { useBriefs } from "@/lib/calendar/useBriefs";
 import { IMPACT_COLOR } from "./parts";
 
 interface Props {
@@ -29,6 +30,7 @@ const MAX_ROWS = 5;
  */
 export default function MonthGrid({ cells, events, zone, locale, coverage, fill = true, onOpenDay }: Props) {
   const { t } = useT();
+  const { get: briefOf } = useBriefs();
   const by = useMemo(() => dayCounts(events, zone), [events, zone]);
   const refs = useRef(new Map<string, HTMLElement>());
   const [focusDate, setFocusDate] = useState<string | null>(null);
@@ -149,7 +151,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           ev.stopPropagation();
                           onOpenDay(c.date, e.id);
                         }}
-                        title={`${e.allDay ? "" : formatClock(e.ts, zone) + " "}${e.event}`}
+                        title={`${e.allDay ? "" : formatClock(e.ts, zone) + " "}${e.event}${briefOf(e) ? `\n${briefOf(e)}` : ""}`}
                         className={`flex w-full min-w-0 items-center gap-1 rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 dark:hover:bg-white/10 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : ""}`}
                       >
                         <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-gray-400">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>

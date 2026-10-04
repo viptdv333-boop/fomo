@@ -1,4 +1,5 @@
 import type { CalCategory } from "./types";
+import { BRIEFS, briefFromTags } from "./glossary-briefs";
 
 /*
  * The hand-written part of the economic-calendar glossary: one rule per indicator (or family of indicators).
@@ -21,6 +22,8 @@ export interface Rule {
   title: string | ((m: RegExpExecArray, country: string) => string);
   about: string;
   affects: string;
+  /** one line (<= 90 characters) for the event row: which assets react and how (see glossary-briefs.ts) */
+  brief: string;
   tags: Tag[];
   /** energy and similar events must stay visible with the default filters */
   minImpact?: 2 | 3;
@@ -55,7 +58,7 @@ export const orgGen = (org: string | undefined, country: string): string => {
 
 export const RULES: Rule[] = [];
 function R(key: string, re: RegExp, title: Rule["title"], about: string, affects: string, tags: Tag[], opts: Partial<Pick<Rule, "minImpact" | "category" | "noMods">> = {}) {
-  RULES.push({ key, re, title, about, affects, tags, ...opts });
+  RULES.push({ key, re, title, about, affects, brief: BRIEFS[key] ?? briefFromTags(tags), tags, ...opts });
 }
 
 /* common "how it moves the market" phrases */

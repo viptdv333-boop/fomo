@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { formatValue, surprise, type Surprise } from "@/lib/calendar/surprise";
 import type { CalEvent } from "@/lib/calendar/types";
+import { mayHaveBrief, useBriefs } from "@/lib/calendar/useBriefs";
 
 export const IMPACT_COLOR: Record<number, string> = { 3: "#ef4444", 2: "#f59e0b", 1: "#9ca3af" };
 
@@ -78,6 +79,23 @@ export function MoexMark({ title }: { title?: string }) {
     <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-sky-500/15 px-1 text-[9px] font-bold uppercase leading-none text-sky-600 dark:text-sky-300">
       <span className="inline-block h-[5px] w-[5px] rotate-45 bg-sky-500" />
       MOEX
+    </span>
+  );
+}
+
+/**
+ * The one-line impact summary under an event title (muted, one line with an ellipsis, the full text in the title attribute).
+ * While the glossary chunk is loading the line is reserved (same height), so the rows do not jump when the text arrives.
+ */
+export function BriefLine({ ev, className = "" }: { ev: CalEvent; className?: string }) {
+  const { locale } = useT();
+  const { ready, get } = useBriefs();
+  if (!mayHaveBrief(ev, locale)) return null;
+  const text = ready ? get(ev) : null;
+  if (ready && !text) return null;
+  return (
+    <span title={text ?? undefined} className={`block h-[15px] truncate text-[11px] leading-[15px] text-gray-500 dark:text-gray-400 ${className}`}>
+      {text}
     </span>
   );
 }

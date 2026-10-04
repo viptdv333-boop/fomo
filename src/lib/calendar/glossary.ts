@@ -1,3 +1,4 @@
+import { GENERIC_BRIEFS, HOLIDAY_BRIEF, SPEECH_BRIEF, briefFromTags } from "./glossary-briefs";
 import { COUNTRY_ORG, RULES, type Tag } from "./glossary-rules";
 import type { CalCategory, CalEvent } from "./types";
 
@@ -56,6 +57,8 @@ export interface LocalizedEvent {
   title: string;
   about?: string;
   affects?: string;
+  /** one-line impact summary for the event row (Russian only) */
+  brief?: string;
   tags?: string[];
   /** glossary key: rule id, "cb.speech", "holiday" or "~<category>" for the generic fallbacks */
   key?: string;
@@ -249,6 +252,12 @@ function translateFallback(base: string): string {
 }
 
 interface Generic { about: string; affects: string; tags: Tag[] }
+
+/** brief of a generic fallback category: hand-written, else derived from the category's tags */
+function genericBrief(cat: string): string {
+  const g = GENERIC[cat];
+  return GENERIC_BRIEFS[cat] || briefFromTags(g ? g.tags.map((t) => (t === "ccy" ? "usd" : t)) : []);
+}
 const GENERIC: Record<string, Generic> = {
   centralbank: { about: "Событие центробанка: решение, протокол, отчёт или выступление, из которого рынок делает выводы о будущей ставке.", affects: "Более жёсткий тон, чем ждали, — валюта страны крепнет, акции и золото слабеют; более мягкий — наоборот.", tags: ["ccy", "bonds", "stocks"] },
   inflation: { about: "Показатель роста цен. Центробанки меняют ставки в зависимости от инфляции, поэтому такие данные важны для рынка.", affects: "Выше прогноза — ожидания более жёсткой политики: валюта крепнет, облигации и акции слабеют. Ниже прогноза — наоборот.", tags: ["ccy", "bonds", "stocks"] },
@@ -271,6 +280,7 @@ interface Resolved {
   key: string;
   about: string;
   affects: string;
+  brief: string;
   tags: string[];
   minImpact: number;
   category?: string;
@@ -294,10 +304,10 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
   const name = norm(nameRaw);
   if (categoryIn === "holiday") {
     const ru = HOLIDAYS[name.toLowerCase().replace(/\s+$/, "")];
-    return { title: ru ?? name, key: "holiday", about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS, tags: [], minImpact: 0, fallback: !ru, periodic: false };
+    return { title: ru ?? name, key: "holiday", about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS, brief: HOLIDAY_BRIEF, tags: [], minImpact: 0, fallback: !ru, periodic: false };
   }
   const sp = speechTitle(name, country);
-  if (sp) return { title: sp.title, key: "cb.speech", about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, tags: resolveTags(["ccy", "bonds", "stocks"], country), minImpact: 0, fallback: false, periodic: false };
+  if (sp) return { title: sp.title, key: "cb.speech", about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: SPEECH_BRIEF, tags: resolveTags(["ccy", "bonds", "stocks"], country), minImpact: 0, fallback: false, periodic: false };
   const { base, mods } = splitMods(name);
   const periodic = mods.some((m) => PERIODIC.includes(m));
   for (const r of RULES) {
@@ -309,6 +319,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
       key: r.key,
       about: r.about,
       affects: r.affects,
+      brief: r.brief,
       tags: resolveTags(r.tags, country),
       minImpact: r.minImpact ?? 0,
       category: r.category,
@@ -318,7 +329,7 @@ function resolve(nameRaw: string, categoryIn: string, country: string): Resolved
   }
   const cat = GENERIC[categoryIn] ? categoryIn : "other";
   const g = GENERIC[cat];
-  return { title: translateFallback(base) + modsRu(mods), key: `~${cat}`, about: g.about, affects: g.affects, tags: resolveTags(g.tags, country), minImpact: 0, fallback: true, periodic };
+  return { title: translateFallback(base) + modsRu(mods), key: `~${cat}`, about: g.about, affects: g.affects, brief: genericBrief(cat), tags: resolveTags(g.tags, country), minImpact: 0, fallback: true, periodic };
 }
 
 export function localizeEvent(ev: { event: string; category?: string; country?: string; impact: number }, lang: GlossaryLang = "ru"): LocalizedEvent {
@@ -338,21 +349,35 @@ export function localizeEvent(ev: { event: string; category?: string; country?: 
   if (lang === "ru") {
     out.about = r.about;
     out.affects = r.affects;
+    out.brief = r.brief;
   }
   return out;
 }
 
-/** The texts of a glossary key (Russian only): for the event popup on the client. */
-export function glossaryText(key: string | undefined, lang: GlossaryLang | string = "ru"): { about: string; affects: string } | null {
+/**
+ * The one-line impact summary of a glossary key (Russian only): shown right in the event rows. The client looks it up by `gk`
+ * (or `~<category>` for the generic fallbacks), so it never travels in the list payload.
+ */
+export function glossaryBrief(key: string | undefined, lang: GlossaryLang | string = "ru"): string | null {
   if (!key || lang !== "ru") return null;
-  if (key === "cb.speech") return { about: SPEECH_ABOUT, affects: SPEECH_AFFECTS };
-  if (key === "holiday") return { about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS };
+  if (key === "cb.speech") return SPEECH_BRIEF;
+  if (key === "holiday") return HOLIDAY_BRIEF;
+  if (key.startsWith("~")) return GENERIC[key.slice(1)] ? genericBrief(key.slice(1)) : null;
+  const r = RULES.find((x) => x.key === key);
+  return r ? r.brief : null;
+}
+
+/** The texts of a glossary key (Russian only): for the event popup on the client. */
+export function glossaryText(key: string | undefined, lang: GlossaryLang | string = "ru"): { about: string; affects: string; brief: string } | null {
+  if (!key || lang !== "ru") return null;
+  if (key === "cb.speech") return { about: SPEECH_ABOUT, affects: SPEECH_AFFECTS, brief: SPEECH_BRIEF };
+  if (key === "holiday") return { about: HOLIDAY_ABOUT, affects: HOLIDAY_AFFECTS, brief: HOLIDAY_BRIEF };
   if (key.startsWith("~")) {
     const g = GENERIC[key.slice(1)];
-    return g ? { about: g.about, affects: g.affects } : null;
+    return g ? { about: g.about, affects: g.affects, brief: genericBrief(key.slice(1)) } : null;
   }
   const r = RULES.find((x) => x.key === key);
-  return r ? { about: r.about, affects: r.affects } : null;
+  return r ? { about: r.about, affects: r.affects, brief: r.brief } : null;
 }
 
 /** For the check script: the hand-written rule behind a name, if any (speeches and holidays included). */
@@ -366,7 +391,7 @@ const memo = new WeakMap<CalEvent, Partial<Record<GlossaryLang, CalEvent>>>();
 /**
  * The calendar event as the API serves it: Russian title (the English one moves to `eventEn`), glossary key, market tags, the
  * importance raised for energy events, the period in Russian. The about / affects texts are NOT copied (size): the client looks
- * them up by `gk`. Never mutates its argument (the source blocks are shared between requests).
+ * them up by `gk` (the one-line brief too). Never mutates its argument (the source blocks are shared between requests).
  */
 export function localizeCalEvent(e: CalEvent, lang: GlossaryLang = "ru"): CalEvent {
   if (e.category === "moex") return e;

@@ -1,0 +1,59 @@
+"use client";
+
+import { useCallback, useSyncExternalStore } from "react";
+import { useT } from "@/lib/i18n/client";
+import type { CalEvent } from "./types";
+
+/*
+ * One-line impact summaries of the events («brief») for the rows of the calendar. They are NOT in the list payload: the client
+ * looks them up by the glossary key `gk` in the glossary chunk, which is loaded lazily (once, shared by all rows). Rows
+ * subscribe to the load, so they re-render when the chunk arrives. Russian only (the texts exist only in Russian).
+ */
+
+type Glossary = typeof import("./glossary");
+
+let gl: Glossary | null = null;
+let loading: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function load() {
+  if (gl || loading) return;
+  loading = import("./glossary")
+    .then((m) => {
+      gl = m;
+      listeners.forEach((l) => l());
+    })
+    .catch(() => {
+      loading = null; // a later subscriber retries
+    });
+}
+
+function subscribe(l: () => void) {
+  listeners.add(l);
+  load();
+  return () => {
+    listeners.delete(l);
+  };
+}
+const snapshot = () => gl;
+const serverSnapshot = () => null;
+
+/** The brief of an event, or null (no text for it, MOEX, not Russian). Needs the glossary loaded. */
+export function briefOf(g: Glossary | null, ev: CalEvent, locale: string): string | null {
+  if (!g || locale !== "ru" || ev.category === "moex") return null;
+  return g.glossaryBrief(ev.gk ?? `~${ev.category}`, locale);
+}
+
+/** Whether an event can have a brief at all (so a row can reserve its line while the glossary chunk is still loading). */
+export const mayHaveBrief = (ev: CalEvent, locale: string) => locale === "ru" && ev.category !== "moex";
+
+/**
+ * `get(ev)` returns the brief of an event (null when there is none); `ready` is false until the glossary chunk has arrived.
+ * Every component that calls the hook re-renders once the chunk is there.
+ */
+export function useBriefs(): { ready: boolean; get: (ev: CalEvent) => string | null } {
+  const { locale } = useT();
+  const g = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  const get = useCallback((ev: CalEvent) => briefOf(g, ev, locale), [g, locale]);
+  return { ready: g !== null || locale !== "ru", get };
+}
