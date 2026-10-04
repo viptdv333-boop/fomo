@@ -22,6 +22,9 @@ export default async function Footer() {
             {t("tf.more")}
           </Link>
         )}
+        <Link href={localizedPath(locale, "/calendar")} className="hover:text-gray-600 dark:hover:text-gray-400 transition hidden sm:inline">
+          {t("ec.footer")}
+        </Link>
         <Link href="/privacy" className="hover:text-gray-600 dark:hover:text-gray-400 transition hidden sm:inline">
           {t("common.footer.privacy")}
         </Link>

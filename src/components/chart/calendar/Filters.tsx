@@ -1,0 +1,160 @@
+"use client";
+
+import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
+import { QUICK, countryName } from "@/lib/calendar/countries";
+import { useCalPrefs } from "@/lib/calendar/prefs";
+import Flag from "../Flag";
+import { EC_ICONS } from "../icons-econ";
+import CountryPicker from "./CountryPicker";
+import { anchorOf, type Anchor } from "./FloatingPanel";
+import { ImpactDots } from "./parts";
+
+/* The filter controls shared by the side panel, the list, the month grid and the day modal. They all read and write the same
+   calendar preferences, so a change in one place applies everywhere (grid squares, list, modal, chart). */
+
+export function ImpactToggles() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  const toggle = (lv: number) =>
+    update((p) => {
+      const has = p.impacts.includes(lv);
+      const next = has ? p.impacts.filter((x) => x !== lv) : [...p.impacts, lv].sort();
+      return next.length ? { ...p, impacts: next } : p;
+    });
+  return (
+    <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={t("ec.importance")}>
+      {[3, 2, 1].map((lv) => {
+        const on = prefs.impacts.includes(lv);
+        return (
+          <button
+            key={lv}
+            type="button"
+            aria-pressed={on}
+            title={t(`ec.impact.${lv}`)}
+            onClick={() => toggle(lv)}
+            className={`flex h-7 w-9 items-center justify-center rounded-md border cursor-pointer transition ${on ? "border-transparent bg-gray-100 dark:bg-[#2a2e39]" : "border-gray-200 opacity-45 hover:opacity-80 dark:border-[#363a45]"}`}
+          >
+            <ImpactDots level={lv} size={5} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function CountryFilter({ seen = [], className = "" }: { seen?: string[]; className?: string }) {
+  const { t, locale } = useT();
+  const [prefs, update] = useCalPrefs();
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => setAnchor(anchor ? null : anchorOf(e.currentTarget))}
+        className={`inline-flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-gray-200 px-2 text-[12px] cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39] ${className}`}
+      >
+        {prefs.countries.length === 0 ? (
+          <>
+            <Flag code="" width={16} />
+            <span className="truncate">{t("ec.allCountries")}</span>
+          </>
+        ) : (
+          <>
+            <span className="flex -space-x-1">
+              {prefs.countries.slice(0, 3).map((c) => (
+                <Flag key={c} code={c} width={15} />
+              ))}
+            </span>
+            <span className="truncate">{prefs.countries.length === 1 ? countryName(prefs.countries[0], locale, t) : t("ec.nCountries", { n: prefs.countries.length })}</span>
+          </>
+        )}
+        <span className="ml-auto text-gray-400">{EC_ICONS.chevron}</span>
+      </button>
+      {anchor && (
+        <CountryPicker
+          anchor={anchor}
+          onClose={() => setAnchor(null)}
+          selected={prefs.countries}
+          mine={prefs.mine}
+          seen={seen}
+          onChange={(codes) => update((p) => ({ ...p, countries: codes }))}
+          onSaveMine={(codes) => update((p) => ({ ...p, mine: codes }))}
+        />
+      )}
+    </>
+  );
+}
+
+export function QuickChips() {
+  const { t, locale } = useT();
+  const [prefs, update] = useCalPrefs();
+  const toggle = (c: string) =>
+    update((p) => {
+      if (p.countries.length === 0) return { ...p, countries: [c] };
+      return { ...p, countries: p.countries.includes(c) ? p.countries.filter((x) => x !== c) : [...p.countries, c] };
+    });
+  return (
+    <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {QUICK.map((c) => {
+        const on = prefs.countries.includes(c);
+        return (
+          <button
+            key={c}
+            type="button"
+            aria-pressed={on}
+            title={countryName(c, locale, t)}
+            onClick={() => toggle(c)}
+            className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${on ? "border-green-600 bg-green-600/10 text-green-700 dark:text-green-400" : "border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"}`}
+          >
+            <Flag code={c} width={14} />
+            {c}
+          </button>
+        );
+      })}
+      {prefs.mine.length > 0 && (
+        <button
+          type="button"
+          onClick={() => update((p) => ({ ...p, countries: p.mine }))}
+          className="inline-flex h-6 shrink-0 items-center rounded-full border border-gray-200 px-2 text-[11px] text-gray-600 cursor-pointer hover:bg-gray-100 dark:border-[#363a45] dark:text-gray-300 dark:hover:bg-[#2a2e39]"
+        >
+          {t("ec.mine")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The "Moscow Exchange" layer switch (default on). */
+export function MoexChip() {
+  const { t } = useT();
+  const [prefs, update] = useCalPrefs();
+  return (
+    <button
+      type="button"
+      aria-pressed={prefs.moex}
+      title={t("ec.moex.hint")}
+      onClick={() => update((p) => ({ ...p, moex: !p.moex }))}
+      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] cursor-pointer transition ${prefs.moex ? "border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-300" : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-[#363a45] dark:hover:bg-[#2a2e39]"}`}
+    >
+      <span className="inline-block h-2 w-2 rotate-45 bg-sky-500" />
+      {t("ec.moex")}
+    </button>
+  );
+}
+
+export function SearchBox({ q, setQ }: { q: string; setQ: (v: string) => void }) {
+  const { t } = useT();
+  return (
+    <div className="relative min-w-0 flex-1">
+      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">{EC_ICONS.search}</span>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder={t("ec.search")}
+        aria-label={t("ec.search")}
+        className="h-7 w-full rounded-md border border-gray-200 bg-transparent pl-7 pr-2 text-[12px] outline-none focus:border-green-600 dark:border-[#363a45]"
+      />
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { countryName, intlLocale } from "@/lib/calendar/countries";
 import { addReminder, removeReminder, useReminders } from "@/lib/calendar/reminders";
@@ -10,7 +10,10 @@ import type { CalEvent } from "@/lib/calendar/types";
 import Flag from "../Flag";
 import { EC_ICONS } from "../icons-econ";
 import FloatingPanel, { type Anchor } from "./FloatingPanel";
-import { ImpactDots, SURPRISE_CLASS, useNow } from "./parts";
+import { ImpactDots, MoexMark, SURPRISE_CLASS, useNow } from "./parts";
+
+/** descriptions are fetched on demand (the list answers carry only `hasDesc`) and remembered */
+const descMemo = new Map<string, string>();
 
 const MINUTES = [5, 15, 30, 60];
 
@@ -22,6 +25,27 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
   const existing = reminders.find((r) => r.id === ev.id);
   const [minutes, setMinutes] = useState(existing?.minutes ?? 15);
   const future = ev.ts > now && !ev.allDay;
+  const [desc, setDesc] = useState<string>(ev.description ?? descMemo.get(ev.id) ?? "");
+  useEffect(() => {
+    if (desc || !ev.hasDesc) return;
+    let off = false;
+    const day = new Date(ev.ts).toISOString().slice(0, 10);
+    const params = new URLSearchParams({ from: day, to: day, desc: "1", q: ev.event, lang: locale });
+    if (ev.country) params.set("countries", ev.country);
+    fetch(`/api/economic-calendar?${params}`)
+      .then((r) => r.json())
+      .then((rows: unknown) => {
+        const hit = Array.isArray(rows) ? (rows as { id?: string; description?: string }[]).find((x) => x.id === ev.id) : null;
+        if (hit?.description && !off) {
+          descMemo.set(ev.id, hit.description);
+          setDesc(hit.description);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [ev, desc, locale]);
   const s = surprise(ev);
 
   const when = (() => {
@@ -69,7 +93,8 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
             <ImpactDots level={ev.impact} />
             {t(`ec.impact.${ev.impact}`)}
           </span>
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] dark:bg-[#2a2e39]">{t(`ec.cat.${ev.category}`)}</span>
+          {ev.category === "moex" ? <MoexMark title={t("ec.moex")} /> : <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] dark:bg-[#2a2e39]">{t(`ec.cat.${ev.category}`)}</span>}
+          {ev.period && <span className="text-[11px] text-gray-400">{ev.period}</span>}
         </div>
 
         <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
@@ -88,6 +113,12 @@ export default function EventDetails({ ev, anchor, zone, onClose }: { ev: CalEve
           {cell(t("ec.change"), formatChange(ev.change ?? (ev.actual !== null && ev.previous !== null ? ev.actual - ev.previous : null), ev.unit, loc))}
         </div>
         {s && <div className={`mt-2 text-xs font-medium ${SURPRISE_CLASS[s]}`}>{t(`ec.surprise.${s}`)}</div>}
+        {ev.hasDesc && (
+          <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600 dark:bg-[#262a36] dark:text-gray-300">
+            {desc || <span className="text-gray-400">…</span>}
+            {ev.origin && desc && <div className="mt-1.5 text-[11px] text-gray-400">{t("ec.origin")}: {ev.origin}</div>}
+          </div>
+        )}
 
         {future && (
           <div className="mt-3 border-t border-gray-100 pt-3 dark:border-[#2a2e39]">

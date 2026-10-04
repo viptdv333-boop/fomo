@@ -22,6 +22,13 @@ export interface CalEvent {
   /** actual - previous as given by the source, when present. */
   change: number | null;
   changePercentage: number | null;
+  /** Long description of the indicator (TradingView `comment`, MOEX notes). The API strips the text unless `desc=1` and sets `hasDesc`. */
+  description?: string;
+  hasDesc?: boolean;
+  /** Reference period ("Sep", "Q3"), TradingView ticker and the publisher of the figure; only when the source gives them. */
+  period?: string;
+  ticker?: string;
+  origin?: string;
 }
 
 export type CalCategory =
@@ -35,6 +42,9 @@ export type CalCategory =
   | "trade"
   | "energy"
   | "auction"
+  | "holiday"
+  /** Events built from the Moscow Exchange itself (trading calendar, expirations): own badge and colour in the UI. */
+  | "moex"
   | "other";
 
 export type ImpactLevel = 1 | 2 | 3;
@@ -44,7 +54,12 @@ export interface CalFilter {
   countries?: ReadonlySet<string> | null;
   impacts?: ReadonlySet<number> | null;
   q?: string;
+  /** Hide the Moscow Exchange layer. */
+  noMoex?: boolean;
 }
 
 /** Why a response carries no (or only partial) data; sent in the X-Calendar-Reason header. */
-export type CalReason = "ok" | "mock" | "no-key" | "restricted" | "unauthorized" | "upstream-error" | "rate-limited" | "partial" | "clamped" | "bad-range";
+export type CalReason = "ok" | "mock" | "no-key" | "restricted" | "unauthorized" | "upstream-error" | "rate-limited" | "partial" | "clamped" | "bad-range" | "range-unsupported";
+
+/** The providers of the chain, in priority order. */
+export type CalSource = "tradingview" | "fmp" | "forexfactory" | "mock" | "none";

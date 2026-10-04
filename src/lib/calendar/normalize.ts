@@ -166,10 +166,12 @@ export function filterEvents(events: readonly CalEvent[], f: CalFilter): CalEven
   const q = f.q?.trim().toLowerCase() ?? "";
   const countries = f.countries && f.countries.size > 0 ? f.countries : null;
   const impacts = f.impacts && f.impacts.size > 0 ? f.impacts : null;
-  if (!q && !countries && !impacts) return events.slice();
+  if (!q && !countries && !impacts && !f.noMoex) return events.slice();
   return events.filter((e) => {
-    if (countries && !countries.has(e.country)) return false;
+    // the Moscow Exchange layer has its own switch (noMoex): the country filter does not hide it
+    if (countries && e.category !== "moex" && !countries.has(e.country)) return false;
     if (impacts && !impacts.has(e.impact)) return false;
+    if (f.noMoex && e.category === "moex") return false;
     if (q && !(e.event.toLowerCase().includes(q) || e.country.toLowerCase() === q || e.currency.toLowerCase() === q)) return false;
     return true;
   });

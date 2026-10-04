@@ -20,6 +20,12 @@ export interface CalPrefs {
   custom: DateRange | null;
   /** Events on the chart. */
   chart: { on: boolean; impacts: number[] };
+  /** The Moscow Exchange layer (trading calendar, expirations): list, grid and chart. */
+  moex: boolean;
+  /** Full-page calendar view: month squares or the list. */
+  view: "grid" | "list";
+  /** Narrow side panel: mini month instead of the list. */
+  panelGrid: boolean;
 }
 
 export const DEFAULT_CAL_PREFS: CalPrefs = {
@@ -31,6 +37,9 @@ export const DEFAULT_CAL_PREFS: CalPrefs = {
   preset: "today",
   custom: null,
   chart: { on: false, impacts: [3] },
+  moex: true,
+  view: "grid",
+  panelGrid: false,
 };
 
 const LS = "fomo-calendar-prefs-v1";
@@ -58,6 +67,9 @@ export function normalizeCalPrefs(raw: unknown): CalPrefs {
     preset: PRESETS.includes(r.preset as RangePreset) ? (r.preset as RangePreset) : "today",
     custom: custom && isDate(custom.from) && isDate(custom.to) ? { from: custom.from, to: custom.to } : null,
     chart: { on: chart.on === true, impacts: levels(chart.impacts, DEFAULT_CAL_PREFS.chart.impacts) },
+    moex: r.moex !== false,
+    view: r.view === "list" ? "list" : "grid",
+    panelGrid: r.panelGrid === true,
   };
 }
 

@@ -12,8 +12,12 @@ import type { CalReason } from "@/lib/calendar/types";
  *   impact     comma list of low | medium | high (default: all)
  *   q          text search in the event name (or a country / currency code)
  *   limit      max events (default 3000)
+ *   moex       0 switches the Moscow Exchange layer off (default on); lang = ru | en | cn for its texts
+ *   desc       1 keeps the long event descriptions (otherwise stripped; events carry hasDesc)
  * Returns a plain array of normalised events (see lib/calendar/types). Never throws: on any failure the array is empty and the
- * reason is in X-Calendar-Reason (ok | mock | no-key | restricted | unauthorized | upstream-error | rate-limited | partial | clamped | bad-range);
+ * reason is in X-Calendar-Reason (ok | mock | no-key | restricted | unauthorized | upstream-error | rate-limited | partial | clamped | bad-range | range-unsupported);
+ * X-Calendar-Source: tradingview | fmp | forexfactory | mock | none (+ X-Calendar-Tried with what every provider said,
+ * X-Calendar-Layers: moex, X-Calendar-Coverage: "fromMs..toMs" when the provider knows only a window, e.g. Forex Factory);
  * X-Calendar-Stale: 1 marks an old copy served because the refresh failed.
  */
 
@@ -81,11 +85,24 @@ export async function GET(request: NextRequest) {
     const q = (sp.get("q") || "").slice(0, 80);
     const limit = Math.max(1, Math.min(5000, parseInt(sp.get("limit") || "3000", 10) || 3000));
 
-    const res = await getCalendarRange(from, to, now);
-    const events = filterEvents(res.events, { countries, impacts, q }).slice(0, limit);
+    const lang = ["ru", "en", "cn"].includes(sp.get("lang") || "") ? (sp.get("lang") as "ru" | "en" | "cn") : "ru";
+    const moex = sp.get("moex") !== "0";
+    const res = await getCalendarRange(from, to, now, { moex, lang });
+    const wantDesc = sp.get("desc") === "1";
+    const events = filterEvents(res.events, { countries, impacts, q })
+      .slice(0, limit)
+      .map((e) => {
+        if (wantDesc || !e.description) return e;
+        const { description: _d, ...rest } = e;
+        void _d;
+        return rest;
+      });
     return reply(events, reason && (res.reason === "ok" || res.reason === "mock") ? reason : res.reason, {
       ...(res.stale ? { "X-Calendar-Stale": "1" } : {}),
       "X-Calendar-Source": res.source,
+      "X-Calendar-Tried": res.tried.join(","),
+      ...(res.moex ? { "X-Calendar-Layers": "moex" } : {}),
+      ...(res.coverage ? { "X-Calendar-Coverage": `${res.coverage.from}..${res.coverage.to}` } : {}),
       "X-Calendar-Range": `${from}..${to}`,
     });
   } catch {

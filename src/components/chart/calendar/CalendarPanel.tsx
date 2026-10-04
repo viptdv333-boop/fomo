@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import ModalPortal from "../ModalPortal";
 import CalendarView from "./CalendarView";
+import WorldCalendar from "./WorldCalendar";
 
-/** The economic calendar tab of the right panel, with the "expand" button that opens the wide table in a dialog. */
+/** The economic calendar tab of the right panel; "expand" opens the whole-page calendar over the terminal. */
 export default function CalendarPanel({ zone, visible }: { zone: string; visible: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -13,33 +14,26 @@ export default function CalendarPanel({ zone, visible }: { zone: string; visible
       <div className="min-h-0 flex-1">
         <CalendarView variant="panel" zone={zone} visible={visible && !open} onExpand={() => setOpen(true)} />
       </div>
-      {open && <CalendarDialog zone={zone} onClose={() => setOpen(false)} />}
+      {open && <CalendarLayer zone={zone} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-export function CalendarDialog({ zone, onClose }: { zone: string; onClose: () => void }) {
+/** A fixed layer from the bottom of the site header to the bottom of the viewport, edge to edge (the same rule as the terminal). */
+export function CalendarLayer({ zone, onClose }: { zone: string; onClose: () => void }) {
   const { t } = useT();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose(); // popovers inside stop the event first
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  const [shown, setShown] = useState(false);
-  useEffect(() => setShown(true), []);
+  const [top, setTop] = useState(56);
+  useLayoutEffect(() => {
+    const main = document.querySelector("main");
+    const measure = () => setTop(Math.max(0, Math.round(main?.getBoundingClientRect().top ?? 0)));
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[70] flex items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("ec.title")}
-          className="flex h-full w-full flex-col overflow-hidden bg-white text-gray-900 shadow-2xl dark:bg-[#1e222d] dark:text-gray-100 sm:h-[min(88vh,860px)] sm:max-w-[1180px] sm:rounded-xl sm:border sm:border-gray-200 sm:dark:border-[#2a2e39]"
-        >
-          {shown && <CalendarView variant="wide" zone={zone} visible onClose={onClose} />}
-        </div>
+      <div role="dialog" aria-label={t("ec.title")} className="fixed inset-x-0 bottom-0 z-[70] bg-white dark:bg-[#1e222d]" style={{ top }}>
+        <WorldCalendar zone={zone} mode="layer" onClose={onClose} />
       </div>
     </ModalPortal>
   );

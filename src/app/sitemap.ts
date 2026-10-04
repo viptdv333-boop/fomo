@@ -33,6 +33,7 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/instruments", priority: 0.7, changeFrequency: "daily" },
   { path: "/terminal", priority: 0.7, changeFrequency: "daily" },
   { path: "/terminal/features", priority: 0.7, changeFrequency: "weekly" },
+  { path: "/calendar", priority: 0.7, changeFrequency: "daily" },
   { path: "/chat", priority: 0.5, changeFrequency: "weekly" },
   // Knowledge base: answers the "how do I sell forecasts" queries and carries
   // FAQPage markup, so it earns a high priority despite rarely changing.

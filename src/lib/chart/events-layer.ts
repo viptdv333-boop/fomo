@@ -7,6 +7,7 @@ import { formatClock } from "../calendar/time";
 
 const MAIN = "main";
 const IMPACT_COLOR: Record<number, string> = { 3: "#ef4444", 2: "#f59e0b", 1: "#8b95a5" };
+const MOEX_COLOR = "#0ea5e9";
 const SURPRISE_COLOR = { better: "#22c55e", worse: "#ef4444", inline: "" } as const;
 /** Beyond this many days on screen the markers would be a solid smear: nothing is drawn (and nothing fetched). */
 const MAX_VISIBLE_DAYS = 62;
@@ -43,6 +44,8 @@ export class EventsLayer implements OverlayLayer {
   private locale = "en-US";
   private impacts = new Set<number>([3]);
   private countries: Set<string> | null = null;
+  private moexOn = true;
+  private lang = "ru";
   private labels: EventsLabels = { act: "Act", fcst: "Fcst", prev: "Prev", more: "{n} more" };
   /** every loaded event, sorted, deduplicated */
   private all: CalEvent[] = [];
@@ -79,9 +82,10 @@ export class EventsLayer implements OverlayLayer {
     this.redraw();
   }
 
-  setFilter(impacts: readonly number[], countries: readonly string[]): void {
+  setFilter(impacts: readonly number[], countries: readonly string[], moex = true): void {
     this.impacts = new Set(impacts);
     this.countries = countries.length ? new Set(countries) : null;
+    this.moexOn = moex;
     this.rebuild();
   }
 
@@ -93,6 +97,13 @@ export class EventsLayer implements OverlayLayer {
   setZone(zone: string, locale: string): void {
     this.zone = zone;
     this.locale = locale;
+    const lang = locale.startsWith("zh") ? "cn" : locale.startsWith("en") ? "en" : "ru";
+    if (lang !== this.lang) {
+      this.lang = lang;
+      this.all = [];
+      this.shown = [];
+      this.wantKey = "";
+    }
     this.redraw();
   }
 
@@ -112,14 +123,16 @@ export class EventsLayer implements OverlayLayer {
   private rebuild() {
     const imp = this.impacts;
     const c = this.countries;
-    this.shown = this.all.filter((e) => imp.has(e.impact) && (!c || c.has(e.country)));
+    const moex = this.moexOn;
+    // the Moscow Exchange layer follows its own switch (and shows from medium importance up), not the country filter
+    this.shown = this.all.filter((e) => (e.category === "moex" ? moex && (e.impact >= 2 || imp.has(e.impact)) : imp.has(e.impact) && (!c || c.has(e.country))));
     this.hover = null;
     this.redraw();
   }
 
   private mergeFromCache() {
     const m = new Map<string, CalEvent>();
-    for (const ch of chunkCache.values()) for (const e of ch.events) m.set(e.id, e);
+    for (const [k, ch] of chunkCache) if (k.startsWith(`${this.lang}:`)) for (const e of ch.events) m.set(e.id, e);
     this.all = [...m.values()].sort((a, b) => a.ts - b.ts);
     this.rebuild();
   }
@@ -129,46 +142,47 @@ export class EventsLayer implements OverlayLayer {
     const chunks = overlayChunks(fromUtc, toUtc);
     const now = Date.now();
     const stale = chunks.filter((c) => {
-      const h = chunkCache.get(c.from);
+      const h = chunkCache.get(`${this.lang}:${c.from}`);
       if (!h) return true;
       const endMs = Date.parse(`${c.to}T00:00:00Z`) + 86_400_000;
       if (h.failed) return now - h.at > 30_000; // a failed load is retried after a short pause only
       return endMs > now - FAR_PAST_MS && now - h.at > TTL_MS; // finished weeks never change
     });
     if (stale.length === 0) return;
-    const key = stale.map((c) => c.from).join("|");
+    const key = this.lang + stale.map((c) => c.from).join("|");
     if (key === this.wantKey && this.timer) return;
     this.wantKey = key;
     clearTimeout(this.timer);
     const gen = this.gen;
     this.timer = setTimeout(async () => {
       this.timer = undefined;
-      await Promise.all(stale.map((c) => this.fetchChunk(c.from, c.to)));
+      await Promise.all(stale.map((c) => this.fetchChunk(c.from, c.to, this.lang)));
       if (gen !== this.gen || !this.engine) return;
       this.wantKey = "";
       this.mergeFromCache();
     }, 350);
   }
 
-  private fetchChunk(from: string, to: string): Promise<void> {
-    const have = chunkInflight.get(from);
+  private fetchChunk(from: string, to: string, lang: string): Promise<void> {
+    const ck = `${lang}:${from}`;
+    const have = chunkInflight.get(ck);
     if (have) return have;
     const p = (async () => {
       try {
-        const res = await fetch(`/api/economic-calendar?from=${from}&to=${to}`);
+        const res = await fetch(`/api/economic-calendar?from=${from}&to=${to}&lang=${lang}`);
         const body: unknown = await res.json().catch(() => []);
         const reason = res.headers.get("X-Calendar-Reason") || "ok";
         const events = Array.isArray(body) ? (body as CalEvent[]) : [];
         // a failed load is remembered only briefly (so a restricted plan is not retried on every pan)
         const failed = events.length === 0 && reason !== "ok" && reason !== "mock";
-        chunkCache.set(from, { events, at: Date.now(), failed });
+        chunkCache.set(ck, { events, at: Date.now(), failed });
       } catch {
-        chunkCache.set(from, { events: [], at: Date.now(), failed: true });
+        chunkCache.set(ck, { events: [], at: Date.now(), failed: true });
       } finally {
-        chunkInflight.delete(from);
+        chunkInflight.delete(ck);
       }
     })();
-    chunkInflight.set(from, p);
+    chunkInflight.set(ck, p);
     return p;
   }
 
@@ -267,7 +281,9 @@ export class EventsLayer implements OverlayLayer {
 
     clusters.forEach((c, i) => {
       const hot = i === this.hover;
-      const col = IMPACT_COLOR[c.impact];
+      const top0 = c.events[0];
+      const isMoex = top0.category === "moex";
+      const col = isMoex ? MOEX_COLOR : IMPACT_COLOR[c.impact];
       if (hot || c.impact === 3) {
         ctx.beginPath();
         ctx.setLineDash([2, 3]);
@@ -279,12 +295,19 @@ export class EventsLayer implements OverlayLayer {
         ctx.setLineDash([]);
       }
       const top = c.events[0];
-      const code = top.country || "··";
+      const code = isMoex ? "MX" : top.country || "··";
       ctx.font = `700 9px ${engine.opts.fontFamily}`;
       const w = 22;
       const h = 14;
       ctx.beginPath();
-      rrect(ctx, c.x - w / 2, y - h / 2, w, h, 4);
+      if (isMoex) {
+        // the exchange's own events: a diamond
+        ctx.moveTo(c.x, y - 9);
+        ctx.lineTo(c.x + 12, y);
+        ctx.lineTo(c.x, y + 9);
+        ctx.lineTo(c.x - 12, y);
+        ctx.closePath();
+      } else rrect(ctx, c.x - w / 2, y - h / 2, w, h, 4);
       ctx.fillStyle = col;
       ctx.fill();
       ctx.lineWidth = hot ? 2 : 1;
@@ -361,11 +384,11 @@ export class EventsLayer implements OverlayLayer {
     for (const l of lines) {
       ctx.beginPath();
       ctx.arc(x0 + pad + 3, yy, 3, 0, Math.PI * 2);
-      ctx.fillStyle = IMPACT_COLOR[l.e.impact];
+      ctx.fillStyle = l.e.category === "moex" ? MOEX_COLOR : IMPACT_COLOR[l.e.impact];
       ctx.fill();
       ctx.font = l.nameFont;
       ctx.fillStyle = theme.labelText;
-      const title = `${l.e.country} ${formatClock(l.e.ts, this.zone)}  ${l.e.event}`;
+      const title = `${l.e.category === "moex" ? "MOEX" : l.e.country} ${l.e.allDay ? "" : formatClock(l.e.ts, this.zone)}  ${l.e.event}`;
       ctx.fillText(fit(ctx, title, w - pad * 2 - 12), x0 + pad + 11, yy);
       ctx.font = `500 10.5px ${ff}`;
       let xx = x0 + pad + 11;

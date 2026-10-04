@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { formatValue, surprise, type Surprise } from "@/lib/calendar/surprise";
 import type { CalEvent } from "@/lib/calendar/types";
 
@@ -41,4 +42,42 @@ export function useNow(ms: number, enabled = true): number {
     return () => clearInterval(id);
   }, [ms, enabled]);
   return now;
+}
+
+/** True on a phone-width viewport (< 640 px); false on the server and before mount. */
+export function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow;
+}
+
+/** "Source: TradingView · Moscow Exchange" and the note for sources without actual values. */
+export function SourceFooter({ source, moex, className = "" }: { source: string; moex: boolean; className?: string }) {
+  const { t } = useT();
+  if (source === "none" && !moex) return null;
+  const parts: string[] = [];
+  if (source !== "none") parts.push(t(`ec.src.${source}`));
+  if (moex) parts.push(t("ec.moex"));
+  return (
+    <div className={`px-3 py-1 text-[10.5px] leading-snug text-gray-400 dark:text-gray-500 ${className}`}>
+      <span>{t("ec.src.label")} {parts.join(" · ")}</span>
+      {source === "forexfactory" && <span className="block text-amber-600/90 dark:text-amber-400/80">{t("ec.src.noactual")}</span>}
+    </div>
+  );
+}
+
+/** Badge of the Moscow Exchange layer: events built from the exchange itself get their own colour. */
+export function MoexMark({ title }: { title?: string }) {
+  return (
+    <span title={title} className="inline-flex h-[13px] shrink-0 items-center gap-[3px] rounded bg-sky-500/15 px-1 text-[9px] font-bold uppercase leading-none text-sky-600 dark:text-sky-300">
+      <span className="inline-block h-[5px] w-[5px] rotate-45 bg-sky-500" />
+      MOEX
+    </span>
+  );
 }

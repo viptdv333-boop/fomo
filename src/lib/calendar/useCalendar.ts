@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mergeEvents } from "./normalize";
 import { rangeBounds, MAX_RANGE_DAYS, daySpan, addDays, type DateRange } from "./time";
 import type { CalEvent } from "./types";
 
@@ -9,10 +10,16 @@ export type CalStatus = "loading" | "ok" | "error";
 export interface CalData {
   events: CalEvent[];
   status: CalStatus;
-  /** X-Calendar-Reason of the last response ("ok", "restricted", "no-key", ...). */
+  /** X-Calendar-Reason of the last response ("ok", "restricted", "range-unsupported", ...). */
   reason: string;
   stale: boolean;
   fetchedAt: number;
+  /** Provider that answered: tradingview | fmp | forexfactory | mock | none. */
+  source: string;
+  /** The Moscow Exchange layer is part of the answer. */
+  moex: boolean;
+  /** The span the provider knows about (Forex Factory: this + next week); null = unlimited. */
+  coverage: { from: number; to: number } | null;
   refresh: () => void;
 }
 
@@ -21,9 +28,12 @@ interface CacheEntry {
   reason: string;
   stale: boolean;
   at: number;
+  source: string;
+  moex: boolean;
+  coverage: { from: number; to: number } | null;
 }
 const memo = new Map<string, CacheEntry>();
-const FAIL_REASONS = new Set(["restricted", "unauthorized", "no-key", "upstream-error", "rate-limited", "bad-range"]);
+const FAIL_REASONS = new Set(["restricted", "unauthorized", "no-key", "upstream-error", "rate-limited", "bad-range", "range-unsupported"]);
 
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
@@ -36,10 +46,17 @@ export function apiRange(range: DateRange, zone: string): { from: string; to: st
   return { from, to };
 }
 
+function parseCoverage(h: string | null): { from: number; to: number } | null {
+  const m = h ? /^(\d+)\.\.(\d+)$/.exec(h) : null;
+  return m ? { from: +m[1], to: +m[2] } : null;
+}
+
+const EMPTY: CalEvent[] = [];
+
 /** Events of a date range (in the display zone) with auto refresh: every minute while visible, every 15 s around releases. */
-export function useCalendarRange(range: DateRange, zone: string, enabled: boolean): CalData {
+export function useCalendarRange(range: DateRange, zone: string, enabled: boolean, lang = "ru"): CalData {
   const { from, to } = apiRange(range, zone);
-  const key = `${from}..${to}`;
+  const key = `${lang}|${from}..${to}`;
   const [, bump] = useState(0);
   const entry = memo.get(key);
   const [status, setStatus] = useState<CalStatus>(entry ? "ok" : "loading");
@@ -48,45 +65,50 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
   const keyRef = useRef(key);
   keyRef.current = key;
 
-  const load = useCallback(
-    async (silent: boolean) => {
-      const k = keyRef.current;
-      abortRef.current?.abort();
-      const ctl = new AbortController();
-      abortRef.current = ctl;
-      if (!silent && !memo.has(k)) setStatus("loading");
-      try {
-        const [f, t] = k.split("..");
-        const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}`, { signal: ctl.signal });
-        const reason = res.headers.get("X-Calendar-Reason") || (res.ok ? "ok" : "upstream-error");
-        const body: unknown = await res.json().catch(() => []);
-        if (ctl.signal.aborted || keyRef.current !== k) return;
-        const events = Array.isArray(body) ? (body as CalEvent[]) : [];
-        const failed = events.length === 0 && (FAIL_REASONS.has(reason) || !res.ok);
-        const stale = res.headers.get("X-Calendar-Stale") === "1";
-        if (failed && memo.get(k)?.events.length) {
-          // keep what we have, only flag it
-          memo.set(k, { ...memo.get(k)!, reason, stale: true });
-          setStatus("ok");
-        } else {
-          memo.set(k, { events, reason, stale, at: Date.now() });
-          setStatus(failed ? "error" : "ok");
-        }
-        lastRef.current = Date.now();
-        bump((n) => n + 1);
-      } catch (e) {
-        if ((e as { name?: string })?.name === "AbortError") return;
-        if (keyRef.current !== k) return;
-        if (!memo.get(k)?.events.length) {
-          memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now() });
-          setStatus("error");
-        }
-        lastRef.current = Date.now();
-        bump((n) => n + 1);
+  const load = useCallback(async (silent: boolean) => {
+    const k = keyRef.current;
+    abortRef.current?.abort();
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    if (!silent && !memo.has(k)) setStatus("loading");
+    try {
+      const [lg, span] = k.split("|");
+      const [f, t] = span.split("..");
+      const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}&lang=${lg}`, { signal: ctl.signal });
+      const reason = res.headers.get("X-Calendar-Reason") || (res.ok ? "ok" : "upstream-error");
+      const body: unknown = await res.json().catch(() => []);
+      if (ctl.signal.aborted || keyRef.current !== k) return;
+      const events = Array.isArray(body) ? (body as CalEvent[]) : [];
+      const failed = events.length === 0 && (FAIL_REASONS.has(reason) || !res.ok);
+      const entryNew: CacheEntry = {
+        events,
+        reason,
+        stale: res.headers.get("X-Calendar-Stale") === "1",
+        at: Date.now(),
+        source: res.headers.get("X-Calendar-Source") || "none",
+        moex: (res.headers.get("X-Calendar-Layers") || "").includes("moex"),
+        coverage: parseCoverage(res.headers.get("X-Calendar-Coverage")),
+      };
+      if (failed && memo.get(k)?.events.length) {
+        memo.set(k, { ...memo.get(k)!, reason, stale: true });
+        setStatus("ok");
+      } else {
+        memo.set(k, entryNew);
+        setStatus(failed ? "error" : "ok");
       }
-    },
-    []
-  );
+      lastRef.current = Date.now();
+      bump((n) => n + 1);
+    } catch (e) {
+      if ((e as { name?: string })?.name === "AbortError") return;
+      if (keyRef.current !== k) return;
+      if (!memo.get(k)?.events.length) {
+        memo.set(k, { events: [], reason: "upstream-error", stale: false, at: Date.now(), source: "none", moex: false, coverage: null });
+        setStatus("error");
+      }
+      lastRef.current = Date.now();
+      bump((n) => n + 1);
+    }
+  }, []);
 
   // range changed or panel shown: show the remembered copy at once, refresh in the background
   useEffect(() => {
@@ -126,8 +148,37 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     reason: cur?.reason ?? "ok",
     stale: cur?.stale ?? false,
     fetchedAt: cur?.at ?? 0,
+    source: cur?.source ?? "none",
+    moex: cur?.moex ?? false,
+    coverage: cur?.coverage ?? null,
     refresh,
   };
 }
 
-const EMPTY: CalEvent[] = [];
+/**
+ * A window of up to 35 days (the month grid): two requests (21 + 14 days) merged. Status is "error" only when both fail;
+ * the coverage and source are those of the first part that answered.
+ */
+export function useCalendarWindow(start: string, zone: string, enabled: boolean, lang = "ru", days = 35): CalData {
+  const r1 = useMemo(() => ({ from: start, to: addDays(start, Math.min(days, 21) - 1) }), [start, days]);
+  const r2 = useMemo(() => (days > 21 ? { from: addDays(start, 21), to: addDays(start, days - 1) } : { from: addDays(start, 20), to: addDays(start, 20) }), [start, days]);
+  const a = useCalendarRange(r1, zone, enabled, lang);
+  const b = useCalendarRange(r2, zone, enabled && days > 21, lang);
+  const events = useMemo(() => (days > 21 ? mergeEvents([a.events, b.events]) : a.events), [a.events, b.events, days]);
+  const status: CalStatus = a.status === "loading" || (days > 21 && b.status === "loading") ? (events.length ? "ok" : "loading") : a.status === "error" && (days <= 21 || b.status === "error") ? "error" : "ok";
+  const best = a.status === "ok" && a.events.length ? a : b.status === "ok" && b.events.length ? b : a;
+  return {
+    events,
+    status,
+    reason: a.status === "error" ? a.reason : best.reason,
+    stale: a.stale || b.stale,
+    fetchedAt: Math.max(a.fetchedAt, b.fetchedAt),
+    source: best.source,
+    moex: a.moex || b.moex,
+    coverage: a.coverage ?? b.coverage,
+    refresh: () => {
+      a.refresh();
+      if (days > 21) b.refresh();
+    },
+  };
+}

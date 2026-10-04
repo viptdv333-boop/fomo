@@ -42,6 +42,22 @@ export const EC_ICONS: Record<string, ReactNode> = {
       <path d="M17.5 3.5h3l-1 1.4 1 1.4h-3" fill="currentColor" />
     </>
   ),
+  grid: ui(
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="2.5" />
+      <path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16" />
+    </>
+  ),
+  list: ui(
+    <>
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" />
+      <Dot x={4.8} y={6.5} />
+      <Dot x={4.8} y={12} />
+      <Dot x={4.8} y={17.5} />
+    </>
+  ),
+  prev: ui(<path d="M14.5 6l-6 6 6 6" />),
+  next: ui(<path d="M9.5 6l6 6-6 6" />),
   filter: ui(<path d="M4 5h16l-6 7.5V19l-4 1.5v-8z" />),
   chevron: ui(<path d="M7 10l5 5 5-5" />, 16),
   check: ui(<path d="M5 12.5l4.5 4.5L19 7.5" />, 16),
