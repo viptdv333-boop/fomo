@@ -38,7 +38,7 @@ export default function MessengerButton() {
     window.addEventListener("chat:room-read", reloadSoon);
     let socket: ReturnType<typeof getSocket> | null = null;
     try {
-      socket = getSocket();
+      socket = getSocket(session.user.id);
       socket.on("new_notification", reloadSoon);
       socket.on("new_dm", reloadSoon);
       socket.on("new_message", reloadSoon);
