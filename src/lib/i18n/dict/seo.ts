@@ -71,27 +71,14 @@ const dict: SectionDict = {
     "seo.subscriptions.title": "Подписки",
 
     // Help / knowledge base
-    "seo.help.title": "Как пользоваться FOMO — регистрация, публикация идей, платные каналы",
+    "seo.help.title": "Как пользоваться FOMO — доска идей, терминал, календарь, платные каналы",
     "seo.help.description":
-      "Полная инструкция по FOMO: как зарегистрироваться, публиковать торговые идеи, продавать прогнозы, создать платный канал, подключить приём оплаты. Комиссия площадки — 0%.",
+      "Инструкция по FOMO: регистрация, публикация идей, платные каналы и приём оплаты (в том числе по ссылке), торговый терминал с индикаторами и алертами, экономический календарь, уведомления в Telegram. Комиссия площадки — 0%.",
     "seo.help.keywords":
-      "как публиковать торговые идеи, как продавать прогнозы трейдера, платный канал трейдера, монетизация торговых сигналов, инструкция FOMO",
+      "как пользоваться FOMO, как публиковать торговые идеи, платный канал трейдера, торговый терминал онлайн, экономический календарь, алерты в Telegram, оплата по ссылке, инструкция FOMO",
     "seo.help.ogTitle": "Как пользоваться FOMO — полная инструкция",
     "seo.help.ogDescription":
-      "Регистрация, публикация идей, платные каналы, приём оплаты и рейтинг автора. Комиссия площадки — 0%.",
-
-    // FAQPage JSON-LD on /help
-    "seo.faq.q1": "Какую комиссию берёт FOMO с продаж?",
-    "seo.faq.a1":
-      "Нулевую. Читатель платит автору напрямую по его реквизитам, площадка в расчётах не участвует и денег не удерживает.",
-    "seo.faq.q2": "Кто может публиковать торговые идеи?",
-    "seo.faq.a2":
-      "Бесплатные идеи может публиковать любой зарегистрированный пользователь с первого дня, без ограничений по рейтингу.",
-    "seo.faq.q3": "Какой рейтинг нужен, чтобы создать платный канал?",
-    "seo.faq.a3": "5.0 и выше. Платные идеи открываются раньше — с 3.0, но с лимитом три штуки в неделю.",
-    "seo.faq.q4": "Сколько стоит пользоваться FOMO?",
-    "seo.faq.a4":
-      "Регистрация, чтение бесплатных идей, чаты и торговый терминал бесплатны. Платить нужно только автору за его платные материалы.",
+      "Доска идей, платные каналы, приём оплаты, терминал, экономический календарь и уведомления. Комиссия площадки — 0%.",
 
     // Legal
     "seo.terms.title": "Пользовательское соглашение",
@@ -169,25 +156,14 @@ const dict: SectionDict = {
     "seo.profile.title": "Profile",
     "seo.subscriptions.title": "Subscriptions",
 
-    "seo.help.title": "How to Use FOMO: Publish & Sell Trading Ideas",
+    "seo.help.title": "How to Use FOMO: Idea Board, Terminal, Calendar, Paid Channels",
     "seo.help.description":
-      "Complete FOMO guide: sign up, publish trading ideas, sell forecasts, launch a paid channel and accept payments. Platform commission: 0%.",
+      "FOMO guide: sign-up, publishing trading ideas, paid channels and accepting payments (including by link), the trading terminal with indicators and alerts, the economic calendar and Telegram notifications. Platform commission: 0%.",
     "seo.help.keywords":
-      "how to publish trading ideas, how to sell trading forecasts, paid trader channel, monetize trading signals, FOMO guide",
+      "how to use FOMO, how to publish trading ideas, paid trader channel, online trading terminal, economic calendar, Telegram price alerts, payment by link, FOMO guide",
     "seo.help.ogTitle": "How to Use FOMO — Complete Guide",
     "seo.help.ogDescription":
-      "Sign-up, publishing ideas, paid channels, accepting payments and author rating. Platform commission: 0%.",
-
-    "seo.faq.q1": "What commission does FOMO take on sales?",
-    "seo.faq.a1":
-      "None. Readers pay the author directly using the author's payment details; the platform takes no part in payments and keeps nothing.",
-    "seo.faq.q2": "Who can publish trading ideas?",
-    "seo.faq.a2": "Any registered user can publish free ideas from day one, with no rating requirement.",
-    "seo.faq.q3": "What rating do I need to create a paid channel?",
-    "seo.faq.a3": "5.0 or higher. Paid ideas unlock earlier, at 3.0, but are limited to three per week.",
-    "seo.faq.q4": "How much does FOMO cost?",
-    "seo.faq.a4":
-      "Sign-up, reading free ideas, chats and the trading terminal are free. You only pay authors for their paid content.",
+      "The idea board, paid channels, accepting payments, the terminal, the economic calendar and notifications. Platform commission: 0%.",
 
     "seo.terms.title": "Terms of Service",
     "seo.terms.description": "Terms of use of the FOMO trading ideas platform.",
@@ -255,21 +231,12 @@ const dict: SectionDict = {
     "seo.profile.title": "个人资料",
     "seo.subscriptions.title": "订阅",
 
-    "seo.help.title": "FOMO 使用指南：发布与出售交易观点",
+    "seo.help.title": "FOMO 使用指南：观点看板、交易终端、财经日历与付费频道",
     "seo.help.description":
-      "FOMO 完整使用指南：如何注册、发布交易观点、出售行情预测、创建付费频道并开通收款。平台佣金为 0%。",
-    "seo.help.keywords": "如何发布交易观点, 如何出售交易预测, 交易员付费频道, 交易信号变现, FOMO 使用指南",
+      "FOMO 使用指南：注册、发布交易观点、付费频道与收款（含链接付款）、带指标和价格提醒的交易终端、财经日历以及 Telegram 通知。平台佣金为 0%。",
+    "seo.help.keywords": "如何使用 FOMO, 如何发布交易观点, 交易员付费频道, 在线交易终端, 财经日历, Telegram 价格提醒, 链接付款, FOMO 使用指南",
     "seo.help.ogTitle": "FOMO 使用指南 — 完整教程",
-    "seo.help.ogDescription": "注册、发布观点、付费频道、收款与作者评分。平台佣金为 0%。",
-
-    "seo.faq.q1": "FOMO 从销售中收取多少佣金？",
-    "seo.faq.a1": "零佣金。读者按作者提供的收款信息直接向作者付款，平台不参与结算，也不扣留任何款项。",
-    "seo.faq.q2": "谁可以发布交易观点？",
-    "seo.faq.a2": "任何注册用户从第一天起即可发布免费观点，没有评分限制。",
-    "seo.faq.q3": "创建付费频道需要多少评分？",
-    "seo.faq.a3": "5.0 及以上。付费观点更早开放——评分达到 3.0 即可，但每周限发三条。",
-    "seo.faq.q4": "使用 FOMO 需要付费吗？",
-    "seo.faq.a4": "注册、阅读免费观点、聊天和交易终端均免费。您只需为作者的付费内容向作者付款。",
+    "seo.help.ogDescription": "观点看板、付费频道、收款、交易终端、财经日历与通知。平台佣金为 0%。",
 
     "seo.terms.title": "用户协议",
     "seo.terms.description": "FOMO 交易观点平台的使用条款。",

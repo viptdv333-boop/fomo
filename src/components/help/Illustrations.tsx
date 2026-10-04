@@ -77,7 +77,7 @@ export function RegistrationSteps({ t }: Props) {
 
 /** The four tabs of the personal cabinet. */
 export function CabinetTabs({ t }: Props) {
-  const tabs = [t("help.ill.cab.tab1"), t("help.ill.cab.tab2"), t("help.ill.cab.tab3"), t("help.ill.cab.tab4")];
+  const tabs = [1, 2, 3, 4, 5, 6].map((n) => t(`help.ill.cab.tab${n}`));
   const rows = [
     t("help.ill.cab.row1"),
     t("help.ill.cab.row2"),
@@ -89,23 +89,23 @@ export function CabinetTabs({ t }: Props) {
       <title>{t("help.ill.cab.title")}</title>
       <rect x={20} y={20} width={560} height={210} rx={14} className={`${card} ${border}`} strokeWidth={1.5} />
       {tabs.map((tab, i) => {
-        const x = 36 + i * 134;
+        const x = 32 + i * 89;
         const active = i === 1;
         return (
           <g key={tab}>
             <rect
               x={x}
               y={36}
-              width={124}
+              width={84}
               height={32}
               rx={8}
               className={active ? accent : muted}
             />
             <text
-              x={x + 62}
+              x={x + 42}
               y={57}
               textAnchor="middle"
-              className={`${active ? "fill-white" : label} text-[12px] font-medium`}
+              className={`${active ? "fill-white" : label} text-[10px] font-medium`}
             >
               {tab}
             </text>
