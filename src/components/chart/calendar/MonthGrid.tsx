@@ -152,12 +152,16 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                           onOpenDay(c.date, e.id);
                         }}
                         title={`${e.allDay ? "" : formatClock(e.ts, zone) + " "}${e.event}${briefOf(e) ? `\n${briefOf(e)}` : ""}`}
-                        className={`flex w-full min-w-0 items-center gap-1 rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 dark:hover:bg-white/10 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : ""}`}
+                        className={`flex w-full min-w-0 flex-col rounded px-0.5 py-px text-left text-[11px] leading-tight hover:bg-black/5 dark:hover:bg-white/10 ${e.category === "moex" ? "border-l-2 border-sky-500 pl-1" : e.category === "commodity" ? "border-l-2 border-lime-600 pl-1" : ""}`}
                       >
-                        <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-gray-400">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
-                        <Flag code={e.country} width={14} />
-                        <span className="min-w-0 flex-1 truncate text-gray-800 dark:text-gray-200">{e.event}</span>
-                        <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} />
+                        <span className="flex w-full min-w-0 items-center gap-1">
+                          <span className="w-[30px] shrink-0 tabular-nums text-[10px] text-gray-400">{e.allDay ? "•" : formatClock(e.ts, zone)}</span>
+                          <Flag code={e.country} width={14} />
+                          <span className="min-w-0 flex-1 truncate text-gray-800 dark:text-gray-200">{e.event}</span>
+                          <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} />
+                        </span>
+                        {/* the market impact in one line for the important events; the rest have it in the tooltip / list */}
+                        {e.impact >= 3 && briefOf(e) && <span className="truncate pl-[30px] text-[10px] leading-tight text-gray-500 dark:text-gray-400">{briefOf(e)}</span>}
                       </button>
                     ))}
                     {more > 0 && <span className="px-0.5 text-[10.5px] font-medium text-gray-500 dark:text-gray-400">{t("ec.more", { n: more })}</span>}
