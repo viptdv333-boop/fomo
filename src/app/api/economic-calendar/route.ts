@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { gzipSync } from "node:zlib";
 import { filterEvents } from "@/lib/calendar/normalize";
 import { getCalendarRange } from "@/lib/calendar/source";
 import { addDays, daySpan, MAX_RANGE_DAYS } from "@/lib/calendar/time";
@@ -39,16 +40,20 @@ function limited(ip: string, now: number): number {
   return h.n > LIMIT ? Math.max(1, Math.ceil((h.reset - now) / 1000)) : 0;
 }
 
-function reply(events: unknown[], reason: CalReason, extra: Record<string, string> = {}, status = 200) {
+function reply(events: unknown[], reason: CalReason, extra: Record<string, string> = {}, status = 200, gzip = false) {
   const ok = reason === "ok" || reason === "mock" || reason === "clamped" || reason === "partial";
-  return NextResponse.json(events, {
-    status,
-    headers: {
-      "Cache-Control": ok && events.length > 0 ? "public, max-age=30, s-maxage=60, stale-while-revalidate=120" : "public, max-age=10, s-maxage=10",
-      "X-Calendar-Reason": reason,
-      ...extra,
-    },
-  });
+  const headers: Record<string, string> = {
+    "Cache-Control": ok && events.length > 0 ? "public, max-age=30, s-maxage=60, stale-while-revalidate=120" : "public, max-age=10, s-maxage=10",
+    "X-Calendar-Reason": reason,
+    Vary: "Accept-Encoding",
+    ...extra,
+  };
+  // a month of events is ~0.5 MB of JSON and nothing in front of the app compresses it: gzip it here (-> ~60 KB)
+  if (gzip && events.length > 50) {
+    const body = gzipSync(JSON.stringify(events), { level: 6 });
+    return new NextResponse(new Uint8Array(body), { status, headers: { ...headers, "Content-Type": "application/json", "Content-Encoding": "gzip" } });
+  }
+  return NextResponse.json(events, { status, headers });
 }
 
 export async function GET(request: NextRequest) {
@@ -104,7 +109,7 @@ export async function GET(request: NextRequest) {
       ...(res.moex ? { "X-Calendar-Layers": "moex" } : {}),
       ...(res.coverage ? { "X-Calendar-Coverage": `${res.coverage.from}..${res.coverage.to}` } : {}),
       "X-Calendar-Range": `${from}..${to}`,
-    });
+    }, 200, /gzip/i.test(request.headers.get("accept-encoding") || ""));
   } catch {
     return reply([], "upstream-error");
   }

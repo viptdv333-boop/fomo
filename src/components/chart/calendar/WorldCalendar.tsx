@@ -167,7 +167,12 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
 
       {banner}
 
-      <div className="min-h-0 flex-1 overflow-auto" aria-busy={data.status === "loading"}>
+      <div className="relative min-h-0 flex-1 overflow-auto" aria-busy={data.status === "loading"}>
+        {grid && data.status === "loading" && data.events.length === 0 && (
+          <div role="status" className="pointer-events-none absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 shadow-lg dark:border-[#363a45] dark:bg-[#262a36] dark:text-gray-300">
+            {t("ec.loading")}
+          </div>
+        )}
         {grid ? (
           <MonthGrid cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date, focusId) => setOpenDay({ date, focusId })} />
         ) : (
