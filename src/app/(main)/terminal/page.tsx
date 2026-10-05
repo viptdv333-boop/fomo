@@ -27,12 +27,39 @@ const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
 const DEFAULT_INSTRUMENT: TerminalInstrument = TERMINAL_DATA[0].instruments[0];
 const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
-/** ?symbol=SBER&source=moex -> instrument (curated list first, otherwise an ad-hoc symbol). */
+const LAST_KEY = "fomo-terminal-last-v1";
+const WATCHLIST_KEY = "fomo-terminal-watchlist-v1"; // the terminal's own list (RightPanel keeps it in sync with the account)
+
+/** The symbol to open when the URL names none: the last one opened here, else the first of the watchlist (favorites). */
+function storedSymbol(): { symbol: string; source: ChartSource } | null {
+  const ok = (v: unknown): v is { source: ChartSource; dataTicker: string } => {
+    const o = v as { source?: unknown; dataTicker?: unknown } | null;
+    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "fmp" || o.source === "forex") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
+  };
+  try {
+    const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
+    if (ok(last)) return { symbol: last.dataTicker, source: last.source };
+  } catch {}
+  try {
+    const list = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]");
+    if (Array.isArray(list) && ok(list[0])) return { symbol: list[0].dataTicker, source: list[0].source };
+  } catch {}
+  return null;
+}
+
+/** ?symbol=SBER&source=moex -> instrument (curated list first, otherwise an ad-hoc symbol). Without a symbol: last opened / first favorite / SBER. */
 function instrumentFromUrl(): TerminalInstrument {
   const sp = new URLSearchParams(window.location.search);
-  const symbol = sp.get("symbol")?.trim();
+  let symbol = sp.get("symbol")?.trim();
+  let src = sp.get("source");
+  if (!symbol) {
+    const stored = storedSymbol();
+    if (stored) {
+      symbol = stored.symbol;
+      src = stored.source;
+    }
+  }
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
-  const src = sp.get("source");
   const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" || src === "forex" ? src : null;
   if (source) return findInstrument(source, symbol) ?? adHocInstrument(source, symbol);
   // no source given: take the curated instrument with that ticker, or guess Bybit for USDT pairs
@@ -73,6 +100,9 @@ export default function TerminalPage() {
   const onSelectSymbol = useCallback((inst: TerminalInstrument) => {
     rememberInstrument(inst);
     setSelected(inst);
+    try {
+      localStorage.setItem(LAST_KEY, JSON.stringify({ source: inst.source, dataTicker: inst.dataTicker }));
+    } catch {}
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("symbol", inst.dataTicker);
