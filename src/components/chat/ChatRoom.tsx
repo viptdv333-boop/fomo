@@ -7,6 +7,7 @@ import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { getPastedFile, consumeSharedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
+import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
 
 import { formatMessageTime } from "@/lib/format-message-time";
 
@@ -224,6 +225,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [hoveredMsg, setHoveredMsg] = useState<string | null>(null);
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+  // Touch: tapping a message selects it and opens the action sheet (there is no hover on a phone).
+  const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
+  const lastPointerType = useRef<string>("mouse");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [mentionSearch, setMentionSearch] = useState<string | null>(null);
@@ -528,6 +532,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       }
     } catch {}
     setShowReactionPicker(null);
+    setSelectedMsgId(null);
   }
 
   /* ── Notifications ── */
@@ -755,9 +760,34 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
               return (
                 <div
                   key={msg.id}
-                  className="animate-fadeIn group relative rounded-lg transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 py-1"
-                  onMouseEnter={() => setHoveredMsg(msg.id)}
-                  onMouseLeave={() => { setHoveredMsg(null); if (showReactionPicker === msg.id) setShowReactionPicker(null); }}
+                  className={`animate-fadeIn group relative rounded-lg transition-colors -mx-2 px-2 py-1 ${
+                    selectedMsgId === msg.id
+                      ? "bg-green-50 dark:bg-green-900/20"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                  }`}
+                  // Hover is a mouse-only thing: touch/pen pointers never raise the toolbar (their emulated
+                  // mouseenter is unreliable and, on iOS, not sent at all for non-clickable rows).
+                  onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
+                  onPointerEnter={(e) => { if (e.pointerType === "mouse" && !isTouchInteraction(e.pointerType)) setHoveredMsg(msg.id); }}
+                  onPointerLeave={(e) => {
+                    if (e.pointerType !== "mouse") return;
+                    setHoveredMsg(null);
+                    if (showReactionPicker === msg.id) setShowReactionPicker(null);
+                  }}
+                  // Keyboard users tabbing into a message get the same toolbar.
+                  onFocus={(e) => { if (e.target instanceof HTMLElement && e.target.matches(":focus-visible")) setHoveredMsg(msg.id); }}
+                  onBlur={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                    setHoveredMsg((cur) => (cur === msg.id ? null : cur));
+                  }}
+                  onClick={(e) => {
+                    if (!isTouchInteraction(lastPointerType.current)) return;
+                    if (msg.isDeleted || editingId === msg.id || isInteractiveTarget(e.target)) return;
+                    if (window.getSelection()?.toString()) return; // user is selecting text, not tapping
+                    setHoveredMsg(null);
+                    setShowReactionPicker(null);
+                    setSelectedMsgId(msg.id);
+                  }}
                 >
                   <div className="flex gap-3">
                     {/* Avatar */}
@@ -869,7 +899,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                                 <button
                                   key={emoji}
                                   onClick={() => toggleReaction(msg.id, emoji)}
-                                  className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs transition border ${
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 min-h-8 pointer-fine:min-h-0 rounded-full text-xs transition border ${
                                     myReaction
                                       ? "bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700"
                                       : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -954,6 +984,39 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
           <div ref={bottomRef} />
         </div>
+
+        {/* ── Touch action sheet for the tapped message ── */}
+        {(() => {
+          const sel = selectedMsgId ? messages.find((m) => m.id === selectedMsgId) : null;
+          if (!sel || sel.isDeleted) return null;
+          const actions: SheetAction[] = [
+            { key: "reply", label: t("msg.reply"), icon: <IconReply />, onSelect: () => { setReplyTo(sel); setSelectedMsgId(null); inputRef.current?.focus(); } },
+            {
+              key: "mention", label: t("chat2.mention"), icon: <span className="text-sm font-bold">@</span>,
+              onSelect: () => { setInput((prev) => prev + `@${sel.user.displayName} `); setSelectedMsgId(null); inputRef.current?.focus(); },
+            },
+          ];
+          if (sel.user.id === session?.user?.id) {
+            actions.push(
+              { key: "edit", label: t("common.edit"), icon: <IconPencil />, onSelect: () => { setSelectedMsgId(null); startEdit(sel); } },
+              { key: "delete", label: t("common.delete"), icon: <IconTrash />, danger: true, onSelect: () => { setSelectedMsgId(null); deleteMessage(sel.id); } },
+            );
+          }
+          return (
+            <MessageActionSheet
+              key={sel.id}
+              author={sel.user.displayName}
+              preview={sel.text.slice(0, 80)}
+              reactions={QUICK_REACTIONS}
+              mine={Object.entries(sel.reactions || {}).filter(([, ids]) => ids.includes(session?.user?.id || "")).map(([e]) => e)}
+              reactionLabel={t("chat2.reaction")}
+              closeLabel={t("common.cancel")}
+              actions={actions}
+              onReact={(emoji) => toggleReaction(sel.id, emoji)}
+              onClose={() => setSelectedMsgId(null)}
+            />
+          );
+        })()}
 
         {/* ── Pending attachment preview ── */}
         {pendingAttachment && (

@@ -9,6 +9,7 @@ import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { consumeSharedFile, getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
+import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
 import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
 
 
@@ -103,6 +104,11 @@ function MessagesPage() {
   const [tab, setTab] = useState<"chats" | "contacts">("chats"); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
+  // Touch (and keyboard): the message whose action sheet is open — there is no hover on a phone.
+  const [sheetMsgId, setSheetMsgId] = useState<string | null>(null);
+  // Mouse hover only: which message currently shows its quick-reaction row.
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+  const lastPointerType = useRef<string>("mouse");
   const [showAddContact, setShowAddContact] = useState(false);
   const [dmUsers, setDmUsers] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
   const [contactFilter, setContactFilter] = useState("");
@@ -451,6 +457,12 @@ function MessagesPage() {
 
   function handleContextMenu(e: React.MouseEvent, msg: Message) {
     e.preventDefault();
+    // Long-press on a phone fires contextmenu too: give it the bottom sheet (reactions + actions,
+    // always inside the screen) instead of a floating menu that can run off the edge.
+    if (isTouchInteraction((e.nativeEvent as PointerEvent).pointerType)) {
+      if (!msg.isDeleted) { setHoveredMsgId(null); setSheetMsgId(msg.id); }
+      return;
+    }
     setContextMenu({ msg, x: e.clientX, y: e.clientY });
   }
 
@@ -501,7 +513,7 @@ function MessagesPage() {
   const myId = session?.user?.id;
   const bgClass = CHAT_BACKGROUNDS.find(b => b.id === chatBg)?.class || "";
 
-  const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎"];
+  const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
 
   const filteredDmUsers = contactFilter
     ? dmUsers.filter(u =>
@@ -817,8 +829,23 @@ function MessagesPage() {
                 return (
                   <div
                     key={msg.id}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"} group animate-[fadeIn_0.3s_ease-out]`}
+                    className={`flex ${isMe ? "justify-end" : "justify-start"} group animate-[fadeIn_0.3s_ease-out] rounded-lg`}
                     onContextMenu={(e) => handleContextMenu(e, msg)}
+                    onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
+                    onPointerEnter={(e) => { if (e.pointerType === "mouse" && !isTouchInteraction(e.pointerType)) setHoveredMsgId(msg.id); }}
+                    onPointerLeave={(e) => { if (e.pointerType === "mouse") setHoveredMsgId((cur) => (cur === msg.id ? null : cur)); }}
+                    onClick={(e) => {
+                      if (!isTouchInteraction(lastPointerType.current)) return;
+                      if (msg.isDeleted || isInteractiveTarget(e.target)) return;
+                      if (window.getSelection()?.toString()) return; // selecting text, not tapping
+                      setHoveredMsgId(null);
+                      setSheetMsgId(msg.id);
+                    }}
+                    // Keyboard: focus a message and press Enter for the same sheet.
+                    tabIndex={msg.isDeleted ? undefined : 0}
+                    onKeyDown={(e) => {
+                      if (e.target === e.currentTarget && e.key === "Enter" && !msg.isDeleted) { e.preventDefault(); setSheetMsgId(msg.id); }
+                    }}
                   >
                     <div className="max-w-[75vw] sm:max-w-md">
                       {/* Reply preview */}
@@ -842,7 +869,7 @@ function MessagesPage() {
                             : isMe
                             ? "bg-green-600 text-white rounded-br-sm"
                             : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md rounded-bl-sm"
-                        } ${msg.isPinned ? "ring-1 ring-amber-400" : ""}`}
+                        } ${msg.isPinned ? "ring-1 ring-amber-400" : ""} ${sheetMsgId === msg.id ? "ring-2 ring-green-400" : ""}`}
                       >
                         {!msg.isDeleted && renderFileAttachment(msg)}
                         {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
@@ -872,7 +899,7 @@ function MessagesPage() {
                             <button
                               key={emoji}
                               onClick={() => reactToMessage(msg.id, emoji)}
-                              className={`text-xs px-1.5 py-0.5 rounded-full border transition ${
+                              className={`text-xs px-2.5 py-0.5 min-h-8 pointer-fine:min-h-0 pointer-fine:px-1.5 rounded-full border transition ${
                                 (users as string[]).includes(myId || "")
                                   ? "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700"
                                   : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
@@ -884,10 +911,12 @@ function MessagesPage() {
                         </div>
                       )}
 
-                      {/* Quick reactions on hover — absolute so no layout shift */}
+                      {/* Quick reactions on mouse hover. The slot keeps its height (no layout shift) but the
+                          buttons exist only while hovered — never invisible-but-tappable — and the slot is
+                          dropped on touch devices, which use the tap-to-open action sheet instead. */}
                       {!msg.isDeleted && (
-                        <div className={`flex gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isMe ? "justify-end" : ""}`}>
-                          {QUICK_REACTIONS.map((emoji) => (
+                        <div className={`flex gap-0.5 mt-1 min-h-4 pointer-coarse:hidden ${isMe ? "justify-end" : ""}`}>
+                          {hoveredMsgId === msg.id && QUICK_REACTIONS.map((emoji) => (
                             <button
                               key={emoji}
                               onClick={() => reactToMessage(msg.id, emoji)}
@@ -945,6 +974,36 @@ function MessagesPage() {
                 )}
               </div>
             )}
+
+            {/* Action sheet (touch / keyboard) */}
+            {(() => {
+              const sel = sheetMsgId ? messages.find((m) => m.id === sheetMsgId) : null;
+              if (!sel || sel.isDeleted) return null;
+              const close = () => setSheetMsgId(null);
+              const actions: SheetAction[] = [
+                { key: "reply", label: t("msg.reply"), icon: <span>↩</span>, onSelect: () => { setReplyTo(sel); close(); } },
+                { key: "copy", label: t("msg.copy"), icon: <span>📋</span>, onSelect: () => { navigator.clipboard.writeText(sel.text); close(); } },
+                { key: "quote", label: t("msg.quote"), icon: <span>💬</span>, onSelect: () => { setNewText(`> ${sel.sender.displayName}: ${sel.text}\n\n`); close(); } },
+                { key: "pin", label: sel.isPinned ? t("msg.unpin") : t("msg.pin"), icon: <span>📌</span>, onSelect: () => { pinMessage(sel.id); close(); } },
+              ];
+              if (sel.senderId === myId) {
+                actions.push({ key: "delete", label: t("msg.delete"), icon: <span>🗑</span>, danger: true, onSelect: () => { deleteMessage(sel.id); close(); } });
+              }
+              return (
+                <MessageActionSheet
+                  key={sel.id}
+                  author={sel.sender.displayName}
+                  preview={sel.text.slice(0, 80)}
+                  reactions={QUICK_REACTIONS}
+                  mine={Object.entries(sel.reactions || {}).filter(([, ids]) => (ids as string[]).includes(myId || "")).map(([e]) => e)}
+                  reactionLabel={t("chat2.reaction")}
+                  closeLabel={t("common.cancel")}
+                  actions={actions}
+                  onReact={(emoji) => { reactToMessage(sel.id, emoji); close(); }}
+                  onClose={close}
+                />
+              );
+            })()}
 
             {/* Reply preview */}
             {replyTo && (
