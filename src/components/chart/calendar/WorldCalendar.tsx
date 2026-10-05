@@ -17,8 +17,11 @@ import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
 import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
+import MobileCalendarBar from "./MobileCalendarBar";
+import MobileDayList from "./MobileDayList";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
+import { useIsPhone } from "./useViewport";
 
 const DAYS = 35;
 
@@ -41,6 +44,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const { t, locale } = useT();
   const loc = intlLocale(locale);
   const [prefs, update] = useCalPrefs();
+  // < 640 px: one row per day instead of the 7-column month grid, a compact header (null until mounted)
+  const phone = useIsPhone();
   const [q, setQ] = useState("");
   const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState<{ date: string; focusId?: string } | null>(null);
@@ -94,7 +99,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       onClick={() => update((p) => ({ ...p, view: id }))}
       className={`inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${prefs.view === id ? "bg-[var(--tv3-card)] font-semibold text-[var(--tv3-text)] shadow-sm" : "text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
     >
-      <span className="scale-[0.72]">{icon}</span>
+      <span className="scale-[0.72] max-sm:hidden">{icon}</span>
       {label}
     </button>
   );
@@ -123,6 +128,30 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-[var(--tv3-card)] text-[var(--tv3-text)]">
+      {phone ? (
+        <MobileCalendarBar
+          mode={mode}
+          onClose={onClose}
+          zoneSlot={zoneSlot}
+          viewTabs={
+            <>
+              {seg("grid", EC_ICONS.grid, t("ec.view.grid"))}
+              {seg("list", EC_ICONS.list, t("ec.view.list"))}
+            </>
+          }
+          nav={grid}
+          atToday={offset === 0}
+          onPrev={() => setOffset((o) => o - 1)}
+          onToday={() => setOffset(0)}
+          onNext={() => setOffset((o) => o + 1)}
+          loading={data.status === "loading"}
+          onRefresh={grid ? data.refresh : undefined}
+          q={q}
+          setQ={setQ}
+          seen={seen}
+        />
+      ) : (
+        <>
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--tv3-hair)] px-3 py-2 sm:px-4">
         {mode === "layer" && (
           <button type="button" onClick={onClose} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[var(--tv3-fill)] px-2.5 text-[12px] font-medium cursor-pointer hover:bg-[var(--tv3-fill)]">
@@ -179,6 +208,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         <CorpChip />
         <div className="flex min-w-[150px] max-w-[260px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
       </div>
+        </>
+      )}
 
       {banner}
 
@@ -189,7 +220,11 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           </div>
         )}
         {grid ? (
-          <MonthGrid cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date, focusId) => setOpenDay({ date, focusId })} />
+          phone === null ? null : phone ? (
+            <MobileDayList cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date) => setOpenDay({ date })} />
+          ) : (
+            <MonthGrid cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date, focusId) => setOpenDay({ date, focusId })} />
+          )
         ) : (
           <CalendarView variant="embedded" zone={zone} visible={visible} query={q} />
         )}

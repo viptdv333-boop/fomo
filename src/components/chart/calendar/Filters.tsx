@@ -198,7 +198,7 @@ export function SearchBox({ q, setQ }: { q: string; setQ: (v: string) => void })
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("ec.search")}
         aria-label={t("ec.search")}
-        className="h-8 w-full rounded-[10px] bg-[var(--tv3-fill)] pl-7 pr-2 text-[14px] text-[var(--tv3-text)] outline-none"
+        className="h-8 w-full rounded-[10px] bg-[var(--tv3-fill)] pl-7 pr-2 text-[14px] text-[var(--tv3-text)] outline-none max-sm:text-[16px]"
       />
     </div>
   );

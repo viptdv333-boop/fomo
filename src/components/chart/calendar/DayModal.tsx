@@ -30,6 +30,9 @@ interface Props {
   noData?: boolean;
 }
 
+/** 44 px tap targets for the header buttons on a phone */
+const PHONE_BTN = "max-sm:h-11 max-sm:w-11";
+
 /** One day of the calendar in a modal (a bottom sheet on a phone): filters, the full table, the event popup with reminders. */
 export default function DayModal({ date, events, zone, locale, focusId, canPrev, canNext, onPrev, onNext, onClose, noData }: Props) {
   const { t } = useT();
@@ -72,13 +75,13 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
           role="dialog"
           aria-modal="true"
           aria-label={heading}
-          className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)] text-[var(--tv3-text)] shadow-2xl sm:max-h-[86vh] sm:max-w-[1040px] sm:rounded-2xl sm:pb-0 sm:shadow-[var(--tv3-shadow-pop)]"
+          className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-[var(--tv3-text)] shadow-2xl sm:h-auto sm:max-h-[86vh] sm:max-w-[1040px] sm:rounded-2xl sm:pb-0 sm:pt-0 sm:shadow-[var(--tv3-shadow-pop)]"
         >
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--tv3-hair)] px-3 py-2">
-            <button type="button" onClick={onPrev} disabled={!canPrev} aria-label={t("ec.prevDay")} title={t("ec.prevDay")} className={iconBtn}>
+            <button type="button" onClick={onPrev} disabled={!canPrev} aria-label={t("ec.prevDay")} title={t("ec.prevDay")} className={`${iconBtn} ${PHONE_BTN}`}>
               <span className="scale-[0.8]">{EC_ICONS.prev}</span>
             </button>
-            <button type="button" onClick={onNext} disabled={!canNext} aria-label={t("ec.nextDay")} title={t("ec.nextDay")} className={iconBtn}>
+            <button type="button" onClick={onNext} disabled={!canNext} aria-label={t("ec.nextDay")} title={t("ec.nextDay")} className={`${iconBtn} ${PHONE_BTN}`}>
               <span className="scale-[0.8]">{EC_ICONS.next}</span>
             </button>
             <div className="ml-1 min-w-0 flex-1">
@@ -87,14 +90,15 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
                 {t("ec.nEvents", { n: events.length })} · {zone}
               </div>
             </div>
-            <button type="button" onClick={onClose} aria-label={t("shell.close")} className={iconBtn}>
+            <button type="button" onClick={onClose} aria-label={t("shell.close")} className={`${iconBtn} ${PHONE_BTN}`}>
               <span className="scale-[0.8]">{EC_ICONS.close}</span>
             </button>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2">
-            <div className="flex w-[170px] max-w-full"><CountryFilter seen={seen} /></div>
-            <QuickChips />
+          {/* on a phone the filters are one line that scrolls sideways, so the day keeps the height */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2 max-sm:flex-nowrap max-sm:gap-x-1.5 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden max-sm:[&_button]:h-8">
+            <div className="flex w-[170px] max-w-full max-sm:shrink-0"><CountryFilter seen={seen} /></div>
+            <QuickChips wrap={narrow} />
             <EnergyChip />
             <MoexChip />
             <CommodityChip />
@@ -106,7 +110,7 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
             {events.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm text-[var(--tv3-muted)]">{noData ? t("ec.nodata") : t("ec.emptyFiltered")}</div>
             ) : (
-              <div className={narrow ? "" : "min-w-[760px]"}>
+              <div className={narrow ? "px-2.5 pb-2 pt-1.5" : "min-w-[760px]"}>
                 {!narrow && (
                   <div className={`sticky top-0 z-[6] grid h-8 items-center ${DAY_COLS} gap-x-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-3 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]`}>
                     <span>{t("ec.col.time")}</span>

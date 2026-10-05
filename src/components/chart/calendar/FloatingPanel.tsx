@@ -16,6 +16,8 @@ export function anchorOf(el: Element): Anchor {
 }
 
 const MARGIN = 8;
+/** Pointer events this soon after mounting are the tail of the tap that opened the panel. */
+export const OPEN_GUARD_MS = 250;
 
 /**
  * A popover placed next to an anchor rectangle (below it, flipped above when there is no room, kept inside the viewport);
@@ -59,25 +61,38 @@ export default function FloatingPanel({
     setPos({ left, top, sheet: false });
   }, [anchor, width]);
 
+  // the parents pass a fresh arrow every render: keep the latest in a ref so the listeners below are bound once
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
+    const openedAt = Date.now();
+    const w0 = window.innerWidth;
     const down = (e: Event) => {
-      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) onClose();
+      // the press that opened the panel may deliver a late pointer event on a touch screen: not an outside tap
+      if (Date.now() - openedAt < OPEN_GUARD_MS) return;
+      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) closeRef.current();
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        closeRef.current();
       }
+    };
+    // A phone fires `resize` when the on-screen keyboard appears or the address bar folds while the list is scrolled: only a
+    // change of the WIDTH (a rotation, a window drag) moves an anchored panel off its anchor and closes it.
+    const resize = () => {
+      if (window.innerWidth !== w0) closeRef.current();
     };
     document.addEventListener("pointerdown", down, true);
     document.addEventListener("keydown", key, true);
-    window.addEventListener("resize", onClose);
+    window.addEventListener("resize", resize);
     return () => {
       document.removeEventListener("pointerdown", down, true);
       document.removeEventListener("keydown", key, true);
-      window.removeEventListener("resize", onClose);
+      window.removeEventListener("resize", resize);
     };
-  }, [onClose]);
+  }, []);
 
   const sheet = pos?.sheet ?? false;
   return (

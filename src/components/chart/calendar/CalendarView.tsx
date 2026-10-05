@@ -19,6 +19,7 @@ import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChip
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
 import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, RuMark, SourceFooter, useNow } from "./parts";
+import { useIsPhone } from "./useViewport";
 
 const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
   { id: "yesterday", key: "ec.tab.yesterday" },
@@ -83,7 +84,7 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
       type="button"
       data-ev={ev.id}
       onClick={(e) => onOpen(ev, anchorOf(e.currentTarget))}
-      className={`mb-1.5 block w-full rounded-xl px-2.5 py-[9px] text-left cursor-pointer hover:bg-[var(--tv3-fill)] ${focus ? "bg-[var(--tv3-fill)] outline outline-1 -outline-offset-1 outline-sky-500" : "bg-[var(--tv3-fill3)]"} ${past ? "opacity-60 hover:opacity-100" : ""}`}
+      className={`mb-1.5 block w-full rounded-xl px-2.5 py-[9px] text-left cursor-pointer max-sm:min-h-[52px] hover:bg-[var(--tv3-fill)] ${focus ? "bg-[var(--tv3-fill)] outline outline-1 -outline-offset-1 outline-sky-500" : "bg-[var(--tv3-fill3)]"} ${past ? "opacity-60 hover:opacity-100" : ""}`}
     >
       <div className="flex items-start gap-2.5">
         <span className="w-[34px] shrink-0 pt-0.5 text-[12px] tabular-nums text-[var(--tv3-muted)]">{ev.allDay ? t("ec.allDayShort") : formatClock(ev.ts, zone)}</span>
@@ -94,7 +95,8 @@ export const PanelRow = memo(function PanelRow({ ev, zone, now, locale, reminded
           </span>
           <BriefLine ev={ev} />
         </span>
-        <CalendarBell ev={ev} className="mt-px" />
+        {/* on a phone the bell is a 44 px tap target (negative margins keep the row height) */}
+        <CalendarBell ev={ev} className="mt-px max-sm:-my-3 max-sm:-mr-2 max-sm:h-11 max-sm:w-11" />
         <span className="pt-[6px]" title={t(`ec.impact.${ev.impact}`)}><ImpactDot level={ev.impact} /></span>
       </div>
       {hasFigures && (
@@ -177,11 +179,14 @@ export interface CalendarViewProps {
 export default function CalendarView({ variant, zone, visible, onExpand, query = "" }: CalendarViewProps) {
   const { t, locale } = useT();
   const loc = intlLocale(locale);
-  const wide = variant === "embedded";
+  const embedded = variant === "embedded";
+  // the full-page list is a wide table; on a phone (< 640 px) it becomes the compact rows of the side panel instead
+  const phone = useIsPhone();
+  const wide = embedded && phone !== true;
   const [prefs, update] = useCalPrefs();
   const reminders = useReminders();
   const [qLocal, setQLocal] = useState("");
-  const q = wide ? query : qLocal;
+  const q = embedded ? query : qLocal;
   const [rangeAnchor, setRangeAnchor] = useState<Anchor | null>(null);
   const [details, setDetails] = useState<{ ev: CalEvent; anchor: Anchor } | null>(null);
   const now = useNow(wide ? 15_000 : 20_000, visible);
@@ -239,7 +244,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
   const rangeTabs = (
-    <div className={`flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${wide ? "mx-3 my-2 w-fit rounded-[9px] bg-[var(--tv3-fill2)] p-0.5" : "rounded-[9px] bg-[var(--tv3-fill2)] p-0.5"}`} role="tablist" aria-label={t("ec.range")}>
+    <div className={`flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${wide ? "mx-3 my-2 w-fit rounded-[9px] bg-[var(--tv3-fill2)] p-0.5" : `rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 ${embedded ? "mx-3 my-2" : ""}`}`} role="tablist" aria-label={t("ec.range")}>
       {TABS.map((tb) => {
         const on = prefs.preset === tb.id;
         return (
@@ -366,7 +371,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   );
 
   /* the side panel */
-  if (!wide) {
+  if (!embedded) {
     return (
       <div className="flex h-full min-h-0 flex-col bg-[var(--tv3-card)] md:bg-transparent">
         <div className="shrink-0 space-y-2.5 px-2.5 pb-2.5">
@@ -429,19 +434,21 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
       <div className="shrink-0 border-b border-[var(--tv3-hair)]">{rangeTabs}</div>
       {notices}
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
-        <div className="min-w-[960px]">
-          <div className={`sticky top-0 z-[6] grid h-8 items-center ${WIDE_COLS} gap-x-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-3 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]`}>
-            <span>{t("ec.col.time")}</span>
-            <span>{t("ec.col.country")}</span>
-            <span>{t("ec.col.event")}</span>
-            <span>{t("ec.col.category")}</span>
-            <span>{t("ec.col.impact")}</span>
-            <span className="text-right">{t("ec.actual")}</span>
-            <span className="text-right">{t("ec.forecast")}</span>
-            <span className="text-right">{t("ec.previous")}</span>
-            <span className="text-right">{t("ec.change")}</span>
-            <span className="text-center">{t("ec.col.unit")}</span>
-          </div>
+        <div className={wide ? "min-w-[960px]" : ""}>
+          {wide && (
+            <div className={`sticky top-0 z-[6] grid h-8 items-center ${WIDE_COLS} gap-x-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-3 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]`}>
+              <span>{t("ec.col.time")}</span>
+              <span>{t("ec.col.country")}</span>
+              <span>{t("ec.col.event")}</span>
+              <span>{t("ec.col.category")}</span>
+              <span>{t("ec.col.impact")}</span>
+              <span className="text-right">{t("ec.actual")}</span>
+              <span className="text-right">{t("ec.forecast")}</span>
+              <span className="text-right">{t("ec.previous")}</span>
+              <span className="text-right">{t("ec.change")}</span>
+              <span className="text-center">{t("ec.col.unit")}</span>
+            </div>
+          )}
           {body}
         </div>
       </div>
