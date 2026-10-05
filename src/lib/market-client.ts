@@ -1,6 +1,7 @@
 /* Client helpers for exact-contract selection and the universal market search (talks to /api/contracts and /api/market-search). */
 
-import type { ContractInfo, ContractsResponse, MarketGroup, MarketItem } from "./market-types";
+import type { ContractInfo, ContractsResponse, GroupTab, MarketItem, MarketPage } from "./market-types";
+import type { Filters } from "./instrument-filters";
 import { rememberInstrument, type ChartSource, type TerminalInstrument } from "./terminal-data";
 import { listUserData, saveUserData } from "./chart/userdata";
 
@@ -49,26 +50,33 @@ export async function fetchContractInfo(secids: string[], lang: string): Promise
   return out;
 }
 
-export async function searchMarketApi(q: string, group: MarketGroup | "all", signal?: AbortSignal): Promise<MarketItem[]> {
+/** What a page request asks for: the query (empty: the chip's popular list), the chip, its filters and the paging. */
+export interface PageRequest {
+  q: string;
+  group: GroupTab;
+  filters: Filters;
+  offset?: number;
+  limit?: number;
+}
+
+/** One page of a chip's list (server: ranked / popular rows, tagged, filtered, with the options of the dropdowns). null on network errors. */
+export async function fetchMarketPage(req: PageRequest, signal?: AbortSignal): Promise<MarketPage | null> {
+  const sp = new URLSearchParams({ q: req.q, group: req.group, limit: String(req.limit ?? PAGE_SIZE), offset: String(req.offset ?? 0) });
+  if (req.filters.country) sp.set("country", req.filters.country);
+  if (req.filters.venue) sp.set("venue", req.filters.venue);
+  if (req.filters.asset && req.group === "future") sp.set("asset", req.filters.asset);
   try {
-    const r = await fetch(`/api/market-search?q=${encodeURIComponent(q)}&group=${group}&limit=30`, { signal });
-    if (!r.ok) return [];
-    return ((await r.json()).items ?? []) as MarketItem[];
+    const r = await fetch(`/api/market-search?${sp}`, { signal });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return Array.isArray(j?.items) ? (j as MarketPage) : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
-/** The «popular» list of a group chip (empty query): server cached, with a curated fallback. [] on network errors. */
-export async function popularMarketApi(group: MarketGroup | "all", signal?: AbortSignal): Promise<MarketItem[]> {
-  try {
-    const r = await fetch(`/api/market-search?q=&group=${group}&limit=30`, { signal });
-    if (!r.ok) return [];
-    return ((await r.json()).items ?? []) as MarketItem[];
-  } catch {
-    return [];
-  }
-}
+/** rows per page of the dialog (the «Показать ещё» step) */
+export const PAGE_SIZE = 40;
 
 export async function lookupSecid(id: string): Promise<MarketItem | null> {
   try {

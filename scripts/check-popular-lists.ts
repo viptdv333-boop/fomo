@@ -96,9 +96,11 @@ for (const g of ["stock", "bond", "fund", "future", "currency", "crypto", "forex
   const l = staticPopular(g);
   eq(`static ${g}: not empty, unique, shaped`, [l.length > 0, new Set(l.map((i) => `${i.source}:${i.secid}`)).size === l.length, l.every((i) => i.secid && i.ticker && i.name && i.source)], [true, true, true]);
 }
-eq("static: sizes", [staticPopular("stock").length, staticPopular("bond").length, staticPopular("fund").length, staticPopular("future").length, staticPopular("currency").length], [15, 12, 12, 15, 12]);
-eq("static futures: the main families, auto rows without a contract count", [staticPopular("future").slice(0, 6).map((i) => i.secid), staticPopular("future").every((i) => i.auto && i.group === "future")], [["Si", "MIX", "RTS", "BR", "GOLD", "NG"], true]);
-eq("static futures: same underlyings as the live priority list", staticPopular("future").map((i) => i.asset), FUTURES_PRIORITY);
+eq("static: sizes", [staticPopular("stock").length, staticPopular("bond").length, staticPopular("fund").length, staticPopular("future").length, staticPopular("currency").length], [15, 12, 12, 55, 12]);
+const sfut = staticPopular("future");
+const sru = sfut.filter((i) => i.source === "moex");
+eq("static futures: the Russian rows are auto rows without a contract count, the US table follows its classes", [sru.every((i) => i.auto && i.group === "future" && i.contracts === undefined), sfut.filter((i) => i.source === "fmp").length], [true, 40]);
+eq("static futures: same Russian underlyings as the live priority list", sru.map((i) => i.asset).sort(), [...FUTURES_PRIORITY].sort());
 eq("static funds start with the priority list", staticPopular("fund").map((i) => i.secid), FUND_PRIORITY);
 eq("static bonds are OFZ ids with readable tickers", staticPopular("bond").slice(0, 2).map((i) => [i.secid, i.ticker, i.unit]), [["SU26254RMFS1", "ОФЗ 26254", "%"], ["SU26238RMFS4", "ОФЗ 26238", "%"]]);
 

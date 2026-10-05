@@ -6,7 +6,11 @@
 
 import type { MarketGroup, MarketItem } from "./market-types";
 import { pairToItem as cryptoItem, POPULAR_CRYPTO } from "./bybit-spot-search";
-import { pairToItem as fxItem, POPULAR_FOREX } from "./forex-meta";
+import { FX_PAIRS, pairToItem as fxItem } from "./forex-meta";
+import { allUsFutureItems } from "./us-futures";
+import { arrangeByAsset } from "./futures-assets";
+import { tagItem } from "./instrument-filters";
+import { indexItem, popularIndexRows, staticIndexRows } from "./moex-indices";
 
 export type PopularGroup = MarketGroup | "all";
 
@@ -25,7 +29,7 @@ export interface BoardRow {
 /** How many rows each chip shows. */
 export const POPULAR_COUNT = { stock: 15, bond: 15, fund: 12, future: 15, currency: 12 } as const;
 /** How many rows of each group the «Все» mix takes (chip order). */
-export const ALL_MIX: [MarketGroup, number][] = [["stock", 4], ["bond", 3], ["fund", 3], ["future", 4], ["crypto", 3], ["currency", 3], ["forex", 3]];
+export const ALL_MIX: [MarketGroup, number][] = [["stock", 4], ["bond", 3], ["fund", 3], ["future", 4], ["index", 2], ["crypto", 3], ["currency", 3], ["forex", 3]];
 
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
@@ -172,23 +176,31 @@ const STATIC_FUT: [string, string, string][] = [
 const BRD = (rows: { secid: string; name: string; short: string }[], f: (r: BoardRow) => MarketItem) =>
   rows.map((x) => f({ secid: x.secid, shortname: x.short, name: x.name, isin: "", sectype: "", turnover: 0 }));
 
-/** Curated lists shown when ISS is unreachable (and instantly on the client before the live list arrives). */
+/** The «Фьючерсы» list of the chip as the client can build it at once: the curated Russian families and the US table, grouped by asset class (RU first inside a class). */
+function staticFutures(): MarketItem[] {
+  const ru = STATIC_FUT.map(([auto, asset, name]) => tagItem({ secid: auto, ticker: auto, name, group: "future", source: "moex", engine: "futures", market: "forts", board: "RFUD", auto: true, asset, kind: "quarterly" } as MarketItem));
+  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem)]);
+}
+
+/** Curated lists shown when ISS is unreachable (and instantly on the client before the live list arrives). Every row is tagged (venue / country / category). */
 export function staticPopular(group: PopularGroup): MarketItem[] {
   switch (group) {
     case "stock":
-      return BRD(STATIC_STOCKS, stockItem);
+      return BRD(STATIC_STOCKS, stockItem).map(tagItem);
     case "bond":
-      return BRD(STATIC_OFZ, (r) => bondItem(r, "TQOB"));
+      return BRD(STATIC_OFZ, (r) => bondItem(r, "TQOB")).map(tagItem);
     case "fund":
-      return BRD(STATIC_FUNDS, fundItem);
+      return BRD(STATIC_FUNDS, fundItem).map(tagItem);
     case "currency":
-      return STATIC_FX.map((x) => currencyItem({ secid: x.secid, shortname: x.ticker, name: x.name, isin: "", sectype: "", turnover: 0 }));
+      return STATIC_FX.map((x) => tagItem(currencyItem({ secid: x.secid, shortname: x.ticker, name: x.name, isin: "", sectype: "", turnover: 0 })));
     case "future":
-      return STATIC_FUT.map(([auto, asset, name]) => ({ secid: auto, ticker: auto, name, group: "future", source: "moex", engine: "futures", market: "forts", board: "RFUD", auto: true, asset, kind: "quarterly" }) as MarketItem);
+      return staticFutures();
+    case "index":
+      return popularIndexRows(staticIndexRows()).map((r) => tagItem(indexItem(r)));
     case "crypto":
-      return POPULAR_CRYPTO.map(cryptoItem);
+      return POPULAR_CRYPTO.map(cryptoItem).map(tagItem);
     case "forex":
-      return POPULAR_FOREX.map(fxItem);
+      return FX_PAIRS.map(fxItem).map(tagItem);
     case "all":
       return mixAll((g) => staticPopular(g));
     default:
@@ -196,12 +208,18 @@ export function staticPopular(group: PopularGroup): MarketItem[] {
   }
 }
 
+/** the most traded Russian families of a futures list, in FUTURES_PRIORITY order (what «Все» shows of the futures) */
+function futuresTop(items: MarketItem[]): MarketItem[] {
+  return FUTURES_PRIORITY.map((a) => items.find((i) => i.source === "moex" && i.asset === a && i.auto)).filter((i): i is MarketItem => !!i);
+}
+
 /** «Все»: a few rows of every group (chip order), duplicates dropped. */
 export function mixAll(listOf: (g: MarketGroup) => MarketItem[]): MarketItem[] {
   const out: MarketItem[] = [];
   const seen = new Set<string>();
   for (const [g, n] of ALL_MIX) {
-    for (const it of listOf(g).slice(0, n)) {
+    const list = g === "future" ? futuresTop(listOf(g)) : listOf(g);
+    for (const it of list.slice(0, n)) {
       const k = `${it.source}:${it.secid}`;
       if (seen.has(k)) continue;
       seen.add(k);

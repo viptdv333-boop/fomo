@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import type { ChartType } from "@/lib/chart/types";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import type { ReplayApi } from "./ReplayControls";
-import { InstIcon } from "./RightPanel";
+import InstIcon from "./InstIcon";
 import { CHART_TYPE_ICONS, UI_ICONS } from "./icons";
 import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
 import IntervalControl from "./IntervalControl";

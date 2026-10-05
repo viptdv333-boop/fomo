@@ -25,16 +25,6 @@ export interface TerminalCategory {
   instruments: TerminalInstrument[];
 }
 
-export const CATEGORY_I18N: Record<string, string> = {
-  "Акции ММВБ": "terminal.stocksRu",
-  "Сырьё": "terminal.commodities",
-  "Металлы": "terminal.metals",
-  "Валюта": "terminal.currencies",
-  "Индексы": "terminal.indices",
-  "Криптовалюты": "terminal.crypto",
-  "Форекс": "terminal.forex",
-};
-
 export const CATEGORY_ICONS: Record<string, string> = {
   "Акции ММВБ": "/icons/categories/stocks-ru.svg",
   "Сырьё": "/icons/categories/commodities.svg",

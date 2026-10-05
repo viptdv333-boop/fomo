@@ -1,13 +1,14 @@
 "use client";
 
-import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
 import { panelTabIcon } from "./icons";
-import Flag from "./Flag";
-import { FX_CURRENCIES, fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
+import InstIcon from "./InstIcon";
+import InstrumentSearchDialog from "./InstrumentSearchDialog";
+import { fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
@@ -29,10 +30,8 @@ import {
   rememberInstrument,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
-import { fetchContractInfo, itemToInstrument, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
-import type { MarketItem } from "@/lib/market-types";
+import { fetchContractInfo, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
 import { ContractBadge } from "./ContractPicker";
-import { ContractSubRows, ExpandButton, GroupTabs, useMarketSearch, iconFor, type GroupTab } from "./MarketRows";
 import "./terminal-v3.css";
 
 export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
@@ -52,39 +51,6 @@ const COLLAPSED_KEY = "fomo-terminal-watch-collapsed";
 const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 /* ───────────── small pieces ───────────── */
-
-/** Two overlapping flags of a currency pair (EUR/USD); the metals have artwork and never get here. */
-function PairIcon({ symbol, size }: { symbol: string; size: number }) {
-  const p = parseFxSymbol(symbol);
-  const fw = Math.round(size * 0.72);
-  const fh = Math.round((fw * 20) / 30);
-  return (
-    <span className="relative shrink-0 inline-block" style={{ width: size, height: size }} aria-hidden>
-      <span className="absolute left-0 top-0 leading-none">
-        <Flag code={p ? FX_CURRENCIES[p.base]?.flag ?? "" : ""} width={fw} />
-      </span>
-      <span className="absolute right-0 leading-none" style={{ top: size - fh }}>
-        <Flag code={p ? FX_CURRENCIES[p.quote]?.flag ?? "" : ""} width={fw} />
-      </span>
-    </span>
-  );
-}
-
-export function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?: number }) {
-  if (!inst.emoji && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
-  if (inst.emoji) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={inst.emoji} alt="" width={size} height={size} className="rounded-full shrink-0" style={{ width: size, height: size }} />;
-  }
-  return (
-    <span
-      className="rounded-full shrink-0 flex items-center justify-center bg-[var(--tv3-fill2)] text-[var(--tv3-text2)] font-bold"
-      style={{ width: size, height: size, fontSize: Math.max(8, size * 0.42) }}
-    >
-      {inst.ticker.slice(0, 2).toUpperCase()}
-    </span>
-  );
-}
 
 const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "watchlist", key: "shell.tab.watchlist" },
@@ -419,183 +385,6 @@ function useWatchlist() {
   };
 }
 
-/** Search the instruments database and add a result to the watchlist. */
-function AddTicker({
-  existing,
-  onAdd,
-  onClose,
-  initialQuery = "",
-}: {
-  existing: TerminalInstrument[];
-  onAdd: (i: TerminalInstrument) => void;
-  onClose: () => void;
-  initialQuery?: string;
-}) {
-  const { t } = useT();
-  const [q, setQ] = useState(initialQuery);
-  const [results, setResults] = useState<TerminalInstrument[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<GroupTab>("all");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const market = useMarketSearch(q, tab);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  // curated + catalogue rows (filtered by the tab) followed by the exchange search results
-  const merged = useMemo(() => {
-    if (results === null && market.items.length === 0) return null;
-    const out: { inst: TerminalInstrument; item?: MarketItem; expand?: string }[] = [];
-    const seen = new Set<string>();
-    for (const inst of results ?? []) {
-      if (inst.source === "forex") continue; // forex rows come ranked from the market search (a substring match on «usd» would list every pair)
-      const cat = categoryOf(inst);
-      const grp: GroupTab | null = inst.source === "bybit" ? "crypto" : inst.source !== "moex" ? null : cat ? (cat.name === "Акции ММВБ" ? "stock" : "future") : "stock";
-      if (tab !== "all" && grp !== tab) continue;
-      seen.add(wlKey(inst));
-      out.push({ inst, expand: inst.source === "moex" && cat && cat.name !== "Акции ММВБ" ? inst.dataTicker : undefined });
-    }
-    for (const item of market.items) {
-      const key = `${item.source}:${item.secid}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ inst: itemToInstrument(item, iconFor(item, ALL_INSTRUMENTS)), item, expand: item.group === "future" && item.auto && (item.contracts ?? 0) > 1 ? item.secid : undefined });
-    }
-    return out;
-  }, [results, market.items, tab]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    const onDown = (e: PointerEvent) => {
-      if (boxRef.current && e.target instanceof Node && !boxRef.current.contains(e.target)) onClose();
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [onClose]);
-
-  useEffect(() => {
-    const needle = q.trim();
-    if (!needle) {
-      setResults(null);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const id = setTimeout(async () => {
-      try {
-        const r = await fetch(`/api/instruments?search=${encodeURIComponent(needle)}`);
-        const rows: any[] = r.ok ? await r.json() : [];
-        if (cancelled) return;
-        const seen = new Set<string>();
-        const out: TerminalInstrument[] = [];
-        // the terminal's own list first (names like «Кофе» have no data source in the instruments table, but the terminal charts them)
-        const norm = (x: string) => x.toLowerCase().replace(/ё/g, "е");
-        const nd = norm(needle);
-        for (const inst of ALL_INSTRUMENTS) {
-          if (inst.source === "forex") continue;
-          if (norm(inst.name).includes(nd) || norm(inst.ticker).includes(nd) || norm(inst.dataTicker).includes(nd)) {
-            const key = `${inst.source}:${inst.dataTicker}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              out.push(inst);
-            }
-          }
-        }
-        for (const row of Array.isArray(rows) ? rows : []) {
-          let source = row?.dataSource;
-          let dataTicker = row?.dataTicker || row?.ticker;
-          if (!source && row?.ticker) {
-            // a catalogue entry without a feed (e.g. ICE «KC») maps to the curated instrument with the same ticker
-            const alias = ALL_INSTRUMENTS.find((i) => i.ticker.toLowerCase() === String(row.ticker).toLowerCase());
-            if (alias) {
-              source = alias.source;
-              dataTicker = alias.dataTicker;
-            }
-          }
-          if ((source !== "moex" && source !== "bybit" && source !== "fmp" && source !== "forex") || !dataTicker) continue;
-          const key = `${source}:${dataTicker}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const known = findInstrument(source, dataTicker);
-          out.push({ ticker: row.ticker || dataTicker, name: row.name || dataTicker, source, dataTicker, emoji: known?.emoji ?? "" });
-        }
-        setResults(out);
-      } catch {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [q]);
-
-  return (
-    <div ref={boxRef} className="absolute left-2 right-2 top-full z-20 mt-1 rounded-2xl bg-[var(--tv3-card)]" style={{ boxShadow: "var(--tv3-shadow-pop)" }}>
-      <div className="p-2">
-        <input
-          ref={inputRef}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") onClose();
-          }}
-          placeholder={t("shell.watch.addPlaceholder")}
-          aria-label={t("shell.watch.addPlaceholder")}
-          className="w-full h-9 px-3 rounded-[10px] bg-[var(--tv3-fill2)] text-[14px] text-[var(--tv3-text)] outline-none"
-        />
-      </div>
-      <GroupTabs value={tab} onChange={setTab} className="px-2 pb-1.5" />
-      <div className="max-h-64 overflow-y-auto py-1">
-        {merged === null && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.addHint")}</div>}
-        {merged !== null && merged.length === 0 && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.noResults")}</div>}
-        {merged !== null && market.popular && <div className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ms.popular")}</div>}
-        {merged?.map(({ inst, item, expand }, ix) => {
-          const inList = existing.some((i) => wlKey(i) === wlKey(inst));
-          const isOpen = !!(expand && expanded[expand]);
-          // «Все» with nothing typed is a mix of every group: each block under its group label
-          const head = market.popular && tab === "all" && item && item.group !== merged[ix - 1]?.item?.group ? item.group : null;
-          return (
-            <div key={wlKey(inst)}>
-              {head && <div className="px-3 pt-2 pb-0.5 text-[11px] font-medium text-[var(--tv3-muted)]">{t(`ms.group.${head === "other" ? "stock" : head}`)}</div>}
-              <button
-                onClick={() => onAdd(inst)}
-                disabled={inList}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--tv3-fill3)] disabled:opacity-50 disabled:cursor-default cursor-pointer"
-              >
-                <InstIcon inst={inst} size={18} />
-                <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block text-[13px] font-semibold text-[var(--tv3-text)] truncate">{inst.ticker}</span>
-                  <span className="block text-[11px] text-[var(--tv3-muted)] truncate">{inst.name}</span>
-                </span>
-                {item?.group === "future" && !item.auto && item.kind && (
-                  <ContractBadge c={{ kind: item.kind, order: item.order ?? 0, badge: item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }} />
-                )}
-                {item?.group === "future" && item.auto && (item.contracts ?? 0) > 1 && <span className="text-[10px] text-[var(--tv3-muted)] shrink-0">{t("ct.contracts", { n: item.contracts ?? 0 })}</span>}
-                <span className="text-[10px] text-[var(--tv3-muted)] shrink-0">{exchangeLabel(inst.source)}</span>
-                {expand && <ExpandButton open={isOpen} onToggle={() => setExpanded((e) => ({ ...e, [expand]: !e[expand] }))} />}
-                <span className={`text-xs shrink-0 ${inList ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)]"}`}>{inList ? "✓" : "+"}</span>
-              </button>
-              {isOpen && expand && (
-                <ContractSubRows
-                  asset={expand}
-                  base={inst}
-                  autoTicker={expand}
-                  autoName={item ? item.name : inst.name}
-                  mark={(tk) => existing.some((i) => i.source === "moex" && i.dataTicker === tk)}
-                  onPick={(c) => onAdd(c)}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function Watchlist({
   items,
   onAdd,
@@ -680,15 +469,7 @@ function Watchlist({
             </svg>
           </button>
         </div>
-        {adding && (
-          <AddTicker
-            key={addSeed}
-            existing={items}
-            onAdd={(i) => onAdd(i)}
-            onClose={() => setAdding(false)}
-            initialQuery={addSeed}
-          />
-        )}
+        <InstrumentSearchDialog open={adding} mode="watchlist" onClose={() => setAdding(false)} onPick={onAdd} existing={items} onRemove={onRemove} initialQuery={addSeed} />
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
         {items.length === 0 && (

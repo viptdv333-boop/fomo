@@ -170,9 +170,6 @@ export function searchForex(q: string, limit = 30, minScore = 0, list: FxPair[] 
   return out;
 }
 
-/** Shown under the «Форекс» tab before anything is typed: the majors and gold. */
-export const POPULAR_FOREX: FxPair[] = FX_PAIRS.filter((p) => p.kind === "major" || p.symbol === "XAUUSD");
-
 /**
  * The spot FX week is continuous: it opens on Sunday ~21:00 UTC (Sydney / Wellington) and closes on Friday ~21:00 UTC (New York
  * 17:00 in summer; the winter close is an hour later and is not modelled). No lunch breaks, no holidays except thin Christmas / New Year.

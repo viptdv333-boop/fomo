@@ -1,15 +1,20 @@
 /**
- * Universal MOEX search: FORTS futures (our own classified list: families + exact contracts, perpetuals included) and
- * everything else ISS knows (shares of all boards, OFZ / corporate bonds, ETFs and mutual funds, depositary receipts,
- * currency pairs and metals, indices). No Next / DB imports.
+ * Universal market search: FORTS futures (our own classified list: families + exact contracts, perpetuals included), the US futures table (FMP),
+ * MOEX indices and everything else ISS knows (shares of all boards, OFZ / corporate bonds, ETFs and mutual funds, depositary receipts,
+ * currency pairs and metals), plus Bybit spot and the forex pairs. Results are tagged (venue / country / category), filtered, ordered and paged here.
+ * No Next / DB imports.
  */
 
 import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
-import type { MarketGroup, MarketItem } from "./market-types";
-import { parseFxSymbol, POPULAR_FOREX, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
-import { getBybitSpotList, looksLikeCoin, pairToItem, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
-import { bondItem, currencyItem, fundItem, FUTURES_PRIORITY, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow, type PopularGroup } from "./market-popular";
+import type { GroupTab, MarketGroup, MarketItem, MarketPage } from "./market-types";
+import { FX_PAIRS, parseFxSymbol, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
+import { getBybitSpotList, looksLikeCoin, pairToItem, POPULAR_CRYPTO, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
+import { bondItem, currencyItem, fundItem, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
+import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filters } from "./instrument-filters";
+import { arrangeByAsset, classBoost, moexAssetOrder } from "./futures-assets";
+import { allUsFutureItems, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
+import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -29,7 +34,7 @@ const ISS_GROUP: Record<string, MarketGroup | null> = {
   currency_futures: null,
   currency_indices: null,
   currency_otcindices: null,
-  stock_index: "index",
+  stock_index: null, // served from the ISS index market (moex-indices.ts)
   stock_gcc: null,
   stock_deposit: null,
   futures_forts: null, // served from the classified FORTS list
@@ -60,6 +65,8 @@ const SEARCH_TTL = 60_000;
 const CRYPTO_IN_ALL = 5;
 /** «Все» + a query that names a currency pair or one currency exactly («eurusd», «eur», «евро»): this many forex rows at the end */
 const FOREX_IN_ALL = 4;
+/** rows of one source kept as candidates of a typed search (the pages are cut from them) */
+const CANDIDATES = 120;
 const searchCache = new Map<string, { at: number; items: MarketItem[] }>();
 
 function norm(s: string): string {
@@ -102,7 +109,8 @@ function contractItem(c: FortsContract, f: ContractFamily): MarketItem {
   };
 }
 
-function searchFutures(families: ContractFamily[], q: string, limit: number): MarketItem[] {
+/** FORTS families and exact contracts for a query with their relevance (best first). */
+function scoreFutures(families: ContractFamily[], q: string): { s: number; item: MarketItem }[] {
   const n = norm(q);
   if (!n) return [];
   const scored: { s: number; item: MarketItem }[] = [];
@@ -126,10 +134,10 @@ function searchFutures(families: ContractFamily[], q: string, limit: number): Ma
     }
   }
   scored.sort((a, b) => b.s - a.s || a.item.secid.localeCompare(b.item.secid));
-  return scored.slice(0, limit).map((x) => x.item);
+  return scored;
 }
 
-async function issSearch(q: string, group: MarketGroup | "all", limit: number): Promise<MarketItem[]> {
+async function issSearch(q: string, group: GroupTab, limit: number): Promise<MarketItem[]> {
   const url = `${ISS}/securities.json?q=${encodeURIComponent(q)}&limit=${Math.min(100, limit * 3)}&is_trading=1&iss.meta=off&securities.columns=secid,shortname,name,isin,type,group,primary_boardid`;
   try {
     const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
@@ -142,7 +150,7 @@ async function issSearch(q: string, group: MarketGroup | "all", limit: number): 
       if (!g0 || !secid || !board) continue;
       // ETFs / funds are listed in the shares market: the search group tells them apart
       const [engine, market] = engineMarketOf(grp, board);
-      const g = g0 === "fund" || g0 === "index" || g0 === "currency" || g0 === "bond" ? g0 : groupOfMarket(engine, market, board) === "fund" ? "fund" : g0;
+      const g = g0 === "fund" || g0 === "currency" || g0 === "bond" ? g0 : groupOfMarket(engine, market, board) === "fund" ? "fund" : g0;
       if (group !== "all" && g !== group) continue;
       // bonds are identified by ISIN / SU number: show the readable short name
       const ticker = g === "bond" && secid.length > 10 ? shortname || secid : secid;
@@ -168,7 +176,6 @@ async function issSearch(q: string, group: MarketGroup | "all", limit: number): 
 function engineMarketOf(grp: string, board: string): [string, string] {
   void board;
   if (grp.startsWith("currency")) return ["currency", "selt"];
-  if (grp === "stock_index") return ["stock", "index"];
   if (grp === "stock_bonds" || grp === "stock_eurobond" || grp === "stock_mortgage") return ["stock", "bonds"];
   return ["stock", "shares"];
 }
@@ -178,7 +185,7 @@ function rank(items: MarketItem[], q: string): MarketItem[] {
   const score = (i: MarketItem) => {
     const id = norm(i.secid);
     const tk = norm(i.ticker);
-    if (id === n || tk === n) return 3;
+    if (id === n || tk === n || (i.isin && norm(i.isin) === n)) return 3;
     if (id.startsWith(n) || tk.startsWith(n)) return 2;
     if (norm(i.name).startsWith(n)) return 1.5;
     return 1;
@@ -186,37 +193,56 @@ function rank(items: MarketItem[], q: string): MarketItem[] {
   return items.map((i, ix) => ({ i, s: score(i), ix })).sort((a, b) => b.s - a.s || a.ix - b.ix).map((x) => x.i);
 }
 
-export async function searchMarket(q: string, group: MarketGroup | "all" = "all", limit = 30): Promise<MarketItem[]> {
-  q = q.trim();
-  if (group === "crypto") return searchCrypto(q, limit); // the whole Bybit spot list (has its own 1 h cache)
-  if (group === "forex") return q ? searchForex(q, limit) : POPULAR_FOREX.slice(0, limit).map(fxPairToItem); // static curated list, no network
-  if (q.length < 1) return [];
-  const key = `${group}|${limit}|${norm(q)}`;
+/** The typed query -> every candidate row of the chip (tagged, ordered; cached a minute). Filters and pages are applied by the caller. */
+async function searchCandidates(q: string, group: GroupTab): Promise<MarketItem[]> {
+  const key = `${group}|${norm(q)}`;
   const hit = searchCache.get(key);
   if (hit && Date.now() - hit.at < SEARCH_TTL) return hit.items;
+  const items = (await buildCandidates(q, group)).map(tagItem);
+  if (searchCache.size > 500) searchCache.clear();
+  searchCache.set(key, { at: Date.now(), items });
+  return items;
+}
 
-  const wantFut = group === "all" || group === "future";
-  const wantCash = group !== "future";
-  const [families, cash] = await Promise.all([
-    wantFut ? getFortsFamilies() : Promise.resolve([] as ContractFamily[]),
-    wantCash && q.length >= 2 ? issSearch(q, group, limit) : Promise.resolve([] as MarketItem[]),
-  ]);
-  const fut = wantFut ? searchFutures(families, q, limit) : [];
-  const exactFut = fut.filter((f) => norm(f.secid) === norm(q));
-  const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...cash], q);
-  // an exact secid always on top; otherwise cash groups and futures interleave by relevance
-  const items = [...exactFut, ...rest].slice(0, limit);
-  // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
-  if (group === "all" && looksLikeCoin(q)) {
-    const spot = await getBybitSpotList();
-    items.push(...searchSpotPairs(spot, q, CRYPTO_IN_ALL).map(pairToItem));
+async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]> {
+  if (group === "crypto") return searchCrypto(q, CANDIDATES); // the whole Bybit spot list (has its own 1 h cache)
+  if (group === "forex") return searchForex(q, CANDIDATES);
+  if (group === "index") return searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem);
+
+  if (group === "future") {
+    // Russian and US futures by relevance (RU first on a tie), then the classes ordered by their best hit, RU before US inside a class
+    const fut = scoreFutures(await getFortsFamilies(), q);
+    const us = scoreUsFutures(q);
+    const merged = [...fut, ...us]
+      .map((x, i) => {
+        const item = tagItem(x.item);
+        return { item, s: x.s + classBoost(q, item.fgroup), i };
+      })
+      .sort((a, b) => b.s - a.s || a.i - b.i)
+      .map((x) => x.item);
+    return arrangeByAsset(merged.slice(0, CANDIDATES * 2), true);
   }
-  if (group === "all") {
+
+  // «Все» and the cash groups (stocks, bonds, funds, currency)
+  const all = group === "all";
+  const [families, cash, indices] = await Promise.all([
+    all ? getFortsFamilies() : Promise.resolve([] as ContractFamily[]),
+    q.length >= 2 ? issSearch(q, group, CANDIDATES) : Promise.resolve([] as MarketItem[]),
+    all ? getIndexRows() : Promise.resolve([]),
+  ]);
+  const fut = all ? scoreFutures(families, q).slice(0, CANDIDATES).map((x) => x.item) : [];
+  const exactFut = fut.filter((f) => norm(f.secid) === norm(q));
+  const us = all ? scoreUsFutures(q).slice(0, 30).map((x) => x.item) : [];
+  const idx = all ? searchIndexRows(indices, q, 20).map(indexItem) : [];
+  const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...us, ...idx, ...cash], q);
+  // an exact secid always on top; otherwise futures, indices and cash groups interleave by relevance
+  const items = [...exactFut, ...rest].slice(0, CANDIDATES);
+  if (all) {
+    // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
+    if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map(pairToItem));
     const have = new Set(items.map((i) => `${i.source}:${i.secid}`));
     items.push(...searchForex(q, FOREX_IN_ALL, 75).filter((i) => !have.has(`${i.source}:${i.secid}`)));
   }
-  if (searchCache.size > 500) searchCache.clear();
-  searchCache.set(key, { at: Date.now(), items });
   return items;
 }
 
@@ -242,50 +268,49 @@ async function issBoard(path: string, cols: string): Promise<BoardRow[]> {
 const SHARE_COLS = "SECID,SHORTNAME,SECNAME,ISIN,SECTYPE";
 const BOND_COLS = "SECID,SHORTNAME,SECNAME,ISIN";
 
+/** The whole «Фьючерсы» catalogue: every FORTS family grouped by asset class (curated order inside a class), the US table after the Russian rows of a class. */
+export function futuresCatalog(families: ContractFamily[]): MarketItem[] {
+  const ru = families
+    .map((f) => tagItem(famItem(refreshDays(f))))
+    .sort((a, b) => moexAssetOrder(a.asset ?? "") - moexAssetOrder(b.asset ?? "") || (a.asset ?? "").localeCompare(b.asset ?? ""));
+  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem)]);
+}
+
+type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "index";
+
 /** Live list of one group from ISS (turnover ranking / curated order checked against the board), null when it cannot be built. */
-async function livePopular(group: Exclude<PopularGroup, "all" | "crypto" | "forex" | "index" | "other">): Promise<MarketItem[] | null> {
+async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
   switch (group) {
     case "stock":
     case "fund": {
       // shares and funds / ETFs trade on the same board: one listing serves both chips
       const rows = await issBoard("stock/markets/shares/boards/TQBR", SHARE_COLS);
       const picked = group === "stock" ? pickStocks(rows).map(stockItem) : pickFunds(rows).map(fundItem);
-      return picked.length ? picked : null;
+      return picked.length ? picked.map(tagItem) : null;
     }
     case "bond": {
       const [ofz, corp] = await Promise.all([issBoard("stock/markets/bonds/boards/TQOB", BOND_COLS), issBoard("stock/markets/bonds/boards/TQCB", BOND_COLS)]);
       const picked = pickBonds(ofz, corp).map((x) => bondItem(x.row, x.corp ? "TQCB" : "TQOB"));
-      return picked.length ? picked : null;
+      return picked.length ? picked.map(tagItem) : null;
     }
     case "currency": {
       const picked = pickCurrency(await issBoard("currency/markets/selt/boards/CETS", BOND_COLS)).map(currencyItem);
-      return picked.length ? picked : null;
+      return picked.length ? picked.map(tagItem) : null;
     }
     case "future": {
       const families = await getFortsFamilies();
-      const by = new Map(families.map((f) => [f.asset, f]));
-      const picked = FUTURES_PRIORITY.map((a) => by.get(a)).filter((f): f is ContractFamily => !!f).map((f) => famItem(refreshDays(f)));
-      return picked.length >= 3 ? picked : null;
+      return families.length < 20 ? null : futuresCatalog(families);
+    }
+    case "index": {
+      const rows = await getIndexRows();
+      return popularIndexRows(rows).map((r) => tagItem(indexItem(r)));
     }
   }
 }
 
-/**
- * The «popular» list of a group chip for an empty query: stocks / bonds by today's turnover (ISS TQBR / TQOB + big issuers of TQCB), funds and FX
- * by the curated order checked against the boards, futures families with their contract counts, «Все» a mix of all of them. Cached 10 min;
- * when ISS fails the stale copy, else the static curated list, is served (never empty).
- */
-export async function popularMarket(group: PopularGroup, limit = 30): Promise<MarketItem[]> {
-  limit = Math.max(1, limit);
-  if (group === "crypto" || group === "forex") return staticPopular(group).slice(0, limit);
-  if (group === "all") {
-    const parts = await Promise.all((["stock", "bond", "fund", "future", "currency"] as const).map(async (g) => [g, await popularMarket(g)] as const));
-    const by = new Map<string, MarketItem[]>(parts);
-    return mixAll((g) => by.get(g) ?? staticPopular(g));
-  }
-  if (group !== "stock" && group !== "bond" && group !== "fund" && group !== "future" && group !== "currency") return [];
+async function cachedPopular(group: LiveGroup): Promise<MarketItem[]> {
   const hit = popularCache.get(group);
-  if (hit && Date.now() - hit.at < (hit.live ? POPULAR_TTL : POPULAR_RETRY)) return hit.items.slice(0, limit);
+  if (hit && Date.now() - hit.at < (hit.live ? POPULAR_TTL : POPULAR_RETRY)) return hit.items;
   let p = popularInflight.get(group);
   if (!p) {
     p = livePopular(group)
@@ -296,28 +321,85 @@ export async function popularMarket(group: PopularGroup, limit = 30): Promise<Ma
   const live = await p;
   if (live) {
     popularCache.set(group, { at: Date.now(), items: live, live: true });
-    return live.slice(0, limit);
+    return live;
   }
   // ISS is down: the stale live list if there is one, else the curated one; the next try comes in a minute
   const items = hit?.items ?? staticPopular(group);
   popularCache.set(group, { at: Date.now(), items, live: false });
-  return items.slice(0, limit);
+  return items;
+}
+
+/**
+ * What a chip shows with nothing typed (before filters and paging): stocks / bonds by today's turnover (ISS TQBR / TQOB + big issuers of TQCB), funds and FX
+ * by the curated order checked against the boards, futures the whole catalogue grouped by asset class, indices the curated ones first, crypto the popular
+ * coins then the whole Bybit spot list, forex the curated pairs, «Все» a mix of all of them. Cached 10 min; when ISS fails the stale copy, else the static
+ * curated list, is served (never empty).
+ */
+async function popularCandidates(group: GroupTab, filtered: boolean): Promise<MarketItem[]> {
+  if (group === "forex") return FX_PAIRS.map(fxPairToItem).map(tagItem);
+  if (group === "crypto") {
+    const popular = new Set(POPULAR_CRYPTO.map((p) => p.symbol));
+    const rest = (await getBybitSpotList()).filter((p) => !popular.has(p.symbol)).sort((a, b) => a.symbol.localeCompare(b.symbol));
+    return [...POPULAR_CRYPTO, ...rest].map(pairToItem).map(tagItem);
+  }
+  if (group === "all") {
+    const groups = ["stock", "bond", "fund", "future", "index", "currency"] as const;
+    const by = new Map<string, MarketItem[]>(await Promise.all(groups.map(async (g) => [g, await cachedPopular(g)] as const)));
+    // a filter on «Все» (an exchange, a country) looks through every list, not through the short mix
+    if (filtered) return [...groups.flatMap((g) => by.get(g) ?? []), ...(await popularCandidates("forex", false)), ...(await popularCandidates("crypto", false))];
+    return mixAll((g) => by.get(g) ?? staticPopular(g));
+  }
+  return cachedPopular(group);
+}
+
+export interface PageOpts {
+  limit?: number;
+  offset?: number;
+  filters?: Filters;
+}
+
+/** One page of a list: the filters, the facets of the dropdowns (computed before the country / venue filters) and the cut. */
+export function pageOf(list: MarketItem[], group: GroupTab, opts: PageOpts = {}): MarketPage {
+  const f = opts.filters ?? NO_FILTERS;
+  // one row per instrument: a fund and a futures family can share a ticker (GOLD), the first one wins
+  const seen = new Set<string>();
+  list = list.filter((i) => !seen.has(`${i.source}:${i.secid}`) && !!seen.add(`${i.source}:${i.secid}`));
+  const limit = Math.max(1, Math.min(100, opts.limit ?? 40));
+  const offset = Math.max(0, opts.offset ?? 0);
+  const facetBase = group === "future" && f.asset ? list.filter((i) => i.fgroup === f.asset) : list;
+  const filtered = applyFilters(list, group, f);
+  return { items: filtered.slice(offset, offset + limit), total: filtered.length, hasMore: offset + limit < filtered.length, facets: computeFacets(facetBase, group) };
+}
+
+/** A typed query on a chip: ranked rows (a page of them), tagged with their venue / country / category and filtered. */
+export async function searchMarketPage(q: string, group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
+  return pageOf(await searchCandidates(q.trim(), group), group, opts);
+}
+
+/** Nothing typed: the chip's popular list (a page of it). */
+export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
+  return pageOf(await popularCandidates(group, hasFilters(opts.filters ?? NO_FILTERS)), group, opts);
 }
 
 /** Exact lookup by SECID / ISIN / auto ticker: the item a URL ?symbol= stands for. */
 export async function lookupMarket(id: string): Promise<MarketItem | null> {
   id = id.trim();
   if (!id) return null;
+  const us = usFutureBySymbol(id);
+  if (us) return tagItem(usFutureItem(us));
   const fx = parseFxSymbol(id);
-  if (fx && /^[A-Za-z]{6}$/.test(id)) return fxPairToItem(fx);
+  if (fx && /^[A-Za-z]{6}$/.test(id)) return tagItem(fxPairToItem(fx));
   const families = await getFortsFamilies();
   for (const raw of families) {
     const f = refreshDays(raw);
     const c = f.contracts.find((x) => x.secid === id);
-    if (c) return contractItem(c, f);
-    if (f.auto === id) return famItem(f);
+    if (c) return tagItem(contractItem(c, f));
+    if (f.auto === id) return tagItem(famItem(f));
   }
+  const idx = (await getIndexRows()).find((r) => r.secid === id);
+  if (idx) return tagItem(indexItem(idx));
   // cash instrument: ISS description of the id (exact)
   const items = await issSearch(id, "all", 10).catch(() => []);
-  return items.find((i) => i.secid === id || i.isin === id) ?? null;
+  const found = items.find((i) => i.secid === id || i.isin === id);
+  return found ? tagItem(found) : null;
 }

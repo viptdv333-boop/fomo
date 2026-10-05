@@ -141,22 +141,41 @@ export async function issQuote(sec: MoexSecurity): Promise<IssQuote | null> {
     const md = rowOf(data?.marketdata);
     const sc = rowOf(data?.securities);
     const num = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : 0);
-    // LAST is empty before the first trade of a session: fall back to the previous close
-    const price = num(md.LAST) || num(md.CLOSEPRICE) || num(md.MARKETPRICE) || num(md.SETTLEPRICE) || num(sc.PREVPRICE) || num(sc.PREVSETTLEPRICE);
-    if (price > 0) {
-      const prev = num(sc.PREVPRICE) || num(sc.PREVSETTLEPRICE) || num(md.LCLOSEPRICE);
-      const change = typeof md.LASTCHANGE === "number" && num(md.LAST) ? md.LASTCHANGE : prev > 0 ? price - prev : 0;
-      const base = price - change;
-      q = {
-        price,
-        open: num(md.OPEN) || prev || price,
-        high: num(md.HIGH) || price,
-        low: num(md.LOW) || price,
-        volume: num(md.VOLTODAY),
-        change,
-        changePercent: base > 0 ? (change / base) * 100 : 0,
-        time: sysTime(md.SYSTIME),
-      };
+    if (sec.market === "index") {
+      // an index has no LAST: CURRENTVALUE is the level, LASTVALUE the previous close, LASTCHANGE / LASTCHANGEPRC the move against it
+      const price = num(md.CURRENTVALUE) || num(md.LASTVALUE);
+      if (price > 0) {
+        const prev = num(md.LASTVALUE);
+        const change = typeof md.LASTCHANGE === "number" ? md.LASTCHANGE : prev > 0 ? price - prev : 0;
+        q = {
+          price,
+          open: num(md.OPENVALUE) || prev || price,
+          high: num(md.HIGH) || price,
+          low: num(md.LOW) || price,
+          volume: 0,
+          change,
+          changePercent: typeof md.LASTCHANGEPRC === "number" ? md.LASTCHANGEPRC : prev > 0 ? (change / prev) * 100 : 0,
+          time: sysTime(md.SYSTIME),
+        };
+      }
+    } else {
+      // LAST is empty before the first trade of a session: fall back to the previous close
+      const price = num(md.LAST) || num(md.CLOSEPRICE) || num(md.MARKETPRICE) || num(md.SETTLEPRICE) || num(sc.PREVPRICE) || num(sc.PREVSETTLEPRICE);
+      if (price > 0) {
+        const prev = num(sc.PREVPRICE) || num(sc.PREVSETTLEPRICE) || num(md.LCLOSEPRICE);
+        const change = typeof md.LASTCHANGE === "number" && num(md.LAST) ? md.LASTCHANGE : prev > 0 ? price - prev : 0;
+        const base = price - change;
+        q = {
+          price,
+          open: num(md.OPEN) || prev || price,
+          high: num(md.HIGH) || price,
+          low: num(md.LOW) || price,
+          volume: num(md.VOLTODAY),
+          change,
+          changePercent: base > 0 ? (change / base) * 100 : 0,
+          time: sysTime(md.SYSTIME),
+        };
+      }
     }
   } catch {
     q = null;

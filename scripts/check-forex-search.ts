@@ -1,7 +1,7 @@
 /* Offline check of the forex search (ranking over the curated list, aliases in ru / en, typed crosses), the pip precision and the
    24x5 session clock, no network. Run: npx tsx scripts/check-forex-search.ts */
-import { FX_PAIRS, fxDigits, fxMarketOpen, fxName, isForexSymbol, looksLikeForex, pairToItem, parseFxSymbol, POPULAR_FOREX, searchForex } from "../src/lib/forex-meta";
-import { searchMarket } from "../src/lib/moex-search";
+import { FX_PAIRS, fxDigits, fxMarketOpen, fxName, isForexSymbol, looksLikeForex, pairToItem, parseFxSymbol, searchForex } from "../src/lib/forex-meta";
+import { popularMarketPage, searchMarketPage } from "../src/lib/moex-search";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -37,7 +37,6 @@ eq("limit", ids("usd", 3).length, 3);
 eq("strict (the «Все» tab): codes and exact words only", ids("eur", 4, 75), ["EURUSD", "EURGBP", "EURJPY", "EURCHF"]);
 eq("strict: a loose substring is not enough", ids("urus", 4, 75), []);
 eq("item shape", pairToItem(FX_PAIRS[0]), { secid: "EURUSD", ticker: "EURUSD", name: "EUR/USD", group: "forex", source: "forex", asset: "EURUSD" });
-eq("popular: 7 majors + gold", [POPULAR_FOREX.length, POPULAR_FOREX[7].symbol], [8, "XAUUSD"]);
 eq("looksLikeForex", ["eurusd", "EUR/USD", "nzd jpy", "sberbk", "btcusdt", "usd"].map(looksLikeForex), [true, true, true, false, false, false]);
 eq("isForexSymbol / parse", [isForexSymbol("EURUSD"), isForexSymbol("NZDCAD"), isForexSymbol("SBERUS"), parseFxSymbol("USDUSD")], [true, true, false, null]);
 
@@ -53,8 +52,8 @@ eq("session", [at("2026-10-03T12:00:00Z"), at("2026-10-04T20:59:00Z"), at("2026-
 
 async function main() {
   /* the market search wires it: the «forex» group without network, «all» adds a few exact hits */
-  eq("searchMarket(forex, '') -> popular", (await searchMarket("", "forex", 30)).map((i) => i.secid), POPULAR_FOREX.map((p) => p.symbol));
-  eq("searchMarket(forex, 'usdjpy')", (await searchMarket("usdjpy", "forex", 30)).map((i) => i.secid), ["USDJPY"]);
+  eq("popularMarketPage(forex) -> the whole curated list", (await popularMarketPage("forex", { limit: 100 })).items.map((i) => i.secid), FX_PAIRS.map((p) => p.symbol));
+  eq("searchMarketPage(forex, 'usdjpy')", (await searchMarketPage("usdjpy", "forex")).items.map((i) => i.secid), ["USDJPY"]);
   console.log(fails ? `\n${fails} FAILED` : "\nall ok");
   process.exit(fails ? 1 : 0);
 }

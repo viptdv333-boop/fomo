@@ -30,7 +30,7 @@ import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
 import TopToolbar, { type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
-import SymbolSearch from "@/components/chart/SymbolSearch";
+import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
 import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
 import ChartSettingsDialog, { type SettingsTab } from "@/components/chart/ChartSettingsDialog";
@@ -1430,9 +1430,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {!embedded && <CalendarRemindersHost />}
-      <SymbolSearch open={comparePick} variant="compare" onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
+      <InstrumentSearchDialog open={comparePick} mode="compare" onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
-      <SymbolSearch open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
+      <InstrumentSearchDialog open={searchOpen} mode="symbol" onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} />
       <AlertsDialog
         open={alertsOpen}

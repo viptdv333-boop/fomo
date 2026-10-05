@@ -17,6 +17,7 @@ import {
 import "@/components/chart/terminal-v3.css";
 import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
+import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -61,7 +62,11 @@ function instrumentFromUrl(): TerminalInstrument {
   }
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
   const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" || src === "forex" ? src : null;
-  if (source) return findInstrument(source, symbol) ?? adHocInstrument(source, symbol);
+  if (source) {
+    // a US future (CLUSD, GCUSD ...) opens with its root ticker, name and artwork, like a pick from the search
+    const us = source === "fmp" ? usFutureBySymbol(symbol) : undefined;
+    return findInstrument(source, symbol) ?? (us ? itemToInstrument(usFutureItem(us), us.icon) : adHocInstrument(source, symbol));
+  }
   // no source given: take the curated instrument with that ticker, or guess Bybit for USDT pairs
   const known = ALL_INSTRUMENTS.find((i) => i.ticker.toLowerCase() === symbol.toLowerCase());
   if (known) return known;
