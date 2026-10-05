@@ -16,7 +16,7 @@ interface Props {
 }
 
 function group(id: string): "m" | "h" | "d" {
-  if (id === "D" || id === "W" || id === "M") return "d";
+  if (id === "D" || id === "W" || id === "M" || id === "Y") return "d";
   return Number(id) >= 60 ? "h" : "m";
 }
 

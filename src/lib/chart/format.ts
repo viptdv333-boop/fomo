@@ -128,6 +128,7 @@ export function intervalToMs(interval: string): number {
     case "D": return 86_400_000;
     case "W": return 7 * 86_400_000;
     case "M": return 30 * 86_400_000;
+    case "Y": return 365 * 86_400_000;
     default: {
       // custom intervals are their length in minutes ("45" = 45m, "120" = 2h)
       const m = /^\d+$/.test(interval) ? Number(interval) : 0;

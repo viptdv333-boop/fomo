@@ -6,6 +6,7 @@ import { issQuote, resolveMoex } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { getViewer } from "@/lib/algopack-access";
 import { getForexQuote } from "@/lib/forex";
+import { fmpRequest, type FmpFailure } from "@/lib/fmp-gate";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -233,30 +234,30 @@ async function fetchBybitQuote(ticker: string): Promise<Quote | null> {
   }
 }
 
-const FMP_KEY = process.env.FMP_API_KEY || "";
-
-async function fetchFmpQuote(ticker: string): Promise<Quote | null> {
-  try {
-    const res = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const item = Array.isArray(data) ? data[0] : data;
-    if (!item || !item.price) return null;
-
-    return {
+/**
+ * FMP /quote through the shared FMP gate (fmp-gate.ts): after a 429 «Limit Reach» or a plan denial nothing is sent for a while (a
+ * limit-exhausted key is not hammered by every chart / watchlist poll); `err` says why there is no quote.
+ */
+async function fetchFmpQuote(ticker: string): Promise<{ quote: Quote | null; err?: FmpFailure }> {
+  const sym = fmpSymbol(ticker);
+  const r = await fmpRequest("quote", sym, `/quote?symbol=${encodeURIComponent(sym)}`);
+  if (!r.ok) return { quote: null, err: r };
+  const data = r.json;
+  const item = Array.isArray(data) ? data[0] : data;
+  if (!item || !item.price) return { quote: null };
+  return {
+    quote: {
       price: item.price,
       open: item.open || item.price,
       high: item.dayHigh || item.price,
       low: item.dayLow || item.price,
       volume: item.volume || 0,
       change: item.change || 0,
-      changePercent: item.changesPercentage || 0,
+      changePercent: item.changePercentage ?? item.changesPercentage ?? 0,
       time: new Date((item.timestamp || 0) * 1000).toISOString(),
       ticker,
-    };
-  } catch {
-    return null;
-  }
+    },
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -269,6 +270,7 @@ export async function GET(request: NextRequest) {
   }
 
   let quote: Quote | null = null;
+  let fmpErr: FmpFailure | undefined;
 
   if (source === "moex") {
     // real-time T-Invest quote for a signed-in session (or GUEST_REALTIME=1); a guest gets the ISS marketdata (15 min delayed)
@@ -277,7 +279,9 @@ export async function GET(request: NextRequest) {
   } else if (source === "bybit") {
     quote = await fetchBybitQuote(ticker);
   } else if (source === "fmp") {
-    quote = await fetchFmpQuote(ticker);
+    const f = await fetchFmpQuote(ticker);
+    quote = f.quote;
+    fmpErr = f.err;
   } else if (source === "forex") {
     // spot FX (provider layer: cached ~8 s, one upstream request shared by every client)
     const fx = await getForexQuote(ticker);
@@ -285,7 +289,8 @@ export async function GET(request: NextRequest) {
   }
 
   if (!quote) {
-    return NextResponse.json({ error: "No quote data" }, { status: 404 });
+    // an FMP failure says why ("limit" / "plan" / "network"); the status stays 404 for the clients that only look at `ok`
+    return NextResponse.json({ error: "No quote data", ...(fmpErr ? { provider: "fmp", reason: fmpErr.error, detail: fmpErr.detail, ...(fmpErr.retryAfterSec ? { retryAfterSec: fmpErr.retryAfterSec } : {}) } : {}) }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   return NextResponse.json(quote, {

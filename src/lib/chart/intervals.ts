@@ -1,15 +1,15 @@
 import type { Candle } from "./types";
 
-/* Intervals of the terminal. An interval id is one of "D" | "W" | "M" or a number of minutes ("1", "45", "120").
+/* Intervals of the terminal. An interval id is one of "D" | "W" | "M" | "Y" or a number of minutes ("1", "45", "120").
    The klines API serves only some of them natively; the others are aggregated on the client from a finer one. */
 
-export const NATIVE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M"];
+export const NATIVE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M", "Y"];
 
 /** Ids offered in the interval menu, in display order. */
-export const MENU_INTERVALS = ["1", "2", "3", "5", "10", "15", "30", "45", "60", "120", "180", "240", "D", "W", "M"];
+export const MENU_INTERVALS = ["1", "2", "3", "5", "10", "15", "30", "45", "60", "120", "180", "240", "D", "W", "M", "Y"];
 
 /** Favourites shown as buttons in the toolbar until the user picks their own. */
-export const DEFAULT_FAVORITE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M"];
+export const DEFAULT_FAVORITE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M", "Y"];
 
 const STD_KEYS: Record<string, string> = {
   "1": "inst.period.1m",
@@ -20,10 +20,11 @@ const STD_KEYS: Record<string, string> = {
   D: "inst.period.D",
   W: "inst.period.W",
   M: "inst.period.M",
+  Y: "inst.period.Y",
 };
 
 export function isValidInterval(id: string): boolean {
-  if (id === "D" || id === "W" || id === "M") return true;
+  if (id === "D" || id === "W" || id === "M" || id === "Y") return true;
   if (!/^\d+$/.test(id)) return false;
   const m = Number(id);
   return m >= 1 && m <= 1440 * 3;
@@ -50,6 +51,7 @@ export function intervalOrder(id: string): number {
   if (id === "D") return 1440;
   if (id === "W") return 1440 * 7;
   if (id === "M") return 1440 * 30;
+  if (id === "Y") return 1440 * 365;
   return Number(id) || 0;
 }
 

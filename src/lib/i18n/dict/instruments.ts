@@ -94,6 +94,7 @@ const dict: SectionDict = {
     "inst.period.D": "Д",
     "inst.period.W": "Н",
     "inst.period.M": "М",
+    "inst.period.Y": "1Г",
 
     // MOEX stats
     "inst.moex.title": "Данные MOEX",
@@ -223,6 +224,7 @@ const dict: SectionDict = {
     "inst.period.D": "D",
     "inst.period.W": "W",
     "inst.period.M": "M",
+    "inst.period.Y": "1Y",
 
     "inst.moex.title": "MOEX data",
     "inst.moex.updated": "Updated: {time}",
@@ -350,6 +352,7 @@ const dict: SectionDict = {
     "inst.period.D": "日",
     "inst.period.W": "周",
     "inst.period.M": "月",
+    "inst.period.Y": "1年",
 
     "inst.moex.title": "MOEX 数据",
     "inst.moex.updated": "更新时间：{time}",

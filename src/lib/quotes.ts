@@ -3,6 +3,7 @@ import { frontSecid } from "./moex-contracts";
 import { issQuote, resolveMoex, type MoexSecurity } from "./moex-resolve";
 import { parseBybitTicker, type BybitCategory } from "./bybit-symbol";
 import { fmpSymbol } from "@/lib/fmp-alias";
+import { fmpRequest } from "@/lib/fmp-gate";
 import { getForexQuotes } from "@/lib/forex";
 
 /**
@@ -290,29 +291,26 @@ const cache = new Map<string, { at: number; q: BatchQuote | null }>();
 
 /* FMP (US stocks, spot commodities): one request per symbol, cached longer than the exchange feeds */
 const FMP_TTL_MS = 15_000;
-const FMP_KEY = process.env.FMP_API_KEY || "";
 
 async function fetchFmpOne(ticker: string): Promise<BatchQuote | null> {
-  if (!FMP_KEY) return null;
-  try {
-    const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(fmpSymbol(ticker))}&apikey=${FMP_KEY}`, { cache: "no-store" });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const it = Array.isArray(data) ? data[0] : data;
-    if (!it || !it.price) return null;
-    return {
-      price: it.price,
-      change: it.change || 0,
-      changePercent: it.changePercentage ?? it.changesPercentage ?? 0,
-      volume: it.volume || 0,
-      time: it.timestamp ? new Date(it.timestamp * 1000).toISOString() : new Date().toISOString(),
-      open: it.open || undefined,
-      high: it.dayHigh || undefined,
-      low: it.dayLow || undefined,
-    };
-  } catch {
-    return null;
-  }
+  // through the shared FMP gate (fmp-gate.ts): while the key is limit-exhausted or the symbol is not in the plan nothing is sent, so a
+  // watchlist poll does not burn the quota (the old code spent one call per symbol per poll even after «Limit Reach»)
+  const sym = fmpSymbol(ticker);
+  const r = await fmpRequest("quote", sym, `/quote?symbol=${encodeURIComponent(sym)}`);
+  if (!r.ok) return null;
+  const data = r.json as any;
+  const it = Array.isArray(data) ? data[0] : data;
+  if (!it || !it.price) return null;
+  return {
+    price: it.price,
+    change: it.change || 0,
+    changePercent: it.changePercentage ?? it.changesPercentage ?? 0,
+    volume: it.volume || 0,
+    time: it.timestamp ? new Date(it.timestamp * 1000).toISOString() : new Date().toISOString(),
+    open: it.open || undefined,
+    high: it.dayHigh || undefined,
+    low: it.dayLow || undefined,
+  };
 }
 let moexInflight: { key: string; p: Promise<Map<string, BatchQuote>> } | null = null;
 

@@ -2008,7 +2008,10 @@ export class ChartEngine {
     if (y < 0 || y > main.height) return;
     const last = this.candles[n - 1];
     let end = last.t + this.opts.intervalMs;
-    if (this.opts.intervalMs >= 28 * 86_400_000) {
+    if (this.opts.intervalMs >= 360 * 86_400_000) {
+      const d = new Date(last.t);
+      end = Date.UTC(d.getUTCFullYear() + 1, 0, 1); // yearly bars: the next January
+    } else if (this.opts.intervalMs >= 28 * 86_400_000) {
       const d = new Date(last.t);
       end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
     }

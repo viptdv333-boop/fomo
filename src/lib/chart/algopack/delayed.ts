@@ -10,7 +10,7 @@ const INTERVAL_MS: Record<string, number> = { "1": MIN, "5": 5 * MIN, "15": 15 *
  */
 export function delayedNow(source: string, delayed: boolean | undefined, lastT: number | undefined, offsetMs: number, interval: string, now = Date.now()): boolean {
   if (source !== "moex" || delayed !== true || lastT === undefined) return false;
-  if (interval === "D" || interval === "W" || interval === "M") return false;
+  if (interval === "D" || interval === "W" || interval === "M" || interval === "Y") return false;
   const iv = INTERVAL_MS[interval] ?? (Number(interval) > 0 ? Number(interval) * MIN : MIN);
   return now + offsetMs - lastT < 45 * MIN + iv;
 }

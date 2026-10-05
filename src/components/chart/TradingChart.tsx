@@ -122,6 +122,9 @@ function lsSet(key: string, value: string) {
   } catch {}
 }
 
+/** Why the klines API could not serve a symbol (FMP): shown instead of «Нет данных». */
+type ProviderError = "limit" | "plan" | "network";
+
 /** Spot FX facts of a /api/klines answer: who served the bars, what the volume is, a proxy instrument (metals). */
 interface FxInfo {
   provider: string;
@@ -133,7 +136,7 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   let url = `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`;
   if (to) url += `&to=${to}`;
   const res = await fetch(url);
-  if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined };
+  if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined, err: undefined as ProviderError | undefined };
   const j = await res.json();
   const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
   // isFinite(null) is true and null reads as 0: a bar with a null open used to get through and was drawn as a solid body
@@ -145,7 +148,9 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   );
   // `delayed`: the newest bars are the 15-minute delayed ISS ones (no real-time tail was added); absent for scroll-back pages
   const fx: FxInfo | undefined = typeof j.provider === "string" ? { provider: j.provider, volumeKind: String(j.volumeKind ?? "none"), proxy: typeof j.proxy === "string" ? j.proxy : undefined } : undefined;
-  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx };
+  // FMP says why a chart is empty: the request limit is used up, the instrument is not in the plan, the provider does not answer
+  const err: ProviderError | undefined = j.error === "limit" || j.error === "plan" || j.error === "network" ? j.error : undefined;
+  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx, err };
 }
 
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
@@ -153,7 +158,7 @@ async function fetchBars(source: string, ticker: string, interval: string, limit
   const plan = intervalPlan(interval, source);
   if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
   const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
-  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx };
+  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err };
 }
 
 const COMPARE_COLORS = ["#f5a623", "#e91e63", "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722"];
@@ -182,6 +187,12 @@ function bucketStartWall(nowWall: number, interval: string): number {
   if (interval === "M") {
     const d = new Date(nowWall);
     d.setUTCDate(1);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  if (interval === "Y") {
+    const d = new Date(nowWall);
+    d.setUTCMonth(0, 1);
     d.setUTCHours(0, 0, 0, 0);
     return d.getTime();
   }
@@ -219,6 +230,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
+  /** why an FMP chart is empty (limit / plan / network), null: no reason given */
+  const [emptyWhy, setEmptyWhy] = useState<ProviderError | null>(null);
+  /** bumped to reload the bars of an FMP chart that was empty because of a limit / outage (the server keeps its own cooldown: a retry is free) */
+  const [reloadTick, setReloadTick] = useState(0);
   /** MOEX bars up to the 15-minute delay of the public ISS (no online feed for this requester) */
   const [candlesDelayed, setCandlesDelayed] = useState(false);
   /** spot FX: provider / volume kind of the bars on the chart (drives the "no exchange volume" badge) */
@@ -430,6 +445,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     }
   }, [prefsLoaded, csApi, cs.scale.mode, prefs.logScale, update]);
 
+  /* an FMP chart emptied by the request limit or an outage tries again by itself */
+  useEffect(() => {
+    if (emptyWhy !== "limit" && emptyWhy !== "network") return;
+    const id = setTimeout(() => setReloadTick((x) => x + 1), 45_000);
+    return () => clearTimeout(id);
+  }, [emptyWhy, reloadTick]);
+
   /* data for the current symbol and timeframe */
   useEffect(() => {
     if (!prefsLoaded) return;
@@ -440,11 +462,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     replayRef.current.exit(false);
     setLoading(true);
     setEmpty(false);
+    setEmptyWhy(null);
     const iv = prefs.interval;
     const label = formatInterval(iv, t);
 
     (async () => {
-      const { candles, tzMin, delayed, fx } = await fetchBars(source, ticker, iv, 600);
+      const { candles, tzMin, delayed, fx, err } = await fetchBars(source, ticker, iv, 600);
       if (cancelled) return;
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
@@ -473,6 +496,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       dataKeyRef.current = `${source}|${ticker}|${iv}`;
       refreshInd();
       setEmpty(candles.length === 0);
+      setEmptyWhy(candles.length === 0 && source === "fmp" ? err ?? null : null);
       setLoading(false);
       setTransformBox(engine.getTransformBox());
       setDataVersion((v) => v + 1);
@@ -499,14 +523,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       cancelled = true;
       engine.onNeedHistory = null;
     };
-  }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer]);
+  }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer, reloadTick]);
 
   const badQuoteRef = useRef(0);
   /* live price: quotes for the forming bar, real bars from the API now and then */
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
     const iv = prefs.interval;
-    const intraday = iv !== "D" && iv !== "W" && iv !== "M";
+    const intraday = iv !== "D" && iv !== "W" && iv !== "M" && iv !== "Y";
     const dataKey = `${source}|${ticker}|${iv}`;
     let stopped = false;
     let quoteBusy = false;
@@ -1289,7 +1313,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             {!loading && empty && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : "chart.noData")}</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy ? `fmp.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} />}

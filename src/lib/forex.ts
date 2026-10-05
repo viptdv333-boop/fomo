@@ -20,6 +20,7 @@
  */
 
 import { FX_PAIRS, fxDigits, parseFxSymbol } from "./forex-meta";
+import { fmpGateCheck, fmpGateReport } from "./fmp-gate";
 
 export type ForexProviderName = "fmp" | "stooq" | "yahoo";
 
@@ -158,7 +159,7 @@ async function http(url: string, headers: Record<string, string> = {}): Promise<
 /* ── time helpers ── */
 
 const dtfCache = new Map<string, Intl.DateTimeFormat>();
-function tzOffsetMs(utcMs: number, tz: string): number {
+export function tzOffsetMs(utcMs: number, tz: string): number {
   let f = dtfCache.get(tz);
   if (!f) {
     f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -264,7 +265,7 @@ function window(rows: FxCandle[], from?: number, to?: number): FxCandle[] {
 const FMP_BASE = "https://financialmodelingprep.com/stable";
 const FMP_IV: Record<string, string> = { "1": "1min", "5": "5min", "15": "15min", "30": "30min", "60": "1hour", "240": "4hour" };
 /** FMP documents intraday times as US Eastern wall clock (stock convention). NOT verified for FX on a paid plan: scripts/check-forex.ts compares the newest bar with the clock. */
-const FMP_INTRADAY_TZ = process.env.FOREX_FMP_TZ || "America/New_York";
+export const FMP_INTRADAY_TZ = process.env.FOREX_FMP_TZ || "America/New_York";
 
 /** One day's spending is capped, so the terminal can never eat the whole quota that the calendar shares (free plan: 250 a day). */
 function fmpBudget(): boolean {
@@ -282,8 +283,14 @@ function fmpBudget(): boolean {
 async function fmpGet(path: string): Promise<{ ok: true; json: unknown } | { ok: false; f: Failure }> {
   const key = process.env.FMP_API_KEY || "";
   if (!key) return { ok: false, f: { ok: false, reason: "denied", wide: true, ttlMs: 10 * MIN } };
+  // the process-wide FMP memory (fmp-gate.ts: cooldown after a 429, plan denials) is shared with the futures candles and the quotes
+  const kind = path.startsWith("/quote") ? "quote" : path.startsWith("/historical-chart") ? "intraday" : "eod";
+  const gateSym = /[?&]symbol=([^&]+)/.exec(path)?.[1] ?? "*";
+  const blocked = fmpGateCheck(kind, gateSym);
+  if (blocked) return { ok: false, f: blocked.error === "limit" ? { ok: false, reason: "rate", ttlMs: (blocked.retryAfterSec ?? 60) * 1000 } : { ok: false, reason: "denied", ttlMs: Math.min(blocked.retryAfterSec ?? 600, 600) * 1000 } };
   if (!fmpBudget()) return { ok: false, f: { ok: false, reason: "denied", wide: true, ttlMs: 30 * MIN } };
   const { status, text } = await http(`${FMP_BASE}${path}${path.includes("?") ? "&" : "?"}apikey=${encodeURIComponent(key)}`);
+  fmpGateReport(kind, gateSym, status, text);
   if (status === 429) return { ok: false, f: { ok: false, reason: "rate", status } };
   if (status === 401 || status === 402 || status === 403) {
     // "Restricted Endpoint": the whole endpoint is not in the plan; "Premium Query Parameter": this symbol is not

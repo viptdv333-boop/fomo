@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fmpSymbol } from "@/lib/fmp-alias";
 import { cleanCandle } from "@/lib/chart/candles";
 import { frontSecid } from "@/lib/moex-contracts";
 import { issSecurityPath, resolveMoex, type MoexSecurity } from "@/lib/moex-resolve";
@@ -10,6 +9,8 @@ import { getIssJson, labelTail, type Feed } from "@/lib/algopack-feed";
 import { getAlgopackAccess, getViewer, PRIVATE_HEADERS } from "@/lib/algopack-access";
 import { guestRealtimeFlag } from "@/lib/guest-delay";
 import { getForexCandles, type ForexCandlesResult } from "@/lib/forex";
+import { getFmpFuturesCandles, type FmpCandlesResult } from "@/lib/fmp-futures";
+import { aggregateYearly } from "@/lib/kline-aggregate";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -404,54 +405,6 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   return { candles: [], resolvedTicker: ticker };
 }
 
-const FMP_KEY = process.env.FMP_API_KEY || "";
-
-const FMP_INTERVALS: Record<string, string> = {
-  "1": "1min", "5": "5min", "15": "15min", "60": "1hour", "240": "4hour",
-};
-
-async function fetchFmpCandles(ticker: string, interval: string, limit: number, toMs?: number) {
-  try {
-    if (["D", "W", "M"].includes(interval)) {
-      // Daily/weekly/monthly — use EOD endpoint
-      const res = await fetch(
-        `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`,
-        { cache: "no-store" }
-      );
-      if (!res.ok) return [];
-      const data = await res.json();
-      const hist = Array.isArray(data) ? data : data?.historical || [];
-      // hist is newest-first — filter to the requested window before
-      // slicing, instead of always taking the newest `limit` regardless of
-      // what window the chart actually asked for.
-      const mapped = hist.map((c: any) => ({
-        timestamp: new Date(c.date).getTime(),
-        open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
-      }));
-      const windowed = toMs !== undefined ? mapped.filter((c: any) => c.timestamp <= toMs) : mapped;
-      return windowed.slice(0, limit).reverse();
-    } else {
-      // Intraday
-      const fmpInterval = FMP_INTERVALS[interval] || "1hour";
-      const res = await fetch(
-        `https://financialmodelingprep.com/stable/historical-chart/${fmpInterval}?symbol=${fmpSymbol(ticker)}&apikey=${FMP_KEY}`,
-        { cache: "no-store" }
-      );
-      if (!res.ok) return [];
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : [];
-      const mapped = arr.map((c: any) => ({
-        timestamp: new Date(c.date).getTime(),
-        open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0,
-      }));
-      const windowed = toMs !== undefined ? mapped.filter((c: any) => c.timestamp <= toMs) : mapped;
-      return windowed.slice(0, limit).reverse();
-    }
-  } catch {
-    return [];
-  }
-}
-
 async function fetchBybitCandles(ticker: string, interval: string, limit: number, toMs?: number) {
   const BYBIT_INTERVALS: Record<string, string> = {
     "1": "1", "5": "5", "15": "15", "60": "60", "240": "240", "D": "D", "W": "W", "M": "M",
@@ -515,6 +468,7 @@ export async function GET(request: NextRequest) {
   let sec: MoexSecurity | undefined;
   let tail: TailResult | undefined;
   let fx: ForexCandlesResult | undefined;
+  let fmp: FmpCandlesResult | undefined;
 
   // ALGOPACK (online ISS gateway) is for entitled requesters only: admins, or everyone with ALGOPACK_PUBLIC=1. Decided here, on
   // the server. Without the key none of this runs (the session is not even read) and the route behaves exactly as before.
@@ -524,23 +478,39 @@ export async function GET(request: NextRequest) {
   const realtime = source === "moex" ? (await getViewer()).realtime : true;
   const feed: Feed = { ap: privileged, apHits: 0, apMiss: 0, apReason: "" };
 
+  // Yearly bars («1Г», "Y") are the monthly bars of the source merged by calendar year, for every source except FMP, whose layer builds
+  // years (and weeks, months) itself from its daily table. The monthly request is sized for `limit` years (+1 for the cut one).
+  const yearly = interval === "Y" && source !== "fmp";
+  const srcInterval = yearly ? "M" : interval;
+  const srcLimit = yearly ? Math.min(Math.max(limit, 1) * 12 + 12, 1500) : limit;
+
   if (source === "moex") {
-    const result = await fetchMoexCandles(ticker, interval, limit, toMs, feed, realtime);
+    const result = await fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
     sec = result.sec;
     tail = result.tail;
   } else if (source === "fmp") {
-    candles = await fetchFmpCandles(ticker, interval, limit, toMs);
+    // FMP (US futures / stocks) through its own layer: native + aggregated intervals, history paging, cache, and an explicit
+    // `error` ("limit" | "plan" | "network") instead of a silent empty answer
+    fmp = await getFmpFuturesCandles(ticker, interval, { to: toMs, limit: Math.min(Math.max(limit, 1), 5000) });
+    candles = fmp.candles;
   } else if (source === "bybit") {
-    candles = await fetchBybitCandles(ticker, interval, limit, toMs);
+    candles = await fetchBybitCandles(ticker, srcInterval, srcLimit, toMs);
   } else if (source === "forex") {
     // spot FX through the provider layer (FMP, then keyless fallbacks): UTC epoch bars, continuous 24x5, tick volume or none
-    fx = await getForexCandles(ticker, interval, undefined, toMs, Math.min(Math.max(limit, 1), 5000));
+    fx = await getForexCandles(ticker, srcInterval, undefined, toMs, Math.min(Math.max(srcLimit, 1), 5000));
     candles = fx.candles;
   }
 
   candles = cleanRows(candles);
+  if (yearly) {
+    // MOEX monthly bars are Moscow wall clocks parsed in the server's zone (its offset is the wall clock shift); the others are real UTC
+    const off = source === "moex" ? -new Date().getTimezoneOffset() * 60_000 : 0;
+    candles = aggregateYearly(candles, off, candles.length >= srcLimit)
+      .filter((c) => toMs === undefined || c.timestamp <= toMs)
+      .slice(-Math.max(limit, 1));
+  }
 
   // Return object with metadata + candles
   // No cache for realtime (limit<=5), short cache for full loads
@@ -552,7 +522,10 @@ export async function GET(request: NextRequest) {
       ? { "Cache-Control": "no-cache, no-store, must-revalidate" }
       : fx
         ? // FX bars move every second: a shared cache may hold them briefly; an empty answer is not cached at all
-          { "Cache-Control": candles.length === 0 ? "no-store" : /^[DWM]$/.test(interval) ? "public, s-maxage=60, stale-while-revalidate=30" : "public, s-maxage=10, stale-while-revalidate=10" }
+          { "Cache-Control": candles.length === 0 ? "no-store" : /^[DWMY]$/.test(interval) ? "public, s-maxage=60, stale-while-revalidate=30" : "public, s-maxage=10, stale-while-revalidate=10" }
+      : fmp
+        ? // a provider failure (limit / plan / network) and stale copies must not sit in a shared cache; intraday FMP bars move every minute
+          { "Cache-Control": fmp.error || fmp.stale || candles.length === 0 ? "no-store" : /^[DWMY]$/.test(interval) ? "public, s-maxage=60, stale-while-revalidate=30" : "public, s-maxage=10, stale-while-revalidate=10" }
       : tail?.tail === "tinkoff"
         ? // a real-time tail must not be served from a shared cache for a minute; and never to a guest (licensing): only with
           // GUEST_REALTIME=1 (everybody is entitled, the old behaviour) may it sit in a shared cache for a moment
@@ -587,6 +560,17 @@ export async function GET(request: NextRequest) {
       ...(tail ? { delayed: tail.tail === "iss" && !/no-new-data/.test(tail.reason) } : {}),
       // spot FX: who served the bars, whether the volume is a tick count ("tick") or absent ("none"), and a proxy instrument (metals)
       ...(fx ? { provider: fx.provider, volumeKind: fx.volume, ...(fx.proxy ? { proxy: fx.proxy } : {}) } : {}),
+      // FMP: why the answer is empty / incomplete ("limit": request limit exhausted, "plan": symbol or endpoint not in the plan, "network"),
+      // `stale`: some bars are cached ones served after a provider failure, `reachedStart`: no older data exists
+      ...(fmp
+        ? {
+            provider: "fmp",
+            session: fmp.session,
+            reachedStart: fmp.reachedStart,
+            ...(fmp.error ? { error: fmp.error, errorDetail: fmp.detail, ...(fmp.retryAfterSec ? { retryAfterSec: fmp.retryAfterSec } : {}) } : {}),
+            ...(fmp.stale ? { stale: true } : {}),
+          }
+        : {}),
       candles,
     },
     { headers }

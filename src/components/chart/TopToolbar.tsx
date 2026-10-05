@@ -26,6 +26,7 @@ export const INTERVALS: { id: string; key: string }[] = [
   { id: "D", key: "inst.period.D" },
   { id: "W", key: "inst.period.W" },
   { id: "M", key: "inst.period.M" },
+  { id: "Y", key: "inst.period.Y" },
 ];
 
 export const CHART_TYPES: { id: ChartType; key: string }[] = [
