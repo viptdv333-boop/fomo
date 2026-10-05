@@ -59,6 +59,17 @@ export async function searchMarketApi(q: string, group: MarketGroup | "all", sig
   }
 }
 
+/** The «popular» list of a group chip (empty query): server cached, with a curated fallback. [] on network errors. */
+export async function popularMarketApi(group: MarketGroup | "all", signal?: AbortSignal): Promise<MarketItem[]> {
+  try {
+    const r = await fetch(`/api/market-search?q=&group=${group}&limit=30`, { signal });
+    if (!r.ok) return [];
+    return ((await r.json()).items ?? []) as MarketItem[];
+  } catch {
+    return [];
+  }
+}
+
 export async function lookupSecid(id: string): Promise<MarketItem | null> {
   try {
     const r = await fetch(`/api/market-search?secid=${encodeURIComponent(id)}`);

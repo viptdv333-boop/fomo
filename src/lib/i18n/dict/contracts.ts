@@ -40,6 +40,7 @@ const rows: [string, string, string, string][] = [
   ["ms.group.crypto", "Крипто", "Crypto", "加密"],
   ["ms.group.currency", "Валюта", "Currency", "外汇"],
   ["ms.group.index", "Индексы", "Indices", "指数"],
+  ["ms.popular", "Популярное", "Popular", "热门"],
   ["ms.searching", "Поиск по бирже…", "Searching the exchange…", "正在搜索交易所…"],
   ["ms.unitPct", "% от номинала", "% of par", "占面值 %"],
   ["ms.perpetual", "вечный", "perpetual", "永续"],

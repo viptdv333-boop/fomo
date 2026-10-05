@@ -9,6 +9,7 @@ import { groupOfMarket } from "./moex-resolve";
 import type { MarketGroup, MarketItem } from "./market-types";
 import { parseFxSymbol, POPULAR_FOREX, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
 import { getBybitSpotList, looksLikeCoin, pairToItem, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
+import { bondItem, currencyItem, fundItem, FUTURES_PRIORITY, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow, type PopularGroup } from "./market-popular";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -217,6 +218,90 @@ export async function searchMarket(q: string, group: MarketGroup | "all" = "all"
   if (searchCache.size > 500) searchCache.clear();
   searchCache.set(key, { at: Date.now(), items });
   return items;
+}
+
+/* ── «popular» lists: what a group chip shows while nothing is typed ── */
+
+const POPULAR_TTL = 10 * 60_000;
+/** after a failed ISS call the curated fallback is served for this long before the next try */
+const POPULAR_RETRY = 60_000;
+const popularCache = new Map<string, { at: number; items: MarketItem[]; live: boolean }>();
+const popularInflight = new Map<string, Promise<MarketItem[] | null>>();
+
+async function issBoard(path: string, cols: string): Promise<BoardRow[]> {
+  const url = `${ISS}/engines/${path}/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=${cols}&marketdata.columns=SECID,VALTODAY_RUR,VALTODAY`;
+  try {
+    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return [];
+    return parseBoard(await res.json());
+  } catch {
+    return [];
+  }
+}
+
+const SHARE_COLS = "SECID,SHORTNAME,SECNAME,ISIN,SECTYPE";
+const BOND_COLS = "SECID,SHORTNAME,SECNAME,ISIN";
+
+/** Live list of one group from ISS (turnover ranking / curated order checked against the board), null when it cannot be built. */
+async function livePopular(group: Exclude<PopularGroup, "all" | "crypto" | "forex" | "index" | "other">): Promise<MarketItem[] | null> {
+  switch (group) {
+    case "stock":
+    case "fund": {
+      // shares and funds / ETFs trade on the same board: one listing serves both chips
+      const rows = await issBoard("stock/markets/shares/boards/TQBR", SHARE_COLS);
+      const picked = group === "stock" ? pickStocks(rows).map(stockItem) : pickFunds(rows).map(fundItem);
+      return picked.length ? picked : null;
+    }
+    case "bond": {
+      const [ofz, corp] = await Promise.all([issBoard("stock/markets/bonds/boards/TQOB", BOND_COLS), issBoard("stock/markets/bonds/boards/TQCB", BOND_COLS)]);
+      const picked = pickBonds(ofz, corp).map((x) => bondItem(x.row, x.corp ? "TQCB" : "TQOB"));
+      return picked.length ? picked : null;
+    }
+    case "currency": {
+      const picked = pickCurrency(await issBoard("currency/markets/selt/boards/CETS", BOND_COLS)).map(currencyItem);
+      return picked.length ? picked : null;
+    }
+    case "future": {
+      const families = await getFortsFamilies();
+      const by = new Map(families.map((f) => [f.asset, f]));
+      const picked = FUTURES_PRIORITY.map((a) => by.get(a)).filter((f): f is ContractFamily => !!f).map((f) => famItem(refreshDays(f)));
+      return picked.length >= 3 ? picked : null;
+    }
+  }
+}
+
+/**
+ * The «popular» list of a group chip for an empty query: stocks / bonds by today's turnover (ISS TQBR / TQOB + big issuers of TQCB), funds and FX
+ * by the curated order checked against the boards, futures families with their contract counts, «Все» a mix of all of them. Cached 10 min;
+ * when ISS fails the stale copy, else the static curated list, is served (never empty).
+ */
+export async function popularMarket(group: PopularGroup, limit = 30): Promise<MarketItem[]> {
+  limit = Math.max(1, limit);
+  if (group === "crypto" || group === "forex") return staticPopular(group).slice(0, limit);
+  if (group === "all") {
+    const parts = await Promise.all((["stock", "bond", "fund", "future", "currency"] as const).map(async (g) => [g, await popularMarket(g)] as const));
+    const by = new Map<string, MarketItem[]>(parts);
+    return mixAll((g) => by.get(g) ?? staticPopular(g));
+  }
+  if (group !== "stock" && group !== "bond" && group !== "fund" && group !== "future" && group !== "currency") return [];
+  const hit = popularCache.get(group);
+  if (hit && Date.now() - hit.at < (hit.live ? POPULAR_TTL : POPULAR_RETRY)) return hit.items.slice(0, limit);
+  let p = popularInflight.get(group);
+  if (!p) {
+    p = livePopular(group)
+      .catch(() => null)
+      .finally(() => popularInflight.delete(group));
+    popularInflight.set(group, p);
+  }
+  const live = await p;
+  if (live) {
+    popularCache.set(group, { at: Date.now(), items: live, live: true });
+    return live.slice(0, limit);
+  }
+  // ISS is down: the stale live list if there is one, else the curated one; the next try comes in a minute
+  const items = hit?.items ?? staticPopular(group);
+  popularCache.set(group, { at: Date.now(), items, live: false });
+  return items.slice(0, limit);
 }
 
 /** Exact lookup by SECID / ISIN / auto ticker: the item a URL ?symbol= stands for. */

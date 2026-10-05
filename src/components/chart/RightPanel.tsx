@@ -551,11 +551,15 @@ function AddTicker({
       <div className="max-h-64 overflow-y-auto py-1">
         {merged === null && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.addHint")}</div>}
         {merged !== null && merged.length === 0 && <div className="px-3 py-4 text-center text-xs text-[var(--tv3-muted)]">{loading || market.loading ? "…" : t("shell.watch.noResults")}</div>}
-        {merged?.map(({ inst, item, expand }) => {
+        {merged !== null && market.popular && <div className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ms.popular")}</div>}
+        {merged?.map(({ inst, item, expand }, ix) => {
           const inList = existing.some((i) => wlKey(i) === wlKey(inst));
           const isOpen = !!(expand && expanded[expand]);
+          // «Все» with nothing typed is a mix of every group: each block under its group label
+          const head = market.popular && tab === "all" && item && item.group !== merged[ix - 1]?.item?.group ? item.group : null;
           return (
             <div key={wlKey(inst)}>
+              {head && <div className="px-3 pt-2 pb-0.5 text-[11px] font-medium text-[var(--tv3-muted)]">{t(`ms.group.${head === "other" ? "stock" : head}`)}</div>}
               <button
                 onClick={() => onAdd(inst)}
                 disabled={inList}

@@ -77,7 +77,9 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
     const needle = q.trim().toLowerCase();
     const out: Row[] = [];
     const seen = new Set<string>();
-    for (const cat of TERMINAL_DATA) {
+    // nothing typed: every chip shows its popular list from the market search (the terminal's own long list stays for Крипто / Форекс and for typed text)
+    const popularOnly = !needle && tab !== "crypto" && tab !== "forex";
+    for (const cat of popularOnly ? [] : TERMINAL_DATA) {
       const group = t(CATEGORY_I18N[cat.name] || cat.name);
       const shares = cat.name === "Акции ММВБ";
       for (const inst of cat.instruments) {
@@ -194,6 +196,7 @@ export default function SymbolSearch({ open, onClose, onPick, current, variant =
         <div ref={listRef} className="flex-1 overflow-y-auto py-1">
           {rows.length === 0 && !market.loading && <div className="px-4 py-8 text-center text-sm text-[var(--tv3-muted)]">{t("shell.symbol.empty")}</div>}
           {market.loading && <div className="px-4 pt-2 text-[11px] text-[var(--tv3-muted)]">{t("ms.searching")}</div>}
+          {market.popular && rows.length > 0 && <div className="px-4 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("ms.popular")}</div>}
           {rows.map((r, i) => {
             const head = r.group !== lastGroup;
             lastGroup = r.group;

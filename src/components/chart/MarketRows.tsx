@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ContractInfo, ContractsResponse, MarketGroup, MarketItem } from "@/lib/market-types";
-import { contractToInstrument, fetchContracts, getLastContract, lookupSecid, itemToInstrument, searchMarketApi } from "@/lib/market-client";
+import { contractToInstrument, fetchContracts, getLastContract, lookupSecid, itemToInstrument, popularMarketApi, searchMarketApi } from "@/lib/market-client";
 import { rememberInstrument, type TerminalInstrument } from "@/lib/terminal-data";
-import { coinIcon, pairToItem, POPULAR_CRYPTO } from "@/lib/bybit-spot-search";
-import { fxIcon, pairToItem as fxPairToItem, POPULAR_FOREX } from "@/lib/forex-meta";
+import { coinIcon } from "@/lib/bybit-spot-search";
+import { fxIcon } from "@/lib/forex-meta";
+import { staticPopular } from "@/lib/market-popular";
 import { ContractBadge, ROLL_DAYS } from "./ContractPicker";
 
 export type GroupTab = "all" | Exclude<MarketGroup, "other">;
@@ -34,26 +35,60 @@ export function GroupTabs({ value, onChange, className = "" }: { value: GroupTab
   );
 }
 
-const POPULAR_ITEMS = POPULAR_CRYPTO.map(pairToItem);
-const POPULAR_FX_ITEMS = POPULAR_FOREX.map(fxPairToItem);
+/** live «popular» lists by chip (a copy of the server's answer): the chip shows it at once on the next open; until it arrives the curated static list stands in */
+const popularCache = new Map<GroupTab, { at: number; items: MarketItem[] }>();
+const POPULAR_TTL = 5 * 60_000;
 
-/** Debounced exchange search (shares of all boards, bonds, funds, currency, futures with their contracts). */
-export function useMarketSearch(q: string, group: GroupTab, enabled = true): { items: MarketItem[]; loading: boolean } {
+/** What a chip shows with an empty query, available synchronously (never an empty hint). */
+export function popularNow(group: GroupTab): MarketItem[] {
+  return popularCache.get(group)?.items ?? staticPopular(group);
+}
+
+const popularInflight = new Map<GroupTab, Promise<boolean>>();
+/** Fetches the live list of a chip once (shared by every open dialog); crypto / forex are static. */
+/** resolves true when the cache got a new list (a re-render is due) */
+function loadPopular(group: GroupTab): Promise<boolean> {
+  const hit = popularCache.get(group);
+  if (group === "crypto" || group === "forex" || (hit && Date.now() - hit.at < POPULAR_TTL)) return Promise.resolve(false);
+  let p = popularInflight.get(group);
+  if (!p) {
+    p = popularMarketApi(group)
+      .then((items) => {
+        if (items.length) popularCache.set(group, { at: Date.now(), items });
+        return items.length > 0;
+      })
+      .finally(() => popularInflight.delete(group));
+    popularInflight.set(group, p);
+  }
+  return p;
+}
+const LIVE_GROUPS: GroupTab[] = ["stock", "bond", "fund", "future", "currency", "all"];
+
+/**
+ * Debounced exchange search (shares of all boards, bonds, funds, currency, futures with their contracts).
+ * With nothing typed it returns the group's popular list instead: the curated one right away, replaced by the live (turnover ranked) one when it arrives.
+ */
+export function useMarketSearch(q: string, group: GroupTab, enabled = true): { items: MarketItem[]; loading: boolean; popular: boolean } {
   const [state, setState] = useState<{ items: MarketItem[]; loading: boolean }>({ items: [], loading: false });
+  const [, bump] = useState(0);
+  const needle = q.trim();
   useEffect(() => {
-    const needle = q.trim();
-    // the crypto tab is never empty: the popular pairs until something is typed
-    if (enabled && !needle && (group === "crypto" || group === "forex")) {
-      setState({ items: group === "forex" ? POPULAR_FX_ITEMS : POPULAR_ITEMS, loading: false });
-      return;
-    }
-    if (!enabled || !needle) {
-      setState({ items: [], loading: false });
+    if (!enabled) {
+      setState((s) => (s.items.length || s.loading ? { items: [], loading: false } : s));
       return;
     }
     const ctl = new AbortController();
-    // the popular pairs of an empty query are not an answer for the typed text: drop them while the search runs
-    setState((s) => ({ items: s.items === POPULAR_ITEMS || s.items === POPULAR_FX_ITEMS ? [] : s.items, loading: true }));
+    if (!needle) {
+      // the typed-search leftovers must not show under the popular list
+      setState((s) => (s.items.length || s.loading ? { items: [], loading: false } : s));
+      // the opened chip first, the others right after: switching chips then shows the live (turnover ranked) list at once
+      let alive = true;
+      void Promise.all([group, ...LIVE_GROUPS.filter((g) => g !== group)].map((g) => loadPopular(g).then((fresh) => fresh && alive && bump((n) => n + 1))));
+      return () => {
+        alive = false;
+      };
+    }
+    setState((s) => ({ items: s.items, loading: true }));
     const id = setTimeout(async () => {
       const items = await searchMarketApi(needle, group, ctl.signal);
       if (!ctl.signal.aborted) setState({ items, loading: false });
@@ -62,8 +97,10 @@ export function useMarketSearch(q: string, group: GroupTab, enabled = true): { i
       clearTimeout(id);
       ctl.abort();
     };
-  }, [q, group, enabled]);
-  return state;
+  }, [needle, group, enabled]);
+  // derived, not stored: a chip switch shows the new list in the same render (no flash of the previous chip's rows or of an empty hint)
+  if (enabled && !needle) return { items: popularNow(group), loading: false, popular: true };
+  return { ...state, popular: false };
 }
 
 /** The icon of a futures underlying, when the terminal has one. */
