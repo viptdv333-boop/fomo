@@ -34,8 +34,8 @@ export class VpLayer implements OverlayLayer {
   private hits = new Map<string, Hit>();
   private hoverEdge: { uid: string; edge: Edge } | null = null;
   private hoverTable: string | null = null;
-  /** Narrow (phone) plots show the table as a chip; the uids whose chip is opened right now (not saved with the indicator). */
-  private narrowOpen = new Set<string>();
+  /** Narrow (phone) plots show the compact table open by default; the uids whose table the user folded into a chip (not saved with the indicator). */
+  private narrowClosed = new Set<string>();
   private drag: { uid: string; edge: Edge; last: number } | null = null;
   private legendSig = new Map<string, string>();
   private notifyRaf = 0;
@@ -162,8 +162,8 @@ export class VpLayer implements OverlayLayer {
         const narrow = isNarrowPlot(W);
         const rows = tableRows(cfg, view, engine.opts.locale, narrow);
         const title = narrow ? `VP ${cfg.opts.valueArea}%` : `${indT("vp.t.title", "Volume Profile")} · ${cfg.opts.valueArea}%`;
-        // phone: a chip that opens on tap (the saved "collapsed" flag is for the wide table), on the side away from the histogram
-        const tcfg = narrow ? { ...cfg, tblCollapsed: !this.narrowOpen.has(it.uid), tblPos: narrowCorner(cfg.tblPos, cfg.placement) } : cfg;
+        // phone: the compact table is shown right away and folds into a chip on tap (the saved "collapsed" flag is for the wide table), on the side away from the histogram
+        const tcfg = narrow ? { ...cfg, tblCollapsed: this.narrowClosed.has(it.uid), tblPos: narrowCorner(cfg.tblPos, cfg.placement) } : cfg;
         const corner = tcfg.tblPos;
         const rect = paintTable(ctx, theme, font, tcfg, rows, title, { W, H, insetTop, stack: stack[corner], narrow });
         stack[corner] += rect.h + 6;
@@ -172,7 +172,7 @@ export class VpLayer implements OverlayLayer {
       idx++;
     }
     for (const k of Array.from(this.hits.keys())) if (!seen.has(k)) this.hits.delete(k);
-    for (const k of Array.from(this.narrowOpen)) if (!seen.has(k)) this.narrowOpen.delete(k);
+    for (const k of Array.from(this.narrowClosed)) if (!seen.has(k)) this.narrowClosed.delete(k);
 
     /* anchor placement in progress */
     const p = this.pending();
@@ -315,7 +315,7 @@ export class VpLayer implements OverlayLayer {
     if (uidT) {
       const inst = this.list().find((i) => i.uid === uidT);
       if (inst && eng && isNarrowPlot(eng.getPlotSize().width)) {
-        if (!this.narrowOpen.delete(uidT)) this.narrowOpen.add(uidT);
+        if (!this.narrowClosed.delete(uidT)) this.narrowClosed.add(uidT);
         eng.requestOverlayRedraw();
       } else if (inst) this.controller.update(uidT, { params: { vpTblCollapsed: !inst.params.vpTblCollapsed } });
       return true;
