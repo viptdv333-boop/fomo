@@ -18,6 +18,8 @@ import "@/components/chart/terminal-v3.css";
 import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
+import { hasAccountHint, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
+import { KIND_LAST } from "@/lib/chart/sync-logic";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -30,6 +32,29 @@ const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
 const LAST_KEY = "fomo-terminal-last-v1";
 const WATCHLIST_KEY = "fomo-terminal-watchlist-v1"; // the terminal's own list (RightPanel keeps it in sync with the account)
+
+/** The last opened symbol follows the account (`terminal_last` / `default`, the newer of this device and the account wins). */
+let lastChannel: Channel | null = null;
+function getLastChannel(): Channel {
+  if (!lastChannel) {
+    lastChannel = openChannel({
+      kind: KIND_LAST,
+      key: "default",
+      lsKey: LAST_KEY,
+      current: () => {
+        try {
+          return localStorage.getItem(LAST_KEY) ?? "";
+        } catch {
+          return "";
+        }
+      },
+      apply: () => {}, // the channel has already put the account copy into LAST_KEY; the page reads it from there
+      isEmpty: (j) => !j,
+      emptyJson: "",
+    });
+  }
+  return lastChannel;
+}
 
 /** The symbol to open when the URL names none: the last one opened here, else the first of the watchlist (favorites). */
 function storedSymbol(): { symbol: string; source: ChartSource } | null {
@@ -82,8 +107,20 @@ export default function TerminalPage() {
   // the symbol comes from the URL, so a shared link opens the same chart
   useEffect(() => {
     let cancelled = false;
-    const inst = instrumentFromUrl();
     (async () => {
+      // no symbol in the URL: the account may know a newer last symbol than this device (PC <-> phone). Waiting is short and only
+      // when it can matter: nothing is stored here yet, or this browser is known to be signed in.
+      if (!new URLSearchParams(window.location.search).get("symbol")) {
+        const ch = getLastChannel();
+        let hasLocal = false;
+        try {
+          hasLocal = !!localStorage.getItem(LAST_KEY);
+        } catch {}
+        if (!hasLocal || hasAccountHint()) await withTimeout(ch.start(), 700);
+        else void ch.start();
+        if (cancelled) return;
+      }
+      const inst = instrumentFromUrl();
       // an id outside the curated list (an exact futures contract MXZ6, IMOEXF, a bond, a fund ...): ask the exchange search for
       // its proper name / group / unit once, before the chart loads (never longer than 2.5 s)
       if (inst.source === "moex" && !inst.emoji && !findInstrument("moex", inst.dataTicker)) {
@@ -105,9 +142,7 @@ export default function TerminalPage() {
   const onSelectSymbol = useCallback((inst: TerminalInstrument) => {
     rememberInstrument(inst);
     setSelected(inst);
-    try {
-      localStorage.setItem(LAST_KEY, JSON.stringify({ source: inst.source, dataTicker: inst.dataTicker }));
-    } catch {}
+    getLastChannel().changed(JSON.stringify({ source: inst.source, dataTicker: inst.dataTicker }));
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("symbol", inst.dataTicker);

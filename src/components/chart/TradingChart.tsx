@@ -27,7 +27,7 @@ import { useAlerts } from "@/components/chart/useAlerts";
 import DrawingToolbar from "@/components/chart/DrawingToolbar";
 import DrawingStyleBar from "@/components/chart/DrawingStyleBar";
 import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
-import TopToolbar, { type ToggleKey } from "@/components/chart/TopToolbar";
+import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
@@ -40,7 +40,9 @@ import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegen
 import { useChartSettings } from "@/components/chart/useChartSettings";
 import { DESIGN_PATHS, DrawIcon, panelTabIcon, ui } from "@/components/chart/icons";
 import { CS_ICONS } from "@/components/chart/icons-cs";
-import { aggregateCandles, formatInterval, intervalPlan } from "@/lib/chart/intervals";
+import { aggregateCandles, formatInterval, intervalPlan, isValidInterval } from "@/lib/chart/intervals";
+import { openChannel, type Channel } from "@/lib/chart/account-sync";
+import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
@@ -107,6 +109,33 @@ function loadPrefs(key: string = PREFS_KEY, fallbackKey?: string): Prefs {
     if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
   } catch {}
   return DEFAULT_PREFS;
+}
+
+const PANEL_TABS: PanelTab[] = ["watchlist", "info", "ideas", "news", "calendar", "objects", "alerts", "orderbook", "algo"];
+
+/** Preferences from the account copy: every field checked, anything unknown falls back to the default (an old / foreign copy never breaks the chart). */
+function sanitizePrefs(raw: unknown): Prefs {
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+  const D = DEFAULT_PREFS;
+  return {
+    interval: typeof o.interval === "string" && isValidInterval(o.interval) ? o.interval : D.interval,
+    chartType: CHART_TYPES.some((c) => c.id === o.chartType) ? (o.chartType as ChartType) : D.chartType,
+    showVolume: bool(o.showVolume, D.showVolume),
+    showGrid: bool(o.showGrid, D.showGrid),
+    showWatermark: bool(o.showWatermark, D.showWatermark),
+    logScale: bool(o.logScale, D.logScale),
+    panelOpen: bool(o.panelOpen, D.panelOpen),
+    panelTab: PANEL_TABS.includes(o.panelTab as PanelTab) ? (o.panelTab as PanelTab) : D.panelTab,
+  };
+}
+
+/** Drawings of a symbol that are saved without a chart showing it (a layout applied to another symbol). */
+function saveDrawingsFor(source: string, ticker: string, json: string) {
+  const key = drawingsKey(source, ticker);
+  const ch = openChannel({ kind: KIND_DRAWINGS, key: drawingsAccountKey(source, ticker), lsKey: key, current: () => "", apply: () => {}, isEmpty: isEmptyDrawings, emptyJson: "", fit: fitDrawings });
+  ch.changed(json);
+  ch.dispose();
 }
 
 function lsGet(key: string): string {
@@ -297,6 +326,38 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     [prefsKey]
   );
 
+  /* the preferences follow the account: local copy first, then the newer of the two wins (see lib/chart/account-sync.ts) */
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const prefsChan = useRef<Channel | null>(null);
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    const ch = openChannel({
+      kind: KIND_PREFS,
+      key: paneKey(storageId),
+      lsKey: prefsKey,
+      current: () => JSON.stringify(prefsRef.current),
+      apply: (json) => {
+        try {
+          const next = sanitizePrefs(JSON.parse(json));
+          prefsRef.current = next;
+          setPrefs(next);
+        } catch {}
+      },
+      isEmpty: () => false,
+      emptyJson: JSON.stringify(DEFAULT_PREFS),
+    });
+    prefsChan.current = ch;
+    void ch.start();
+    return () => {
+      prefsChan.current = null;
+      ch.dispose();
+    };
+  }, [prefsLoaded, prefsKey, storageId]);
+  useEffect(() => {
+    if (prefsLoaded) prefsChan.current?.changed(JSON.stringify(prefs));
+  }, [prefs, prefsLoaded]);
+
   /* the layout forces one interval on all charts while intervals are synced */
   useEffect(() => {
     if (prefsLoaded && syncInterval && syncInterval !== prefs.interval) update({ interval: syncInterval });
@@ -341,11 +402,33 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const savedInd = lsGet(indKey);
     if (savedInd) indicators.restore(savedInd);
     setIndCount(indicators.list().length);
+    // the indicator list follows the account (an indicator of a script this device does not have yet stays in the list and just shows "script not found")
+    const indChan = openChannel({
+      kind: KIND_INDICATORS,
+      key: paneKey(storageId),
+      lsKey: indKey,
+      current: () => indicators.serialize(),
+      apply: (json) => indicators.restore(json),
+      isEmpty: isEmptyIndicators,
+      emptyJson: "[]",
+    });
+    void indChan.start();
     let indTimer: ReturnType<typeof setTimeout> | undefined;
+    const flushInd = (closing: boolean) => {
+      if (indTimer === undefined) return;
+      clearTimeout(indTimer);
+      indTimer = undefined;
+      indChan.changed(indicators.serialize(), closing);
+    };
+    const onHide = () => flushInd(true);
+    window.addEventListener("pagehide", onHide);
     const unsubInd = indicators.subscribe(() => {
       setIndCount(indicators.list().length);
       clearTimeout(indTimer);
-      indTimer = setTimeout(() => lsSet(indKey, indicators.serialize()), 200);
+      indTimer = setTimeout(() => {
+        indTimer = undefined;
+        indChan.changed(indicators.serialize());
+      }, 200);
     });
     const unsubDraw = drawings.subscribe(() => setHasSelection(!!drawings.getSelection()));
 
@@ -360,7 +443,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => {
       mo.disconnect();
-      clearTimeout(indTimer);
+      window.removeEventListener("pagehide", onHide);
+      flushInd(false);
+      indChan.dispose();
       unsubInd();
       unsubDraw();
       drawings.detach();
@@ -373,6 +458,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       engineRef.current = null;
       setEngineReady(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawings, indicators, alertsLayer, eventsLayer, avwapLayer, vpLayer, indKey]);
 
   useEffect(() => {
@@ -385,26 +471,40 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const key = drawingsKey(source, ticker);
     let timer: ReturnType<typeof setTimeout> | undefined;
     let armed = false;
-    const flush = () => {
+    // the drawings of this symbol follow the account (the newest 200 symbols are kept there)
+    const chan = openChannel({
+      kind: KIND_DRAWINGS,
+      key: drawingsAccountKey(source, ticker),
+      lsKey: key,
+      current: () => drawings.serialize(),
+      apply: (json) => drawings.restore(json),
+      isEmpty: isEmptyDrawings,
+      emptyJson: "",
+      fit: fitDrawings,
+    });
+    const flush = (closing: boolean) => {
       if (timer === undefined) return;
       clearTimeout(timer);
       timer = undefined;
-      lsSet(key, drawings.serialize());
+      chan.changed(drawings.serialize(), closing);
     };
+    const onHide = () => flush(true);
     drawings.restore(lsGet(key));
+    void chan.start();
     const unsub = drawings.subscribe(() => {
       if (!armed) return;
       clearTimeout(timer);
       timer = setTimeout(() => {
         timer = undefined;
-        lsSet(key, drawings.serialize());
+        chan.changed(drawings.serialize());
       }, 250);
     });
     armed = true;
-    window.addEventListener("pagehide", flush);
+    window.addEventListener("pagehide", onHide);
     return () => {
-      window.removeEventListener("pagehide", flush);
-      flush();
+      window.removeEventListener("pagehide", onHide);
+      flush(false);
+      chan.dispose();
       unsub();
     };
   }, [source, ticker, drawings]);
@@ -1110,7 +1210,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const getLayout = (): ChartLayoutData => ({ v: 1, source, ticker, name: instrument.name, interval: prefs.interval, template: getTemplate(true) });
   const applyLayout = (l: ChartLayoutData) => {
     const same = l.source === source && l.ticker === ticker;
-    if (l.template.drawings && !same) lsSet(drawingsKey(l.source, l.ticker), l.template.drawings);
+    if (l.template.drawings && !same) saveDrawingsFor(l.source, l.ticker, l.template.drawings);
     applyTemplate(l.template);
     update({ interval: l.interval });
     if (!same) handleSelectRef.current(findInstrument(l.source, l.ticker) ?? adHocInstrument(l.source as ChartSource, l.ticker));
