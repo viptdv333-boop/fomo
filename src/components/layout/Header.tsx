@@ -218,7 +218,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 dark:border-gray-800/30 bg-white dark:bg-gray-900 px-4 py-3 space-y-1">
+        <div className="md:hidden border-t border-gray-100 dark:border-gray-800/30 bg-white dark:bg-gray-900 px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-1 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
           {session && (
             <div className="flex items-center gap-3 py-2 mb-2 border-b border-gray-100 dark:border-gray-800/30 pb-3">
               <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400 font-bold text-sm overflow-hidden">
