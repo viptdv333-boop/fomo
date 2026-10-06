@@ -97,13 +97,10 @@ html.app-ui .app-tabbar {
   -webkit-user-select: none;
 }
 html.app-ui .app-tabbar::-webkit-scrollbar { display: none; }
-/* scroll thumb above the bar and the side arrows: the explicit «this is a carousel» cue */
+/* scroll thumb above the bar: the explicit «this is a carousel» cue */
 html.app-ui .app-dock-track { position: fixed; left: 0; right: 0; bottom: var(--app-bottom-inset); height: 3px; z-index: 46; background: var(--app-line); pointer-events: none; }
 html.app-ui .app-dock-thumb { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--app-green-tx); }
-html.app-ui.app-kbd .app-dock-track, html.app-ui.app-kbd .app-dock-arrow { display: none; }
-html.app-ui .app-dock-arrow { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 46; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--app-line); background: var(--app-card); color: var(--app-tx); display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
-html.app-ui .app-dock-arrow-l { left: 4px; }
-html.app-ui .app-dock-arrow-r { right: 4px; }
+html.app-ui.app-kbd .app-dock-track { display: none; }
 /* the dock shows five tabs and a half: the cut-off sixth tab is the cue that the bar scrolls sideways */
 html.app-ui.app-kbd .app-tabbar { display: none; }
 html.app-ui .app-tab {

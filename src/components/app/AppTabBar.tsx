@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -53,17 +53,13 @@ function TabBar() {
     nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [active]);
 
-  // the dock is a carousel: arrows on the sides that have more tabs behind them + a scroll thumb above the bar (all driven by the bar's scroll position)
+  // the dock is a carousel: a scroll thumb above the bar (plus the half-visible last tab) (all driven by the bar's scroll position)
   const thumb = useRef<HTMLSpanElement>(null);
-  const [more, setMore] = useState({ l: false, r: false });
   useEffect(() => {
     const nav = bar.current;
     if (!nav) return;
     const sync = () => {
       const max = nav.scrollWidth - nav.clientWidth;
-      const l = max > 2 && nav.scrollLeft > 2;
-      const r = max > 2 && nav.scrollLeft < max - 2;
-      setMore((m) => (m.l === l && m.r === r ? m : { l, r }));
       if (thumb.current) {
         const w = max > 2 ? (nav.clientWidth / nav.scrollWidth) * 100 : 100;
         thumb.current.style.width = `${w}%`;
@@ -79,8 +75,6 @@ function TabBar() {
       window.removeEventListener("resize", sync);
     };
   }, []);
-  const page = (dir: 1 | -1) => bar.current?.scrollBy({ left: dir * bar.current.clientWidth * 0.6, behavior: "smooth" });
-
   return (
     <>
     <nav ref={bar} className="app-tabbar" style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
@@ -134,16 +128,6 @@ function TabBar() {
     <div className="app-dock-track" aria-hidden="true">
       <span ref={thumb} className="app-dock-thumb" />
     </div>
-    {more.l && (
-      <button type="button" className="app-dock-arrow app-dock-arrow-l" onClick={() => page(-1)} aria-label={t("appui.dockPrev")}>
-        <AppIcon name="chevL" size={18} stroke={2.2} />
-      </button>
-    )}
-    {more.r && (
-      <button type="button" className="app-dock-arrow app-dock-arrow-r" onClick={() => page(1)} aria-label={t("appui.dockNext")}>
-        <AppIcon name="chevR" size={18} stroke={2.2} />
-      </button>
-    )}
     </>
   );
 }
