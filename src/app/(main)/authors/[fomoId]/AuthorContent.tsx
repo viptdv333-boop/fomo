@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppAuthorDetail from "@/components/app/channels/AppAuthorDetail";
+import { safeDecode } from "@/lib/app-channels";
 
 interface Author {
   id: string;
@@ -23,7 +26,7 @@ const SPEC_LABELS: Record<string, string> = {
   scalper: "feed2.spec.scalper", algotrader: "feed2.spec.algotrader",
 };
 
-export default function AuthorContent() {
+function AuthorSite() {
   const { t } = useT();
   const params = useParams();
   const fomoId = params.fomoId as string;
@@ -140,4 +143,11 @@ export default function AuthorContent() {
       </div>
     </div>
   );
+}
+
+export default function AuthorContent() {
+  const appUi = useAppUi();
+  const params = useParams();
+  // the Android app (and the ?appui=1 preview) draws the design's author screen; every other browser keeps the page above
+  return appUi ? <AppAuthorDetail idParam={safeDecode(params.fomoId)} /> : <AuthorSite />;
 }

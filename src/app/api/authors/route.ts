@@ -14,6 +14,8 @@ export async function GET() {
       rating: true,
       role: true,
       bio: true,
+      specializations: true,
+      exchangeExperience: true,
       createdAt: true,
       _count: {
         select: {
@@ -34,6 +36,8 @@ export async function GET() {
       rating: a.rating,
       role: a.role,
       bio: a.bio,
+      specializations: a.specializations,
+      exchangeExperience: a.exchangeExperience,
       createdAt: a.createdAt,
       ideasCount: a._count.ideas,
       subscribersCount: a._count.followersReceived,

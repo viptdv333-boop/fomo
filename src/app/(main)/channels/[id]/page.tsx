@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -10,6 +10,9 @@ import ShareButtons from "@/components/shared/ShareButtons";
 import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChannelDetail from "@/components/app/channels/AppChannelDetail";
+import { safeDecode } from "@/lib/app-channels";
 
 interface ChannelData {
   id: string;
@@ -53,7 +56,7 @@ interface SubscriberData {
   endDate: string;
 }
 
-export default function ChannelPage() {
+function ChannelSite() {
   const { t, locale } = useT();
   const params = useParams();
   const router = useRouter();
@@ -836,4 +839,18 @@ export default function ChannelPage() {
       )}
     </div>
   );
+}
+
+export default function ChannelPage() {
+  const appUi = useAppUi();
+  const params = useParams();
+  // the Android app (and the ?appui=1 preview) draws the design's channel screen; every other browser keeps the page above
+  if (appUi) {
+    return (
+      <Suspense fallback={null}>
+        <AppChannelDetail idParam={safeDecode(params.id)} />
+      </Suspense>
+    );
+  }
+  return <ChannelSite />;
 }

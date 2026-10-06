@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
 
 interface Author {
   id: string;
@@ -45,7 +47,7 @@ function AuthorAvatar({ author }: { author: Author }) {
   );
 }
 
-export default function AuthorsPage() {
+function AuthorsSite() {
   const { t } = useT();
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,4 +281,10 @@ export default function AuthorsPage() {
       )}
     </div>
   );
+}
+
+export default function AuthorsPage() {
+  const appUi = useAppUi();
+  // the Android app (and the ?appui=1 preview) draws the design's «Авторы» screen; every other browser keeps the page above
+  return appUi ? <AppChannelsHome seg="authors" /> : <AuthorsSite />;
 }

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import ShareButtons from "@/components/shared/ShareButtons";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
 
 interface Channel {
   id: string;
@@ -81,7 +83,7 @@ function ChannelAvatar({ ch }: { ch: Channel }) {
   );
 }
 
-export default function ChannelsPage() {
+function ChannelsSite() {
   const { data: session } = useSession();
   const { t } = useT();
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -509,4 +511,10 @@ export default function ChannelsPage() {
       )}
     </div>
   );
+}
+
+export default function ChannelsPage() {
+  const appUi = useAppUi();
+  // the Android app (and the ?appui=1 preview) draws the design's «Каналы» screen; every other browser keeps the page above
+  return appUi ? <AppChannelsHome seg="channels" /> : <ChannelsSite />;
 }

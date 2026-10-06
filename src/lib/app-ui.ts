@@ -30,18 +30,32 @@ function underPrefix(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(prefix + "/");
 }
 
+/** A user's public page (/profile/<id>): the author screen of the «Авторы» tab, not the own profile (/profile). */
+function isAuthorPage(clean: string): boolean {
+  return clean.startsWith("/profile/") && clean.split("/").filter(Boolean).length === 2;
+}
+
 /** Which tab a pathname belongs to (locale prefix, query and hash ignored); null for pages that belong to no tab (profile, help, authors ...). */
 export function activeAppTab(pathname: string): AppTabId | null {
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path;
+  if (isAuthorPage(clean)) return "authors";
   for (const tab of APP_TABS) if (tab.match.some((p) => underPrefix(clean, p))) return tab.id;
   return null;
 }
 
-/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen) and the chat (the design's chat screens carry their own title / thread bar). */
+/** The «Каналы» / «Авторы» screens of the design: the lists, a channel, an author (their own title / bar). /channels/create and /channels/edit/<id> stay the site's forms and keep the header. */
+function isChannelsScreen(clean: string): boolean {
+  const seg = clean.split("/").filter(Boolean);
+  if (seg[0] === "channels") return seg.length === 1 || (seg.length === 2 && seg[1] !== "create" && seg[1] !== "edit");
+  if (seg[0] === "authors") return seg.length <= 2;
+  return isAuthorPage(clean);
+}
+
+/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen), the chat and the channels / authors screens (the design's screens carry their own title / thread bar). */
 export function appHeaderHidden(pathname: string): boolean {
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path;
   // /rooms/<id> is a private group (a link from a notification) shown inside the chat screens; /rooms/join/<token> is the invitation page and keeps the header
-  return underPrefix(clean, "/terminal") || underPrefix(clean, "/chat") || underPrefix(clean, "/messages") || (underPrefix(clean, "/rooms") && !underPrefix(clean, "/rooms/join"));
+  return underPrefix(clean, "/terminal") || isChannelsScreen(clean) || underPrefix(clean, "/chat") || underPrefix(clean, "/messages") || (underPrefix(clean, "/rooms") && !underPrefix(clean, "/rooms/join"));
 }
 
 /** Locale-aware link of a tab ("/en/feed", "/zh/feed", "/feed"). */

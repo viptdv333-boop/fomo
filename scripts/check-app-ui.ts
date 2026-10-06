@@ -43,6 +43,44 @@ import {
   type AssetItem,
 } from "../src/lib/app-chat";
 import { APP_UI_BOOT_SCRIPT, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
+import {
+  authorPath,
+  authorPodium,
+  authorSubline,
+  buildSubIndex,
+  channelEmoji,
+  channelInstruments,
+  channelPath,
+  channelSlugOrId,
+  channelStatus,
+  channelSubEnd,
+  channelTags,
+  channelsWithInstrument,
+  daysLabel,
+  daysLeft,
+  endDateLabel,
+  filterAuthors,
+  filterChannels,
+  groupDigits,
+  ideasLabel,
+  isSubscribedToAuthor,
+  pendingChannelIds,
+  periodName,
+  priceAndPeriod,
+  priceLabel,
+  ratingText,
+  receiptProblem,
+  safeDecode,
+  sortAuthors,
+  sortChannels,
+  specLabels,
+  subscribersLabel,
+  topChannelRanks,
+  validGrantDays,
+  yearsOnExchangeText,
+  type AuthorItem,
+  type ChannelItem,
+} from "../src/lib/app-channels";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -331,6 +369,83 @@ eq("fs: new app hides the system bars", fullscreenPlan({ native: true, nativeImm
 eq("fs: old app has only the CSS layer", fullscreenPlan({ native: true, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: false });
 eq("fs: browser / PWA uses the Fullscreen API", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: true });
 eq("fs: browser without the API has only the CSS layer", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: false }), { immersive: false, api: false });
+
+{
+// --- «Каналы» / «Авторы» screens (src/lib/app-channels.ts)
+const NB = " ";
+const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
+eq("digits: thousands group with a no-break space", [groupDigits(0), groupDigits(990), groupDigits(1500), groupDigits(12000), groupDigits(1234567)], ["0", "990", `1${NB}500`, `12${NB}000`, `1${NB}234${NB}567`]);
+eq("digits: en uses a comma, a fraction keeps two decimals", [groupDigits(12000, "en"), groupDigits(990.5), groupDigits(990.5, "en"), groupDigits(NaN)], ["12,000", "990,50", "990.50", "0"]);
+eq("price label", [priceLabel(1500), priceLabel(700, "en")], [`1${NB}500 ₽`, "700 ₽"]);
+eq("days label: ru plurals", [1, 2, 4, 5, 11, 12, 21, 30, 365].map((n) => daysLabel(n)), ["1 день", "2 дня", "4 дня", "5 дней", "11 дней", "12 дней", "21 день", "30 дней", "365 дней"]);
+eq("days label: en / cn", [daysLabel(1, "en"), daysLabel(30, "en"), daysLabel(30, "cn")], ["1 day", "30 days", "30天"]);
+eq("price and period (the bold part of «от …»)", [priceAndPeriod(1500, 30), priceAndPeriod(990, 30, "en"), priceAndPeriod(12000, 365, "cn")], [`1${NB}500 ₽ / 30 дней`, "990 ₽ / 30 days", "12,000 ₽ / 365天"]);
+eq("subscribers label", [subscribersLabel(1), subscribersLabel(2), subscribersLabel(5), subscribersLabel(21), subscribersLabel(214), subscribersLabel(-3), subscribersLabel(1, "en"), subscribersLabel(64, "en"), subscribersLabel(7, "cn")], ["1 подписчик", "2 подписчика", "5 подписчиков", "21 подписчик", "214 подписчиков", "0 подписчиков", "1 subscriber", "64 subscribers", "7 位订阅者"]);
+eq("ideas label", [ideasLabel(1), ideasLabel(3), ideasLabel(12), ideasLabel(1, "en"), ideasLabel(2, "en")], ["1 идея", "3 идеи", "12 идей", "1 idea", "2 ideas"]);
+eq("period name of a tariff", [periodName(30), periodName(90), periodName(365), periodName(14), periodName(30, "en"), periodName(365, "cn")], ["Месяц", "Квартал", "Год", "14 дней", "Month", "一年"]);
+eq("rating text", [ratingText(6.4), ratingText("7.86"), ratingText(5), ratingText(null), ratingText(undefined), ratingText("x")], ["6.4", "7.9", "5.0", "0.0", "0.0", "0.0"]);
+eq("end date: the card's «до 4 ноября»", [endDateLabel("2026-11-04T10:00:00", "ru", NOW), endDateLabel("2026-11-04T10:00:00", "en", NOW), endDateLabel("2026-11-04T10:00:00", "cn", NOW)], ["4 ноября", "Nov 4", "11月4日"]);
+eq("end date: another year is spelled out, junk is empty", [endDateLabel("2027-01-15T10:00:00", "ru", NOW), endDateLabel("2027-01-15T10:00:00", "en", NOW), endDateLabel("junk"), endDateLabel(null), endDateLabel("")], ["15 января 2027", "Jan 15, 2027", "", "", ""]);
+eq("days left", [daysLeft("2026-10-09T12:00:00Z", NOW), daysLeft("2026-10-09T13:00:00Z", NOW), daysLeft("2026-10-01T00:00:00Z", NOW), daysLeft("junk", NOW), daysLeft(null, NOW)], [3, 4, 0, 0, 0]);
+eq("status pill: own > active > pending > buy", [channelStatus({ own: true, endDate: "2026-11-04", pending: true }).kind, channelStatus({ own: false, endDate: "2026-11-04", pending: true }), channelStatus({ own: false, pending: true }).kind, channelStatus({ own: false }).kind, channelStatus({ own: false, endDate: "" }).kind], ["own", { kind: "active", endDate: "2026-11-04" }, "pending", "buy", "buy"]);
+
+const idx = buildSubIndex([
+  { id: "s1", type: "paid", tariffId: "c1", endDate: "2026-11-04T00:00:00Z", telegramNotify: true, author: { id: "a1" } },
+  { id: "s1b", type: "paid", tariffId: "c1", endDate: "2026-12-04T00:00:00Z", author: { id: "a1" } },
+  { id: "s2", type: "paid", tariffId: null, endDate: "2026-10-30T00:00:00Z", author: { id: "a2" } },
+  { id: "f1", type: "free", tariffId: null, endDate: null, author: { id: "a3" } },
+  { id: "bad" },
+  null,
+] as unknown);
+const chOf = (id: string, author: string) => ({ id, author: { id: author } });
+eq("subscriptions: own channel, longest end date wins", channelSubEnd(idx, chOf("c1", "a1")), "2026-12-04T00:00:00Z");
+eq("subscriptions: the old author-wide one covers every channel of the author", [channelSubEnd(idx, chOf("c9", "a2")), channelSubEnd(idx, chOf("c9", "a1")), channelSubEnd(idx, chOf("c9", "zz"))], ["2026-10-30T00:00:00Z", "", ""]);
+eq("subscriptions: telegram row of a channel", idx.subByChannel.get("c1"), { id: "s1b", telegramNotify: false });
+eq("authors: followed (free) or paid", [isSubscribedToAuthor(idx, "a1"), isSubscribedToAuthor(idx, "a2"), isSubscribedToAuthor(idx, "a3"), isSubscribedToAuthor(idx, "a4")], [true, true, true, false]);
+eq("subscriptions: junk input", [buildSubIndex(null).follows.size, buildSubIndex("x").paidByChannel.size], [0, 0]);
+eq("pending payments are the PENDING ones of a channel", [...pendingChannelIds([{ status: "PENDING", tariffId: "c3" }, { status: "CONFIRMED", tariffId: "c4" }, { status: "PENDING", tariffId: null }, null])], ["c3"]);
+
+eq("exchange years: a bare number becomes the sentence", [yearsOnExchangeText("8"), yearsOnExchangeText("8 лет"), yearsOnExchangeText("12"), yearsOnExchangeText("3 года"), yearsOnExchangeText("1"), yearsOnExchangeText("21"), yearsOnExchangeText(" 5  лет ")], ["8 лет на бирже", "8 лет на бирже", "12 лет на бирже", "3 года на бирже", "1 год на бирже", "21 год на бирже", "5 лет на бирже"]);
+eq("exchange years: en / cn", [yearsOnExchangeText("1", "en"), yearsOnExchangeText("8 years", "en"), yearsOnExchangeText("8", "cn")], ["1 year on the exchange", "8 years on the exchange", "8年交易经验"]);
+eq("exchange years: free text stays as written, empty is empty", [yearsOnExchangeText("с 2019 года"), yearsOnExchangeText("более 5 лет"), yearsOnExchangeText(""), yearsOnExchangeText(null), yearsOnExchangeText("   "), yearsOnExchangeText("x".repeat(60)).length], ["с 2019 года", "более 5 лет", "", "", "", 40]);
+eq("author line: specialization · experience", [authorSubline(["Фьючерсы", "сырьё"], "8 лет на бирже"), authorSubline([], "8 лет на бирже"), authorSubline(["Нефть"], ""), authorSubline([], ""), authorSubline(["Нефть"], "12 лет на бирже", "Москва")], ["Фьючерсы, сырьё · 8 лет на бирже", "8 лет на бирже", "Нефть", "", "Нефть · Москва · 12 лет на бирже"]);
+eq("specialization codes -> labels (unknown as typed)", specLabels(["trader", "custom", ""], (k) => `[${k}]`), ["[feed2.spec.trader]", "custom"]);
+
+const mkCh = (id: string, name: string, author: string, rating: number, price: number, subs: number, extra: Partial<ChannelItem> = {}): ChannelItem => ({ id, slug: null, name, description: null, price, durationDays: 30, subscribersCount: subs, author: { id: author, displayName: author, avatarUrl: null, rating }, ...extra });
+const chans = [
+  mkCh("c1", "Нефть и газ", "Анна Кравец", 7.8, 1500, 214, { description: "Разбор Brent", instruments: [{ id: "i1", name: "Нефть", ticker: "BRX6" }] }),
+  mkCh("c2", "Индекс и фьючерсы", "Михаил", 6.4, 990, 37, { slug: "indeks", instruments: [{ id: "i2", name: "IMOEXF", ticker: "IMOEXF" }] }),
+  mkCh("c3", "Акции РФ", "Дмитрий Орлов", 5.1, 700, 64),
+];
+eq("channel search: name, author, description, tag, slug", [filterChannels(chans, "нефть").map((c) => c.id), filterChannels(chans, "михаил").map((c) => c.id), filterChannels(chans, "brent").map((c) => c.id), filterChannels(chans, "#imoexf").map((c) => c.id), filterChannels(chans, "indeks").map((c) => c.id), filterChannels(chans, "  ").length, filterChannels(chans, "zzz").length], [["c1"], ["c2"], ["c1"], ["c2"], ["c2"], 3, 0]);
+eq("channel sort: subscribers / rating / price, both ways", [sortChannels(chans, "subscribers", "desc").map((c) => c.id), sortChannels(chans, "rating", "asc").map((c) => c.id), sortChannels(chans, "price", "desc").map((c) => c.id), sortChannels(chans, "price", "asc").map((c) => c.id)], [["c1", "c3", "c2"], ["c3", "c2", "c1"], ["c1", "c2", "c3"], ["c3", "c2", "c1"]]);
+eq("sorting does not touch the input", chans.map((c) => c.id), ["c1", "c2", "c3"]);
+eq("channel tags: ticker, else name; no duplicates", [channelTags({ instruments: [{ id: "1", name: "Нефть", ticker: "BRX6" }, { id: "2", name: "газ" }, { id: "3", name: "газ" }, { id: "4", name: "  " }] }), channelTags({})], [["#BRX6", "#газ"], []]);
+eq("instrument filter and the instrument list", [channelsWithInstrument(chans, "i2").map((c) => c.id), channelsWithInstrument(chans, "").length, channelInstruments(chans).map((i) => i.id)], [["c2"], 3, ["i1", "i2"]]);
+eq("emoji of a channel is stable", [channelEmoji("c1") === channelEmoji("c1"), channelEmoji("c1").length > 0], [true, true]);
+eq("top-3 ranks need three channels", [[...topChannelRanks(chans)].map(([id, r]) => `${id}:${r}`), topChannelRanks(chans.slice(0, 2)).size], [["c1:1", "c3:2", "c2:3"], 0]);
+
+const mkAu = (id: string, name: string, rating: number, extra: Partial<AuthorItem> = {}): AuthorItem => ({ id, displayName: name, avatarUrl: null, fomoId: `${id}x`, rating, ideasCount: 1, subscribersCount: 1, bio: null, createdAt: "2025-01-01T00:00:00Z", ...extra });
+const auths = [
+  mkAu("a1", "Анна Кравец", 7.8, { specializations: ["analyst"], bio: "нефть и газ", createdAt: "2025-01-01T00:00:00Z", ideasCount: 12, subscribersCount: 342 }),
+  mkAu("a2", "Михаил", 6.4, { role: "OWNER", specializations: ["trader"], exchangeExperience: "8", createdAt: "2025-03-01T00:00:00Z", ideasCount: 9, subscribersCount: 128 }),
+  mkAu("a3", "Дмитрий Орлов", 5.1, { createdAt: "2025-02-01T00:00:00Z", ideasCount: 4, subscribersCount: 86 }),
+  mkAu("a4", "Вера Лис", 4.3, { createdAt: "2025-04-01T00:00:00Z", ideasCount: 2, subscribersCount: 51 }),
+];
+eq("author search: name, #id, bio, specialization text", [filterAuthors(auths, "анна").map((a) => a.id), filterAuthors(auths, "#a3x").map((a) => a.id), filterAuthors(auths, "нефть").map((a) => a.id), filterAuthors(auths, "трейдер", (a) => (a.specializations ?? []).map((s) => (s === "trader" ? "Трейдер" : s)).join(" ")).map((a) => a.id), filterAuthors(auths, "").length], [["a1"], ["a3"], ["a1"], ["a2"], 4]);
+eq("author sort: rating / date / popularity / ideas", [sortAuthors(auths, "rating", "desc").map((a) => a.id), sortAuthors(auths, "createdAt", "desc").map((a) => a.id), sortAuthors(auths, "subscribersCount", "asc").map((a) => a.id), sortAuthors(auths, "ideasCount", "desc").map((a) => a.id)], [["a1", "a2", "a3", "a4"], ["a4", "a2", "a3", "a1"], ["a4", "a3", "a2", "a1"], ["a1", "a2", "a3", "a4"]]);
+eq("author podium: owner first, then top three by rating", [[...authorPodium(auths)].map(([id, r]) => `${id}:${r}`), authorPodium(auths.slice(0, 2)).size], [["a2:0", "a1:1", "a3:2", "a4:3"], 0]);
+
+eq("paths: channel by slug or id, author by #id or user id", [channelPath({ id: "c1", slug: null }), channelPath({ id: "c2", slug: "my chan" }), channelSlugOrId({ id: "c2", slug: "abc" }), authorPath({ id: "u1", fomoId: "nevrotrader" }), authorPath({ id: "u1", fomoId: null })], ["/channels/c1", "/channels/my%20chan", "abc", "/authors/nevrotrader", "/profile/u1"]);
+eq("route params: decoded, a bad escape stays as typed", [safeDecode("a%20b"), safeDecode("100%"), safeDecode(undefined), safeDecode(["x"])], ["a b", "100%", "", "x"]);
+eq("grant days: whole days 1..3650 only", [validGrantDays("30"), validGrantDays(1), validGrantDays(3650), validGrantDays(0), validGrantDays(3651), validGrantDays("1.5"), validGrantDays(""), validGrantDays("x")], [30, 1, 3650, null, null, null, null, null]);
+eq("receipt: images up to 10 MB", [receiptProblem({ type: "image/png", size: 1000 }), receiptProblem({ type: "application/pdf", size: 1000 }), receiptProblem({ type: "image/jpeg", size: 11 * 1024 * 1024 }), receiptProblem({ type: "image/jpeg", size: 10 * 1024 * 1024 })], [null, "type", "size", null]);
+
+// --- the channel / author screens carry their own bar; the forms of the old site keep the header
+eq("header hidden: channels list, a channel, authors list, an author, a user page", ["/channels", "/en/channels", "/channels/c1", "/channels/some-slug", "/authors", "/authors/nevrotrader", "/zh/profile/u1"].map(appHeaderHidden), [true, true, true, true, true, true, true]);
+eq("header shown: create / edit forms, own profile, deeper paths", ["/channels/create", "/channels/edit", "/channels/edit/c1", "/profile", "/en/profile", "/profile/u1/x", "/channelsx", "/authorsx"].map(appHeaderHidden), [false, false, false, false, false, false, false, false]);
+eq("dock: a user's page lights «Авторы», the own profile stays «Профиль»", [activeAppTab("/profile/u1"), activeAppTab("/en/profile/u1"), activeAppTab("/profile"), activeAppTab("/authors/x"), activeAppTab("/channels/c1")], ["authors", "authors", "me", "authors", "channels"]);
+}
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

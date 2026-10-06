@@ -7,6 +7,9 @@ import IdeaCard from "@/components/ideas/IdeaCard";
 import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import WatchlistWidget from "@/components/profile/WatchlistWidget";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppAuthorDetail from "@/components/app/channels/AppAuthorDetail";
+import { safeDecode } from "@/lib/app-channels";
 
 // Values are i18n keys (feed2.spec.*), resolved with t() at render time.
 const SPECIALIZATION_LABELS: Record<string, string> = {
@@ -64,7 +67,7 @@ function calcAge(birthDate: string): number {
   return age;
 }
 
-export default function AuthorProfilePage() {
+function AuthorProfileSite() {
   const { t } = useT();
   const params = useParams();
   const router = useRouter();
@@ -332,4 +335,11 @@ export default function AuthorProfilePage() {
       )}
     </div>
   );
+}
+
+export default function AuthorProfilePage() {
+  const appUi = useAppUi();
+  const params = useParams();
+  // the Android app (and the ?appui=1 preview) draws the design's author screen; every other browser keeps the page above
+  return appUi ? <AppAuthorDetail idParam={safeDecode(params.userId)} /> : <AuthorProfileSite />;
 }
