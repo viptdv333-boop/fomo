@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
-import InstallAppButton from "@/components/shared/InstallAppButton";
 import { DownloadAppsBlock } from "@/components/shared/DownloadApps";
 import { useT } from "@/lib/i18n/client";
 
@@ -171,15 +170,6 @@ export default function LandingPage() {
         {/* Download the app: Android APK / Windows installer / iPhone steps (hidden inside the native apps) */}
         <div className={`download-block mt-6 ${loginVisible ? "visible" : ""}`}>
           <DownloadAppsBlock isDark={isDark} />
-        </div>
-
-        {/* Install app */}
-        <div className={`mt-5 ${loginVisible ? "visible" : ""}`}>
-          <InstallAppButton
-            className={`text-sm underline underline-offset-4 transition-colors duration-300 ${
-              isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-800"
-            }`}
-          />
         </div>
 
         {/* Stats with animated counters */}

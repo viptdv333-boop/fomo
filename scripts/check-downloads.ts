@@ -1,7 +1,7 @@
 /* "Download the app" helpers: platform detection by user agent, own-platform-first order, size text, dl-info.json
    validation, the FomoDesktop/ marker and the "no PWA install inside the apps" rule.
    Run: npx tsx scripts/check-downloads.ts   (exit code 1 on a failed assertion) */
-import { DL_INFO, DL_PATHS, detectPlatform, dlMeta, formatSize, parseDlInfo, platformOrder } from "../src/lib/downloads";
+import { DL_FILES, DL_INFO, DL_INFO_TERMINAL, DL_PATHS, availablePlatforms, detectPlatform, dlInfoFor, dlMeta, formatSize, parseDlInfo, parseDlInfoFor, platformOrder } from "../src/lib/downloads";
 import { isAnyNativeShell, isDesktopApp, isNativeApp } from "../src/lib/native-app";
 
 let fails = 0;
@@ -30,7 +30,7 @@ eq("Android app", detectPlatform({ userAgent: UA.androidApp }), "android");
 eq("iPhone", detectPlatform({ userAgent: UA.iphone }), "ios");
 eq("iPad", detectPlatform({ userAgent: UA.ipad }), "ios");
 eq("iPadOS Safari that says Mac, touch screen", detectPlatform({ userAgent: UA.ipadAsMac, platform: "MacIntel", maxTouchPoints: 5 }), "ios");
-eq("real Mac (no touch) is not iOS", detectPlatform({ userAgent: UA.mac, platform: "MacIntel", maxTouchPoints: 0 }), "other");
+eq("real Mac (no touch) is macOS, not iOS", detectPlatform({ userAgent: UA.mac, platform: "MacIntel", maxTouchPoints: 0 }), "macos");
 eq("Windows desktop", detectPlatform({ userAgent: UA.windows, platform: "Win32" }), "windows");
 eq("Windows desktop app", detectPlatform({ userAgent: UA.desktopApp }), "windows");
 eq("Windows Phone is not Windows", detectPlatform({ userAgent: UA.winPhone }), "android"); // its UA says Android; never "windows"
@@ -38,10 +38,29 @@ eq("Linux -> other", detectPlatform({ userAgent: UA.linux }), "other");
 eq("empty UA -> other", detectPlatform({ userAgent: "" }), "other");
 
 // --- order: own platform first, nothing lost
-eq("order for other", platformOrder("other"), ["android", "windows", "ios"]);
-eq("order for windows", platformOrder("windows"), ["windows", "android", "ios"]);
-eq("order for ios", platformOrder("ios"), ["ios", "android", "windows"]);
-eq("order for android", platformOrder("android"), ["android", "windows", "ios"]);
+const noMac = availablePlatforms("main", { android: null, windows: null, macos: null });
+eq("main without a mac file: android, windows, ios (no mac tile)", noMac, ["android", "windows", "ios"]);
+eq("order for other", platformOrder("other", noMac), ["android", "windows", "ios"]);
+eq("order for windows", platformOrder("windows", noMac), ["windows", "android", "ios"]);
+eq("order for ios", platformOrder("ios", noMac), ["ios", "android", "windows"]);
+eq("order for android", platformOrder("android", noMac), ["android", "windows", "ios"]);
+eq("own macOS without a mac tile changes nothing", platformOrder("macos", noMac), ["android", "windows", "ios"]);
+const withMac = { android: null, windows: null, macos: { version: "1.0.0", size: 100000000 } };
+eq("a macos entry in dl-info shows the mac tile", availablePlatforms("main", withMac), ["android", "windows", "macos", "ios"]);
+eq("order for macOS with a mac file", platformOrder("macos", availablePlatforms("main", withMac)), ["macos", "android", "windows", "ios"]);
+
+// --- terminal site: own files, no iPhone steps, windows / macOS only with a valid entry
+const none = { android: null, windows: null, macos: null };
+const winOnly = { android: null, windows: { version: "1.0.0", size: 90000000 }, macos: null };
+eq("terminal without entries: only the Android tile", availablePlatforms("terminal", none), ["android"]);
+eq("terminal with a windows entry", availablePlatforms("terminal", winOnly), ["android", "windows"]);
+eq("terminal with a mac entry", availablePlatforms("terminal", { ...winOnly, macos: { version: "1.0.0", size: 1e8 } }), ["android", "windows", "macos"]);
+eq("terminal order for windows", platformOrder("windows", availablePlatforms("terminal", winOnly)), ["windows", "android"]);
+eq("terminal order for iOS (no ios tile)", platformOrder("ios", availablePlatforms("terminal", winOnly)), ["android", "windows"]);
+eq("terminal files", [DL_FILES.terminal.android.path, DL_FILES.terminal.windows.path, DL_FILES.terminal.macos.path], ["/app/dl/FOMO-Terminal.apk", "/app/dl/FOMO-Terminal-Setup.exe", "/app/dl/FOMO-Terminal.dmg"]);
+eq("terminal download names", [DL_FILES.terminal.windows.fileName, DL_FILES.terminal.macos.fileName], ["FOMO-Terminal-Setup.exe", "FOMO-Terminal.dmg"]);
+eq("terminal entries sit under `terminal`", parseDlInfoFor({ android: { version: "1.0.0", size: 5 }, terminal: { windows: { version: "2.0.0", size: 9 } } }, "terminal"), { android: null, windows: { version: "2.0.0", size: 9 }, macos: null });
+eq("main ignores the terminal entries", parseDlInfoFor({ terminal: { windows: { version: "2.0.0", size: 9 } } }, "main"), none);
 
 // --- sizes
 eq("size KB", formatSize(900 * 1024, "en"), "900 KB");
@@ -51,14 +70,16 @@ eq("size large MB", formatSize(94224205, "ru"), "90 МБ");
 eq("size zero / NaN -> empty", [formatSize(0, "ru"), formatSize(NaN, "ru")], ["", ""]);
 
 // --- dl-info.json validation: bad numbers are dropped, never shown
-eq("valid info", parseDlInfo({ android: { version: "1.2.3", size: 100000 }, windows: { version: "2.0", size: 5000000 } }), { android: { version: "1.2.3", size: 100000 }, windows: { version: "2.0", size: 5000000 } });
-eq("garbage info", parseDlInfo({ android: { version: "x", size: 1 }, windows: { version: "1.0.0", size: -5 } }), { android: null, windows: null });
-eq("null / string info", [parseDlInfo(null), parseDlInfo("x")], [{ android: null, windows: null }, { android: null, windows: null }]);
-eq("meta text", dlMeta("android", "ru", { android: { version: "1.0.0", size: 1596856 }, windows: null }), "v1.0.0 · 1,5 МБ");
-eq("meta without info", dlMeta("windows", "ru", { android: null, windows: null }), "");
+eq("valid info", parseDlInfo({ android: { version: "1.2.3", size: 100000 }, windows: { version: "2.0", size: 5000000 } }), { android: { version: "1.2.3", size: 100000 }, windows: { version: "2.0", size: 5000000 }, macos: null });
+eq("garbage info", parseDlInfo({ android: { version: "x", size: 1 }, windows: { version: "1.0.0", size: -5 } }), { android: null, windows: null, macos: null });
+eq("null / string info", [parseDlInfo(null), parseDlInfo("x")], [none, none]);
+eq("meta text", dlMeta("android", "ru", { android: { version: "1.0.0", size: 1596856 }, windows: null, macos: null }), "v1.0.0 · 1,5 МБ");
+eq("meta without info", dlMeta("windows", "ru", none), "");
 eq("meta for iOS is empty", dlMeta("ios", "ru"), "");
 eq("committed dl-info.json is valid", [DL_INFO.android !== null, DL_INFO.windows !== null], [true, true]);
-eq("file links", DL_PATHS, { android: "/app/dl/FOMO.apk", windows: "/app/dl/FOMO-Setup.exe" });
+eq("terminal: committed android entry is valid, so its tile has numbers", DL_INFO_TERMINAL.android !== null, true);
+eq("dlInfoFor", [dlInfoFor("main") === DL_INFO, dlInfoFor("terminal") === DL_INFO_TERMINAL], [true, true]);
+eq("file links", DL_PATHS, { android: "/app/dl/FOMO.apk", windows: "/app/dl/FOMO-Setup.exe", macos: "/app/dl/FOMO.dmg" });
 
 // --- shell detection (isDesktopApp / isAnyNativeShell read navigator and window)
 const g = globalThis as unknown as { navigator?: unknown; window?: unknown };

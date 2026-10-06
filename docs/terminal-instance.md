@@ -152,10 +152,21 @@ cd /opt/fomo-terminal && git pull --ff-only && npm install --no-audit --no-fund 
 2. Скачать `google-services.json` → положить в `android/app/src/terminal/google-services.json` (в публичном репозитории ограничьте API-ключ
    пакетом и SHA-1) и пересобрать: `& "C:\Users\viptd\tools\build-fomo.ps1" assembleTerminalRelease`. Пока файла нет, приложение собирается и
    работает, но без push.
-3. Положить APK на сервер: `scp FOMO-Terminal.apk server:/opt/fomo-terminal/public/app/dl/FOMO-Terminal.apk` (папка `public/app/dl/` в `.gitignore`).
+3. Положить APK на сервер: либо через ветку `downloads` (`scripts/publish-downloads.ps1`, см. `docs/downloads.md`: она же публикует
+   `FOMO-Terminal-Setup.exe` и записи в `public/app/dl-info.json`), либо вручную
+   `scp FOMO-Terminal.apk server:/opt/fomo-terminal/public/app/dl/FOMO-Terminal.apk` (папка `public/app/dl/` в `.gitignore`).
    Ссылка на лендинге — `/app/dl/FOMO-Terminal.apk`; проверка обновления приложения читает `https://terminal.fomo.spot/app/terminal-version.json`
    (при выпуске новой версии поднимите `versionCode` в `android/app/build.gradle.kts` и в `public/app/terminal-version.json` вместе).
 4. App Links: `https://terminal.fomo.spot/.well-known/assetlinks.json` отдаётся тем же файлом `public/.well-known/assetlinks.json` (в нём уже есть пакет `spot.fomo.terminal`).
+
+### 8. Приложения для компьютера (Windows / macOS)
+Тот же Electron-код из `desktop/` собирается во втором варианте (flavor `terminal`, `npm run dist:terminal`): «FOMO Terminal»,
+`https://terminal.fomo.spot`, свой appId и профиль (`%APPDATA%\FOMO Terminal`), установщик `FOMO-Terminal-Setup.exe`
+(см. `desktop/README.md`). На лендинге терминала (`TerminalLanding` -> `DownloadAppsBlock flavor="terminal"`) плитки:
+Android (`/app/dl/FOMO-Terminal.apk`), Windows (`/app/dl/FOMO-Terminal-Setup.exe`, показывается, когда в `public/app/dl-info.json`
+есть запись `terminal.windows`) и macOS (`/app/dl/FOMO-Terminal.dmg`, только когда есть запись `terminal.macos`, то есть файл
+собран и опубликован). Внутри самих приложений блок скрыт. Файлы кладутся на сервер терминала так же, как APK
+(`/opt/fomo-terminal/public/app/dl/`, затем `pm2 restart fomo-terminal`, чтобы Next увидел новые файлы; или nginx отдаёт папку сам).
 
 ## Проверка после запуска
 ```bash

@@ -5,15 +5,11 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
 import { useT } from "@/lib/i18n/client";
-import { isAnyNativeShell } from "@/lib/native-app";
-import PlatformIcon from "@/components/shared/PlatformIcons";
+import { DownloadAppsBlock } from "@/components/shared/DownloadApps";
 
 // Landing page of the terminal site (terminal.fomo.spot, SITE_MODE=terminal): the logo with «FOMO Terminal», login / sign-up,
-// a few feature lines, the Android app download and the legal links. LandingPage (the main site) is untouched. src/app/page.tsx
+// a few feature lines, the app downloads (DownloadAppsBlock flavor="terminal": Android, Windows, macOS when a file exists) and the legal links. LandingPage (the main site) is untouched. src/app/page.tsx
 // picks one of the two by the site mode.
-
-/** Where the Android app of the terminal is published (public/app/dl/, see docs/terminal-instance.md). */
-const TERMINAL_APK = "/app/dl/FOMO-Terminal.apk";
 
 export default function TerminalLanding() {
   const { theme } = useTheme();
@@ -21,14 +17,10 @@ export default function TerminalLanding() {
   const [logoRevealed, setLogoRevealed] = useState(false);
   const [textVisible, setTextVisible] = useState(false);
   const [loginVisible, setLoginVisible] = useState(false);
-  const [showApk, setShowApk] = useState(false);
   const lang = (locale === "en" || locale === "cn" ? locale : "ru") as "ru" | "en" | "cn";
   const isDark = theme === "dark";
 
   useEffect(() => {
-    // nothing to download inside the Android app / Windows app itself; no Android link on iPhone / desktop would be wrong either:
-    // it is offered everywhere outside the apps, the file is an APK.
-    setShowApk(!isAnyNativeShell());
     const a = setTimeout(() => setLogoRevealed(true), 300);
     const b = setTimeout(() => setTextVisible(true), 1200);
     const c = setTimeout(() => setLoginVisible(true), 1800);
@@ -117,26 +109,10 @@ export default function TerminalLanding() {
           ))}
         </ul>
 
-        {showApk && (
-          <div className={`download-block mt-8 ${loginVisible ? "visible" : ""}`}>
-            <section className="dl-block flex flex-col items-center" aria-label={t("termsite.android")}>
-              <h2 className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${muted}`}>{t("dl.title")}</h2>
-              <a
-                href={TERMINAL_APK}
-                download="FOMO-Terminal.apk"
-                data-platform="android"
-                title={t("termsite.androidName")}
-                className={`dl-tile flex flex-col items-center justify-center gap-1 w-[150px] min-h-[84px] px-2 py-2.5 rounded-xl border-2 text-center transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                  isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <PlatformIcon platform="android" size={28} />
-                <span className="text-xs font-medium leading-tight">{t("termsite.android")}</span>
-              </a>
-              <p className={`mt-2 text-[11px] leading-snug ${muted}`}>{t("termsite.androidHint")}</p>
-            </section>
-          </div>
-        )}
+        {/* Downloads: Android / Windows (and macOS once a .dmg exists), the terminal's own files; hidden inside the apps themselves */}
+        <div className={`download-block mt-8 ${loginVisible ? "visible" : ""}`}>
+          <DownloadAppsBlock isDark={isDark} flavor="terminal" />
+        </div>
 
         <p className={`mt-8 max-w-sm text-center text-xs leading-snug ${muted} welcome-text ${textVisible ? "visible" : ""}`}>{t("termsite.separate")}</p>
       </main>

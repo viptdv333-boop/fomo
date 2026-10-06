@@ -1,18 +1,27 @@
 "use strict";
-// FOMO for Windows: a thin Electron shell around https://fomo.spot.
-// Only the site's own origin stays inside the window; every other link opens in the default browser.
-// Run: npm start   |   smoke test: npx electron . --smoke   |   build: npm run dist (see README.md)
+// FOMO for Windows / macOS: a thin Electron shell around https://fomo.spot, or (flavor "terminal", see flavors.js)
+// around https://terminal.fomo.spot. Only the site's own origin stays inside the window; every other link opens in the
+// default browser.
+// Run: npm start (npm run start:terminal)   |   smoke test: npx electron . --smoke   |   build: npm run dist (see README.md)
 
 const { app, BrowserWindow, Menu, shell, session, screen } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
 
-const SITE = "https://fomo.spot/";
-const TRUSTED_HOSTS = new Set(["fomo.spot", "www.fomo.spot"]);
+const flavors = require("./flavors");
+
+// The flavor is baked into the packaged package.json (`fomoFlavor`, set by electron-builder.config.js); a dev run takes
+// FOMO_FLAVOR / FLAVOR from the environment. Unknown values fall back to the main app.
+const FLAVOR = flavors[process.env.FOMO_FLAVOR || process.env.FLAVOR || require("./package.json").fomoFlavor] || flavors.main;
+const MAC = process.platform === "darwin";
+const OS_TOKEN = MAC ? "Mac" : "Windows";
+
+const SITE = FLAVOR.site;
+const TRUSTED_HOSTS = new Set(FLAVOR.hosts);
 const OFFLINE_FILE = path.join(__dirname, "offline.html");
 const OFFLINE_URL = pathToFileURL(OFFLINE_FILE).href.split("?")[0];
-const ICON = path.join(__dirname, "assets", "icon.png");
+const ICON = path.join(__dirname, FLAVOR.icon);
 const BG = "#0a0a0a";
 const SMOKE = process.argv.includes("--smoke");
 const DEVTOOLS = process.argv.includes("--devtools");
@@ -23,13 +32,18 @@ const ZOOM_MAX = 5;
 // "fullscreen" is there for the full-screen chart (Fullscreen API); "clipboard-sanitized-write" is the plain copy button.
 const ALLOWED_PERMISSIONS = new Set(["notifications", "clipboard-read", "clipboard-sanitized-write", "media", "fullscreen"]);
 
-app.setAppUserModelId("spot.fomo.desktop");
+// Own profile folder per flavor (%APPDATA%\FOMO, %APPDATA%\FOMO Terminal): the two apps never share cookies, a login or the
+// window state. Set before anything reads userData (the single-instance lock and the session live there).
+app.setPath("userData", path.join(app.getPath("appData"), FLAVOR.userDataDir));
+app.setAppUserModelId(FLAVOR.appId);
 
-// "<default UA> FomoDesktop/1.0.0 Windows": the site detects the app by this marker. The Electron / app-name
+// "<default UA> FomoDesktop/1.0.0 Windows" (or "... Mac"): the site detects the app by this marker. The Electron / app-name
 // tokens are dropped so the UA looks like plain Chrome to the sites that sniff it.
 app.userAgentFallback =
-  app.userAgentFallback.replace(/\s+Electron\/\S+/i, "").replace(/\s+(FOMO|fomo-desktop)\/\S+/gi, "") +
-  " FomoDesktop/" + app.getVersion() + " Windows";
+  app.userAgentFallback
+    .replace(/\s+Electron\/\S+/i, "")
+    .replace(/\s+(FOMO|FOMOTerminal|FOMO Terminal|fomo-desktop|fomo-terminal-desktop)\/\S+/gi, "") +
+  " FomoDesktop/" + app.getVersion() + " " + OS_TOKEN;
 
 /** True for a URL on the site's own origin (https only). */
 function isTrustedUrl(url) {
@@ -118,7 +132,7 @@ let zoomLevel = 0;
 
 function showOffline(win, failedUrl) {
   if (win.isDestroyed()) return;
-  void win.loadFile(OFFLINE_FILE, { query: { u: failedUrl || SITE } });
+  void win.loadFile(OFFLINE_FILE, { query: { u: failedUrl || SITE, site: SITE, name: FLAVOR.productName } });
 }
 
 function setZoom(win, level) {
@@ -130,7 +144,8 @@ function setZoom(win, level) {
 function handleShortcut(win, event, input) {
   if (input.type !== "keyDown") return;
   const key = input.key;
-  const ctrl = input.control && !input.alt && !input.meta;
+  // Ctrl on Windows, Cmd on a Mac
+  const ctrl = MAC ? input.meta && !input.alt && !input.control : input.control && !input.alt && !input.meta;
   const k = typeof key === "string" ? key.toLowerCase() : "";
   if (key === "F5" || (ctrl && k === "r")) {
     event.preventDefault();
@@ -152,10 +167,10 @@ function handleShortcut(win, event, input) {
   } else if (ctrl && key === "0") {
     event.preventDefault();
     setZoom(win, 0);
-  } else if (input.alt && key === "ArrowLeft") {
+  } else if ((input.alt && key === "ArrowLeft") || (MAC && ctrl && key === "[")) {
     event.preventDefault();
     if (win.webContents.navigationHistory.canGoBack()) win.webContents.navigationHistory.goBack();
-  } else if (input.alt && key === "ArrowRight") {
+  } else if ((input.alt && key === "ArrowRight") || (MAC && ctrl && key === "]")) {
     event.preventDefault();
     if (win.webContents.navigationHistory.canGoForward()) win.webContents.navigationHistory.goForward();
   } else if (DEVTOOLS && ((ctrl && input.shift && k === "i") || key === "F12")) {
@@ -175,7 +190,7 @@ function createWindow() {
     minWidth: 400,
     minHeight: 600,
     show: false,
-    title: "FOMO",
+    title: FLAVOR.productName,
     icon: ICON,
     backgroundColor: BG,
     autoHideMenuBar: true,
@@ -316,7 +331,8 @@ function runSmoke() {
       const ua = await win.webContents.executeJavaScript("navigator.userAgent");
       out("url " + win.webContents.getURL());
       out("ua " + ua);
-      finish(/FomoDesktop\/\S+ Windows/.test(ua) && isTrustedUrl(win.webContents.getURL()), "no UA marker or wrong url");
+      out("flavor " + FLAVOR.id + " userData " + app.getPath("userData"));
+      finish(new RegExp("FomoDesktop/\\S+ " + OS_TOKEN).test(ua) && isTrustedUrl(win.webContents.getURL()), "no UA marker or wrong url");
     } catch (err) {
       finish(false, String(err));
     }
@@ -341,7 +357,8 @@ if (SMOKE) {
     mainWindow.focus();
   });
   app.whenReady().then(() => {
-    Menu.setApplicationMenu(null);
+    // Windows: no menu bar (shortcuts are handled above). macOS needs an application menu for Cmd+C / V / Q to work at all.
+    Menu.setApplicationMenu(MAC ? Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]) : null);
     setupPermissions();
     createWindow();
     app.on("activate", () => {

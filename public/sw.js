@@ -120,9 +120,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never touch APIs, Server Actions data, or auth callbacks.
+  // Never touch APIs, Server Actions data, or auth callbacks. The app downloads (/app/dl/*.apk|exe|dmg, up to ~100 MB,
+  // opened as a navigation by <a download>) go straight to the network: they must not be cloned into the page cache.
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/app/dl/") ||
     url.pathname.startsWith("/_next/data/") ||
     url.pathname.startsWith("/_next/image")
   ) {

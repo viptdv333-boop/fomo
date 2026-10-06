@@ -2,54 +2,22 @@
   "name": "fomo-desktop",
   "productName": "FOMO",
   "version": "1.0.0",
-  "description": "FOMO for Windows: a thin desktop shell around https://fomo.spot",
+  "description": "FOMO for Windows and macOS: a thin desktop shell around https://fomo.spot (flavor terminal: https://terminal.fomo.spot)",
   "author": "FOMO <support@fomo.spot>",
   "license": "UNLICENSED",
   "private": true,
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "start:terminal": "node -e \"process.env.FOMO_FLAVOR='terminal';require('child_process').spawnSync(require('electron'),['.'],{stdio:'inherit',env:process.env})\"",
     "smoke": "electron . --smoke",
-    "dist": "electron-builder --win nsis --x64"
+    "dist": "node build/dist.js main --win nsis --x64",
+    "dist:terminal": "node build/dist.js terminal --win nsis --x64",
+    "dist:mac": "node build/dist.js main --mac",
+    "dist:mac:terminal": "node build/dist.js terminal --mac"
   },
   "devDependencies": {
     "electron": "44.5.1",
     "electron-builder": "26.15.3"
-  },
-  "build": {
-    "appId": "spot.fomo.desktop",
-    "productName": "FOMO",
-    "copyright": "Copyright (c) Neurotrader 2026",
-    "asar": true,
-    "afterPack": "build/after-pack.js",
-    "compression": "maximum",
-    "electronLanguages": ["ru", "en-US", "zh-CN"],
-    "directories": {
-      "output": "C:/Users/viptd/tools/desktop-out",
-      "buildResources": "build"
-    },
-    "files": [
-      "main.js",
-      "offline.html",
-      "assets/icon.png",
-      "package.json"
-    ],
-    "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": "build/icon.ico",
-      "artifactName": "FOMO-Setup-${version}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "FOMO",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "artifactName": "FOMO-Setup-${version}.${ext}"
-    }
   }
 }
