@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+
+// the app UI shows this page as the «Каналы и подписки» screen of its Профиль tab (loaded only inside the app)
+const AppProfile = dynamic(() => import("@/components/app/profile/AppProfile"), { ssr: false });
 
 interface SubItem {
   id: string;
@@ -54,6 +59,18 @@ interface ChannelSubscriberItem {
 }
 
 export default function SubscriptionsPage() {
+  const appUi = useAppUi();
+  if (appUi) {
+    return (
+      <Suspense fallback={null}>
+        <AppProfile />
+      </Suspense>
+    );
+  }
+  return <BrowserSubscriptionsPage />;
+}
+
+function BrowserSubscriptionsPage() {
   const { t, locale } = useT();
   const dateLocale = locale === "cn" ? "zh-CN" : locale === "en" ? "en-US" : "ru";
   const { data: session } = useSession();

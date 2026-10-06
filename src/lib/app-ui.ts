@@ -60,11 +60,16 @@ function isChannelsScreen(clean: string): boolean {
   return isAuthorPage(clean);
 }
 
-/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen), the chat and the channels / authors screens (the design's screens carry their own title / thread bar). */
+/** The own profile tab (/profile and its pushed screens, /subscriptions): the design's profile screens carry their own large title / bar. */
+function isProfileScreen(clean: string): boolean {
+  return clean === "/profile" || clean === "/subscriptions";
+}
+
+/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen), the chat, the channels / authors screens and the profile tab (the design's screens carry their own title / thread bar). */
 export function appHeaderHidden(pathname: string): boolean {
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path;
   // /rooms/<id> is a private group (a link from a notification) shown inside the chat screens; /rooms/join/<token> is the invitation page and keeps the header
-  return underPrefix(clean, "/terminal") || isChannelsScreen(clean) || underPrefix(clean, "/chat") || underPrefix(clean, "/messages") || (underPrefix(clean, "/rooms") && !underPrefix(clean, "/rooms/join"));
+  return underPrefix(clean, "/terminal") || isChannelsScreen(clean) || isProfileScreen(clean) || underPrefix(clean, "/chat") || underPrefix(clean, "/messages") || (underPrefix(clean, "/rooms") && !underPrefix(clean, "/rooms/join"));
 }
 
 /** Locale-aware link of a tab ("/en/feed", "/zh/feed", "/feed"). */

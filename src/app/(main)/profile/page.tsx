@@ -12,7 +12,12 @@ import WatchlistWidget from "@/components/profile/WatchlistWidget";
 import NotificationSettings from "@/components/profile/NotificationSettings";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
+import dynamic from "next/dynamic";
+import { useAppUi } from "@/components/app/useAppUi";
 import { isTerminalSite } from "@/lib/site-mode";
+
+// the app UI's profile tab is loaded only inside the app (the browser's page below never pays for it)
+const AppProfile = dynamic(() => import("@/components/app/profile/AppProfile"), { ssr: false });
 
 // terminal.fomo.spot: the tabs «Финансы», «Мои идеи», «Комнаты» and the social part of the profile are not part of the copy
 const TERMINAL = isTerminalSite();
@@ -35,6 +40,15 @@ interface EducationRecord {
 
 export default function MyProfilePage() {
   const { t } = useT();
+  const appUi = useAppUi();
+  // the Android app (and the ?appui=1 preview) draws its own profile screens; every other browser keeps the page below
+  if (appUi) {
+    return (
+      <Suspense fallback={<div className="text-center py-8">{t("common.loading")}</div>}>
+        <AppProfile />
+      </Suspense>
+    );
+  }
   return (
     <Suspense fallback={<div className="text-center py-8">{t("common.loading")}</div>}>
       <ProfileContent />

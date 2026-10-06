@@ -1,0 +1,112 @@
+/*
+ * App-only «Профиль» tab: the design's profile screen (hero card, «Как пользоваться», grouped lists) and the screens pushed from it
+ * (профиль, финансы, каналы и подписки, мои идеи, комнаты, безопасность, уведомления, приложение). A copy of the "FOMO iOS" prototype's
+ * `me` / `profile` / `finance` / ... list screens: every number is the prototype's inline style, colours come from the --app-* tokens that
+ * mirror its CSS variables (app.css). The rows, sections and the pushed-screen bar are the chat's (`ac-*`, app-chat.css). Everything hangs
+ * on `html.app-ui`, so the ordinary site and the PWA never see it.
+ */
+
+/* the screens are edge to edge: <main> keeps the dock clearance, the screens bring their own paddings */
+html.app-ui.app-prof-on main { padding: 0 0 var(--app-bottom-inset); max-width: none; display: block; }
+
+html.app-ui .ap { min-height: 100%; }
+
+/* ---------- hero card (the design's L.hdr) ---------- */
+html.app-ui .ap-hero { margin: 6px 16px 18px; padding: 16px; background: var(--app-card); border: var(--app-gb); border-radius: 16px; display: flex; flex-direction: column; gap: 14px; }
+html.app-ui .ap-hero-top { display: flex; align-items: center; gap: 14px; }
+html.app-ui .ap-ava { width: 60px; height: 60px; border-radius: 50%; background: var(--app-card2); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex: none; color: var(--app-tx2); overflow: hidden; }
+html.app-ui .ap-ava img { width: 100%; height: 100%; object-fit: cover; }
+html.app-ui .ap-hero-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+html.app-ui .ap-hero-name { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+html.app-ui .ap-hero-handle { font-size: 14px; color: var(--app-tx2); overflow-wrap: anywhere; }
+html.app-ui .ap-hero-line { font-size: 13px; color: var(--app-tx2); overflow-wrap: anywhere; }
+html.app-ui .ap-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+html.app-ui .ap-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; border-radius: 10px; background: var(--app-card2); min-width: 0; }
+html.app-ui .ap-stat-v { font-size: 17px; font-weight: 700; }
+html.app-ui .ap-stat-l { font-size: 12px; color: var(--app-tx2); }
+html.app-ui .ap-hero-btns { display: flex; gap: 8px; }
+html.app-ui .ap-hero-btn { flex: 1; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; background: var(--app-card2); color: var(--app-tx); cursor: pointer; }
+html.app-ui .ap-hero-btn:active { background: var(--app-press); }
+
+/* «Как пользоваться» */
+html.app-ui .ap-cta { margin: 0 16px 22px; height: 46px; border-radius: 12px; background: var(--app-green); color: #fff; display: flex; align-items: center; padding: 0 14px; gap: 10px; font-size: 16px; font-weight: 700; cursor: pointer; width: calc(100% - 32px); box-sizing: border-box; text-align: left; }
+html.app-ui .ap-cta > span { flex: 1; }
+html.app-ui .ap-cta:active { opacity: 0.9; }
+
+/* sign-in card of a guest */
+html.app-ui .ap-guest { margin: 12px 16px 18px; padding: 20px 16px; background: var(--app-card); border: var(--app-gb); border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+html.app-ui .ap-guest-t { font-size: 17px; font-weight: 600; }
+html.app-ui .ap-guest .ap-primary { width: 100%; }
+
+/* ---------- row extras (the design's R()) ---------- */
+html.app-ui .ap-badge { min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: var(--app-red); color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
+html.app-ui .ap-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+html.app-ui .ap-chip { padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: transparent; color: var(--app-tx2); border: 1px solid var(--app-line); cursor: pointer; user-select: none; -webkit-user-select: none; }
+html.app-ui .ap-chip[data-on="1"] { background: var(--app-green-bg); color: var(--app-green-tx); border-color: transparent; }
+html.app-ui .ap-chip[data-locked="1"] { opacity: 0.5; cursor: default; }
+html.app-ui .ap-inl { width: 120px; border: none; background: transparent; text-align: right; font-size: 16px; color: var(--app-tx); padding: 0; flex: none; }
+html.app-ui .ac-sr[data-disabled="1"] { opacity: 0.45; }
+html.app-ui .ac-sfield[data-mono="1"] { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.02em; }
+html.app-ui .ac-sfield-area { resize: none; font-family: inherit; line-height: 1.35; padding-top: 4px; }
+html.app-ui .ac-sr-label[data-wrap="1"] { overflow-wrap: anywhere; }
+html.app-ui .ac-sr-sub[data-err="1"] { color: var(--app-red); }
+html.app-ui .ac-sr-sub[data-ok="1"] { color: var(--app-green-tx); }
+html.app-ui .ac-act[data-tone="primary"] { background: var(--app-green); color: #fff; }
+html.app-ui .ac-act[data-off="1"] { opacity: 0.5; pointer-events: none; }
+
+/* status pill inside a row sub-line (the finance rows) */
+html.app-ui .ap-pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--app-card2); color: var(--app-tx2); vertical-align: 1px; margin-left: 6px; }
+html.app-ui .ap-pill[data-s="ok"] { background: var(--app-green-bg); color: var(--app-green-tx); }
+html.app-ui .ap-pill[data-s="wait"] { background: rgba(234, 179, 8, 0.16); color: #b58105; }
+html.app-ui.dark .ap-pill[data-s="wait"] { color: #eab308; }
+html.app-ui .ap-pill[data-s="no"] { background: rgba(229, 33, 46, 0.12); color: var(--app-red); }
+
+/* big action button at the foot of a form (the sheet's .ac-sbtn, but inside the page) */
+html.app-ui .ap-primary { margin: 4px 16px 24px; height: 50px; border-radius: 14px; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; cursor: pointer; width: calc(100% - 32px); box-sizing: border-box; }
+html.app-ui .ap-primary:disabled { background: var(--app-card2); color: var(--app-tx3); }
+html.app-ui .ap-msg { margin: -12px 16px 22px; padding: 0 16px; font-size: 14px; text-align: center; color: var(--app-green-tx); }
+html.app-ui .ap-msg[data-err="1"] { color: var(--app-red); }
+html.app-ui .ap-note { font-size: 13px; color: var(--app-tx2); line-height: 1.4; padding: 0 16px; }
+html.app-ui .ap-loading { padding: 40px 20px; text-align: center; color: var(--app-tx2); font-size: 15px; }
+html.app-ui .ap-navright { justify-self: end; display: flex; align-items: center; gap: 2px; }
+html.app-ui .ap-navbtn { min-width: 36px; height: 36px; padding: 0 8px; display: flex; align-items: center; justify-content: center; color: var(--app-green-tx); font-size: 17px; font-weight: 600; cursor: pointer; }
+html.app-ui .ap-navbtn[disabled] { color: var(--app-tx3); }
+
+/* avatar editor row of «Профиль» */
+html.app-ui .ap-photo { display: flex; justify-content: center; padding: 6px 0 16px; }
+html.app-ui .ap-photo .ap-ava { width: 72px; height: 72px; font-size: 28px; }
+html.app-ui .ap-qr { width: 72px; height: 72px; border-radius: 10px; border: 1px solid var(--app-line); object-fit: contain; background: #fff; flex: none; }
+html.app-ui .ap-qr-empty { width: 72px; height: 72px; border-radius: 10px; border: 2px dashed var(--app-line); display: flex; align-items: center; justify-content: center; color: var(--app-tx3); flex: none; }
+
+/* theme / text size / language pickers use the sheet; the text-size row shows the current A */
+html.app-ui .ap-fzline { display: flex; align-items: center; gap: 2px; }
+
+/* skin for the existing profile widgets that are shown as they are (the notification channel cards, the watchlist, the telegram bot ...):
+   cards = the design's cards, buttons / inputs = its green and grey, no site shadows */
+html.app-ui .ap-skin { margin: 0 16px 24px; color: var(--app-tx); line-height: normal; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+html.app-ui .ap-skin .shadow,
+html.app-ui .ap-skin .shadow-sm { box-shadow: none; }
+html.app-ui .ap-skin section,
+html.app-ui .ap-skin article { background: var(--app-card); border: var(--app-gb); border-radius: 14px; }
+html.app-ui .ap-skin article { background: var(--app-card2); border: none; }
+html.app-ui .ap-skin h2,
+html.app-ui .ap-skin h3 { color: var(--app-tx); }
+html.app-ui .ap-skin :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { background: var(--app-card2); color: var(--app-tx); border: 1px solid var(--app-line); border-radius: 10px; font-size: 16px; }
+html.app-ui .ap-skin .bg-green-600 { background: var(--app-green); }
+html.app-ui .ap-skin .text-green-600,
+html.app-ui .ap-skin .text-green-700 { color: var(--app-green-tx); }
+html.app-ui .ap-skin button { cursor: pointer; }
+html.app-ui .ap-skin .opacity-0 { opacity: 1; }
+html.app-ui .ap-skin .group-hover\:opacity-100 { opacity: 1; }
+
+/* «Скачать приложение»: the label and the platform icons as links (shared/DownloadApps.tsx, variant "profile") */
+html.app-ui .ap-dl-links { display: flex; align-items: center; margin-right: -6px; flex: none; }
+html.app-ui .ap-dl-link { width: 32px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--app-tx2); background: none; border: 0; padding: 0; cursor: pointer; }
+html.app-ui .ap-dl-link:active { background: var(--app-press); }
+
+/* long action labels wrap onto a second line of buttons instead of overflowing the row */
+html.app-ui .ac-acts { flex-wrap: wrap; }
+html.app-ui .ac-act { white-space: nowrap; }
+/* the channel cards bring their own heading and description: the screen's uppercase section title replaces them */
+html.app-ui .ap-skin #ns-channels-title,
+html.app-ui .ap-skin #ns-channels-title + p { display: none; }

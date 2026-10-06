@@ -91,18 +91,20 @@ export function DownloadAppsBlock({ isDark, className = "" }: { isDark: boolean;
   );
 }
 
-type RowVariant = "dropdown" | "plain" | "app";
+type RowVariant = "dropdown" | "plain" | "app" | "profile";
 
 const ROW_CLASS: Record<RowVariant, string> = {
   // the dropdown is narrow: the label gets a line of its own and the icons sit under it
   dropdown: "flex flex-col items-start gap-0.5 px-4 pt-2 pb-1 text-sm text-gray-700 dark:text-gray-300",
   plain: "flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300",
   app: "app-row app-dl",
+  profile: "",
 };
 const ICON_LINK_CLASS: Record<RowVariant, string> = {
   dropdown: "inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-green-600",
   plain: "inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-green-600",
   app: "app-dl-link",
+  profile: "ap-dl-link",
 };
 
 /** One compact row for the profile menus: «Скачать приложение» + the platform icons as links. */
@@ -116,6 +118,39 @@ export function DownloadAppsRow({ variant, onNavigate }: { variant: RowVariant; 
     if (onNavigate) setTimeout(onNavigate, 200);
   };
   const order = platformOrder(env.own);
+
+  // the design's list row of the app UI's Профиль screen (its own markup: the row sits inside a section box)
+  if (variant === "profile") {
+    return (
+      <div className="ac-sr ap-dl" data-dl-row="1">
+        <div className="ac-sr-ico" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <path d="m7 10 5 5 5-5" />
+            <path d="M12 15V3" />
+          </svg>
+        </div>
+        <div className="ac-sr-body">
+          <div className="ac-sr-txt">
+            <div className="ac-sr-label">{t("dl.title")}</div>
+          </div>
+          <span className="ap-dl-links">
+            {order.map((p: DlPlatform) =>
+              p === "ios" ? (
+                <button key={p} type="button" className={ICON_LINK_CLASS[variant]} aria-label={t(NAME_KEY[p])} title={t(NAME_KEY[p])} onClick={() => openIosSteps()}>
+                  <PlatformIcon platform={p} size={20} />
+                </button>
+              ) : (
+                <a key={p} href={DL_PATHS[p]} download={DL_FILE_NAMES[p]} className={ICON_LINK_CLASS[variant]} aria-label={t(NAME_KEY[p])} title={t(NAME_KEY[p])}>
+                  <PlatformIcon platform={p} size={20} />
+                </a>
+              )
+            )}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={ROW_CLASS[variant]} data-dl-row="1">

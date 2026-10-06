@@ -24,10 +24,10 @@ html.app-ui .ac {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-html.app-ui .ac :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
-html.app-ui .ac :where(input) { font: inherit; color: inherit; outline: none; }
+html.app-ui .ac :where(button:not(.ap-skin *)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+html.app-ui .ac :where(input:not(.ap-skin *)) { font: inherit; color: inherit; outline: none; }
 html.app-ui .ac input::placeholder { color: var(--app-tx3); }
-html.app-ui .ac a { color: inherit; text-decoration: none; }
+html.app-ui .ac a:not(.ap-skin *) { color: inherit; text-decoration: none; }
 
 /* ---------- list screen ---------- */
 html.app-ui .ac-list { padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 14px; animation: acPush 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -84,7 +84,8 @@ html.app-ui .ac-sr { display: flex; align-items: center; gap: 12px; padding-left
 html.app-ui button.ac-sr { cursor: pointer; }
 html.app-ui button.ac-sr:active { background: var(--app-press); }
 html.app-ui .ac-sr-ico { width: 30px; height: 30px; border-radius: 8px; background: var(--app-card2); color: var(--app-tx); display: flex; align-items: center; justify-content: center; flex: none; font-size: 16px; }
-html.app-ui .ac-sr-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 14px 11px 0; border-bottom: 0.5px solid var(--app-line); min-height: 22px; }
+/* content-box like the prototype (it has no border-box reset): the 22px minimum is the height of the CONTENT, so a plain row is 45px */
+html.app-ui .ac-sr-body { box-sizing: content-box; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 14px 11px 0; border-bottom: 0.5px solid var(--app-line); min-height: 22px; }
 html.app-ui .ac-secbox > :last-child .ac-sr-body { border-bottom: none; }
 html.app-ui .ac-sr-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 html.app-ui .ac-sr-label { font-size: 16px; line-height: 1.3; }

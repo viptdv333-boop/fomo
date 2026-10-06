@@ -11,7 +11,7 @@ import {
   validatePaymentLink,
 } from "@/lib/payment-link";
 
-interface PaymentMethod {
+export interface PaymentMethod {
   id: string;
   type: string;
   label: string;
@@ -19,7 +19,7 @@ interface PaymentMethod {
   isDefault: boolean;
 }
 
-const TYPE_ICONS: Record<string, string> = {
+export const TYPE_ICONS: Record<string, string> = {
   card: "💳",
   yukassa: "🏦",
   crypto: "₿",
@@ -27,7 +27,7 @@ const TYPE_ICONS: Record<string, string> = {
   link: "🔗",
 };
 
-const TYPE_LABELS: Record<string, string> = {
+export const TYPE_LABELS: Record<string, string> = {
   card: "pay.pmCard",
   yukassa: "ЮKassa",
   crypto: "pay.pmCryptoWallet",
@@ -36,12 +36,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 /** Only ever put a re-validated https URL into href (legacy / hand-edited rows included). */
-function safeLinkUrl(u: unknown): string | null {
+export function safeLinkUrl(u: unknown): string | null {
   const r = validatePaymentLink(u);
   return r.ok ? r.url : null;
 }
 
-function detectCardType(num: string): string {
+export function detectCardType(num: string): string {
   const n = num.replace(/\s/g, "");
   if (/^2[0-9]{15}$/.test(n)) return "МИР";
   if (/^4[0-9]{12,18}$/.test(n)) return "Visa";
@@ -51,7 +51,7 @@ function detectCardType(num: string): string {
   return "";
 }
 
-function validateCardNumber(num: string): string | null {
+export function validateCardNumber(num: string): string | null {
   const clean = num.replace(/[\s-]/g, "");
   if (!/^\d+$/.test(clean)) return "pay.cardOnlyDigits";
   if (clean.length < 13) return "pay.cardMin13";
@@ -69,7 +69,7 @@ function validateCardNumber(num: string): string | null {
   return null;
 }
 
-function formatCardInput(val: string): string {
+export function formatCardInput(val: string): string {
   const clean = val.replace(/\D/g, "").slice(0, 19);
   return clean.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
 }

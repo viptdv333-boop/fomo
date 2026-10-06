@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import AppIcon from "../AppIcon";
 
@@ -18,9 +18,19 @@ export interface SheetRow {
   chev?: boolean;
   /** the design's switch (51x31): on / off, tapping the row calls onClick */
   toggle?: boolean;
-  actions?: { label: string; tone?: "danger"; onClick: () => void }[];
-  field?: { value: string; ph: string; onChange: (v: string) => void; maxLength?: number };
+  actions?: { label: string; tone?: "danger" | "primary"; onClick: () => void }[];
+  field?: { value: string; ph: string; onChange: (v: string) => void; maxLength?: number; type?: string; inputMode?: "text" | "numeric" | "decimal" | "email" | "url" | "tel"; autoComplete?: string; multiline?: boolean; mono?: boolean };
   onClick?: () => void;
+  /** profile screens: red pill (the «Финансы» row), colour / weight of the value, dimmed row, the design's channel chips, an input at the right (calculator-style), free content under the label */
+  badge?: string | number;
+  valueColor?: string;
+  valueWeight?: number;
+  disabled?: boolean;
+  chips?: { key: string; label: string; on: boolean; locked?: boolean; onClick?: () => void }[];
+  inline?: { value: string; ph: string; onChange: (v: string) => void; inputMode?: "text" | "numeric" | "decimal"; type?: string };
+  extra?: ReactNode;
+  /** a complete custom row (its own `ac-sr` markup) instead of the generated one; may render nothing */
+  node?: ReactNode;
 }
 
 export interface SheetSection {
@@ -35,6 +45,7 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
   return (
     <div className="ac-secbox">
       {rows.map((r) => {
+        if (r.node !== undefined) return <Fragment key={r.key}>{r.node}</Fragment>;
         const body = (
           <>
             {r.icon !== undefined && r.icon !== null && (
@@ -48,9 +59,13 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
                   {r.label}
                 </div>
                 {r.sub ? <div className="ac-sr-sub">{r.sub}</div> : null}
-                {r.field && (
+                {r.field && !r.field.multiline && (
                   <input
                     className="ac-sfield"
+                    data-mono={r.field.mono ? "1" : undefined}
+                    type={r.field.type}
+                    inputMode={r.field.inputMode}
+                    autoComplete={r.field.autoComplete}
                     value={r.field.value}
                     placeholder={r.field.ph}
                     maxLength={r.field.maxLength}
@@ -58,6 +73,46 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
                     onClick={(e) => e.stopPropagation()}
                   />
                 )}
+                {r.field && r.field.multiline && (
+                  <textarea
+                    className="ac-sfield ac-sfield-area"
+                    rows={3}
+                    value={r.field.value}
+                    placeholder={r.field.ph}
+                    maxLength={r.field.maxLength}
+                    onChange={(e) => r.field!.onChange(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
+                {r.chips && (
+                  <div className="ap-chips">
+                    {r.chips.map((c) => (
+                      <span
+                        key={c.key}
+                        role="button"
+                        tabIndex={c.locked ? -1 : 0}
+                        aria-pressed={c.on}
+                        className="ap-chip"
+                        data-on={c.on ? "1" : undefined}
+                        data-locked={c.locked ? "1" : undefined}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!c.locked) c.onClick?.();
+                        }}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === " ") && !c.locked) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            c.onClick?.();
+                          }
+                        }}
+                      >
+                        {c.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {r.extra}
                 {r.actions && (
                   <div className="ac-acts">
                     {r.actions.map((a) => (
@@ -85,7 +140,23 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
                   </div>
                 )}
               </div>
-              {r.value ? <div className="ac-sr-val">{r.value}</div> : null}
+              {r.inline && (
+                <input
+                  className="ap-inl"
+                  type={r.inline.type}
+                  inputMode={r.inline.inputMode}
+                  value={r.inline.value}
+                  placeholder={r.inline.ph}
+                  onChange={(e) => r.inline!.onChange(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+              {r.value ? (
+                <div className="ac-sr-val" style={{ color: r.valueColor, fontWeight: r.valueWeight }}>
+                  {r.value}
+                </div>
+              ) : null}
+              {r.badge !== undefined && r.badge !== "" && r.badge !== 0 ? <div className="ap-badge">{r.badge}</div> : null}
               {r.toggle !== undefined && (
                 <div className="ac-tg" data-on={r.toggle ? "1" : undefined} role="switch" aria-checked={r.toggle}>
                   <div />
@@ -104,12 +175,12 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
             </div>
           </>
         );
-        return r.onClick ? (
+        return r.onClick && !r.disabled ? (
           <button key={r.key} type="button" className="ac-sr" onClick={r.onClick}>
             {body}
           </button>
         ) : (
-          <div key={r.key} className="ac-sr">
+          <div key={r.key} className="ac-sr" data-disabled={r.disabled ? "1" : undefined}>
             {body}
           </div>
         );
@@ -124,7 +195,7 @@ export function Sections({ sections }: { sections: SheetSection[] }) {
       {sections.map((s) => (
         <div key={s.key} className="ac-sec">
           {s.title ? <div className="ac-sectitle">{s.title}</div> : null}
-          <SectionBox rows={s.rows} />
+          {s.rows.length > 0 && <SectionBox rows={s.rows} />}
           {s.footer ? <div className="ac-secfoot">{s.footer}</div> : null}
         </div>
       ))}

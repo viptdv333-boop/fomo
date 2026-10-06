@@ -44,6 +44,23 @@ import {
 } from "../src/lib/app-chat";
 import { APP_UI_BOOT_SCRIPT, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
 import {
+  avatarInitial,
+  countValue,
+  heroLine,
+  ideaSubLine,
+  minToTime,
+  notifEventsFor,
+  parseProfileScreen,
+  pendingSalesCount,
+  profileHref,
+  quietTimeOptions,
+  quietZones,
+  ratingLabel,
+  specLabels as profileSpecLabels,
+  timeToMin,
+  SPECIALIZATIONS,
+} from "../src/lib/app-profile";
+import {
   authorPath,
   authorPodium,
   authorSubline,
@@ -443,8 +460,37 @@ eq("receipt: images up to 10 MB", [receiptProblem({ type: "image/png", size: 100
 
 // --- the channel / author screens carry their own bar; the forms of the old site keep the header
 eq("header hidden: channels list, a channel, authors list, an author, a user page", ["/channels", "/en/channels", "/channels/c1", "/channels/some-slug", "/authors", "/authors/nevrotrader", "/zh/profile/u1"].map(appHeaderHidden), [true, true, true, true, true, true, true]);
-eq("header shown: create / edit forms, own profile, deeper paths", ["/channels/create", "/channels/edit", "/channels/edit/c1", "/profile", "/en/profile", "/profile/u1/x", "/channelsx", "/authorsx"].map(appHeaderHidden), [false, false, false, false, false, false, false, false]);
+eq("header shown: create / edit forms, deeper paths", ["/channels/create", "/channels/edit", "/channels/edit/c1", "/profile/u1/x", "/channelsx", "/authorsx"].map(appHeaderHidden), [false, false, false, false, false, false]);
 eq("dock: a user's page lights «Авторы», the own profile stays «Профиль»", [activeAppTab("/profile/u1"), activeAppTab("/en/profile/u1"), activeAppTab("/profile"), activeAppTab("/authors/x"), activeAppTab("/channels/c1")], ["authors", "authors", "me", "authors", "channels"]);
+}
+
+// --- the Профиль tab: the design's profile screen and the screens pushed from it
+{
+  eq("profile: the own profile and the subscriptions page have their own bar (no compact header)", ["/profile", "/en/profile", "/zh/profile", "/subscriptions", "/en/subscriptions"].map(appHeaderHidden), [true, true, true, true, true]);
+  eq("profile: the dock lights «Профиль» for /profile, /payments, /subscriptions", [activeAppTab("/profile"), activeAppTab("/payments"), activeAppTab("/subscriptions"), activeAppTab("/en/profile")], ["me", "me", "me", "me"]);
+  eq("screens: ?tab= of the old page keeps opening the same thing", ["profile", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"].map((tab) => parseProfileScreen("/profile", tab)), ["edit", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"]);
+  eq("screens: no tab / junk / prototype keys fall back to the list", [parseProfileScreen("/profile", null), parseProfileScreen("/profile", ""), parseProfileScreen("/profile", "nope"), parseProfileScreen("/profile", "constructor"), parseProfileScreen("/profile", ["finance"])], ["home", "home", "home", "home", "home"]);
+  eq("screens: /subscriptions is the channels-and-subscriptions screen, locale prefix ignored", [parseProfileScreen("/subscriptions", null), parseProfileScreen("/en/subscriptions", "finance"), parseProfileScreen("/zh/profile", "ideas")], ["subs", "subs", "ideas"]);
+  eq("screens: urls (locale, tab, the ?appui preview flag rides along)", [profileHref("ru", "home"), profileHref("ru", "finance"), profileHref("en", "edit"), profileHref("cn", "notifications", { appui: "1" }), profileHref("ru", "home", { appui: "1" }), profileHref("ru", "subs", { appui: "" })], ["/profile", "/profile?tab=finance", "/en/profile?tab=profile", "/zh/profile?tab=notifications&appui=1", "/profile?appui=1", "/profile?tab=subs"]);
+  eq(
+    "screens: url -> screen round-trips for every screen",
+    (["edit", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"] as const).map((sc) => parseProfileScreen("/profile", new URLSearchParams(profileHref("ru", sc).split("?")[1]).get("tab"))),
+    ["edit", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"],
+  );
+  eq("hero: third line joins the non-empty parts with a dot", [heroLine(["Фьючерсы, сырьё", "Москва", "8 лет"]), heroLine(["", null, "Москва"]), heroLine([undefined, "  ", ""]), heroLine([" Трейдер ", "Казань"])], ["Фьючерсы, сырьё · Москва · 8 лет", "Москва", "", "Трейдер · Казань"]);
+  eq("hero: rating tile and avatar initial", [ratingLabel(6.4), ratingLabel("7.84"), ratingLabel(null), ratingLabel("abc"), avatarInitial("михаил"), avatarInitial("  "), avatarInitial(null)], ["★ 6.4", "★ 7.8", "★ 0.0", "★ 0.0", "М", "?", "?"]);
+  eq("specializations: labels in the form's order, unknown dropped", [profileSpecLabels(["algotrader", "trader", "x"], (k) => k.replace("profile2.spec", "")), profileSpecLabels(null, (k) => k), SPECIALIZATIONS.map((s) => s.value)], [["Trader", "Algotrader"], [], ["trader", "analyst", "investor", "scalper", "algotrader"]]);
+  eq("«Финансы» badge: pending sales that carry a receipt", [pendingSalesCount([{ status: "PENDING", receiptUrl: "u" }, { status: "PENDING", receiptUrl: null }, { status: "CONFIRMED", receiptUrl: "u" }, { status: "PENDING", receiptUrl: "v" }]), pendingSalesCount([]), pendingSalesCount(null)], [2, 0, 0]);
+  eq("row counters: 0 / junk show nothing", [countValue(4), countValue(0), countValue(-1), countValue(NaN), countValue("3"), countValue(2.9)], ["4", "", "", "", "", "2"]);
+  eq("idea sub line: votes, age, archive mark", [ideaSubLine(23, "2 ч", null), ideaSubLine(0, "только что", "в архиве"), ideaSubLine(NaN, "", null)], ["❤️ 23 · 2 ч", "❤️ 0 · только что · в архиве", "❤️ 0"]);
+  eq("quiet hours: minutes <-> HH:MM", [minToTime(0), minToTime(1380), minToTime(480), minToTime(1439), minToTime(-5), minToTime(1440), timeToMin("07:30"), timeToMin("24:00"), timeToMin("7:30"), timeToMin("23:59")], ["00:00", "23:00", "08:00", "23:59", "00:00", "00:00", 450, null, null, 1439]);
+  eq("quiet hours picker: every hour, plus the stored odd value in order", [quietTimeOptions(480).length, quietTimeOptions(485).includes(485), quietTimeOptions(485).indexOf(485), quietTimeOptions(485).length, quietTimeOptions(9999).length], [24, true, 9, 25, 24]);
+  eq("time zones: the stored zone is always offered", [quietZones("Europe/Moscow").includes("Europe/Moscow"), quietZones("Mars/Olympus")[0], quietZones(null).length > 20], [true, "Mars/Olympus", true]);
+  eq(
+    "notification settings on the terminal site: system + terminal alerts only",
+    [notifEventsFor(true, [{ id: "mention" }, { id: "system" }, { id: "price_alert" }, { id: "dm" }, { id: "line_alert" }, { id: "calendar_reminder" }]).map((e) => e.id), notifEventsFor(false, [{ id: "mention" }, { id: "system" }]).map((e) => e.id)],
+    [["system", "price_alert", "line_alert", "calendar_reminder"], ["mention", "system"]],
+  );
 }
 
 if (fails) {

@@ -843,30 +843,39 @@ export default function ChannelCards({
   api,
   reload,
   ownBot,
+  only,
 }: {
   data: SettingsResponse;
   api: NotifApi;
   reload: () => Promise<void>;
   /** the legacy TelegramAccount block (only shown to users who still have one), rendered under the Telegram card */
   ownBot?: React.ReactNode;
+  /** the app UI opens one channel's card in a sheet: only that card, without the section around it */
+  only?: ChannelId;
 }) {
   const { t } = useT();
   const st = (c: ExternalChannel) => data.channels.find((x) => x.channel === c)!;
   const common = (c: ExternalChannel) => ({ st: st(c), api, reload });
+  const show = (c: ChannelId) => !only || only === c;
+
+  const cards = (
+    <div className={only ? "grid gap-3" : "grid gap-3 md:grid-cols-2"}>
+      {show("webpush") && <WebPushCard data={data} api={api} reload={reload} />}
+      {show("email") && <EmailCard {...common("email")} accountEmail={data.accountEmail} />}
+      {show("telegram") && <TelegramCard {...common("telegram")} extra={ownBot} />}
+      {show("whatsapp") && <WhatsAppCard {...common("whatsapp")} />}
+      {show("max") && <DeepLinkCard {...common("max")} channel="max" openLabelKey="ns.btn.openMax" hintKey="ns.max.hint" />}
+      {show("vk") && <DeepLinkCard {...common("vk")} channel="vk" openLabelKey="ns.btn.openVk" hintKey="ns.vk.hint" />}
+      {show("webhook") && <WebhookCard {...common("webhook")} />}
+    </div>
+  );
+  if (only) return cards;
 
   return (
     <section className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 sm:p-6" aria-labelledby="ns-channels-title">
       <h3 id="ns-channels-title" className="text-lg font-bold dark:text-gray-100">{t("ns.channels.title")}</h3>
       <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">{t("ns.channels.desc")}</p>
-      <div className="grid gap-3 md:grid-cols-2">
-        <WebPushCard data={data} api={api} reload={reload} />
-        <EmailCard {...common("email")} accountEmail={data.accountEmail} />
-        <TelegramCard {...common("telegram")} extra={ownBot} />
-        <WhatsAppCard {...common("whatsapp")} />
-        <DeepLinkCard {...common("max")} channel="max" openLabelKey="ns.btn.openMax" hintKey="ns.max.hint" />
-        <DeepLinkCard {...common("vk")} channel="vk" openLabelKey="ns.btn.openVk" hintKey="ns.vk.hint" />
-        <WebhookCard {...common("webhook")} />
-      </div>
+      {cards}
     </section>
   );
 }
