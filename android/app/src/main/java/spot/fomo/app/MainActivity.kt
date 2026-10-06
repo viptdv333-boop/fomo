@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
@@ -84,6 +85,13 @@ class MainActivity : AppCompatActivity() {
     private var pendingWebPermission: PermissionRequest? = null
     private var pendingWebResources: List<String> = emptyList()
     private var webViewGone = false
+    private var clearHistoryOnFinish = false
+
+    // App lock (see AppLock / LockController). While locked, deep links and shares wait here until the owner unlocks.
+    private lateinit var authenticator: Authenticator
+    private lateinit var lock: LockController
+    private var deferredIntent: Intent? = null
+    private var deferredInitial = false
     private val themeRunnable = Runnable { readThemeColor() }
 
     private class DownloadRequest(val url: String, val userAgent: String?, val disposition: String?, val mime: String?)
@@ -106,7 +114,8 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        // The splash stays until the first page is drawn (but never longer than 2.5 s).
+        // The splash stays until the first page is drawn (but never longer than 2.5 s); a locked start shows the lock at once.
+        firstPageShown = AppLock.isLocked
         splash.setKeepOnScreenCondition { !firstPageShown }
         main.postDelayed({ firstPageShown = true }, 2500)
 
@@ -121,6 +130,10 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupRefresh()
         setupBack()
+
+        // Created last: the lock Back callback must be the most recently added one to take precedence over the page one.
+        authenticator = Authenticator(this)
+        lock = LockController(this, root, authenticator, restored = false) { onLockChanged(it) } // MainActivity handles rotation itself: always prompt
 
         PushBridge.onToken = { token -> runOnUiThread { webView.evaluateJavascript(Js.pushToken(token), null) } }
         PushBridge.fetchToken(this)
@@ -138,16 +151,20 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         FomoApplication.appVisible = true
+        applySettings()
     }
 
     override fun onResume() {
         super.onResume()
         if (!webViewGone) webView.onResume()
+        SecureWindow.update(this)
+        lock.onResume()
     }
 
     override fun onPause() {
         if (!webViewGone) webView.onPause()
         CookieManager.getInstance().flush() // keeps the session across app restarts
+        SecureWindow.update(this, pausing = true) // the recents thumbnail is taken as the app leaves
         super.onPause()
     }
 
@@ -168,6 +185,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        lock.onDestroy()
         PushBridge.onToken = null
         fileChooser.cancel()
         pendingWebPermission?.deny()
@@ -259,12 +277,23 @@ class MainActivity : AppCompatActivity() {
     // ---- intents: launcher, App Links, notification taps, Share ------------------------------------------------------
 
     private fun handleIntent(intent: Intent?, initial: Boolean) {
+        if (AppLock.isLocked) {
+            // Queue it: deep links, notification taps and shares are handled after the owner unlocks (onLockChanged).
+            if (intent != null) deferredIntent = intent
+            deferredInitial = deferredInitial || initial
+            return
+        }
         val base = BuildConfig.BASE_URL
         if (intent == null) {
             if (initial) loadUrl(base)
             return
         }
         when {
+            intent.getBooleanExtra(EXTRA_RESET_HOME, false) -> {
+                // after "Выйти из аккаунта" in the settings: back to the start page, without the old page in the history
+                clearHistoryOnFinish = true
+                loadUrl(base)
+            }
             ShareIntake.isShare(intent) -> handleShare(intent)
             intent.action == Intent.ACTION_VIEW && intent.data != null -> {
                 val url = intent.dataString
@@ -325,11 +354,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---- app lock and native settings --------------------------------------------------------------------------------
+
+    private fun onLockChanged(locked: Boolean) {
+        updateKeepScreenOn()
+        if (locked) return
+        if (deferredInitial || deferredIntent != null) {
+            val queued = deferredIntent
+            val initial = deferredInitial
+            deferredIntent = null
+            deferredInitial = false
+            handleIntent(queued, initial)
+        }
+    }
+
+    /** Settings that can change while the page is open (the settings screen is a separate activity). */
+    private fun applySettings() {
+        updateRefreshEnabled()
+        updateKeepScreenOn()
+        SecureWindow.update(this)
+    }
+
+    /** «Обновление страницы свайпом» AND the page allows it (not on the terminal / chats). */
+    private fun updateRefreshEnabled() {
+        if (!::refresh.isInitialized) return
+        refresh.isEnabled = !offlineShown && AppSettings.pullToRefresh(this) && UrlPolicy.pullToRefreshAllowed(currentUrl)
+    }
+
+    /** «Не гасить экран в терминале»: FLAG_KEEP_SCREEN_ON only on /terminal, only unlocked and only in the foreground. */
+    private fun updateKeepScreenOn() {
+        val keep = AppSettings.keepScreenOnInTerminal(this) && !AppLock.isLocked && UrlPolicy.isTerminal(currentUrl)
+        if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
     // ---- called by the helpers ---------------------------------------------------------------------------------------
 
-    fun launchFileChooser(intent: Intent) = fileChooserLauncher.launch(intent)
+    fun launchFileChooser(intent: Intent) {
+        AppLock.beginExternalFlow() // the picker / camera covers the app: do not lock for that
+        fileChooserLauncher.launch(intent)
+    }
 
-    fun requestCameraForChooser() = cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    fun requestCameraForChooser() {
+        AppLock.beginExternalFlow()
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
 
     fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
@@ -378,7 +447,7 @@ class MainActivity : AppCompatActivity() {
         if (!offlineShown) return
         offlineShown = false
         offline.visibility = View.GONE
-        refresh.isEnabled = UrlPolicy.pullToRefreshAllowed(currentUrl)
+        updateRefreshEnabled()
     }
 
     // ---- system bars follow the site's <meta name="theme-color"> -----------------------------------------------------
@@ -493,7 +562,8 @@ class MainActivity : AppCompatActivity() {
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             currentUrl = url
             pageCanScrollUp = false
-            if (!offlineShown) refresh.isEnabled = UrlPolicy.pullToRefreshAllowed(url)
+            updateRefreshEnabled()
+            updateKeepScreenOn()
             progress.visibility = View.VISIBLE
         }
 
@@ -503,6 +573,10 @@ class MainActivity : AppCompatActivity() {
             progress.visibility = View.GONE
             CookieManager.getInstance().flush()
             if (!offlineShown) firstPageShown = true
+            if (clearHistoryOnFinish && UrlPolicy.isTrusted(url)) {
+                clearHistoryOnFinish = false
+                view.clearHistory()
+            }
             if (!UrlPolicy.isTrusted(url)) return
 
             view.evaluateJavascript(Js.INSTALL_SCROLL_PROBE, null)
@@ -522,7 +596,8 @@ class MainActivity : AppCompatActivity() {
         /** Single-page navigations (history.pushState) do not reload the page but do change the URL. */
         override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
             currentUrl = url
-            if (!offlineShown) refresh.isEnabled = UrlPolicy.pullToRefreshAllowed(url)
+            updateRefreshEnabled()
+            updateKeepScreenOn()
             scheduleThemeColorRead()
         }
 
@@ -563,5 +638,10 @@ class MainActivity : AppCompatActivity() {
         override fun onPermissionRequestCanceled(request: PermissionRequest) {
             if (pendingWebPermission === request) pendingWebPermission = null
         }
+    }
+
+    companion object {
+        /** Intent extra from the settings screen after logout: reload the start page and drop the history. */
+        const val EXTRA_RESET_HOME = "spot.fomo.app.RESET_HOME"
     }
 }

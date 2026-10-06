@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.preference)
 
     // Push (stage 2). Works only with app/google-services.json; without it the app runs, just without push.
     implementation(platform(libs.firebase.bom))

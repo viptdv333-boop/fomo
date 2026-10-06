@@ -24,6 +24,10 @@ export const ru: Record<string, string> = {
   "profile.ideas": "Мои идеи",
   "profile.admin": "Панель управления",
   "profile.logout": "Выйти",
+  "app.settings": "Настройки приложения",
+  "app.settings.cardTitle": "Звук, вибрация и блокировка приложения — в настройках приложения",
+  "app.settings.cardDesc": "Мелодия и вибрация уведомлений по каналам, вход по отпечатку или PIN-коду, обновления.",
+  "app.settings.open": "Открыть настройки",
 
   // Feed
   "feed.title": "Доска",
@@ -148,6 +152,10 @@ export const en: Record<string, string> = {
   "profile.ideas": "My ideas",
   "profile.admin": "Admin Panel",
   "profile.logout": "Log out",
+  "app.settings": "App settings",
+  "app.settings.cardTitle": "Sound, vibration and app lock are in the app settings",
+  "app.settings.cardDesc": "Notification melody and vibration per channel, sign-in with fingerprint or PIN, updates.",
+  "app.settings.open": "Open settings",
 
   "feed.title": "Board",
   "feed.publish": "Post",
@@ -264,6 +272,10 @@ export const cn: Record<string, string> = {
   "profile.ideas": "我的想法",
   "profile.admin": "管理面板",
   "profile.logout": "退出",
+  "app.settings": "应用设置",
+  "app.settings.cardTitle": "提示音、振动和应用锁都在应用设置中",
+  "app.settings.cardDesc": "按频道设置通知铃声与振动，使用指纹或 PIN 码登录，检查更新。",
+  "app.settings.open": "打开设置",
 
   "feed.title": "主页",
   "feed.publish": "发布",

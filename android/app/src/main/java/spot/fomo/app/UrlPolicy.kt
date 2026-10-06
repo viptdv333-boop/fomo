@@ -50,9 +50,20 @@ object UrlPolicy {
 
     /** Pull-to-refresh fights with inner scrolling on these screens (chart gestures, message history, composers). */
     fun pullToRefreshAllowed(url: String?): Boolean {
-        val path = parse(url)?.path?.lowercase(Locale.ROOT) ?: return true
-        val p = path.replace(Regex("^/(en|cn|ru)(?=/|$)"), "")
+        val p = appPath(url) ?: return true
         return listOf("/terminal", "/chat", "/messages").none { p == it || p.startsWith("$it/") }
+    }
+
+    /** The terminal (charts): «Не гасить экран в терминале» applies while this is the current page. */
+    fun isTerminal(url: String?): Boolean {
+        val p = appPath(url) ?: return false
+        return p == "/terminal" || p.startsWith("/terminal/")
+    }
+
+    /** The lower-cased path of a page without the site's language prefix (/en, /cn, /ru), or null when it does not parse. */
+    private fun appPath(url: String?): String? {
+        val path = parse(url)?.path?.lowercase(Locale.ROOT) ?: return null
+        return path.replace(Regex("^/(en|cn|ru)(?=/|$)"), "")
     }
 
     /** Only the site (or its GitHub release downloads) may be offered as the APK update link: https, no user info. */

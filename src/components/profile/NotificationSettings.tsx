@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import { prefKey } from "@/lib/notification-events";
 import type { SettingsResponse } from "@/lib/notify-settings-types";
 import LegacyTelegramBlock from "@/components/profile/LegacyTelegramBlock";
+import NativeSettingsCard from "@/components/shared/NativeSettingsCard";
 import { realApi, type NotifApi } from "./notifications/api";
 import ChannelCards from "./notifications/ChannelCards";
 import PrefMatrix, { type Cell, type SaveState } from "./notifications/PrefMatrix";
@@ -141,6 +142,7 @@ export default function NotificationSettings({ api = realApi, showOwnBot = true 
         <h2 className="text-xl font-bold dark:text-gray-100">{t("ns.title")}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">{t("ns.subtitle")}</p>
       </div>
+      <NativeSettingsCard />
       <ChannelCards data={data} api={api} reload={reload} ownBot={showOwnBot ? <LegacyTelegramBlock /> : null} />
       <PrefMatrix data={data} overrides={overrides} onSetCells={onSetCells} onReset={onReset} saveState={saveState} />
       <TerminalNotifyCard />

@@ -1,6 +1,9 @@
 package spot.fomo.app
 
+import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.appcompat.app.AlertDialog
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -26,6 +29,38 @@ object UpdateChecker {
 
     class Info(val versionCode: Int, val versionName: String, val url: String)
 
+    /** Outcome of a manual check («Проверить обновление» in the settings screen). */
+    sealed interface Result {
+        data object UpToDate : Result
+        class Available(val info: Info) : Result
+        data object Failed : Result
+    }
+
+    /** Checks right now (ignores the 12 hour pause) and reports on the main thread. Does not touch the "Later" memory. */
+    fun checkNow(onResult: (Result) -> Unit) {
+        val main = Handler(Looper.getMainLooper())
+        executor.execute {
+            val info = fetch()
+            val result = when {
+                info == null -> Result.Failed
+                info.versionCode > BuildConfig.VERSION_CODE -> Result.Available(info)
+                else -> Result.UpToDate
+            }
+            main.post { onResult(result) }
+        }
+    }
+
+    /** The "update available" dialog; «Скачать» opens the link in the browser, which downloads the APK. */
+    fun showDialog(activity: Activity, info: Info, onLater: (() -> Unit)? = null) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.update_title)
+            .setMessage(activity.getString(R.string.update_message, info.versionName))
+            .setPositiveButton(R.string.update_download) { _, _ -> ExternalLinks.open(activity, info.url) }
+            .setNegativeButton(R.string.update_later) { _, _ -> onLater?.invoke() }
+            .show()
+    }
+
     fun checkIfDue(activity: MainActivity) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
@@ -36,13 +71,7 @@ object UpdateChecker {
             if (info.versionCode <= BuildConfig.VERSION_CODE) return@execute
             if (prefs.getInt(KEY_DISMISSED, 0) >= info.versionCode) return@execute
             activity.runOnUiThread {
-                if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
-                AlertDialog.Builder(activity)
-                    .setTitle(R.string.update_title)
-                    .setMessage(activity.getString(R.string.update_message, info.versionName))
-                    .setPositiveButton(R.string.update_download) { _, _ -> ExternalLinks.open(activity, info.url) }
-                    .setNegativeButton(R.string.update_later) { _, _ -> prefs.edit().putInt(KEY_DISMISSED, info.versionCode).apply() }
-                    .show()
+                showDialog(activity, info) { prefs.edit().putInt(KEY_DISMISSED, info.versionCode).apply() }
             }
         }
     }

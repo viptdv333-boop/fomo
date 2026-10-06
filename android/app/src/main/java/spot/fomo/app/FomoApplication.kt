@@ -7,6 +7,8 @@ class FomoApplication : Application() {
         super.onCreate()
         // Channels must exist before a background FCM notification message arrives, so they are created at process start.
         Notifications.createChannels(this)
+        // Lock state: the app starts locked when the app lock is on, and re-locks after the configured time in the background.
+        AppLock.init(this)
     }
 
     companion object {

@@ -1,6 +1,10 @@
 /* Android-app glue on the site side: native payload -> File, name hygiene, share detail, event wiring.
    Run: npx tsx scripts/check-native-app.ts   (exit code 1 on a failed assertion) */
 import {
+  canOpenNativeSettings,
+  nativeAppFeatures,
+  openNativeSettings,
+  parseAppFeatures,
   NATIVE_MAX_BYTES,
   NATIVE_MAX_FILES,
   base64ToBytes,
@@ -83,6 +87,28 @@ async function main() {
   doc.dispatchEvent(new CustomEvent("fomo-native-share", { detail: {} })); // nothing to share: ignored
   off2();
   eq("live share event", shares, ["pending", "live"]);
+
+  // --- native settings / app features (feature detection must never throw and must be false outside the app)
+  const full = JSON.stringify({ schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true });
+  eq("features parsed", parseAppFeatures(full), { schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true });
+  eq("features: junk -> null", [parseAppFeatures(""), parseAppFeatures("nope"), parseAppFeatures("[1]"), parseAppFeatures("null"), parseAppFeatures(5), parseAppFeatures(undefined)], [null, null, null, null, null, null]);
+  eq("features: too long -> null", parseAppFeatures("{" + " ".repeat(5000) + "}"), null);
+  eq("features: missing / wrong-typed fields are false", parseAppFeatures('{"settings":"yes","appLock":1}')?.settings, false);
+  eq("features: only strict true counts", parseAppFeatures('{"settings":true}')?.settings, true);
+  eq("no bridge -> no native settings", [canOpenNativeSettings(), openNativeSettings(), nativeAppFeatures()], [false, false, null]);
+  const win = (globalThis as unknown as { window: { FomoApp?: unknown } }).window;
+  win.FomoApp = { appVersion: () => "0.9" }; // an old app build without openSettings: entry stays hidden
+  eq("old app build -> hidden", [canOpenNativeSettings(), openNativeSettings()], [false, false]);
+  let opened = 0;
+  win.FomoApp = { openSettings: () => { opened++; } }; // new bridge without appFeatures: trust openSettings
+  eq("openSettings only -> available", [canOpenNativeSettings(), openNativeSettings(), opened], [true, true, 1]);
+  win.FomoApp = { openSettings: () => { opened++; }, appFeatures: () => '{"settings":false}' };
+  eq("features say no settings -> hidden", canOpenNativeSettings(), false);
+  win.FomoApp = { openSettings: () => { opened++; }, appFeatures: () => full };
+  eq("features say settings -> available", canOpenNativeSettings(), true);
+  win.FomoApp = { openSettings: () => { throw new Error("boom"); }, appFeatures: () => { throw new Error("boom"); } };
+  eq("throwing bridge never throws", [nativeAppFeatures(), openNativeSettings()], [null, false]);
+  delete win.FomoApp;
 
   console.log(fails ? `\n${fails} FAILED` : "\nall passed");
   process.exit(fails ? 1 : 0);

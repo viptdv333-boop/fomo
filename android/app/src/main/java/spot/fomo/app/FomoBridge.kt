@@ -1,7 +1,9 @@
 package spot.fomo.app
 
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.webkit.JavascriptInterface
+import org.json.JSONObject
 
 /**
  * `window.FomoApp` in the page. Every method first checks that the page currently shown is the trusted site
@@ -46,15 +48,47 @@ class FomoBridge(private val activity: MainActivity) {
         activity.runOnUiThread { ExternalLinks.share(activity, t, u) }
     }
 
+    /** Honours «Вибро-отклик» in the app settings. */
     @JavascriptInterface
     fun haptic() {
-        if (!trusted()) return
+        if (!trusted() || !AppSettings.haptic(activity)) return
         activity.runOnUiThread { activity.webView.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK) }
     }
 
     /** The Firebase token of this device, or "" (no google-services.json, Play services missing, not fetched yet). */
     @JavascriptInterface
     fun getPushToken(): String = if (trusted()) PushBridge.token(activity) else ""
+
+    /** Opens the native settings screen of the app (lock, notification sound per channel, behaviour, updates, logout). */
+    @JavascriptInterface
+    fun openSettings() {
+        if (!trusted() || AppLock.isLocked) return
+        activity.runOnUiThread { SettingsActivity.open(activity) }
+    }
+
+    /** Is the biometric / PIN app lock switched on (and enforceable on this device)? Says nothing about the secret. */
+    @JavascriptInterface
+    fun lockEnabled(): Boolean = trusted() && AppLock.enforced()
+
+    /**
+     * What this build of the app can do, so the site can show entries only for what exists:
+     * `{"schema":1,"versionName":"1.0.0","versionCode":1,"settings":true,"appLock":true,"lockEnabled":false,
+     * "notificationChannels":true,"updateCheck":true}`. `appLock` = the device can ask for a biometric / PIN.
+     */
+    @JavascriptInterface
+    fun appFeatures(): String {
+        if (!trusted()) return ""
+        return JSONObject()
+            .put("schema", 1)
+            .put("versionName", BuildConfig.VERSION_NAME)
+            .put("versionCode", BuildConfig.VERSION_CODE)
+            .put("settings", true)
+            .put("appLock", Authenticator.isAvailable(activity))
+            .put("lockEnabled", AppLock.enforced())
+            .put("notificationChannels", Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            .put("updateCheck", true)
+            .toString()
+    }
 
     /** Android 13+: shows the system "allow notifications" dialog once; no-op elsewhere or when already decided. */
     @JavascriptInterface

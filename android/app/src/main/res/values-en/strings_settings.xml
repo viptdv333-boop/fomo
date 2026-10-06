@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+
+    <!-- lock screen / prompt -->
+    <string name="lock_title">App locked</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_prompt_title">Unlock FOMO</string>
+    <string name="lock_prompt_subtitle">Fingerprint, face or the device PIN / password</string>
+    <string name="lock_use_pin">Use PIN</string>
+    <string name="lock_locked_out">Too many attempts. Wait a moment or enter the device PIN, password or pattern.</string>
+    <string name="lock_error">Could not verify. Tap Unlock to try again.</string>
+    <string name="lock_unavailable_disabled">The device no longer has a screen lock or biometrics — the app lock was turned off</string>
+
+    <!-- settings screen -->
+    <string name="settings_title">App settings</string>
+
+    <string name="settings_security">Security</string>
+    <string name="settings_lock">App lock</string>
+    <string name="settings_lock_summary">Sign in with fingerprint, face or the device PIN / password / pattern</string>
+    <string name="settings_lock_unavailable">Not available: this device has no screen lock. Set a PIN, password, pattern or fingerprint in Android settings.</string>
+    <string name="settings_lock_timeout">Ask for it</string>
+    <string name="settings_hide_content">Hide content in recent apps and screenshots</string>
+    <string name="settings_hide_content_summary">Blocks screenshots and screen recording; the window is black in the recent apps list</string>
+    <string name="lock_enable_title">Turn on the lock</string>
+    <string name="lock_disable_title">Turn off the lock</string>
+    <string name="lock_confirm_subtitle">Confirm it is you</string>
+    <string name="lock_enabled_toast">Lock turned on</string>
+    <string name="lock_disabled_toast">Lock turned off</string>
+
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notif_permission">Notification permission</string>
+    <string name="settings_notif_on">Allowed. Tap to open the system settings</string>
+    <string name="settings_notif_off">Not allowed. Tap to allow</string>
+    <string name="settings_channels_hint">Pick the melody, vibration and importance for each kind of notification separately, in the system channel screen</string>
+    <string name="channel_summary">Importance: %1$s · Sound: %2$s · Vibration: %3$s</string>
+    <string name="channel_summary_off">Channel is off. Tap to turn it on</string>
+    <string name="channel_summary_legacy">Configured in the system notification settings of the app</string>
+    <string name="channel_summary_missing">Channel not created yet</string>
+    <string name="importance_low">low</string>
+    <string name="importance_default">default</string>
+    <string name="importance_high">high</string>
+    <string name="sound_off">off</string>
+    <string name="sound_on">on</string>
+    <string name="vibration_on">on</string>
+    <string name="vibration_off">off</string>
+    <string name="settings_notif_test">Test notification</string>
+    <string name="settings_notif_test_summary">Arrives on the Terminal alerts channel — check the sound and vibration</string>
+    <string name="settings_notif_test_disabled">Notifications are off — allow them first</string>
+    <string name="settings_notif_test_channel_off">The Terminal alerts channel is off — turn it on in the channel settings</string>
+    <string name="test_notification_title">FOMO: notification check</string>
+    <string name="test_notification_body">This is what a terminal alert looks like. Change the sound and vibration in the channel settings.</string>
+    <string name="settings_notif_site">Per-event and per-channel settings</string>
+    <string name="settings_notif_site_summary">Which events go where, quiet hours — on the site</string>
+
+    <string name="settings_behavior">Behavior</string>
+    <string name="settings_pull_refresh">Pull to refresh</string>
+    <string name="settings_pull_refresh_summary">Pull the page down to reload it (not on the terminal and chats)</string>
+    <string name="settings_keep_screen">Keep the screen on in the terminal</string>
+    <string name="settings_keep_screen_summary">The screen stays on while the chart terminal is open</string>
+    <string name="settings_haptic">Haptic feedback</string>
+    <string name="settings_haptic_summary">A short vibration for some actions on the site</string>
+
+    <string name="settings_data">Updates and data</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_check_update">Check for updates</string>
+    <string name="settings_check_update_summary">Compare with the latest version on the site</string>
+    <string name="settings_checking">Checking…</string>
+    <string name="settings_up_to_date">You have the latest version</string>
+    <string name="settings_update_available">Version %1$s is available</string>
+    <string name="settings_update_failed">Could not check — no connection or the server is unavailable</string>
+    <string name="settings_clear_cache">Clear cache</string>
+    <string name="settings_clear_cache_summary">Removes temporary page files and camera photos. You stay signed in</string>
+    <string name="settings_cache_cleared">Cache cleared</string>
+    <string name="settings_logout">Sign out</string>
+    <string name="settings_logout_summary">Removes the sign-in and site data on this device</string>
+    <string name="settings_logout_confirm_title">Sign out?</string>
+    <string name="settings_logout_confirm_message">The sign-in and the saved site data will be removed from this device. Notifications to this phone stop until you sign in again.</string>
+    <string name="settings_logout_confirm_yes">Sign out</string>
+    <string name="settings_about">About the app</string>
+    <string name="settings_about_message">FOMO %1$s (%2$s)\n\nSite: %3$s\nSupport and help are on the site, in the Help section.</string>
+    <string name="settings_about_site">Open the site</string>
+    <string name="settings_close">Close</string>
+
+    <string-array name="lock_timeout_entries">
+        <item>Right after leaving the app</item>
+        <item>After 1 minute</item>
+        <item>After 5 minutes</item>
+        <item>After 15 minutes</item>
+    </string-array>
+    <string-array name="lock_timeout_values">
+        <item>0</item>
+        <item>1</item>
+        <item>5</item>
+        <item>15</item>
+    </string-array>
+</resources>

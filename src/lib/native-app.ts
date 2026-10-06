@@ -13,6 +13,11 @@ export interface FomoBridge {
   haptic?: () => void;
   getPushToken?: () => string;
   requestNotificationPermission?: () => void;
+  /** Opens the native settings screen of the app (app build 1.0.0+ with the settings screen). */
+  openSettings?: () => void;
+  lockEnabled?: () => boolean;
+  /** JSON string, see parseAppFeatures. */
+  appFeatures?: () => string;
 }
 
 /** One file as the app serialises it: base64 without the data: prefix. */
@@ -221,4 +226,78 @@ export function onNativePushToken(cb: (token: string) => void): () => void {
   };
   document.addEventListener(NATIVE_PUSH_TOKEN_EVENT, h);
   return () => document.removeEventListener(NATIVE_PUSH_TOKEN_EVENT, h);
+}
+
+// ---------------------------------------------------------------------------
+// Native settings screen / app lock (feature-detected: older app builds and browsers simply do not have them).
+// ---------------------------------------------------------------------------
+
+/** What the installed app build can do: the JSON of FomoApp.appFeatures(). */
+export interface NativeFeatures {
+  schema: number;
+  versionName: string;
+  versionCode: number;
+  /** The native settings screen exists (FomoApp.openSettings). */
+  settings: boolean;
+  /** The device can ask for a biometric / PIN, so the app lock can be switched on. */
+  appLock: boolean;
+  /** The app lock is switched on right now. */
+  lockEnabled: boolean;
+  /** Android 8+: sound / vibration are set per notification channel. */
+  notificationChannels: boolean;
+  updateCheck: boolean;
+}
+
+/** Tolerant parser of FomoApp.appFeatures(): null for anything that is not a JSON object; missing fields become false / "". */
+export function parseAppFeatures(raw: unknown): NativeFeatures | null {
+  if (typeof raw !== "string" || !raw || raw.length > 4096) return null;
+  let o: unknown;
+  try {
+    o = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+  const d = o as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 40) : "");
+  return {
+    schema: num(d.schema),
+    versionName: str(d.versionName),
+    versionCode: num(d.versionCode),
+    settings: d.settings === true,
+    appLock: d.appLock === true,
+    lockEnabled: d.lockEnabled === true,
+    notificationChannels: d.notificationChannels === true,
+    updateCheck: d.updateCheck === true,
+  };
+}
+
+/** Capabilities of the installed app build, or null outside the app / in a build without appFeatures(). */
+export function nativeAppFeatures(): NativeFeatures | null {
+  const b = nativeBridge();
+  try {
+    return b && typeof b.appFeatures === "function" ? parseAppFeatures(b.appFeatures()) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True only inside an app build that has the native settings screen. Always false in a browser or PWA. */
+export function canOpenNativeSettings(): boolean {
+  const b = nativeBridge();
+  if (!b || typeof b.openSettings !== "function") return false;
+  const f = nativeAppFeatures();
+  return f ? f.settings : true;
+}
+
+/** Opens the native settings screen; false when there is none (nothing happens then). */
+export function openNativeSettings(): boolean {
+  if (!canOpenNativeSettings()) return false;
+  try {
+    nativeBridge()?.openSettings?.();
+    return true;
+  } catch {
+    return false;
+  }
 }

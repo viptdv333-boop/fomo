@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cancel">Отмена</string>
+    <string name="ok">ОК</string>
+
+    <!-- lock screen / prompt -->
+    <string name="lock_title">Приложение заблокировано</string>
+    <string name="lock_unlock">Разблокировать</string>
+    <string name="lock_prompt_title">Разблокировать FOMO</string>
+    <string name="lock_prompt_subtitle">Отпечаток, лицо или код-пароль устройства</string>
+    <string name="lock_use_pin">Ввести PIN-код</string>
+    <string name="lock_locked_out">Слишком много попыток. Подождите немного или введите PIN-код, пароль или графический ключ устройства.</string>
+    <string name="lock_error">Не удалось проверить. Нажмите «Разблокировать» ещё раз.</string>
+    <string name="lock_unavailable_disabled">На устройстве больше нет блокировки экрана или биометрии — блокировка приложения отключена</string>
+
+    <!-- settings screen -->
+    <string name="settings_title">Настройки приложения</string>
+
+    <string name="settings_security">Безопасность</string>
+    <string name="settings_lock">Блокировка приложения</string>
+    <string name="settings_lock_summary">Вход по отпечатку, лицу или PIN-коду / паролю / графическому ключу устройства</string>
+    <string name="settings_lock_unavailable">Недоступно: на устройстве не настроена блокировка экрана. Задайте PIN-код, пароль, графический ключ или отпечаток в настройках Android.</string>
+    <string name="settings_lock_timeout">Запрашивать</string>
+    <string name="settings_hide_content">Скрывать содержимое в списке приложений и на скриншотах</string>
+    <string name="settings_hide_content_summary">Блокирует снимки экрана и запись экрана, в списке недавних приложений окно чёрное</string>
+    <string name="lock_enable_title">Включить блокировку</string>
+    <string name="lock_disable_title">Выключить блокировку</string>
+    <string name="lock_confirm_subtitle">Подтвердите, что это вы</string>
+    <string name="lock_enabled_toast">Блокировка включена</string>
+    <string name="lock_disabled_toast">Блокировка выключена</string>
+
+    <string name="settings_notifications">Уведомления</string>
+    <string name="settings_notif_permission">Разрешение на уведомления</string>
+    <string name="settings_notif_on">Разрешены. Нажмите, чтобы открыть системные настройки</string>
+    <string name="settings_notif_off">Запрещены. Нажмите, чтобы разрешить</string>
+    <string name="settings_channels_hint">Мелодию, вибрацию и важность выбирайте для каждого типа уведомлений отдельно — в системном экране канала</string>
+    <string name="channel_summary">Важность: %1$s · Звук: %2$s · Вибрация: %3$s</string>
+    <string name="channel_summary_off">Канал выключен. Нажмите, чтобы включить</string>
+    <string name="channel_summary_legacy">Настраивается в системных настройках уведомлений приложения</string>
+    <string name="channel_summary_missing">Канал ещё не создан</string>
+    <string name="importance_low">низкая</string>
+    <string name="importance_default">обычная</string>
+    <string name="importance_high">высокая</string>
+    <string name="sound_off">выкл</string>
+    <string name="sound_on">вкл</string>
+    <string name="vibration_on">вкл</string>
+    <string name="vibration_off">выкл</string>
+    <string name="settings_notif_test">Тестовое уведомление</string>
+    <string name="settings_notif_test_summary">Придёт на канал «Алерты терминала» — проверьте звук и вибрацию</string>
+    <string name="settings_notif_test_disabled">Уведомления отключены — сначала разрешите их</string>
+    <string name="settings_notif_test_channel_off">Канал «Алерты терминала» выключен — включите его в настройках канала</string>
+    <string name="test_notification_title">FOMO: проверка уведомлений</string>
+    <string name="test_notification_body">Так выглядит алерт терминала. Звук и вибрацию меняйте в настройках канала.</string>
+    <string name="settings_notif_site">Настройки по событиям и каналам</string>
+    <string name="settings_notif_site_summary">Какие события и куда присылать, тихие часы — на сайте</string>
+
+    <string name="settings_behavior">Поведение</string>
+    <string name="settings_pull_refresh">Обновление страницы свайпом</string>
+    <string name="settings_pull_refresh_summary">Потяните страницу вниз, чтобы обновить (не работает в терминале и чатах)</string>
+    <string name="settings_keep_screen">Не гасить экран в терминале</string>
+    <string name="settings_keep_screen_summary">Экран остаётся включённым, пока открыт терминал с графиками</string>
+    <string name="settings_haptic">Вибро-отклик</string>
+    <string name="settings_haptic_summary">Короткая вибрация при некоторых действиях на сайте</string>
+
+    <string name="settings_data">Обновления и данные</string>
+    <string name="settings_version">Версия</string>
+    <string name="settings_check_update">Проверить обновление</string>
+    <string name="settings_check_update_summary">Сравнить с последней версией на сайте</string>
+    <string name="settings_checking">Проверяем…</string>
+    <string name="settings_up_to_date">Установлена последняя версия</string>
+    <string name="settings_update_available">Доступна версия %1$s</string>
+    <string name="settings_update_failed">Не удалось проверить — нет соединения или сервер недоступен</string>
+    <string name="settings_clear_cache">Очистить кэш</string>
+    <string name="settings_clear_cache_summary">Удаляет временные файлы страниц и фото камеры. Вход сохраняется</string>
+    <string name="settings_cache_cleared">Кэш очищен</string>
+    <string name="settings_logout">Выйти из аккаунта</string>
+    <string name="settings_logout_summary">Удаляет вход и данные сайта на этом устройстве</string>
+    <string name="settings_logout_confirm_title">Выйти из аккаунта?</string>
+    <string name="settings_logout_confirm_message">На этом устройстве будут удалены вход и сохранённые данные сайта. Уведомления на этот телефон приходить перестанут, пока вы не войдёте снова.</string>
+    <string name="settings_logout_confirm_yes">Выйти</string>
+    <string name="settings_about">О приложении</string>
+    <string name="settings_about_message">FOMO %1$s (%2$s)\n\nСайт: %3$s\nПоддержка и помощь — на сайте, раздел «Помощь».</string>
+    <string name="settings_about_site">Открыть сайт</string>
+    <string name="settings_close">Закрыть</string>
+
+    <string-array name="lock_timeout_entries">
+        <item>Сразу после ухода в фон</item>
+        <item>Через 1 минуту</item>
+        <item>Через 5 минут</item>
+        <item>Через 15 минут</item>
+    </string-array>
+    <string-array name="lock_timeout_values">
+        <item>0</item>
+        <item>1</item>
+        <item>5</item>
+        <item>15</item>
+    </string-array>
+</resources>

@@ -94,6 +94,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Native settings: opened from the page (FomoApp.openSettings) and from inside the app only. -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title"
+            android:theme="@style/Theme.Fomo" />
+
         <!-- Firebase Cloud Messaging: not exported to other apps, the system reaches it through the MESSAGING_EVENT action. -->
         <service
             android:name=".FcmService"

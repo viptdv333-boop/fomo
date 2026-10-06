@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native settings screen. Keys and defaults mirror SettingsSpec.kt (SettingsSpecTest checks that they agree). -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/settings_security">
+
+        <!-- Switching it needs a successful biometric / PIN prompt, so the change is applied from code (SettingsFragment). -->
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="lock_enabled"
+            app:summary="@string/settings_lock_summary"
+            app:title="@string/settings_lock" />
+
+        <ListPreference
+            app:defaultValue="1"
+            app:dependency="lock_enabled"
+            app:dialogTitle="@string/settings_lock_timeout"
+            app:entries="@array/lock_timeout_entries"
+            app:entryValues="@array/lock_timeout_values"
+            app:iconSpaceReserved="false"
+            app:key="lock_timeout"
+            app:title="@string/settings_lock_timeout"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="hide_content"
+            app:summary="@string/settings_hide_content_summary"
+            app:title="@string/settings_hide_content" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/settings_notifications">
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="notif_permission"
+            app:title="@string/settings_notif_permission" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="notif_channels_hint"
+            app:selectable="false"
+            app:summary="@string/settings_channels_hint" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="ch_messages"
+            app:title="@string/channel_messages" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="ch_terminal"
+            app:title="@string/channel_terminal" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="ch_calendar"
+            app:title="@string/channel_calendar" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="ch_general"
+            app:title="@string/channel_general" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="notif_test"
+            app:summary="@string/settings_notif_test_summary"
+            app:title="@string/settings_notif_test" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="notif_site"
+            app:summary="@string/settings_notif_site_summary"
+            app:title="@string/settings_notif_site" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/settings_behavior">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="pull_to_refresh"
+            app:summary="@string/settings_pull_refresh_summary"
+            app:title="@string/settings_pull_refresh" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="keep_screen_on_terminal"
+            app:summary="@string/settings_keep_screen_summary"
+            app:title="@string/settings_keep_screen" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="haptic_feedback"
+            app:summary="@string/settings_haptic_summary"
+            app:title="@string/settings_haptic" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/settings_data">
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="app_version"
+            app:selectable="false"
+            app:title="@string/settings_version" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="check_update"
+            app:summary="@string/settings_check_update_summary"
+            app:title="@string/settings_check_update" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="clear_cache"
+            app:summary="@string/settings_clear_cache_summary"
+            app:title="@string/settings_clear_cache" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="logout"
+            app:summary="@string/settings_logout_summary"
+            app:title="@string/settings_logout" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="about"
+            app:title="@string/settings_about" />
+    </PreferenceCategory>
+</PreferenceScreen>

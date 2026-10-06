@@ -4,6 +4,8 @@
         <item name="android:windowBackground">@color/fomo_bg</item>
         <item name="colorPrimary">@color/fomo_green</item>
         <item name="colorAccent">@color/fomo_green</item>
+        <!-- androidx.preference (the settings screen) refuses to start without it -->
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
     </style>
 
     <!-- Splash (androidx.core:core-splashscreen): brand colour + wordmark, then the activity switches to Theme.Fomo. -->

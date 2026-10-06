@@ -6,6 +6,8 @@ webkit = "1.14.0"
 swiperefreshlayout = "1.1.0"
 splashscreen = "1.0.1"
 browser = "1.9.0"
+biometric = "1.1.0"
+preference = "1.2.1"
 firebaseBom = "34.4.0"
 googleServices = "4.4.4"
 junit = "4.13.2"
@@ -16,6 +18,8 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }

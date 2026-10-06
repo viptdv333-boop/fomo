@@ -14,6 +14,7 @@ import { ensurePushSubscription } from "@/lib/push-client";
 import InstallAppButton from "@/components/shared/InstallAppButton";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
 import { unregisterNativePush } from "@/lib/native-push";
+import NativeSettingsLink from "@/components/shared/NativeSettingsLink";
 
 // initialHiddenPages comes from the server so a switched-off page is never in the first HTML
 // (otherwise its link flashed in the menu until the settings fetch finished).
@@ -168,6 +169,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
                       {t("profile.notifications")}
                     </Link>
+                    <NativeSettingsLink onNavigate={() => setProfileOpen(false)} />
                     <Link href="/payments" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                       {t("profile.finance")}
@@ -271,6 +273,10 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                   <Link href="/subscriptions" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.subscriptions")}</Link>
                   <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.profile")}</Link>
                   <Link href="/profile?tab=notifications" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.notifications")}</Link>
+                  <NativeSettingsLink
+                    onNavigate={() => setMenuOpen(false)}
+                    className="block w-full text-left py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600"
+                  />
                   <Link href="/profile?tab=finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600">{t("profile.finance")}</Link>
                   <InstallAppButton
                     variant="menuItem"
