@@ -1,0 +1,66 @@
+import type { SectionDict } from "./types";
+
+// "Download the app": the block under the login on the landing page, the row in the profile menus and the iPhone steps
+// (src/components/shared/DownloadApps.tsx, IosInstallModal.tsx). Versions and sizes are never written here: they come
+// from public/app/dl-info.json (src/lib/downloads.ts).
+const dict: SectionDict = {
+  ru: {
+    "dl.title": "Скачать приложение",
+    "dl.android": "Android · APK",
+    "dl.windows": "Windows · .exe",
+    "dl.ios": "iPhone · iOS",
+    "dl.androidName": "Android (APK)",
+    "dl.windowsName": "Windows (установщик .exe)",
+    "dl.iosName": "iPhone (как установить)",
+    "dl.yours": "Ваше устройство",
+    "dl.hint.android": "Разрешите установку из этого источника",
+    "dl.hint.windows": "Установщик без подписи: Windows может показать предупреждение — «Подробнее → Выполнить в любом случае»",
+    "dl.hint.ios": "Не App Store: сайт добавляется на экран «Домой»",
+    "dl.ios.title": "Как установить на iPhone",
+    "dl.ios.step1": "Откройте fomo.spot в Safari",
+    "dl.ios.step2": "Нажмите «Поделиться» (квадрат со стрелкой вверх)",
+    "dl.ios.step3": "Выберите «На экран «Домой»» и нажмите «Добавить»",
+    "dl.ios.note": "Файла для скачивания на iPhone нет: FOMO ставится как веб-приложение и появляется на экране иконкой. Push-уведомления работают на iOS 16.4 и новее — и только если открывать FOMO с этой иконки, а не из Safari.",
+    "dl.ios.notSafari": "Сейчас сайт открыт не в Safari. Если пункта «На экран «Домой»» нет, скопируйте ссылку fomo.spot и откройте её в Safari.",
+  },
+  en: {
+    "dl.title": "Download the app",
+    "dl.android": "Android · APK",
+    "dl.windows": "Windows · .exe",
+    "dl.ios": "iPhone · iOS",
+    "dl.androidName": "Android (APK)",
+    "dl.windowsName": "Windows (.exe installer)",
+    "dl.iosName": "iPhone (how to install)",
+    "dl.yours": "Your device",
+    "dl.hint.android": "Allow installing from this source when asked",
+    "dl.hint.windows": "The installer is unsigned: Windows may show a warning — click \"More info → Run anyway\"",
+    "dl.hint.ios": "Not the App Store: the site is added to your Home Screen",
+    "dl.ios.title": "How to install on iPhone",
+    "dl.ios.step1": "Open fomo.spot in Safari",
+    "dl.ios.step2": "Tap the Share button (a square with an up arrow)",
+    "dl.ios.step3": "Choose \"Add to Home Screen\" and tap \"Add\"",
+    "dl.ios.note": "There is no file to download on iPhone: FOMO installs as a web app and appears on your screen as an icon. Push notifications need iOS 16.4 or newer, and only work when you open FOMO from that icon rather than from Safari.",
+    "dl.ios.notSafari": "This page isn't open in Safari. If you don't see \"Add to Home Screen\", copy the fomo.spot link and open it in Safari.",
+  },
+  cn: {
+    "dl.title": "下载应用",
+    "dl.android": "Android · APK",
+    "dl.windows": "Windows · .exe",
+    "dl.ios": "iPhone · iOS",
+    "dl.androidName": "Android（APK）",
+    "dl.windowsName": "Windows（.exe 安装程序）",
+    "dl.iosName": "iPhone（安装方法）",
+    "dl.yours": "您的设备",
+    "dl.hint.android": "请在提示时允许从此来源安装",
+    "dl.hint.windows": "安装程序未签名：Windows 可能会显示警告——点击“更多信息 → 仍要运行”",
+    "dl.hint.ios": "不通过 App Store：将网站添加到主屏幕",
+    "dl.ios.title": "如何在 iPhone 上安装",
+    "dl.ios.step1": "在 Safari 中打开 fomo.spot",
+    "dl.ios.step2": "点击“共享”按钮（带向上箭头的方框）",
+    "dl.ios.step3": "选择“添加到主屏幕”，然后点击“添加”",
+    "dl.ios.note": "iPhone 上没有可下载的文件：FOMO 以网页应用的方式安装，并在屏幕上显示为图标。推送通知需要 iOS 16.4 或更高版本，并且只有从该图标打开 FOMO（而不是从 Safari 打开）时才有效。",
+    "dl.ios.notSafari": "当前页面未在 Safari 中打开。如果没有“添加到主屏幕”选项，请复制 fomo.spot 链接并在 Safari 中打开。",
+  },
+};
+
+export default dict;

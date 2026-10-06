@@ -62,6 +62,17 @@ export function isNativeApp(): boolean {
   return typeof navigator !== "undefined" && /\bFomoApp\//.test(navigator.userAgent);
 }
 
+/** True inside the Windows desktop app (desktop/): its shell adds " FomoDesktop/<version> Windows" to the user agent. */
+export function isDesktopApp(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /\bFomoDesktop\//.test(navigator.userAgent);
+}
+
+/** True inside either shell (the Android app or the Windows desktop app): nothing to install or download there. */
+export function isAnyNativeShell(): boolean {
+  return isNativeApp() || isDesktopApp();
+}
+
 function stamp(now: number): string {
   const d = new Date(now);
   const p = (n: number) => String(n).padStart(2, "0");

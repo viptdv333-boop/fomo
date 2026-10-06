@@ -1,6 +1,6 @@
 "use client";
 
-import { isNativeApp } from "@/lib/native-app";
+import { isAnyNativeShell } from "@/lib/native-app";
 
 // Module-level singleton: `beforeinstallprompt` fires once per page load and
 // only to listeners already attached at that moment. Capturing it here (as
@@ -31,8 +31,8 @@ if (typeof window !== "undefined") {
 
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
-  // inside the Android app (android/) there is nothing to install
-  if (isNativeApp()) return true;
+  // inside the Android app (android/) or the Windows desktop app (desktop/) there is nothing to install
+  if (isAnyNativeShell()) return true;
   return (
     installed ||
     window.matchMedia("(display-mode: standalone)").matches ||

@@ -17,6 +17,8 @@
 Версии Android Gradle Plugin (9.0.1) и Gradle (9.2.1) — те же, что в ваших проектах в `AndroidStudioProjects`.
 Зависимости: androidx (core, appcompat, webkit, swiperefreshlayout, core-splashscreen, browser, biometric, preference) и Firebase Messaging.
 
+Как APK попадает на сайт (кнопки «Скачать приложение», `/app/dl/FOMO.apk`) — см. [docs/downloads.md](../docs/downloads.md).
+
 ## Содержимое папки
 
 ```

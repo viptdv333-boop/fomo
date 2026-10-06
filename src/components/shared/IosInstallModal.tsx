@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import { closeIosSteps, isIosStepsOpen, isIOSNonSafari, subscribePwaInstall } from "@/lib/pwa-install";
 
 // Mounted once in the root layout; opened via openIosSteps() from any
-// "Установить приложение" button, including ones inside menus.
+// "Установить приложение" button and from the iPhone icon of the "Скачать приложение" block, including ones inside menus.
 export default function IosInstallModal() {
   const [open, setOpen] = useState(false);
   const { t } = useT();
@@ -23,16 +23,16 @@ export default function IosInstallModal() {
         className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-sm w-full p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t("common.ios.title")}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t("dl.ios.title")}</h3>
         <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <li>{t("common.ios.step1")}</li>
-          <li>{t("common.ios.step2")}</li>
-          <li>{t("common.ios.step3")}</li>
-          <li>{t("common.ios.step4")}</li>
+          <li>{t("dl.ios.step1")}</li>
+          <li>{t("dl.ios.step2")}</li>
+          <li>{t("dl.ios.step3")}</li>
         </ol>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{t("dl.ios.note")}</p>
         {isIOSNonSafari() && (
           <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-            {t("common.ios.notSafari")}
+            {t("dl.ios.notSafari")}
           </p>
         )}
         <button

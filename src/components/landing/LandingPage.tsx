@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
 import InstallAppButton from "@/components/shared/InstallAppButton";
+import { DownloadAppsBlock } from "@/components/shared/DownloadApps";
 import { useT } from "@/lib/i18n/client";
 
 function useCountUp(end: number, duration: number = 1500, start: boolean = false) {
@@ -165,6 +166,11 @@ export default function LandingPage() {
           >
             {t("common.landing.howTo")}
           </a>
+        </div>
+
+        {/* Download the app: Android APK / Windows installer / iPhone steps (hidden inside the native apps) */}
+        <div className={`download-block mt-6 ${loginVisible ? "visible" : ""}`}>
+          <DownloadAppsBlock isDark={isDark} />
         </div>
 
         {/* Install app */}

@@ -50,3 +50,10 @@ package-lock.json
 /android/app/build/
 *.jks
 *.keystore
+
+# Downloads (APK / Windows installer): published to the orphan branch `downloads`, the server checks it out here (docs/downloads.md)
+/public/app/dl/
+
+# Windows desktop app (desktop/): dependencies and build output
+/desktop/node_modules/
+/desktop/dist/

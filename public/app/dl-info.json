@@ -1,0 +1,12 @@
+{
+    "android":  {
+                    "version":  "1.0.0",
+                    "versionCode":  1,
+                    "size":  1596856
+                },
+    "windows":  {
+                    "version":  "1.0.0",
+                    "size":  94224205
+                },
+    "updated":  "2026-10-06T13:05:26Z"
+}

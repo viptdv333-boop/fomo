@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
-import { isNativeApp } from "@/lib/native-app";
+import { isAnyNativeShell } from "@/lib/native-app";
 
 // WebAPKs minted before the manifest icon fix (2026-09-14) silently drop
 // every push notification — the only cure is reinstalling the app. Installs
@@ -18,8 +18,8 @@ export default function PwaBanners() {
   const [showSteps, setShowSteps] = useState(false);
 
   useEffect(() => {
-    // the Android app (android/) is not a PWA: no install prompt, no "reinstall the PWA" notice
-    if (isNativeApp()) return;
+    // the Android app (android/) and the Windows desktop app (desktop/) are not PWAs: no install prompt, no "reinstall the PWA" notice
+    if (isAnyNativeShell()) return;
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
 
     if (standalone) {

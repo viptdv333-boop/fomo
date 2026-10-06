@@ -11,6 +11,7 @@ import { APP_FONT_STEPS, appHeaderHidden, type AppFontStep } from "@/lib/app-ui"
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import NotificationBell from "@/components/layout/NotificationBell";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
+import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import { useNativeSettingsAvailable } from "@/components/shared/NativeSettingsLink";
 import { openNativeSettings } from "@/lib/native-app";
 import AppIcon, { type AppIconName } from "./AppIcon";
@@ -161,6 +162,7 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <UpdateAppButton onNavigate={onClose} className="app-row" />
+            <DownloadAppsRow variant="app" onNavigate={onClose} />
           </div>
           {user && (user.role === "ADMIN" || user.role === "OWNER") && (
             <div className="app-group">

@@ -13,6 +13,7 @@ import { useT } from "@/lib/i18n/client";
 import { ensurePushSubscription } from "@/lib/push-client";
 import InstallAppButton from "@/components/shared/InstallAppButton";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
+import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import { unregisterNativePush } from "@/lib/native-push";
 import NativeSettingsLink from "@/components/shared/NativeSettingsLink";
 import { useAppUi } from "@/components/app/useAppUi";
@@ -179,6 +180,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                     </Link>
                     <InstallAppButton variant="menuItem" onNavigate={() => setProfileOpen(false)} />
                     <UpdateAppButton onNavigate={() => setProfileOpen(false)} />
+                    <DownloadAppsRow variant="dropdown" onNavigate={() => setProfileOpen(false)} />
 
                     <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
                       <button
@@ -290,6 +292,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                     onNavigate={() => setMenuOpen(false)}
                     className="block w-full text-left py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600"
                   />
+                  <DownloadAppsRow variant="plain" onNavigate={() => setMenuOpen(false)} />
                 </div>
               </div>
               {(user?.role === "ADMIN" || user?.role === "OWNER") && (
