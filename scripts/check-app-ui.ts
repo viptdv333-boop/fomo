@@ -10,6 +10,8 @@ import {
   parseFontStep,
   raisesKeyboard,
 } from "../src/lib/app-ui";
+import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
+import { isValidInterval } from "../src/lib/chart/intervals";
 import { APP_UI_BOOT_SCRIPT, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
 
 let fails = 0;
@@ -115,6 +117,34 @@ for (const s of scenarios) {
   eq(`boot script == resolveAppUi ${JSON.stringify(s)}`, runBoot(i), resolveAppUi(i).active);
 }
 eq("boot script has no backspace chars", APP_UI_BOOT_SCRIPT.includes("\b"), false);
+
+// --- Terminal screen helpers
+eq("terminal chips are the design's nine timeframes", APP_TERM_TFS, ["1", "5", "15", "30", "60", "240", "D", "W", "M"]);
+eq("every chip is a valid chart interval", APP_TERM_TFS.every(isValidInterval), true);
+eq("terminal ranges", APP_TERM_RANGES, ["1d", "5d", "1m", "3m", "6m", "ytd", "1y", "5y", "all"]);
+eq("pct up (en)", pctLabel(1.236, "en"), "+1.24%");
+eq("pct down (ru comma)", pctLabel(-0.4, "ru"), "-0,40%");
+eq("pct zero has no sign", pctLabel(0, "en"), "0.00%");
+eq("pct rounds to zero without a sign", pctLabel(-0.001, "en"), "0.00%");
+eq("pct junk", pctLabel(NaN, "ru"), "—");
+eq("pct undefined", pctLabel(undefined, "ru"), "—");
+eq("tone up", changeTone(0), "up");
+eq("tone down", changeTone(-0.01), "down");
+eq("tone unknown", changeTone(undefined), null);
+eq("board instrument: exact ticker, any case", pickBoardInstrument<{ id: string; ticker?: string | null }>([{ id: "1", ticker: "SBERP" }, { id: "2", ticker: "sber" }], "SBER")?.id, "2");
+eq("board instrument: none", pickBoardInstrument([{ id: "1", ticker: "GAZP" }], "SBER"), null);
+eq("board instrument: not a list", pickBoardInstrument({ error: "x" }, "SBER"), null);
+eq("board instrument: junk rows", pickBoardInstrument([null, 5, { id: 3, ticker: "SBER" }], "SBER"), null);
+eq("ideas link filtered (ru)", ideasHref("ru", "abc 1"), "/feed?instrumentId=abc%201");
+eq("ideas link filtered (en)", ideasHref("en", "x"), "/en/feed?instrumentId=x");
+eq("ideas link without instrument", ideasHref("cn", null), "/zh/feed");
+eq("ideas total", ideasTotal({ data: [], total: 7 }), 7);
+eq("ideas total missing", ideasTotal({ data: [] }), null);
+eq("ideas total junk", ideasTotal({ total: -1 }), null);
+eq("delay note: moex delayed", showDelayNote("moex", true, false), true);
+eq("delay note: moex guest", showDelayNote("moex", false, true), true);
+eq("delay note: moex realtime user", showDelayNote("moex", false, false), false);
+eq("delay note: crypto never", showDelayNote("bybit", true, true), false);
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

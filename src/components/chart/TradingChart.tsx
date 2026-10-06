@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { ChartEngine } from "@/lib/chart/engine";
 import { DARK_THEME, LIGHT_THEME, type Candle, type ChartType } from "@/lib/chart/types";
 import { formatPrice, intervalToMs } from "@/lib/chart/format";
@@ -30,6 +30,7 @@ import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
 import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
+import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
 import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
@@ -72,6 +73,12 @@ interface Props {
   /** Interval forced by the layout while intervals are synced. */
   syncInterval?: string | null;
   onIntervalChange?: (id: string) => void;
+  /** App-only terminal page: the page draws the top bar, the timeframe chips, the range row and the tool row itself, so the chart hides its own toolbar / bottom bar / phone nav. */
+  appPage?: boolean;
+  /** App-only terminal page: filled with the chart's actions (open indicators / alerts / settings ...). */
+  appHandle?: MutableRefObject<AppChartHandle | null>;
+  /** App-only terminal page: told about the interval, the data delay and the badge counts. */
+  onAppState?: (s: AppChartState) => void;
 }
 
 interface Prefs {
@@ -231,7 +238,7 @@ function bucketStartWall(nowWall: number, interval: string): number {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
@@ -526,9 +533,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    engine.setOptions(settingsToEngine(cs, siteDark));
+    const opts = settingsToEngine(cs, siteDark);
+    // app terminal page: the design's chart sits on the page background; a canvas colour the user chose themselves is kept
+    if (appPage && opts.theme && cs.preset === "classic" && cs.bgType === "solid" && !cs.colors.bg) opts.theme = { ...opts.theme, bg: siteDark ? "#0a0a0a" : "#f4f4f5" };
+    engine.setOptions(opts);
     setTransformBox(engine.getTransformBox());
-  }, [engineReady, cs, siteDark]);
+  }, [engineReady, cs, siteDark, appPage]);
 
   /* time zone of the axis and crosshair */
   useEffect(() => {
@@ -1333,6 +1343,27 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   };
 
   const panelVisible = isDesktop ? prefs.panelOpen : mobilePanel;
+  /* app-only terminal page: hand the page the chart's actions and keep it told about the interval / delay / badges */
+  if (appHandle) {
+    appHandle.current = {
+      setInterval: (id) => {
+        update({ interval: id });
+        onIntervalChange?.(id);
+      },
+      applyRange: (r) => void applyRange(r),
+      openSearch: () => setSearchOpen(true),
+      openAlerts: () => openAlerts(null),
+      openIndicators: () => setIndOpen(true),
+      openSettings: () => openSettings(),
+      toggleDrawTools: () => setToolsOpen((v) => !v),
+      openWatchlist: () => onTab("watchlist"),
+    };
+  }
+  const onAppStateRef = useRef(onAppState);
+  onAppStateRef.current = onAppState;
+  useEffect(() => {
+    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed });
+  }, [prefs.interval, candlesDelayed]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
@@ -1345,13 +1376,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       <div className={`relative flex flex-1 min-h-0 ${embedded ? "" : compact ? "md:gap-2" : "md:gap-2 md:p-2"}`}>
         {/* drawing tools (the toolbar is its own card; on a phone it is a drawer under the top toolbar) */}
         <div
-          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 top-[46px] md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
+          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 ${appPage ? "top-0" : "top-[46px]"} md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
         >
           <DrawingToolbar controller={drawings} />
         </div>
 
         {/* chart card */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
+      {!appPage && (
       <TopToolbar
         instrument={instrument}
         interval={prefs.interval}
@@ -1391,6 +1423,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenShortcuts={() => setShortcutsOpen(true)}
         extra={toolbarExtra}
       />
+      )}
 
           <div className="group relative flex-1 min-h-0">
             <div ref={hostRef} className="absolute inset-0" />
@@ -1399,7 +1432,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 <span className="inline-block w-6 h-6 border-2 border-[var(--tv3-hair)] border-t-[var(--tv3-accent)] rounded-full animate-spin" />
               </div>
             )}
-            {candlesDelayed && !loading && !empty && (
+            {candlesDelayed && !loading && !empty && !appPage && (
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>
                 {t("ap.delayed")}
               </div>
@@ -1458,6 +1491,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             )}
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
+          {!appPage && (
           <BottomBar
             source={source}
             autoScale={autoScale}
@@ -1474,7 +1508,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             onGoToDate={goToDate}
             gotoSignal={gotoSignal}
           />
-          {!embedded && !compact && (
+          )}
+          {!embedded && !compact && !appPage && (
             <nav className="md:hidden shrink-0 flex items-stretch border-t border-[var(--tv3-hair)] bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)]">
               {(
                 [
@@ -1517,6 +1552,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           calendarZone={resolveZone(cs.tz, source)}
           alertsApi={alertsApi}
           onOpenAlerts={() => openAlerts(null)}
+          appPage={appPage}
         />
         </div>
       </div>

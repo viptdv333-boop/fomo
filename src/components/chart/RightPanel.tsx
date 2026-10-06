@@ -66,7 +66,7 @@ const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
 
 /* ───────────── batch quotes ───────────── */
 
-function useBatchQuotes(instruments: TerminalInstrument[], enabled: boolean) {
+export function useBatchQuotes(instruments: TerminalInstrument[], enabled: boolean) {
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const itemsKey = useMemo(() => instruments.map(qKey).join(","), [instruments]);
 
@@ -284,7 +284,7 @@ const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.da
 const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
 const WL_SOURCES = ["moex", "bybit", "fmp", "forex"];
 
-function cleanWatchItems(raw: unknown): TerminalInstrument[] {
+export function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
   const out: TerminalInstrument[] = [];
@@ -306,7 +306,10 @@ function cleanWatchItems(raw: unknown): TerminalInstrument[] {
  * (same list on every device); guests keep it in this browser. The first time a signed-in user opens
  * the terminal, whatever they had collected in the browser is merged into the account list.
  */
-function useWatchlist() {
+/** Fired after one useWatchlist() instance changed the list: the others (the app terminal page and the side panel) re-read it. */
+const WL_EVENT = "fomo-watchlist-changed";
+
+export function useWatchlist() {
   const [items, setItems] = useState<TerminalInstrument[]>([]);
   const mode = useRef<"unknown" | "guest" | "user">("unknown");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -330,6 +333,12 @@ function useWatchlist() {
       local = cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]"));
     } catch {}
     setItems(local);
+    const onChanged = () => {
+      try {
+        setItems(cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]")));
+      } catch {}
+    };
+    window.addEventListener(WL_EVENT, onChanged);
 
     let cancelled = false;
     (async () => {
@@ -365,12 +374,16 @@ function useWatchlist() {
     })();
     return () => {
       cancelled = true;
+      window.removeEventListener(WL_EVENT, onChanged);
     };
   }, []);
 
   const commit = (next: TerminalInstrument[]) => {
     setItems(next);
     writeLocal(next);
+    try {
+      window.dispatchEvent(new Event(WL_EVENT));
+    } catch {}
     if (mode.current === "user") {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => push(next), 400);
@@ -724,9 +737,11 @@ interface Props {
   /** Alerts tab: the alerts state shared with the alerts dialog (without it the tab keeps its own) and the opener of the create form. */
   alertsApi?: AlertsApi;
   onOpenAlerts?: () => void;
+  /** App-only terminal page: the chart is a block inside a scrolling page, so the phone drawer is fixed to the screen instead of the chart block. */
+  appPage?: boolean;
 }
 
-export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone, alertsApi, onOpenAlerts }: Props) {
+export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone, alertsApi, onOpenAlerts, appPage }: Props) {
   const { t } = useT();
   const cat = categoryOf(selected);
 
@@ -743,9 +758,9 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
 
   return (
     <>
-      {mobileOpen && <div className="md:hidden absolute inset-0 z-40 bg-black/40" onClick={onCloseMobile} />}
+      {mobileOpen && <div className={`md:hidden ${appPage ? "fixed inset-0 z-[60]" : "absolute inset-0 z-40"} bg-black/40`} onClick={onCloseMobile} />}
       <aside
-        className={`${mobileOpen ? "flex" : "hidden"} md:flex absolute md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 z-50 md:z-auto shrink-0 h-[78%] md:h-full w-full md:w-auto md:gap-2 rounded-t-2xl md:rounded-none bg-[var(--tv3-card)] md:bg-transparent text-[var(--tv3-text)] shadow-2xl md:shadow-none pb-[env(safe-area-inset-bottom)] md:pb-0`}
+        className={`${mobileOpen ? "flex" : "hidden"} md:flex ${appPage ? "fixed z-[61] h-[78dvh]" : "absolute z-50 h-[78%]"} md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 md:z-auto shrink-0 md:h-full w-full md:w-auto md:gap-2 rounded-t-2xl md:rounded-none bg-[var(--tv3-card)] md:bg-transparent text-[var(--tv3-text)] shadow-2xl md:shadow-none pb-[env(safe-area-inset-bottom)] md:pb-0`}
       >
         {/* content */}
         <div className={`w-full md:w-[340px] flex-col min-h-0 min-w-0 flex md:rounded-2xl md:bg-[var(--tv3-card)] ${open ? "md:flex" : "md:hidden"}`}>

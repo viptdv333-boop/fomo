@@ -20,6 +20,8 @@ import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client"
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
 import { hasAccountHint, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
 import { KIND_LAST } from "@/lib/chart/sync-logic";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppTerminal from "@/components/app/AppTerminal";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -101,6 +103,7 @@ function instrumentFromUrl(): TerminalInstrument {
 
 export default function TerminalPage() {
   const { t } = useT();
+  const appUi = useAppUi();
   const [selected, setSelected] = useState<TerminalInstrument | null>(null);
   const [top, setTop] = useState(56);
 
@@ -166,6 +169,9 @@ export default function TerminalPage() {
       window.removeEventListener("resize", measure);
     };
   }, []);
+
+  // app-only UI (Android app / ?appui=1): the terminal is a scrolling page like the design; the symbol state stays here
+  if (appUi) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
 
   return (
     <div className="tv3 fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40 bg-[var(--tv3-canvas)]" style={{ top }}>

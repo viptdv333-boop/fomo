@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import TradingChart from "./TradingChart";
 import MenuPopover from "./MenuPopover";
+import type { AppChartHandle, AppChartState } from "./app-bridge";
 import { ChartSyncHub } from "@/lib/chart/sync";
 import { listUserData, saveUserData } from "@/lib/chart/userdata";
 import { adHocInstrument, findInstrument, instName, type ChartSource, type TerminalInstrument } from "@/lib/terminal-data";
@@ -122,11 +123,15 @@ interface Props {
   source: ChartSource;
   name?: string;
   onSelectSymbol?: (inst: TerminalInstrument) => void;
+  /** App-only terminal page: a single chart whose toolbar / bottom bar / phone nav are drawn by the page (see AppTerminal). */
+  appPage?: boolean;
+  appHandle?: MutableRefObject<AppChartHandle | null>;
+  onAppState?: (s: AppChartState) => void;
 }
 
 export default function MultiChart(props: Props) {
   const { t } = useT();
-  const { ticker, source, name, onSelectSymbol } = props;
+  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState } = props;
   const [state, setState] = useState<MultiState>(() => (typeof window === "undefined" ? DEFAULT_STATE : loadLocal()));
   const [active, setActive] = useState(0);
   const [sharedInterval, setSharedInterval] = useState<string | null>(null);
@@ -167,7 +172,8 @@ export default function MultiChart(props: Props) {
     };
   }, []);
 
-  const count = LAYOUTS.find((l) => l.id === state.layout)?.panes ?? 1;
+  // the app terminal page is one chart: a layout saved on the desktop must not squeeze four panes into it
+  const count = appPage ? 1 : LAYOUTS.find((l) => l.id === state.layout)?.panes ?? 1;
   const primary: PaneSym = { source, ticker };
   const symOf = (i: number): PaneSym => (i === 0 ? primary : state.panes[i - 1] ?? primary);
 
@@ -245,10 +251,11 @@ export default function MultiChart(props: Props) {
     </MenuPopover>
   );
 
+  const gridCls = appPage ? GRID["1"] : GRID[state.layout];
   const cellCls = (i: number) => `relative min-w-0 min-h-0 flex flex-col overflow-hidden ${count === 3 && i === 0 ? "row-span-2" : ""} ${count > 1 ? "rounded-2xl" : ""} ${count > 1 && active === i ? "outline outline-2 -outline-offset-2 outline-[var(--tv3-accent)]/60" : ""}`;
 
   return (
-    <div className={`grid w-full h-full min-h-0 ${count > 1 ? "gap-2 p-2 bg-[var(--tv3-canvas)]" : ""} ${GRID[state.layout]}`}>
+    <div className={`grid w-full h-full min-h-0 ${count > 1 ? "gap-2 p-2 bg-[var(--tv3-canvas)]" : ""} ${gridCls}`}>
       {Array.from({ length: count }, (_, i) => {
         const sym = symOf(i);
         const inst = findInstrument(sym.source, sym.ticker) ?? adHocInstrument(sym.source, sym.ticker);
@@ -269,6 +276,9 @@ export default function MultiChart(props: Props) {
               onIntervalChange={(id) => {
                 if (count > 1 && state.sync.interval) setSharedInterval(id);
               }}
+              appPage={appPage}
+              appHandle={i === 0 ? appHandle : undefined}
+              onAppState={i === 0 ? onAppState : undefined}
             />
           </div>
         );

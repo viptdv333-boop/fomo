@@ -377,3 +377,68 @@ html.app-ui .app-board-row > a svg { flex: none; width: 16px; height: 16px; }
 html.app-ui .app-board-row > a.app-publish { font-size: 14px; gap: 4px; padding: 0 6px; }
 html.app-ui .app-sheet-body > * { flex: none; }
 html.app-ui .app-sheet-body { min-height: 0; }
+
+/* ---------- Terminal (/terminal): a normal scrolling page, copy of the design's Terminal screen ---------- */
+/* <main> is the scroller: the page runs edge to edge, the bottom padding keeps the last block clear of the dock */
+html.app-ui.app-term-on main { padding: 0 0 var(--app-bottom-inset); max-width: none; display: block; }
+html.app-ui { --app-gb: 1px solid #e9e9ec; }
+html.app-ui.dark { --app-gb: 1px solid #1d1d1d; }
+/* the design runs on the system font with line-height normal (the site's body line-height of 1.5 would inflate every label) */
+html.app-ui .app-term { display: flex; flex-direction: column; background: var(--app-bg); color: var(--app-tx); line-height: normal; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+html.app-ui .app-term :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+html.app-ui .app-term [data-tone="up"] { color: #22c55e; }
+html.app-ui .app-term [data-tone="down"] { color: #ef4444; }
+/* sticky symbol bar */
+/* z-index 35: above the chart's own layers (up to z-30) that scroll under the bar, below the phone sheets (60) and the dock (45) */
+html.app-ui .app-term-bar { position: sticky; top: 0; z-index: 35; background: var(--app-nav); border-bottom: 0.5px solid var(--app-line); padding: 6px 8px 8px 16px; display: flex; align-items: center; gap: 10px; }
+html.app-ui .app-term-tick { display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border-radius: 9px; background: var(--app-card2); font-size: 16px; font-weight: 700; flex: none; }
+html.app-ui .app-term-px { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+html.app-ui .app-term-price { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+html.app-ui .app-term-chg { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-term-ico { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex: none; color: var(--app-tx); }
+html.app-ui .app-term-star { color: var(--app-tx2); }
+html.app-ui .app-term-star[data-on="1"] { color: #eab308; }
+/* timeframe chips */
+html.app-ui .app-term-tfs { display: flex; gap: 4px; padding: 8px 12px; }
+html.app-ui .app-term-chip { flex: 1; height: 30px; min-width: 0; padding: 0; box-sizing: border-box; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--app-card2); color: var(--app-tx2); }
+html.app-ui .app-term-chip[data-on="1"] { background: var(--app-inv); color: var(--app-inv-tx); }
+/* chart block: a fixed-height box; the chart (touch-action none on its own canvas) takes the gestures that start on it, the page scrolls from everywhere else */
+html.app-ui .app-term-chart { position: relative; border-top: 0.5px solid var(--app-line); overflow: hidden; display: flex; flex-direction: column; }
+html.app-ui .app-term-chartbody { position: relative; flex: 1; min-height: 0; }
+/* the design overlays this caption on the chart; the real chart prints its own legend (name, OHLC) in that corner, so it sits in a strip above */
+html.app-ui .app-term-cap { flex: none; min-height: 26px; padding: 6px 8px 0; box-sizing: border-box; display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--app-tx2); }
+html.app-ui .app-term-cap-t { font-weight: 600; color: var(--app-tx); }
+html.app-ui .app-term-cap-d { padding: 2px 6px; border-radius: 4px; background: var(--app-card2); }
+html.app-ui .app-term-expand { margin-left: auto; height: 20px; padding: 0 9px; border-radius: 10px; background: var(--app-card2); font-size: 11px; font-weight: 600; color: var(--app-tx); }
+/* range row */
+html.app-ui .app-term-ranges { display: flex; justify-content: space-between; padding: 8px 12px; border-top: 0.5px solid var(--app-line); border-bottom: 0.5px solid var(--app-line); }
+html.app-ui .app-term-range { font-size: 12px; font-weight: 600; padding: 4px 6px; border-radius: 6px; color: var(--app-tx2); background: transparent; }
+html.app-ui .app-term-range[data-on="1"] { color: var(--app-tx); background: var(--app-card2); }
+/* tool row */
+html.app-ui .app-term-tools { display: grid; grid-template-columns: repeat(5, 1fr); margin: 12px 12px 0; padding: 6px; border-radius: 14px; background: var(--app-card); border: var(--app-gb); }
+html.app-ui .app-term-tool { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border-radius: 10px; font-size: 11px; color: var(--app-tx2); }
+html.app-ui .app-term-tool:active { background: var(--app-press); }
+/* ideas card */
+html.app-ui .app-term-ideas { margin: 12px 12px 0; padding: 12px 14px; border-radius: 14px; background: var(--app-card); border: var(--app-gb); display: flex; align-items: center; gap: 10px; color: var(--app-tx); text-decoration: none; }
+html.app-ui .app-term-ideas-t { flex: 1; font-size: 15px; min-width: 0; }
+html.app-ui .app-term-ideas-n { color: var(--app-tx2); font-size: 15px; }
+/* watchlist */
+html.app-ui .app-term-wtitle { margin: 16px 12px 6px; font-size: 13px; color: var(--app-tx2); text-transform: uppercase; letter-spacing: 0.03em; padding: 0 4px; }
+html.app-ui .app-term-watch { margin: 0 12px 24px; background: var(--app-card); border: var(--app-gb); border-radius: 14px; overflow: hidden; }
+html.app-ui .app-term-wrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; width: 100%; box-sizing: border-box; border-bottom: 0.5px solid var(--app-line); background: transparent; }
+html.app-ui .app-term-watch > :last-child { border-bottom: 0; }
+html.app-ui .app-term-wrow[data-sel="1"] { background: var(--app-press); }
+html.app-ui .app-term-wl { flex: 1; min-width: 0; }
+html.app-ui .app-term-wt { display: block; font-size: 15px; font-weight: 600; }
+html.app-ui .app-term-wn { display: block; font-size: 12px; color: var(--app-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-term-wr { text-align: right; font-variant-numeric: tabular-nums; }
+html.app-ui .app-term-wp { display: block; font-size: 15px; font-weight: 600; }
+html.app-ui .app-term-wc { display: block; font-size: 12px; }
+html.app-ui .app-term-wempty { padding: 14px; font-size: 13px; color: var(--app-tx2); line-height: 1.4; }
+html.app-ui .app-term-disc { font-size: 11px; color: var(--app-tx3); padding: 0 16px 24px; line-height: 1.4; }
+/* full-screen chart (the expand button): the old terminal layer, above the page, below the dock */
+html.app-ui .app-term-full { position: fixed; left: 0; right: 0; top: 0; bottom: var(--app-bottom-inset); z-index: 40; display: flex; flex-direction: column; background: var(--tv3-canvas); }
+html.app-ui .app-term-fullbar { flex: none; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px; background: var(--app-nav); border-bottom: 0.5px solid var(--app-line); color: var(--app-tx); }
+html.app-ui .app-term-back { display: flex; align-items: center; gap: 2px; height: 34px; padding: 0 8px 0 4px; font-size: 14px; font-weight: 600; color: var(--app-green-tx); background: none; border: 0; }
+html.app-ui .app-term-fulltick { font-size: 14px; font-weight: 700; }
+html.app-ui .app-term-fullbody { position: relative; flex: 1; min-height: 0; }
