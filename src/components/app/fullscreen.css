@@ -6,7 +6,9 @@
  */
 
 /* the slot keeps the page's height while the chart block is a fixed layer */
-html.app-ui .app-term-slot { position: relative; border-top: 0.5px solid var(--app-line); }
+html.app-ui .app-term-first { display: flex; flex-direction: column; height: calc(100dvh - var(--app-bottom-inset) - 50px); min-height: 480px; /* 50px = the sticky symbol bar */ }
+html.app-ui .app-term-first > .app-term-tools { margin-bottom: 12px; flex: none; }
+html.app-ui .app-term-slot { flex: 1 1 0; min-height: 240px; position: relative; border-top: 0.5px solid var(--app-line); }
 html.app-ui .app-term-slot > .app-term-chart { height: 100%; border-top: 0; }
 
 /* the expand icon over the chart, top-right (TradingView puts it there) */
