@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useT } from "@/lib/i18n/client";
-import { peekSharedFile } from "@/lib/clipboard-files";
+import { peekSharedFile, stashSharedFile } from "@/lib/clipboard-files";
+import { onNativeShare } from "@/lib/native-app";
 
 interface Dest {
   key: string;
@@ -23,18 +24,34 @@ function ShareInner() {
   const [file, setFile] = useState<{ name: string; type: string; url: string } | null | undefined>(undefined);
   const [q, setQ] = useState("");
   const [dests, setDests] = useState<Dest[]>([]);
+  const [shareText, setShareText] = useState("");
+  const [copied, setCopied] = useState(false);
+  // bumped when the Android app has just handed us a new file (see SharePage)
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    // text shared from the Android app arrives in the query string
+    const q = new URLSearchParams(window.location.search);
+    setShareText([q.get("title"), q.get("text")].filter(Boolean).join("\n").slice(0, 8000));
+    const on = () => setTick((n) => n + 1);
+    window.addEventListener("fomo-share-stashed", on);
+    return () => window.removeEventListener("fomo-share-stashed", on);
+  }, []);
 
   useEffect(() => {
     let url = "";
+    let dead = false;
     peekSharedFile().then((f) => {
+      if (dead) return;
       if (!f) return setFile(null);
       url = URL.createObjectURL(f);
       setFile({ name: f.name, type: f.type, url });
     });
     return () => {
+      dead = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, []);
+  }, [tick]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -81,8 +98,25 @@ function ShareInner() {
           {file.type.startsWith("image/") ? <img src={file.url} alt="" className="w-14 h-14 rounded-lg object-cover" /> : <span className="w-14 h-14 flex items-center justify-center text-2xl">📎</span>}
           <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{file.name}</span>
         </div>
-      ) : (
+      ) : shareText ? null : (
         <p className="text-sm text-amber-600">{t("share.noFile")}</p>
+      )}
+      {shareText && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900">
+          <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap line-clamp-6 [overflow-wrap:anywhere]">{shareText}</p>
+          <button
+            type="button"
+            className="mt-2 text-sm font-semibold text-green-600"
+            onClick={() => {
+              navigator.clipboard
+                ?.writeText(shareText)
+                .then(() => setCopied(true))
+                .catch(() => {});
+            }}
+          >
+            {copied ? t("share.copied") : t("share.copyText")}
+          </button>
+        </div>
       )}
       <input
         value={q}
@@ -114,6 +148,16 @@ function ShareInner() {
 }
 
 export default function SharePage() {
+  // Android app: files from the system "Share" sheet. Taken here (outside AuthGuard) so they are kept even while the
+  // user still has to sign in; ShareInner re-reads the cache when it hears "fomo-share-stashed".
+  useEffect(
+    () =>
+      onNativeShare((s) => {
+        const first = s.files[0];
+        if (first) stashSharedFile(first).then(() => window.dispatchEvent(new Event("fomo-share-stashed")));
+      }),
+    []
+  );
   return (
     <AuthGuard>
       <ShareInner />

@@ -115,6 +115,8 @@ const dict: SectionDict = {
     "ns.webpush.blocked": "Уведомления заблокированы в настройках браузера для этого сайта.",
     "ns.webpush.notConfigured": "Push не настроен на сервере.",
     "ns.webpush.devices": "Устройств: {n}",
+    "ns.webpush.appDevices": "в приложении: {n}",
+    "ns.webpush.appOnly": "Браузерные push не настроены на сервере; уведомления приходят в приложение для Android.",
     "ns.webpush.thisDevice": "Это устройство",
 
     // Matrix
@@ -341,6 +343,8 @@ const dict: SectionDict = {
     "ns.webpush.blocked": "Notifications are blocked for this site in the browser settings.",
     "ns.webpush.notConfigured": "Push isn't configured on the server.",
     "ns.webpush.devices": "Devices: {n}",
+    "ns.webpush.appDevices": "in the app: {n}",
+    "ns.webpush.appOnly": "Browser push isn't configured on the server; notifications go to the Android app.",
     "ns.webpush.thisDevice": "This device",
 
     "ns.matrix.title": "What to notify about, and where",
@@ -563,6 +567,8 @@ const dict: SectionDict = {
     "ns.webpush.blocked": "浏览器设置中已屏蔽此网站的通知。",
     "ns.webpush.notConfigured": "服务器未配置推送。",
     "ns.webpush.devices": "设备数：{n}",
+    "ns.webpush.appDevices": "应用内：{n}",
+    "ns.webpush.appOnly": "服务器未配置浏览器推送；通知将发送到 Android 应用。",
     "ns.webpush.thisDevice": "此设备",
 
     "ns.matrix.title": "通知哪些事件、发送到哪里",

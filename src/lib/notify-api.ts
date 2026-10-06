@@ -7,6 +7,7 @@ import { EXTERNAL_CHANNELS, isExternalChannel, type ExternalChannel } from "@/li
 import { ADAPTERS } from "@/lib/notify-channels";
 import { siteBotConfigured } from "@/lib/notify-channels/telegram";
 import { isPushConfigured } from "@/lib/push";
+import { isFcmConfigured } from "@/lib/fcm";
 import { channelStatus, maskAddress } from "@/lib/notify-link";
 import type { ChannelState, SettingsResponse } from "@/lib/notify-settings-types";
 
@@ -34,11 +35,12 @@ export async function limited(key: string, limit: number, windowMs: number): Pro
 }
 
 export async function loadSettings(userId: string): Promise<SettingsResponse> {
-  const [rows, prefs, setting, devices, user] = await Promise.all([
+  const [rows, prefs, setting, devices, appDevices, user] = await Promise.all([
     prisma.notificationChannel.findMany({ where: { userId } }),
     prisma.notificationPref.findMany({ where: { userId }, select: { event: true, channel: true, enabled: true } }),
     prisma.notificationSetting.findUnique({ where: { userId } }),
     prisma.pushSubscription.count({ where: { userId } }),
+    prisma.fcmToken.count({ where: { userId } }).catch(() => 0), // table missing until the fcm_tokens migration is applied
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ]);
 
@@ -72,7 +74,7 @@ export async function loadSettings(userId: string): Promise<SettingsResponse> {
       endMin: setting?.quietEndMin ?? 480,
       timezone: setting?.timezone ?? "Europe/Moscow",
     },
-    webpush: { configured: isPushConfigured(), devices },
+    webpush: { configured: isPushConfigured(), devices, fcmConfigured: isFcmConfigured(), appDevices },
     accountEmail: maskAddress("email", user?.email ?? null),
   };
 }

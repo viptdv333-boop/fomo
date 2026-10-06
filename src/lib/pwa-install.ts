@@ -1,5 +1,7 @@
 "use client";
 
+import { isNativeApp } from "@/lib/native-app";
+
 // Module-level singleton: `beforeinstallprompt` fires once per page load and
 // only to listeners already attached at that moment. Capturing it here (as
 // soon as this module is imported, independent of which component mounts
@@ -29,6 +31,8 @@ if (typeof window !== "undefined") {
 
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
+  // inside the Android app (android/) there is nothing to install
+  if (isNativeApp()) return true;
   return (
     installed ||
     window.matchMedia("(display-mode: standalone)").matches ||

@@ -772,7 +772,9 @@ function WebPushCard({ data, api, reload }: { data: SettingsResponse; api: Notif
   }, []);
 
   const configured = data.webpush.configured;
-  const connected = configured && data.webpush.devices > 0;
+  const appDevices = data.webpush.fcmConfigured ? data.webpush.appDevices : 0;
+  const webDevices = configured ? data.webpush.devices : 0;
+  const connected = webDevices + appDevices > 0;
   const statusText = !configured ? t("ns.status.not_configured") : connected ? t("ns.status.connected") : t("ns.status.not_connected");
   const tone = connected ? "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 
@@ -798,12 +800,13 @@ function WebPushCard({ data, api, reload }: { data: SettingsResponse; api: Notif
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
           {statusText}
-          {configured && data.webpush.devices > 0 ? ` · ${t("ns.webpush.devices", { n: data.webpush.devices })}` : ""}
+          {webDevices > 0 ? ` · ${t("ns.webpush.devices", { n: webDevices })}` : ""}
+          {appDevices > 0 ? ` · ${t("ns.webpush.appDevices", { n: appDevices })}` : ""}
         </span>
       }
     >
       {!configured ? (
-        <p className="text-xs text-gray-500 dark:text-gray-400">{t("ns.webpush.notConfigured")}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{appDevices > 0 ? t("ns.webpush.appOnly") : t("ns.webpush.notConfigured")}</p>
       ) : supported === false ? (
         <p className="text-xs text-gray-500 dark:text-gray-400">{t("ns.webpush.unsupported")}</p>
       ) : (

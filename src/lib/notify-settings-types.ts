@@ -35,7 +35,8 @@ export interface SettingsResponse {
   /** explicit overrides only, keyed `${event}:${channel}` */
   overrides: Record<string, boolean>;
   quiet: QuietState;
-  webpush: { configured: boolean; devices: number };
+  /** `devices` = browsers / PWA (Web Push, needs VAPID); `appDevices` = Android app installs (FCM, needs the service account) */
+  webpush: { configured: boolean; devices: number; fcmConfigured: boolean; appDevices: number };
   /** masked account e-mail, offered as a one-click "use my account e-mail" */
   accountEmail: string | null;
 }

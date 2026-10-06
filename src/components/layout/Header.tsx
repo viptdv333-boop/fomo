@@ -13,6 +13,7 @@ import { useT } from "@/lib/i18n/client";
 import { ensurePushSubscription } from "@/lib/push-client";
 import InstallAppButton from "@/components/shared/InstallAppButton";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
+import { unregisterNativePush } from "@/lib/native-push";
 
 // initialHiddenPages comes from the server so a switched-off page is never in the first HTML
 // (otherwise its link flashed in the menu until the settings fetch finished).
@@ -176,7 +177,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
 
                     <div className="border-t border-gray-100 dark:border-gray-800/30 mt-1 pt-1">
                       <button
-                        onClick={() => { signOut({ callbackUrl: "/" }); setProfileOpen(false); }}
+                        onClick={() => { void unregisterNativePush().finally(() => signOut({ callbackUrl: "/" })); setProfileOpen(false); }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
@@ -288,7 +289,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
                 </div>
               )}
               <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
-                <button onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-400 hover:text-red-500">{t("profile.logout")}</button>
+                <button onClick={() => { void unregisterNativePush().finally(() => signOut({ callbackUrl: "/" })); setMenuOpen(false); }} className="block w-full text-left py-2 text-sm text-gray-400 hover:text-red-500">{t("profile.logout")}</button>
               </div>
             </>
           )}

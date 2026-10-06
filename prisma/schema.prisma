@@ -88,6 +88,7 @@ model User {
   ownedRooms             ChatRoom[]       @relation("RoomOwner")
   roomMemberships        ChatRoomMember[]
   pushSubscriptions      PushSubscription[]
+  fcmTokens              FcmToken[]
   favoriteRooms          ChatRoomFavorite[]
   roomReads              ChatRoomRead[]
   roomNotifies           ChatRoomNotify[]
@@ -625,6 +626,22 @@ model PushSubscription {
   auth      String
   userAgent String?
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Android app devices (Firebase Cloud Messaging). One row per installed app; a token that moves to another account
+// (shared phone) is re-assigned by upsert. Dead tokens (UNREGISTERED) are deleted by src/lib/fcm.ts.
+model FcmToken {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  deviceName String?
+  appVersion String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

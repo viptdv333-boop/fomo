@@ -18,6 +18,8 @@ const dict: SectionDict = {
     "share.groups": "Мои группы",
     "share.topics": "Топики болталки",
     "share.noFile": "Файл не получен. Сделайте «Поделиться» ещё раз.",
+    "share.copyText": "Скопировать текст",
+    "share.copied": "Скопировано — вставьте в нужный чат",
   },
   en: {
     "attach.gallery": "Gallery",
@@ -35,6 +37,8 @@ const dict: SectionDict = {
     "share.groups": "My groups",
     "share.topics": "Chat topics",
     "share.noFile": "No file received. Share it again.",
+    "share.copyText": "Copy text",
+    "share.copied": "Copied — paste it into the chat you pick",
   },
   cn: {
     "attach.gallery": "相册",
@@ -52,6 +56,8 @@ const dict: SectionDict = {
     "share.groups": "我的群组",
     "share.topics": "聊天话题",
     "share.noFile": "未收到文件，请重新分享。",
+    "share.copyText": "复制文本",
+    "share.copied": "已复制——请粘贴到所选聊天",
   },
 };
 export default dict;

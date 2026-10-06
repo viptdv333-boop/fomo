@@ -34,7 +34,7 @@ interface Props {
 /** Is this channel able to receive anything right now? */
 export function channelConnected(data: SettingsResponse, c: ChannelId): boolean {
   if (c === "inapp") return true;
-  if (c === "webpush") return data.webpush.configured && data.webpush.devices > 0;
+  if (c === "webpush") return (data.webpush.configured && data.webpush.devices > 0) || (data.webpush.fcmConfigured && data.webpush.appDevices > 0);
   const st = data.channels.find((x) => x.channel === c);
   return Boolean(st && st.configured && st.verified && st.enabled);
 }

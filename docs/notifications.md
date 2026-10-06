@@ -179,3 +179,24 @@ npx tsx scripts/check-calendar-reminders.ts # напоминания кален�
 
 Для просмотра интерфейса без базы данных (только dev, в production отдаёт 404): `/dev-notifications` — страница с in-memory моком API
 (`?fail=1` — любое сохранение падает, чтобы увидеть откат переключателей).
+
+## Приложение для Android (push через Firebase)
+
+Колонка «В приложении» в матрице настроек управляет **и** браузерным Web Push, **и** push в Android-приложение (`android/`). Тихие часы и
+переопределения по событиям одни и те же: решение принимает `decide()` (`webpush`), затем диспетчер шлёт и `sendPushToUser` (браузеры), и
+`sendFcmToUser` (`src/lib/fcm.ts`, устройства из таблицы `FcmToken`). Карточка канала показывает «Устройств: N · в приложении: M».
+
+- Доставка — FCM HTTP v1 без SDK: JWT (RS256, `node:crypto`) из сервисного аккаунта → access token (кэш до ~5 мин до истечения) →
+  `POST https://fcm.googleapis.com/v1/projects/<project_id>/messages:send`. Ключ никогда не логируется.
+- Сообщение: `notification {title, body}` (короткие: 100/180 символов) + `data {type, event, link, tag, channel}`; `android.notification.channel_id` —
+  `messages` (личные, чаты, упоминания), `terminal` (ценовые и линейные алерты), `calendar`, `general`; `tag` = `collapse_key` (новое заменяет старое).
+  `link` — только путь внутри сайта.
+- Ошибки: `UNREGISTERED` / `NOT_FOUND` с кодом FCM / `INVALID_ARGUMENT` по токену → токен удаляется; 429 и 5xx — до 3 попыток с паузой (учитывается `Retry-After`);
+  401 — один раз перевыпускается access token. «Голый» `NOT_FOUND` (например, неверный проект) токены **не** удаляет.
+- Если `FCM_SERVICE_ACCOUNT_FILE` / `FCM_SERVICE_ACCOUNT_JSON` не заданы — всё это тихий no-op, остаётся только Web Push.
+- Приложение регистрирует токен само: страница (в приложении) вызывает `POST /api/push/fcm` с сессией пользователя; при выходе — `DELETE`.
+  Токен, зарегистрированный под другим пользователем (общий телефон), переназначается.
+
+Переменные (`.env.example`): `FCM_SERVICE_ACCOUNT_FILE` (или `FCM_SERVICE_ACCOUNT_JSON`), необязательно `FCM_PROJECT_ID` (проект владельца — `fomo3-c2798`).
+Миграция (идемпотентная): `prisma/migrations/20261006090000_fcm_tokens/migration.sql`, на проде — `prisma db execute --file … --schema prisma/schema.prisma`.
+Проверка: `npx tsx scripts/check-fcm.ts`. Пошаговая настройка Firebase для владельца — `android/README.md`, раздел «Push через Firebase».

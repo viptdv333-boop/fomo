@@ -40,7 +40,7 @@ export function createMockApi(opts: { failPatch?: boolean; slowMs?: number } = {
     ],
     overrides: {},
     quiet: { enabled: false, startMin: 1380, endMin: 480, timezone: "Europe/Moscow" },
-    webpush: { configured: true, devices: 1 },
+    webpush: { configured: true, devices: 1, fcmConfigured: true, appDevices: 1 },
     accountEmail: "a***@gmail.com",
   };
 

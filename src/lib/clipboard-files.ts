@@ -1,3 +1,5 @@
+import { hasNativeClipboardImage, readNativeClipboardImage } from "@/lib/native-app";
+
 const EXT_BY_MIME: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -41,6 +43,9 @@ export function getPastedFile(
 
 /** Image from the system clipboard via the async API (needs a user gesture); null when there is none or access is denied. */
 export async function readClipboardImage(): Promise<File | null> {
+  // Android app: the WebView cannot read an image clipboard through the web API, the app bridge can
+  const native = readNativeClipboardImage();
+  if (native.file) return native.file;
   try {
     if (typeof navigator === "undefined" || !navigator.clipboard?.read) return null;
     const items = await navigator.clipboard.read();
@@ -97,6 +102,11 @@ async function clipboardReadGranted(): Promise<boolean> {
 
 /** On focusing a message field: when the clipboard (already permitted) holds an image, show the paste chip. */
 export function maybeOfferClipboardImage(onFile: (file: File) => void) {
+  if (hasNativeClipboardImage()) {
+    const f = readNativeClipboardImage().file;
+    if (f) offerClipboardImage(() => onFile(f));
+    return;
+  }
   clipboardReadGranted().then((ok) => {
     if (!ok) return;
     readClipboardImage().then((f) => {
@@ -107,6 +117,8 @@ export function maybeOfferClipboardImage(onFile: (file: File) => void) {
 
 /** Like readClipboardImage but explains why nothing came back (shown to the user, since phones cannot be inspected remotely). */
 export async function readClipboardImageDetailed(): Promise<{ file: File | null; why: string }> {
+  const native = readNativeClipboardImage();
+  if (native.file) return { file: native.file, why: "" };
   if (typeof navigator === "undefined" || !navigator.clipboard) return { file: null, why: "clipboard API недоступен" };
   if (typeof navigator.clipboard.read !== "function") return { file: null, why: "clipboard.read не поддерживается" };
   try {
@@ -157,5 +169,26 @@ export async function peekSharedFile(): Promise<File | null> {
     return new File([blob], decodeURIComponent(res.headers.get("X-Name") || "shared"), { type: blob.type });
   } catch {
     return null;
+  }
+}
+
+/** Android app: a file from the "Share → FOMO" intent goes into the same cache the service worker uses, so peek/consumeSharedFile work unchanged. */
+export async function stashSharedFile(file: File): Promise<boolean> {
+  try {
+    if (typeof caches === "undefined") return false;
+    const cache = await caches.open("fomo-share");
+    await cache.put(
+      "/__shared__",
+      new Response(file, {
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-Name": encodeURIComponent(file.name || "shared"),
+          "X-Time": String(Date.now()),
+        },
+      })
+    );
+    return true;
+  } catch {
+    return false;
   }
 }

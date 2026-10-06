@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push";
+import { sendFcmToUser, payloadForNotification } from "@/lib/fcm";
 import { renderNotifText, isKeyed, type NotifText } from "@/lib/notif-render";
 import {
   eventForType,
@@ -267,6 +268,9 @@ export async function dispatchNotification(input: DispatchInput): Promise<Dispat
     if (d.webpush) {
       const r = render(userId);
       sendPushToUser(userId, { title: r.title, body: r.body, url: input.link }).catch(() => {});
+      // The Android app (FCM) is the same «В приложении» channel: same preference cell, same quiet hours. No-op until
+      // FCM_SERVICE_ACCOUNT_FILE/JSON is configured (src/lib/fcm.ts).
+      sendFcmToUser(userId, payloadForNotification({ type: input.type, event, title: r.title, body: r.body, link: input.link })).catch(() => {});
     }
   }
   const jobs: Array<{ row: ChannelRow; msg: ChannelMessage }> = [];

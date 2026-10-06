@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { getPastedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
+import { onNativePaste } from "@/lib/native-app";
 
 interface Props {
   value: string;
@@ -53,6 +54,16 @@ function textOf(el: HTMLElement): string {
 const ComposerInput = forwardRef<ComposerHandle, Props>(function ComposerInput({ value, onChange, onSubmit, onFile, placeholder, imagesOnly, className = "" }, ref) {
   const el = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => ({ focus: () => el.current?.focus() }));
+
+  // Android app: an image inserted from the keyboard (Gboard clipboard / stickers) arrives as an event, not a paste.
+  // Only the focused field takes it; the handler is read through a ref so the subscription is made once.
+  const nativeFile = useRef<(file: File) => void>(() => {});
+  nativeFile.current = (file) => {
+    if (document.activeElement !== el.current) return;
+    if (imagesOnly && !file.type.startsWith("image/")) return;
+    onFile(file);
+  };
+  useEffect(() => onNativePaste((f) => nativeFile.current(f)), []);
 
   // external changes (cleared after sending, emoji appended, "@name, " inserted) → DOM
   useEffect(() => {
