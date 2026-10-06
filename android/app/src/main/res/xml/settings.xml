@@ -15,7 +15,7 @@
             app:title="@string/settings_lock" />
 
         <ListPreference
-            app:defaultValue="1"
+            app:defaultValue="15"
             app:dependency="lock_enabled"
             app:dialogTitle="@string/settings_lock_timeout"
             app:entries="@array/lock_timeout_entries"

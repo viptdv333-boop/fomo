@@ -14,11 +14,11 @@ class LockPolicyTest {
         assertEquals(1, LockPolicy.parseTimeoutMinutes("1"))
         assertEquals(5, LockPolicy.parseTimeoutMinutes("5"))
         assertEquals(15, LockPolicy.parseTimeoutMinutes(" 15 "))
-        assertEquals(1, LockPolicy.parseTimeoutMinutes(null))
-        assertEquals(1, LockPolicy.parseTimeoutMinutes(""))
-        assertEquals(1, LockPolicy.parseTimeoutMinutes("abc"))
-        assertEquals(1, LockPolicy.parseTimeoutMinutes("7"))
-        assertEquals(1, LockPolicy.parseTimeoutMinutes("-5"))
+        assertEquals(15, LockPolicy.parseTimeoutMinutes(null))
+        assertEquals(15, LockPolicy.parseTimeoutMinutes(""))
+        assertEquals(15, LockPolicy.parseTimeoutMinutes("abc"))
+        assertEquals(15, LockPolicy.parseTimeoutMinutes("7"))
+        assertEquals(15, LockPolicy.parseTimeoutMinutes("-5"))
         assertEquals(LockPolicy.DEFAULT_TIMEOUT_MINUTES, LockPolicy.parseTimeoutMinutes("999999999999"))
     }
 

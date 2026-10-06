@@ -15,7 +15,7 @@ object SettingsSpec {
     const val KEY_HAPTIC = "haptic_feedback"
 
     const val DEFAULT_LOCK_ENABLED = false
-    const val DEFAULT_LOCK_TIMEOUT = "1" // minutes, see LockPolicy.TIMEOUT_MINUTES
+    const val DEFAULT_LOCK_TIMEOUT = "15" // minutes, see LockPolicy.TIMEOUT_MINUTES
     const val DEFAULT_HIDE_CONTENT = false
     const val DEFAULT_PULL_TO_REFRESH = true
     const val DEFAULT_KEEP_SCREEN_ON = false // opt-in: a screen that never sleeps is a battery decision

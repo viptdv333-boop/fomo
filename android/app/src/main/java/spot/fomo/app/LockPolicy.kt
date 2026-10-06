@@ -10,7 +10,7 @@ package spot.fomo.app
 object LockPolicy {
     /** Allowed values of «Запрашивать» in minutes; 0 = right after the app goes to the background. */
     val TIMEOUT_MINUTES = listOf(0, 1, 5, 15)
-    const val DEFAULT_TIMEOUT_MINUTES = 1
+    const val DEFAULT_TIMEOUT_MINUTES = 15
 
     /**
      * Our own trips out of the app (file chooser, camera, the system PIN screen) cover the app completely, so the
