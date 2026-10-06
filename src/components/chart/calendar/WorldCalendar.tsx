@@ -18,7 +18,6 @@ import EventDetails from "./EventDetails";
 import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MobileCalendarBar from "./MobileCalendarBar";
-import MobileDayList from "./MobileDayList";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
 import { useIsPhone } from "./useViewport";
@@ -218,9 +217,9 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           </div>
         )}
         {grid ? (
-          phone === null ? null : phone ? (
-            <MobileDayList cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date) => setOpenDay({ date })} />
-          ) : (
+          /* «Календарь» is the month of squares on every screen (on a phone: day number, count and layer dots, a tap opens the day);
+             the day-by-day list is the «Список» view */
+          phone === null ? null : (
             <MonthGrid cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date, focusId) => setOpenDay({ date, focusId })} />
           )
         ) : (

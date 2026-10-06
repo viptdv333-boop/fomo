@@ -20,9 +20,9 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 
 // --- tabs: exactly five, in the owner's order
-eq("five tabs in order", APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels"]);
-eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/chat", "/calendar", "/channels"]);
-eq("tab labels reuse nav.*", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.chat", "nav.calendar", "nav.channels"]);
+eq("eight tabs in order (the dock carousel)", APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "me", "settings"]);
+eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile", "/profile?tab=notifications"]);
+eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "profile.profile", "appui.tab.settings"]);
 
 // --- active tab
 const cases: [string, ReturnType<typeof activeAppTab>][] = [
@@ -31,7 +31,7 @@ const cases: [string, ReturnType<typeof activeAppTab>][] = [
   ["/chat", "chat"], ["/chat/sber", "chat"], ["/messages", "chat"], ["/zh/messages", "chat"],
   ["/calendar", "calendar"], ["/en/calendar", "calendar"],
   ["/channels", "channels"], ["/channels/my-channel", "channels"], ["/en/channels", "channels"],
-  ["/authors", null], ["/profile", null], ["/help", null], ["/", null], ["", null],
+  ["/authors", "authors"], ["/profile", "me"], ["/payments", "me"], ["/help", null], ["/", null], ["", null],
   ["/feedback", null], ["/channelsx", null], ["/ideasx", null], ["/chatter", null],
 ];
 for (const [p, want] of cases) eq(`active ${JSON.stringify(p)}`, activeAppTab(p), want);

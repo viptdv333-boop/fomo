@@ -82,19 +82,25 @@ html.app-ui .app-tabbar {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
   align-items: stretch;
-  overflow: hidden;
+  /* the dock is a carousel: five tabs visible, the rest by swiping sideways (the bar itself stays fixed to the viewport) */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
   background: var(--app-nav);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--app-line);
-  touch-action: none;
-  overscroll-behavior: none;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   user-select: none;
   -webkit-user-select: none;
 }
+html.app-ui .app-tabbar::-webkit-scrollbar { display: none; }
 html.app-ui.app-kbd .app-tabbar { display: none; }
 html.app-ui .app-tab {
-  flex: 1 1 0;
+  flex: 0 0 20%;
+  scroll-snap-align: start;
   min-width: 0;
   min-height: 44px;
   display: flex;

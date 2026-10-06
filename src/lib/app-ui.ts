@@ -1,7 +1,7 @@
 // Pure helpers of the app-only UI shell (bottom tab bar + compact header). No React, no DOM: scripts/check-app-ui.ts runs them.
 import { stripLocale, localizedPath, type Locale } from "@/lib/i18n/locale-url";
 
-export type AppTabId = "feed" | "terminal" | "chat" | "calendar" | "channels";
+export type AppTabId = "feed" | "terminal" | "chat" | "calendar" | "channels" | "authors" | "me" | "settings";
 
 export interface AppTabDef {
   id: AppTabId;
@@ -13,13 +13,17 @@ export interface AppTabDef {
   match: string[];
 }
 
-/** Exactly five tabs, in this order. */
+/** The dock of the design: eight tabs in this order, five visible at a time, the rest by swiping the bar sideways. */
 export const APP_TABS: readonly AppTabDef[] = [
   { id: "feed", href: "/feed", labelKey: "nav.feed", match: ["/feed", "/ideas"] },
   { id: "terminal", href: "/terminal", labelKey: "nav.terminal", match: ["/terminal"] },
   { id: "chat", href: "/chat", labelKey: "nav.chat", match: ["/chat", "/messages"] },
   { id: "calendar", href: "/calendar", labelKey: "nav.calendar", match: ["/calendar"] },
   { id: "channels", href: "/channels", labelKey: "nav.channels", match: ["/channels"] },
+  { id: "authors", href: "/authors", labelKey: "nav.authors", match: ["/authors"] },
+  { id: "me", href: "/profile", labelKey: "profile.profile", match: ["/profile", "/payments", "/subscriptions"] },
+  /* the app settings: opens the native screen inside the app, the notification settings page otherwise (see AppTabBar) */
+  { id: "settings", href: "/profile?tab=notifications", labelKey: "appui.tab.settings", match: [] },
 ];
 
 function underPrefix(path: string, prefix: string): boolean {

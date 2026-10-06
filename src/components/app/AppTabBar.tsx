@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
-import { nativeBridge } from "@/lib/native-app";
+import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
 import { APP_TABS, activeAppTab, appTabHref, badgeLabel, raisesKeyboard, type AppTabId } from "@/lib/app-ui";
 import { useChatBadge } from "@/components/layout/useChatBadge";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
 
-const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels" };
+const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
 /** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. */
 function useKeyboardClass() {
@@ -36,12 +36,21 @@ function TabBar() {
   const active = activeAppTab(pathname);
   const unread = badgeLabel(useChatBadge());
   useKeyboardClass();
+  const bar = useRef<HTMLElement>(null);
   useEffect(() => {
     applyFontStep(readFontStep());
   }, []);
+  // the dock is a sideways carousel: bring the active tab into view when the route changes (only the bar scrolls, never the page)
+  useEffect(() => {
+    const nav = bar.current;
+    const el = nav?.querySelector<HTMLElement>("[data-active=\"1\"]");
+    if (!nav || !el) return;
+    const left = el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [active]);
 
   return (
-    <nav className="app-tabbar" aria-label={t("appui.nav")} data-app-tabbar>
+    <nav ref={bar} className="app-tabbar" aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
         const label = t(tab.labelKey);
@@ -55,7 +64,12 @@ function TabBar() {
             data-active={on ? "1" : undefined}
             aria-current={on ? "page" : undefined}
             aria-label={badge ? `${label}, ${t("appui.unread", { n: badge })}` : label}
-            onClick={() => {
+            onClick={(e) => {
+              if (tab.id === "settings" && canOpenNativeSettings()) {
+                e.preventDefault();
+                openNativeSettings();
+                return;
+              }
               try {
                 nativeBridge()?.haptic?.();
               } catch {
