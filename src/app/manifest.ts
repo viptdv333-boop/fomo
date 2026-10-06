@@ -7,7 +7,7 @@ function terminalManifest(): MetadataRoute.Manifest {
   return {
     name: "FOMO Terminal",
     short_name: "FOMO Terminal",
-    description: "Торговый терминал: графики, индикаторы, ценовые алерты и экономический календарь.",
+    description: "Торговый терминал: графики акций, фьючерсов и крипты, индикаторы, ценовые алерты и экономический календарь.",
     id: "/terminal",
     start_url: "/terminal",
     scope: "/",
@@ -23,10 +23,7 @@ function terminalManifest(): MetadataRoute.Manifest {
       { src: "/icons-terminal/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icons-terminal/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
-    shortcuts: [
-      { name: "Терминал", url: "/terminal" },
-      { name: "Календарь", url: "/calendar" },
-    ],
+    shortcuts: [{ name: "Терминал", url: "/terminal" }],
   };
 }
 

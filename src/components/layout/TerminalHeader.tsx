@@ -15,7 +15,7 @@ import { useAppUi } from "@/components/app/useAppUi";
 
 /**
  * Header of the terminal site (terminal.fomo.spot, SITE_MODE=terminal; the main site uses Header.tsx): «FOMO Terminal» brand,
- * Терминал / Календарь / Профиль, language, theme, the bell and the sign-in / sign-out button. No messenger, no admin link
+ * Терминал / Профиль (the calendar is a tab inside the terminal), language, theme, the bell and the sign-in / sign-out button. No messenger, no admin link
  * (the admin panel stays reachable by address for ADMIN / OWNER), no board, chat, channels or authors.
  */
 export default function TerminalHeader() {
@@ -36,7 +36,6 @@ export default function TerminalHeader() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const links = [
     { href: "/terminal", label: t("nav.terminal") },
-    { href: "/calendar", label: t("nav.calendar") },
     ...(session ? [{ href: "/profile", label: t("profile.profile") }] : []),
   ];
 

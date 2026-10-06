@@ -13,8 +13,8 @@ import Link from "next/link";
 // Localized title/description/keywords + canonical and hreflang for /terminal,
 // /en/terminal and /zh/terminal (copy lives in src/lib/i18n/dict/seo.ts).
 export function generateMetadata(): Promise<Metadata> {
-  // terminal.fomo.spot: its own copy (termsite.seo.terminal.*), canonical, hreflang and OG image
-  if (isTerminalSite()) return terminalPageMetadata("/terminal", "termsite.seo.terminal.title", "termsite.seo.terminal.description");
+  // terminal.fomo.spot: its own copy (termsite.seo.terminal.*), canonical, hreflang and OG image; behind the login, so noindex
+  if (isTerminalSite()) return terminalPageMetadata("/terminal", "termsite.seo.terminal.title", "termsite.seo.terminal.description", false, true);
   return sectionMetadata("terminal", "/terminal");
 }
 
@@ -24,6 +24,8 @@ export default async function TerminalLayout({ children }: { children: React.Rea
     const session = await auth();
     if (!session?.user || !isAdmin(session.user)) notFound();
   }
+  // the features page does not exist on terminal.fomo.spot (its copy is the main site's)
+  if (isTerminalSite()) return <>{children}</>;
   const { locale, t } = await getT();
   return (
     <>

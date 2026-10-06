@@ -6,14 +6,15 @@ import { useTheme } from "@/lib/theme";
 import { useT } from "@/lib/i18n/client";
 import { DownloadAppsBlock } from "@/components/shared/DownloadApps";
 import TerminalHeroBackdrop from "./TerminalHeroBackdrop";
-import { checkedAt, checkedLabel, compareSource, fomoTerminal, tradingViewPlans } from "@/lib/terminal-compare";
 import { TERMINAL_FAQ_KEYS } from "@/lib/terminal-faq";
 import "./terminal-landing.css";
 
 // Landing page of the terminal site (terminal.fomo.spot, SITE_MODE=terminal). src/app/page.tsx picks it by the site mode; LandingPage
 // (the main site) is untouched.
-//   hero (full-bleed screenshot carousel / video behind the login block) -> "free" strip -> «Что внутри» -> comparison
-//   -> FAQ (the same keys feed the FAQPage JSON-LD in page.tsx) -> downloads + final call to action -> legal links.
+//   hero (full-bleed screenshot carousel / video behind the login block) -> «Что внутри» -> FAQ (the same keys feed the FAQPage
+//   JSON-LD in page.tsx) -> final call to action + downloads -> legal links. The invitation to fomo.spot is NOT here: it lives inside the terminal.
+// The terminal needs a login (no guest demo, no standalone calendar page): the only ways in are «Регистрация» and «Вход».
+// No price / "free" wording and no comparison with other services (src/lib/terminal-compare.ts stays as data, it is not rendered).
 // All text is plain markup in the server HTML: entrance animations are CSS keyframes (no timers toggling classes), the FAQ answers
 // sit in <details> (in the DOM, closed). Light and dark themes use Tailwind `dark:` classes, so the server HTML is right for both;
 // the hero is always dark (it sits on screenshots).
@@ -27,21 +28,12 @@ function Shot({ src, w, h, alt, className = "", priority = false }: { src: strin
   );
 }
 
-function Check() {
-  return (
-    <svg className="w-4 h-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
 export default function TerminalLanding() {
   const { theme } = useTheme();
   const { t, locale, setLocale } = useT();
   const lang = (locale === "en" || locale === "cn" ? locale : "ru") as "ru" | "en" | "cn";
   const isDark = theme === "dark";
 
-  const heroLink = "text-sm underline underline-offset-4 text-gray-200 hover:text-white transition-colors";
   const card = "rounded-2xl border border-gray-200 bg-white dark:border-white/10 dark:bg-white/[0.04]";
   const h2 = "text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100";
   const body = "text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-300";
@@ -49,9 +41,6 @@ export default function TerminalLanding() {
     "tl-btn min-w-[170px] text-center px-6 py-3 rounded-lg font-medium bg-green-500 text-white hover:bg-green-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
   const btnGhost =
     "tl-btn min-w-[170px] text-center px-6 py-3 rounded-lg border-2 border-white/40 text-white font-medium hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
-
-  const freeItems = [1, 2, 3].map((n) => ({ t: t(`termsite.free.t${n}`), d: t(`termsite.free.d${n}`) }));
-  const cmpWhen = checkedLabel(lang, checkedAt);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-[#0a0a0a] dark:text-gray-100" data-terminal-landing>
@@ -91,12 +80,7 @@ export default function TerminalLanding() {
             <p className="tl-rise mt-4 max-w-xl text-base sm:text-lg leading-relaxed text-gray-200" style={{ ["--tl-d" as string]: "0.35s" }}>
               {t("termsite.welcome")}
             </p>
-            <p className="tl-rise mt-4 inline-flex items-center gap-2 rounded-full border border-green-400/40 bg-green-500/15 px-4 py-1.5 text-sm font-medium text-green-300" style={{ ["--tl-d" as string]: "0.5s" }}>
-              <span className="h-2 w-2 rounded-full bg-green-400" aria-hidden="true" />
-              {t("termsite.hero.free")}
-            </p>
-
-            <div className="tl-rise mt-7 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center" style={{ ["--tl-d" as string]: "0.65s" }}>
+            <div className="tl-rise mt-7 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center" style={{ ["--tl-d" as string]: "0.5s" }}>
               <a href="/register" className={btnPrimary}>
                 {t("auth.signUp")}
               </a>
@@ -104,39 +88,10 @@ export default function TerminalLanding() {
                 {t("auth.login")}
               </a>
             </div>
-
-            <div className="tl-rise mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2" style={{ ["--tl-d" as string]: "0.8s" }}>
-              <a href="/terminal" className={heroLink}>
-                {t("termsite.try")}
-              </a>
-              <a href="/calendar" className={heroLink}>
-                {t("nav.calendar")}
-              </a>
-            </div>
           </div>
           <a href="#inside" className="relative z-[1] mx-auto mb-10 text-xs uppercase tracking-widest text-gray-300 hover:text-white transition-colors">
             {t("termsite.hero.scroll")} <span aria-hidden="true">↓</span>
           </a>
-        </section>
-
-        {/* ── free strip ───────────────────────────────────────── */}
-        <section className="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-[#0f0f0f]" aria-labelledby="tl-free">
-          <h2 id="tl-free" className="sr-only">
-            {t("termsite.hero.free")}
-          </h2>
-          <ul className="mx-auto max-w-5xl grid gap-4 sm:grid-cols-3 px-4 py-8 sm:py-10">
-            {freeItems.map((it) => (
-              <li key={it.t} className={`${card} p-5`}>
-                <div className="flex items-start gap-2">
-                  <Check />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{it.t}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{it.d}</p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* ── what is inside ───────────────────────────────────── */}
@@ -165,9 +120,6 @@ export default function TerminalLanding() {
                 <div className="md:order-2">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t("termsite.c2.t")}</h3>
                   <p className={`mt-3 ${body}`}>{t("termsite.c2.d")}</p>
-                  <a href="/calendar" className="mt-4 inline-block text-sm font-medium text-green-700 dark:text-green-400 underline underline-offset-4">
-                    {t("nav.calendar")}
-                  </a>
                 </div>
                 <div className="md:order-1">
                   <Shot src={`${IMG}/calendar.webp`} w={1440} h={900} alt={t("termsite.c2.alt")} className="w-full border border-gray-200 dark:border-white/10 shadow-lg" />
@@ -211,60 +163,6 @@ export default function TerminalLanding() {
           </div>
         </section>
 
-        {/* ── comparison ───────────────────────────────────────── */}
-        <section className="border-y border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-[#0f0f0f] px-4 py-14 sm:py-20" aria-labelledby="tl-cmp">
-          <div className="mx-auto max-w-4xl">
-            <h2 id="tl-cmp" className={h2}>
-              {t("termsite.cmp.title")}
-            </h2>
-            <p className={`mt-3 max-w-2xl ${body}`}>{t("termsite.cmp.lead", { when: cmpWhen })}</p>
-
-            <div className={`mt-8 overflow-x-auto ${card}`}>
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400">
-                    <th scope="col" className="px-3 sm:px-4 py-3 font-medium">{t("termsite.cmp.col.plan")}</th>
-                    <th scope="col" className="px-2 sm:px-4 py-3 font-medium">{t("termsite.cmp.col.ind")}</th>
-                    <th scope="col" className="px-2 sm:px-4 py-3 font-medium">{t("termsite.cmp.col.charts")}</th>
-                    <th scope="col" className="px-2 sm:px-4 py-3 font-medium">{t("termsite.cmp.col.alerts")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="bg-green-500/10 border-b border-gray-200 dark:border-white/10">
-                    <th scope="row" className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                      FOMO Terminal
-                      <span className="block text-[11px] font-medium text-green-700 dark:text-green-400">{t("termsite.cmp.free")}</span>
-                    </th>
-                    <td className="px-2 sm:px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{t("termsite.cmp.noLimit")}</td>
-                    <td className="px-2 sm:px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{t("termsite.cmp.upTo", { n: fomoTerminal.chartsPerTab })}</td>
-                    <td className="px-2 sm:px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{t("termsite.cmp.upTo", { n: fomoTerminal.activePriceAlerts })}</td>
-                  </tr>
-                  {tradingViewPlans.map((r) => (
-                    <tr key={r.id} className="border-b last:border-b-0 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300">
-                      <th scope="row" className="px-3 sm:px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                        {compareSource.service} {r.plan}
-                        <span className="block text-[11px] font-normal text-gray-500 dark:text-gray-400">{t(r.kind === "free" ? "termsite.cmp.freePlan" : "termsite.cmp.paid")}</span>
-                      </th>
-                      <td className="px-2 sm:px-4 py-3">{r.indicatorsPerChart}</td>
-                      <td className="px-2 sm:px-4 py-3">{r.chartsPerTab}</td>
-                      <td className="px-2 sm:px-4 py-3">{r.activePriceAlerts}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="mt-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              {t("termsite.cmp.note")}{" "}
-              {t("termsite.cmp.source")}:{" "}
-              <a href={compareSource.url} target="_blank" rel="noopener nofollow" className="underline underline-offset-2">
-                {compareSource.label}
-              </a>
-              , {cmpWhen}.
-            </p>
-          </div>
-        </section>
-
         {/* ── FAQ ──────────────────────────────────────────────── */}
         <section className="px-4 py-14 sm:py-20" aria-labelledby="tl-faq">
           <div className="mx-auto max-w-3xl">
@@ -305,15 +203,6 @@ export default function TerminalLanding() {
                 {t("auth.login")}
               </a>
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-              <a href="/terminal" className="underline underline-offset-4 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                {t("termsite.try")}
-              </a>
-              <a href="/calendar" className="underline underline-offset-4 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                {t("nav.calendar")}
-              </a>
-            </div>
-
             {/* Downloads: Android / Windows (and macOS once a .dmg exists), the terminal's own files; hidden inside the apps themselves */}
             <div className="mt-10 min-h-[190px]">
               <DownloadAppsBlock isDark={isDark} flavor="terminal" />

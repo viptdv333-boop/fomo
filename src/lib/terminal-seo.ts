@@ -1,5 +1,6 @@
 // SEO of the terminal site (terminal.fomo.spot, SITE_MODE=terminal). Server-side helpers; the main site never calls them.
-// Pieces: page metadata with a real OG image, search-engine verification tags from the environment, the JSON-LD graph of the landing.
+// Pieces: page metadata with a real OG image, search-engine verification tags from the environment, the JSON-LD graph of the landing,
+// the sitemap and robots.txt contents. The terminal needs a login, so only the landing and the legal pages are indexable.
 
 import type { Metadata } from "next";
 import { getT } from "@/lib/i18n/server";
@@ -27,8 +28,28 @@ export function terminalVerification(env: Record<string, string | undefined> = p
   return { ...(google ? { google } : {}), ...(yandex ? { yandex } : {}) };
 }
 
-/** Title / description / canonical + hreflang / OpenGraph / Twitter of an indexable page of the terminal site. `titleKey` / `descKey` are dictionary keys. */
-export async function terminalPageMetadata(path: string, titleKey: string, descKey: string, absoluteTitle = false): Promise<Metadata> {
+/** Pages of the terminal site that belong in sitemap.xml (path without the language prefix). Everything else needs a login or is noindex. */
+export const TERMINAL_SITEMAP_ROUTES: { path: string; priority: number; changeFrequency: "weekly" | "yearly" }[] = [
+  { path: "/", priority: 1.0, changeFrequency: "weekly" },
+  { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
+];
+
+/** robots.txt of the terminal site: the landing and the legal pages are open, the app, the account pages and the APIs are not. */
+export const TERMINAL_ROBOTS_DISALLOW = ["/terminal", "/calendar", "/login", "/register", "/forgot-password", "/profile", "/admin", "/api"];
+
+/** Same Yandex Clean-param list as the main site (tracking parameters, so UTM links do not create duplicates). */
+const CLEAN_PARAMS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yclid", "ymclid", "gclid", "fbclid", "from", "ref", "referrer"];
+
+/** The whole robots.txt of the terminal site for the public origin `base`. The language prefixes (/en, /zh) get the same rules. */
+export function terminalRobotsTxt(base: string): string {
+  const paths = [...TERMINAL_ROBOTS_DISALLOW, ...TERMINAL_ROBOTS_DISALLOW.filter((p) => p !== "/api").flatMap((p) => ["/en", "/zh"].map((x) => x + p))];
+  const block = (ua: string) => [`User-agent: ${ua}`, "Allow: /", ...paths.map((p) => `Disallow: ${p}`)].join("\n");
+  return [block("*"), "", block("Yandex"), `Clean-param: ${CLEAN_PARAMS.join("&")}`, "", block("Googlebot"), "", `Host: ${base}`, `Sitemap: ${base}/sitemap.xml`, ""].join("\n");
+}
+
+/** Title / description / canonical + hreflang / OpenGraph / Twitter of a page of the terminal site. `titleKey` / `descKey` are dictionary keys. `noindex`: a page behind the login. */
+export async function terminalPageMetadata(path: string, titleKey: string, descKey: string, absoluteTitle = false, noindex = false): Promise<Metadata> {
   const { locale, t } = await getT();
   const title = t(titleKey);
   const description = t(descKey);
@@ -37,6 +58,7 @@ export async function terminalPageMetadata(path: string, titleKey: string, descK
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
+    ...(noindex ? { robots: { index: false, follow: false } } : {}),
     alternates,
     openGraph: { type: "website", siteName: "FOMO Terminal", title, description, url: alternates.canonical, ...ogLocales(locale), images: [image] },
     twitter: { card: "summary_large_image", title, description, images: [TERMINAL_OG_IMAGE] },
@@ -85,10 +107,6 @@ export function terminalLandingJsonLd(locale: Locale, t: (key: string) => string
         ...(downloads.length ? { downloadUrl: downloads.length === 1 ? downloads[0] : downloads } : {}),
         image: `${origin}/landing/terminal/og.jpg`,
         inLanguage: ["ru", "en", "zh"],
-        offers: [
-          { "@type": "Offer", price: "0", priceCurrency: "RUB", availability: "https://schema.org/InStock" },
-          { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" },
-        ],
       },
       {
         "@type": "FAQPage",

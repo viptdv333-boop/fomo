@@ -8,6 +8,10 @@ import { useT } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n/locale-url";
 import DemoGate from "@/components/shared/DemoGate";
 import { isTerminalSite } from "@/lib/site-mode";
+import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
+import { localZone } from "@/lib/chart/settings";
+import CalendarPanel from "@/components/chart/calendar/CalendarPanel";
+import { useFomoIdeas } from "@/components/chart/FomoPanel";
 import { useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import type { RangeId } from "@/components/chart/BottomBar";
@@ -38,8 +42,10 @@ const Chart = dynamic(() => import("@/components/chart/MultiChart"), {
 
 const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
-// terminal.fomo.spot has no board of ideas: no «ideas of the symbol» card and no requests to /api/instruments or /api/ideas
+// terminal.fomo.spot has no board of its own: no requests to /api/instruments or /api/ideas of this instance. Its «Идеи FOMO по …» card
+// reads fomo.spot through /api/fomo-ideas (useFomoIdeas), the calendar is a segment next to the watchlist, and a «сообщество FOMO» card follows.
 const TERMINAL_SITE = isTerminalSite();
+const TZ_LS = "fomo-calendar-tz";
 
 /** Ideas of the board for a terminal symbol: the board's instrument id and the number of ideas (cached for the session). */
 interface IdeasInfo {
@@ -136,6 +142,22 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const instruments = useMemo(() => (selected && !inList ? [...watchlist.items, selected] : watchlist.items), [watchlist.items, selected, inList]);
   const quotes = useBatchQuotes(instruments, instruments.length > 0 && !expanded);
   const quote = selected ? quotes[qKey(selected)] : undefined;
+
+  // terminal site: «Список наблюдения | Календарь» (the calendar was a page of its own; ?panel=calendar opens it, see closedRouteRedirect)
+  const [seg, setSeg] = useState<"watch" | "cal">("watch");
+  const [zone, setZone] = useState("UTC");
+  useEffect(() => {
+    if (!TERMINAL_SITE) return;
+    try {
+      if (new URLSearchParams(window.location.search).get("panel") === "calendar") setSeg("cal");
+    } catch {}
+    let saved = "";
+    try {
+      saved = localStorage.getItem(TZ_LS) || "";
+    } catch {}
+    setZone(saved || localZone());
+  }, []);
+  const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
   const selKey = selected ? qKey(selected) : "";
@@ -363,8 +385,33 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </Link>
         )}
 
-        <div className="app-term-wtitle">{t("appui.term.watch")}</div>
-        <div className="app-term-watch">
+        {TERMINAL_SITE && selected && fomoIdeas?.ok && (
+          <a href={fomoIdeas.boardUrl} target="_blank" rel="noopener" className="app-term-ideas" data-fomo-ideas>
+            <AppIcon name="bulb" size={18} stroke={1.8} />
+            <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
+            {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
+            <AppIcon name="chevR" size={18} stroke={1.8} />
+          </a>
+        )}
+
+        {TERMINAL_SITE ? (
+          <div className="app-term-seg" role="tablist">
+            <button type="button" role="tab" aria-selected={seg === "watch"} data-on={seg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
+              {t("appui.term.watch")}
+            </button>
+            <button type="button" role="tab" aria-selected={seg === "cal"} data-on={seg === "cal" ? "1" : undefined} onClick={() => setSeg("cal")}>
+              {t("nav.calendar")}
+            </button>
+          </div>
+        ) : (
+          <div className="app-term-wtitle">{t("appui.term.watch")}</div>
+        )}
+        {TERMINAL_SITE && seg === "cal" && (
+          <div className="tv3 app-term-cal" data-app-calendar>
+            <CalendarPanel zone={zone} visible />
+          </div>
+        )}
+        <div className="app-term-watch" hidden={TERMINAL_SITE && seg === "cal"}>
           {watchlist.items.length === 0 ? (
             <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
           ) : (
@@ -392,6 +439,17 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             })
           )}
         </div>
+
+        {TERMINAL_SITE && (
+          <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-term-ideas app-term-comm" data-fomo-community>
+            <AppIcon name="users" size={18} stroke={1.8} />
+            <span className="app-term-ideas-t">
+              {t("termsite.community")}
+              <span className="app-term-ideas-s">{t("termsite.community.sub")}</span>
+            </span>
+            <AppIcon name="chevR" size={18} stroke={1.8} />
+          </a>
+        )}
 
         <div className="app-term-disc">
           {t("appui.term.disc")}

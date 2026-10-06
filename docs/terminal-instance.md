@@ -5,7 +5,7 @@
 `AUTH_SECRET`, ни cookie, ни ключей. Режим включается переменными окружения; если они не заданы, `fomo.spot` ведёт себя
 ровно так же, как раньше.
 
-В копии есть только: Терминал, Календарь, уведомления (колокольчик, push, Telegram, e-mail, Android), профиль
+В копии есть только: Терминал (календарь — вкладка внутри него), уведомления (колокольчик, push, Telegram, e-mail, Android), профиль
 (вкладки «Профиль», «Безопасность», «Настройки уведомлений») и админка для владельца инстанса. Доски идей, чата, каналов,
 авторов, калькулятора, платежей, подписок, комнат, справки нет.
 
@@ -28,15 +28,22 @@
 
 ### Что делает режим terminal
 
-- **Страницы — allowlist** (`routeAllowed`, middleware): `/`, `/login`, `/register`, `/forgot-password`, `/terminal*`,
-  `/calendar*`, `/profile`, `/privacy`, `/terms`, `/admin`, `/admin/users`, `/admin/broadcast`, `/admin/site-settings`.
+- **Страницы — allowlist** (`routeAllowed`, middleware): `/`, `/login`, `/register`, `/forgot-password`, `/terminal`,
+  `/profile`, `/privacy`, `/terms`, `/admin`, `/admin/users`, `/admin/broadcast`, `/admin/site-settings`.
   Всё остальное (в т. ч. любые новые страницы) — редирект на `/terminal` (закрытые разделы админки — на `/admin`).
   `/` для гостя — лендинг «FOMO Terminal» (`TerminalLanding`), для вошедшего — редирект на `/terminal`.
+  Отдельной страницы `/calendar` и страницы `/terminal/features` нет: `/calendar` ведёт на `/terminal?panel=calendar` (открывает вкладку
+  «Календарь»; так же работают старые ссылки напоминаний `/calendar#дата`), `/terminal/features` — на `/terminal`.
+- **Вход обязателен, гостевого демо нет**: `/terminal*` (и `/calendar`) для гостя — редирект на `/login?callbackUrl=<путь>`
+  (middleware, `terminalNeedsLogin` в `site-mode.ts`); после входа человек попадает на запрошенную страницу (по умолчанию `/terminal`).
+  Публичны только `/`, `/privacy`, `/terms`, `/login`, `/register`, `/forgot-password`. **Публичные API с рыночными данными**
+  (`klines`, `quote(s)`, `market-search`, `orderbook`, `news`, `economic-calendar` и др.) по-прежнему открыты без входа: закрывать их
+  было бы отдельной задачей (могут ломаться приложение и виджеты). Код демо-режима (`DemoGate`) в сборке остаётся для fomo.spot.
 - **API — тоже allowlist**: чужие маршруты отвечают `404 {"error":"Not found"}`. Проверка стоит в `server.ts` (видит все
   `/api/*`) и в middleware (дублирует для тех, что он видит). Открыты: `auth`, `captcha`, `terminal`, `calendar`,
   `economic-calendar`, `klines`, `quote(s)`, `market-search`, `contracts`, `orderbook`, `orderflow`, `algopack`, `news`,
   `notifications`, `notification-settings` (в т. ч. вебхуки ботов), `push`, `telegram`, `me`, `languages`, `site-settings`,
-  `version`, `upload`, `socketio`, `users` и `users/<id>` (профиль и список для админа), `admin/stats|broadcast|site-settings`.
+  `version`, `upload`, `socketio`, `fomo-ideas` (см. ниже), `users` и `users/<id>` (профиль и список для админа), `admin/stats|broadcast|site-settings`.
 - **Админка** `/admin` доступна только ADMIN / OWNER (проверяет middleware), в меню сайта ссылки на неё нет; в самой админке
   оставлены разделы «Пользователи», «Рассылка», «Настройки сайта».
 - **Cookie** сессии: `terminal.session-token` (по http) или `__Secure-terminal.session-token`, `__Secure-terminal.callback-url`,
@@ -44,10 +51,18 @@
   читается, и наоборот. Ни в одном месте кода нет общего cookie-домена.
 - **Настройки уведомлений**: матрица показывает «Терминал и календарь» (price_alert, line_alert, calendar_reminder) и «Система».
   Социальные события и платежи скрыты.
-- **Нижнее меню приложения (app UI)**: Терминал, Календарь, Профиль, Настройки.
+- **Нижнее меню приложения (app UI)**: Терминал, Настройки, Профиль. Календарь внутри терминала: на компьютере вкладка «Календарь» правой
+  панели рядом со списком наблюдения, в app UI переключатель «Список наблюдения | Календарь» под рядом инструментов (`AppTerminal`).
+- **Идеи и сообщество fomo.spot** (в терминале, не на лендинге): `GET /api/fomo-ideas?ticker=SBER[&alt=<dataTicker>]` — серверный прокси
+  (`src/app/api/fomo-ideas/route.ts`, чистая часть `src/lib/fomo-ideas.ts`): только для вошедшего, на fomo.spot самом отвечает 404; тикер
+  `^[A-Za-z0-9._-]{1,20}$`; сервер запрашивает `https://fomo.spot/api/instruments?search=` и `/api/ideas?instrumentId=&limit=5` (таймаут 4 с,
+  без cookie), кэш в памяти 5 мин (сбой — 1 мин), при недоступности fomo.spot отвечает `{ok:false}` и интерфейс молчит. Ответ:
+  `{ok, count, ideas:[{id,title,author,likes,createdAt,url}], boardUrl}`, `url` = `https://fomo.spot/ideas/<id>`. Показ: вкладка «Идеи FOMO» правой
+  панели, карточка «Идеи FOMO по <тикер>» в app UI; ссылки открываются в новой вкладке (в Android-приложении fomo.spot — чужой хост, его
+  открывает системный браузер). Карточка «FOMO — сообщество трейдеров» — под списком наблюдения и во вкладке идей, строка в профиле app UI.
 - **Брендинг**: title/description «FOMO Terminal …», manifest «FOMO Terminal» (`start_url /terminal`, без share target),
   иконки `public/icons-terminal/*`, canonical и hreflang на `terminal.fomo.spot`, OG-картинка `public/landing/terminal/og.jpg`, нет Яндекс.Метрики и
-  Google Analytics (счётчики fomo.spot), sitemap — только страницы терминала, без обращений к базе. Тег подтверждения fomo.spot (Яндекс)
+  Google Analytics (счётчики fomo.spot), sitemap — только лендинг и юридические страницы, без обращений к базе. Тег подтверждения fomo.spot (Яндекс)
   здесь не выводится никогда; свои теги Google / Яндекса — только из `GOOGLE_SITE_VERIFICATION` / `YANDEX_VERIFICATION` (см. «SEO» ниже).
 - **Socket.IO**: CORS только на адрес инстанса (на fomo.spot по-прежнему `*`).
 
@@ -172,18 +187,19 @@ Android (`/app/dl/FOMO-Terminal.apk`), Windows (`/app/dl/FOMO-Terminal-Setup.exe
 (`/opt/fomo-terminal/public/app/dl/`, затем `pm2 restart fomo-terminal`, чтобы Next увидел новые файлы; или nginx отдаёт папку сам).
 
 ## SEO и поисковики (только режим terminal)
-- **Лендинг** `/` (`TerminalLanding`): весь текст в серверном HTML (анимации — CSS, FAQ в `<details>`), H1 «Бесплатный торговый терминал онлайн», разделы
-  «Что внутри», «Сколько это стоит у других», «Частые вопросы». JSON-LD: Organization, WebSite, SoftwareApplication (бесплатно, RUB/USD, ссылки на скачивание
-  из `dl-info.json`) и FAQPage — из тех же ключей, что и видимый список (`src/lib/terminal-seo.ts`, `terminal-faq.ts`). Тексты — `src/lib/i18n/dict/termsite.ts` (ru/en/cn).
-- **Мета**: title/description для `/`, `/terminal`, `/calendar` свои (ключи `termsite.*`), canonical + hreflang ru/en/zh, Open Graph и Twitter-карточка с
-  `public/landing/terminal/og.jpg` (1200×630). `/login`, `/register`, `/forgot-password`, `/profile`, `/admin` — noindex.
-- **sitemap.xml**: `/`, `/terminal`, `/terminal/features`, `/calendar`, `/privacy`, `/terms` в трёх языках с lastmod (у «статичных» — `TERMINAL_STATIC_LASTMOD` в
-  `terminal-seo.ts`, поднимать при смене текстов); **robots.txt** разрешает эти страницы и указывает на sitemap.
+- **Лендинг** `/` (`TerminalLanding`): весь текст в серверном HTML (анимации — CSS, FAQ в `<details>`), H1 «Торговый терминал онлайн», разделы
+  «Что внутри» и «Частые вопросы»; никаких «бесплатно», тарифов и сравнения с другими сервисами (проверяет `check-site-mode`). Во всех текстах названы
+  мировые фьючерсы NYMEX / COMEX / CME / ICE (так и есть в коде: FMP, непрерывный ряд ближайшего контракта, `us-futures.ts`), без обещаний реального времени.
+  JSON-LD: Organization, WebSite, SoftwareApplication (без `offers`, ссылки на скачивание из `dl-info.json`) и FAQPage — из тех же ключей, что и видимый список (`src/lib/terminal-seo.ts`, `terminal-faq.ts`). Тексты — `src/lib/i18n/dict/termsite.ts` (ru/en/cn).
+- **Мета**: title/description для `/` и `/terminal` свои (ключи `termsite.*`), canonical + hreflang ru/en/zh, Open Graph и Twitter-карточка с
+  `public/landing/terminal/og.jpg` (1200×630). `/terminal`, `/login`, `/register`, `/forgot-password`, `/profile`, `/admin` — noindex.
+- **sitemap.xml**: `/`, `/privacy`, `/terms` в трёх языках с lastmod (`TERMINAL_STATIC_LASTMOD` в `terminal-seo.ts`, поднимать при смене текстов);
+  терминал за входом, его в карте нет. **robots.txt** (`terminalRobotsTxt`): разрешён `/`, закрыты `/terminal`, `/calendar`, `/login`, `/register`,
+  `/forgot-password`, `/profile`, `/admin`, `/api` (и их копии под `/en`, `/zh`), указан sitemap.
 - **Подтверждение владения**: в `.env` инстанса `GOOGLE_SITE_VERIFICATION=<content метатега>` и/или `YANDEX_VERIFICATION=<content метатега>`, затем
   `pm2 restart fomo-terminal --update-env` (пересборка не нужна: читается при запросе). Появятся `<meta name="google-site-verification">` / `<meta name="yandex-verification">`.
   Далее в Google Search Console / Яндекс.Вебмастере добавить `https://terminal.fomo.spot`, подтвердить, отправить `/sitemap.xml`.
-- **Таблица «Сколько это стоит у других»**: факты и дата проверки — `src/lib/terminal-compare.ts` (`checkedAt`, источник — официальная страница тарифов
-  TradingView). Условия чужих сервисов меняются: при обновлении правьте числа и `checkedAt`.
+- `src/lib/terminal-compare.ts` (сравнение с тарифами TradingView) оставлен как данные, на сайте не показывается.
 - **Медиа лендинга**: `public/landing/terminal/*.webp` (скриншоты терминала, календаря и мобильного интерфейса), `hero.mp4` (≈1 МБ, без звука, фон героя на широких
   экранах), `logo.webp`, `og.jpg`. Скриншоты сняты с демо-режима без личных данных; перед заменой проверьте, что на кадре нет ничего личного.
 
@@ -201,7 +217,7 @@ curl -s https://terminal.fomo.spot/robots.txt | tail -2                         
 - Юридические страницы `/privacy` и `/terms` — те же тексты, что у fomo.spot (в них говорится о платформе FOMO). Для отдельного продукта
   стоит дать свои тексты.
 - Справка `/help` скрыта целиком (она про платформу идей); краткой справки по терминалу нет.
-- Страница `/terminal/features` оставлена (рассказ о терминале), её тексты общие с fomo.spot.
+- Страница `/terminal/features` на терминале закрыта (её тексты общие с fomo.spot и говорят «бесплатно»).
 - Сервис-воркер `public/sw.js` и его кэши (`fomo-v6`) одинаковы, но у каждого сайта свой origin, поэтому пересечений нет.
 - Уже существующая особенность (не из этого изменения): сокет-сервер доверяет `userId`, который клиент присылает в handshake
   (`server/socket.ts`). На инстансе это те же права, что и на fomo.spot; id пользователей двух баз не пересекаются.

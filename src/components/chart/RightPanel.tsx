@@ -33,6 +33,7 @@ import {
 import { fetchContractInfo, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
 import { ContractBadge } from "./ContractPicker";
 import { isTerminalSite } from "@/lib/site-mode";
+import { FomoCommunityCard, FomoIdeasPanel } from "./FomoPanel";
 import "./terminal-v3.css";
 
 export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
@@ -64,8 +65,9 @@ const ALL_TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "orderbook", key: "shell.tab.orderbook" },
   { id: "algo", key: "shell.tab.algo" },
 ];
-// terminal.fomo.spot has no board of ideas: no «Идеи» tab (it only linked to /feed)
-const TABS = isTerminalSite() ? ALL_TABS.filter((x) => x.id !== "ideas") : ALL_TABS;
+// terminal.fomo.spot has no board of its own: its «Идеи» tab is «Идеи FOMO» (the ideas of fomo.spot for the open symbol, FomoPanel.tsx)
+const TERMINAL_SITE = isTerminalSite();
+const TABS = TERMINAL_SITE ? ALL_TABS.map((x) => (x.id === "ideas" ? { ...x, titleKey: "termsite.ideas.title" } : x)) : ALL_TABS;
 
 /* ───────────── batch quotes ───────────── */
 
@@ -529,6 +531,7 @@ function Watchlist({
             contract={inst.source === "moex" ? contractInfo[inst.dataTicker] : undefined}
           />
         ))}
+        {TERMINAL_SITE && <FomoCommunityCard />}
       </div>
     </div>
   );
@@ -813,7 +816,8 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
                   <InfoCard inst={selected} quote={quote} visible={visible && tab === "info"} />
                 </div>
               )}
-              {tab === "ideas" && (
+              {tab === "ideas" && TERMINAL_SITE && <FomoIdeasPanel inst={selected} visible={visible && tab === "ideas"} />}
+              {tab === "ideas" && !TERMINAL_SITE && (
                 <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
                   <div className="rounded-[14px] bg-[var(--tv3-fill3)] p-3.5 text-[14px] leading-[1.45] text-[var(--tv3-text)]">
                     {t("p3.ideas.text", { ticker: selected.ticker })}

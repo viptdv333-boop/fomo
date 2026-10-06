@@ -1,7 +1,8 @@
 // Site mode: the same codebase serves two sites.
 //   main     (default, nothing set)  - https://fomo.spot, the social site: board of ideas, chat, channels, terminal ...
 //   terminal (SITE_MODE=terminal)    - https://terminal.fomo.spot: a separate INSTANCE (own database, own users, own cookies)
-//                                      with the terminal, the calendar, notifications and the profile only.
+//                                      with the terminal (the calendar lives inside it, next to the watchlist), notifications and the
+//                                      profile only. Everything but the landing and the legal pages needs a signed-in user.
 //
 // Two variables, set to the same value on the terminal instance:
 //   SITE_MODE=terminal               - runtime, read by the server (custom server, API routes, dispatcher, metadata)
@@ -152,14 +153,28 @@ const TERMINAL_PAGES_EXACT = [
   "/admin/broadcast",
   "/admin/site-settings",
 ];
-const TERMINAL_PAGES_PREFIX = ["/terminal", "/calendar"];
+const TERMINAL_PAGES_PREFIX = ["/terminal"];
+// Closed although they sit under an open prefix: the features page repeats the main site's copy (and its "free" wording). The standalone
+// /calendar page is not served either: the calendar is a tab of the terminal's right panel / a segment of the app terminal.
+const TERMINAL_PAGES_CLOSED = ["/terminal/features"];
+
+/**
+ * Pages of the terminal site that need a signed-in user (the terminal has no guest demo): the terminal itself and everything that
+ * shows market data. The landing, the legal pages and the sign-in / sign-up screens stay public; /profile and /admin have their own checks.
+ * Path WITHOUT the language prefix.
+ */
+export function terminalNeedsLogin(pathname: string): boolean {
+  let p = (pathname || "/").split(/[?#]/)[0];
+  if (p.length > 1) p = p.replace(/\/+$/, "");
+  return underPrefix(p, "/terminal") || underPrefix(p, "/calendar");
+}
 
 /** API groups (first segment after /api) open on the terminal site. */
 const TERMINAL_API_PREFIX = [
   "auth", // next-auth, register, send-code, reset-password, change-email, change-password
   "captcha",
   "terminal", // alerts, userdata, watchlist
-  "calendar", // reminders
+  "calendar", // reminders (the calendar tab of the terminal)
   "economic-calendar",
   "klines",
   "quote",
@@ -175,6 +190,7 @@ const TERMINAL_API_PREFIX = [
   "push", // web push + FCM tokens
   "telegram", // own-bot flow of the notification settings
   "me", // /api/me/locale
+  "fomo-ideas", // «Идеи FOMO»: a server-side proxy to the idea board of fomo.spot (see src/app/api/fomo-ideas/route.ts)
   "languages",
   "site-settings",
   "version",
@@ -208,11 +224,17 @@ export function routeAllowed(mode: SiteMode, pathname: string, isApi: boolean): 
     }
     return TERMINAL_API_PREFIX.includes(seg[0]);
   }
+  if (TERMINAL_PAGES_CLOSED.includes(p)) return false;
   if (TERMINAL_PAGES_EXACT.includes(p)) return true;
   return TERMINAL_PAGES_PREFIX.some((x) => underPrefix(p, x));
 }
 
-/** Where a closed page is sent: closed admin sections go back to /admin, everything else to the terminal. */
+/**
+ * Where a closed page is sent: closed admin sections go back to /admin, the old standalone /calendar (bookmarks, calendar reminder
+ * notifications) to the terminal with its calendar tab open, everything else to the terminal.
+ */
 export function closedRouteRedirect(pathname: string): string {
-  return underPrefix(pathname, "/admin") ? "/admin" : "/terminal";
+  if (underPrefix(pathname, "/admin")) return "/admin";
+  if (underPrefix(pathname, "/calendar")) return "/terminal?panel=calendar";
+  return "/terminal";
 }

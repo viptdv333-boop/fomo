@@ -7,6 +7,7 @@ import { forceUpdate } from "@/lib/force-update";
 import { unregisterNativePush } from "@/lib/native-push";
 import { canOpenNativeSettings, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
 import { isTerminalSite } from "@/lib/site-mode";
+import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { avatarInitial, countValue, heroLine, pendingSalesCount, ratingLabel, specLabels } from "@/lib/app-profile";
 import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import AppIcon from "../AppIcon";
@@ -90,15 +91,32 @@ export default function ProfileHome() {
   const themeLabel = theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight");
 
   const sections: SheetSection[] = [];
-  sections.push({
-    key: "sections",
-    title: t("appprof.sections"),
-    rows: [
-      ...(TERMINAL ? [] : [{ key: "authors", label: t("nav.authors"), icon: ico("users"), chev: true, onClick: () => open("/authors") }]),
-      { key: "calendar", label: t("nav.calendar"), icon: ico("cal"), chev: true, onClick: () => open("/calendar") },
-      ...(TERMINAL ? [] : [{ key: "calc", label: t("nav.calculator"), icon: ico("calc"), sub: t("appprof.calcSub"), chev: true, onClick: () => open("/calculator") }]),
-    ],
-  });
+  // terminal site: no sections of the board site; the calendar is a segment of the terminal screen, and one quiet row invites to fomo.spot
+  if (TERMINAL)
+    sections.push({
+      key: "community",
+      rows: [
+        {
+          key: "fomo",
+          label: t("termsite.community"),
+          sub: t("termsite.community.sub"),
+          icon: ico("users"),
+          chev: true,
+          // outside the app: a new tab; in the Android app the system browser takes over (fomo.spot is not the app's own host)
+          onClick: () => void window.open(FOMO_COMMUNITY_URL, "_blank", "noopener"),
+        },
+      ],
+    });
+  else
+    sections.push({
+      key: "sections",
+      title: t("appprof.sections"),
+      rows: [
+        { key: "authors", label: t("nav.authors"), icon: ico("users"), chev: true, onClick: () => open("/authors") },
+        { key: "calendar", label: t("nav.calendar"), icon: ico("cal"), chev: true, onClick: () => open("/calendar") },
+        { key: "calc", label: t("nav.calculator"), icon: ico("calc"), sub: t("appprof.calcSub"), chev: true, onClick: () => open("/calculator") },
+      ],
+    });
   if (!TERMINAL)
     sections.push({
       key: "cabinet",

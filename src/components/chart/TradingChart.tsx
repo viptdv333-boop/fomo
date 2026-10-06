@@ -121,6 +121,9 @@ function loadPrefs(key: string = PREFS_KEY, fallbackKey?: string): Prefs {
   return DEFAULT_PREFS;
 }
 
+/** the ?panel= deep link is applied once per page load */
+let panelParamUsed = false;
+
 const PANEL_TABS: PanelTab[] = ["watchlist", "info", "ideas", "news", "calendar", "objects", "alerts", "orderbook", "algo"];
 
 /** Preferences from the account copy: every field checked, anything unknown falls back to the default (an old / foreign copy never breaks the chart). */
@@ -358,7 +361,22 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       emptyJson: JSON.stringify(DEFAULT_PREFS),
     });
     prefsChan.current = ch;
-    void ch.start();
+    // /terminal?panel=calendar (the old /calendar address, a calendar reminder link): open the calendar tab of the right panel once the
+    // account copy of the preferences has been applied, so it is not overwritten by it
+    void ch.start().then(() => {
+      if (embedded || appPage || panelParamUsed) return;
+      let want: string | null = null;
+      try {
+        want = new URLSearchParams(window.location.search).get("panel");
+      } catch {}
+      if (want !== "calendar") return;
+      panelParamUsed = true;
+      if (window.matchMedia("(min-width: 768px)").matches) update({ panelOpen: true, panelTab: "calendar" });
+      else {
+        update({ panelTab: "calendar" });
+        setMobilePanel(true);
+      }
+    });
     return () => {
       prefsChan.current = null;
       ch.dispose();

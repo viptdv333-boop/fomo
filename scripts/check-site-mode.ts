@@ -10,6 +10,7 @@ import {
   closedRouteRedirect,
   parseSiteMode,
   routeAllowed,
+  terminalNeedsLogin,
   siteHost,
   siteMode,
   siteUrl,
@@ -17,7 +18,8 @@ import {
 import { EVENTS, EVENT_GROUPS, eventsForSite, groupLabelKey, groupsForSite } from "../src/lib/notification-events";
 import { MAIN_APP_TABS, TERMINAL_APP_TABS } from "../src/lib/app-ui";
 import { safeLink } from "../src/lib/fcm";
-import { terminalVerification } from "../src/lib/terminal-seo";
+import { TERMINAL_ROBOTS_DISALLOW, TERMINAL_SITEMAP_ROUTES, terminalRobotsTxt, terminalVerification } from "../src/lib/terminal-seo";
+import { FOMO_COMMUNITY_URL, TtlCache, boardUrl, cleanTicker, ideaUrl, normalizeIdeas, pickInstrumentId } from "../src/lib/fomo-ideas";
 import { checkedAt, checkedLabel, tradingViewPlans } from "../src/lib/terminal-compare";
 import { TERMINAL_FAQ_KEYS } from "../src/lib/terminal-faq";
 import termsite from "../src/lib/i18n/dict/termsite";
@@ -83,17 +85,17 @@ withEnv({}, () => {
 });
 
 // --- route allowlist ----------------------------------------------------------------------------------------------
-const PAGES_OPEN = ["/", "/login", "/register", "/forgot-password", "/terminal", "/terminal/features", "/calendar", "/calendar/x", "/profile", "/privacy", "/terms", "/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings", "/terminal/"];
+const PAGES_OPEN = ["/", "/login", "/register", "/forgot-password", "/terminal", "/profile", "/privacy", "/terms", "/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings", "/terminal/"];
 const PAGES_CLOSED = [
   "/feed", "/feed/btc", "/ideas/5", "/ideas/new", "/chat", "/chat/sber", "/messages", "/channels", "/channels/create", "/authors", "/authors/x", "/calculator",
   "/payments", "/subscriptions", "/rooms/1", "/rooms/join/abc", "/instruments", "/instruments/btc", "/profile/u1", "/help", "/share", "/share-target", "/design-preview",
-  "/dev-notifications", "/clip-test", "/admin/ideas", "/admin/chat", "/admin/users/1", "/terminalx", "/calendarx", "/profilex", "/..%2Ffeed",
+  "/dev-notifications", "/clip-test", "/admin/ideas", "/admin/chat", "/admin/users/1", "/terminalx", "/calendarx", "/terminal/features", "/calendar", "/calendar/x", "/profilex", "/..%2Ffeed",
 ];
 const API_OPEN = [
   "/api/auth/session", "/api/auth/csrf", "/api/auth/register", "/api/auth/send-code", "/api/auth/reset-password", "/api/auth/change-password", "/api/terminal/alerts", "/api/terminal/userdata", "/api/terminal/watchlist",
   "/api/terminal/alerts/abc", "/api/calendar/reminders", "/api/economic-calendar", "/api/klines", "/api/quote", "/api/quotes", "/api/market-search", "/api/contracts", "/api/orderbook", "/api/orderflow",
   "/api/algopack/status", "/api/news", "/api/notifications", "/api/notifications/unread-by-type", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",
-  "/api/push/subscribe", "/api/push/fcm", "/api/push/beacon", "/api/telegram/account", "/api/me/locale", "/api/languages", "/api/site-settings", "/api/version", "/api/upload", "/api/upload/favicon",
+  "/api/push/subscribe", "/api/push/fcm", "/api/push/beacon", "/api/telegram/account", "/api/me/locale", "/api/fomo-ideas", "/api/languages", "/api/site-settings", "/api/version", "/api/upload", "/api/upload/favicon",
   "/api/users", "/api/users/u1", "/api/admin/stats", "/api/admin/broadcast", "/api/admin/broadcast/users", "/api/admin/site-settings", "/api/captcha", "/api/socketio",
 ];
 const API_CLOSED = [
@@ -108,8 +110,14 @@ eq("api: every example is open on the terminal site", API_OPEN.filter((p) => !ro
 eq("api: every example is closed on the terminal site", API_CLOSED.filter((p) => routeAllowed("terminal", p, true)), []);
 eq("api: the path alone decides (isApi flag false, /api prefix)", [routeAllowed("terminal", "/api/ideas", false), routeAllowed("terminal", "/api/klines", false)], [false, true]);
 eq("main site: everything is allowed", [...PAGES_CLOSED, ...API_CLOSED, "/feed"].filter((p) => !routeAllowed("main", p, p.startsWith("/api"))), []);
-eq("query strings and trailing slashes are ignored", [routeAllowed("terminal", "/terminal?x=1", false), routeAllowed("terminal", "/feed?x=1", false), routeAllowed("terminal", "/calendar/", false)], [true, false, true]);
+eq("query strings and trailing slashes are ignored", [routeAllowed("terminal", "/terminal?x=1", false), routeAllowed("terminal", "/feed?x=1", false), routeAllowed("terminal", "/terminal/", false)], [true, false, true]);
 eq("closed pages go to the terminal, closed admin sections to /admin", [closedRouteRedirect("/feed"), closedRouteRedirect("/admin/ideas"), closedRouteRedirect("/chat")], ["/terminal", "/admin", "/terminal"]);
+eq("the standalone /calendar redirects to the terminal with its calendar tab open", [closedRouteRedirect("/calendar"), closedRouteRedirect("/calendar/x"), routeAllowed("terminal", "/calendar", false)], ["/terminal?panel=calendar", "/terminal?panel=calendar", false]);
+eq("main site keeps /calendar and /terminal/features", [routeAllowed("main", "/calendar", false), routeAllowed("main", "/terminal/features", false)], [true, true]);
+
+// --- login gate of the terminal site (the middleware redirects a guest to /login?callbackUrl=...) ------------------------------
+eq("gate: the terminal and its sub-pages need a login", ["/terminal", "/terminal/", "/terminal/anything", "/terminal?symbol=SBER", "/calendar", "/calendar/x"].filter((p) => !terminalNeedsLogin(p)), []);
+eq("gate: the landing, legal pages and the sign-in screens stay public", ["/", "/privacy", "/terms", "/login", "/register", "/forgot-password", "/terminalx", "/calendarx"].filter((p) => terminalNeedsLogin(p)), []);
 
 // --- auth cookies -------------------------------------------------------------------------------------------------
 eq("cookies: main site keeps the next-auth defaults (null = no override)", authCookieNames("main", true, {}), null);
@@ -136,7 +144,8 @@ eq("events: the money group is called «Система» on the terminal site on
 
 // --- dock ---------------------------------------------------------------------------------------------------------
 eq("dock: main has 8 tabs", MAIN_APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"]);
-eq("dock: terminal has 4 tabs", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calendar", "settings", "me"]);
+eq("dock: terminal has 3 tabs (no calendar tab: the calendar is inside the terminal)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "settings", "me"]);
+eq("dock: the terminal dock has no /calendar", TERMINAL_APP_TABS.some((t) => t.href === "/calendar" || t.match.includes("/calendar")), false);
 eq("dock: the terminal dock has no board, chat or channels", TERMINAL_APP_TABS.some((t) => t.href === "/feed" || t.href === "/chat" || t.href === "/channels"), false);
 
 // --- terminal SEO: search-engine verification from the environment, comparison data, landing copy ---------------------------
@@ -148,6 +157,80 @@ eq("compare: plans grow with the tier", tradingViewPlans.every((p, i, a) => i ==
 const faqKeys = TERMINAL_FAQ_KEYS.flatMap((k) => [k.q, k.a]);
 eq("landing copy: every FAQ key exists in ru, en and cn", ["ru", "en", "cn"].map((l) => faqKeys.filter((k) => !(termsite as any)[l][k]).length), [0, 0, 0]);
 eq("landing copy: ru, en and cn have the same termsite keys", [Object.keys(termsite.en).sort().join() === Object.keys(termsite.ru).sort().join(), Object.keys(termsite.cn).sort().join() === Object.keys(termsite.ru).sort().join()], [true, true]);
+
+// --- terminal SEO contents: sitemap, robots, copy -------------------------------------------------------------------------------
+eq("sitemap (terminal): the landing and the legal pages only", TERMINAL_SITEMAP_ROUTES.map((r) => r.path), ["/", "/privacy", "/terms"]);
+const robots = terminalRobotsTxt("https://terminal.fomo.spot");
+const robotsLines = robots.split("\n");
+eq(
+  "robots (terminal): allows / and disallows the app, the account pages and the API (also under /en and /zh)",
+  ["Allow: /", ...["/terminal", "/calendar", "/login", "/register", "/profile", "/admin", "/api", "/en/terminal", "/zh/calendar"].map((p) => `Disallow: ${p}`)].filter((l) => !robotsLines.includes(l)),
+  [],
+);
+eq("robots (terminal): names the sitemap, the landing itself is not blocked", [robots.includes("Sitemap: https://terminal.fomo.spot/sitemap.xml"), robotsLines.includes("Disallow: /"), TERMINAL_ROBOTS_DISALLOW.includes("/privacy")], [true, false, false]);
+
+const LANGS = ["ru", "en", "cn"] as const;
+const copy = (l: (typeof LANGS)[number]) => (termsite as unknown as Record<string, Record<string, string>>)[l];
+const FREE_RE = /бесплатн|\bfree\b|免费/i;
+eq("copy: no free / бесплатно / 免费 anywhere in the terminal-site copy (ru, en, cn)", LANGS.flatMap((l) => Object.entries(copy(l)).filter(([, v]) => FREE_RE.test(v)).map(([k]) => `${l}:${k}`)), []);
+eq(
+  "copy: the dropped keys are gone (free strip, pill, comparison, no-registration link, calendar page meta, landing invitation)",
+  LANGS.flatMap((l) => Object.keys(copy(l)).filter((k) => /^termsite\.(free\.|hero\.free|cmp\.|try$|seo\.calendar|invite\.)/.test(k))),
+  [],
+);
+const NO_LOGIN_RE = /без регистрации|без входа|демо|(^|\D)5 минут|without signing|demo|no sign|无需注册|演示|(^|\D)5 分钟/i;
+eq("copy: nothing says the terminal opens without registration / has a demo", LANGS.flatMap((l) => Object.entries(copy(l)).filter(([, v]) => NO_LOGIN_RE.test(v)).map(([k]) => `${l}:${k}`)), []);
+const nymexKeys = ["termsite.description", "termsite.keywords", "termsite.welcome", "termsite.c1.d", "termsite.faq.a2", "termsite.faq.a4", "termsite.org.description", "termsite.seo.terminal.description"];
+eq("copy: NYMEX is named in description / keywords / hero / «Что внутри» / FAQ / org in ru, en and cn", LANGS.flatMap((l) => nymexKeys.filter((k) => !/NYMEX/.test(copy(l)[k])).map((k) => `${l}:${k}`)), []);
+eq(
+  "copy: the FAQ answer about delay does not promise real time for the world futures",
+  LANGS.filter((l) => /real[- ]time is guaranteed|гарантирует(ся)? реальное время(?!\s*не)/i.test(copy(l)["termsite.faq.a4"])),
+  [],
+);
+const cardKeys = ["termsite.community", "termsite.community.sub", "termsite.ideas.title", "termsite.ideas.empty", "termsite.ideas.open", "termsite.ideas.all"];
+eq("copy: the community card / «Идеи FOMO» texts exist in every language", LANGS.flatMap((l) => cardKeys.filter((k) => !copy(l)[k]).map((k) => `${l}:${k}`)), []);
+
+// --- «Идеи FOMO»: the server proxy to fomo.spot, pure parts ---------------------------------------------------------------------
+eq(
+  "ideas: ticker validation (^[A-Za-z0-9._-]{1,20}$)",
+  [cleanTicker("SBER"), cleanTicker(" BR-12.3_x "), cleanTicker(""), cleanTicker("a b"), cleanTicker("../x"), cleanTicker("x".repeat(21)), cleanTicker("S&B"), cleanTicker(5)],
+  ["SBER", "BR-12.3_x", null, null, null, null, null, null],
+);
+eq("ideas: idea url scheme of the main site", ideaUrl("abc123"), "https://fomo.spot/ideas/abc123");
+eq(
+  "ideas: board link carries the instrument and utm",
+  [boardUrl("id1"), boardUrl(null), boardUrl("bad id!")],
+  ["https://fomo.spot/feed?instrumentId=id1&utm_source=terminal&utm_medium=ideas", "https://fomo.spot/feed?utm_source=terminal&utm_medium=ideas", "https://fomo.spot/feed?utm_source=terminal&utm_medium=ideas"],
+);
+eq("ideas: community link is fomo.spot with utm", FOMO_COMMUNITY_URL, "https://fomo.spot/?utm_source=terminal&utm_medium=app");
+const raw = {
+  data: [
+    { id: "i1", title: "  Нефть\n Brent: прогноз ", voteScore: 7, createdAt: "2026-10-05T04:11:50.472Z", author: { displayName: "Михаил" } },
+    { id: "../evil", title: "bad id" },
+    { id: "i2", title: "", voteScore: 1 },
+    { id: "i3", title: "x".repeat(300), voteScore: "9", author: null },
+  ],
+  total: 19,
+};
+const norm = normalizeIdeas(raw, 5);
+eq(
+  "ideas: normalised answer (ids checked, empty titles dropped, titles cut, likes numeric)",
+  [norm.count, norm.ideas.map((i) => [i.id, i.title.length <= 140, i.author, i.likes, i.url])],
+  [19, [["i1", true, "Михаил", 7, "https://fomo.spot/ideas/i1"], ["i3", true, "", 0, "https://fomo.spot/ideas/i3"]]],
+);
+eq("ideas: the title is whitespace-normalised", norm.ideas[0].title, "Нефть Brent: прогноз");
+eq("ideas: junk answers give no ideas and never throw", [normalizeIdeas(null), normalizeIdeas("x"), normalizeIdeas({ data: "no" }), normalizeIdeas({ data: [null, 5] })], [{ count: 0, ideas: [] }, { count: 0, ideas: [] }, { count: 0, ideas: [] }, { count: 0, ideas: [] }]);
+eq("ideas: the limit is respected", normalizeIdeas({ data: Array.from({ length: 9 }, (_, i) => ({ id: `a${i}`, title: "t" })), total: 9 }, 5).ideas.length, 5);
+eq(
+  "ideas: board instrument = exact ticker, first spelling that has one",
+  [pickInstrumentId(["SBER"], [[{ id: "x1", ticker: "SBERP" }, { id: "x2", ticker: "sber" }]]), pickInstrumentId(["BZUSD", "BR"], [[], [{ id: "br1", ticker: "BR" }]]), pickInstrumentId(["ZZZ"], [[{ id: "y", ticker: "ZZ" }]]), pickInstrumentId(["A"], [null])],
+  ["x2", "br1", null, null],
+);
+const ttl = new TtlCache<number>(2);
+ttl.set("a", 1, 1000, 0);
+ttl.set("b", 2, 1000, 0);
+ttl.set("c", 3, 1000, 0);
+eq("ideas: the cache keeps entries until the ttl and caps its size (oldest first)", [ttl.get("a", 10), ttl.get("b", 10), ttl.get("c", 10), ttl.get("c", 1000), ttl.size], [undefined, 2, 3, undefined, 1]);
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

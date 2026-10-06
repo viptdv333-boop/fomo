@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isLocale, localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
-import { closedRouteRedirect, routeAllowed, siteMode } from "@/lib/site-mode";
+import { closedRouteRedirect, routeAllowed, siteMode, terminalNeedsLogin } from "@/lib/site-mode";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 const YEAR = 60 * 60 * 24 * 365;
@@ -26,6 +26,14 @@ export default auth((req) => {
   if (siteMode() === "terminal" && !routeAllowed("terminal", pathname, isApi)) {
     if (isApi) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.redirect(new URL(localizedPath(urlLocale ?? locale, closedRouteRedirect(pathname)), req.url));
+  }
+
+  // The terminal site has no guest mode: the terminal (and any page with market data) needs a signed-in user, guests are sent to
+  // /login and come back to the page they asked for. The landing, the legal pages and the sign-in screens stay public.
+  if (siteMode() === "terminal" && !isApi && !user && terminalNeedsLogin(pathname)) {
+    const login = new URL(localizedPath(urlLocale ?? locale, "/login"), req.url);
+    login.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
+    return NextResponse.redirect(login);
   }
 
   // Someone who picked English/Chinese lands on the prefixed URL, so every

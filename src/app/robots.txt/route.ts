@@ -1,6 +1,7 @@
 // Hand-rolled robots.txt route handler instead of Next's robots.ts, because
 // MetadataRoute.Robots cannot express Yandex's Clean-param directive.
-import { siteUrl } from "@/lib/site-mode";
+import { isTerminalSite, siteUrl } from "@/lib/site-mode";
+import { terminalRobotsTxt } from "@/lib/terminal-seo";
 
 // https://fomo.spot on the main site, https://terminal.fomo.spot on the terminal instance (NEXT_PUBLIC_SITE_URL / SITE_MODE)
 const BASE = siteUrl();
@@ -55,6 +56,10 @@ function block(userAgent: string): string {
 }
 
 export function GET(): Response {
+  // terminal.fomo.spot: the landing and the legal pages are open, the terminal / calendar / account pages / API are not
+  if (isTerminalSite()) {
+    return new Response(terminalRobotsTxt(BASE), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+  }
   const body = [
     block("*"),
     "",

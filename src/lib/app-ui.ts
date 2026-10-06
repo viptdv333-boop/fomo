@@ -28,8 +28,8 @@ export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "me", href: "/profile", labelKey: "profile.profile", match: ["/profile", "/payments", "/subscriptions"] },
 ];
 
-/** The dock of the terminal site (terminal.fomo.spot): four tabs. */
-export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calendar", "settings", "me"].includes(tab.id)).map((tab) =>
+/** The dock of the terminal site (terminal.fomo.spot): three tabs. The calendar is not a tab there: it lives inside the terminal next to the watchlist. */
+export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "settings", "me"].includes(tab.id)).map((tab) =>
   tab.id === "me" ? { ...tab, match: ["/profile"] } : tab
 );
 
