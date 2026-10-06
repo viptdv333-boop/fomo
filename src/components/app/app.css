@@ -98,9 +98,9 @@ html.app-ui .app-tabbar {
 }
 html.app-ui .app-tabbar::-webkit-scrollbar { display: none; }
 /* a fading edge on the side that has more tabs behind it: the dock is a sideways carousel */
-html.app-ui .app-tabbar[data-more="r"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
-html.app-ui .app-tabbar[data-more="l"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
-html.app-ui .app-tabbar[data-more="lr"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+html.app-ui .app-tabbar[data-more="r"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+html.app-ui .app-tabbar[data-more="l"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+html.app-ui .app-tabbar[data-more="lr"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
 html.app-ui.app-kbd .app-tabbar { display: none; }
 html.app-ui .app-tab {
   flex: 0 0 20%;

@@ -12,7 +12,7 @@ import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
 
-const HINT_KEY = "fomo-dock-hint-v1";
+const HINT_KEY = "fomo-dock-hint-v2";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
@@ -72,34 +72,43 @@ function TabBar() {
       /* private mode: hint every time */
     }
     const timers: number[] = [];
+    let raf = 0;
     let touched = false;
     const stop = () => {
       touched = true;
     };
     nav.addEventListener("touchstart", stop, { passive: true, once: true });
-    if (hinted < 4 && nav.scrollWidth - nav.clientWidth > 24) {
+    if (hinted < 6 && nav.scrollWidth - nav.clientWidth > 24) {
       timers.push(
         window.setTimeout(() => {
           if (touched) return;
+          // scroll-snap mandatory would pull a small smooth scroll straight back: switch it off while the nudge runs, animate by hand (there and back)
           const from = nav.scrollLeft;
-          nav.scrollTo({ left: from + 48, behavior: "smooth" });
-          timers.push(
-            window.setTimeout(() => {
-              if (!touched) nav.scrollTo({ left: from, behavior: "smooth" });
-            }, 650)
-          );
+          const dist = Math.min(72, nav.scrollWidth - nav.clientWidth - from);
+          const dur = 900;
+          const t0 = performance.now();
+          nav.style.scrollSnapType = "none";
+          const tick = (now: number) => {
+            const k = Math.min(1, (now - t0) / dur);
+            nav.scrollLeft = from + dist * Math.sin(Math.PI * k); // 0 -> dist -> 0
+            if (k < 1 && !touched) raf = requestAnimationFrame(tick);
+            else nav.style.scrollSnapType = "";
+          };
+          raf = requestAnimationFrame(tick);
           try {
             localStorage.setItem(HINT_KEY, String(hinted + 1));
           } catch {
             /* ignore */
           }
-        }, 1600)
+        }, 1200)
       );
     }
     return () => {
       nav.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
       timers.forEach((t) => window.clearTimeout(t));
+      cancelAnimationFrame(raf);
+      nav.style.scrollSnapType = "";
     };
   }, []);
 
