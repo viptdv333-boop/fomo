@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
@@ -28,6 +29,71 @@ function Shot({ src, w, h, alt, className = "", priority = false }: { src: strin
   );
 }
 
+const LANGS: { code: "ru" | "en" | "cn"; flag: string; name: string }[] = [
+  { code: "ru", flag: "ru", name: "Русский" },
+  { code: "en", flag: "en", name: "English" },
+  { code: "cn", flag: "zh", name: "中文" },
+];
+
+/** Language picker of the landing: a drop-down (closes on outside click / Esc), not a button that cycles through the languages. */
+function LangMenu({ lang, setLocale }: { lang: "ru" | "en" | "cn"; setLocale: (l: "ru" | "en" | "cn") => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent | TouchEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("touchstart", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("touchstart", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const cur = LANGS.find((l) => l.code === lang) ?? LANGS[0];
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors"
+        aria-label="Language"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <FlagIcon code={cur.flag} size={20} />
+        <span className="text-sm font-medium uppercase">{lang}</span>
+        <svg className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <ul role="listbox" aria-label="Language" className="absolute right-0 top-full mt-2 min-w-[150px] rounded-xl bg-[#111]/95 backdrop-blur border border-white/15 shadow-xl py-1 z-50">
+          {LANGS.map((l) => (
+            <li key={l.code} role="option" aria-selected={l.code === lang}>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setLocale(l.code);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left hover:!bg-white/10 ${l.code === lang ? "!text-green-400 font-medium" : ""}`}
+              >
+                <FlagIcon code={l.flag} size={18} />
+                {l.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function TerminalLanding() {
   const { theme } = useTheme();
   const { t, locale, setLocale } = useT();
@@ -46,15 +112,7 @@ export default function TerminalLanding() {
     <div className="min-h-screen bg-white text-gray-900 dark:bg-[#0a0a0a] dark:text-gray-100" data-terminal-landing>
       <header className="fixed top-0 right-0 z-50 p-3 sm:p-4 flex items-center gap-1 sm:gap-2">
         <div className="flex items-center gap-1 rounded-xl bg-black/45 backdrop-blur px-1.5 py-1 text-gray-100 [&_button]:!text-gray-100 [&_button:hover]:!bg-white/15">
-          <button
-            type="button"
-            onClick={() => setLocale(lang === "ru" ? "en" : lang === "en" ? "cn" : "ru")}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors"
-            aria-label="Language"
-          >
-            <FlagIcon code={lang === "cn" ? "zh" : lang} size={20} />
-            <span className="text-sm font-medium uppercase">{lang}</span>
-          </button>
+          <LangMenu lang={lang} setLocale={setLocale} />
           <ThemeToggle />
         </div>
       </header>
