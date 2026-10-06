@@ -4,6 +4,8 @@ import type { SectionDict } from "./types";
 const dict: SectionDict = {
   ru: {
     "appui.nav": "Основная навигация",
+    "appui.dockPrev": "Прокрутить вкладки назад",
+    "appui.dockNext": "Прокрутить вкладки вперёд",
     "appui.tab.settings": "Настройки",
     "appui.unread": "непрочитанных: {n}",
     "appui.profile": "Профиль и меню",
@@ -73,6 +75,8 @@ const dict: SectionDict = {
   },
   en: {
     "appui.nav": "Main navigation",
+    "appui.dockPrev": "Scroll tabs back",
+    "appui.dockNext": "Scroll tabs forward",
     "appui.tab.settings": "Settings",
     "appui.unread": "unread: {n}",
     "appui.profile": "Profile and menu",
@@ -142,6 +146,8 @@ const dict: SectionDict = {
   },
   cn: {
     "appui.nav": "主导航",
+    "appui.dockPrev": "向后滚动标签",
+    "appui.dockNext": "向前滚动标签",
     "appui.tab.settings": "设置",
     "appui.unread": "未读：{n}",
     "appui.profile": "个人资料和菜单",

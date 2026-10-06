@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -11,8 +11,6 @@ import { useChatBadge } from "@/components/layout/useChatBadge";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
-
-const HINT_KEY = "fomo-dock-hint-v2";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
@@ -54,67 +52,36 @@ function TabBar() {
     nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [active]);
 
-  // the dock is a carousel: fade the edge that has more tabs behind it, and nudge it sideways a few times so it reads as swipeable
+  // the dock is a carousel: arrows on the sides that have more tabs behind them + a scroll thumb above the bar (all driven by the bar's scroll position)
+  const thumb = useRef<HTMLSpanElement>(null);
+  const [more, setMore] = useState({ l: false, r: false });
   useEffect(() => {
     const nav = bar.current;
     if (!nav) return;
     const sync = () => {
       const max = nav.scrollWidth - nav.clientWidth;
-      nav.dataset.more = max <= 2 ? "" : nav.scrollLeft <= 2 ? "r" : nav.scrollLeft >= max - 2 ? "l" : "lr";
+      const l = max > 2 && nav.scrollLeft > 2;
+      const r = max > 2 && nav.scrollLeft < max - 2;
+      setMore((m) => (m.l === l && m.r === r ? m : { l, r }));
+      if (thumb.current) {
+        const w = max > 2 ? (nav.clientWidth / nav.scrollWidth) * 100 : 100;
+        thumb.current.style.width = `${w}%`;
+        thumb.current.style.left = `${max > 2 ? (nav.scrollLeft / nav.scrollWidth) * 100 : 0}%`;
+        thumb.current.parentElement!.style.display = max > 2 ? "" : "none";
+      }
     };
     sync();
     nav.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("resize", sync);
-    let hinted = 0;
-    try {
-      hinted = Number(localStorage.getItem(HINT_KEY) || 0);
-    } catch {
-      /* private mode: hint every time */
-    }
-    const timers: number[] = [];
-    let raf = 0;
-    let touched = false;
-    const stop = () => {
-      touched = true;
-    };
-    nav.addEventListener("touchstart", stop, { passive: true, once: true });
-    if (hinted < 6 && nav.scrollWidth - nav.clientWidth > 24) {
-      timers.push(
-        window.setTimeout(() => {
-          if (touched) return;
-          // scroll-snap mandatory would pull a small smooth scroll straight back: switch it off while the nudge runs, animate by hand (there and back)
-          const from = nav.scrollLeft;
-          const dist = Math.min(72, nav.scrollWidth - nav.clientWidth - from);
-          const dur = 900;
-          const t0 = performance.now();
-          nav.style.scrollSnapType = "none";
-          const tick = () => {
-            const k = Math.min(1, (performance.now() - t0) / dur);
-            nav.scrollLeft = from + dist * Math.sin(Math.PI * k); // 0 -> dist -> 0
-            if (k >= 1 || touched) {
-              window.clearInterval(raf);
-              nav.style.scrollSnapType = "";
-            }
-          };
-          raf = window.setInterval(tick, 16); // a timer, not rAF: it must also run when the WebView thinks the page is not painting yet
-          try {
-            localStorage.setItem(HINT_KEY, String(hinted + 1));
-          } catch {
-            /* ignore */
-          }
-        }, 1200)
-      );
-    }
     return () => {
       nav.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
-      timers.forEach((t) => window.clearTimeout(t));
-      window.clearInterval(raf);
-      nav.style.scrollSnapType = "";
     };
   }, []);
+  const page = (dir: 1 | -1) => bar.current?.scrollBy({ left: dir * bar.current.clientWidth * 0.6, behavior: "smooth" });
 
   return (
+    <>
     <nav ref={bar} className="app-tabbar" style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
@@ -163,6 +130,20 @@ function TabBar() {
         );
       })}
     </nav>
+    <div className="app-dock-track" aria-hidden="true">
+      <span ref={thumb} className="app-dock-thumb" />
+    </div>
+    {more.l && (
+      <button type="button" className="app-dock-arrow app-dock-arrow-l" onClick={() => page(-1)} aria-label={t("appui.dockPrev")}>
+        <AppIcon name="chevL" size={18} stroke={2.2} />
+      </button>
+    )}
+    {more.r && (
+      <button type="button" className="app-dock-arrow app-dock-arrow-r" onClick={() => page(1)} aria-label={t("appui.dockNext")}>
+        <AppIcon name="chevR" size={18} stroke={2.2} />
+      </button>
+    )}
+    </>
   );
 }
 
