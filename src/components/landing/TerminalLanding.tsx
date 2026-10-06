@@ -61,9 +61,9 @@ export default function TerminalLanding() {
 
       <main>
         {/* ── hero ─────────────────────────────────────────────── */}
-        <section className="tl-hero min-h-[100svh] flex flex-col" aria-labelledby="tl-h1">
+        <section className="tl-hero min-h-[min(100svh,820px)] flex flex-col" aria-labelledby="tl-h1">
           <TerminalHeroBackdrop />
-          <div className="relative z-[1] flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-16 text-center">
+          <div className="relative z-[1] flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-8 text-center">
             <div className="tl-rise flex flex-col items-center" style={{ ["--tl-d" as string]: "0.05s" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`${IMG}/logo.webp`} alt="FOMO" width={480} height={203} className="w-[min(260px,62vw)] h-auto" />
@@ -89,13 +89,13 @@ export default function TerminalLanding() {
               </a>
             </div>
           </div>
-          <a href="#inside" className="relative z-[1] mx-auto mb-10 text-xs uppercase tracking-widest text-gray-300 hover:text-white transition-colors">
+          <a href="#inside" className="relative z-[1] mx-auto mb-4 text-xs uppercase tracking-widest text-gray-300 hover:text-white transition-colors">
             {t("termsite.hero.scroll")} <span aria-hidden="true">↓</span>
           </a>
         </section>
 
         {/* ── what is inside ───────────────────────────────────── */}
-        <section id="inside" className="scroll-mt-4 px-4 py-14 sm:py-20" aria-labelledby="tl-inside">
+        <section id="inside" className="scroll-mt-4 px-4 pt-8 pb-14 sm:pt-12 sm:pb-20" aria-labelledby="tl-inside">
           <div className="mx-auto max-w-5xl">
             <h2 id="tl-inside" className={h2}>
               {t("termsite.inside.title")}
