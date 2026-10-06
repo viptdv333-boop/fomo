@@ -99,7 +99,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       role="tab"
       aria-selected={prefs.view === id}
       onClick={() => update((p) => ({ ...p, view: id }))}
-      className={`inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${prefs.view === id ? "bg-[var(--tv3-card)] font-semibold text-[var(--tv3-text)] shadow-sm" : "text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
+      className={`inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-semibold cursor-pointer transition ${prefs.view === id ? "bg-[var(--tv3-accent)] font-semibold text-white shadow-sm" : "text-[var(--tv3-muted)] hover:text-[var(--tv3-text)]"}`}
     >
       <span className="scale-[0.72] max-sm:hidden">{icon}</span>
       {label}

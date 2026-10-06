@@ -292,7 +292,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             role="tab"
             aria-selected={on}
             onClick={() => update((p) => ({ ...p, preset: tb.id }))}
-            className={`h-6 shrink-0 whitespace-nowrap rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${wide ? "px-2.5" : "flex-auto"} ${on ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
+            className={`h-6 shrink-0 whitespace-nowrap rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${wide ? "px-2.5" : "flex-auto"} ${on ? "bg-[var(--tv3-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,.25)]" : "text-[var(--tv3-text2)]"}`}
           >
             {t(tb.key)}
           </button>
@@ -304,7 +304,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
         aria-label={t("ec.tab.custom")}
         aria-selected={prefs.preset === "custom"}
         onClick={(e) => setRangeAnchor(anchorOf(e.currentTarget))}
-        className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${prefs.preset === "custom" ? "bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[0_1px_3px_rgba(0,0,0,.18)]" : "text-[var(--tv3-text2)]"}`}
+        className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] px-1.5 text-[12px] font-semibold cursor-pointer transition ${prefs.preset === "custom" ? "bg-[var(--tv3-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,.25)]" : "text-[var(--tv3-text2)]"}`}
       >
         {EC_ICONS.calendarRange}
         {prefs.preset === "custom" && <span className="tabular-nums">{rf.from.slice(5)}{rf.to !== rf.from ? `…${rf.to.slice(5)}` : ""}</span>}

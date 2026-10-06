@@ -63,17 +63,20 @@ export default function CountryPicker({ anchor, onClose, selected, mine, seen, o
       className="h-8 w-full rounded-[10px] bg-[var(--tv3-fill)] px-2.5 text-[13px] outline-none focus:border-[var(--tv3-accent)] max-sm:h-10 max-sm:text-[16px]"
     />
   );
+  // a preset is "on" when the current selection is exactly its set: filled with the accent colour, so the state is obvious
+  const same = (codes: readonly string[]) => codes.length > 0 && codes.length === sel.size && codes.every((c) => sel.has(c));
+  const activeCls = "bg-[var(--tv3-accent)]! border-[var(--tv3-accent)]! text-white! font-semibold hover:opacity-90";
   const presets = (
     <div className="mt-2 flex flex-wrap gap-1 max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden">
-      <button type="button" className={`${chip} ${all ? "border-[var(--tv3-accent)]! text-[var(--tv3-accent)]" : ""}`} onClick={() => onChange([])}>
+      <button type="button" aria-pressed={all} className={`${chip} ${all ? activeCls : ""}`} onClick={() => onChange([])}>
         {t("ec.allCountries")}
       </button>
-      <button type="button" className={chip} onClick={() => onChange([...G7])}>G7</button>
-      <button type="button" className={chip} onClick={() => onChange([...G20])}>G20</button>
-      <button type="button" className={chip} disabled={mine.length === 0} title={mine.length ? undefined : t("ec.mineEmpty")} onClick={() => onChange(mine)}>
+      <button type="button" aria-pressed={same(G7)} className={`${chip} ${same(G7) ? activeCls : ""}`} onClick={() => onChange([...G7])}>G7</button>
+      <button type="button" aria-pressed={same(G20)} className={`${chip} ${same(G20) ? activeCls : ""}`} onClick={() => onChange([...G20])}>G20</button>
+      <button type="button" aria-pressed={same(mine)} className={`${chip} ${same(mine) ? activeCls : ""}`} disabled={mine.length === 0} title={mine.length ? undefined : t("ec.mineEmpty")} onClick={() => onChange(mine)}>
         {t("ec.mine")}
       </button>
-      <button type="button" className={chip} disabled={selected.length === 0} onClick={() => onSaveMine(selected)} title={t("ec.saveMineHint")}>
+      <button type="button" className={chip} disabled={selected.length === 0 || same(mine)} onClick={() => onSaveMine(selected)} title={t("ec.saveMineHint")}>
         {t("ec.saveMine")}
       </button>
     </div>
