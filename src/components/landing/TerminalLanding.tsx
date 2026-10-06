@@ -277,6 +277,11 @@ export default function TerminalLanding() {
             {t("common.landing.terms")}
           </a>
         </div>
+        <p className="mx-auto mb-2 max-w-2xl px-4 leading-snug">
+          <a href="/terms" className="hover:underline">
+            {t("termsite.footer.risk")}
+          </a>
+        </p>
         Copyright © Neurotrader 2026
       </footer>
     </div>

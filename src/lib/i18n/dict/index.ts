@@ -45,5 +45,6 @@ import appch from "./appch";
 import downloads from "./downloads";
 import appprof from "./appprof";
 import termsite from "./termsite";
+import termlegal from "./termlegal";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate, forex, instsearch, appui, appch, downloads, termsite, appprof];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate, forex, instsearch, appui, appch, downloads, termsite, termlegal, appprof];

@@ -23,6 +23,9 @@ import { FOMO_COMMUNITY_URL, TtlCache, boardUrl, cleanTicker, ideaUrl, normalize
 import { checkedAt, checkedLabel, tradingViewPlans } from "../src/lib/terminal-compare";
 import { TERMINAL_FAQ_KEYS } from "../src/lib/terminal-faq";
 import termsite from "../src/lib/i18n/dict/termsite";
+import termlegal from "../src/lib/i18n/dict/termlegal";
+import { TERMINAL_LEGAL_DATE, legalKeys, splitPlaceholders, terminalContactEmail } from "../src/lib/terminal-legal";
+import { readFileSync } from "node:fs";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -231,6 +234,94 @@ ttl.set("a", 1, 1000, 0);
 ttl.set("b", 2, 1000, 0);
 ttl.set("c", 3, 1000, 0);
 eq("ideas: the cache keeps entries until the ttl and caps its size (oldest first)", [ttl.get("a", 10), ttl.get("b", 10), ttl.get("c", 10), ttl.get("c", 1000), ttl.size], [undefined, 2, 3, undefined, 1]);
+
+// --- terminal legal pages (/privacy, /terms): own texts about the terminal product ------------------------------------------------
+const legal = (l: (typeof LANGS)[number]) => (termlegal as unknown as Record<string, Record<string, string>>)[l];
+const usedLegal = [...legalKeys("privacy"), ...legalKeys("terms")];
+eq("legal: every key of both pages exists (non-empty) in ru, en and cn", LANGS.flatMap((l) => usedLegal.filter((k) => !legal(l)[k]).map((k) => `${l}:${k}`)), []);
+const extraLegal = ["termlegal.note", "termlegal.cookie.text", "termlegal.register.disclaimer"];
+eq(
+  "legal: no stray keys (every termlegal key is used by a page or is the note / cookie notice / register disclaimer)",
+  LANGS.flatMap((l) => Object.keys(legal(l)).filter((k) => !usedLegal.includes(k) && !extraLegal.includes(k)).map((k) => `${l}:${k}`)),
+  [],
+);
+eq("legal: the extra keys exist in every language (the note is empty in ru only)", LANGS.flatMap((l) => extraLegal.filter((k) => (l === "ru" && k === "termlegal.note" ? false : !legal(l)[k])).map((k) => `${l}:${k}`)), []);
+// the old fomo.spot texts are about ideas, channels, paid access and settlements between users of a social platform ("subscription" of a browser for web push is fine)
+const SOCIAL_RE = /идей|ideas|платн|paid|канал|channel|платформ|platform|между пользовател|between users|用户之间|付费|频道|平台|想法/i;
+eq("legal: no fomo.spot ideas / channels / paid subscriptions / platform wording in the terminal legal texts (ru, en, cn)", LANGS.flatMap((l) => Object.entries(legal(l)).filter(([, v]) => SOCIAL_RE.test(v)).map(([k]) => `${l}:${k}`)), []);
+eq("legal: no free / бесплатно / 免费 and no e-mail address (real or invented) in the terminal legal texts", LANGS.flatMap((l) => Object.entries(legal(l)).filter(([, v]) => FREE_RE.test(v) || /@/.test(v)).map(([k]) => `${l}:${k}`)), []);
+eq(
+  "legal: both pages are dated 06.10.2026 (ru dd.mm.yyyy; en / cn also carry it)",
+  [TERMINAL_LEGAL_DATE, ...LANGS.flatMap((l) => ["privacy", "terms"].map((p) => legal(l)[`termlegal.${p}.effective`].includes("06.10.2026")))],
+  ["06.10.2026", true, true, true, true, true, true],
+);
+eq(
+  "legal: the risk box says «не является инвестиционной рекомендацией» in every language",
+  [/Не является инвестиционной рекомендацией/.test(legal("ru")["termlegal.terms.box.title"]), /Not investment advice/.test(legal("en")["termlegal.terms.box.title"]), /不构成投资建议/.test(legal("cn")["termlegal.terms.box.title"])],
+  [true, true, true],
+);
+eq(
+  "legal: terms name NYMEX / CBOT and the 15 minutes delay; privacy names Resend, Firebase, Timeweb, age 18 and 152-FZ (ru, en, cn)",
+  LANGS.flatMap((l) => {
+    const join = (prefix: string) => Object.entries(legal(l)).filter(([k]) => k.startsWith(prefix)).map(([, v]) => v).join(" ");
+    const terms = join("termlegal.terms.");
+    const priv = join("termlegal.privacy.");
+    return [/NYMEX/.test(terms) && /CBOT/.test(terms) && /15/.test(terms), /Resend/.test(priv) && /Firebase/.test(priv) && /Timeweb/.test(priv) && /18/.test(priv) && /152/.test(priv)].map((ok, i) => (ok ? "" : `${l}:${i}`));
+  }).filter(Boolean),
+  [],
+);
+eq(
+  "legal: placeholders {email} / {url} of the contact paragraphs and {privacy} of terms s1.p1 are the same in ru, en, cn",
+  LANGS.map((l) =>
+    ["termlegal.privacy.s13.email", "termlegal.privacy.s13.form", "termlegal.terms.s13.email", "termlegal.terms.s13.form", "termlegal.terms.s1.p1"].map((k) =>
+      splitPlaceholders(legal(l)[k], ["email", "url", "privacy"]).filter((x) => typeof x !== "string").map((x) => (x as { name: string }).name).join(","),
+    ),
+  ),
+  [0, 1, 2].map(() => ["email", "url", "email", "url", "privacy"]),
+);
+eq(
+  "legal: TERMINAL_CONTACT_EMAIL is read from the environment and validated; unset or junk = null (the page then points to the feedback form)",
+  [
+    terminalContactEmail({}),
+    terminalContactEmail({ TERMINAL_CONTACT_EMAIL: "  " }),
+    terminalContactEmail({ TERMINAL_CONTACT_EMAIL: "hello@neurotrader.dev" }),
+    terminalContactEmail({ TERMINAL_CONTACT_EMAIL: '"help@fomo.spot"' }),
+    terminalContactEmail({ TERMINAL_CONTACT_EMAIL: "not an email" }),
+    terminalContactEmail({ TERMINAL_CONTACT_EMAIL: "a@b" }),
+  ],
+  [null, null, "hello@neurotrader.dev", "help@fomo.spot", null, null],
+);
+eq("legal: placeholders split the text around the links", splitPlaceholders("a {email} b {url}", ["email", "url"]), ["a ", { name: "email" }, " b ", { name: "url" }]);
+const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+eq(
+  "legal: the privacy and terms pages hand over to the terminal texts only in terminal mode (metadata and body); the old fomo.spot keys stay in place",
+  ["privacy", "terms"].map((p) => {
+    const t = src(`src/app/(main)/${p}/page.tsx`);
+    return [/if \(isTerminalSite\(\)\) return terminalLegalMetadata\(/.test(t), /if \(isTerminalSite\(\)\) return Terminal\w+Page\(\)/.test(t), t.includes(`seo.${p}.title`), t.includes(`${p}.s1.h`)];
+  }),
+  [[true, true, true, true], [true, true, true, true]],
+);
+eq(
+  "legal: the terminal landing footer carries the risk line linking to /terms, in ru, en and cn",
+  [/href="\/terms"[\s\S]{0,200}termsite\.footer\.risk/.test(src("src/components/landing/TerminalLanding.tsx")), ...LANGS.map((l) => /инвестиционной рекомендацией|Not investment advice|不构成投资建议/.test(copy(l)["termsite.footer.risk"] ?? ""))],
+  [true, true, true, true],
+);
+const registerSrc = src("src/app/(auth)/register/page.tsx");
+eq(
+  "legal: the register page links /terms and /privacy; its disclaimer and the cookie notice switch to the terminal wording in terminal mode only",
+  [
+    /href="\/terms"/.test(registerSrc),
+    /href="\/privacy"/.test(registerSrc),
+    /isTerminalSite\(\) \? "termlegal\.register\.disclaimer" : "auth\.termsDisclaimer"/.test(registerSrc),
+    /isTerminalSite\(\) \? "termlegal\.cookie\.text" : "common\.cookie\.text"/.test(src("src/components/CookieBanner.tsx")),
+  ],
+  [true, true, true, true],
+);
+eq(
+  "legal: the policy says «no analytics trackers»: the layout renders Yandex.Metrika and Google Analytics outside the terminal mode only",
+  [/!TERMINAL && <YandexMetrika \/>/.test(src("src/app/layout.tsx")), /!TERMINAL && <GoogleAnalytics \/>/.test(src("src/app/layout.tsx"))],
+  [true, true],
+);
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

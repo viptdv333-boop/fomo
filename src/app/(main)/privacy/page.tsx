@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import { getT } from "@/lib/i18n/server";
 import { seoAlternates } from "@/lib/i18n/locale-url";
 import { ogLocales } from "@/lib/i18n/seo-metadata";
+import { isTerminalSite } from "@/lib/site-mode";
+import { TerminalPrivacyPage, terminalLegalMetadata } from "@/components/legal/TerminalLegal";
 
 export async function generateMetadata(): Promise<Metadata> {
+  // terminal.fomo.spot: its own texts about the terminal product (src/components/legal/TerminalLegal.tsx)
+  if (isTerminalSite()) return terminalLegalMetadata("privacy");
   const { locale, t } = await getT();
   const title = t("seo.privacy.title");
   const description = t("seo.privacy.description");
@@ -28,6 +32,7 @@ function H2({ children }: { children: React.ReactNode }) {
 const UL = "list-disc pl-5 space-y-1.5 text-[15px] text-gray-700 dark:text-gray-300 mb-3";
 
 export default async function PrivacyPage() {
+  if (isTerminalSite()) return TerminalPrivacyPage();
   const { t, locale } = await getT();
   // The Russian original has no note; translate() falls back to the key for "".
   const note = locale === "ru" ? "" : t("privacy.translationNote");

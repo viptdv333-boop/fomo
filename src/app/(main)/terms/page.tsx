@@ -3,8 +3,12 @@ import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
 import { seoAlternates } from "@/lib/i18n/locale-url";
 import { ogLocales } from "@/lib/i18n/seo-metadata";
+import { isTerminalSite } from "@/lib/site-mode";
+import { TerminalTermsPage, terminalLegalMetadata } from "@/components/legal/TerminalLegal";
 
 export async function generateMetadata(): Promise<Metadata> {
+  // terminal.fomo.spot: its own texts about the terminal product (src/components/legal/TerminalLegal.tsx)
+  if (isTerminalSite()) return terminalLegalMetadata("terms");
   const { locale, t } = await getT();
   const title = t("seo.terms.title");
   const description = t("seo.terms.description");
@@ -30,6 +34,7 @@ const B = "text-gray-900 dark:text-gray-100";
 const UL = "list-disc pl-5 space-y-1.5 text-[15px] text-gray-700 dark:text-gray-300 mb-3";
 
 export default async function TermsPage() {
+  if (isTerminalSite()) return TerminalTermsPage();
   const { t, locale } = await getT();
   // The Russian original has no note; translate() falls back to the key for "".
   const note = locale === "ru" ? "" : t("terms.translationNote");

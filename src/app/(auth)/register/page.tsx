@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Captcha from "@/components/Captcha";
 import { useT } from "@/lib/i18n/client";
+import { isTerminalSite } from "@/lib/site-mode";
 
 export default function RegisterPage() {
   const { t } = useT();
@@ -316,7 +317,7 @@ export default function RegisterPage() {
               <a href="/privacy" target="_blank" className="text-green-600 underline hover:text-green-700">
                 {t("auth.privacyPolicy")}
               </a>
-              {t("auth.termsDisclaimer")}
+              {t(isTerminalSite() ? "termlegal.register.disclaimer" : "auth.termsDisclaimer")}
             </span>
           </label>
           <button
