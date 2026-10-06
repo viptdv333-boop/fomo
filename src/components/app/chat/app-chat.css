@@ -1,0 +1,192 @@
+/*
+ * App-only chat screens (Болталка list, thread, «Личные», sheets). A copy of the "FOMO iOS" prototype's `on.chat` / `on.thread` screens:
+ * every number below is the prototype's inline style (paddings, radii, font sizes, weights), colours come from the --app-* tokens that
+ * mirror its CSS variables (see app.css). Everything hangs on `html.app-ui`, so the ordinary site and the PWA never see it.
+ */
+
+/* the chat page is edge to edge: <main> keeps the dock clearance, the screens bring their own paddings */
+html.app-ui.app-chat-on main { padding: 0 0 var(--app-bottom-inset); max-width: none; display: block; }
+/* the thread is a full-height column (header, scrolling messages, composer) that sits above the dock; the dock is hidden there (the design shows no tab bar on a thread) */
+html.app-ui.app-thread-on { --app-bottom-inset: 0px; }
+html.app-ui.app-thread-on main { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+html.app-ui.app-thread-on .app-tabbar { display: none; }
+
+html.app-ui { --app-gb: 1px solid #e9e9ec; --app-off: #e4e4e7; }
+html.app-ui.dark { --app-gb: 1px solid #1d1d1d; --app-off: #2c2c2e; }
+
+@keyframes acPush { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes acUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes acFade { from { opacity: 0; } to { opacity: 1; } }
+
+html.app-ui .ac {
+  color: var(--app-tx);
+  line-height: normal;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+html.app-ui .ac :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+html.app-ui .ac :where(input) { font: inherit; color: inherit; outline: none; }
+html.app-ui .ac input::placeholder { color: var(--app-tx3); }
+html.app-ui .ac a { color: inherit; text-decoration: none; }
+
+/* ---------- list screen ---------- */
+html.app-ui .ac-list { padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 14px; animation: acPush 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.app-ui .ac-top { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+html.app-ui .ac-title { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+html.app-ui .ac-create { height: 32px; padding: 0 12px; border-radius: 16px; background: var(--app-card2); display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--app-green-tx); cursor: pointer; }
+html.app-ui .ac-seg { display: flex; padding: 2px; border-radius: 10px; background: var(--app-card2); }
+html.app-ui .ac-seg > button { flex: 1 1 0; min-width: 0; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; background: transparent; color: var(--app-tx2); }
+html.app-ui .ac-seg > button[data-on="1"] { background: var(--app-inv); color: var(--app-inv-tx); }
+html.app-ui .ac-segbadge { min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--app-red); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+html.app-ui .ac-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 10px; background: var(--app-card2); color: var(--app-tx3); flex: none; }
+html.app-ui .ac-search input { flex: 1; min-width: 0; border: none; background: transparent; font-size: 16px; padding: 0; color: var(--app-tx); }
+html.app-ui .ac-group { display: flex; flex-direction: column; gap: 7px; }
+html.app-ui .ac-gtitle { font-size: 13px; color: var(--app-tx2); text-transform: uppercase; letter-spacing: 0.03em; padding: 0 4px; }
+/* a topic heading: the same caption, but it folds the rooms (chevron, room count, unread of the folded topic) */
+html.app-ui .ac-gtitle-btn { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 20px; }
+html.app-ui .ac-gtitle-btn svg { flex: none; transition: transform 0.15s; color: var(--app-tx3); }
+html.app-ui .ac-gtitle-btn[aria-expanded="true"] svg { transform: rotate(90deg); }
+html.app-ui .ac-gtitle-btn .ac-gname { flex: 1; min-width: 0; text-align: left; }
+html.app-ui .ac-gcount { font-size: 12px; color: var(--app-tx3); text-transform: none; letter-spacing: 0; }
+html.app-ui .ac-card { background: var(--app-card); border: var(--app-gb); border-radius: 14px; overflow: hidden; }
+html.app-ui .ac-row { display: flex; align-items: center; gap: 12px; padding-left: 14px; cursor: pointer; width: 100%; box-sizing: border-box; background: transparent; text-align: left; }
+html.app-ui .ac-row:active { background: var(--app-press); }
+html.app-ui .ac-tile { width: 44px; height: 44px; border-radius: 50%; background: var(--app-card2); display: flex; align-items: center; justify-content: center; font-size: 21px; flex: none; font-weight: 700; color: var(--app-tx2); overflow: hidden; }
+html.app-ui .ac-tile img { width: 100%; height: 100%; object-fit: cover; }
+html.app-ui .ac-rbody { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 11px 10px 11px 0; border-bottom: 0.5px solid var(--app-line); }
+html.app-ui .ac-card > :last-child .ac-rbody { border-bottom: none; }
+html.app-ui .ac-rtxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+html.app-ui .ac-rline { display: flex; justify-content: space-between; gap: 8px; }
+html.app-ui .ac-rname { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-rtime { font-size: 12px; color: var(--app-tx3); flex: none; }
+html.app-ui .ac-rlast { font-size: 14px; color: var(--app-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 17px; }
+html.app-ui .ac-badge { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; background: var(--app-red); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
+html.app-ui .ac-rbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
+html.app-ui .ac-rbtn { width: 26px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--app-tx3); }
+html.app-ui .ac-rbtn[data-on="1"] { color: var(--app-green-tx); }
+html.app-ui .ac-rbtn.ac-star[data-on="1"] { color: #eab308; }
+html.app-ui .ac-empty { padding: 28px 20px; text-align: center; color: var(--app-tx2); font-size: 15px; line-height: 1.5; }
+html.app-ui .ac-note { padding: 12px 16px; font-size: 14px; color: var(--app-tx2); line-height: 1.4; }
+
+/* ---------- pushed screen (Комнаты) ---------- */
+html.app-ui .ac-nav { box-sizing: content-box; position: sticky; top: 0; z-index: 6; height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 8px; background: var(--app-nav); border-bottom: 0.5px solid var(--app-line); flex: none; }
+html.app-ui .ac-back { display: flex; align-items: center; gap: 0; color: var(--app-green-tx); font-size: 17px; cursor: pointer; min-width: 0; }
+html.app-ui .ac-back span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-navtitle { font-size: 17px; font-weight: 600; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+html.app-ui .ac-page { padding: 4px 0 28px; animation: acPush 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.app-ui .ac-large { padding: 8px 20px 14px; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+html.app-ui .ac-intro { padding: 6px 32px 16px; font-size: 14px; color: var(--app-tx2); line-height: 1.45; }
+html.app-ui .ac-sec { display: flex; flex-direction: column; gap: 7px; margin: 0 16px 24px; }
+html.app-ui .ac-sectitle { font-size: 13px; color: var(--app-tx2); text-transform: uppercase; letter-spacing: 0.03em; padding: 0 16px; }
+html.app-ui .ac-secbox { background: var(--app-card); border: var(--app-gb); border-radius: 12px; overflow: hidden; }
+html.app-ui .ac-secfoot { font-size: 13px; color: var(--app-tx2); padding: 0 16px; line-height: 1.4; }
+html.app-ui .ac-sr { display: flex; align-items: center; gap: 12px; padding-left: 16px; width: 100%; box-sizing: border-box; background: transparent; text-align: left; }
+html.app-ui button.ac-sr { cursor: pointer; }
+html.app-ui button.ac-sr:active { background: var(--app-press); }
+html.app-ui .ac-sr-ico { width: 30px; height: 30px; border-radius: 8px; background: var(--app-card2); color: var(--app-tx); display: flex; align-items: center; justify-content: center; flex: none; font-size: 16px; }
+html.app-ui .ac-sr-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 14px 11px 0; border-bottom: 0.5px solid var(--app-line); min-height: 22px; }
+html.app-ui .ac-secbox > :last-child .ac-sr-body { border-bottom: none; }
+html.app-ui .ac-sr-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+html.app-ui .ac-sr-label { font-size: 16px; line-height: 1.3; }
+html.app-ui .ac-sr-sub { font-size: 13px; color: var(--app-tx2); line-height: 1.35; }
+html.app-ui .ac-sr-val { font-size: 16px; color: var(--app-tx2); text-align: right; white-space: nowrap; }
+html.app-ui .ac-sr-chk { color: var(--app-green-tx); display: flex; }
+html.app-ui .ac-sr-chev { color: var(--app-tx3); display: flex; }
+html.app-ui .ac-acts { display: flex; gap: 8px; margin-top: 8px; }
+html.app-ui .ac-act { height: 32px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; font-size: 14px; font-weight: 600; background: var(--app-card2); color: var(--app-tx); }
+html.app-ui .ac-act[data-tone="danger"] { color: var(--app-red); }
+
+/* ---------- thread ---------- */
+html.app-ui .ac-thread { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--app-bg); animation: acPush 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.app-ui .ac-tbar { box-sizing: content-box; flex: none; z-index: 6; height: 52px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 0 8px; background: var(--app-nav); border-bottom: 0.5px solid var(--app-line); }
+html.app-ui .ac-tback { display: flex; align-items: center; color: var(--app-green-tx); font-size: 17px; cursor: pointer; }
+html.app-ui .ac-tcenter { display: flex; flex-direction: column; align-items: center; line-height: 1.2; min-width: 0; }
+html.app-ui .ac-tname { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+html.app-ui .ac-tsub { font-size: 12px; color: var(--app-tx2); }
+html.app-ui .ac-tsub[data-tone="on"] { color: var(--app-green-tx); }
+html.app-ui .ac-tright { display: flex; align-items: center; }
+html.app-ui .ac-tbtn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--app-tx2); cursor: pointer; }
+html.app-ui .ac-tbtn[data-on="1"] { color: var(--app-green-tx); }
+html.app-ui .ac-pinned { flex: none; display: flex; gap: 8px; align-items: center; padding: 8px 14px; background: var(--app-card); border-bottom: 0.5px solid var(--app-line); font-size: 13px; width: 100%; box-sizing: border-box; text-align: left; }
+html.app-ui .ac-pinned span:last-child { color: var(--app-tx2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-msgs { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; padding: 14px 12px; }
+html.app-ui .ac-day { align-self: center; font-size: 12px; color: var(--app-tx3); padding: 3px 10px; border-radius: 999px; background: var(--app-card2); flex: none; }
+html.app-ui .ac-mrow { display: flex; flex: none; }
+html.app-ui .ac-mrow[data-mine="1"] { justify-content: flex-end; }
+html.app-ui .ac-bubble { max-width: 80%; min-width: 0; padding: 8px 12px; border-radius: 18px; background: var(--app-card); color: var(--app-tx); display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--app-line); text-align: left; }
+html.app-ui .ac-mrow[data-mine="1"] .ac-bubble { background: var(--app-green); color: #fff; border: none; }
+html.app-ui .ac-bubble[data-sel="1"] { box-shadow: 0 0 0 2px var(--app-green-tx); }
+html.app-ui .ac-who { font-size: 13px; font-weight: 600; color: var(--app-green-tx); }
+html.app-ui .ac-reply { font-size: 13px; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.15); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.app-ui .ac-file { font-size: 13px; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.15); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
+html.app-ui .ac-media { display: block; max-width: 100%; max-height: 240px; border-radius: 10px; object-fit: cover; }
+html.app-ui .ac-text { font-size: 15px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+html.app-ui .ac-text.ac-deleted { font-style: italic; opacity: 0.7; }
+html.app-ui .ac-link { text-decoration: underline; word-break: break-all; }
+html.app-ui .ac-mention { font-weight: 600; }
+html.app-ui .ac-emo { display: inline-block; width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin: 0 2px; }
+html.app-ui .ac-meta { display: flex; justify-content: flex-end; gap: 8px; align-items: center; font-size: 11px; flex-wrap: wrap; }
+html.app-ui .ac-meta > * { opacity: 0.7; }
+html.app-ui .ac-react { padding: 1px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.18); font-size: 11px; line-height: 1.4; opacity: 1; color: inherit; }
+html.app-ui .ac-react[data-mine="1"] { box-shadow: inset 0 0 0 1px currentColor; }
+html.app-ui .ac-composer { flex: none; background: var(--app-nav); border-top: 0.5px solid var(--app-line); padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 6px; }
+html.app-ui .ac-draft { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--app-card2); font-size: 13px; }
+html.app-ui .ac-draft > span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-draft > button { color: var(--app-tx2); display: flex; }
+html.app-ui .ac-draft img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; vertical-align: middle; margin-right: 6px; }
+html.app-ui .ac-quote { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--app-card2); font-size: 13px; border-left: 3px solid var(--app-green); }
+html.app-ui .ac-quote > div { flex: 1; min-width: 0; }
+html.app-ui .ac-quote b { display: block; color: var(--app-green-tx); font-weight: 600; }
+html.app-ui .ac-quote span { display: block; color: var(--app-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-quote > button { color: var(--app-tx2); display: flex; }
+html.app-ui .ac-mentions { display: flex; flex-wrap: wrap; gap: 6px; }
+html.app-ui .ac-mentions button { padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--app-green-bg); color: var(--app-green-tx); }
+html.app-ui .ac-crow { display: flex; align-items: center; gap: 8px; }
+html.app-ui .ac-clip { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--app-tx2); cursor: pointer; flex: none; }
+html.app-ui .ac-clip:disabled { opacity: 0.5; }
+html.app-ui .ac-inwrap { flex: 1; min-width: 0; position: relative; }
+html.app-ui .ac-input { display: block; width: 100%; box-sizing: border-box; min-height: 38px; max-height: 98px; overflow-y: auto; border-radius: 18px; border: 1px solid var(--app-line); background: var(--app-card); padding: 8px 14px; font-size: 16px; line-height: 20px; color: var(--app-tx); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; outline: none; -webkit-user-select: text; user-select: text; }
+html.app-ui .ac-input:empty::before { content: attr(data-placeholder); color: var(--app-tx3); pointer-events: none; }
+html.app-ui .ac-input img { display: inline-block; vertical-align: middle; width: 24px; height: 24px; border-radius: 50%; }
+html.app-ui .ac-inwrap[data-emoji="1"] .ac-input { padding-right: 38px; }
+html.app-ui .ac-emobtn { position: absolute; right: 4px; bottom: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); }
+html.app-ui .ac-send { width: 36px; height: 36px; border-radius: 50%; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+html.app-ui .ac-send:disabled { opacity: 0.55; }
+html.app-ui .ac-closed { flex: none; background: var(--app-nav); border-top: 0.5px solid var(--app-line); padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 14px; color: var(--app-tx2); }
+html.app-ui .ac-edit { display: flex; align-items: center; gap: 8px; }
+html.app-ui .ac-edit input { flex: 1; min-width: 0; height: 30px; border-radius: 8px; border: 1px solid var(--app-line); background: var(--app-card); color: var(--app-tx); padding: 0 8px; font-size: 15px; }
+html.app-ui .ac-edit button { font-size: 13px; font-weight: 600; }
+
+/* ---------- sheets (the design's SH) ---------- */
+html.app-ui .ac-sheet-wrap { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: flex-end; }
+html.app-ui .ac-sheet-back { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); animation: acFade 0.2s; }
+html.app-ui .ac-sheet { position: relative; max-height: 88%; background: var(--app-sheet); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; animation: acUp 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); overflow: hidden; color: var(--app-tx); line-height: normal; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+html.app-ui .ac-sheet[data-h="full"] { height: 88%; }
+html.app-ui .ac-grip { flex: none; display: flex; justify-content: center; padding-top: 6px; }
+html.app-ui .ac-grip div { width: 36px; height: 5px; border-radius: 3px; background: var(--app-tx3); opacity: 0.6; }
+html.app-ui .ac-sbar { flex: none; height: 46px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px; }
+html.app-ui .ac-sbar > :first-child { font-size: 17px; color: var(--app-green-tx); cursor: pointer; justify-self: start; }
+html.app-ui .ac-sbar > :nth-child(2) { font-size: 17px; font-weight: 600; text-align: center; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-sbar > :last-child { font-size: 17px; font-weight: 600; color: var(--app-green-tx); justify-self: end; cursor: pointer; }
+html.app-ui .ac-sbody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 30px; scrollbar-width: none; }
+html.app-ui .ac-sbody::-webkit-scrollbar { display: none; }
+html.app-ui .ac-sbody .ac-search { margin: 4px 16px 12px; }
+html.app-ui .ac-sbody .ac-sec { margin: 0 16px 20px; }
+html.app-ui .ac-segs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; }
+html.app-ui .ac-segs button { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; font-size: 13px; font-weight: 600; background: transparent; color: var(--app-tx2); border: 1px solid var(--app-line); }
+html.app-ui .ac-segs button[data-on="1"] { background: var(--app-green-bg); color: var(--app-green-tx); border-color: transparent; }
+html.app-ui .ac-sintro { padding: 0 32px 14px; font-size: 14px; color: var(--app-tx2); line-height: 1.45; text-align: center; }
+html.app-ui .ac-sbtn { margin: 0 16px; height: 50px; border-radius: 14px; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; cursor: pointer; flex: none; width: calc(100% - 32px); box-sizing: border-box; }
+html.app-ui .ac-sbtn:disabled { background: var(--app-card2); color: var(--app-tx3); }
+html.app-ui .ac-sfield { display: block; width: 100%; box-sizing: border-box; border: none; background: transparent; padding: 2px 0 0; font-size: 15px; color: var(--app-tx); }
+html.app-ui .ac-sheet-wrap[data-wide="1"] .ac-sheet { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* reactions row of the message sheet */
+html.app-ui .ac-reacts { display: flex; justify-content: space-between; gap: 4px; margin: 0 16px 14px; padding: 6px; border-radius: 12px; background: var(--app-card); border: var(--app-gb); }
+html.app-ui .ac-reacts button { flex: 1; height: 40px; border-radius: 10px; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+html.app-ui .ac-reacts button[data-on="1"] { background: var(--app-green-bg); }
+html.app-ui .ac-quotepv { margin: 0 16px 12px; font-size: 13px; color: var(--app-tx2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .ac-emogrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 0 12px; }
+html.app-ui .ac-emogrid button { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 22px; border-radius: 8px; }
+html.app-ui .ac-emogrid button:active { background: var(--app-press); }
+html.app-ui .ac-emogrid img { width: 28px; height: 28px; border-radius: 50%; }
+html.app-ui .ac-toast { position: fixed; left: 50%; bottom: calc(var(--app-bottom-inset) + 44px); transform: translateX(-50%); z-index: 90; padding: 10px 16px; border-radius: 12px; background: var(--app-inv); color: var(--app-inv-tx); font-size: 14px; font-weight: 500; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; animation: acFade 0.2s; }

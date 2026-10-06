@@ -17,7 +17,7 @@ export interface AppTabDef {
 export const APP_TABS: readonly AppTabDef[] = [
   { id: "feed", href: "/feed", labelKey: "nav.feed", match: ["/feed", "/ideas"] },
   { id: "terminal", href: "/terminal", labelKey: "nav.terminal", match: ["/terminal"] },
-  { id: "chat", href: "/chat", labelKey: "nav.chat", match: ["/chat", "/messages"] },
+  { id: "chat", href: "/chat", labelKey: "nav.chat", match: ["/chat", "/messages", "/rooms"] },
   { id: "calendar", href: "/calendar", labelKey: "nav.calendar", match: ["/calendar"] },
   { id: "channels", href: "/channels", labelKey: "nav.channels", match: ["/channels"] },
   { id: "authors", href: "/authors", labelKey: "nav.authors", match: ["/authors"] },
@@ -37,9 +37,11 @@ export function activeAppTab(pathname: string): AppTabId | null {
   return null;
 }
 
-/** The compact header is hidden on the terminal: the chart takes the whole screen. */
+/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen) and the chat (the design's chat screens carry their own title / thread bar). */
 export function appHeaderHidden(pathname: string): boolean {
-  return underPrefix(stripLocale((pathname || "/").split(/[?#]/)[0]).path, "/terminal");
+  const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path;
+  // /rooms/<id> is a private group (a link from a notification) shown inside the chat screens; /rooms/join/<token> is the invitation page and keeps the header
+  return underPrefix(clean, "/terminal") || underPrefix(clean, "/chat") || underPrefix(clean, "/messages") || (underPrefix(clean, "/rooms") && !underPrefix(clean, "/rooms/join"));
 }
 
 /** Locale-aware link of a tab ("/en/feed", "/zh/feed", "/feed"). */

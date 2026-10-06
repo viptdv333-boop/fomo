@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/client";
 import { getPastedFile, consumeSharedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
+import AppRoomThread, { type RoomThreadApi } from "@/components/app/chat/AppRoomThread";
 
 import { formatMessageTime } from "@/lib/format-message-time";
 
@@ -90,6 +91,9 @@ interface ChatRoomProps {
   isClosed?: boolean;
   isArchived?: boolean;
   onOpenDm?: (userId: string) => void;
+  /** App UI: the thread is drawn by the app's own screen (same state and handlers, different look). */
+  appVariant?: boolean;
+  onBack?: () => void;
 }
 
 /* ── Constants ── */
@@ -215,7 +219,7 @@ function IconTrash() {
 }
 
 /* ── Component ── */
-export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm }: ChatRoomProps) {
+export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm, appVariant, onBack }: ChatRoomProps) {
   const { t, locale } = useT();
   const { data: session } = useSession();
   const router = useRouter();
@@ -639,8 +643,83 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     return messages.filter((m) => m.replyToId === msgId).length;
   }
 
+  /* ── Paste into the composer (shared by the site layout and the app layout) ── */
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    // Default paste drops the clipboard's rich HTML into the
+    // contentEditable — from some sources (Word, Docs, other
+    // chat apps) that lands as deeply nested elements/comment
+    // nodes getInputText() doesn't walk the same way it does
+    // typed text, so the composer looked non-empty but the send
+    // button (bound to synced state) stayed disabled. Force
+    // plain text instead, then sync immediately.
+    e.preventDefault();
+    // A screenshot / copied image (Ctrl+V) becomes a draft
+    // attachment, the same as picking it with the paperclip.
+    const pasted = getPastedFile(e);
+    if (pasted) {
+      uploadAttachment(pasted);
+      return;
+    }
+    const text = e.clipboardData.getData("text/plain");
+    if (!text) {
+      const seen = Array.from(e.clipboardData.types || []).join(", ") || "—";
+      readClipboardImageDetailed().then(({ file: f, why }) => {
+        if (f) uploadAttachment(f);
+        else alert(`Картинка не вставилась (${why}; событие вставки: ${seen}). Скрепка → «Вставить из буфера обмена» или «Галерея»`);
+      });
+      return;
+    }
+    document.execCommand("insertText", false, text);
+    syncInput();
+  }
+
   /* ── Participant count ── */
   const participantCount = uniqueUsers().length;
+
+  /* ── App UI: the same state and handlers, the app's own screen ── */
+  if (appVariant) {
+    const api: RoomThreadApi = {
+      roomName,
+      isClosed,
+      isArchived,
+      participants: t(participantCount === 1 ? "chat2.participantsOne" : participantCount < 5 ? "chat2.participantsFew" : "chat2.participantsMany", { count: participantCount }),
+      notifEnabled: notifEnabled,
+      onToggleBell: toggleNotification,
+      isAdmin,
+      isRoomArchived: !!isArchived,
+      onAdminAction: (action) => adminAction(action),
+      messages: messages as unknown as RoomThreadApi["messages"],
+      myId: session?.user?.id,
+      quickReactions: QUICK_REACTIONS,
+      onReact: (id, emoji) => toggleReaction(id, emoji),
+      onReply: (m) => { setReplyTo(m as unknown as Message); inputRef.current?.focus(); },
+      onMention: (name) => insertEmoji(`@${name} `),
+      onStartEdit: (m) => startEdit(m as unknown as Message),
+      onDelete: (id) => deleteMessage(id),
+      editingId,
+      editText,
+      onEditText: setEditText,
+      onSubmitEdit: submitEdit,
+      onCancelEdit: cancelEdit,
+      replyTo: replyTo as unknown as RoomThreadApi["replyTo"],
+      onClearReply: () => setReplyTo(null),
+      pending: pendingAttachment,
+      onClearPending: () => setPendingAttachment(null),
+      uploading,
+      onFile: uploadAttachment,
+      mentionUsers: mentionSearch !== null ? mentionUsers : [],
+      onPickMention: selectMention,
+      inputRef,
+      onInput: handleContentInput,
+      onPaste: handlePaste,
+      onFocusInput: () => maybeOfferClipboardImage(uploadAttachment),
+      onSend: sendMessage,
+      emoji: EMOJI_CATEGORIES.map((c) => ({ key: c.name, label: t(c.labelKey), emojis: c.emojis })),
+      onInsertEmoji: insertEmoji,
+      onBack: onBack || (() => router.back()),
+    };
+    return <AppRoomThread api={api} />;
+  }
 
   return (
     <>
@@ -1104,34 +1183,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 suppressContentEditableWarning
                 onInput={handleContentInput}
                 onFocus={() => maybeOfferClipboardImage(uploadAttachment)}
-                onPaste={(e) => {
-                  // Default paste drops the clipboard's rich HTML into the
-                  // contentEditable — from some sources (Word, Docs, other
-                  // chat apps) that lands as deeply nested elements/comment
-                  // nodes getInputText() doesn't walk the same way it does
-                  // typed text, so the composer looked non-empty but the send
-                  // button (bound to synced state) stayed disabled. Force
-                  // plain text instead, then sync immediately.
-                  e.preventDefault();
-                  // A screenshot / copied image (Ctrl+V) becomes a draft
-                  // attachment, the same as picking it with the paperclip.
-                  const pasted = getPastedFile(e);
-                  if (pasted) {
-                    uploadAttachment(pasted);
-                    return;
-                  }
-                  const text = e.clipboardData.getData("text/plain");
-                  if (!text) {
-                    const seen = Array.from(e.clipboardData.types || []).join(", ") || "—";
-                    readClipboardImageDetailed().then(({ file: f, why }) => {
-                      if (f) uploadAttachment(f);
-                      else alert(`Картинка не вставилась (${why}; событие вставки: ${seen}). Скрепка → «Вставить из буфера обмена» или «Галерея»`);
-                    });
-                    return;
-                  }
-                  document.execCommand("insertText", false, text);
-                  syncInput();
-                }}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

@@ -11,6 +11,8 @@ import { consumeSharedFile, getPastedFile } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
 import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChat from "@/components/app/chat/AppChat";
 
 
 
@@ -75,6 +77,17 @@ const EMOJI_CATEGORIES = [
 ];
 
 export default function MessagesPageWrapper() {
+  // the Android app (and the ?appui=1 preview) shows the personal dialogs inside its chat screens
+  const appUi = useAppUi();
+  if (appUi) {
+    return (
+      <AuthGuard>
+        <Suspense fallback={<div className="text-gray-500 py-12 text-center">...</div>}>
+          <AppChat />
+        </Suspense>
+      </AuthGuard>
+    );
+  }
   return (
     <AuthGuard>
       <Suspense fallback={<div className="text-gray-500 py-12 text-center">...</div>}>

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ChatRoom from "@/components/chat/ChatRoom";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChat from "@/components/app/chat/AppChat";
 
 interface RoomMeta {
   id: string;
@@ -21,6 +23,19 @@ interface RoomMeta {
 const SITE_URL = "https://fomo.spot";
 
 export default function RoomPage() {
+  // the Android app (and the ?appui=1 preview) opens a private group inside its chat screens (links of notifications point here)
+  const appUi = useAppUi();
+  if (appUi) {
+    return (
+      <Suspense fallback={null}>
+        <AppChat />
+      </Suspense>
+    );
+  }
+  return <RoomPageSite />;
+}
+
+function RoomPageSite() {
   const { t } = useT();
   const params = useParams();
   const router = useRouter();

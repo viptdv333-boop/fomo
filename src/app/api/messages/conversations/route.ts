@@ -43,6 +43,21 @@ export async function GET() {
     orderBy: { conversation: { updatedAt: "desc" } },
   });
 
+  // How many messages of the other side are unread per conversation (the app's list prints a number, the site only a dot).
+  const unreadCounts = new Map<string, number>();
+  try {
+    const rows = await prisma.$queryRaw<{ conversationId: string; count: bigint }[]>`
+      SELECT m."conversationId", COUNT(*)::bigint AS count
+      FROM "DirectMessage" m
+      JOIN "DirectConversationParticipant" p ON p."conversationId" = m."conversationId" AND p."userId" = ${userId}
+      WHERE m."isDeleted" = false AND m."senderId" != ${userId} AND m."createdAt" > p."lastReadAt"
+      GROUP BY m."conversationId"
+    `;
+    for (const r of rows) unreadCounts.set(r.conversationId, Number(r.count));
+  } catch {
+    /* the list still works with the unread flag alone */
+  }
+
   const conversations = participantRecords.map((p) => {
     const conv = p.conversation;
     const otherUser = conv.participants.find(
@@ -59,6 +74,7 @@ export async function GET() {
       otherUser: otherUser || null,
       lastMessage,
       unread,
+      unreadCount: unreadCounts.get(conv.id) ?? 0,
     };
   });
 

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n/client";
 import { readClipboardImageDetailed } from "@/lib/clipboard-files";
+import AppIcon from "@/components/app/AppIcon";
+import AppSheet from "@/components/app/chat/AppSheet";
 
 const MEDIA = "image/*,video/*";
 const DOCS =
@@ -17,6 +19,8 @@ interface Props {
   docs?: boolean;
   title?: string;
   className?: string;
+  /** App UI: always the design's «Вложение» sheet (gallery, camera, files, clipboard), also with a mouse. */
+  appSheet?: boolean;
   children: ReactNode;
 }
 
@@ -33,7 +37,7 @@ function stamped(blob: Blob): File {
  * separate entries — gallery, camera, files, clipboard — because one <input accept="image/*,.pdf"> makes Android
  * offer only "Camera / Files" and no gallery.
  */
-export default function AttachMenu({ onFile, uploading, disabled, docs = true, title, className, children }: Props) {
+export default function AttachMenu({ onFile, uploading, disabled, docs = true, title, className, appSheet, children }: Props) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [coarse, setCoarse] = useState(false);
@@ -85,7 +89,7 @@ export default function AttachMenu({ onFile, uploading, disabled, docs = true, t
         type="button"
         onClick={() => {
           setNote("");
-          if (coarse) setOpen(true);
+          if (coarse || appSheet) setOpen(true);
           else all.current?.click();
         }}
         disabled={disabled || uploading}
@@ -94,7 +98,28 @@ export default function AttachMenu({ onFile, uploading, disabled, docs = true, t
       >
         {uploading ? <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" /> : children}
       </button>
+      {open && appSheet && (
+        <AppSheet
+          title={t("appui.chat.attach")}
+          onClose={() => setOpen(false)}
+          doneLabel={t("appui.chat.done")}
+          intro={note ? <span style={{ color: "#d97706" }}>{note}</span> : undefined}
+          sections={[
+            {
+              key: "attach",
+              footer: t("appui.chat.attachNote"),
+              rows: [
+                { key: "gallery", label: t("attach.gallery"), icon: <AppIcon name="image" size={18} stroke={1.8} />, onClick: () => gallery.current?.click() },
+                { key: "camera", label: t("attach.camera"), icon: <AppIcon name="camera" size={18} stroke={1.8} />, onClick: () => camera.current?.click() },
+                ...(docs ? [{ key: "files", label: t("attach.files"), icon: <AppIcon name="file" size={18} stroke={1.8} />, onClick: () => files.current?.click() }] : []),
+                { key: "clip", label: t("attach.clipboard"), icon: <AppIcon name="clipb" size={18} stroke={1.8} />, onClick: fromClipboard },
+              ],
+            },
+          ]}
+        />
+      )}
       {open &&
+        !appSheet &&
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-[100]">

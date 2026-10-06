@@ -12,6 +12,24 @@ import {
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
 import { isValidInterval } from "../src/lib/chart/intervals";
+import {
+  CAT_I18N,
+  buildRoomGroups,
+  chatQuery,
+  clockLabel,
+  dayLabel,
+  dialogPreviewLine,
+  dmUnreadTotal,
+  groupAssets,
+  initials,
+  listTimeLabel,
+  messageHtml,
+  parseChatRoute,
+  roomPreviewLine,
+  sortFilterDialogs,
+  withDaySeparators,
+  type AssetItem,
+} from "../src/lib/app-chat";
 import { APP_UI_BOOT_SCRIPT, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
 
 let fails = 0;
@@ -38,8 +56,14 @@ const cases: [string, ReturnType<typeof activeAppTab>][] = [
 ];
 for (const [p, want] of cases) eq(`active ${JSON.stringify(p)}`, activeAppTab(p), want);
 
-// --- header hidden only on the terminal
+// --- header hidden where the screen carries its own top bar: terminal and chat
 eq("header hidden /terminal", appHeaderHidden("/terminal"), true);
+eq("header hidden /chat", appHeaderHidden("/chat"), true);
+eq("header hidden /en/messages", appHeaderHidden("/en/messages"), true);
+eq("header hidden /rooms/abc (a private group in the chat)", appHeaderHidden("/rooms/abc"), true);
+eq("header shown on the invitation page", appHeaderHidden("/rooms/join/tok"), false);
+eq("header shown /chatter", appHeaderHidden("/chatter"), false);
+eq("rooms/abc is the chat tab", activeAppTab("/rooms/abc"), "chat");
 eq("header hidden /en/terminal/features", appHeaderHidden("/en/terminal/features"), true);
 eq("header shown /feed", appHeaderHidden("/feed"), false);
 eq("header shown /terminalx", appHeaderHidden("/terminalx"), false);
@@ -145,6 +169,128 @@ eq("delay note: moex delayed", showDelayNote("moex", true, false), true);
 eq("delay note: moex guest", showDelayNote("moex", false, true), true);
 eq("delay note: moex realtime user", showDelayNote("moex", false, false), false);
 eq("delay note: crypto never", showDelayNote("bybit", true, true), false);
+
+// --- Chat screens (src/lib/app-chat.ts)
+const T = (y: number, mo: number, d: number, h = 12, mi = 0) => new Date(y, mo - 1, d, h, mi, 0).getTime();
+const CNOW = T(2026, 10, 6, 15, 30);
+eq("clock", clockLabel(T(2026, 10, 6, 9, 5)), "09:05");
+eq("clock junk", clockLabel("nope"), "");
+eq("list time today", listTimeLabel(T(2026, 10, 6, 12, 4), "ru", CNOW), "12:04");
+eq("list time yesterday", listTimeLabel(T(2026, 10, 5, 23, 59), "ru", CNOW), "вчера");
+eq("list time weekday (2 days ago = Sunday 4 Oct 2026)", listTimeLabel(T(2026, 10, 4, 9, 0), "ru", CNOW), "вс");
+eq("list time weekday en", listTimeLabel(T(2026, 10, 4, 9, 0), "en", CNOW), "Sun");
+eq("list time older this year", listTimeLabel(T(2026, 9, 20), "ru", CNOW), "20.09");
+eq("list time other year", listTimeLabel(T(2025, 12, 31), "ru", CNOW), "31.12.25");
+eq("list time empty", listTimeLabel(null, "ru", CNOW), "");
+eq("list time junk", listTimeLabel("x", "ru", CNOW), "");
+eq("list time future clamps to the clock", listTimeLabel(T(2026, 10, 7, 8, 0), "ru", CNOW), "08:00");
+eq("day label today", dayLabel(T(2026, 10, 6, 1), "ru", CNOW), "Сегодня");
+eq("day label yesterday", dayLabel(T(2026, 10, 5, 23), "ru", CNOW), "Вчера");
+eq("day label date", dayLabel(T(2026, 10, 1), "ru", CNOW), "1 октября");
+eq("day label other year", dayLabel(T(2025, 3, 8), "ru", CNOW), "8 марта 2025");
+eq("day label en", dayLabel(T(2026, 10, 1), "en", CNOW), "1 October");
+eq("day label cn", dayLabel(T(2026, 10, 1), "cn", CNOW), "10月1日");
+const sep = withDaySeparators(
+  [
+    { id: "a", createdAt: new Date(T(2026, 10, 5, 22)).toISOString() },
+    { id: "b", createdAt: new Date(T(2026, 10, 5, 23)).toISOString() },
+    { id: "c", createdAt: new Date(T(2026, 10, 6, 9)).toISOString() },
+  ],
+  "ru",
+  CNOW,
+);
+eq("separators: one per day", sep.map((i) => (i.kind === "day" ? `day:${i.label}` : i.key)), ["day:Вчера", "a", "b", "day:Сегодня", "c"]);
+eq("separators: empty", withDaySeparators([], "ru", CNOW), []);
+eq("dm unread total (counts, flags, junk)", [dmUnreadTotal([{ unreadCount: 3 }, { unread: true }, { unread: false }, { unreadCount: 0, unread: true }, { unreadCount: -4 }]), dmUnreadTotal([])], [4, 0]);
+eq("badge label reused (99+)", [badgeLabel(100), badgeLabel(7)], ["99+", "7"]);
+eq("initials two words", initials("Анна Кравец"), "АК");
+eq("initials one word", initials("support"), "SU");
+eq("initials empty", initials("  "), "?");
+eq("room preview: other author", roomPreviewLine({ userId: "u1", author: "Анна", text: "Я в шорте\n от 68.40" }, "me", "Вы", "Файл"), "Анна: Я в шорте от 68.40");
+eq("room preview: my own", roomPreviewLine({ userId: "me", author: "Михаил", text: "ок" }, "me", "Вы", "Файл"), "Вы: ок");
+eq("room preview: file only", roomPreviewLine({ userId: "u1", author: "Анна", text: " ", fileName: "a.pdf" }, "me", "Вы", "Файл"), "Анна: \u{1F4CE} a.pdf");
+eq("room preview: none", roomPreviewLine(undefined, "me", "Вы", "Файл"), "");
+eq("dialog preview: mine", dialogPreviewLine({ text: "привет", senderId: "me" }, "me", "Вы: ", "Файл"), "Вы: привет");
+eq("dialog preview: theirs, file", dialogPreviewLine({ text: "", senderId: "u" }, "me", "Вы: ", "Файл"), "\u{1F4CE} Файл");
+eq("dialog preview: none", dialogPreviewLine(null, "me", "Вы: ", "Файл"), "");
+eq("message html escapes tags", messageHtml('<b>x</b> & "q"'), "&lt;b&gt;x&lt;/b&gt; &amp; &quot;q&quot;");
+eq(
+  "message html links, mentions and ticker emoji",
+  messageHtml("hi @bob https://a.b/c :gold:"),
+  'hi <span class="ac-mention">@bob</span> <a href="https://a.b/c" target="_blank" rel="noopener noreferrer nofollow" class="ac-link">https://a.b/c</a> <img src="/icons/instruments/gold.svg" alt="gold" class="ac-emo" />',
+);
+eq("message html: script is inert", messageHtml("<script>alert(1)</script>").includes("<script"), false);
+
+const conv = (id: string, name: string, last: string | null, upd = "2026-01-01T00:00:00Z") => ({ id, otherUser: { id: "u" + id, displayName: name }, lastMessage: last ? { createdAt: last } : null, updatedAt: upd });
+eq(
+  "dialogs: newest first",
+  sortFilterDialogs([conv("1", "Борис", "2026-10-01T10:00:00Z"), conv("2", "Анна", "2026-10-05T10:00:00Z"), conv("3", "Анатолий", null, "2026-10-03T00:00:00Z")], "", "").map((c) => c.id),
+  ["2", "3", "1"],
+);
+eq("dialogs: search is case-insensitive", sortFilterDialogs([conv("1", "Борис", null), conv("2", "Анна", null)], "АНН", "").map((c) => c.id), ["2"]);
+
+const asset = (slug: string, name: string, cat: string | null, room: string | null, archived = false): AssetItem => ({
+  id: "a" + slug,
+  name,
+  slug,
+  chatRoom: room ? { id: room, isArchived: archived } : null,
+  category: cat ? { slug: cat, name: cat.toUpperCase() } : null,
+});
+const assets = [asset("gold", "Золото", "metals", "r1"), asset("silver", "Серебро", "metals", "r2"), asset("hidden", "Скрыт", "metals", "r9", true), asset("oil", "Нефть", "commodities", "r3"), asset("misc", "Прочее", null, "r4"), asset("noroom", "Без чата", "metals", null)];
+const cats = groupAssets(assets, "Другое");
+eq(
+  "assets: grouped by category in first-seen order, hidden rooms dropped",
+  cats.map((c) => [c.slug, c.name, c.assets.map((a) => a.slug)]),
+  [["metals", "METALS", ["gold", "silver", "noroom"]], ["commodities", "COMMODITIES", ["oil"]], ["other", "Другое", ["misc"]]],
+);
+const gin = {
+  categories: cats,
+  privateRooms: [{ id: "p1", name: "Трейдеры", membersCount: 3, isOwner: true }],
+  favorites: [{ roomId: "r2", name: "Серебро", isPrivate: false, assetSlug: "silver" }, { roomId: "p1", name: "Трейдеры", isPrivate: true, assetSlug: null }],
+  generalRoomId: "g1",
+  unread: { r1: 2, r2: 1, g1: 5, r3: 100 } as Record<string, number>,
+  notify: new Set(["r1"]),
+  openCats: new Set<string>(),
+  query: "",
+  labels: { general: "Общий чат", favorites: "Избранное", privateGroups: "Приватные группы", other: "Другое" },
+  catTitle: (slug: string, name: string) => (CAT_I18N[slug] ? CAT_I18N[slug] : name),
+};
+const groups = buildRoomGroups(gin);
+eq("groups: the design's order (Избранное, общий чат, topics, private groups)", groups.map((g) => g.key), ["fav", "general", "cat:metals", "cat:commodities", "cat:other", "private"]);
+eq("groups: only topics fold", groups.map((g) => g.collapsible), [false, false, true, true, true, false]);
+eq("groups: topics start folded, the count is the rooms that have a chat", groups.filter((g) => g.kind === "cat").map((g) => [g.open, g.count]), [[false, 2], [false, 1], [false, 1]]);
+eq("groups: unread of a folded topic is the sum of its rooms", groups.filter((g) => g.kind === "cat").map((g) => g.unread), [3, 100, 0]);
+eq("groups: favourites keep the tile of their own group", groups[0].rows.map((r) => [r.id, r.tile, r.fav]), [["r2", "\u{1F947}", true], ["p1", "\u{1F512}", true]]);
+eq("groups: general chat has no heading and its unread", [groups[1].title, groups[1].rows[0].id, groups[1].rows[0].unread], [null, "g1", 5]);
+eq("groups: bells come from the notify set", groups[2].rows.map((r) => [r.id, r.bell]), [["r1", true], ["r2", false]]);
+const opened = buildRoomGroups({ ...gin, openCats: new Set(["metals"]) });
+eq("groups: an opened topic", opened.filter((g) => g.kind === "cat").map((g) => g.open), [true, false, false]);
+const found = buildRoomGroups({ ...gin, query: "нефт" });
+eq("groups: search keeps matching rooms only and opens their topic", found.map((g) => [g.key, g.open, g.rows.map((r) => r.id)]), [["cat:commodities", true, ["r3"]]]);
+eq("groups: no match -> no groups", buildRoomGroups({ ...gin, query: "zzzz" }), []);
+eq("groups: no favourites, no private groups -> those groups vanish", buildRoomGroups({ ...gin, favorites: [], privateRooms: [] }).map((g) => g.key), ["general", "cat:metals", "cat:commodities", "cat:other"]);
+eq("groups: unknown general id falls back to 'general'", buildRoomGroups({ ...gin, generalRoomId: null, favorites: [] })[0].rows[0].id, "general");
+
+// --- chat route <-> URL
+const P = (qs: string) => new URLSearchParams(qs);
+eq("route: /chat is the rooms list", parseChatRoute("/chat", P("")), { seg: "rooms", room: null, dm: null, with: null, groups: false });
+eq("route: ?room=", parseChatRoute("/chat", P("room=abc")), { seg: "rooms", room: "abc", dm: null, with: null, groups: false });
+eq("route: /messages is the personal list", parseChatRoute("/messages", P("")).seg, "dms");
+eq("route: /en/messages too", parseChatRoute("/en/messages", P("")).seg, "dms");
+eq("route: ?conversation= (old link)", parseChatRoute("/messages", P("conversation=c1")), { seg: "dms", room: null, dm: "c1", with: null, groups: false });
+eq("route: ?startWith= (old link)", parseChatRoute("/messages", P("startWith=u1")).with, "u1");
+eq("route: ?seg=dms", parseChatRoute("/chat", P("seg=dms")).seg, "dms");
+eq("route: /rooms/<id> is a private group", parseChatRoute("/rooms/xyz", P("")).room, "xyz");
+eq("route: /zh/rooms/<id> too", parseChatRoute("/zh/rooms/xyz", P("")).room, "xyz");
+eq("route: the invitation page is not a group", parseChatRoute("/rooms/join", P("")).room, null);
+eq("route: ?groups=1", parseChatRoute("/chat", P("groups=1")).groups, true);
+eq("query: list", chatQuery({ seg: "rooms" }), "");
+eq("query: dms list", chatQuery({ seg: "dms" }), "seg=dms");
+eq("query: room", chatQuery({ room: "a b" }), "room=a%20b");
+eq("query: dm", chatQuery({ dm: "c1" }), "seg=dms&dm=c1");
+eq("query: with", chatQuery({ with: "u1" }), "seg=dms&with=u1");
+eq("query: groups", chatQuery({ groups: true }), "groups=1");
+eq("query round-trips", ["room=r1", "seg=dms&dm=c1", "groups=1", "seg=dms"].map((q) => chatQuery(parseChatRoute("/chat", P(q)))), ["room=r1", "seg=dms&dm=c1", "groups=1", "seg=dms"]);
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

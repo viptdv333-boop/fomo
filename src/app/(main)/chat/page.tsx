@@ -7,6 +7,8 @@ import ChatRoom from "@/components/chat/ChatRoom";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import AppChat from "@/components/app/chat/AppChat";
 
 function ChatPageInner() {
   const { t } = useT();
@@ -75,6 +77,17 @@ function ChatPageInner() {
 
 export default function ChatPage() {
   const { t } = useT();
+  const appUi = useAppUi();
+  // the Android app (and the ?appui=1 preview) draws its own chat screens; every other browser keeps the page below
+  if (appUi) {
+    return (
+      <AuthGuard>
+        <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>
+          <AppChat />
+        </Suspense>
+      </AuthGuard>
+    );
+  }
   // The heading sits outside <Suspense> so crawlers see it — ChatPageInner
   // uses useSearchParams() and is therefore excluded from SSR.
   return (
