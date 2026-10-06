@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site-mode";
 import { doFetch, errMsg, absoluteLink, suppressedNote, truncate, SEND_TIMEOUT_MS, type AdapterDeps, type ChannelMessage, type ChannelRowLite, type SendResult } from "./types";
 
 /**
@@ -42,7 +43,7 @@ function endpoint(): string {
 }
 
 export function buildNotifyPayload(to: string, msg: ChannelMessage) {
-  const link = absoluteLink(msg.link, msg.locale) ?? "https://fomo.spot";
+  const link = absoluteLink(msg.link, msg.locale) ?? siteUrl();
   const note = suppressedNote(msg);
   return {
     messaging_product: "whatsapp",

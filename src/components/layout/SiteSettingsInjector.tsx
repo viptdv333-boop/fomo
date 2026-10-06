@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { stripLocale } from "@/lib/i18n/locale-url";
 import { usePathname } from "next/navigation";
+import { isTerminalSite } from "@/lib/site-mode";
 
 interface SiteSettings {
   metaTitle: string;
@@ -34,7 +35,8 @@ export default function SiteSettingsInjector() {
     if (!settings) return;
 
     // Update document title
-    if (settings.metaTitle) {
+    // terminal.fomo.spot keeps its own title: a fresh instance database carries the main site's default metaTitle
+    if (settings.metaTitle && !isTerminalSite()) {
       document.title = settings.metaTitle;
     }
 

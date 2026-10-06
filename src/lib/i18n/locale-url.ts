@@ -1,6 +1,8 @@
 // Edge-safe (used by middleware): no Node or Prisma imports here.
+import { siteUrl } from "@/lib/site-mode";
 
-export const SITE_URL = "https://fomo.spot";
+/** Public origin of this site: https://fomo.spot unless NEXT_PUBLIC_SITE_URL / the terminal mode say otherwise (src/lib/site-mode.ts). */
+export const SITE_URL = siteUrl();
 export const LOCALES = ["ru", "en", "cn"] as const;
 export type Locale = (typeof LOCALES)[number];
 

@@ -4,10 +4,14 @@ import { randomInt } from "crypto";
 import { tFor } from "@/lib/i18n/for-locale";
 import { isLocale, localizedPath } from "@/lib/i18n/locale-url";
 import { renderNotificationEmail } from "@/lib/notify-email-render";
+import { brandName, isTerminalSite, siteHost, siteUrl } from "@/lib/site-mode";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || "FOMO <no-reply@fomo.spot>";
-const BASE_URL = process.env.NEXTAUTH_URL || "https://fomo.spot";
+// Sender: EMAIL_FROM wins. The terminal instance falls back to "FOMO Terminal" on the (Resend-verified) main domain.
+const EMAIL_FROM = process.env.EMAIL_FROM || (isTerminalSite() ? "FOMO Terminal <no-reply@fomo.spot>" : "FOMO <no-reply@fomo.spot>");
+// Links in mails: the main site keeps NEXTAUTH_URL (then https://fomo.spot); the terminal instance uses its own public URL.
+const BASE_URL = isTerminalSite() ? siteUrl() : process.env.NEXTAUTH_URL || siteUrl();
+const BRAND = brandName();
 
 /** `locale` — the language of the person who asked for the code ("ru" | "en" | "cn"). */
 export async function sendVerificationCode(email: string, code: string, locale: string = "ru") {
@@ -28,7 +32,7 @@ export async function sendVerificationCode(email: string, code: string, locale: 
       subject: t("api.email.codeSubject"),
       html: `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
-          <h2 style="text-align: center; color: #111; margin-bottom: 8px;">FOMO</h2>
+          <h2 style="text-align: center; color: #111; margin-bottom: 8px;">${BRAND}</h2>
           <p style="text-align: center; color: #666; font-size: 14px;">${t("api.email.codeIntro")}</p>
           <div style="text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111; margin: 24px 0; padding: 16px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
             ${code}
@@ -76,13 +80,13 @@ export async function sendBroadcastEmail(
       subject: title,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
-          <h2 style="text-align: center; color: #111; margin-bottom: 16px;">FOMO</h2>
+          <h2 style="text-align: center; color: #111; margin-bottom: 16px;">${BRAND}</h2>
           <h3 style="color: #111; margin-bottom: 8px;">${title}</h3>
           ${body ? `<p style="color: #444; font-size: 15px; line-height: 1.6;">${body.replace(/\n/g, "<br>")}</p>` : ""}
           ${linkHtml}
           <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;" />
           <p style="text-align: center; color: #999; font-size: 11px; margin-top: 16px;">
-            ${t("api.email.footer", { link: `<a href="${BASE_URL}" style="color: #16a34a;">fomo.spot</a>` })}
+            ${t("api.email.footer", { link: `<a href="${BASE_URL}" style="color: #16a34a;">${siteHost()}</a>` })}
           </p>
         </div>
       `,
@@ -144,6 +148,7 @@ export async function sendNotificationEmail(
     locale,
     footerNote: msg.footerNote,
     baseUrl: BASE_URL,
+    brand: BRAND,
   });
   try {
     const res = await fetchImpl("https://api.resend.com/emails", {

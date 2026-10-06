@@ -12,6 +12,10 @@ import WatchlistWidget from "@/components/profile/WatchlistWidget";
 import NotificationSettings from "@/components/profile/NotificationSettings";
 import IdeaCard from "@/components/ideas/IdeaCard";
 import { useT } from "@/lib/i18n/client";
+import { isTerminalSite } from "@/lib/site-mode";
+
+// terminal.fomo.spot: the tabs «Финансы», «Мои идеи», «Комнаты» and the social part of the profile are not part of the copy
+const TERMINAL = isTerminalSite();
 
 const SPECIALIZATION_OPTIONS = [
   { value: "trader", labelKey: "profile2.specTrader" },
@@ -89,6 +93,7 @@ function ProfileContent() {
   const [rating, setRating] = useState(0);
   const tabParam = searchParams.get("tab");
   const initialTab =
+    TERMINAL && (tabParam === "finance" || tabParam === "ideas" || tabParam === "rooms") ? "profile" :
     tabParam === "finance" ? "finance" :
     tabParam === "security" ? "security" :
     tabParam === "ideas" ? "ideas" :
@@ -442,6 +447,7 @@ function ProfileContent() {
         >
           {t("profile.profile")}
         </button>
+        {!TERMINAL && (
         <button
           onClick={() => setActiveTab("finance")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
@@ -452,6 +458,8 @@ function ProfileContent() {
         >
           {t("profile.finance")}
         </button>
+        )}
+        {!TERMINAL && (
         <button
           onClick={() => setActiveTab("ideas")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
@@ -462,6 +470,8 @@ function ProfileContent() {
         >
           {t("profile.ideas")}
         </button>
+        )}
+        {!TERMINAL && (
         <button
           onClick={() => setActiveTab("rooms")}
           className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition ${
@@ -472,6 +482,7 @@ function ProfileContent() {
         >
           {t("profile2.tabRooms")}
         </button>
+        )}
         <button
           onClick={() => setActiveTab("notifications")}
           role="tab"
@@ -498,7 +509,7 @@ function ProfileContent() {
 
       {activeTab === "notifications" && session?.user?.id && <NotificationSettings />}
 
-      {activeTab === "ideas" && (
+      {!TERMINAL && activeTab === "ideas" && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6">
           {myIdeasLoading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">{t("common.loading")}</div>
@@ -541,7 +552,7 @@ function ProfileContent() {
         </div>
       )}
 
-      {activeTab === "finance" && session?.user?.id && (
+      {!TERMINAL && activeTab === "finance" && session?.user?.id && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
             <FinanceTab userId={session.user.id} />
@@ -552,7 +563,7 @@ function ProfileContent() {
         </div>
       )}
 
-      {activeTab === "rooms" && session?.user?.id && (
+      {!TERMINAL && activeTab === "rooms" && session?.user?.id && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
           <RoomsTab />
         </div>
@@ -644,6 +655,9 @@ function ProfileContent() {
           </div>
         </div>
 
+        {/* terminal.fomo.spot: the social part of the profile (page link, bio, socials, education, cards, DMs) is not part of the copy */}
+        {!TERMINAL && (
+        <>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.fomoId")}</label>
           <div className="flex items-center gap-2">
@@ -998,6 +1012,8 @@ function ProfileContent() {
             </div>
           </label>
         </div>
+        </>
+        )}
 
         {/* Push notifications toggle */}
         {pushSupported && (
@@ -1038,7 +1054,7 @@ function ProfileContent() {
       </form>
 
       {/* Watchlist */}
-      {session?.user?.id && (
+      {!TERMINAL && session?.user?.id && (
         <div className="mt-6">
           <WatchlistWidget userId={session.user.id} isOwner />
         </div>

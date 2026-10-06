@@ -157,6 +157,31 @@ export function channelAllowed(event: EventId, channel: ChannelId): boolean {
   return !def.channels || def.channels.includes(channel);
 }
 
+// ---------------------------------------------------------------------------
+// The terminal site (terminal.fomo.spot) has no board, chat, channels or payments: its settings matrix shows the terminal and
+// calendar events plus the system messages only. The main site shows everything.
+// ---------------------------------------------------------------------------
+
+/** Events of the terminal site, in the order of EVENTS. */
+export const TERMINAL_SITE_EVENTS: EventId[] = ["system", "price_alert", "line_alert", "calendar_reminder"];
+
+/** Events shown in the settings matrix of a site: all of them on the main site, the terminal subset on the terminal site. */
+export function eventsForSite(mode: "main" | "terminal"): EventDef[] {
+  return mode === "terminal" ? EVENTS.filter((e) => TERMINAL_SITE_EVENTS.includes(e.id)) : EVENTS;
+}
+
+/** Groups that still have an event on that site (the same array as EVENT_GROUPS on the main site), «Терминал и календарь» last. */
+export function groupsForSite(mode: "main" | "terminal"): EventGroup[] {
+  if (mode !== "terminal") return EVENT_GROUPS;
+  const shown = new Set(eventsForSite(mode).map((e) => e.group));
+  return EVENT_GROUPS.filter((g) => shown.has(g));
+}
+
+/** i18n key of a group heading; on the terminal site the «money» group holds only the system messages and is called «Система». */
+export function groupLabelKey(group: EventGroup, mode: "main" | "terminal"): string {
+  return mode === "terminal" && group === "money" ? "ns.group.system" : `ns.group.${group}`;
+}
+
 /** Built-in default of one cell of the matrix (before overrides, ignoring whether the channel is connected). */
 export function defaultEnabled(event: EventId, channel: ChannelId): boolean {
   const def = EVENT_BY_ID.get(event);

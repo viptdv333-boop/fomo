@@ -1,6 +1,37 @@
 import type { MetadataRoute } from "next";
+import { isTerminalSite } from "@/lib/site-mode";
+
+// terminal.fomo.spot (SITE_MODE=terminal): its own installable app «FOMO Terminal» that opens the terminal.
+// The share target of the social site (/share-target -> chat draft) does not exist there.
+function terminalManifest(): MetadataRoute.Manifest {
+  return {
+    name: "FOMO Terminal",
+    short_name: "FOMO Terminal",
+    description: "Торговый терминал: графики, индикаторы, ценовые алерты и экономический календарь.",
+    id: "/terminal",
+    start_url: "/terminal",
+    scope: "/",
+    display: "standalone",
+    orientation: "any",
+    background_color: "#0b1426",
+    theme_color: "#0a0a0a",
+    lang: "ru",
+    dir: "ltr",
+    categories: ["finance", "business"],
+    icons: [
+      { src: "/icons-terminal/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons-terminal/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons-terminal/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+    shortcuts: [
+      { name: "Терминал", url: "/terminal" },
+      { name: "Календарь", url: "/calendar" },
+    ],
+  };
+}
 
 export default function manifest(): MetadataRoute.Manifest {
+  if (isTerminalSite()) return terminalManifest();
   return {
     name: "FOMO — Торговые идеи",
     short_name: "FOMO",

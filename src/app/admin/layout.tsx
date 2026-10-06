@@ -1,5 +1,6 @@
 import SessionProvider from "@/components/layout/SessionProvider";
 import Link from "next/link";
+import { isTerminalSite } from "@/lib/site-mode";
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard" },
@@ -15,6 +16,11 @@ const adminLinks = [
   { href: "/admin/site-settings", label: "Настройки сайта" },
 ];
 
+// terminal.fomo.spot: the instance owner manages users, mailing and site settings; the social sections do not exist there
+const TERMINAL_ADMIN_HREFS = ["/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings"];
+const TERMINAL = isTerminalSite();
+const links = TERMINAL ? adminLinks.filter((l) => TERMINAL_ADMIN_HREFS.includes(l.href)) : adminLinks;
+
 export default function AdminLayout({
   children,
 }: {
@@ -25,10 +31,10 @@ export default function AdminLayout({
       <div className="min-h-screen flex">
         <aside className="w-64 bg-gray-900 text-white p-6">
           <Link href="/admin" className="text-xl font-bold text-green-400 block mb-8">
-            FOMO Admin
+            {TERMINAL ? "FOMO Terminal Admin" : "FOMO Admin"}
           </Link>
           <nav className="space-y-2">
-            {adminLinks.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -40,7 +46,7 @@ export default function AdminLayout({
           </nav>
           <div className="mt-8 pt-4 border-t border-gray-700">
             <Link
-              href="/feed"
+              href={TERMINAL ? "/terminal" : "/feed"}
               className="block px-3 py-2 text-gray-400 hover:text-white text-sm"
             >
               ← Вернуться на сайт

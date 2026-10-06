@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getHiddenPages } from "@/lib/hidden-pages";
 import { HREFLANG, LOCALES } from "@/lib/i18n/locale-url";
 import { absoluteUrl } from "@/lib/i18n/seo-metadata";
+import { isTerminalSite } from "@/lib/site-mode";
 
 // Protocol cap per sitemap file. Every page is emitted in 3 languages, so
 // pages are added in whole groups and dropped (lowest priority last) once full.
@@ -42,8 +43,21 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
 ];
 
+// terminal.fomo.spot: the public pages of the terminal site only (no ideas, authors, instruments, no database queries).
+const TERMINAL_ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
+  { path: "/", priority: 1.0, changeFrequency: "weekly" },
+  { path: "/terminal", priority: 0.9, changeFrequency: "daily" },
+  { path: "/terminal/features", priority: 0.7, changeFrequency: "weekly" },
+  { path: "/calendar", priority: 0.8, changeFrequency: "daily" },
+  { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
+  { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
+];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  if (isTerminalSite()) {
+    return TERMINAL_ROUTES.flatMap((r) => localizedEntries(r.path, { lastModified: now, changeFrequency: r.changeFrequency, priority: r.priority }));
+  }
   const hidden = await getHiddenPages();
 
   const entries: MetadataRoute.Sitemap = STATIC_ROUTES.filter((r) => !hidden.includes(r.path.slice(1).split("/")[0])).flatMap((r) =>

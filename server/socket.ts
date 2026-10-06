@@ -9,6 +9,7 @@ import { canAccessRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
 import { dispatchNotification } from "../src/lib/notify-dispatch";
 import { toPlainText } from "../src/lib/notify-text";
+import { isTerminalSite, siteUrl } from "../src/lib/site-mode";
 
 const prisma = new PrismaClient();
 
@@ -30,7 +31,8 @@ export function initSocket(httpServer: HTTPServer) {
     path: "/api/socketio",
     addTrailingSlash: false,
     cors: {
-      origin: "*",
+      // terminal.fomo.spot answers its own origin only; the main site keeps its open CORS as before
+      origin: isTerminalSite() ? siteUrl() : "*",
       methods: ["GET", "POST"],
     },
   });

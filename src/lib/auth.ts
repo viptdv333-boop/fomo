@@ -3,9 +3,32 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { rateLimit, resetRateLimit, clientIp } from "./rate-limit";
+import { authCookieNames, authCookiesSecure, siteMode } from "./site-mode";
+
+// Session cookies. The main site keeps the next-auth defaults ("authjs.session-token" ...), nothing changes there. An instance
+// with a cookie prefix (terminal.fomo.spot: "terminal", or AUTH_COOKIE_PREFIX) names every auth cookie differently and never sets a
+// Domain attribute (host-only), so a fomo.spot session can never be read as a terminal one and vice versa, even though the hosts
+// are related. Each instance also has its own AUTH_SECRET, and the JWT salt is the cookie name.
+const COOKIE_SECURE = authCookiesSecure();
+const COOKIE_NAMES = authCookieNames(siteMode(), COOKIE_SECURE);
+const HTTP_ONLY_LAX = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: COOKIE_SECURE };
+const cookieConfig = COOKIE_NAMES
+  ? {
+      useSecureCookies: COOKIE_SECURE,
+      cookies: {
+        sessionToken: { name: COOKIE_NAMES.sessionToken, options: HTTP_ONLY_LAX },
+        callbackUrl: { name: COOKIE_NAMES.callbackUrl, options: HTTP_ONLY_LAX },
+        csrfToken: { name: COOKIE_NAMES.csrfToken, options: HTTP_ONLY_LAX },
+        pkceCodeVerifier: { name: COOKIE_NAMES.pkceCodeVerifier, options: { ...HTTP_ONLY_LAX, maxAge: 60 * 15 } },
+        state: { name: COOKIE_NAMES.state, options: { ...HTTP_ONLY_LAX, maxAge: 60 * 15 } },
+        nonce: { name: COOKIE_NAMES.nonce, options: HTTP_ONLY_LAX },
+      },
+    }
+  : {};
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
+  ...cookieConfig,
   providers: [
     Credentials({
       name: "credentials",

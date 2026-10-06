@@ -50,6 +50,17 @@ export interface EmailRenderInput {
   footerNote?: string;
   /** site root for the footer link */
   baseUrl: string;
+  /** product name in the mail header (default "FOMO"; the terminal instance passes "FOMO Terminal") */
+  brand?: string;
+}
+
+/** "https://terminal.fomo.spot/" -> "terminal.fomo.spot"; the footer link text. */
+function hostOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host || baseUrl;
+  } catch {
+    return baseUrl;
+  }
 }
 
 export interface RenderedEmail {
@@ -73,7 +84,7 @@ function build(input: EmailRenderInput, fullText: string, cut: boolean): Rendere
 
   const footerLinks = [
     settings ? `<a href="${escHtml(settings)}" style="color:#16a34a;">${escHtml(t("ns.email.settings"))}</a>` : "",
-    `<a href="${escHtml(input.baseUrl)}" style="color:#16a34a;">fomo.spot</a>`,
+    `<a href="${escHtml(input.baseUrl)}" style="color:#16a34a;">${escHtml(hostOf(input.baseUrl))}</a>`,
   ].filter(Boolean);
 
   const html = `<!doctype html>
@@ -81,7 +92,7 @@ function build(input: EmailRenderInput, fullText: string, cut: boolean): Rendere
 <body style="margin:0;padding:0;background:#f3f4f6;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;"><tr><td align="center" style="padding:16px 8px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;font-family:${FONT};">
-<tr><td style="padding:20px 24px 0;font-size:18px;font-weight:700;color:#16a34a;letter-spacing:.5px;">FOMO</td></tr>
+<tr><td style="padding:20px 24px 0;font-size:18px;font-weight:700;color:#16a34a;letter-spacing:.5px;">${escHtml(input.brand || "FOMO")}</td></tr>
 <tr><td style="padding:12px 24px 0;">
 <h1 style="margin:0 0 6px;color:#111827;font-size:20px;line-height:1.3;">${escHtml(layout.title)}</h1>
 ${layout.author ? `<p style="margin:0 0 4px;color:#6b7280;font-size:14px;">${escHtml(layout.author)}</p>` : ""}

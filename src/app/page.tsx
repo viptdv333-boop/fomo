@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LandingPage from "@/components/landing/LandingPage";
+import TerminalLanding from "@/components/landing/TerminalLanding";
+import { isTerminalSite, siteUrl } from "@/lib/site-mode";
 import PwaBanners from "@/components/layout/PwaBanners";
 import { getT } from "@/lib/i18n/server";
 import { HTML_LANG, SITE_URL, seoAlternates, type Locale } from "@/lib/i18n/locale-url";
@@ -11,8 +13,9 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { locale, t } = await getT();
-  const title = t("seo.site.title");
-  const description = t("seo.site.description");
+  const terminal = isTerminalSite();
+  const title = t(terminal ? "termsite.title" : "seo.site.title");
+  const description = t(terminal ? "termsite.description" : "seo.site.description");
   const alternates = seoAlternates(locale, "/");
   return {
     title,
@@ -65,9 +68,40 @@ function buildJsonLd(locale: Locale, t: (key: string) => string) {
   };
 }
 
+// terminal.fomo.spot: one WebApplication node instead of the Organization + WebSite of the social site.
+function buildTerminalJsonLd(t: (key: string) => string) {
+  const url = siteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "FOMO Terminal",
+    url,
+    description: t("termsite.description"),
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web, Android",
+    inLanguage: ["ru", "en", "zh"],
+  };
+}
+
 export default async function HomePage() {
   const session = await auth();
   const { locale, t } = await getT();
+
+  if (isTerminalSite()) {
+    // Logged-in users go straight to the terminal; guests see the terminal landing page
+    if (session?.user) redirect("/terminal");
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTerminalJsonLd(t)).replace(/</g, "\\u003c") }}
+        />
+        <PwaBanners />
+        <TerminalLanding />
+      </>
+    );
+  }
+
   const jsonLd = buildJsonLd(locale, t);
 
   // Logged-in users go straight to feed

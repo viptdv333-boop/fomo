@@ -32,6 +32,7 @@ import {
 } from "@/lib/terminal-data";
 import { fetchContractInfo, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
 import { ContractBadge } from "./ContractPicker";
+import { isTerminalSite } from "@/lib/site-mode";
 import "./terminal-v3.css";
 
 export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
@@ -52,7 +53,7 @@ const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dat
 
 /* ───────────── small pieces ───────────── */
 
-const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
+const ALL_TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "watchlist", key: "shell.tab.watchlist" },
   { id: "info", key: "shell.tab.info", titleKey: "p3.title.info" },
   { id: "ideas", key: "p3.tab.ideas" },
@@ -63,6 +64,8 @@ const TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
   { id: "orderbook", key: "shell.tab.orderbook" },
   { id: "algo", key: "shell.tab.algo" },
 ];
+// terminal.fomo.spot has no board of ideas: no «Идеи» tab (it only linked to /feed)
+const TABS = isTerminalSite() ? ALL_TABS.filter((x) => x.id !== "ideas") : ALL_TABS;
 
 /* ───────────── batch quotes ───────────── */
 

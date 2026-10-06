@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useT } from "@/lib/i18n/client";
+import { homePath } from "@/lib/site-mode";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function LoginPage() {
       localStorage.removeItem("fomo-remember");
     }
 
-    router.push(callbackUrl || "/feed");
+    router.push(callbackUrl || homePath());
     router.refresh();
   }
 

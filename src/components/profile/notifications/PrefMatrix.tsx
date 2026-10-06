@@ -4,15 +4,22 @@ import { Fragment, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import {
   CHANNEL_IDS,
-  EVENTS,
-  EVENT_GROUPS,
+  eventsForSite,
+  groupLabelKey,
+  groupsForSite,
   channelAllowed,
   isEnabled,
   type ChannelId,
   type EventDef,
 } from "@/lib/notification-events";
+import { siteMode } from "@/lib/site-mode";
 import type { SettingsResponse } from "@/lib/notify-settings-types";
 import { ChannelIcon, Switch } from "./ui";
+
+// terminal.fomo.spot shows the terminal / calendar / system events only; fomo.spot shows all of them (same arrays as before)
+const MODE = siteMode();
+const EVENTS = eventsForSite(MODE);
+const EVENT_GROUPS = groupsForSite(MODE);
 
 export interface Cell {
   event: string;
@@ -178,7 +185,7 @@ export default function PrefMatrix({ data, overrides, onSetCells, onReset, saveS
                 <Fragment key={g}>
                   <tr>
                     <th colSpan={columns.length + 2} scope="colgroup" className="sticky left-0 border-t border-gray-100 pb-1 pt-4 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:border-gray-800">
-                      {t(`ns.group.${g}`)}
+                      {t(groupLabelKey(g, MODE))}
                     </th>
                   </tr>
                   {evs.map((e) => {
@@ -222,7 +229,7 @@ export default function PrefMatrix({ data, overrides, onSetCells, onReset, saveS
       <div className="sm:hidden" data-testid="ns-matrix-mobile">
         {EVENT_GROUPS.map((g) => (
           <div key={g} className="mb-3">
-            <h4 className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(`ns.group.${g}`)}</h4>
+            <h4 className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{t(groupLabelKey(g, MODE))}</h4>
             <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100 dark:divide-gray-800 dark:border-gray-800">
               {EVENTS.filter((e) => e.group === g).map((e) => {
                 const rs = rowState(e);

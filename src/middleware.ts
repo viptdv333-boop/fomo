@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isLocale, localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
+import { closedRouteRedirect, routeAllowed, siteMode } from "@/lib/site-mode";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 const YEAR = 60 * 60 * 24 * 365;
@@ -19,6 +20,13 @@ export default auth((req) => {
   const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
   const locale: Locale = urlLocale ?? (isLocale(cookieLocale) ? cookieLocale : "ru");
   const toLogin = () => NextResponse.redirect(new URL(localizedPath(urlLocale ?? "ru", "/login"), req.url));
+
+  // terminal.fomo.spot: an allowlist of pages and APIs, everything else does not exist there (pages go to the terminal,
+  // APIs answer 404; the custom server applies the same list to every /api request). The main site skips this block.
+  if (siteMode() === "terminal" && !routeAllowed("terminal", pathname, isApi)) {
+    if (isApi) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.redirect(new URL(localizedPath(urlLocale ?? locale, closedRouteRedirect(pathname)), req.url));
+  }
 
   // Someone who picked English/Chinese lands on the prefixed URL, so every
   // language has its own indexable address. Crawlers carry no cookie and get

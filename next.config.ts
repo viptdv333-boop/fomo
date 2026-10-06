@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     // Files in /public get max-age=0 by default; sw.js is left alone so app updates are never stuck.
-    return ["/icons/:path*", "/images/:path*", "/logo-fomo-sm.webp", "/logo-fomo.png", "/icon-192.png", "/icon-512.png", "/logo-bimi.svg"].map(
+    return ["/icons/:path*", "/icons-terminal/:path*", "/images/:path*", "/logo-fomo-sm.webp", "/logo-fomo.png", "/icon-192.png", "/icon-512.png", "/logo-bimi.svg"].map(
       (source) => ({ source, headers: [{ key: "Cache-Control", value: WEEK }] })
     );
   },

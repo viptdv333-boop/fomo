@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isTerminalSite } from "@/lib/site-mode";
 
 interface Stats {
   totalUsers: number;
@@ -25,7 +26,7 @@ export default function AdminDashboard() {
     return <div className="text-gray-500 dark:text-gray-400">Загрузка...</div>;
   }
 
-  const cards = [
+  const allCards = [
     { label: "Всего пользователей", value: stats.totalUsers, color: "bg-green-500" },
     { label: "Ожидают одобрения", value: stats.pendingUsers, color: "bg-yellow-500" },
     { label: "Одобрены", value: stats.approvedUsers, color: "bg-green-500" },
@@ -34,6 +35,8 @@ export default function AdminDashboard() {
     { label: "Идей за неделю", value: stats.ideasThisWeek, color: "bg-indigo-500" },
     { label: "Доход (заглушка)", value: `${stats.totalRevenue} ₽`, color: "bg-emerald-500" },
   ];
+  // terminal.fomo.spot has no ideas or revenue: users only
+  const cards = isTerminalSite() ? allCards.slice(0, 4) : allCards;
 
   return (
     <div>

@@ -151,6 +151,7 @@ const dict: SectionDict = {
     "ns.group.talk": "Разговоры",
     "ns.group.subs": "Подписки",
     "ns.group.money": "Платежи и система",
+    "ns.group.system": "Система",
     "ns.group.terminal": "Терминал и календарь",
 
     "ns.ev.mention": "Упоминание меня (@)",
@@ -378,6 +379,7 @@ const dict: SectionDict = {
     "ns.group.talk": "Conversations",
     "ns.group.subs": "Subscriptions",
     "ns.group.money": "Payments and system",
+    "ns.group.system": "System",
     "ns.group.terminal": "Terminal and calendar",
 
     "ns.ev.mention": "Mentions of me (@)",
@@ -602,6 +604,7 @@ const dict: SectionDict = {
     "ns.group.talk": "对话",
     "ns.group.subs": "订阅",
     "ns.group.money": "付款与系统",
+    "ns.group.system": "系统",
     "ns.group.terminal": "终端与日历",
 
     "ns.ev.mention": "有人提到我 (@)",

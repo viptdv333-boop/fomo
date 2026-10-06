@@ -1,6 +1,9 @@
 // Hand-rolled robots.txt route handler instead of Next's robots.ts, because
 // MetadataRoute.Robots cannot express Yandex's Clean-param directive.
-const BASE = "https://fomo.spot";
+import { siteUrl } from "@/lib/site-mode";
+
+// https://fomo.spot on the main site, https://terminal.fomo.spot on the terminal instance (NEXT_PUBLIC_SITE_URL / SITE_MODE)
+const BASE = siteUrl();
 
 // Functional areas with no search value. Written without a trailing slash on
 // purpose: "/messages/" only blocked the subtree, so Googlebot crawled the bare

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { prisma } from "@/lib/prisma";
+import { brandName, siteHost } from "@/lib/site-mode";
 
 /**
  * Firebase Cloud Messaging (HTTP v1) delivery to the Android app (android/).
@@ -188,8 +189,10 @@ export function androidChannelFor(event: string | undefined): AndroidChannel {
 /** Only a same-origin path survives: "/ideas/1?x=1" yes; "https://evil", "//evil", "javascript:" no. */
 export function safeLink(link: string | undefined): string {
   if (!link) return "";
-  const own = /^https?:\/\/(?:www\.)?fomo\.spot(\/.*)?$/i.exec(link);
-  if (own) link = own[1] || "/";
+  // the host of THIS site: fomo.spot on the main site, terminal.fomo.spot on the terminal instance
+  const m = /^https?:\/\/(?:www\.)?([^\/:?#]+)(\/.*)?$/i.exec(link);
+  const own = m && m[1].toLowerCase() === siteHost().toLowerCase() ? m : null;
+  if (own) link = own[2] || "/";
   if (!link.startsWith("/") || link.startsWith("//") || link.includes("\\") || /[\u0000-\u001f]/.test(link)) return "";
   return link.slice(0, 500);
 }
@@ -207,7 +210,7 @@ export function buildMessage(token: string, p: FcmPayload): { message: Record<st
   return {
     message: {
       token,
-      notification: { title: clip(p.title, 100) || "FOMO", body: clip(p.body, 180) },
+      notification: { title: clip(p.title, 100) || brandName(), body: clip(p.body, 180) },
       data: { type: p.type.slice(0, 60), event: (p.event ?? "").slice(0, 60), link, tag, channel },
       android: {
         priority: "HIGH",

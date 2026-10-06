@@ -7,13 +7,13 @@ import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n/locale-url";
 import DemoGate from "@/components/shared/DemoGate";
+import { isTerminalSite } from "@/lib/site-mode";
 import { useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
 import { exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
 import {
-  APP_TERM_CHART_HEIGHT,
   APP_TERM_RANGES,
   APP_TERM_TFS,
   NO_VALUE,
@@ -37,6 +37,9 @@ const Chart = dynamic(() => import("@/components/chart/MultiChart"), {
 });
 
 const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
+
+// terminal.fomo.spot has no board of ideas: no «ideas of the symbol» card and no requests to /api/instruments or /api/ideas
+const TERMINAL_SITE = isTerminalSite();
 
 /** Ideas of the board for a terminal symbol: the board's instrument id and the number of ideas (cached for the session). */
 interface IdeasInfo {
@@ -137,7 +140,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
   const selKey = selected ? qKey(selected) : "";
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || TERMINAL_SITE) return;
     let cancelled = false;
     setIdeas(null);
     void loadIdeasInfo(selected).then((r) => {
@@ -293,6 +296,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </button>
         </div>
 
+        {/* the first screen: sticky symbol bar above; timeframes, chart, range row and tool row fill the whole screen above the dock; the rest is below the fold */}
+        <div className="app-term-first">
         <div className="app-term-tfs" role="group" aria-label={t("appui.term.timeframe")}>
           {APP_TERM_TFS.map((id) => (
             <button key={id} type="button" className="app-term-chip" data-on={chart?.interval === id ? "1" : undefined} onClick={() => h.current?.setInterval(id)}>
@@ -302,7 +307,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         </div>
 
         {/* the slot keeps the page's height while the chart block is a fixed full-screen layer */}
-        <div className="app-term-slot" style={{ height: APP_TERM_CHART_HEIGHT }}>
+        <div className="app-term-slot">
           <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
             {!expanded && (
               <div className="app-term-cap">
@@ -347,8 +352,9 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {tool("alert", "bell", t("appui.term.toolAlert"), () => h.current?.openAlerts())}
           {tool("set", "sliders", t("appui.term.toolSet"), () => h.current?.openSettings())}
         </div>
+        </div>
 
-        {selected && (
+        {!TERMINAL_SITE && selected && (
           <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">
             <AppIcon name="bulb" size={18} stroke={1.8} />
             <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>

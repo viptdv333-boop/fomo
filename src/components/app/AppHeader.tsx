@@ -14,9 +14,13 @@ import UpdateAppButton from "@/components/shared/UpdateAppButton";
 import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import { useNativeSettingsAvailable } from "@/components/shared/NativeSettingsLink";
 import { openNativeSettings } from "@/lib/native-app";
+import { isTerminalSite } from "@/lib/site-mode";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
+
+// terminal.fomo.spot: no help / ideas / subscriptions / finance entries, no admin link, no download row of the main apps
+const TERMINAL = isTerminalSite();
 
 interface SheetUser {
   name?: string | null;
@@ -105,11 +109,13 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
               <AppIcon name="chevR" size={18} />
             </Link>
           )}
-          <Link href={p("/help")} onClick={onClose} className="app-cta">
-            <AppIcon name="help" size={22} />
-            <span>{t("nav.help")}</span>
-            <AppIcon name="chevR" size={18} />
-          </Link>
+          {!TERMINAL && (
+            <Link href={p("/help")} onClick={onClose} className="app-cta">
+              <AppIcon name="help" size={22} />
+              <span>{t("nav.help")}</span>
+              <AppIcon name="chevR" size={18} />
+            </Link>
+          )}
           {user && (
             <div className="app-group">
               {nativeSettings && (
@@ -129,15 +135,19 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
               <Row icon="user" href={p("/profile")} onClick={onClose}>
                 {t("profile.profile")}
               </Row>
-              <Row icon="list" href={p("/profile?tab=ideas")} onClick={onClose}>
-                {t("profile.ideas")}
-              </Row>
-              <Row icon="card" href={p("/subscriptions")} onClick={onClose}>
-                {t("profile.subscriptions")}
-              </Row>
-              <Row icon="wallet" href={p("/payments")} onClick={onClose}>
-                {t("profile.finance")}
-              </Row>
+              {!TERMINAL && (
+                <>
+                  <Row icon="list" href={p("/profile?tab=ideas")} onClick={onClose}>
+                    {t("profile.ideas")}
+                  </Row>
+                  <Row icon="card" href={p("/subscriptions")} onClick={onClose}>
+                    {t("profile.subscriptions")}
+                  </Row>
+                  <Row icon="wallet" href={p("/payments")} onClick={onClose}>
+                    {t("profile.finance")}
+                  </Row>
+                </>
+              )}
             </div>
           )}
           <div className="app-group">
@@ -162,9 +172,9 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <UpdateAppButton onNavigate={onClose} className="app-row" />
-            <DownloadAppsRow variant="app" onNavigate={onClose} />
+            {!TERMINAL && <DownloadAppsRow variant="app" onNavigate={onClose} />}
           </div>
-          {user && (user.role === "ADMIN" || user.role === "OWNER") && (
+          {!TERMINAL && user && (user.role === "ADMIN" || user.role === "OWNER") && (
             <div className="app-group">
               <Row icon="shield" href="/admin" onClick={onClose}>
                 {t("profile.admin")}
@@ -201,7 +211,7 @@ function Header() {
 
   return (
     <header className="app-header" data-app-header>
-      <Link href={localizedPath(locale as Locale, "/feed")} className="app-logo" aria-label="FOMO">
+      <Link href={localizedPath(locale as Locale, TERMINAL ? "/terminal" : "/feed")} className="app-logo" aria-label={TERMINAL ? "FOMO Terminal" : "FOMO"}>
         <span className="app-logo-img">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" />

@@ -4,6 +4,7 @@ import next from "next";
 import { initSocket } from "./server/socket";
 import { createReadStream, statSync, existsSync } from "fs";
 import path from "path";
+import { routeAllowed, siteMode } from "./src/lib/site-mode";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = dev ? "localhost" : "0.0.0.0";
@@ -99,10 +100,31 @@ function serveUploads(req: IncomingMessage, res: ServerResponse): boolean {
   }
 }
 
+// terminal.fomo.spot (SITE_MODE=terminal): only the APIs of the terminal, the calendar, the notifications and the account exist.
+// The page allowlist lives in the middleware; every /api request, also the ones the middleware does not see, is checked here.
+const TERMINAL_SITE = siteMode() === "terminal";
+
+function closedApi(req: IncomingMessage, res: ServerResponse): boolean {
+  if (!TERMINAL_SITE) return false;
+  const rawUrl = req.url || "";
+  if (!rawUrl.startsWith("/api/")) return false;
+  let pathname = rawUrl.split("?")[0];
+  try {
+    pathname = decodeURIComponent(pathname);
+  } catch {
+    // keep the raw path: routeAllowed refuses odd ones
+  }
+  if (routeAllowed("terminal", pathname, true)) return false;
+  res.writeHead(404, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(JSON.stringify({ error: "Not found" }));
+  return true;
+}
+
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
     // Serve uploaded files directly (not through Next.js)
     if (serveUploads(req, res)) return;
+    if (closedApi(req, res)) return;
     handler(req, res);
   });
 

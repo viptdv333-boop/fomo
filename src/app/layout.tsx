@@ -15,6 +15,7 @@ import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 import { HTML_LANG } from "@/lib/i18n/locale-url";
 import { DICTIONARIES } from "@/lib/i18n/dictionaries";
 import { APP_UI_BOOT_SCRIPT } from "@/lib/native-app";
+import { brandName, isTerminalSite, siteUrl } from "@/lib/site-mode";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -26,8 +27,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const SITE_URL = "https://fomo.spot";
-const OG_IMAGE = "/logo-fomo.png";
+// terminal.fomo.spot (SITE_MODE=terminal): own title, icons and no Yandex verification; the main site is unchanged.
+const TERMINAL = isTerminalSite();
+const SITE_URL = siteUrl();
+const OG_IMAGE = TERMINAL ? "/icons-terminal/og.png" : "/logo-fomo.png";
+const BRAND = brandName();
+const TERMINAL_ICONS = { icon: "/icons-terminal/icon-192.png", shortcut: "/icons-terminal/icon-192.png", apple: "/icons-terminal/apple-touch-icon.png" };
 
 // Yandex.Webmaster site ownership. Duplicated as /public/yandex_<code>.html
 // so either verification method works.
@@ -50,35 +55,38 @@ export async function generateMetadata(): Promise<Metadata> {
   // Russian search engines weight the leading words of <title> heavily, so the
   // brand goes last. The admin-editable overrides are written in Russian, so
   // they only replace the Russian defaults; /en and /zh always get their own copy.
-  const title = (locale === "ru" && settings?.metaTitle) || t("seo.site.title");
-  const description = (locale === "ru" && settings?.metaDescription) || t("seo.site.description");
+  // Terminal instance: the admin-editable title / description are not used (a fresh database holds the main site's generic
+  // defaults, which would replace the terminal copy).
+  const title = TERMINAL ? t("termsite.title") : (locale === "ru" && settings?.metaTitle) || t("seo.site.title");
+  const description = TERMINAL ? t("termsite.description") : (locale === "ru" && settings?.metaDescription) || t("seo.site.description");
 
   return {
     metadataBase: new URL(SITE_URL),
     title: {
       default: title,
-      template: "%s — FOMO",
+      template: `%s — ${BRAND}`,
     },
     description,
-    applicationName: "FOMO",
-    keywords: keywordList(t("seo.site.keywords")),
-    verification: {
-      yandex: YANDEX_VERIFICATION,
-    },
+    applicationName: BRAND,
+    keywords: keywordList(t(TERMINAL ? "termsite.keywords" : "seo.site.keywords")),
+    // Yandex.Webmaster ownership belongs to fomo.spot only
+    ...(TERMINAL ? {} : { verification: { yandex: YANDEX_VERIFICATION } }),
     authors: [{ name: "FOMO" }],
     creator: "FOMO",
     publisher: "FOMO",
     // NOTE: no `alternates.canonical` here — Next merges root metadata into
     // every child page, so a global canonical would tag /feed, /channels, etc.
     // as duplicates of the home page. Each route sets its own canonical.
-    icons: {
-      icon: favicon,
-      shortcut: favicon,
-      apple: favicon,
-    },
+    icons: TERMINAL
+      ? { ...TERMINAL_ICONS, icon: settings?.faviconUrl || TERMINAL_ICONS.icon }
+      : {
+          icon: favicon,
+          shortcut: favicon,
+          apple: favicon,
+        },
     openGraph: {
       type: "website",
-      siteName: "FOMO",
+      siteName: BRAND,
       title,
       description,
       // No `url` here — Next merges root metadata into child pages, so a
@@ -89,7 +97,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: OG_IMAGE,
           width: 1200,
           height: 630,
-          alt: "FOMO — Find Opportunities, Make Outcomes",
+          alt: TERMINAL ? "FOMO Terminal" : "FOMO — Find Opportunities, Make Outcomes",
         },
       ],
     },
@@ -119,7 +127,7 @@ export async function generateMetadata(): Promise<Metadata> {
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",
-      title: "FOMO",
+      title: BRAND,
     },
   };
 }
@@ -148,8 +156,9 @@ export default async function RootLayout({
             <PWARegister />
             <UpdateBanner />
             <IosInstallModal />
-            <YandexMetrika />
-            <GoogleAnalytics />
+            {/* the counters belong to fomo.spot: the terminal instance would write its visits (and Webvisor) into them */}
+            {!TERMINAL && <YandexMetrika />}
+            {!TERMINAL && <GoogleAnalytics />}
             {children}
             <CookieBanner />
           </I18nProvider>
