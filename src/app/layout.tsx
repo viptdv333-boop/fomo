@@ -34,7 +34,16 @@ const TERMINAL = isTerminalSite();
 const SITE_URL = siteUrl();
 const OG_IMAGE = TERMINAL ? TERMINAL_OG_IMAGE : "/logo-fomo.png";
 const BRAND = brandName();
-const TERMINAL_ICONS = { icon: "/icons-terminal/icon-192.png", shortcut: "/icons-terminal/icon-192.png", apple: "/icons-terminal/apple-touch-icon.png" };
+const TERMINAL_ICONS = {
+  icon: [
+    { url: "/icons-terminal/favicon.ico", sizes: "any" },
+    { url: "/icons-terminal/favicon-32.png", type: "image/png", sizes: "32x32" },
+    { url: "/icons-terminal/favicon-48.png", type: "image/png", sizes: "48x48" },
+    { url: "/icons-terminal/icon-192.png", type: "image/png", sizes: "192x192" },
+  ],
+  shortcut: "/icons-terminal/favicon.ico",
+  apple: "/icons-terminal/apple-touch-icon.png",
+};
 
 // Yandex.Webmaster site ownership. Duplicated as /public/yandex_<code>.html
 // so either verification method works.

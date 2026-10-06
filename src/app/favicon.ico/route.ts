@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
+import { isTerminalSite } from "@/lib/site-mode";
 
 // Crawlers and services like Yandex.Metrika fetch /favicon.ico from the root
 // by convention and ignore <link rel="icon">. The uploaded favicon lives under
@@ -10,10 +11,13 @@ export const runtime = "nodejs";
 export const revalidate = 3600;
 
 const FALLBACK = "/logo-fomo.png";
+// the terminal site has its own icon (public/icons-terminal/favicon.ico: 16/32/48 px), not the site settings' favicon
+const TERMINAL_ICON = "/icons-terminal/favicon.ico";
 
 export async function GET(): Promise<Response> {
-  let iconPath = FALLBACK;
+  let iconPath = isTerminalSite() ? TERMINAL_ICON : FALLBACK;
   try {
+    if (isTerminalSite()) throw new Error("terminal icon");
     const settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
     if (settings?.faviconUrl?.startsWith("/")) iconPath = settings.faviconUrl;
   } catch {
