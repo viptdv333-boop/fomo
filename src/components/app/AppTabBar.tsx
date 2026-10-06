@@ -12,6 +12,8 @@ import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
 
+const HINT_KEY = "fomo-dock-hint-v1";
+
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
 /** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. */
@@ -51,6 +53,55 @@ function TabBar() {
     const left = el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
     nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [active]);
+
+  // the dock is a carousel: fade the edge that has more tabs behind it, and nudge it sideways a few times so it reads as swipeable
+  useEffect(() => {
+    const nav = bar.current;
+    if (!nav) return;
+    const sync = () => {
+      const max = nav.scrollWidth - nav.clientWidth;
+      nav.dataset.more = max <= 2 ? "" : nav.scrollLeft <= 2 ? "r" : nav.scrollLeft >= max - 2 ? "l" : "lr";
+    };
+    sync();
+    nav.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    let hinted = 0;
+    try {
+      hinted = Number(localStorage.getItem(HINT_KEY) || 0);
+    } catch {
+      /* private mode: hint every time */
+    }
+    const timers: number[] = [];
+    let touched = false;
+    const stop = () => {
+      touched = true;
+    };
+    nav.addEventListener("touchstart", stop, { passive: true, once: true });
+    if (hinted < 4 && nav.scrollWidth - nav.clientWidth > 24) {
+      timers.push(
+        window.setTimeout(() => {
+          if (touched) return;
+          const from = nav.scrollLeft;
+          nav.scrollTo({ left: from + 48, behavior: "smooth" });
+          timers.push(
+            window.setTimeout(() => {
+              if (!touched) nav.scrollTo({ left: from, behavior: "smooth" });
+            }, 650)
+          );
+          try {
+            localStorage.setItem(HINT_KEY, String(hinted + 1));
+          } catch {
+            /* ignore */
+          }
+        }, 1600)
+      );
+    }
+    return () => {
+      nav.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
 
   return (
     <nav ref={bar} className="app-tabbar" aria-label={t("appui.nav")} data-app-tabbar>
