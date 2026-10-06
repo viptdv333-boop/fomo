@@ -17,6 +17,10 @@ import {
 import { EVENTS, EVENT_GROUPS, eventsForSite, groupLabelKey, groupsForSite } from "../src/lib/notification-events";
 import { MAIN_APP_TABS, TERMINAL_APP_TABS } from "../src/lib/app-ui";
 import { safeLink } from "../src/lib/fcm";
+import { terminalVerification } from "../src/lib/terminal-seo";
+import { checkedAt, checkedLabel, tradingViewPlans } from "../src/lib/terminal-compare";
+import { TERMINAL_FAQ_KEYS } from "../src/lib/terminal-faq";
+import termsite from "../src/lib/i18n/dict/termsite";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -134,6 +138,16 @@ eq("events: the money group is called «Система» on the terminal site on
 eq("dock: main has 8 tabs", MAIN_APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"]);
 eq("dock: terminal has 4 tabs", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calendar", "settings", "me"]);
 eq("dock: the terminal dock has no board, chat or channels", TERMINAL_APP_TABS.some((t) => t.href === "/feed" || t.href === "/chat" || t.href === "/channels"), false);
+
+// --- terminal SEO: search-engine verification from the environment, comparison data, landing copy ---------------------------
+eq("seo: no verification variables -> no tags", [terminalVerification({}), terminalVerification({ GOOGLE_SITE_VERIFICATION: " ", YANDEX_VERIFICATION: "" })], [undefined, undefined]);
+eq("seo: google only", terminalVerification({ GOOGLE_SITE_VERIFICATION: "abc" }), { google: "abc" });
+eq("seo: both, quotes and spaces trimmed", terminalVerification({ GOOGLE_SITE_VERIFICATION: " \"abc\" ", YANDEX_VERIFICATION: "1f2e" }), { google: "abc", yandex: "1f2e" });
+eq("compare: checkedAt is an ISO date and the label is built from it", [/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(checkedAt), checkedLabel("ru", "2026-10-06"), checkedLabel("en", "2026-10-06"), checkedLabel("cn", "2026-10-06")], [true, "октябрь 2026", "October 2026", "2026年10月"]);
+eq("compare: plans grow with the tier", tradingViewPlans.every((p, i, a) => i === 0 || (p.indicatorsPerChart > a[i - 1].indicatorsPerChart && p.chartsPerTab > a[i - 1].chartsPerTab && p.activePriceAlerts > a[i - 1].activePriceAlerts)), true);
+const faqKeys = TERMINAL_FAQ_KEYS.flatMap((k) => [k.q, k.a]);
+eq("landing copy: every FAQ key exists in ru, en and cn", ["ru", "en", "cn"].map((l) => faqKeys.filter((k) => !(termsite as any)[l][k]).length), [0, 0, 0]);
+eq("landing copy: ru, en and cn have the same termsite keys", [Object.keys(termsite.en).sort().join() === Object.keys(termsite.ru).sort().join(), Object.keys(termsite.cn).sort().join() === Object.keys(termsite.ru).sort().join()], [true, true]);
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

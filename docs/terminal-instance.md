@@ -20,6 +20,8 @@
 | `AUTH_SECRET`, `NEXTAUTH_SECRET` | во время работы | **свой** секрет инстанса (`openssl rand -base64 48`) |
 | `AUTH_COOKIE_PREFIX` | необязательно | по умолчанию в режиме terminal — `terminal` |
 | `EMAIL_FROM` | необязательно | иначе `FOMO Terminal <no-reply@fomo.spot>` |
+| `GOOGLE_SITE_VERIFICATION` | во время работы, необязательно | содержимое (`content`) метатега Google Search Console; пусто = тега нет |
+| `YANDEX_VERIFICATION` | во время работы, необязательно | содержимое метатега Яндекс.Вебмастера; пусто = тега нет |
 
 Без `SITE_MODE` / `NEXT_PUBLIC_SITE_MODE` сайт — обычный fomo.spot (`siteUrl()` = `https://fomo.spot`, cookie
 `authjs.*`, все страницы). Логика: `src/lib/site-mode.ts`, проверка: `npx tsx scripts/check-site-mode.ts`.
@@ -44,8 +46,9 @@
   Социальные события и платежи скрыты.
 - **Нижнее меню приложения (app UI)**: Терминал, Календарь, Профиль, Настройки.
 - **Брендинг**: title/description «FOMO Terminal …», manifest «FOMO Terminal» (`start_url /terminal`, без share target),
-  иконки `public/icons-terminal/*`, canonical и hreflang на `terminal.fomo.spot`, нет верификации Яндекса, нет Яндекс.Метрики и
-  Google Analytics (счётчики fomo.spot), sitemap — только страницы терминала, без обращений к базе.
+  иконки `public/icons-terminal/*`, canonical и hreflang на `terminal.fomo.spot`, OG-картинка `public/landing/terminal/og.jpg`, нет Яндекс.Метрики и
+  Google Analytics (счётчики fomo.spot), sitemap — только страницы терминала, без обращений к базе. Тег подтверждения fomo.spot (Яндекс)
+  здесь не выводится никогда; свои теги Google / Яндекса — только из `GOOGLE_SITE_VERIFICATION` / `YANDEX_VERIFICATION` (см. «SEO» ниже).
 - **Socket.IO**: CORS только на адрес инстанса (на fomo.spot по-прежнему `*`).
 
 ## Что нужно сделать (по порядку)
@@ -167,6 +170,22 @@ Android (`/app/dl/FOMO-Terminal.apk`), Windows (`/app/dl/FOMO-Terminal-Setup.exe
 есть запись `terminal.windows`) и macOS (`/app/dl/FOMO-Terminal.dmg`, только когда есть запись `terminal.macos`, то есть файл
 собран и опубликован). Внутри самих приложений блок скрыт. Файлы кладутся на сервер терминала так же, как APK
 (`/opt/fomo-terminal/public/app/dl/`, затем `pm2 restart fomo-terminal`, чтобы Next увидел новые файлы; или nginx отдаёт папку сам).
+
+## SEO и поисковики (только режим terminal)
+- **Лендинг** `/` (`TerminalLanding`): весь текст в серверном HTML (анимации — CSS, FAQ в `<details>`), H1 «Бесплатный торговый терминал онлайн», разделы
+  «Что внутри», «Сколько это стоит у других», «Частые вопросы». JSON-LD: Organization, WebSite, SoftwareApplication (бесплатно, RUB/USD, ссылки на скачивание
+  из `dl-info.json`) и FAQPage — из тех же ключей, что и видимый список (`src/lib/terminal-seo.ts`, `terminal-faq.ts`). Тексты — `src/lib/i18n/dict/termsite.ts` (ru/en/cn).
+- **Мета**: title/description для `/`, `/terminal`, `/calendar` свои (ключи `termsite.*`), canonical + hreflang ru/en/zh, Open Graph и Twitter-карточка с
+  `public/landing/terminal/og.jpg` (1200×630). `/login`, `/register`, `/forgot-password`, `/profile`, `/admin` — noindex.
+- **sitemap.xml**: `/`, `/terminal`, `/terminal/features`, `/calendar`, `/privacy`, `/terms` в трёх языках с lastmod (у «статичных» — `TERMINAL_STATIC_LASTMOD` в
+  `terminal-seo.ts`, поднимать при смене текстов); **robots.txt** разрешает эти страницы и указывает на sitemap.
+- **Подтверждение владения**: в `.env` инстанса `GOOGLE_SITE_VERIFICATION=<content метатега>` и/или `YANDEX_VERIFICATION=<content метатега>`, затем
+  `pm2 restart fomo-terminal --update-env` (пересборка не нужна: читается при запросе). Появятся `<meta name="google-site-verification">` / `<meta name="yandex-verification">`.
+  Далее в Google Search Console / Яндекс.Вебмастере добавить `https://terminal.fomo.spot`, подтвердить, отправить `/sitemap.xml`.
+- **Таблица «Сколько это стоит у других»**: факты и дата проверки — `src/lib/terminal-compare.ts` (`checkedAt`, источник — официальная страница тарифов
+  TradingView). Условия чужих сервисов меняются: при обновлении правьте числа и `checkedAt`.
+- **Медиа лендинга**: `public/landing/terminal/*.webp` (скриншоты терминала, календаря и мобильного интерфейса), `hero.mp4` (≈1 МБ, без звука, фон героя на широких
+  экранах), `logo.webp`, `og.jpg`. Скриншоты сняты с демо-режима без личных данных; перед заменой проверьте, что на кадре нет ничего личного.
 
 ## Проверка после запуска
 ```bash

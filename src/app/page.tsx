@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LandingPage from "@/components/landing/LandingPage";
 import TerminalLanding from "@/components/landing/TerminalLanding";
-import { isTerminalSite, siteUrl } from "@/lib/site-mode";
+import { isTerminalSite } from "@/lib/site-mode";
+import { terminalLandingJsonLd, terminalPageMetadata } from "@/lib/terminal-seo";
 import PwaBanners from "@/components/layout/PwaBanners";
 import { getT } from "@/lib/i18n/server";
 import { HTML_LANG, SITE_URL, seoAlternates, type Locale } from "@/lib/i18n/locale-url";
@@ -12,10 +13,11 @@ import { absoluteUrl, ogLocales } from "@/lib/i18n/seo-metadata";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  // terminal.fomo.spot: absolute title, canonical + hreflang, OG image and Twitter card (src/lib/terminal-seo.ts)
+  if (isTerminalSite()) return terminalPageMetadata("/", "termsite.title", "termsite.description", true);
   const { locale, t } = await getT();
-  const terminal = isTerminalSite();
-  const title = t(terminal ? "termsite.title" : "seo.site.title");
-  const description = t(terminal ? "termsite.description" : "seo.site.description");
+  const title = t("seo.site.title");
+  const description = t("seo.site.description");
   const alternates = seoAlternates(locale, "/");
   return {
     title,
@@ -68,21 +70,6 @@ function buildJsonLd(locale: Locale, t: (key: string) => string) {
   };
 }
 
-// terminal.fomo.spot: one WebApplication node instead of the Organization + WebSite of the social site.
-function buildTerminalJsonLd(t: (key: string) => string) {
-  const url = siteUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    name: "FOMO Terminal",
-    url,
-    description: t("termsite.description"),
-    applicationCategory: "FinanceApplication",
-    operatingSystem: "Web, Android",
-    inLanguage: ["ru", "en", "zh"],
-  };
-}
-
 export default async function HomePage() {
   const session = await auth();
   const { locale, t } = await getT();
@@ -94,7 +81,7 @@ export default async function HomePage() {
       <>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTerminalJsonLd(t)).replace(/</g, "\\u003c") }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(terminalLandingJsonLd(locale, t)).replace(/</g, "\\u003c") }}
         />
         <PwaBanners />
         <TerminalLanding />

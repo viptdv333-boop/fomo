@@ -1,0 +1,46 @@
+/* Terminal landing (TerminalLanding): hero carousel + entrance animation. CSS only, so the text is in the server HTML and
+   visible without JavaScript; animations only move / fade it in and are switched off for prefers-reduced-motion. */
+
+.tl-hero { position: relative; isolation: isolate; overflow: hidden; background: #070707; color: #fff; }
+
+/* background carousel */
+.tl-bg { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
+.tl-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease-in-out; }
+.tl-slide.is-active { opacity: 1; }
+.tl-slide img { width: 100%; height: 100%; object-fit: cover; object-position: var(--tl-pos, 50% 40%); transform-origin: var(--tl-origin, 50% 50%); will-change: transform; }
+.tl-slide.is-active img { animation: tl-kenburns 9s ease-out forwards; }
+.tl-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s ease; }
+.tl-video.is-ready { opacity: 1; }
+/* the dark veil keeps the headline, buttons and links readable on any screenshot */
+.tl-veil { position: absolute; inset: 0; z-index: -1; background:
+  radial-gradient(ellipse 80% 60% at 50% 42%, rgba(7,7,7,.66) 0%, rgba(7,7,7,.4) 55%, rgba(7,7,7,.16) 100%),
+  linear-gradient(180deg, rgba(7,7,7,.4) 0%, rgba(7,7,7,.18) 40%, rgba(7,7,7,.88) 100%); }
+
+.tl-hero h1, .tl-hero p, .tl-hero a { text-shadow: 0 1px 14px rgba(0,0,0,.7); }
+.tl-hero a.tl-btn { text-shadow: none; }
+
+@keyframes tl-kenburns { from { transform: scale(1); } to { transform: scale(1.1); } }
+@keyframes tl-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+.tl-rise { animation: tl-rise .9s cubic-bezier(.25,.46,.45,.94) both; animation-delay: var(--tl-d, 0s); }
+
+/* slide indicators */
+.tl-dots { display: flex; gap: 8px; justify-content: center; }
+.tl-dot { width: 22px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.28); border: 0; padding: 0; cursor: pointer; transition: background .3s, width .3s; }
+.tl-dot.is-active { background: #22c55e; width: 34px; }
+.tl-dot:focus-visible { outline: 2px solid #22c55e; outline-offset: 3px; }
+
+/* screenshot frames: the aspect ratio is reserved by width / height attributes, so nothing jumps while images load */
+.tl-shot { display: block; height: auto; border-radius: 14px; }
+
+.tl-faq summary { list-style: none; cursor: pointer; }
+.tl-faq summary::-webkit-details-marker { display: none; }
+.tl-faq[open] .tl-chev { transform: rotate(180deg); }
+.tl-chev { transition: transform .25s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-slide { transition: none; }
+  .tl-slide.is-active img { animation: none; }
+  .tl-rise { animation: none; }
+  .tl-chev { transition: none; }
+}

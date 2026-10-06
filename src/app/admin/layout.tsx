@@ -1,5 +1,6 @@
 import SessionProvider from "@/components/layout/SessionProvider";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { isTerminalSite } from "@/lib/site-mode";
 
 const adminLinks = [
@@ -20,6 +21,11 @@ const adminLinks = [
 const TERMINAL_ADMIN_HREFS = ["/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings"];
 const TERMINAL = isTerminalSite();
 const links = TERMINAL ? adminLinks.filter((l) => TERMINAL_ADMIN_HREFS.includes(l.href)) : adminLinks;
+
+// terminal.fomo.spot: the owner's admin is not for search (noindex; the main site's admin is only disallowed in robots.txt, unchanged)
+export function generateMetadata(): Metadata {
+  return TERMINAL ? { robots: { index: false, follow: false } } : {};
+}
 
 export default function AdminLayout({
   children,

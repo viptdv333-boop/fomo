@@ -16,6 +16,7 @@ import { HTML_LANG } from "@/lib/i18n/locale-url";
 import { DICTIONARIES } from "@/lib/i18n/dictionaries";
 import { APP_UI_BOOT_SCRIPT } from "@/lib/native-app";
 import { brandName, isTerminalSite, siteUrl } from "@/lib/site-mode";
+import { TERMINAL_OG_IMAGE, terminalVerification } from "@/lib/terminal-seo";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -27,10 +28,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// terminal.fomo.spot (SITE_MODE=terminal): own title, icons and no Yandex verification; the main site is unchanged.
+// terminal.fomo.spot (SITE_MODE=terminal): own title, icons, OG image; search-engine verification only from its own environment
+// (GOOGLE_SITE_VERIFICATION / YANDEX_VERIFICATION, never the fomo.spot tag). The main site is unchanged.
 const TERMINAL = isTerminalSite();
 const SITE_URL = siteUrl();
-const OG_IMAGE = TERMINAL ? "/icons-terminal/og.png" : "/logo-fomo.png";
+const OG_IMAGE = TERMINAL ? TERMINAL_OG_IMAGE : "/logo-fomo.png";
 const BRAND = brandName();
 const TERMINAL_ICONS = { icon: "/icons-terminal/icon-192.png", shortcut: "/icons-terminal/icon-192.png", apple: "/icons-terminal/apple-touch-icon.png" };
 
@@ -69,8 +71,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     applicationName: BRAND,
     keywords: keywordList(t(TERMINAL ? "termsite.keywords" : "seo.site.keywords")),
-    // Yandex.Webmaster ownership belongs to fomo.spot only
-    ...(TERMINAL ? {} : { verification: { yandex: YANDEX_VERIFICATION } }),
+    // Yandex.Webmaster ownership of fomo.spot. The terminal instance never carries it: its own google-site-verification /
+    // yandex-verification tags come from GOOGLE_SITE_VERIFICATION / YANDEX_VERIFICATION, read at run time (empty = no tag)
+    ...(TERMINAL ? (terminalVerification() ? { verification: terminalVerification() } : {}) : { verification: { yandex: YANDEX_VERIFICATION } }),
     authors: [{ name: "FOMO" }],
     creator: "FOMO",
     publisher: "FOMO",
