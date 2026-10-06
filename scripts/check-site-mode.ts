@@ -131,8 +131,8 @@ eq("events: terminal groups", groupsForSite("terminal"), ["money", "terminal"]);
 eq("events: the money group is called «Система» on the terminal site only", [groupLabelKey("money", "terminal"), groupLabelKey("money", "main"), groupLabelKey("terminal", "terminal")], ["ns.group.system", "ns.group.money", "ns.group.terminal"]);
 
 // --- dock ---------------------------------------------------------------------------------------------------------
-eq("dock: main has 8 tabs", MAIN_APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "me", "settings"]);
-eq("dock: terminal has 4 tabs", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calendar", "me", "settings"]);
+eq("dock: main has 8 tabs", MAIN_APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"]);
+eq("dock: terminal has 4 tabs", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calendar", "settings", "me"]);
 eq("dock: the terminal dock has no board, chat or channels", TERMINAL_APP_TABS.some((t) => t.href === "/feed" || t.href === "/chat" || t.href === "/channels"), false);
 
 if (fails) {
