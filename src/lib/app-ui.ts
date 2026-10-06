@@ -2,7 +2,7 @@
 import { stripLocale, localizedPath, type Locale } from "@/lib/i18n/locale-url";
 import { isTerminalSite } from "@/lib/site-mode";
 
-export type AppTabId = "feed" | "terminal" | "chat" | "calendar" | "channels" | "authors" | "me" | "settings";
+export type AppTabId = "feed" | "terminal" | "chat" | "calendar" | "channels" | "authors" | "me";
 
 export interface AppTabDef {
   id: AppTabId;
@@ -14,7 +14,7 @@ export interface AppTabDef {
   match: string[];
 }
 
-/** The dock of the design: eight tabs in this order, five visible at a time, the rest by swiping the bar sideways. */
+/** The dock of the design: seven tabs in this order, five visible at a time, the rest by swiping the bar sideways. */
 export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "feed", href: "/feed", labelKey: "nav.feed", match: ["/feed", "/ideas"] },
   { id: "terminal", href: "/terminal", labelKey: "nav.terminal", match: ["/terminal"] },
@@ -23,16 +23,14 @@ export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "channels", href: "/channels", labelKey: "nav.channels", match: ["/channels"] },
   { id: "authors", href: "/authors", labelKey: "nav.authors", match: ["/authors"] },
   { id: "me", href: "/profile", labelKey: "profile.profile", match: ["/profile", "/payments", "/subscriptions"] },
-  /* the app settings: opens the native screen inside the app, the notification settings page otherwise (see AppTabBar) */
-  { id: "settings", href: "/profile?tab=notifications", labelKey: "appui.tab.settings", match: [] },
 ];
 
-/** The dock of the terminal site (terminal.fomo.spot): four tabs of the same carousel. */
-export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calendar", "me", "settings"].includes(tab.id)).map((tab) =>
+/** The dock of the terminal site (terminal.fomo.spot): three tabs. */
+export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calendar", "me"].includes(tab.id)).map((tab) =>
   tab.id === "me" ? { ...tab, match: ["/profile"] } : tab
 );
 
-/** The tabs of THIS site: the eight of the board site, or the four of the terminal site (SITE_MODE=terminal). */
+/** The tabs of THIS site: the seven of the board site, or the three of the terminal site (SITE_MODE=terminal). */
 export const APP_TABS: readonly AppTabDef[] = isTerminalSite() ? TERMINAL_APP_TABS : MAIN_APP_TABS;
 
 function underPrefix(path: string, prefix: string): boolean {

@@ -3,15 +3,16 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
-import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
+import { nativeBridge } from "@/lib/native-app";
 import { APP_TABS, activeAppTab, appTabHref, badgeLabel, raisesKeyboard, type AppTabId } from "@/lib/app-ui";
 import { useChatBadge } from "@/components/layout/useChatBadge";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
 
-const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
+const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user" };
 
 /** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. */
 function useKeyboardClass() {
@@ -35,6 +36,8 @@ function TabBar() {
   const pathname = usePathname() || "/";
   const active = activeAppTab(pathname);
   const unread = badgeLabel(useChatBadge());
+  const { data: session } = useSession();
+  const me = session?.user as { image?: string | null; name?: string | null } | undefined;
   useKeyboardClass();
   const bar = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -65,11 +68,6 @@ function TabBar() {
             aria-current={on ? "page" : undefined}
             aria-label={badge ? `${label}, ${t("appui.unread", { n: badge })}` : label}
             onClick={(e) => {
-              if (tab.id === "settings" && canOpenNativeSettings()) {
-                e.preventDefault();
-                openNativeSettings();
-                return;
-              }
               try {
                 nativeBridge()?.haptic?.();
               } catch {
@@ -79,7 +77,18 @@ function TabBar() {
             }}
           >
             <span className="app-tab-ico">
-              <AppIcon name={ICON[tab.id]} size={24} />
+              {tab.id === "me" && session ? (
+                <span className="app-tab-ava" aria-hidden="true">
+                  {me?.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={me.image} alt="" />
+                  ) : (
+                    (me?.name || "?").trim().charAt(0).toUpperCase()
+                  )}
+                </span>
+              ) : (
+                <AppIcon name={ICON[tab.id]} size={24} />
+              )}
               {badge && <span className="app-badge">{badge}</span>}
             </span>
             <span className="app-tab-label">{label}</span>
