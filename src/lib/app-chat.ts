@@ -113,7 +113,7 @@ export function matchesQuery(name: string, query: string): boolean {
 }
 
 /**
- * The design's list order: Избранное, the general chat (no heading), the topics, Приватные группы. Empty groups are dropped,
+ * The list order: the general chat (no heading, always first), Избранное, the topics, Приватные группы. Empty groups are dropped,
  * a search folds nothing away: every topic that has a match opens. Rooms an admin hid (isArchived) never get here (the loader filters them).
  */
 export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
@@ -136,15 +136,15 @@ export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
   for (const c of inp.categories) for (const a of c.assets) if (a.chatRoom) tiles.set(a.chatRoom.id, CAT_EMOJI[c.slug] || OTHER_EMOJI);
   for (const r of inp.privateRooms) tiles.set(r.id, PRIVATE_EMOJI);
 
-  const favRows = inp.favorites
-    .filter((f) => matchesQuery(f.name, inp.query))
-    .map((f) => row(f.roomId, f.name, tiles.get(f.roomId) || (f.isPrivate ? PRIVATE_EMOJI : OTHER_EMOJI), f.isPrivate, f.assetSlug));
-  if (favRows.length) groups.push({ key: "fav", kind: "fav", title: inp.labels.favorites, collapsible: false, open: true, count: favRows.length, unread: 0, rows: favRows });
-
   if (matchesQuery(inp.labels.general, inp.query)) {
     const id = inp.generalRoomId || "general";
     groups.push({ key: "general", kind: "general", title: null, collapsible: false, open: true, count: 1, unread: 0, rows: [row(id, inp.labels.general, GENERAL_EMOJI, false, null)] });
   }
+
+  const favRows = inp.favorites
+    .filter((f) => matchesQuery(f.name, inp.query))
+    .map((f) => row(f.roomId, f.name, tiles.get(f.roomId) || (f.isPrivate ? PRIVATE_EMOJI : OTHER_EMOJI), f.isPrivate, f.assetSlug));
+  if (favRows.length) groups.push({ key: "fav", kind: "fav", title: inp.labels.favorites, collapsible: false, open: true, count: favRows.length, unread: 0, rows: favRows });
 
   for (const cat of inp.categories) {
     const all = cat.assets.filter((a) => a.chatRoom);

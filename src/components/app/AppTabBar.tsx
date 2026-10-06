@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
-import { nativeBridge } from "@/lib/native-app";
+import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
 import { APP_TABS, activeAppTab, appTabHref, badgeLabel, raisesKeyboard, type AppTabId } from "@/lib/app-ui";
 import { useChatBadge } from "@/components/layout/useChatBadge";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { applyFontStep, readFontStep } from "./fontStep";
 
-const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user" };
+const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
 /** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. */
 function useKeyboardClass() {
@@ -68,6 +68,11 @@ function TabBar() {
             aria-current={on ? "page" : undefined}
             aria-label={badge ? `${label}, ${t("appui.unread", { n: badge })}` : label}
             onClick={(e) => {
+              if (tab.id === "settings" && canOpenNativeSettings()) {
+                e.preventDefault();
+                openNativeSettings();
+                return;
+              }
               try {
                 nativeBridge()?.haptic?.();
               } catch {

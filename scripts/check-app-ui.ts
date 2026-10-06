@@ -107,9 +107,9 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 
 // --- tabs: exactly five, in the owner's order
-eq("seven tabs in order (the dock carousel)", APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "me"]);
-eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile"]);
-eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "profile.profile"]);
+eq("eight tabs in order (the dock carousel)", APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"]);
+eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile?tab=notifications", "/profile"]);
+eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "appui.tab.settings", "profile.profile"]);
 
 // --- active tab
 const cases: [string, ReturnType<typeof activeAppTab>][] = [
@@ -323,12 +323,12 @@ const gin = {
   catTitle: (slug: string, name: string) => (CAT_I18N[slug] ? CAT_I18N[slug] : name),
 };
 const groups = buildRoomGroups(gin);
-eq("groups: the design's order (Избранное, общий чат, topics, private groups)", groups.map((g) => g.key), ["fav", "general", "cat:metals", "cat:commodities", "cat:other", "private"]);
+eq("groups: order (общий чат always first, Избранное, topics, private groups)", groups.map((g) => g.key), ["general", "fav", "cat:metals", "cat:commodities", "cat:other", "private"]);
 eq("groups: only topics fold", groups.map((g) => g.collapsible), [false, false, true, true, true, false]);
 eq("groups: topics start folded, the count is the rooms that have a chat", groups.filter((g) => g.kind === "cat").map((g) => [g.open, g.count]), [[false, 2], [false, 1], [false, 1]]);
 eq("groups: unread of a folded topic is the sum of its rooms", groups.filter((g) => g.kind === "cat").map((g) => g.unread), [3, 100, 0]);
-eq("groups: favourites keep the tile of their own group", groups[0].rows.map((r) => [r.id, r.tile, r.fav]), [["r2", "\u{1F947}", true], ["p1", "\u{1F512}", true]]);
-eq("groups: general chat has no heading and its unread", [groups[1].title, groups[1].rows[0].id, groups[1].rows[0].unread], [null, "g1", 5]);
+eq("groups: favourites keep the tile of their own group", groups[1].rows.map((r) => [r.id, r.tile, r.fav]), [["r2", "\u{1F947}", true], ["p1", "\u{1F512}", true]]);
+eq("groups: general chat has no heading and its unread", [groups[0].title, groups[0].rows[0].id, groups[0].rows[0].unread], [null, "g1", 5]);
 eq("groups: bells come from the notify set", groups[2].rows.map((r) => [r.id, r.bell]), [["r1", true], ["r2", false]]);
 const opened = buildRoomGroups({ ...gin, openCats: new Set(["metals"]) });
 eq("groups: an opened topic", opened.filter((g) => g.kind === "cat").map((g) => g.open), [true, false, false]);
