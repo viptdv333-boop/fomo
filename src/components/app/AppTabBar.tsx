@@ -88,13 +88,15 @@ function TabBar() {
           const dur = 900;
           const t0 = performance.now();
           nav.style.scrollSnapType = "none";
-          const tick = (now: number) => {
-            const k = Math.min(1, (now - t0) / dur);
+          const tick = () => {
+            const k = Math.min(1, (performance.now() - t0) / dur);
             nav.scrollLeft = from + dist * Math.sin(Math.PI * k); // 0 -> dist -> 0
-            if (k < 1 && !touched) raf = requestAnimationFrame(tick);
-            else nav.style.scrollSnapType = "";
+            if (k >= 1 || touched) {
+              window.clearInterval(raf);
+              nav.style.scrollSnapType = "";
+            }
           };
-          raf = requestAnimationFrame(tick);
+          raf = window.setInterval(tick, 16); // a timer, not rAF: it must also run when the WebView thinks the page is not painting yet
           try {
             localStorage.setItem(HINT_KEY, String(hinted + 1));
           } catch {
@@ -107,7 +109,7 @@ function TabBar() {
       nav.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
       timers.forEach((t) => window.clearTimeout(t));
-      cancelAnimationFrame(raf);
+      window.clearInterval(raf);
       nav.style.scrollSnapType = "";
     };
   }, []);
