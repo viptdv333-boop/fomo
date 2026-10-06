@@ -5,26 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import AppIcon from "../AppIcon";
 import AppSheet, { Sections, type SheetSection } from "./AppSheet";
 import type { PrivateRoom } from "@/lib/app-chat";
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText = "position:fixed;opacity:0;left:0;top:0";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
+import { deleteGroup, inviteGroup, leaveGroup } from "./groupActions";
 
 /** The design's pushed «Комнаты» screen: my private groups (invite link, delete / leave) and «Создать группу». */
 export default function AppGroupsScreen({
@@ -46,31 +27,12 @@ export default function AppGroupsScreen({
   const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function invite(r: PrivateRoom) {
-    if (!r.inviteToken) return;
-    const url = `${window.location.origin}/rooms/join/${r.inviteToken}`;
-    const text = t("chat2.inviteShareText", { name: r.name });
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: r.name, text, url });
-        return;
-      }
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return;
-    }
-    if (await copyText(url)) flash(t("appui.chat.linkCopied"));
-  }
-
+  const invite = (r: PrivateRoom) => inviteGroup(r, t, flash);
   async function remove(r: PrivateRoom) {
-    if (!window.confirm(t("chat2.confirmDeleteGroup"))) return;
-    await fetch(`/api/rooms/${r.id}`, { method: "DELETE" }).catch(() => {});
-    onChanged();
+    if (await deleteGroup(r.id, t)) onChanged();
   }
-
   async function leave(r: PrivateRoom) {
-    if (!window.confirm(t("appui.chat.leaveConfirm", { name: r.name }))) return;
-    await fetch(`/api/rooms/${r.id}/leave`, { method: "POST" }).catch(() => {});
-    onChanged();
+    if (await leaveGroup(r, t)) onChanged();
   }
 
   async function create() {

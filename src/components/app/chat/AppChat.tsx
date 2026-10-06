@@ -11,6 +11,11 @@ import AppChatList from "./AppChatList";
 import AppDmThread from "./AppDmThread";
 import AppGroupsScreen from "./AppGroupsScreen";
 import AppNewChatSheet from "./AppNewChatSheet";
+import AppDialogSheet from "./AppDialogSheet";
+import { useDmMarks } from "./useChatPrefs";
+import type { Conversation } from "./useAppChatData";
+import { deleteGroup, inviteGroup, leaveGroup } from "./groupActions";
+import type { RoomInfo as RoomSheetInfo } from "./AppRoomThread";
 import { ThreadBar } from "./AppThreadParts";
 import { useAppDms, useAppRooms } from "./useAppChatData";
 import "./app-chat.css";
@@ -35,7 +40,7 @@ type RoomInfo = ReturnType<ReturnType<typeof useAppRooms>["findRoom"]>;
  * closed / archived flags (the list does not carry them); a room the list does not know (deep link, link from a notification) is looked up.
  */
 function useRoomMeta(roomId: string | null, listed: RoomInfo, listLoaded: boolean) {
-  const [fetched, setFetched] = useState<{ id: string; name: string; isClosed: boolean; isArchived: boolean } | null>(null);
+  const [fetched, setFetched] = useState<{ id: string; name: string; isClosed: boolean; isArchived: boolean; description?: string | null; isOwner?: boolean; inviteToken?: string; membersCount?: number } | null>(null);
   const [fail, setFail] = useState<{ id: string; state: "denied" | "missing" } | null>(null);
   const needFetch = !!roomId && (listed ? listed.isPrivate : listLoaded);
   useEffect(() => {
@@ -46,7 +51,7 @@ function useRoomMeta(roomId: string | null, listed: RoomInfo, listLoaded: boolea
         const priv = await fetch(`/api/rooms/${encodeURIComponent(roomId)}`);
         if (priv.ok) {
           const j = await priv.json();
-          if (alive) setFetched({ id: roomId, name: j.name, isClosed: !!j.isClosed, isArchived: !!j.isArchived });
+          if (alive) setFetched({ id: roomId, name: j.name, isClosed: !!j.isClosed, isArchived: !!j.isArchived, description: j.description, isOwner: !!j.isOwner, inviteToken: j.inviteToken, membersCount: j.membersCount });
           return;
         }
         if (priv.status === 403) {
@@ -96,6 +101,8 @@ export default function AppChat() {
   const [query, setQuery] = useState("");
   const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
   const [newChat, setNewChat] = useState(false);
+  const [dialogMenu, setDialogMenu] = useState<Conversation | null>(null);
+  const marks = useDmMarks();
   const [toast, setToast] = useState("");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flash = useCallback((m: string) => {
@@ -205,6 +212,35 @@ export default function AppChat() {
 
   const listedRoom = route.room ? rooms.findRoom(route.room, t("chat.generalChat")) : null;
   const { meta, state } = useRoomMeta(route.room, listedRoom, rooms.loaded);
+  // what the room sheet shows for a private group (the list knows its owner flag and invite token, the room request adds the description)
+  const privateListed = route.room ? rooms.privateRooms.find((r) => r.id === route.room) : undefined;
+  const roomInfo: RoomSheetInfo | undefined = route.room
+    ? {
+        isPrivate: !!(listedRoom?.isPrivate || privateListed || (meta && "isOwner" in meta && meta.isOwner !== undefined)),
+        isOwner: !!(privateListed?.isOwner ?? (meta && "isOwner" in meta ? meta.isOwner : false)),
+        description: meta && "description" in meta ? meta.description : null,
+        membersCount: privateListed?.membersCount ?? (meta && "membersCount" in meta ? meta.membersCount : undefined),
+        flash,
+        onInvite: () => {
+          const token = privateListed?.inviteToken ?? (meta && "inviteToken" in meta ? meta.inviteToken : undefined);
+          if (meta) void inviteGroup({ name: meta.name, inviteToken: token }, t, flash);
+        },
+        onDelete: () =>
+          void deleteGroup(route.room!, t).then((ok) => {
+            if (ok) {
+              rooms.reloadPrivate();
+              back();
+            }
+          }),
+        onLeave: () =>
+          void leaveGroup({ id: route.room!, name: meta?.name || "" }, t).then((ok) => {
+            if (ok) {
+              rooms.reloadPrivate();
+              back();
+            }
+          }),
+      }
+    : undefined;
   // a stale ?dm= (conversation not in the list after a reload of the list): ask once more
   const dmConv = route.dm ? dms.conversations.find((c) => c.id === route.dm) || null : null;
   useEffect(() => {
@@ -224,7 +260,7 @@ export default function AppChat() {
   if (route.room) {
     screen =
       state === "ok" && meta ? (
-        <ChatRoom key={route.room} appVariant onBack={back} roomId={route.room} roomName={meta.name} isClosed={meta.isClosed} isArchived={meta.isArchived} />
+        <ChatRoom key={route.room} appVariant appInfo={roomInfo} onBack={back} roomId={route.room} roomName={meta.name} isClosed={meta.isClosed} isArchived={meta.isArchived} />
       ) : (
         <div className="ac ac-thread">
           <ThreadBar title={state === "loading" ? "…" : t(state === "denied" ? "chat2.noAccess" : "chat2.groupNotFound")} onBack={back} />
@@ -234,7 +270,7 @@ export default function AppChat() {
         </div>
       );
   } else if (route.dm) {
-    screen = <AppDmThread key={route.dm} convId={route.dm} conv={dmConv} online={!!dmConv?.otherUser && dms.online.has(dmConv.otherUser.id)} onBack={back} onChanged={() => void dms.reload()} />;
+    screen = <AppDmThread key={route.dm} convId={route.dm} conv={dmConv} online={!!dmConv?.otherUser && dms.online.has(dmConv.otherUser.id)} onBack={back} onChanged={() => void dms.reload()} flash={flash} />;
   } else if (route.with) {
     screen = (
       <div className="ac ac-thread">
@@ -262,6 +298,8 @@ export default function AppChat() {
         onOpenDm={(id) => go({ dm: id })}
         onCreate={() => go({ groups: true })}
         onNewChat={() => setNewChat(true)}
+        marks={marks}
+        onDialogMenu={setDialogMenu}
       />
     );
   }
@@ -269,6 +307,7 @@ export default function AppChat() {
   return (
     <>
       {screen}
+      {dialogMenu && <AppDialogSheet conv={dialogMenu} marks={marks} onClose={() => setDialogMenu(null)} flash={flash} />}
       {newChat && <AppNewChatSheet onClose={() => setNewChat(false)} onPick={startWith} myId={myId} />}
       {toast && <div className="ac ac-toast" role="status">{toast}</div>}
     </>

@@ -15,6 +15,17 @@ import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTOR
 import { isValidInterval } from "../src/lib/chart/intervals";
 import {
   CAT_I18N,
+  CHAT_BGS,
+  DM_KEYS,
+  bgCss,
+  fontPx,
+  parseFontLevel,
+  parseIdList,
+  pinnedLine,
+  quoteDraft,
+  roomMembers,
+  toggleId,
+  togglePin,
   buildRoomGroups,
   chatQuery,
   clockLabel,
@@ -271,6 +282,21 @@ eq("groups: search keeps matching rooms only and opens their topic", found.map((
 eq("groups: no match -> no groups", buildRoomGroups({ ...gin, query: "zzzz" }), []);
 eq("groups: no favourites, no private groups -> those groups vanish", buildRoomGroups({ ...gin, favorites: [], privateRooms: [] }).map((g) => g.key), ["general", "cat:metals", "cat:commodities", "cat:other"]);
 eq("groups: unknown general id falls back to 'general'", buildRoomGroups({ ...gin, generalRoomId: null, favorites: [] })[0].rows[0].id, "general");
+
+// --- old «Личные» marks and look settings (kept under the old localStorage keys)
+eq("old localStorage keys", DM_KEYS, { favorites: "fomo-favorites", pinned: "fomo-pinned-chats", muted: "fomo-muted-chats", bg: "fomo-chat-bg", notif: "fomo-chat-notif", font: "fomo-chat-font-v2" });
+eq("toggleId adds and removes", [toggleId(["a"], "b"), toggleId(["a", "b"], "a")], [["a", "b"], ["b"]]);
+eq("pin: at most five", [togglePin(["1", "2", "3", "4"], "5"), togglePin(["1", "2", "3", "4", "5"], "6"), togglePin(["1", "2", "3", "4", "5"], "3")], [["1", "2", "3", "4", "5"], ["1", "2", "3", "4", "5"], ["1", "2", "4", "5"]]);
+eq("id list parse", [parseIdList('["a","b"]'), parseIdList("nope"), parseIdList('{"a":1}'), parseIdList(null), parseIdList('["a",3,null]')], [["a", "b"], [], [], [], ["a"]]);
+const dl = [conv("1", "Борис", "2026-10-05T10:00:00Z"), conv("2", "Анна", "2026-10-04T10:00:00Z"), conv("3", "Вера", "2026-10-03T10:00:00Z"), conv("4", "Глеб", "2026-10-06T10:00:00Z")];
+eq("dialogs: pinned first, then starred people, then newest", sortFilterDialogs(dl, "", "", { pinned: ["3"], favorites: ["u2"], muted: [] }).map((c) => c.id), ["3", "2", "4", "1"]);
+eq("dialogs: two pinned keep the time order", sortFilterDialogs(dl, "", "", { pinned: ["2", "3"], favorites: [], muted: [] }).map((c) => c.id), ["2", "3", "4", "1"]);
+eq("font level parse", [parseFontLevel(null), parseFontLevel(""), parseFontLevel("x"), parseFontLevel("7"), parseFontLevel("99"), parseFontLevel("-3"), parseFontLevel("0")], [1, 1, 1, 7, 10, 0, 0]);
+eq("font px: 15 at the default level, 2px per step", [fontPx(1), fontPx(0), fontPx(10), fontPx(50)], [15, 13, 33, 33]);
+eq("backgrounds: default has none, ids are unique", [bgCss("default"), bgCss("zzz"), bgCss(null), bgCss("purple").startsWith("linear-gradient"), new Set(CHAT_BGS.map((b) => b.id)).size === CHAT_BGS.length], ["", "", "", true, true]);
+eq("pinned banner like the old page", pinnedLine([{ text: "первое", isPinned: true }, { text: "x", isPinned: false }, { text: "", isPinned: true }, { text: "удалено", isPinned: true, isDeleted: true }, { text: "а".repeat(50), isPinned: true }], "Файл"), "первое, \u{1F4CE} Файл, " + "а".repeat(40));
+eq("quote draft", quoteDraft("Анна", "привет"), "> Анна: привет\n\n");
+eq("room members: unique, newest speaker first", roomMembers([{ user: { id: "a", displayName: "A", avatarUrl: null } }, { user: { id: "b", displayName: "B", avatarUrl: null } }, { user: { id: "a", displayName: "A", avatarUrl: null } }]).map((u) => u.id), ["a", "b"]);
 
 // --- chat route <-> URL
 const P = (qs: string) => new URLSearchParams(qs);

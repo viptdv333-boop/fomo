@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
-import { clockLabel, messageHtml, withDaySeparators } from "@/lib/app-chat";
+import { FONT_DEFAULT, bgCss, clockLabel, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
 
 /** A message of either kind (болталка room or personal conversation) in the shape the bubbles draw. */
@@ -19,6 +19,14 @@ export interface ViewMsg {
   reply: string | null;
   file: { url: string; name: string | null; type: string | null } | null;
   reactions: Record<string, string[]> | null;
+  /** pinned message (📌 in its footer) */
+  pinned?: boolean;
+  /** the old DM page's «✓✓» under my own messages */
+  ticks?: boolean;
+  /** how many messages answer this one (the old room's «N ответов» button) */
+  replies?: number;
+  /** author of a room message: tapping the name opens the personal dialog, as on the old page */
+  authorId?: string;
 }
 
 /** Header of a thread: «‹ Назад», title (emoji + name) with a line under it, the bell (and extra buttons) on the right. */
@@ -49,6 +57,8 @@ export function Bubble({
   selected,
   onTap,
   onReact,
+  onAuthor,
+  onReplies,
   editing,
 }: {
   m: ViewMsg;
@@ -56,6 +66,8 @@ export function Bubble({
   selected: boolean;
   onTap: () => void;
   onReact: (emoji: string) => void;
+  onAuthor?: (userId: string) => void;
+  onReplies?: () => void;
   editing?: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void } | null;
 }) {
   const { t } = useT();
@@ -72,7 +84,14 @@ export function Bubble({
           onTap();
         }}
       >
-        {m.who && <div className="ac-who">{m.who}</div>}
+        {m.who &&
+          (onAuthor && m.authorId ? (
+            <button type="button" className="ac-who" onClick={() => onAuthor(m.authorId!)}>
+              {m.who}
+            </button>
+          ) : (
+            <div className="ac-who">{m.who}</div>
+          ))}
         {m.reply && <div className="ac-reply">{m.reply}</div>}
         {m.deleted ? (
           <div className="ac-text ac-deleted">{t("msg.deleted")}</div>
@@ -109,8 +128,16 @@ export function Bubble({
               {emoji} {ids.length}
             </button>
           ))}
+          {!!m.replies && !m.deleted && onReplies && (
+            <button type="button" className="ac-replies" onClick={onReplies}>
+              <AppIcon name="reply" size={12} stroke={2} />
+              {m.replies}
+            </button>
+          )}
+          {m.pinned && !m.deleted && <span aria-label={t("msg.pinned")}>{"\u{1F4CC}"}</span>}
           {m.edited && !m.deleted && <span>{t("appui.chat.edited")}</span>}
           <span>{clockLabel(m.createdAt)}</span>
+          {m.ticks && !m.deleted && <span>{"\u2713\u2713"}</span>}
         </div>
       </div>
     </div>
@@ -147,6 +174,9 @@ export function Messages({
   editing,
   empty,
   top,
+  look,
+  onAuthor,
+  onReplies,
 }: {
   msgs: ViewMsg[];
   myId: string | undefined;
@@ -157,6 +187,10 @@ export function Messages({
   editing: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void };
   empty: string;
   top?: ReactNode;
+  /** background and text size picked in the thread's settings */
+  look?: { bg: string; font: number };
+  onAuthor?: (userId: string) => void;
+  onReplies?: (messageId: string) => void;
 }) {
   const { locale } = useT();
   const box = useRef<HTMLDivElement>(null);
@@ -194,7 +228,11 @@ export function Messages({
   }, []);
 
   return (
-    <div className="ac-msgs" ref={box}>
+    <div
+      className="ac-msgs"
+      ref={box}
+      style={{ "--ac-fs": `${fontPx(look?.font ?? FONT_DEFAULT)}px`, backgroundImage: bgCss(look?.bg) || undefined } as CSSProperties}
+    >
       {top}
       {msgs.length === 0 && <div className="ac-empty">{empty}</div>}
       {items.map((it) =>
@@ -210,6 +248,8 @@ export function Messages({
             selected={selectedId === it.msg.id}
             onTap={() => onTap(it.msg)}
             onReact={(e) => onReact(it.msg.id, e)}
+            onAuthor={onAuthor}
+            onReplies={onReplies ? () => onReplies(it.msg.id) : undefined}
             editing={editingId === it.msg.id ? editing : null}
           />
         ),

@@ -6,12 +6,14 @@ import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { consumeSharedFile } from "@/lib/clipboard-files";
-import { DM_EMOJI } from "@/lib/app-chat";
+import { DM_EMOJI, DM_PIN_MAX, pinnedLine, quoteDraft } from "@/lib/app-chat";
 import AttachMenu from "@/components/shared/AttachMenu";
 import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
 import AppIcon from "../AppIcon";
 import AppSheet from "./AppSheet";
 import AppMessageSheet, { type MsgAction } from "./AppMessageSheet";
+import LookControls from "./LookControls";
+import { useChatLook, useDmMarks } from "./useChatPrefs";
 import { DraftChip, Messages, QuoteChip, ThreadBar, type ViewMsg } from "./AppThreadParts";
 import type { Conversation } from "./useAppChatData";
 
@@ -36,6 +38,8 @@ const POLL_MS = 10_000;
 
 function toView(m: DmMsg, myId: string | undefined): ViewMsg {
   return {
+    pinned: m.isPinned,
+    ticks: m.senderId === myId,
     id: m.id,
     createdAt: m.createdAt,
     mine: m.senderId === myId,
@@ -59,6 +63,7 @@ export default function AppDmThread({
   online,
   onBack,
   onChanged,
+  flash,
 }: {
   convId: string;
   conv: Conversation | null;
@@ -66,6 +71,7 @@ export default function AppDmThread({
   onBack: () => void;
   /** the conversation list should refresh (a message went out / was read) */
   onChanged: () => void;
+  flash: (m: string) => void;
 }) {
   const { t } = useT();
   const { data: session } = useSession();
@@ -80,6 +86,24 @@ export default function AppDmThread({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiCat, setEmojiCat] = useState(0);
   const [error, setError] = useState("");
+  const [settings, setSettings] = useState(false);
+  const [contactIds, setContactIds] = useState<Set<string>>(new Set());
+  const marks = useDmMarks();
+  const look = useChatLook();
+  const loadContacts = useCallback(async () => {
+    try {
+      const r = await fetch("/api/contacts", { cache: "no-store" });
+      if (r.ok) {
+        const list = (await r.json()) as { user: { id: string } }[];
+        setContactIds(new Set(Array.isArray(list) ? list.map((c) => c.user.id) : []));
+      }
+    } catch {
+      /* the sheet then offers «В контакты» */
+    }
+  }, []);
+  useEffect(() => {
+    void loadContacts();
+  }, [loadContacts]);
   const composer = useRef<ComposerHandle>(null);
 
   const load = useCallback(async () => {
@@ -189,10 +213,7 @@ export default function AppDmThread({
   }
 
   const view = useMemo(() => messages.map((m) => toView(m, myId)), [messages, myId]);
-  const pinned = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].isPinned && !messages[i].isDeleted && messages[i].text) return messages[i];
-    return null;
-  }, [messages]);
+  const pinned = useMemo(() => pinnedLine(messages, t("chat2.file")), [messages, t]);
   const sel = selected ? messages.find((m) => m.id === selected) || null : null;
 
   const other = conv?.otherUser || null;
@@ -200,14 +221,48 @@ export default function AppDmThread({
   const dnd = other?.dmEnabled === false;
   const sub = !other ? "" : dnd ? t("msg.doNotDisturb") : online ? t("msg.online") : t("msg.offline");
 
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      flash(t("appui.chat.copied"));
+    } catch {
+      flash(t("appui.chat.copyFailed"));
+    }
+  };
   const actionsFor = (m: DmMsg): MsgAction[] => {
     const list: MsgAction[] = [
-      { key: "reply", label: t("msg.reply"), icon: <AppIcon name="chevL" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); setReplyTo(m); composer.current?.focus(); } },
-      { key: "pin", label: m.isPinned ? t("msg.unpin") : t("msg.pin"), icon: <AppIcon name="list" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); void patch(m.id, { action: "pin" }); } },
+      { key: "reply", label: t("msg.reply"), icon: <AppIcon name="reply" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); setReplyTo(m); composer.current?.focus(); } },
+      { key: "copy", label: t("msg.copy"), icon: <AppIcon name="copy" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); void copy(m.text); } },
+      { key: "quote", label: t("msg.quote"), icon: <AppIcon name="quote" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); setText(quoteDraft(m.sender.displayName, m.text)); composer.current?.focus(); } },
+      { key: "pin", label: m.isPinned ? t("msg.unpin") : t("msg.pin"), icon: <AppIcon name="pin" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); void patch(m.id, { action: "pin" }); } },
     ];
-    if (m.senderId === myId) list.push({ key: "delete", label: t("common.delete"), icon: <AppIcon name="x" size={18} stroke={1.8} />, danger: true, onSelect: () => { setSelected(null); void patch(m.id, { action: "delete" }); } });
+    if (m.senderId === myId) list.push({ key: "delete", label: t("common.delete"), icon: <AppIcon name="trash" size={18} stroke={1.8} />, danger: true, onSelect: () => { setSelected(null); void patch(m.id, { action: "delete" }); } });
     return list;
   };
+
+  const isContact = !!other && contactIds.has(other.id);
+  const pinnedHere = marks.pinned.includes(convId);
+  const settingsRows = other
+    ? [
+        { key: "fav", label: marks.favorites.includes(other.id) ? t("msg.removeFav") : t("msg.addFav"), icon: <AppIcon name="star" size={18} stroke={1.8} />, value: marks.favorites.includes(other.id) ? "★" : undefined, onClick: () => marks.toggleFavorite(other.id) },
+        { key: "pin", label: `${pinnedHere ? t("msg.unpin") : t("msg.pin")}${!pinnedHere && marks.pinned.length >= DM_PIN_MAX ? ` (${t("msg.max5")})` : ""}`, icon: <AppIcon name="pin" size={18} stroke={1.8} />, check: pinnedHere, onClick: () => { if (!marks.togglePinned(convId)) flash(t("msg.max5")); } },
+        { key: "mute", label: marks.muted.includes(convId) ? t("msg.enableNotif") : t("msg.disableNotif"), icon: <AppIcon name={marks.muted.includes(convId) ? "bell" : "bellOff"} size={18} stroke={1.8} />, onClick: () => marks.toggleMuted(convId) },
+        {
+          key: "contact",
+          label: isContact ? t("appui.chat.removeContact") : t("msg.addContact"),
+          icon: <AppIcon name={isContact ? "userMinus" : "userPlus"} size={18} stroke={1.8} />,
+          color: isContact ? "var(--app-red)" : undefined,
+          onClick: async () => {
+            await (isContact
+              ? fetch(`/api/contacts?contactId=${encodeURIComponent(other.id)}`, { method: "DELETE" })
+              : fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contactId: other.id }) })
+            ).catch(() => {});
+            await loadContacts();
+          },
+        },
+        { key: "profile", label: t("appui.chat.openProfile"), icon: <AppIcon name="user" size={18} stroke={1.8} />, chev: true, onClick: () => window.location.assign(`/profile/${other.id}`) },
+      ]
+    : [];
 
   return (
     <div className="ac ac-thread">
@@ -217,13 +272,19 @@ export default function AppDmThread({
         subOn={!dnd && online}
         onBack={onBack}
         // the design keeps a bell spot on the right of every thread; a personal dialog has no per-dialog switch on the site, the spot stays empty so the title keeps its place
-        right={<span className="ac-tbtn" aria-hidden="true" />}
+        right={
+          <button type="button" className="ac-tbtn" aria-label={t("appui.chat.menu")} onClick={() => setSettings(true)}>
+            <AppIcon name="dots" size={22} stroke={1.8} />
+          </button>
+        }
       />
       {pinned && (
-        <button type="button" className="ac-pinned" aria-label={t("appui.chat.pinnedMsg")} onClick={() => setSelected(pinned.id)}>
+        <div className="ac-pinned" role="note" aria-label={t("appui.chat.pinnedMsg")}>
           <span>{"\u{1F4CC}"}</span>
-          <span>{pinned.text}</span>
-        </button>
+          <span>
+            {t("msg.pinned")} {pinned}
+          </span>
+        </div>
       )}
       <Messages
         msgs={view}
@@ -234,6 +295,7 @@ export default function AppDmThread({
         editingId={null}
         editing={{ value: "", onChange: () => {}, onSubmit: () => {}, onCancel: () => {} }}
         empty={t("chat2.startDialog")}
+        look={look}
       />
       <form className="ac-composer" onSubmit={send}>
         {error && <div className="ac-draft" role="alert"><span>{error}</span></div>}
@@ -248,13 +310,13 @@ export default function AppDmThread({
             {t("appui.chat.draft", { name: pending.name })}
           </DraftChip>
         )}
-        {replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${replyTo.sender.displayName}`} text={replyTo.text} onRemove={() => setReplyTo(null)} label={t("common.cancel")} />}
+        {replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${replyTo.sender.displayName}`} text={replyTo.text.slice(0, 80) || `\u{1F4CE} ${t("chat2.file")}`} onRemove={() => setReplyTo(null)} label={t("common.cancel")} />}
         <div className="ac-crow">
           <AttachMenu appSheet onFile={uploadAttachment} uploading={uploading} title={t("msg.attachFile")} className="ac-clip">
             <AppIcon name="clip" size={22} stroke={1.8} />
           </AttachMenu>
           <div className="ac-inwrap" data-emoji="1">
-            <ComposerInput ref={composer} value={text} onChange={setText} onSubmit={() => void send()} onFile={uploadAttachment} placeholder={t("appui.chat.message")} className="ac-input" />
+            <ComposerInput ref={composer} value={text} onChange={setText} onSubmit={() => void send()} onFile={uploadAttachment} placeholder={replyTo ? t("msg.replyTo") : t("appui.chat.message")} className="ac-input" />
             <button type="button" className="ac-emobtn" aria-label={t("appui.chat.emoji")} onClick={() => setEmojiOpen(true)}>
               <AppIcon name="smile" size={20} stroke={1.8} />
             </button>
@@ -276,6 +338,28 @@ export default function AppDmThread({
           onReact={(e) => { setSelected(null); void patch(sel.id, { action: "react", emoji: e }); }}
           onClose={() => setSelected(null)}
         />
+      )}
+      {settings && (
+        <AppSheet title={name} onClose={() => setSettings(false)} doneLabel={t("appui.chat.done")} height="full" sections={[{ key: "dlg", rows: settingsRows }]}>
+          <LookControls look={look} />
+          <div className="ac-sec">
+            <div className="ac-secbox">
+              <button type="button" className="ac-sr" onClick={() => look.setNotif(!look.notif)}>
+                <div className="ac-sr-ico">
+                  <AppIcon name="bell" size={18} stroke={1.8} />
+                </div>
+                <div className="ac-sr-body">
+                  <div className="ac-sr-txt">
+                    <div className="ac-sr-label">{t("msg.notifications")}</div>
+                  </div>
+                  <div className="ac-tg" data-on={look.notif ? "1" : undefined} role="switch" aria-checked={look.notif}>
+                    <div />
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </AppSheet>
       )}
       {emojiOpen && (
         <AppSheet

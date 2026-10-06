@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type KeyboardEvent, type MouseEvent } from "react";
+import { useMemo, useRef, type KeyboardEvent, type MouseEvent, type TouchEvent } from "react";
 import { useT } from "@/lib/i18n/client";
 import {
   CAT_I18N,
@@ -16,7 +16,8 @@ import {
   type RoomRowModel,
 } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
-import type { DmsData, RoomsData } from "./useAppChatData";
+import type { Conversation, DmsData, RoomsData } from "./useAppChatData";
+import type { useDmMarks } from "./useChatPrefs";
 
 interface Props {
   seg: ChatSeg;
@@ -32,6 +33,95 @@ interface Props {
   onOpenDm: (id: string) => void;
   onCreate: () => void;
   onNewChat: () => void;
+  marks: ReturnType<typeof useDmMarks>;
+  /** long press / right click on a dialog: the pin / star / mute sheet */
+  onDialogMenu: (c: Conversation) => void;
+}
+
+/** Long press (touch) and right click (mouse) on a row; a normal tap still opens it. */
+function useLongPress(onLong: () => void) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fired = useRef(false);
+  const clear = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  return {
+    fired,
+    handlers: {
+      onTouchStart: (_e: TouchEvent) => {
+        fired.current = false;
+        clear();
+        timer.current = setTimeout(() => {
+          fired.current = true;
+          onLong();
+        }, 480);
+      },
+      onTouchEnd: clear,
+      onTouchMove: clear,
+      onTouchCancel: clear,
+      onContextMenu: (e: MouseEvent) => {
+        e.preventDefault();
+        fired.current = true;
+        onLong();
+      },
+    },
+  };
+}
+
+/** One dialog row (its own component: every row owns a long-press timer). */
+function DialogRow({ c, p, onMenu, marks, online, locale, fileWord, t }: { c: Conversation; p: Props; onMenu: () => void; marks: ReturnType<typeof useDmMarks>; online: boolean; locale: string; fileWord: string; t: (k: string) => string }) {
+  const lp = useLongPress(onMenu);
+  const name = c.otherUser?.displayName || t("msg.deletedUser");
+  const count = typeof c.unreadCount === "number" ? c.unreadCount : c.unread ? 1 : 0;
+  const pinned = marks.pinned.includes(c.id);
+  const muted = marks.muted.includes(c.id);
+  const fav = !!c.otherUser && marks.favorites.includes(c.otherUser.id);
+  const dnd = c.otherUser?.dmEnabled === false;
+  return (
+    <div
+      className="ac-row"
+      {...press(() => {
+        if (lp.fired.current) {
+          lp.fired.current = false;
+          return;
+        }
+        p.onOpenDm(c.id);
+      })}
+      {...lp.handlers}
+    >
+      <div className="ac-tilewrap">
+        <div className="ac-tile">
+          {c.otherUser?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.otherUser.avatarUrl} alt="" />
+          ) : (
+            initials(name)
+          )}
+        </div>
+        {c.otherUser && <span className="ac-dot" data-s={dnd ? "dnd" : online ? "on" : undefined} />}
+      </div>
+      <div className="ac-rbody">
+        <div className="ac-rtxt">
+          <div className="ac-rline">
+            <span className="ac-rname">
+              {(pinned || muted || fav) && (
+                <span className="ac-marks">
+                  {pinned && <AppIcon name="pin" size={12} stroke={2} />}
+                  {muted && <AppIcon name="bellOff" size={12} stroke={2} />}
+                  {fav && <span className="ac-mstar">{"★"}</span>}
+                </span>
+              )}
+              {name}
+            </span>
+            <span className="ac-rtime">{c.lastMessage ? listTimeLabel(c.lastMessage.createdAt, locale) : ""}</span>
+          </div>
+          <div className="ac-rlast">{dialogPreviewLine(c.lastMessage, p.myId, t("chat2.youPrefix"), fileWord)}</div>
+        </div>
+        {count > 0 && <div className="ac-badge" style={muted ? { background: "var(--app-tx3)" } : undefined}>{badgeLabel(count)}</div>}
+      </div>
+    </div>
+  );
 }
 
 const press = (fn: () => void) => ({
@@ -71,10 +161,10 @@ export default function AppChatList(p: Props) {
     [rooms.categories, rooms.privateRooms, rooms.favorites, rooms.generalRoomId, rooms.unread, rooms.notify, p.openCats, p.query, locale],
   );
 
-  const dialogs = useMemo(() => sortFilterDialogs(dms.conversations, p.query, t("msg.deletedUser")), [dms.conversations, p.query]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dialogs = useMemo(() => sortFilterDialogs(dms.conversations, p.query, t("msg.deletedUser"), { pinned: p.marks.pinned, favorites: p.marks.favorites, muted: p.marks.muted }), [dms.conversations, p.query, p.marks.pinned, p.marks.favorites, p.marks.muted]); // eslint-disable-line react-hooks/exhaustive-deps
   const dmBadge = badgeLabel(dmUnreadTotal(dms.conversations));
 
-  const roomRow = (r: RoomRowModel, key: string) => {
+  const roomRow = (r: RoomRowModel, key: string, isFavGroup = false) => {
     const pv = rooms.previews[r.id];
     const bell = (e: MouseEvent) => {
       e.stopPropagation();
@@ -96,6 +186,11 @@ export default function AppChatList(p: Props) {
             <div className="ac-rlast">{roomPreviewLine(pv, p.myId, youWord, fileWord)}</div>
           </div>
           {r.unread > 0 && <div className="ac-badge">{badgeLabel(r.unread)}</div>}
+          {isFavGroup && (
+            <button type="button" className="ac-rx" aria-label={t("msg.removeFav")} onClick={star}>
+              <AppIcon name="x" size={16} stroke={2} />
+            </button>
+          )}
           <div className="ac-rbtns">
             <button type="button" className="ac-rbtn ac-star" data-on={r.fav ? "1" : undefined} aria-pressed={r.fav} aria-label={t(r.fav ? "msg.removeFav" : "msg.addFav")} onClick={star}>
               {r.fav ? "★" : "☆"}
@@ -150,7 +245,7 @@ export default function AppChatList(p: Props) {
                 ) : (
                   <div className="ac-gtitle">{g.title}</div>
                 ))}
-              {g.open && <div className="ac-card">{g.rows.map((r) => roomRow(r, `${g.key}:${r.id}`))}</div>}
+              {g.open && <div className="ac-card">{g.rows.map((r) => roomRow(r, `${g.key}:${r.id}`, g.kind === "fav"))}</div>}
             </div>
           ))}
           {loading && <div className="ac-empty">{t("common.loading")}</div>}
@@ -178,32 +273,9 @@ export default function AppChatList(p: Props) {
             <div className="ac-group">
               <div className="ac-gtitle">{t("appui.chat.dialogs")}</div>
               <div className="ac-card">
-                {dialogs.map((c) => {
-                  const name = c.otherUser?.displayName || t("msg.deletedUser");
-                  const count = typeof c.unreadCount === "number" ? c.unreadCount : c.unread ? 1 : 0;
-                  return (
-                    <div key={c.id} className="ac-row" {...press(() => p.onOpenDm(c.id))}>
-                      <div className="ac-tile">
-                        {c.otherUser?.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.otherUser.avatarUrl} alt="" />
-                        ) : (
-                          initials(name)
-                        )}
-                      </div>
-                      <div className="ac-rbody">
-                        <div className="ac-rtxt">
-                          <div className="ac-rline">
-                            <span className="ac-rname">{name}</span>
-                            <span className="ac-rtime">{c.lastMessage ? listTimeLabel(c.lastMessage.createdAt, locale) : ""}</span>
-                          </div>
-                          <div className="ac-rlast">{dialogPreviewLine(c.lastMessage, p.myId, t("chat2.youPrefix"), fileWord)}</div>
-                        </div>
-                        {count > 0 && <div className="ac-badge">{badgeLabel(count)}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
+                {dialogs.map((c) => (
+                  <DialogRow key={c.id} c={c} p={p} onMenu={() => p.onDialogMenu(c)} marks={p.marks} online={!!c.otherUser && dms.online.has(c.otherUser.id)} locale={locale} fileWord={fileWord} t={t} />
+                ))}
               </div>
             </div>
           )}

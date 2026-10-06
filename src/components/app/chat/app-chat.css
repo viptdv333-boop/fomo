@@ -116,11 +116,11 @@ html.app-ui .ac-mrow[data-mine="1"] { justify-content: flex-end; }
 html.app-ui .ac-bubble { max-width: 80%; min-width: 0; padding: 8px 12px; border-radius: 18px; background: var(--app-card); color: var(--app-tx); display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--app-line); text-align: left; }
 html.app-ui .ac-mrow[data-mine="1"] .ac-bubble { background: var(--app-green); color: #fff; border: none; }
 html.app-ui .ac-bubble[data-sel="1"] { box-shadow: 0 0 0 2px var(--app-green-tx); }
-html.app-ui .ac-who { font-size: 13px; font-weight: 600; color: var(--app-green-tx); }
+html.app-ui .ac-who { font-size: 13px; font-weight: 600; color: var(--app-green-tx); text-align: left; }
 html.app-ui .ac-reply { font-size: 13px; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.15); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.app-ui .ac-file { font-size: 13px; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.15); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
 html.app-ui .ac-media { display: block; max-width: 100%; max-height: 240px; border-radius: 10px; object-fit: cover; }
-html.app-ui .ac-text { font-size: 15px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+html.app-ui .ac-text { font-size: calc(var(--ac-fs, 15px) * var(--app-fz, 1)); line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 html.app-ui .ac-text.ac-deleted { font-style: italic; opacity: 0.7; }
 html.app-ui .ac-link { text-decoration: underline; word-break: break-all; }
 html.app-ui .ac-mention { font-weight: 600; }
@@ -190,3 +190,31 @@ html.app-ui .ac-emogrid button { aspect-ratio: 1; display: flex; align-items: ce
 html.app-ui .ac-emogrid button:active { background: var(--app-press); }
 html.app-ui .ac-emogrid img { width: 28px; height: 28px; border-radius: 50%; }
 html.app-ui .ac-toast { position: fixed; left: 50%; bottom: calc(var(--app-bottom-inset) + 44px); transform: translateX(-50%); z-index: 90; padding: 10px 16px; border-radius: 12px; background: var(--app-inv); color: var(--app-inv-tx); font-size: 14px; font-weight: 500; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; animation: acFade 0.2s; }
+
+/* the design's switch */
+html.app-ui .ac-tg { width: 51px; height: 31px; border-radius: 16px; background: var(--app-off); position: relative; transition: background 0.2s; flex: none; }
+html.app-ui .ac-tg > div { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25); transition: left 0.2s; }
+html.app-ui .ac-tg[data-on="1"] { background: var(--app-green); }
+html.app-ui .ac-tg[data-on="1"] > div { left: 22px; }
+/* chat background swatches and the text-size slider of the settings sheet */
+html.app-ui .ac-swatches { display: flex; gap: 10px; padding: 12px 16px 14px; }
+html.app-ui .ac-swatch { flex: 1; height: 40px; border-radius: 10px; border: 2px solid var(--app-line); background-color: var(--app-card); }
+html.app-ui .ac-swatch[data-on="1"] { border-color: var(--app-green); }
+html.app-ui .ac-slider { display: flex; align-items: center; gap: 10px; padding: 8px 16px 14px; }
+html.app-ui .ac-slider span { font-size: 13px; color: var(--app-tx2); }
+html.app-ui .ac-slider input[type="range"] { flex: 1; accent-color: var(--app-green); height: 28px; }
+html.app-ui .ac-sr-ico[data-av="1"] { overflow: hidden; font-size: 12px; font-weight: 700; color: var(--app-tx2); }
+/* marks of the list rows (pinned, starred person, muted) and the online dot */
+html.app-ui .ac-marks { display: inline-flex; gap: 4px; align-items: center; color: var(--app-tx3); flex: none; margin-right: 4px; vertical-align: middle; }
+html.app-ui .ac-marks svg { display: block; }
+html.app-ui .ac-marks .ac-mstar { color: #eab308; }
+html.app-ui .ac-tilewrap { position: relative; flex: none; }
+html.app-ui .ac-dot { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--app-card); background: var(--app-tx3); box-sizing: border-box; }
+html.app-ui .ac-dot[data-s="on"] { background: #22c55e; }
+html.app-ui .ac-dot[data-s="dnd"] { background: var(--app-red); }
+/* the old favourites block's cross */
+html.app-ui .ac-rx { width: 26px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); flex: none; }
+html.app-ui .ac-rx:active { color: var(--app-red); }
+/* thread extras: reply counter chip, copied toast spacing */
+html.app-ui .ac-replies { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; opacity: 1; color: inherit; }
+html.app-ui .ac-who[role="button"] { cursor: pointer; }

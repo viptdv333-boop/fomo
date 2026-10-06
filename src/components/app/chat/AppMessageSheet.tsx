@@ -39,7 +39,7 @@ export default function AppMessageSheet({
     onClick: a.onSelect,
   }));
   return (
-    <AppSheet title={author} onClose={onClose} left={undefined} right={{ label: t("appui.chat.done"), onClick: onClose }} doneLabel={t("appui.chat.done")} sections={[{ key: "a", rows }]} intro={undefined}>
+    <AppSheet childrenFirst title={author} onClose={onClose} left={undefined} right={{ label: t("appui.chat.done"), onClick: onClose }} doneLabel={t("appui.chat.done")} sections={[{ key: "a", rows }]} intro={undefined}>
       {preview && <div className="ac-quotepv">{preview}</div>}
       <div className="ac-reacts">
         {reactions.map((e) => (

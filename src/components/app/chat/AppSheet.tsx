@@ -16,6 +16,8 @@ export interface SheetRow {
   value?: ReactNode;
   check?: boolean;
   chev?: boolean;
+  /** the design's switch (51x31): on / off, tapping the row calls onClick */
+  toggle?: boolean;
   actions?: { label: string; tone?: "danger"; onClick: () => void }[];
   field?: { value: string; ph: string; onChange: (v: string) => void; maxLength?: number };
   onClick?: () => void;
@@ -84,6 +86,11 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
                 )}
               </div>
               {r.value ? <div className="ac-sr-val">{r.value}</div> : null}
+              {r.toggle !== undefined && (
+                <div className="ac-tg" data-on={r.toggle ? "1" : undefined} role="switch" aria-checked={r.toggle}>
+                  <div />
+                </div>
+              )}
               {r.check && (
                 <div className="ac-sr-chk">
                   <AppIcon name="check" size={22} stroke={1.8} />
@@ -138,6 +145,8 @@ export interface AppSheetProps {
   /** "full": fixed 88% height (long lists keep the sheet from jumping while the search filters it) */
   height?: "auto" | "full";
   children?: ReactNode;
+  /** draw the children above the sections (the message sheet: reactions, then actions); by default they follow them */
+  childrenFirst?: boolean;
   doneLabel: string;
 }
 
@@ -182,8 +191,9 @@ export default function AppSheet(p: AppSheetProps) {
             </div>
           )}
           {p.intro ? <div className="ac-sintro">{p.intro}</div> : null}
-          {p.children}
+          {p.childrenFirst && p.children}
           {p.sections && <Sections sections={p.sections} />}
+          {!p.childrenFirst && p.children}
         </div>
         {p.btn && (
           <button type="button" className="ac-sbtn" disabled={p.btn.disabled} onClick={p.btn.onClick}>

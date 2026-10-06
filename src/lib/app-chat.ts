@@ -200,10 +200,96 @@ export interface DialogLike {
   updatedAt?: string;
 }
 
-/** Newest first (by the last message, then by the conversation's own update time), filtered by the search text. */
-export function sortFilterDialogs<T extends DialogLike>(list: T[], query: string, deletedName = ""): T[] {
+export interface DmMarks {
+  /** conversation ids, at most DM_PIN_MAX */
+  pinned: readonly string[];
+  /** user ids */
+  favorites: readonly string[];
+  /** conversation ids */
+  muted: readonly string[];
+}
+export const NO_MARKS: DmMarks = { pinned: [], favorites: [], muted: [] };
+export const DM_PIN_MAX = 5;
+
+/**
+ * The «Личные» order of the old page: pinned chats first, then chats with a starred person, then the rest, each part newest first
+ * (by the last message, then by the conversation's own update time). Filtered by the search text.
+ */
+export function sortFilterDialogs<T extends DialogLike>(list: T[], query: string, deletedName = "", marks: DmMarks = NO_MARKS): T[] {
   const t = (c: T) => new Date(c.lastMessage?.createdAt || c.updatedAt || 0).getTime() || 0;
-  return list.filter((c) => matchesQuery(c.otherUser?.displayName || deletedName, query)).sort((a, b) => t(b) - t(a));
+  const rank = (c: T) => (marks.pinned.includes(c.id) ? 0 : c.otherUser && marks.favorites.includes(c.otherUser.id) ? 1 : 2);
+  return list
+    .filter((c) => matchesQuery(c.otherUser?.displayName || deletedName, query))
+    .sort((a, b) => rank(a) - rank(b) || t(b) - t(a));
+}
+
+/** Adds the id when absent, removes it when present. */
+export function toggleId(list: readonly string[], id: string): string[] {
+  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+}
+
+/** Pin / unpin; a sixth pin is refused (the list comes back unchanged), as on the old page. */
+export function togglePin(list: readonly string[], id: string, max: number = DM_PIN_MAX): string[] {
+  if (list.includes(id)) return list.filter((x) => x !== id);
+  return list.length >= max ? [...list] : [...list, id];
+}
+
+/** localStorage JSON of an id list; anything but an array of strings reads as empty. */
+export function parseIdList(raw: string | null | undefined): string[] {
+  try {
+    const v = JSON.parse(raw || "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/* ---------- chat look settings (kept under the old page's localStorage keys) ---------- */
+
+export const DM_KEYS = { favorites: "fomo-favorites", pinned: "fomo-pinned-chats", muted: "fomo-muted-chats", bg: "fomo-chat-bg", notif: "fomo-chat-notif", font: "fomo-chat-font-v2" } as const;
+
+/** Backgrounds of the old settings gear. The old list had "green" twice (labelled Голубой and Зелёный, same look): one swatch is enough. */
+export const CHAT_BGS: { id: string; labelKey: string; css: string }[] = [
+  { id: "default", labelKey: "msg.themeDefault", css: "" },
+  { id: "purple", labelKey: "msg.themePurple", css: "linear-gradient(180deg, rgba(139, 92, 246, 0.22), rgba(139, 92, 246, 0.08))" },
+  { id: "green", labelKey: "msg.themeGreen", css: "linear-gradient(180deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.07))" },
+  { id: "dark", labelKey: "msg.themeDark", css: "linear-gradient(180deg, rgba(120, 120, 120, 0.22), rgba(0, 0, 0, 0.25))" },
+  { id: "warm", labelKey: "msg.themeWarm", css: "linear-gradient(180deg, rgba(245, 158, 11, 0.2), rgba(249, 115, 22, 0.08))" },
+];
+export function bgCss(id: string | null | undefined): string {
+  return CHAT_BGS.find((b) => b.id === id)?.css ?? "";
+}
+export const FONT_MIN = 0;
+export const FONT_MAX = 10;
+export const FONT_DEFAULT = 1;
+/** The old slider's 0..10; junk reads as the default. */
+export function parseFontLevel(raw: string | null | undefined): number {
+  const n = Number(raw);
+  return raw !== null && raw !== undefined && raw !== "" && Number.isFinite(n) ? Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n))) : FONT_DEFAULT;
+}
+/** Message text size: the design's 15px at the default level 1, two pixels per step. */
+export function fontPx(level: number): number {
+  return 13 + 2 * Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(level)));
+}
+
+/** Pinned messages joined like the old banner: first 40 characters of each, a paperclip for a bare file. */
+export function pinnedLine(msgs: { text: string; isPinned?: boolean; isDeleted?: boolean }[], fileWord: string): string {
+  return msgs
+    .filter((m) => m.isPinned && !m.isDeleted)
+    .map((m) => m.text.slice(0, 40) || `\u{1F4CE} ${fileWord}`)
+    .join(", ");
+}
+
+/** «> Автор: текст» draft of the «Цитировать» action. */
+export function quoteDraft(author: string, text: string): string {
+  return `> ${author}: ${text}\n\n`;
+}
+
+/** People of a room as far as the loaded messages show them: unique authors, newest speaker first. */
+export function roomMembers<M extends { user: { id: string; displayName: string; avatarUrl: string | null } }>(msgs: M[]): { id: string; displayName: string; avatarUrl: string | null }[] {
+  const seen = new Map<string, { id: string; displayName: string; avatarUrl: string | null }>();
+  for (let i = msgs.length - 1; i >= 0; i--) if (!seen.has(msgs[i].user.id)) seen.set(msgs[i].user.id, msgs[i].user);
+  return [...seen.values()];
 }
 
 export function initials(name: string): string {

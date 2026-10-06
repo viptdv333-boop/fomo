@@ -64,6 +64,12 @@ const dict: SectionDict = {
     "appui.chat.back": "Назад",
     "appui.chat.edited": "изм.",
     "appui.chat.pinnedMsg": "Закреплённое сообщение",
+    "appui.chat.copied": "Скопировано",
+    "appui.chat.copyFailed": "Не удалось скопировать",
+    "appui.chat.removeContact": "Удалить из контактов",
+    "appui.chat.openProfile": "Открыть профиль",
+    "appui.chat.writePm": "Написать в личные",
+    "appui.chat.you": "вы",
   },
   en: {
     "appui.nav": "Main navigation",
@@ -127,6 +133,12 @@ const dict: SectionDict = {
     "appui.chat.back": "Back",
     "appui.chat.edited": "edited",
     "appui.chat.pinnedMsg": "Pinned message",
+    "appui.chat.copied": "Copied",
+    "appui.chat.copyFailed": "Could not copy",
+    "appui.chat.removeContact": "Remove from contacts",
+    "appui.chat.openProfile": "Open profile",
+    "appui.chat.writePm": "Message privately",
+    "appui.chat.you": "you",
   },
   cn: {
     "appui.nav": "主导航",
@@ -190,6 +202,12 @@ const dict: SectionDict = {
     "appui.chat.back": "返回",
     "appui.chat.edited": "已编辑",
     "appui.chat.pinnedMsg": "置顶消息",
+    "appui.chat.copied": "已复制",
+    "appui.chat.copyFailed": "复制失败",
+    "appui.chat.removeContact": "从联系人中删除",
+    "appui.chat.openProfile": "打开资料",
+    "appui.chat.writePm": "私信",
+    "appui.chat.you": "你",
   },
 };
 export default dict;

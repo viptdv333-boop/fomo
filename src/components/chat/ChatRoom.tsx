@@ -8,7 +8,8 @@ import { useT } from "@/lib/i18n/client";
 import { getPastedFile, consumeSharedFile, maybeOfferClipboardImage, readClipboardImageDetailed } from "@/lib/clipboard-files";
 import AttachMenu from "@/components/shared/AttachMenu";
 import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
-import AppRoomThread, { type RoomThreadApi } from "@/components/app/chat/AppRoomThread";
+import AppRoomThread, { type RoomThreadApi, type RoomInfo } from "@/components/app/chat/AppRoomThread";
+import { roomMembers } from "@/lib/app-chat";
 
 import { formatMessageTime } from "@/lib/format-message-time";
 
@@ -94,6 +95,8 @@ interface ChatRoomProps {
   /** App UI: the thread is drawn by the app's own screen (same state and handlers, different look). */
   appVariant?: boolean;
   onBack?: () => void;
+  /** App UI: what the room sheet shows besides the messages (private-group data and actions, a «copied» toast) */
+  appInfo?: RoomInfo;
 }
 
 /* ── Constants ── */
@@ -219,7 +222,7 @@ function IconTrash() {
 }
 
 /* ── Component ── */
-export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm, appVariant, onBack }: ChatRoomProps) {
+export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm, appVariant, onBack, appInfo }: ChatRoomProps) {
   const { t, locale } = useT();
   const { data: session } = useSession();
   const router = useRouter();
@@ -717,6 +720,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       emoji: EMOJI_CATEGORIES.map((c) => ({ key: c.name, label: t(c.labelKey), emojis: c.emojis })),
       onInsertEmoji: insertEmoji,
       onBack: onBack || (() => router.back()),
+      replyCount: getReplyCount,
+      onShowReplies: (id) => {
+        const m = messages.find((x) => x.id === id);
+        if (m) { setReplyTo(m); inputRef.current?.focus(); }
+      },
+      members: roomMembers(messages),
+      // the old page: a name opens the personal dialog with that person
+      onOpenAuthor: (userId) => { if (userId !== session?.user?.id) router.push(`/messages?startWith=${userId}`); },
+      info: appInfo,
     };
     return <AppRoomThread api={api} />;
   }

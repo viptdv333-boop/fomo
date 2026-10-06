@@ -19,6 +19,7 @@ export default function AppNewChatSheet({ onClose, onPick, myId }: { onClose: ()
   const [people, setPeople] = useState<Person[]>([]);
   const [contactIds, setContactIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -36,7 +37,7 @@ export default function AppNewChatSheet({ onClose, onPick, myId }: { onClose: ()
     return () => {
       alive = false;
     };
-  }, [myId]);
+  }, [myId, tick]);
 
   const sections = useMemo(() => {
     const needle = q.trim().toLowerCase().replace(/^#/, "");
@@ -52,6 +53,12 @@ export default function AppNewChatSheet({ onClose, onPick, myId }: { onClose: ()
         <span>{initials(u.displayName)}</span>
       ),
       onClick: () => onPick(u.id),
+      // the old «Добавить контакт» list: add a person (or drop them) without opening a chat
+      actions: [
+        contactIds.has(u.id)
+          ? { label: t("appui.chat.removeContact"), tone: "danger" as const, onClick: () => void fetch(`/api/contacts?contactId=${encodeURIComponent(u.id)}`, { method: "DELETE" }).then(() => setTick((n) => n + 1)) }
+          : { label: t("msg.addContact"), onClick: () => void fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contactId: u.id }) }).then(() => setTick((n) => n + 1)) },
+      ],
     });
     const shown = people.filter(match);
     const contacts = shown.filter((u) => contactIds.has(u.id));
