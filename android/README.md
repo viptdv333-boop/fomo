@@ -30,7 +30,7 @@
 | Проверка обновления (`BuildConfig.UPDATE_PATH`) | `/app/version.json` | `/app/terminal-version.json` |
 | Хост App Links (плейсхолдер манифеста `siteHost`) | `fomo.spot` | `terminal.fomo.spot` |
 | «Поделиться → FOMO» (фильтры `SEND`, `SEND_MULTIPLE`) | есть (`src/fomo/AndroidManifest.xml`) | **нет** (на сайте терминала нет страницы `/share`; `BuildConfig.SHARE_ENABLED=false`) |
-| Firebase | проект `fomo3-c2798`, `src/fomo/google-services.json` | проект `terminal-f7486`, `src/terminal/google-services.json` (**пока не добавлен**: push выключен, остальное работает) |
+| Firebase | проект `fomo3-c2798`, `src/fomo/google-services.json` | тот же проект `fomo3-c2798` (отдельное приложение `spot.fomo.terminal`), `src/terminal/google-services.json` |
 | Иконка | белый фон | тёмный фон + подпись TERMINAL (`src/terminal/res/mipmap-*`, `colors.xml`) |
 | Имя файла сборки | `FOMO.apk` | `FOMO-Terminal.apk` |
 
@@ -58,7 +58,7 @@
 Release-сборки всегда открывают боевые адреса.
 
 **FOMO Terminal и push.** Пока нет `app/src/terminal/google-services.json`, терминальный вариант собирается и работает без push (Firebase не инициализируется,
-`PushBridge` отдаёт пустой токен). Положите файл (приложение `spot.fomo.terminal` в проекте `terminal-f7486`) — он подхватится сам при следующей сборке.
+`PushBridge` отдаёт пустой токен). Файл (приложение `spot.fomo.terminal` в проекте `fomo3-c2798`) лежит в `src/terminal/` и подхватывается при сборке.
 Плагин Google Services подключён для всех вариантов со стратегией `missingGoogleServicesStrategy = IGNORE`: вариант без своего файла просто пропускается.
 
 ## Содержимое папки
@@ -206,7 +206,7 @@ APK-файл в публичный репозиторий не коммитьт�
 а сервер при уведомлении шлёт push тем же правилам, что и Web Push (колонка **«В приложении»** в Настройки → Уведомления, тихие часы, переопределения по событиям).
 Пока на сервере нет ключа Firebase, всё остальное работает как раньше.
 
-Что уже сделано: проект Firebase **`fomo3-c2798`**, Android-приложение `spot.fomo.app`, файл `android/app/src/fomo/google-services.json` в репозитории. Для FOMO Terminal — проект `terminal-f7486`, приложение `spot.fomo.terminal`, файл кладётся в `android/app/src/terminal/google-services.json` (см. «Варианты приложения»; SHA-1 release-ключа и ограничение API-ключа — как ниже).
+Что уже сделано: проект Firebase **`fomo3-c2798`**, Android-приложение `spot.fomo.app`, файл `android/app/src/fomo/google-services.json` в репозитории. Для FOMO Terminal — то же приложение-проект `fomo3-c2798`, отдельное приложение `spot.fomo.terminal`, файл в `android/app/src/terminal/google-services.json` (см. «Варианты приложения»; SHA-1 release-ключа и ограничение API-ключа — как ниже).
 
 ### Шаг 1. google-services.json и его ключ
 

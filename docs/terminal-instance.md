@@ -117,7 +117,7 @@ OWNER_EMAIL=you@example.com OWNER_PASSWORD='…' bash scripts/terminal-instance-
 ### 4. Ключи в `/opt/fomo-terminal/.env` (вписать вручную, секреты в git не попадают)
 - `RESEND_API_KEY` — без него никто не сможет зарегистрироваться (код приходит письмом). Домен отправителя должен быть подтверждён в Resend;
   по умолчанию `EMAIL_FROM="FOMO Terminal <no-reply@fomo.spot>"`.
-- `FCM_SERVICE_ACCOUNT_FILE=/opt/fomo-terminal-secrets/terminal-f7486-service-account.json` — ключ сервис-аккаунта проекта `terminal-f7486`
+- `FCM_SERVICE_ACCOUNT_FILE=<тот же файл, что у /opt/fomo>` — ключ сервис-аккаунта проекта `fomo3-c2798` (приложение `spot.fomo.terminal` добавлено в тот же Firebase-проект, отдельный проект и ключ не нужны)
   (Firebase → Project settings → Service accounts → Generate new private key; файл вне репозитория, `chmod 600`, читает пользователь pm2).
   `project_id` берётся из самого файла, `FCM_PROJECT_ID` не нужен.
 - По желанию: `TINKOFF_TOKEN` / `TINKOFF_READONLY_TOKEN`, `ALGOPACK_KEY`, `FMP_API_KEY`, `TELEGRAM_BOT_*`. Ключи fomo.spot можно использовать
@@ -146,8 +146,8 @@ cd /opt/fomo-terminal && git pull --ff-only && npm install --no-audit --no-fund 
 Сборку двух инстансов не запускать одновременно (память).
 
 ### 7. Android-приложение «FOMO Terminal»
-Отдельный пакет `spot.fomo.terminal`, свой Firebase-проект `terminal-f7486`; детали — `android/README.md`.
-1. Firebase → проект `terminal-f7486` → добавить Android-приложение с пакетом `spot.fomo.terminal`, указать SHA-1 релизного ключа
+Отдельный пакет `spot.fomo.terminal`, тот же Firebase-проект `fomo3-c2798` (отдельное Android-приложение); детали — `android/README.md`.
+1. Firebase → проект `fomo3-c2798` → добавить Android-приложение с пакетом `spot.fomo.terminal`, указать SHA-1 релизного ключа
    (`keytool -list -v -keystore <release.jks> -alias fomo`).
 2. Скачать `google-services.json` → положить в `android/app/src/terminal/google-services.json` (в публичном репозитории ограничьте API-ключ
    пакетом и SHA-1) и пересобрать: `& "C:\Users\viptd\tools\build-fomo.ps1" assembleTerminalRelease`. Пока файла нет, приложение собирается и

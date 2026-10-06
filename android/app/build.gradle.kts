@@ -145,7 +145,7 @@ dependencies {
 }
 
 // Firebase client config is per flavor: src/fomo/google-services.json (project fomo3-c2798, spot.fomo.app) and
-// src/terminal/google-services.json (project terminal-f7486, spot.fomo.terminal; added by the owner). A flavor without its
+// src/terminal/google-services.json (the SAME Firebase project fomo3-c2798, app spot.fomo.terminal; added by the owner). A flavor without its
 // file is still built: the plugin skips it (IGNORE), Firebase is then not initialised and the app runs without push.
 googleServices {
     missingGoogleServicesStrategy = MissingGoogleServicesStrategy.IGNORE
