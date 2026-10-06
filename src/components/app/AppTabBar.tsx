@@ -115,7 +115,7 @@ function TabBar() {
   }, []);
 
   return (
-    <nav ref={bar} className="app-tabbar" aria-label={t("appui.nav")} data-app-tabbar>
+    <nav ref={bar} className="app-tabbar" style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
         const label = t(tab.labelKey);
