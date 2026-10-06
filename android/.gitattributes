@@ -1,0 +1,5 @@
+# Keep the Gradle wrapper runnable on every OS regardless of the user's autocrlf setting.
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary

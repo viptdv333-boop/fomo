@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fomo_bg">#FFFFFF</color>
+    <color name="fomo_green">#16A34A</color>
+    <!-- the launcher icon artwork is the FOMO wordmark on white -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

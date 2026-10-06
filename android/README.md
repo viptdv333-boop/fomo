@@ -1,0 +1,221 @@
+# FOMO для Android (WebView-оболочка)
+
+Приложение — это сайт <https://fomo.spot> в WebView плюс то, чего не умеет PWA:
+
+| Возможность | Что делает |
+|---|---|
+| Вставка картинок из клавиатуры | Gboard (буфер обмена, стикеры, GIF) отдаёт картинку в поле ввода сайта — в Chrome на Android этого нет. Плюс «Вставить из буфера обмена» в меню скрепки читает картинку из системного буфера. |
+| «Поделиться → FOMO» | Скриншоты, фото, PDF, Word, текст из системного меню «Поделиться» открывают экран «Куда отправить?». |
+| Загрузка файлов | Камера (фото), галерея, файлы; `accept=` и несколько файлов поддерживаются; камера запрашивается только когда нужна. |
+| Скачивание | Экспорт/CSV через системный DownloadManager с cookie сессии. |
+| Push через Firebase | Уведомления приходят, даже когда приложение закрыто (каналы «Сообщения», «Алерты терминала», «Календарь»). |
+| Ссылки | `https://fomo.spot/...` открываются в приложении; внешние — во вкладках Chrome (Custom Tabs); `mailto:`/`tel:`/`tg:` — в своих приложениях. |
+| Обновление APK | Необязательное окно «Доступно обновление» (см. ниже). |
+
+Стек: Kotlin, Gradle Kotlin DSL, один модуль `app`, пакет `spot.fomo.app`, minSdk 24, compileSdk 36, targetSdk 35.
+Версии Android Gradle Plugin (9.0.1) и Gradle (9.2.1) — те же, что в ваших проектах в `AndroidStudioProjects`.
+Зависимости: androidx (core, appcompat, webkit, swiperefreshlayout, core-splashscreen, browser) и Firebase Messaging.
+
+## Содержимое папки
+
+```
+android/
+  build.gradle.kts, settings.gradle.kts, gradle.properties, gradle/libs.versions.toml   — сборка (каталог версий)
+  gradlew, gradlew.bat, gradle/wrapper/*                                                  — Gradle wrapper (из ваших проектов)
+  app/build.gradle.kts            — applicationId spot.fomo.app, BuildConfig.BASE_URL, подпись release, R8
+  app/google-services.json        — клиентская конфигурация Firebase (см. раздел про push)
+  app/proguard-rules.pro          — keep-правила для JS-мостов
+  app/src/main/AndroidManifest.xml
+  app/src/main/java/spot/fomo/app/
+      MainActivity.kt   WebView, клиенты, pull-to-refresh, офлайн-экран, цвета системных панелей, Share, deep links
+      FomoWebView.kt    приём картинок из клавиатуры (onCreateInputConnection + commitContent)
+      FomoBridge.kt     window.FomoApp (+ ScrollBridge, OfflineBridge)
+      FileChooser.kt    выбор файлов/камера
+      ExternalLinks.kt  внешние ссылки (Custom Tabs, mailto/tel/tg, защищённый intent:)
+      UrlPolicy.kt      все решения «своя ли это страница» (юнит-тесты в app/src/test)
+      Media.kt, Js.kt, ShareIntake.kt, ThemeColor.kt, UpdateChecker.kt
+      PushBridge.kt, FcmService.kt, Notifications.kt, FomoApplication.kt   — push (этап 2)
+  app/src/main/assets/offline.html   — локальная страница «Нет соединения» с кнопкой «Повторить»
+  app/src/main/res/                  — иконки (из public/icon-512.png), строки ru/en, темы, сетевая конфигурация
+```
+
+## 1. Сборка в Android Studio
+
+1. Установите Android Studio (JDK 17+ идёт внутри неё — отдельно ставить Java не нужно).
+2. `File → Open` → выберите папку **`android`** внутри репозитория (не корень репозитория).
+3. Дождитесь Gradle Sync. Если студия предложит обновить версии плагинов — можно отказаться; если sync жалуется на конкретную версию библиотеки,
+   поправьте номер в `gradle/libs.versions.toml` (все версии собраны в одном месте).
+4. Выберите телефон (включите «Отладка по USB») или эмулятор → **Run ▶**. Debug-APK лежит в `app/build/outputs/apk/debug/`.
+5. Отладка WebView: в Chrome на компьютере откройте `chrome://inspect` — debug-сборка включает remote debugging.
+6. Другой адрес сайта для debug-сборки (например, staging по https): в `~/.gradle/gradle.properties` добавьте `fomo.debugBaseUrl=https://staging.example.com`.
+   Release-сборка всегда открывает `https://fomo.spot`.
+
+## 2. APK из GitHub Actions (без Android Studio)
+
+Файл `.github/workflows/android.yml`. Запускается вручную и при любом push, затрагивающем `android/**`.
+
+1. GitHub → репозиторий → вкладка **Actions** → слева **Android APK** → **Run workflow** (или просто дождитесь запуска после push).
+2. Откройте завершившийся запуск → внизу блок **Artifacts**:
+   - `fomo-debug-apk` — отладочный APK (подписан отладочным ключом runner'а: **ключ меняется от сборки к сборке**, поэтому поверх предыдущей debug-сборки он может не поставиться — тогда сначала удалите старую);
+   - `fomo-release-apk` — подписанный `fomo.apk` (появляется только если заданы 4 секрета, см. ниже).
+3. Скачайте zip, распакуйте, перенесите `.apk` на телефон.
+4. Тег `android-v1.0.1` (`git tag android-v1.0.1 && git push origin android-v1.0.1`) дополнительно прикрепляет подписанный `fomo.apk` к GitHub Release — прямая ссылка
+   `https://github.com/viptdv333-boop/fomo/releases/latest/download/fomo.apk` пригодна для обновлений (см. ниже).
+
+## 3. Установка APK на телефон
+
+1. Перенесите файл на телефон (Telegram «Избранное», USB, облако).
+2. Откройте файл. Android спросит разрешение **«Установка из неизвестных источников»** для приложения, из которого вы открыли файл (Файлы/Chrome/Telegram) — разрешите.
+   (Путь зависит от оболочки: Настройки → Приложения → Особый доступ → Установка неизвестных приложений.)
+3. Нажмите «Установить». Play Protect может предупредить о приложении неизвестного разработчика — это нормально для APK вне магазина.
+4. Обновление: ставьте новый APK **поверх** старого. Это сработает только при **той же подписи** — см. следующий раздел.
+
+## 4. Постоянный ключ подписи (keystore)
+
+**Почему это важно.** Android ставит обновление поверх приложения только если подпись нового APK совпадает с подписью установленного.
+Один и тот же keystore → обновления ставятся поверх, данные и вход сохраняются. Потеряли keystore (или собираете каждый раз новым ключом) →
+пользователям придётся удалять приложение и ставить заново, а ключ уже не восстановить. Поэтому: один раз создайте ключ, сохраните его копию в нескольких надёжных местах.
+
+### Создание ключа
+
+keytool входит в Android Studio (`<папка Android Studio>\jbr\bin\keytool.exe`) и в любой JDK:
+
+```
+keytool -genkeypair -v -keystore fomo-release.jks -alias fomo -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Задайте пароль хранилища, пароль ключа (можно такой же) и имя/организацию. Запомните: **пароль хранилища, алиас (`fomo`), пароль ключа**.
+
+### Где хранить
+
+- **Не в репозитории** (он публичный). `*.jks` и `*.keystore` уже в `.gitignore`, но надёжнее держать файл вне папки проекта.
+- Копии: менеджер паролей (файл как вложение), зашифрованный архив в облаке, флешка. Пароли — отдельно от файла.
+
+### Секреты GitHub (для подписанных сборок в Actions)
+
+1. Превратите файл в base64.
+   PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("fomo-release.jks")) | Set-Clipboard`
+   (Linux/macOS: `base64 -w0 fomo-release.jks`).
+2. GitHub → репозиторий → **Settings → Secrets and variables → Actions → New repository secret**. Добавьте четыре секрета:
+
+   | Секрет | Значение |
+   |---|---|
+   | `ANDROID_KEYSTORE_BASE64` | base64 файла `.jks` |
+   | `ANDROID_KEYSTORE_PASSWORD` | пароль хранилища |
+   | `ANDROID_KEY_ALIAS` | `fomo` |
+   | `ANDROID_KEY_PASSWORD` | пароль ключа |
+
+3. Запустите workflow — появится артефакт `fomo-release-apk`. Пока секретов нет, собирается только debug-APK.
+
+Локальная подписанная сборка: в `~/.gradle/gradle.properties` задайте `fomo.keystore=C:/путь/fomo-release.jks`, `fomo.keystorePassword=…`, `fomo.keyAlias=fomo`,
+`fomo.keyPassword=…` и выполните `gradlew assembleRelease` (или Build → Generate Signed App Bundle / APK).
+
+## 5. Ссылки на сайт открываются в приложении (App Links)
+
+Манифест уже содержит `https://fomo.spot/*` с `autoVerify`. Чтобы Android считал приложение владельцем ссылок, сайт должен отдавать
+`https://fomo.spot/.well-known/assetlinks.json` с **SHA-256 отпечатком сертификата подписи**. Файл в репозитории — `public/.well-known/assetlinks.json` —
+сейчас содержит **заглушку из нулей**. Замените её:
+
+1. Отпечаток release-ключа: `keytool -list -v -keystore fomo-release.jks -alias fomo` → строка `SHA256:`.
+   Отпечаток debug-ключа (для сборок из Android Studio): `keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android`.
+2. Впишите отпечатки (можно несколько, через запятую) в `sha256_cert_fingerprints`, выложите сайт.
+3. Проверка: `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://fomo.spot&relation=delegate_permission/common.handle_all_urls`.
+   На телефоне: Настройки → Приложения → FOMO → «Открывать по умолчанию» (на некоторых версиях Android ссылки приходится включить вручную).
+
+Неверный отпечаток ничего не ломает — просто ссылки продолжат открываться в браузере. Для CI-сборок отпечаток берётся из вашего release keystore (тот же, что в секретах).
+
+## 6. Обновление приложения (необязательно)
+
+Приложение раз в 12 часов (после загрузки первой страницы) запрашивает `https://fomo.spot/app/version.json`:
+
+```json
+{ "versionCode": 2, "versionName": "1.0.1", "url": "https://fomo.spot/app/fomo.apk" }
+```
+
+Если `versionCode` больше, чем у установленной сборки, показывается окно «Доступно обновление» с кнопкой «Скачать» (открывает `url` в браузере, который скачивает APK)
+и «Позже» (запоминает, что для этого `versionCode` спрашивать больше не нужно). Приложение **никогда не устанавливает ничего само**: файл ставите вы, нажав на скачанный APK.
+Защита: только https, адрес `url` должен быть на `fomo.spot` / `www.fomo.spot` или `github.com`, любые сбои проверки молча игнорируются.
+
+Выпуск новой версии:
+
+1. В `app/build.gradle.kts` увеличьте `versionCode` (целое, +1) и поменяйте `versionName`.
+2. Соберите подписанный APK **тем же keystore** (раздел 4) и положите его туда, откуда он будет скачиваться:
+   - на сайт: файл `fomo.apk` по адресу `https://fomo.spot/app/fomo.apk` (например, в `public/app/` или отдельным `location /app/` в nginx), либо
+   - GitHub Release: тег `android-vX.Y.Z` (workflow прикрепит `fomo.apk`), ссылка `https://github.com/viptdv333-boop/fomo/releases/latest/download/fomo.apk`.
+3. Обновите `public/app/version.json` (`versionCode`, `versionName`, `url`) и выложите сайт. Пока файл не меняется, окно не появляется.
+
+APK-файл в публичный репозиторий не коммитьте. Файлы из `public/` Next.js индексирует при запуске: после добавления файла перезапустите процесс (`pm2 restart`) — или отдавайте APK через nginx.
+
+## 7. Push через Firebase
+
+Приложение само получает токен устройства (Firebase), страница в приложении после входа отправляет его на сервер (`POST /api/push/fcm` с сессией пользователя),
+а сервер при уведомлении шлёт push тем же правилам, что и Web Push (колонка **«В приложении»** в Настройки → Уведомления, тихие часы, переопределения по событиям).
+Пока на сервере нет ключа Firebase, всё остальное работает как раньше.
+
+Что уже сделано: проект Firebase **`fomo3-c2798`**, Android-приложение `spot.fomo.app`, файл `android/app/google-services.json` в репозитории.
+
+### Шаг 1. google-services.json и его ключ
+
+Файл содержит **клиентскую** конфигурацию (идентификаторы проекта и API-ключ для Android-приложения). Приватных ключей в нём нет, это стандартная практика —
+его коммитят вместе с приложением, и благодаря этому APK из GitHub Actions сразу получает push без лишних секретов. Репозиторий публичный, поэтому **ограничьте API-ключ**:
+
+1. <https://console.cloud.google.com> → проект `fomo3-c2798` → **APIs & Services → Credentials** → ключ «Android key» (тот, что указан в `google-services.json`).
+2. **Application restrictions → Android apps**: добавьте пакет `spot.fomo.app` и **SHA-1** сертификатов подписи: release keystore
+   (`keytool -list -v -keystore fomo-release.jks -alias fomo` → `SHA1`) и, если запускаете из Android Studio, debug (`%USERPROFILE%\.android\debug.keystore`).
+3. **API restrictions → Restrict key**: оставьте только Firebase Cloud Messaging / Firebase Installations (и, если Firebase потребует, FCM Registration API; проверьте актуальный список в документации Firebase).
+4. Если не хотите хранить файл в репозитории: удалите его оттуда (добавьте в `.gitignore`) и положите содержимое в base64 в секрет `GOOGLE_SERVICES_JSON_BASE64` —
+   workflow подставит его при сборке. Для локальной сборки файл тогда нужно скачать из Firebase в `android/app/`.
+   Без файла приложение собирается и работает, но без push (плагин Google Services подключается только если файл есть).
+
+### Шаг 2. Ключ сервисного аккаунта для сервера (ваш следующий шаг)
+
+1. Firebase console → ⚙ **Project settings → Service accounts** → **Generate new private key** → скачается JSON. Это секрет: не коммитить, не отправлять в чаты.
+2. Положите его на сервер вне репозитория и закройте доступ, например:
+   ```
+   mkdir -p /opt/fomo/secrets && mv fcm-service-account.json /opt/fomo/secrets/ && chmod 600 /opt/fomo/secrets/fcm-service-account.json
+   ```
+   (путь и пользователь у вас могут отличаться; файл должен читаться пользователем, под которым работает pm2).
+3. В `/opt/fomo/.env` добавьте `FCM_SERVICE_ACCOUNT_FILE=/opt/fomo/secrets/fcm-service-account.json`
+   (необязательно: `FCM_PROJECT_ID=fomo3-c2798` — иначе берётся `project_id` из JSON).
+4. Примените миграцию (один раз, идемпотентная): `prisma/migrations/20261006090000_fcm_tokens/migration.sql`
+   (`npx prisma db execute --file prisma/migrations/20261006090000_fcm_tokens/migration.sql --schema prisma/schema.prisma`).
+   До миграции приложение работает, но токены сохраняться не будут.
+5. Выложите сайт и перезапустите процесс (`pm2 restart …`).
+6. В Google Cloud проекта `fomo3-c2798` должен быть включён **Firebase Cloud Messaging API (V1)** (для новых проектов включён по умолчанию; старый Legacy API не нужен).
+
+### Шаг 3. Проверка
+
+1. Установите приложение, войдите в аккаунт, на Android 13+ разрешите уведомления (диалог появляется сразу после входа).
+2. Сайт → Профиль → Уведомления: в карточке «В приложении» должно появиться «Устройств: … · в приложении: 1».
+3. Нажмите «Тест» в этой карточке — на телефон придёт уведомление (отправляется и в браузеры, и в приложение).
+4. Проверьте канал: Настройки Android → Приложения → FOMO → Уведомления: «Сообщения», «Алерты терминала», «Календарь», «Прочее».
+5. Если не приходит: проверьте `pm2 logs` (строки `[fcm] …`; ключ в логи не попадает), что включена колонка «В приложении» для события и не действуют тихие часы,
+   что у приложения не отключена экономия батареи для уведомлений (на некоторых оболочках — Xiaomi, Huawei — нужно разрешить автозапуск).
+   Устройства без Google Play Services push не получают (остаются колокольчик и Web Push).
+
+Как это устроено: приложение с открытым экраном не показывает системные баннеры для сообщений (сайт показывает их сам), но алерты и календарь показывает всегда.
+Тап по уведомлению открывает ссылку из поля `link` (только путь внутри `fomo.spot`).
+
+## 8. Как сайт и приложение общаются
+
+- User-Agent заканчивается на ` FomoApp/<versionName> Android`; `window.FomoApp` доступен **только** на страницах `fomo.spot` / `www.fomo.spot` (адрес проверяется при каждом вызове).
+- Методы `window.FomoApp`: `getClipboardImage()` (JSON `{name,type,dataBase64}` или `""`), `hasClipboardImage()`, `appVersion()`, `openExternal(url)`, `share(text,url)`,
+  `haptic()`, `getPushToken()`, `requestNotificationPermission()`. Файлы больше 8 МБ отклоняются, большие скриншоты уменьшаются до JPEG 2560 px.
+- События на `document`: `fomo-native-paste` (картинка из клавиатуры), `fomo-native-share` (файлы из «Поделиться»; ещё лежат в `window.__fomoNativeShare`),
+  `fomo-native-push-token` (новый токен). Код на стороне сайта: `src/lib/native-app.ts`, `src/lib/native-push.ts`, `src/components/layout/NativePushRegistrar.tsx`.
+- В приложении скрыты «Установить приложение» и баннер переустановки PWA; «Обновить приложение» оставлено (сбрасывает кэш сайта).
+
+## 9. Безопасность и ограничения
+
+- `allowBackup=false`, только HTTPS (`usesCleartextTraffic=false`, network security config доверяет лишь системным CA), файловый и content-доступ WebView выключен,
+  смешанный контент запрещён, Safe Browsing включён, ошибки сертификата **никогда** не пропускаются.
+- Экспортирована только `MainActivity` (запуск, App Links, «Поделиться»). `FileProvider` отдаёт только временные фото камеры из `cache/captures`.
+- Любой переход на чужой адрес уходит в Custom Tabs; неизвестные схемы (`javascript:`, `file:`, `content:` …) игнорируются.
+- JS-мост подключается ко всем фреймам страницы (ограничение `addJavascriptInterface`): адрес проверяется для верхней страницы. Не встраивайте на сайт чужие iframe на страницах, где нужен мост.
+- Pull-to-refresh выключен на `/terminal`, `/chat`, `/messages` (жесты графика и прокрутка истории); на остальных работает только когда страница прокручена вверх.
+- «Поделиться» приносит на сайт первый файл (остальные до 5 файлов приложение передаёт событием, но экран «Куда отправить?» сейчас использует первый) и текст в ссылке `/share?title=&text=`;
+  если вы не вошли, файл сохранится, но после входа экран «Поделиться» придётся открыть заново.
+- Вход через сторонние сервисы (OAuth) откроется во вкладке Chrome и не вернёт сессию в WebView — на сайте используется обычный вход по логину/паролю.
+- Код писался без возможности собрать его на машине автора (нет JDK): при первой сборке возможны мелкие замечания компилятора — присылайте текст ошибки.
+
+Юнит-тесты (`UrlPolicy`, `ThemeColor`): `gradlew testDebugUnitTest`. Тесты сайтовой части: `npx tsx scripts/check-native-app.ts`, `npx tsx scripts/check-fcm.ts`.

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "834886193086",
+    "project_id": "fomo3-c2798",
+    "storage_bucket": "fomo3-c2798.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:834886193086:android:5e67b4d012d5d43b80b3ef",
+        "android_client_info": {
+          "package_name": "spot.fomo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkgwGm_B3vaMKiQNvO2FMkWsbAnrRACew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

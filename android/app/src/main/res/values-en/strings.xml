@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FOMO</string>
+
+    <string name="chooser_title">Choose a file</string>
+    <string name="camera_denied">Camera access is off — allow it in the app settings</string>
+    <string name="download_started">Download started…</string>
+    <string name="download_failed">Could not start the download</string>
+    <string name="no_app_for_link">No app can open this link</string>
+    <string name="share_chooser">Share</string>
+
+    <string name="update_title">Update available</string>
+    <string name="update_message">A new version of FOMO (%1$s) is out. Download it and install over the current one — your data and sign-in are kept.</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+
+    <string name="channel_messages">Messages</string>
+    <string name="channel_messages_desc">Direct messages, mentions and replies in chats</string>
+    <string name="channel_terminal">Terminal alerts</string>
+    <string name="channel_terminal_desc">Price alerts and chart line alerts</string>
+    <string name="channel_calendar">Calendar</string>
+    <string name="channel_calendar_desc">Calendar event reminders</string>
+    <string name="channel_general">Other</string>
+    <string name="channel_general_desc">Ideas, subscriptions, payments and other notifications</string>
+</resources>

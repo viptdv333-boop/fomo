@@ -1,0 +1,17 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing material must NEVER be committed (the repo is public)
+*.jks
+*.keystore
+keystore.properties
+*.p12
+
+# NOTE: app/google-services.json IS committed on purpose (FCM client config, no private key) — see README.md

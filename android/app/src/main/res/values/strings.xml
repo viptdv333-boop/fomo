@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FOMO</string>
+
+    <string name="chooser_title">Выберите файл</string>
+    <string name="camera_denied">Нет доступа к камере — разрешите его в настройках приложения</string>
+    <string name="download_started">Загрузка началась…</string>
+    <string name="download_failed">Не удалось начать загрузку</string>
+    <string name="no_app_for_link">Нет приложения, которое открывает эту ссылку</string>
+    <string name="share_chooser">Поделиться</string>
+
+    <string name="update_title">Доступно обновление</string>
+    <string name="update_message">Вышла новая версия FOMO %1$s. Скачайте её и установите поверх текущей — данные и вход сохранятся.</string>
+    <string name="update_download">Скачать</string>
+    <string name="update_later">Позже</string>
+
+    <string name="channel_messages">Сообщения</string>
+    <string name="channel_messages_desc">Личные сообщения, упоминания и ответы в чатах</string>
+    <string name="channel_terminal">Алерты терминала</string>
+    <string name="channel_terminal_desc">Срабатывания ценовых алертов и линий на графиках</string>
+    <string name="channel_calendar">Календарь</string>
+    <string name="channel_calendar_desc">Напоминания о событиях календаря</string>
+    <string name="channel_general">Прочее</string>
+    <string name="channel_general_desc">Идеи, подписки, платежи и другие уведомления</string>
+</resources>

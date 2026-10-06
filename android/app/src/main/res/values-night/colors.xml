@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- same dark as the site's manifest background_color -->
+    <color name="fomo_bg">#0A0A0A</color>
+</resources>

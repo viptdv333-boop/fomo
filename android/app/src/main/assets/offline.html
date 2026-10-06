@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOMO</title>
+<style>
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #111827; --muted: #6b7280; --green: #16a34a; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0a0a0a; --fg: #f3f4f6; --muted: #9ca3af; } }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--fg);
+         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; }
+  main { padding: 24px; max-width: 340px; }
+  svg { width: 64px; height: 64px; stroke: var(--muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  h1 { font-size: 20px; margin: 16px 0 8px; }
+  p { margin: 0 0 24px; color: var(--muted); line-height: 1.45; font-size: 15px; }
+  button { appearance: none; border: 0; border-radius: 12px; background: var(--green); color: #fff; font-size: 16px;
+           font-weight: 600; padding: 12px 28px; }
+  button:active { opacity: .85; }
+</style>
+</head>
+<body>
+<main>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="M3 3l18 18"/></svg>
+  <h1 id="t"></h1>
+  <p id="d"></p>
+  <button id="b" type="button"></button>
+</main>
+<script>
+  // Local page: no network, no external resources. Language follows the phone (ru by default, en for English).
+  var en = /^en/i.test(navigator.language || "");
+  document.documentElement.lang = en ? "en" : "ru";
+  document.getElementById("t").textContent = en ? "No connection" : "Нет соединения";
+  document.getElementById("d").textContent = en
+    ? "FOMO could not load. Check your internet connection and try again."
+    : "Не удалось загрузить FOMO. Проверьте подключение к интернету и повторите попытку.";
+  var b = document.getElementById("b");
+  b.textContent = en ? "Retry" : "Повторить";
+  b.addEventListener("click", function () {
+    try { FomoOffline.retry(); } catch (e) {}
+  });
+</script>
+</body>
+</html>
