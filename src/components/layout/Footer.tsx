@@ -7,7 +7,7 @@ export default async function Footer() {
   const { t, locale } = await getT();
   const terminalShown = !(await isPageHidden("terminal"));
   return (
-    <footer className="h-12 flex items-center px-4 bg-white dark:bg-gray-900 shrink-0 gap-3">
+    <footer data-app-hide className="h-12 flex items-center px-4 bg-white dark:bg-gray-900 shrink-0 gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <div className="w-[60px] h-[28px] overflow-hidden relative shrink-0">
         <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" className="absolute w-full h-auto" style={{ top: '-18%' }} />

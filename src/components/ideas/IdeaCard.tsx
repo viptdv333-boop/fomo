@@ -9,6 +9,8 @@ import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { FomoMark } from "@/components/shared/Watermark";
 import { formatMessageTime } from "@/lib/format-message-time";
+import { agoLabel } from "@/lib/app-ui";
+import { useAppUi } from "@/components/app/useAppUi";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -79,6 +81,7 @@ interface IdeaCardProps {
 export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardProps) {
   const { t, locale } = useT();
   const { data: session } = useSession();
+  const appUi = useAppUi();
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
   const [showDonateModal, setShowDonateModal] = useState(false);
@@ -140,6 +143,45 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const avatarColor = hashColor(idea.author.id);
   const isNew = isRecentlyPublished(idea.createdAt);
 
+  // App UI (Android app / ?appui=1): the board card of the mobile design instead of the wide paragraph card
+  if (appUi && !minimal && !compact) {
+    const cats = uniqInstruments.map((i) => i.asset?.name || i.name).join(" · ");
+    return (
+      <div
+        data-app-card="idea"
+        className="app-idea select-none"
+        onCopy={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <div className="app-idea-head">
+          <div className="app-idea-title">
+            <Link href={`/ideas/${idea.id}`}>{idea.title}</Link>
+            {isNew && <NewBadge className="ml-2 align-middle" />}
+            {isArchived && <ArchivedBadge className="ml-2 align-middle" />}
+          </div>
+        </div>
+        {cats && <div className="app-idea-inst">{cats}</div>}
+        {idea.preview && <div className="app-idea-prev">{idea.preview}</div>}
+        <div className="app-idea-foot">
+          <span className="min-w-0 truncate">
+            {idea.author.displayName} · {agoLabel(idea.createdAt, locale)}
+          </span>
+          <span className="app-idea-r">
+            {idea.isPaid && (
+              <span className="app-idea-lock">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                {idea.price ? `${idea.price} ₽` : t("feed2.channelLocked")}
+              </span>
+            )}
+            <button type="button" onClick={handleLike} data-on={liked ? "1" : undefined} className="app-idea-like" aria-pressed={liked}>
+              ❤️ {likeCount}
+            </button>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   // Minimal list view
   if (minimal) {
     return (
@@ -198,6 +240,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   if (compact) {
     return (
       <div
+        data-app-card="compact"
         className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full select-none"
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}

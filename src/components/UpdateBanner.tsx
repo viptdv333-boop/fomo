@@ -45,7 +45,7 @@ export default function UpdateBanner() {
   if (!outdated) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[60] bg-white dark:bg-gray-900 border border-green-600 rounded-xl shadow-lg p-3 flex items-center gap-3">
+    <div data-app-lift className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[60] bg-white dark:bg-gray-900 border border-green-600 rounded-xl shadow-lg p-3 flex items-center gap-3">
       <span className="text-sm text-gray-800 dark:text-gray-100 flex-1">{t("common.update.available")}</span>
       <button
         onClick={() => {

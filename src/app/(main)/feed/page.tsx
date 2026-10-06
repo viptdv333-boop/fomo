@@ -68,7 +68,7 @@ export default function FeedPageWrapper() {
   // boundary is invisible to crawlers — they'd only get the fallback.
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+      <div data-app="feed-head" className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold dark:text-gray-100 mb-1">
             {t("feed2.bigBoard")}
@@ -80,7 +80,7 @@ export default function FeedPageWrapper() {
         {session?.user && (
           <Link
             href="/ideas/new"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors shadow-sm shrink-0"
+            className="app-hide inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors shadow-sm shrink-0"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -246,10 +246,18 @@ function FeedPage() {
   return (
     <div>
       {/* Board tabs */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="app-board-row flex items-center gap-2 mb-4">
+        {/* app UI only: the design puts "+ Разместить" in the same row as ОБЩАЯ / МОЯ (the header link above is hidden there) */}
+        {session?.user && (
+          <Link href="/ideas/new" className="app-only app-publish">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+            {t("feed.publish")}
+          </Link>
+        )}
         <button
+          data-on={board === "all" ? "1" : undefined}
           onClick={() => { setBoard("all"); setPage(1); }}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+          className={`app-board-btn px-4 py-1.5 rounded-lg text-sm font-medium transition ${
             board === "all"
               ? "bg-green-600 text-white"
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -258,8 +266,9 @@ function FeedPage() {
           {t("feed2.boardAll")}
         </button>
         <button
+          data-on={board === "mine" ? "1" : undefined}
           onClick={() => { setBoard("mine"); setPage(1); }}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+          className={`app-board-btn px-4 py-1.5 rounded-lg text-sm font-medium transition ${
             board === "mine"
               ? "bg-green-600 text-white"
               : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -270,7 +279,7 @@ function FeedPage() {
         {board === "mine" && session?.user && (
           <button
             onClick={() => setShowMuteSettings(true)}
-            className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1"
+            className="app-mute ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -313,56 +322,70 @@ function FeedPage() {
       )}
 
       {/* Filter bar — no border, no background */}
-      <div className="flex items-center gap-2 flex-wrap mb-6">
+      <div className="app-filter-row flex items-center gap-2 flex-wrap mb-6">
         {/* Paid filters */}
+        <div className="app-chips contents">
         <button
+          data-on={paidFilter === "paid" ? "1" : undefined}
           onClick={() => { setPaidFilter(paidFilter === "paid" ? "all" : "paid"); setPage(1); }}
           className={pillClass(paidFilter === "paid")}
         >
           {t("feed.paid")}
         </button>
         <button
+          data-on={paidFilter === "free" ? "1" : undefined}
           onClick={() => { setPaidFilter(paidFilter === "free" ? "all" : "free"); setPage(1); }}
           className={pillClass(paidFilter === "free")}
         >
           {t("feed.free")}
         </button>
         <button
+          data-on={showArchived ? "1" : undefined}
           onClick={() => { setShowArchived((v) => !v); setPage(1); }}
           className={pillClass(showArchived)}
         >
           {t("feed.archived")}
         </button>
+        </div>
+        {/* app UI only: line break between the chip row and the sort row */}
+        <span className="app-break app-only" aria-hidden="true" />
+        <div className="app-sort contents">
         <button
+          data-on={sortBy === "date" && sortOrder === "desc" ? "1" : undefined}
           onClick={() => { setSortBy("date"); setSortOrder("desc"); setPage(1); }}
           className={pillClass(sortBy === "date" && sortOrder === "desc")}
         >
           {t("feed.new")}
         </button>
         <button
+          data-on={sortBy === "date" && sortOrder === "asc" ? "1" : undefined}
           onClick={() => { setSortBy("date"); setSortOrder("asc"); setPage(1); }}
           className={pillClass(sortBy === "date" && sortOrder === "asc")}
         >
           {t("feed.old")}
         </button>
         <button
+          data-on={sortBy === "rating" ? "1" : undefined}
           onClick={() => { setSortBy(sortBy === "rating" ? "date" : "rating"); setSortOrder("desc"); setPage(1); }}
           className={pillClass(sortBy === "rating")}
         >
           {t("feed.rating")}
         </button>
+        </div>
 
         {/* Instrument search autocomplete */}
-        <div className="relative">
+        <div className="app-inst relative">
           <button
+            data-on={selectedInstrument || selectedAssetSlug ? "1" : undefined}
             onClick={() => setExpandedCategory(expandedCategory === "__root" ? null : "__root")}
             className={`${pillClass(!!selectedInstrument || !!selectedAssetSlug)} inline-flex items-center gap-1`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M3 3v18h18" /><path d="M7 16l4-4 3 3 4-5" />
             </svg>
-            {(selectedInstrument || selectedAssetSlug) ? selectedInstrumentName || t("channels.instrument") : t("feed.instruments")}
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
+            <span className="app-inst-label contents">{(selectedInstrument || selectedAssetSlug) ? selectedInstrumentName || t("channels.instrument") : t("feed.instruments")}</span>
+            {(selectedInstrument || selectedAssetSlug) && <span className="app-only">1</span>}
+            <svg className="app-inst-chev w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           {expandedCategory === "__root" && (
             <>
@@ -498,7 +521,7 @@ function FeedPage() {
         {(selectedInstrument || selectedAssetSlug || authorFilter) && (
           <button
             onClick={() => { setSelectedInstrument(""); setSelectedAssetSlug(""); setAuthorFilter(""); setAuthorDisplayName(""); setPage(1); }}
-            className="text-xs text-gray-400 hover:text-red-500 transition ml-1"
+            className="app-reset text-xs text-gray-400 hover:text-red-500 transition ml-1"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M18 6L6 18M6 6l12 12" />
@@ -507,14 +530,14 @@ function FeedPage() {
         )}
 
         {/* View mode — right side */}
-        <div className="ml-auto flex items-center gap-0.5 shrink-0">
-          <button onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewParagraph")}>
+        <div className="app-views ml-auto flex items-center gap-0.5 shrink-0">
+          <button data-on={viewMode === "paragraph" ? "1" : undefined} onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewParagraph")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
           </button>
-          <button onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewList")}>
+          <button data-on={viewMode === "list" ? "1" : undefined} onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewList")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
-          <button onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewCards")}>
+          <button data-on={viewMode === "cards" ? "1" : undefined} onClick={() => setViewMode("cards")} className={`p-1.5 rounded transition ${viewMode === "cards" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewCards")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
         </div>
@@ -541,7 +564,7 @@ function FeedPage() {
             const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
             return (
               <Link key={idea.id} href={`/ideas/${idea.id}`}
-                className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
+                data-app-card="top" className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
                 onCopy={(e) => e.preventDefault()}
                 onContextMenu={(e) => e.preventDefault()}
               >
@@ -604,7 +627,7 @@ function FeedPage() {
           ))}
         </div>
       ) : viewMode === "list" ? (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow">
+        <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} minimal />
           ))}

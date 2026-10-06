@@ -68,7 +68,7 @@ export default function PwaBanners() {
 
   if (installPrompt) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap text-sm">
+      <div data-app-hide className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap text-sm">
         <span className="text-gray-800 dark:text-gray-100 font-medium">{t("pwa.installTitle")}</span>
         <button
           onClick={install}
@@ -88,7 +88,7 @@ export default function PwaBanners() {
 
   if (showReinstall) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-2.5 text-sm">
+      <div data-app-hide className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-2.5 text-sm">
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <span className="text-gray-800 dark:text-gray-100 font-medium">{t("pwa.updateTitle")}</span>
           <button

@@ -15,6 +15,7 @@ import InstallAppButton from "@/components/shared/InstallAppButton";
 import UpdateAppButton from "@/components/shared/UpdateAppButton";
 import { unregisterNativePush } from "@/lib/native-push";
 import NativeSettingsLink from "@/components/shared/NativeSettingsLink";
+import { useAppUi } from "@/components/app/useAppUi";
 
 // initialHiddenPages comes from the server so a switched-off page is never in the first HTML
 // (otherwise its link flashed in the menu until the settings fetch finished).
@@ -24,6 +25,8 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
   const userId = user?.id;
   const pathname = stripLocale(usePathname() || "/").path;
   const { t } = useT();
+  // in the app UI the compact AppHeader / AppTabBar own the bell and the messenger badge (this header is hidden by CSS): no double polling
+  const appUi = useAppUi();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [hiddenPages, setHiddenPages] = useState<string[]>(initialHiddenPages);
@@ -60,7 +63,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
   const fomoId = user?.fomoId || null;
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
+    <header data-app-hide className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
       <div className="w-full px-4 py-1 flex items-center">
         {/* Logo */}
         <Link href="/" className="flex flex-col items-start shrink-0">
@@ -102,8 +105,8 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
         <div className="hidden md:flex items-center gap-3 shrink-0">
           <LanguageSelector />
           <ThemeToggle />
-          {session && <MessengerButton />}
-          {session && <NotificationBell />}
+          {session && !appUi && <MessengerButton />}
+          {session && !appUi && <NotificationBell />}
           {session ? (
             <>
               {/* Profile dropdown */}
@@ -207,8 +210,8 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
         {/* Mobile right section */}
         <div className="flex md:hidden items-center gap-2 ml-auto">
           <ThemeToggle />
-          {session && <MessengerButton />}
-          {session && <NotificationBell />}
+          {session && !appUi && <MessengerButton />}
+          {session && !appUi && <NotificationBell />}
           <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
             {menuOpen ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>

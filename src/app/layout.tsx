@@ -14,6 +14,7 @@ import { getLocale, getT } from "@/lib/i18n/server";
 import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 import { HTML_LANG } from "@/lib/i18n/locale-url";
 import { DICTIONARIES } from "@/lib/i18n/dictionaries";
+import { APP_UI_BOOT_SCRIPT } from "@/lib/native-app";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -137,6 +138,8 @@ export default async function RootLayout({
             __html: `try{if(localStorage.getItem('fomo-theme')==='dark'||(!localStorage.getItem('fomo-theme')&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
           }}
         />
+        {/* app-only UI switch (Android app or ?appui=1 preview): only adds the class "app-ui" to <html>, see src/lib/native-app.ts */}
+        <script dangerouslySetInnerHTML={{ __html: APP_UI_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>

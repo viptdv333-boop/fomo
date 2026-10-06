@@ -1,61 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
+import { useChatBadge } from "./useChatBadge";
 
 /** Messenger icon in the header with a red counter of unread personal / болталка messages. */
 export default function MessengerButton() {
   const { data: session } = useSession();
   const { t } = useT();
-  const [count, setCount] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch("/api/chat/badge", { cache: "no-store" });
-      if (r.ok) setCount((await r.json()).total ?? 0);
-    } catch {}
-  }, []);
-  // a burst of socket events must not turn into a burst of requests
-  const reloadSoon = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(load, 600);
-  }, [load]);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    load();
-    const iv = setInterval(() => {
-      if (!document.hidden) load();
-    }, 45_000);
-    const onVis = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVis);
-    // reading a room or a conversation elsewhere in the app asks for a refresh
-    window.addEventListener("fomo:unread-changed", reloadSoon);
-    window.addEventListener("chat:room-read", reloadSoon);
-    let socket: ReturnType<typeof getSocket> | null = null;
-    try {
-      socket = getSocket(session.user.id);
-      socket.on("new_notification", reloadSoon);
-      socket.on("new_dm", reloadSoon);
-      socket.on("new_message", reloadSoon);
-    } catch {}
-    return () => {
-      clearInterval(iv);
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("fomo:unread-changed", reloadSoon);
-      window.removeEventListener("chat:room-read", reloadSoon);
-      try {
-        socket?.off("new_notification", reloadSoon);
-        socket?.off("new_dm", reloadSoon);
-        socket?.off("new_message", reloadSoon);
-      } catch {}
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [session?.user?.id, load, reloadSoon]);
+  const count = useChatBadge();
 
   if (!session?.user?.id) return null;
   const label = count > 0 ? `${t("nav.messenger")}: ${count}` : t("nav.messenger");

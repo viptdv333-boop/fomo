@@ -301,3 +301,65 @@ export function openNativeSettings(): boolean {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// App-only lightweight UI (tab bar + compact header). Switched on by the app itself, or by the preview flag in a browser.
+// ---------------------------------------------------------------------------
+
+/** sessionStorage key of the browser preview: opening any page with ?appui=1 sets it, ?appui=0 clears it. */
+export const APP_UI_FLAG_KEY = "fomo-appui";
+/** Class on <html> that every app-only style hangs on. */
+export const APP_UI_CLASS = "app-ui";
+
+export interface AppUiInput {
+  userAgent: string;
+  /** window.FomoApp is an object */
+  hasBridge: boolean;
+  /** location.search */
+  search: string;
+  /** sessionStorage[APP_UI_FLAG_KEY] (null when unset or unreadable) */
+  stored: string | null;
+}
+
+/** The ?appui= query value ("1" / "0") or null. The last occurrence wins. */
+export function appUiQuery(search: string): "1" | "0" | null {
+  let out: "1" | "0" | null = null;
+  const re = /[?&]appui=([01])(?=&|#|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(search || ""))) out = m[1] as "1" | "0";
+  return out;
+}
+
+/**
+ * Pure decision of the app UI: active inside the app (UA marker or bridge) or when the preview flag is set.
+ * `store` says what to do with the flag: "1" write it, "0" clear it, null leave it alone.
+ */
+export function resolveAppUi(i: AppUiInput): { active: boolean; store: "1" | "0" | null } {
+  const q = appUiQuery(i.search);
+  const flag = q === "1" ? true : q === "0" ? false : i.stored === "1";
+  const native = i.hasBridge || /\bFomoApp\//.test(i.userAgent || "");
+  return { active: native || flag, store: q };
+}
+
+/**
+ * Inline script for the root layout <head> (runs before first paint, no secrets). Same logic as resolveAppUi;
+ * scripts/check-app-ui.ts runs both against the same cases so they cannot drift apart.
+ */
+export const APP_UI_BOOT_SCRIPT =
+  "try{var d=document.documentElement,q=null,r=/[?&]appui=([01])(?=&|#|$)/g,m,f=null;" +
+  "while((m=r.exec(location.search)))q=m[1];" +
+  "try{if(q==='1')sessionStorage.setItem('fomo-appui','1');else if(q==='0')sessionStorage.removeItem('fomo-appui');f=sessionStorage.getItem('fomo-appui')}catch(e){f=q==='1'?'1':null}" +
+  "if(/\\bFomoApp\\//.test(navigator.userAgent)||(window.FomoApp&&typeof window.FomoApp==='object')||(q!=='0'&&f==='1')||q==='1')d.classList.add('app-ui')}catch(e){}";
+
+/** True when the app UI is on: the class the boot script set, or the same decision made right now. Always false on the server. */
+export function isNativeUi(): boolean {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  if (document.documentElement.classList.contains(APP_UI_CLASS)) return true;
+  let stored: string | null = null;
+  try {
+    stored = sessionStorage.getItem(APP_UI_FLAG_KEY);
+  } catch {
+    /* private mode */
+  }
+  return resolveAppUi({ userAgent: navigator.userAgent, hasBridge: nativeBridge() !== null, search: window.location.search, stored }).active;
+}

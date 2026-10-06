@@ -46,7 +46,7 @@ export default function CalendarPageClient() {
   }, [local]);
 
   return (
-    <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-card)]" style={{ top }}>
+    <div className="tv3 fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40 bg-[var(--tv3-card)]" style={{ top }}>
       {/* reminders kept in this browser (guests) and the pop-up for server notifications fire here too */}
       <CalendarRemindersHost />
       {/* a guest uses the calendar freely for a limited daily demo time, then sees it blurred under a sign-in card */}

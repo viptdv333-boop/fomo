@@ -168,7 +168,7 @@ export default function TerminalPage() {
   }, []);
 
   return (
-    <div className="tv3 fixed inset-x-0 bottom-0 z-40 bg-[var(--tv3-canvas)]" style={{ top }}>
+    <div className="tv3 fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40 bg-[var(--tv3-canvas)]" style={{ top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}

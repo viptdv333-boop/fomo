@@ -40,7 +40,7 @@ export default function CookieBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 px-4 pb-4 pointer-events-none">
+    <div data-app-lift className="fixed bottom-0 inset-x-0 z-50 px-4 pb-4 pointer-events-none">
       <div className="pointer-events-auto max-w-3xl mx-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <p className="text-[13px] text-gray-600 dark:text-gray-400 flex-1">
           {t("common.cookie.text")}{" "}
