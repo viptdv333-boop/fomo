@@ -19,14 +19,57 @@
 
 Как APK попадает на сайт (кнопки «Скачать приложение», `/app/dl/FOMO.apk`) — см. [docs/downloads.md](../docs/downloads.md).
 
+## Варианты приложения (product flavors)
+
+Одна кодовая база собирается в два приложения (измерение `site`, папки `app/src/fomo/` и `app/src/terminal/`):
+
+| | `fomo` | `terminal` |
+|---|---|---|
+| Приложение | **FOMO** (`spot.fomo.app`) | **FOMO Terminal** (`spot.fomo.terminal`) |
+| Сайт (`BuildConfig.BASE_URL`) | `https://fomo.spot` | `https://terminal.fomo.spot` |
+| Проверка обновления (`BuildConfig.UPDATE_PATH`) | `/app/version.json` | `/app/terminal-version.json` |
+| Хост App Links (плейсхолдер манифеста `siteHost`) | `fomo.spot` | `terminal.fomo.spot` |
+| «Поделиться → FOMO» (фильтры `SEND`, `SEND_MULTIPLE`) | есть (`src/fomo/AndroidManifest.xml`) | **нет** (на сайте терминала нет страницы `/share`; `BuildConfig.SHARE_ENABLED=false`) |
+| Firebase | проект `fomo3-c2798`, `src/fomo/google-services.json` | проект `terminal-f7486`, `src/terminal/google-services.json` (**пока не добавлен**: push выключен, остальное работает) |
+| Иконка | белый фон | тёмный фон + подпись TERMINAL (`src/terminal/res/mipmap-*`, `colors.xml`) |
+| Имя файла сборки | `FOMO.apk` | `FOMO-Terminal.apk` |
+
+Пакет кода (`namespace`) у обоих `spot.fomo.app`, исходники Kotlin общие (`src/main/java/spot/fomo/app`). Строки с названием приложения терминала переопределены в
+`src/terminal/res/values*/strings.xml`, локальная страница «Нет соединения» — в `src/terminal/assets/offline.html`.
+
+**Задачи Gradle:** `assembleFomoRelease`, `assembleTerminalRelease`, `assembleFomoDebug`, `assembleTerminalDebug`, юнит-тесты `testFomoDebugUnitTest`
+(`testTerminalDebugUnitTest` прогоняет те же тесты с `BuildConfig` терминала). Обычные `assembleRelease` / `assembleDebug` собирают оба варианта сразу.
+
+**Имена файлов.** AGP 9 не даёт переименовать сам APK (он остаётся `app/build/outputs/apk/<flavor>/<buildType>/app-<flavor>-<buildType>.apk`), поэтому после
+`assemble<Вариант>` задача `copyNamedApk<Вариант>` кладёт копию в `app/build/outputs/named-apk/<вариант>/`:
+`fomoRelease/FOMO.apk`, `terminalRelease/FOMO-Terminal.apk`, `fomoDebug/FOMO-debug.apk`, `terminalDebug/FOMO-Terminal-debug.apk`
+(без keystore release получает имя `FOMO-unsigned.apk` / `FOMO-Terminal-unsigned.apk` и не устанавливается).
+
+**Сборка из ASCII-зеркала** (путь репозитория содержит кириллицу, Gradle запускается не из него). Помощник `C:\Users\viptd\tools\build-fomo.ps1` копирует `android/` в
+`C:\Users\viptd\tools\fomo-android`, подставляет подпись из `tools\keys` и просто передаёт аргументы в `gradlew`:
+
+```
+& "C:\Users\viptd\tools\build-fomo.ps1" assembleFomoRelease assembleTerminalRelease testFomoDebugUnitTest
+```
+
+Готовые файлы: `C:\Users\viptd\tools\fomo-android\app\build\outputs\named-apk\...`.
+
+**Адрес для debug.** `fomo.debugBaseUrl` (вариант fomo) и `fomo.terminalDebugBaseUrl` (вариант terminal) в `~/.gradle/gradle.properties` или `-P`; только `https://`.
+Release-сборки всегда открывают боевые адреса.
+
+**FOMO Terminal и push.** Пока нет `app/src/terminal/google-services.json`, терминальный вариант собирается и работает без push (Firebase не инициализируется,
+`PushBridge` отдаёт пустой токен). Положите файл (приложение `spot.fomo.terminal` в проекте `terminal-f7486`) — он подхватится сам при следующей сборке.
+Плагин Google Services подключён для всех вариантов со стратегией `missingGoogleServicesStrategy = IGNORE`: вариант без своего файла просто пропускается.
+
 ## Содержимое папки
 
 ```
 android/
   build.gradle.kts, settings.gradle.kts, gradle.properties, gradle/libs.versions.toml   — сборка (каталог версий)
   gradlew, gradlew.bat, gradle/wrapper/*                                                  — Gradle wrapper (из ваших проектов)
-  app/build.gradle.kts            — applicationId spot.fomo.app, BuildConfig.BASE_URL, подпись release, R8
-  app/google-services.json        — клиентская конфигурация Firebase (см. раздел про push)
+  app/build.gradle.kts            — flavors fomo / terminal (applicationId, BuildConfig.BASE_URL / UPDATE_PATH, плейсхолдер siteHost), подпись release, R8
+  app/src/fomo/                   — только FOMO: AndroidManifest.xml (фильтры «Поделиться»), google-services.json (клиентская конфигурация Firebase, см. раздел про push)
+  app/src/terminal/               — только FOMO Terminal: res (название, иконка), assets/offline.html, google-services.json (добавляет владелец)
   app/proguard-rules.pro          — keep-правила для JS-мостов
   app/src/main/AndroidManifest.xml
   app/src/main/java/spot/fomo/app/
@@ -51,10 +94,10 @@ android/
 2. `File → Open` → выберите папку **`android`** внутри репозитория (не корень репозитория).
 3. Дождитесь Gradle Sync. Если студия предложит обновить версии плагинов — можно отказаться; если sync жалуется на конкретную версию библиотеки,
    поправьте номер в `gradle/libs.versions.toml` (все версии собраны в одном месте).
-4. Выберите телефон (включите «Отладка по USB») или эмулятор → **Run ▶**. Debug-APK лежит в `app/build/outputs/apk/debug/`.
+4. Выберите телефон (включите «Отладка по USB») или эмулятор → **Run ▶**. Выберите вариант сборки (Build Variants): `fomoDebug` или `terminalDebug`; APK лежит в `app/build/outputs/apk/<flavor>/debug/` (копия с красивым именем — в `app/build/outputs/named-apk/`).
 5. Отладка WebView: в Chrome на компьютере откройте `chrome://inspect` — debug-сборка включает remote debugging.
-6. Другой адрес сайта для debug-сборки (например, staging по https): в `~/.gradle/gradle.properties` добавьте `fomo.debugBaseUrl=https://staging.example.com`.
-   Release-сборка всегда открывает `https://fomo.spot`.
+6. Другой адрес сайта для debug-сборки (например, staging по https): в `~/.gradle/gradle.properties` добавьте `fomo.debugBaseUrl=https://staging.example.com`
+   (для варианта terminal — `fomo.terminalDebugBaseUrl`). Release-сборки всегда открывают `https://fomo.spot` / `https://terminal.fomo.spot`.
 
 ## 2. APK из GitHub Actions (без Android Studio)
 
@@ -62,8 +105,8 @@ android/
 
 1. GitHub → репозиторий → вкладка **Actions** → слева **Android APK** → **Run workflow** (или просто дождитесь запуска после push).
 2. Откройте завершившийся запуск → внизу блок **Artifacts**:
-   - `fomo-debug-apk` — отладочный APK (подписан отладочным ключом runner'а: **ключ меняется от сборки к сборке**, поэтому поверх предыдущей debug-сборки он может не поставиться — тогда сначала удалите старую);
-   - `fomo-release-apk` — подписанный `fomo.apk` (появляется только если заданы 4 секрета, см. ниже).
+   - `fomo-debug-apk` / `fomo-terminal-debug-apk` — отладочный APK (FOMO / FOMO Terminal) (подписан отладочным ключом runner'а: **ключ меняется от сборки к сборке**, поэтому поверх предыдущей debug-сборки он может не поставиться — тогда сначала удалите старую);
+   - `fomo-release-apk` / `fomo-terminal-release-apk` — подписанные `fomo.apk` / `FOMO-Terminal.apk` (появляются только если заданы 4 секрета, см. ниже).
 3. Скачайте zip, распакуйте, перенесите `.apk` на телефон.
 4. Тег `android-v1.0.1` (`git tag android-v1.0.1 && git push origin android-v1.0.1`) дополнительно прикрепляет подписанный `fomo.apk` к GitHub Release — прямая ссылка
    `https://github.com/viptdv333-boop/fomo/releases/latest/download/fomo.apk` пригодна для обновлений (см. ниже).
@@ -111,14 +154,14 @@ keytool -genkeypair -v -keystore fomo-release.jks -alias fomo -keyalg RSA -keysi
    | `ANDROID_KEY_ALIAS` | `fomo` |
    | `ANDROID_KEY_PASSWORD` | пароль ключа |
 
-3. Запустите workflow — появится артефакт `fomo-release-apk`. Пока секретов нет, собирается только debug-APK.
+3. Запустите workflow — появятся артефакты `fomo-release-apk` и `fomo-terminal-release-apk`. Пока секретов нет, собирается только debug-APK.
 
 Локальная подписанная сборка: в `~/.gradle/gradle.properties` задайте `fomo.keystore=C:/путь/fomo-release.jks`, `fomo.keystorePassword=…`, `fomo.keyAlias=fomo`,
-`fomo.keyPassword=…` и выполните `gradlew assembleRelease` (или Build → Generate Signed App Bundle / APK).
+`fomo.keyPassword=…` и выполните `gradlew assembleFomoRelease assembleTerminalRelease` (или Build → Generate Signed App Bundle / APK).
 
 ## 5. Ссылки на сайт открываются в приложении (App Links)
 
-Манифест уже содержит `https://fomo.spot/*` с `autoVerify`. Чтобы Android считал приложение владельцем ссылок, сайт должен отдавать
+Манифест уже содержит `https://${siteHost}/*` с `autoVerify` (`fomo.spot` для FOMO, `terminal.fomo.spot` для FOMO Terminal). Чтобы Android считал приложение владельцем ссылок, сайт должен отдавать
 `https://fomo.spot/.well-known/assetlinks.json` с **SHA-256 отпечатком сертификата подписи**. Файл в репозитории — `public/.well-known/assetlinks.json` —
 сейчас содержит **заглушку из нулей**. Замените её:
 
@@ -128,11 +171,16 @@ keytool -genkeypair -v -keystore fomo-release.jks -alias fomo -keyalg RSA -keysi
 3. Проверка: `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://fomo.spot&relation=delegate_permission/common.handle_all_urls`.
    На телефоне: Настройки → Приложения → FOMO → «Открывать по умолчанию» (на некоторых версиях Android ссылки приходится включить вручную).
 
+Для FOMO Terminal тот же файл `public/.well-known/assetlinks.json` (его отдаёт и экземпляр сайта на `terminal.fomo.spot`) содержит второе утверждение: пакет
+`spot.fomo.terminal` с тем же отпечатком release-ключа (оба приложения подписаны одним ключом). Проверка:
+`https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://terminal.fomo.spot&relation=delegate_permission/common.handle_all_urls`.
+
 Неверный отпечаток ничего не ломает — просто ссылки продолжат открываться в браузере. Для CI-сборок отпечаток берётся из вашего release keystore (тот же, что в секретах).
 
 ## 6. Обновление приложения (необязательно)
 
-Приложение раз в 12 часов (после загрузки первой страницы) запрашивает `https://fomo.spot/app/version.json`:
+Приложение раз в 12 часов (после загрузки первой страницы) запрашивает `https://fomo.spot/app/version.json` (FOMO Terminal — `https://terminal.fomo.spot/app/terminal-version.json`, файл `public/app/terminal-version.json`,
+APK `https://terminal.fomo.spot/app/dl/FOMO-Terminal.apk`):
 
 ```json
 { "versionCode": 2, "versionName": "1.0.1", "url": "https://fomo.spot/app/fomo.apk" }
@@ -158,7 +206,7 @@ APK-файл в публичный репозиторий не коммитьт�
 а сервер при уведомлении шлёт push тем же правилам, что и Web Push (колонка **«В приложении»** в Настройки → Уведомления, тихие часы, переопределения по событиям).
 Пока на сервере нет ключа Firebase, всё остальное работает как раньше.
 
-Что уже сделано: проект Firebase **`fomo3-c2798`**, Android-приложение `spot.fomo.app`, файл `android/app/google-services.json` в репозитории.
+Что уже сделано: проект Firebase **`fomo3-c2798`**, Android-приложение `spot.fomo.app`, файл `android/app/src/fomo/google-services.json` в репозитории. Для FOMO Terminal — проект `terminal-f7486`, приложение `spot.fomo.terminal`, файл кладётся в `android/app/src/terminal/google-services.json` (см. «Варианты приложения»; SHA-1 release-ключа и ограничение API-ключа — как ниже).
 
 ### Шаг 1. google-services.json и его ключ
 
@@ -170,8 +218,8 @@ APK-файл в публичный репозиторий не коммитьт�
    (`keytool -list -v -keystore fomo-release.jks -alias fomo` → `SHA1`) и, если запускаете из Android Studio, debug (`%USERPROFILE%\.android\debug.keystore`).
 3. **API restrictions → Restrict key**: оставьте только Firebase Cloud Messaging / Firebase Installations (и, если Firebase потребует, FCM Registration API; проверьте актуальный список в документации Firebase).
 4. Если не хотите хранить файл в репозитории: удалите его оттуда (добавьте в `.gitignore`) и положите содержимое в base64 в секрет `GOOGLE_SERVICES_JSON_BASE64` —
-   workflow подставит его при сборке. Для локальной сборки файл тогда нужно скачать из Firebase в `android/app/`.
-   Без файла приложение собирается и работает, но без push (плагин Google Services подключается только если файл есть).
+   workflow подставит его при сборке. Для локальной сборки файл тогда нужно скачать из Firebase в `android/app/src/fomo/` (для терминала — `src/terminal/`, секрет `GOOGLE_SERVICES_TERMINAL_JSON_BASE64`).
+   Без файла приложение собирается и работает, но без push (плагин Google Services пропускает вариант без файла).
 
 ### Шаг 2. Ключ сервисного аккаунта для сервера (ваш следующий шаг)
 
@@ -260,7 +308,7 @@ APK-файл в публичный репозиторий не коммитьт�
 - Вход через сторонние сервисы (OAuth) откроется во вкладке Chrome и не вернёт сессию в WebView — на сайте используется обычный вход по логину/паролю.
 - Экран настроек и блокировка проверены только сборкой и юнит-тестами логики; на устройстве их нужно один раз пройти руками (список — в конце раздела 10).
 
-Юнит-тесты (`UrlPolicy`, `ThemeColor`, `LockPolicy`, `SettingsSpec`): `gradlew testDebugUnitTest`. Тесты сайтовой части: `npx tsx scripts/check-native-app.ts`, `npx tsx scripts/check-fcm.ts`.
+Юнит-тесты (`UrlPolicy`, `TerminalFlavorTest`, `ThemeColor`, `LockPolicy`, `SettingsSpec`): `gradlew testFomoDebugUnitTest`. Тесты сайтовой части: `npx tsx scripts/check-native-app.ts`, `npx tsx scripts/check-fcm.ts`.
 
 ## 10. Настройки приложения и блокировка
 
@@ -318,7 +366,7 @@ APK-файл в публичный репозиторий не коммитьт�
 
 ### Подпись debug и release
 
-Debug-сборка (Android Studio, `assembleDebug`, артефакт `fomo-debug-apk`) подписана **отладочным** ключом, release — вашим постоянным keystore (раздел 4). Подписи разные, поэтому
+Debug-сборка (Android Studio, `assembleFomoDebug`, артефакт `fomo-debug-apk`) подписана **отладочным** ключом, release — вашим постоянным keystore (раздел 4). Подписи разные, поэтому
 release **не ставится поверх** debug и наоборот: сначала удалите установленную сборку (вход и настройки приложения при этом сбросятся). То же относится к отпечаткам App Links (раздел 5): в `assetlinks.json` нужен отпечаток той подписи, которой подписана установленная сборка.
 
 ### Что проверить на устройстве (в сборке не проверялось)

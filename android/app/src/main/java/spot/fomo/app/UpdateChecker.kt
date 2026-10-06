@@ -13,8 +13,8 @@ import java.util.concurrent.Executors
 /**
  * Optional "update available" prompt for APKs installed outside a store.
  *
- * Reads BASE_URL/app/version.json (public/app/version.json on the site) — {"versionCode":2,"versionName":"1.0.1",
- * "url":"https://fomo.spot/app/fomo.apk"} — at most once per 12 hours. If versionCode is higher than this build's, a dialog
+ * Reads BASE_URL + UPDATE_PATH (per flavor: /app/version.json = public/app/version.json for fomo, /app/terminal-version.json for
+ * terminal) — {"versionCode":2,"versionName":"1.0.1", "url":"https://fomo.spot/app/fomo.apk"} — at most once per 12 hours. If versionCode is higher than this build's, a dialog
  * offers to download. The link is opened in the browser (which downloads the APK); the app NEVER installs anything itself.
  * Safe by construction: https only, the URL must be on the site or github.com, any failure is silently ignored.
  */
@@ -79,7 +79,7 @@ object UpdateChecker {
     private fun fetch(): Info? {
         var conn: HttpURLConnection? = null
         return try {
-            conn = URL(BuildConfig.BASE_URL.trimEnd('/') + "/app/version.json").openConnection() as HttpURLConnection
+            conn = URL(BuildConfig.BASE_URL.trimEnd('/') + BuildConfig.UPDATE_PATH).openConnection() as HttpURLConnection
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
             conn.instanceFollowRedirects = false // a redirect could leave the trusted origin

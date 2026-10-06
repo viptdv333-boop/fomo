@@ -53,7 +53,8 @@
 
         <!-- Orientation: never locked ("unspecified" = the system auto-rotate setting decides, so the full-screen chart follows the phone).
              configChanges: rotation / resize is handled in place, the Activity, the WebView page and the app lock are not recreated. -->
-        <!-- The only exported component: launcher, https://fomo.spot/* App Links and the system Share sheet. -->
+        <!-- The only exported component: launcher and the App Links of the flavor's site (${siteHost}). The system Share sheet filters
+             ("Share to FOMO") live in src/fomo/AndroidManifest.xml: only the fomo flavor has the /share page. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -68,32 +69,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- App Links. Needs https://fomo.spot/.well-known/assetlinks.json with this app's signing certificate fingerprint. -->
+            <!-- App Links. Needs https://${siteHost}/.well-known/assetlinks.json with this app's signing certificate fingerprint. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="fomo.spot" />
-            </intent-filter>
-
-            <!-- "Share to FOMO": screenshots, photos, text, PDF, Word -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="video/mp4" />
-                <data android:mimeType="video/webm" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="application/msword" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="video/mp4" />
-                <data android:mimeType="application/pdf" />
+                <data android:scheme="https" android:host="${siteHost}" />
             </intent-filter>
         </activity>
 

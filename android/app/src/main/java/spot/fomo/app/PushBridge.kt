@@ -9,7 +9,7 @@ import com.google.firebase.messaging.FirebaseMessaging
  * FomoApp.getPushToken() (and the "fomo-native-push-token" event) and registers it with the signed-in user's session
  * at POST /api/push/fcm — so the server never trusts the app, only the cookie session.
  *
- * Without app/google-services.json Firebase is not initialised: every function here degrades to "no token".
+ * Without src/<flavor>/google-services.json Firebase is not initialised: every function here degrades to "no token".
  */
 object PushBridge {
     private const val PREFS = "push"

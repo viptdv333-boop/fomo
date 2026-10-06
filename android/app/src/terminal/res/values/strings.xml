@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overrides of src/main/res/values/strings*.xml for the terminal flavor (FOMO Terminal, https://terminal.fomo.spot). -->
+<resources>
+    <string name="app_name">FOMO Terminal</string>
+    <string name="update_message">Вышла новая версия FOMO Terminal %1$s. Скачайте её и установите поверх текущей — данные и вход сохранятся.</string>
+    <string name="lock_prompt_title">Разблокировать FOMO Terminal</string>
+    <string name="test_notification_title">FOMO Terminal: проверка уведомлений</string>
+    <string name="settings_about_message">FOMO Terminal %1$s (%2$s)\n\nСайт: %3$s\nПоддержка и помощь — на сайте, раздел «Помощь».</string>
+    <string name="settings_pull_refresh_summary">Потяните страницу вниз, чтобы обновить (не работает в терминале)</string>
+    <string name="channel_messages_desc">Ответы, упоминания и другие личные уведомления</string>
+    <string name="channel_general_desc">Подписки, платежи и другие уведомления</string>
+</resources>

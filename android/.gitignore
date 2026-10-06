@@ -14,4 +14,4 @@ captures/
 keystore.properties
 *.p12
 
-# NOTE: app/google-services.json IS committed on purpose (FCM client config, no private key) — see README.md
+# NOTE: app/src/<flavor>/google-services.json (fomo, terminal) ARE committed on purpose (FCM client config, no private key) — see README.md

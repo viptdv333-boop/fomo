@@ -48,7 +48,7 @@ import androidx.webkit.WebViewFeature
 import java.util.concurrent.Executors
 
 /**
- * The whole app is one screen: a WebView on https://fomo.spot with the things a PWA cannot do (see android/README.md).
+ * The whole app is one screen: a WebView on BuildConfig.BASE_URL (https://fomo.spot, or https://terminal.fomo.spot in the terminal flavor) with the things a PWA cannot do (see android/README.md).
  *
  * Trust model: only https://fomo.spot (and www.) stays in the WebView and only that origin sees the `FomoApp` bridge.
  * Everything else opens in Custom Tabs / the matching app (ExternalLinks). The "current page" used for these decisions
@@ -306,7 +306,7 @@ class MainActivity : AppCompatActivity() {
                 clearHistoryOnFinish = true
                 loadUrl(base)
             }
-            ShareIntake.isShare(intent) -> handleShare(intent)
+            BuildConfig.SHARE_ENABLED && ShareIntake.isShare(intent) -> handleShare(intent)
             intent.action == Intent.ACTION_VIEW && intent.data != null -> {
                 val url = intent.dataString
                 if (UrlPolicy.isTrusted(url)) loadUrl(url!!) else if (initial) loadUrl(base)
