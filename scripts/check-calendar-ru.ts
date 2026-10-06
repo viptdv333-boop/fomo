@@ -6,6 +6,7 @@
    Run: npx tsx scripts/check-calendar-ru.ts */
 import assert from "node:assert/strict";
 import { explicitKey, glossaryBrief, glossaryText, localizeCalEvent, ruFeedImpact, TAGS } from "../src/lib/calendar/glossary";
+import { eventCategory } from "../src/lib/calendar/categories";
 import { filterEvents } from "../src/lib/calendar/normalize";
 import { DEFAULT_CAL_PREFS, normalizeCalPrefs } from "../src/lib/calendar/prefs";
 import {
@@ -273,26 +274,27 @@ async function main() {
     const shown = ["Interest Rate Decision", "Inflation Rate YoY", "Unemployment Rate"].map((nme) => localizeCalEvent({ ...feedEvent(nme, "2026-10-09T16:00:00Z"), impact: 1 }, "ru")).filter((e) => defaults.has(e.impact));
     assert.equal(shown.length, 3, "with impact=medium,high the Russian rows are visible");
   });
-  await ok("filterEvents: noRu hides the layer, the country filter does not, the oil-and-gas filter excludes it, impacts apply, search finds the Russian title", () => {
+  await ok("filterEvents: the country filter applies to the layer (country RU), the category filter splits it, the oil-and-gas filter excludes it, impacts apply, search finds the Russian title", () => {
     const sample = buildRussiaScheduled("2026-10-01", "2026-10-31", "ru");
     assert.ok(sample.length > 10);
     const stock: CalEvent = { ...sample[0], id: "x", category: "growth", country: "US", gk: undefined, tags: undefined };
     const mixed = [...sample, stock];
-    assert.equal(filterEvents(mixed, { noRu: true }).length, 1);
-    assert.equal(filterEvents(mixed, { countries: new Set(["CN"]) }).length, sample.length, "the country filter keeps the layer, drops other countries");
+    assert.equal(filterEvents(mixed, { countries: new Set(["CN"]) }).length, 0, "CN: the Russian layer goes (the country filter applies to everything)");
+    const cats = new Set(filterEvents(sample, {}).map((e) => eventCategory(e)));
+    assert.ok(cats.has("cb") && cats.has("economy"), "Bank of Russia / OFZ rows are rates, Rosstat rows are economy");
+    assert.equal(filterEvents(sample, { categories: new Set(["cb", "economy"]) }).length, sample.length, "the layer is only cb and economy");
     assert.equal(filterEvents(mixed, { countries: new Set(["RU"]) }).length, sample.length, "RU: the layer stays, the US row goes");
     assert.equal(filterEvents(mixed, { energy: true }).length, 0);
     assert.ok(filterEvents(mixed, { impacts: new Set([3]) }).every((e) => e.impact === 3));
     assert.equal(filterEvents(sample, { q: "ключевой ставке" }).length, 1);
     assert.ok(filterEvents(sample, { q: "аукцион" }).length >= 3);
   });
-  await ok("preferences: russia defaults to true, false is kept, junk falls back to true", () => {
+  await ok("preferences: the layer switch is gone from the UI: russia is always true, an old stored false is ignored", () => {
     assert.equal(DEFAULT_CAL_PREFS.russia, true);
     assert.equal(normalizeCalPrefs({}).russia, true);
-    assert.equal(normalizeCalPrefs({ russia: false }).russia, false);
+    assert.equal(normalizeCalPrefs({ russia: false }).russia, true);
     assert.equal(normalizeCalPrefs({ russia: "no" }).russia, true);
-    assert.equal(normalizeCalPrefs(normalizeCalPrefs({ russia: false })).russia, false);
-    assert.equal(normalizeCalPrefs({ russia: false, commodities: false }).commodities, false, "the other layers are independent");
+    assert.equal(normalizeCalPrefs({ russia: false, commodities: false }).commodities, true);
   });
 
   console.log("merge into the source, no overlap with the corp layer");

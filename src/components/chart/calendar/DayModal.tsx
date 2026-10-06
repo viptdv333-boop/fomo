@@ -8,7 +8,7 @@ import type { CalEvent } from "@/lib/calendar/types";
 import { EC_ICONS } from "../icons-econ";
 import ModalPortal from "../ModalPortal";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip } from "./Filters";
+import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import { DAY_COLS, NowMarker, PanelRow, WideRow, iconBtn, isPast } from "./CalendarView";
 import { useNarrow, useNow } from "./parts";
@@ -17,6 +17,11 @@ interface Props {
   date: string;
   /** events of this day that passed the filters, sorted by time */
   events: CalEvent[];
+  /** events of this day after the country and search filters (before the category one): the category picker counts them */
+  countEvents?: readonly CalEvent[];
+  /** the search text and its setter (the same search as the calendar behind the modal) */
+  q: string;
+  setQ: (v: string) => void;
   zone: string;
   locale: string;
   /** the event the modal was opened on (scrolled to and highlighted) */
@@ -34,7 +39,7 @@ interface Props {
 const PHONE_BTN = "max-sm:h-11 max-sm:w-11";
 
 /** One day of the calendar in a modal (a bottom sheet on a phone): filters, the full table, the event popup with reminders. */
-export default function DayModal({ date, events, zone, locale, focusId, canPrev, canNext, onPrev, onNext, onClose, noData }: Props) {
+export default function DayModal({ date, events, countEvents, q, setQ, zone, locale, focusId, canPrev, canNext, onPrev, onNext, onClose, noData }: Props) {
   const { t } = useT();
   const narrow = useNarrow();
   const now = useNow(15_000);
@@ -95,15 +100,11 @@ export default function DayModal({ date, events, zone, locale, focusId, canPrev,
             </button>
           </div>
 
-          {/* on a phone the filters are one line that scrolls sideways, so the day keeps the height */}
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2 max-sm:flex-nowrap max-sm:gap-x-1.5 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden max-sm:[&_button]:h-8">
-            <div className="flex w-[170px] max-w-full max-sm:shrink-0"><CountryFilter seen={seen} /></div>
-            <QuickChips wrap={narrow} />
-            <EnergyChip />
-            <MoexChip />
-            <CommodityChip />
-            <RussiaChip />
-            <CorpChip />
+          {/* the filters in the order of the whole calendar: countries, categories, search; two lines on a phone */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--tv3-hair2)] px-3 py-2 max-sm:gap-x-2 max-sm:[&_button]:h-9 max-sm:[&_input]:h-9">
+            <div className="flex w-[190px] max-w-full max-sm:min-w-0 max-sm:flex-1"><CountryFilter seen={seen} /></div>
+            <div className="flex w-[210px] max-w-full max-sm:min-w-0 max-sm:flex-1"><CategoryFilter events={countEvents ?? events} /></div>
+            <div className="flex min-w-[150px] max-w-[300px] flex-1 max-sm:max-w-none max-sm:basis-full"><SearchBox q={q} setQ={setQ} /></div>
           </div>
 
           <div ref={bodyRef} className="min-h-0 flex-1 overflow-auto">

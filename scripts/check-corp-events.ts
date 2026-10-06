@@ -279,10 +279,12 @@ async function main() {
     assert.equal(localizeCalEvent(e, "ru"), e);
     assert.equal(localizeCalEvent(e, "en"), e);
   });
-  await ok("filterEvents: noCorp hides the layer, the country filter does not, the search finds tickers, names and aggregated issues", () => {
-    assert.equal(filterEvents(evs, { noCorp: true }).length, 0);
+  await ok("filterEvents: the category «Компании» keeps the layer, the country filter applies (the layer is RU), the search finds tickers, names and aggregated issues", () => {
+    assert.equal(filterEvents(evs, { categories: new Set(["corp"]) }).length, evs.length);
+    assert.equal(filterEvents(evs, { categories: new Set(["economy", "cb"]) }).length, 0);
     assert.equal(filterEvents(evs, {}).length, evs.length);
-    assert.equal(filterEvents(evs, { countries: new Set(["US"]) }).length, evs.length, "own switch, not the country filter");
+    assert.equal(filterEvents(evs, { countries: new Set(["US"]) }).length, 0, "the country filter applies to the layer: US hides Russian issuers");
+    assert.equal(filterEvents(evs, { countries: new Set(["RU"]) }).length, evs.length);
     assert.equal(filterEvents(evs, { energy: true }).length, 0, "the oil and gas quick filter never shows corp events");
     assert.ok(filterEvents(evs, { q: "sber" }).length >= 3);
     assert.ok(filterEvents(evs, { q: "сбер" }).length >= 3);
@@ -291,10 +293,10 @@ async function main() {
     assert.equal(filterEvents(evs, { q: "gazp" }).length, 0);
     assert.equal(filterEvents(evs, { impacts: new Set([3]) }).every((e) => e.gk === "corp.div"), true);
   });
-  await ok("pref «corp» defaults to on and survives normalisation", () => {
+  await ok("pref «corp»: no switch in the UI any more, always true, an old stored false is ignored", () => {
     assert.equal(DEFAULT_CAL_PREFS.corp, true);
     assert.equal(normalizeCalPrefs({}).corp, true);
-    assert.equal(normalizeCalPrefs({ corp: false }).corp, false);
+    assert.equal(normalizeCalPrefs({ corp: false }).corp, true);
     assert.equal(normalizeCalPrefs({ corp: "x" }).corp, true);
   });
 

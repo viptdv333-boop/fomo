@@ -71,7 +71,7 @@ export function formatDayHeading(date: string, locale: string, opts: Intl.DateTi
   }
 }
 
-export type RangePreset = "yesterday" | "today" | "tomorrow" | "week" | "nextweek" | "custom";
+export type RangePreset = "yesterday" | "today" | "tomorrow" | "week" | "d30" | "nextweek" | "custom";
 
 export interface DateRange {
   from: string;
@@ -94,6 +94,9 @@ export function rangeFor(preset: RangePreset, zone: string, nowMs: number, custo
       const mon = addDays(today, -weekday(today));
       return { from: mon, to: addDays(mon, 6) };
     }
+    case "d30":
+      // «30 дней»: today and the 29 days after it (30 days, within MAX_RANGE_DAYS, so one request)
+      return { from: today, to: addDays(today, 29) };
     case "nextweek": {
       const mon = addDays(today, 7 - weekday(today));
       return { from: mon, to: addDays(mon, 6) };

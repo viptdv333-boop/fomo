@@ -9,8 +9,6 @@ export const COUNTRY_CODES = [
 
 export const G7 = ["US", "GB", "DE", "FR", "IT", "CA", "JP", "EU"] as const;
 export const G20 = ["US", "CN", "JP", "DE", "IN", "GB", "FR", "IT", "BR", "CA", "RU", "KR", "AU", "MX", "ID", "TR", "SA", "AR", "ZA", "EU"] as const;
-/** Quick chips: Russia, USA, Eurozone, China. */
-export const QUICK = ["RU", "US", "EU", "CN"] as const;
 
 export const COUNTRY_PRESETS = {
   g7: G7,

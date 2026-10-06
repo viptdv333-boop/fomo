@@ -15,7 +15,7 @@ import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
+import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
 import type { Anchor } from "./FloatingPanel";
 import MobileCalendarBar from "./MobileCalendarBar";
 import MobileDayList from "./MobileDayList";
@@ -57,10 +57,12 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   const data = useCalendarWindow(start, zone, visible && grid, locale, DAYS);
   const cells = useMemo(() => buildMonthCells(start, today, DAYS), [start, today]);
 
-  const events = useMemo(
-    () => filterEvents(data.events, { countries: new Set(prefs.countries), q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }),
-    [data.events, prefs.countries, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, q]
-  );
+  // country and search first (the category picker counts these), then the category filter
+  const base = useMemo(() => filterEvents(data.events, { countries: new Set(prefs.countries), q }), [data.events, prefs.countries, q]);
+  const events = useMemo(() => filterEvents(base, { categories: new Set<string>(prefs.categories) }), [base, prefs.categories]);
+  // the list view loads its own data: its base reaches the category picker through this state
+  const [listBase, setListBase] = useState<CalEvent[]>([]);
+  const dayBase = useMemo(() => (openDay ? base.filter((e) => eventDay(e, zone) === openDay.date) : []), [base, openDay, zone]);
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
   const dayEvents = useMemo(() => (openDay ? events.filter((e) => eventDay(e, zone) === openDay.date) : []), [events, openDay, zone]);
@@ -149,6 +151,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           q={q}
           setQ={setQ}
           seen={seen}
+          catEvents={grid ? base : listBase}
         />
       ) : (
         <>
@@ -200,13 +203,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           </div>
         )}
         <div className="flex w-[190px] max-w-full"><CountryFilter seen={seen} /></div>
-        <div className="hidden sm:block"><QuickChips /></div>
-        <EnergyChip />
-        <MoexChip />
-        <CommodityChip />
-        <RussiaChip />
-        <CorpChip />
-        <div className="flex min-w-[150px] max-w-[260px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
+        <div className="flex w-[210px] max-w-full"><CategoryFilter events={grid ? base : listBase} /></div>
+        <div className="flex min-w-[150px] max-w-[320px] flex-1"><SearchBox q={q} setQ={setQ} /></div>
       </div>
         </>
       )}
@@ -226,7 +224,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
             <MonthGrid cells={cells} events={events} zone={zone} locale={loc} coverage={data.coverage} onOpenDay={(date, focusId) => setOpenDay({ date, focusId })} />
           )
         ) : (
-          <CalendarView variant="embedded" zone={zone} visible={visible} query={q} />
+          <CalendarView variant="embedded" zone={zone} visible={visible} query={q} onBase={setListBase} />
         )}
       </div>
       {grid && <SourceFooter source={data.source} moex={data.moex} commodity={data.commodity} russia={data.russia} className="shrink-0 border-t border-[var(--tv3-hair2)]" />}
@@ -235,6 +233,9 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
         <DayModal
           date={openDay.date}
           events={dayEvents}
+          countEvents={dayBase}
+          q={q}
+          setQ={setQ}
           zone={zone}
           locale={loc}
           focusId={openDay.focusId}

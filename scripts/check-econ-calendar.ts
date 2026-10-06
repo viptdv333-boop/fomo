@@ -124,6 +124,12 @@ async function main() {
     assert.equal(filterEvents(ev, { q: "usd" }).length, ev.filter((e) => e.currency === "USD").length);
     assert.equal(filterEvents(ev, {}).length, ev.length);
     assert.equal(filterEvents(ev, { countries: new Set() }).length, ev.length, "empty set = no restriction");
+    // the country filter applies to every event, layers included; the Moscow Exchange (country RU) is shown only with RU selected
+    const layered = [...ev, { ...ev[0], id: "m1", country: "RU", category: "moex" as const }, { ...ev[0], id: "c1", country: "US", category: "commodity" as const }];
+    assert.ok(!filterEvents(layered, { countries: new Set(["US"]) }).some((e) => e.id === "m1"));
+    assert.ok(filterEvents(layered, { countries: new Set(["US"]) }).some((e) => e.id === "c1"));
+    assert.ok(filterEvents(layered, { countries: new Set(["RU"]) }).some((e) => e.id === "m1"));
+    assert.ok(!filterEvents(layered, { countries: new Set(["RU"]) }).some((e) => e.id === "c1"));
   });
 
   console.log("surprise colouring");
@@ -199,6 +205,8 @@ async function main() {
     assert.deepEqual(rangeFor("tomorrow", "UTC", now), { from: "2026-10-08", to: "2026-10-08" });
     assert.deepEqual(rangeFor("week", "UTC", now), { from: "2026-10-05", to: "2026-10-11" });
     assert.deepEqual(rangeFor("nextweek", "UTC", now), { from: "2026-10-12", to: "2026-10-18" });
+    assert.deepEqual(rangeFor("d30", "UTC", now), { from: "2026-10-07", to: "2026-11-05" }, "«30 дней»: today and the 29 days after it");
+    assert.equal(daySpan(rangeFor("d30", "Europe/Moscow", now)), 30);
     assert.deepEqual(rangeFor("custom", "UTC", now, { from: "2026-10-20", to: "2026-10-10" }), { from: "2026-10-10", to: "2026-10-20" });
     assert.deepEqual(rangeFor("custom", "UTC", now, { from: "bad", to: "x" }), { from: "2026-10-07", to: "2026-10-07" });
     const b = rangeBounds({ from: "2026-10-08", to: "2026-10-08" }, "Europe/Moscow");

@@ -5,7 +5,8 @@ import { useT } from "@/lib/i18n/client";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import { iconBtn } from "./CalendarView";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
+import type { CalEvent } from "@/lib/calendar/types";
+import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
 
 interface Props {
   mode: "layer" | "page";
@@ -25,14 +26,16 @@ interface Props {
   q: string;
   setQ: (v: string) => void;
   seen: string[];
+  /** events of the shown range after the country and search filters: the category picker counts them */
+  catEvents?: readonly CalEvent[];
 }
 
 /**
- * The header and the filters of the calendar on a phone, in four tidy lines that never overflow the viewport:
- * title + zone + refresh (+ close), the view switch + month navigation, country picker + search, and ONE horizontally scrolling
- * strip with the quick country chips and the layer switches.
+ * The header and the filters of the calendar on a phone, in tidy lines that never overflow the viewport:
+ * title + zone + refresh (+ close), the view switch + month navigation, then the filters in the same order as everywhere:
+ * countries and categories (two bottom-sheet pickers side by side), search.
  */
-export default function MobileCalendarBar({ mode, onClose, zoneSlot, viewTabs, nav, atToday, onPrev, onToday, onNext, loading, onRefresh, q, setQ, seen }: Props) {
+export default function MobileCalendarBar({ mode, onClose, zoneSlot, viewTabs, nav, atToday, onPrev, onToday, onNext, loading, onRefresh, q, setQ, seen, catEvents }: Props) {
   const { t } = useT();
   return (
     <div className="shrink-0 border-b border-[var(--tv3-hair)] px-3 pb-2 pt-2">
@@ -76,23 +79,12 @@ export default function MobileCalendarBar({ mode, onClose, zoneSlot, viewTabs, n
         )}
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
+      <div role="group" aria-label={t("ec.filters")} className="mt-2 flex items-center gap-2">
         <div className="flex min-w-0 flex-1"><CountryFilter seen={seen} /></div>
-        <div className="flex min-w-0 flex-1"><SearchBox q={q} setQ={setQ} /></div>
+        <div className="flex min-w-0 flex-1"><CategoryFilter events={catEvents} /></div>
       </div>
 
-      <div
-        role="group"
-        aria-label={t("ec.layerFilters")}
-        className="-mx-3 mt-2 flex items-center gap-1.5 overflow-x-auto px-3 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-8 [&_button]:text-[13px]"
-      >
-        <QuickChips wrap />
-        <EnergyChip />
-        <MoexChip />
-        <CommodityChip />
-        <RussiaChip />
-        <CorpChip />
-      </div>
+      <div className="mt-2 flex"><SearchBox q={q} setQ={setQ} /></div>
     </div>
   );
 }

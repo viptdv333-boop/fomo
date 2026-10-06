@@ -370,12 +370,14 @@ ok("«Нефть и газ» filter: only oil / gas events, any country, regardl
   const evs = raw.map((e) => localizeCalEvent(e, "ru"));
   const only = filterEvents(evs, { energy: true, countries: new Set(["RU"]), impacts: new Set([2, 3]) });
   assert.deepEqual(only.map((e) => e.eventEn), ["EIA Crude Oil Stocks Change", "EIA Natural Gas Stocks Change", "OPEC Monthly Report"]);
-  assert.equal(filterEvents(evs, { countries: new Set(["RU"]) }).length, 1, "without the chip the country filter works as before (only the MOEX layer stays)");
+  assert.equal(filterEvents(evs, { countries: new Set(["RU"]) }).length, 1, "without the API flag the country filter applies (only the MOEX layer, country RU, stays)");
 });
-ok("the default is off and normalisation keeps the flag", () => {
+ok("the chip is gone from the UI: the flag is always false, an old energy:true becomes the Energy category", () => {
   assert.equal(DEFAULT_CAL_PREFS.energy, false);
   assert.equal(normalizeCalPrefs(undefined).energy, false);
-  assert.equal(normalizeCalPrefs({ energy: true }).energy, true);
+  assert.equal(normalizeCalPrefs({ energy: true }).energy, false);
+  assert.deepEqual(normalizeCalPrefs({ energy: true }).categories, ["energy"]);
+  assert.deepEqual(normalizeCalPrefs({ energy: true, categories: ["metals"] }).categories, ["metals"], "an explicit category list wins");
   assert.equal(normalizeCalPrefs({ energy: "yes" }).energy, false);
 });
 ok("surprise colouring still knows inverse indicators after the title was translated", () => {

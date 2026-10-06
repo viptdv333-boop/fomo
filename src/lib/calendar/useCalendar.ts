@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mergeEvents } from "./normalize";
-import { useCalPrefs } from "./prefs";
 import { rangeBounds, MAX_RANGE_DAYS, daySpan, addDays, type DateRange } from "./time";
 import type { CalEvent } from "./types";
 
@@ -66,9 +65,8 @@ const EMPTY: CalEvent[] = [];
 /** Events of a date range (in the display zone) with auto refresh: every minute while visible, every 15 s around releases. */
 export function useCalendarRange(range: DateRange, zone: string, enabled: boolean, lang = "ru"): CalData {
   const { from, to } = apiRange(range, zone);
-  // the «Dividends and reporting» chip is a server side switch (corp=0): part of the cache key, so toggling it refetches once and then flips instantly
-  const [prefs] = useCalPrefs();
-  const key = `${lang}|${from}..${to}|${prefs.corp ? 1 : 0}`;
+  // every layer (Moscow Exchange, commodities, Russia, dividends / coupons / reports) is always requested; the category filter works on the client
+  const key = `${lang}|${from}..${to}`;
   const [, bump] = useState(0);
   const entry = memo.get(key);
   const [status, setStatus] = useState<CalStatus>(entry ? "ok" : "loading");
@@ -84,9 +82,9 @@ export function useCalendarRange(range: DateRange, zone: string, enabled: boolea
     abortRef.current = ctl;
     if (!silent && !memo.has(k)) setStatus("loading");
     try {
-      const [lg, span, corpOn] = k.split("|");
+      const [lg, span] = k.split("|");
       const [f, t] = span.split("..");
-      const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}&lang=${lg}${corpOn === "0" ? "&corp=0" : ""}`, { signal: ctl.signal });
+      const res = await fetch(`/api/economic-calendar?from=${f}&to=${t}&lang=${lg}&limit=5000`, { signal: ctl.signal });
       const reason = res.headers.get("X-Calendar-Reason") || (res.ok ? "ok" : "upstream-error");
       const body: unknown = await res.json().catch(() => []);
       if (ctl.signal.aborted || keyRef.current !== k) return;

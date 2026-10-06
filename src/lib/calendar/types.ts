@@ -66,18 +66,13 @@ export type ImpactLevel = 1 | 2 | 3;
 
 /** Filter used by both the API and the UI. null = no restriction. */
 export interface CalFilter {
+  /** Selected countries; empty / null = all. Applies to EVERY event, layers included (the Moscow Exchange layer carries country RU). */
   countries?: ReadonlySet<string> | null;
   impacts?: ReadonlySet<number> | null;
   q?: string;
-  /** Hide the Moscow Exchange layer. */
-  noMoex?: boolean;
-  /** Hide the commodities / agriculture layer. */
-  noCommodity?: boolean;
-  /** Hide the corporate-events layer (dividends, coupons, reports). */
-  noCorp?: boolean;
-  /** Hide the Russia layer (category "ru"). */
-  noRu?: boolean;
-  /** "Oil and gas" quick filter: only events tagged oil / gas, from any country (the country filter does not apply). */
+  /** Categories of lib/calendar/categories.ts (eventCategory); empty / null = all. */
+  categories?: ReadonlySet<string> | null;
+  /** API only (`energy=1`): just the oil and gas events (tags oil | gas), from any country (the country filter does not apply). */
   energy?: boolean;
 }
 

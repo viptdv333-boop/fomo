@@ -245,23 +245,26 @@ async function main() {
     assert.equal(localizeCalEvent(en[0], "en"), en[0]);
     assert.ok(en.every((x) => !hasCyr(x.event)), "english titles");
   });
-  await ok("filterEvents: noCommodity hides the layer, the country filter does not, the oil-and-gas filter excludes it, impacts apply", () => {
+  await ok("filterEvents: the country filter applies to the layer (the issuer's country), the agro category keeps it, the oil-and-gas filter excludes it, impacts apply", () => {
     const sample = buildCommodityEvents("2026-10-01", "2026-10-31", "ru");
     assert.ok(sample.length > 10);
     const stock: CalEvent = { ...sample[0], id: "x", category: "growth", country: "US", gk: undefined, tags: undefined };
     const mixed = [...sample, stock];
-    assert.equal(filterEvents(mixed, { noCommodity: true }).length, 1);
-    assert.equal(filterEvents(mixed, { countries: new Set(["RU"]) }).length, sample.length, "country filter keeps the layer, drops other countries");
+    assert.equal(filterEvents(mixed, { categories: new Set(["economy"]) }).length, 1, "the layer is category agro, the stock row is economy");
+    assert.equal(filterEvents(mixed, { categories: new Set(["agro"]) }).length, sample.length);
+    assert.equal(filterEvents(mixed, { countries: new Set(["RU"]) }).length, 0, "RU: no commodity report is Russian, the US row goes too");
+    const issuers = new Set(sample.map((e) => e.country));
+    assert.equal(filterEvents(mixed, { countries: new Set([...issuers]) }).length, sample.length + (issuers.has("US") ? 1 : 0), "the issuers' countries keep the layer");
+    assert.equal(filterEvents(mixed, { countries: new Set(["US"]) }).filter((e) => e.category === "commodity").length, sample.filter((e) => e.country === "US").length, "US keeps the USDA reports only");
     assert.equal(filterEvents(mixed, { energy: true }).length, 0);
     assert.ok(filterEvents(mixed, { impacts: new Set([3]) }).every((e) => e.impact === 3));
     assert.equal(filterEvents(sample, { q: "WASDE" }).length, 1, "search finds the Russian title by the report name");
   });
-  await ok("preferences: commodities defaults to true, false is kept, junk falls back to true", () => {
+  await ok("preferences: the layer switch is gone from the UI: commodities is always true, an old stored false is ignored", () => {
     assert.equal(DEFAULT_CAL_PREFS.commodities, true);
     assert.equal(normalizeCalPrefs({}).commodities, true);
-    assert.equal(normalizeCalPrefs({ commodities: false }).commodities, false);
+    assert.equal(normalizeCalPrefs({ commodities: false }).commodities, true);
     assert.equal(normalizeCalPrefs({ commodities: "no" }).commodities, true);
-    assert.equal(normalizeCalPrefs(normalizeCalPrefs({ commodities: false })).commodities, false);
   });
 
   console.log("merge into the source");

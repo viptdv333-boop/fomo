@@ -1,3 +1,4 @@
+import { eventCategory } from "./categories";
 import type { CalCategory, CalEvent, CalFilter, ImpactLevel } from "./types";
 
 /* Normalisation of FMP economic-calendar rows (stable/economic-calendar). Pure functions: used by the API route, the
@@ -168,20 +169,19 @@ export function filterEvents(events: readonly CalEvent[], f: CalFilter): CalEven
   const q = f.q?.trim().toLowerCase() ?? "";
   const countries = f.countries && f.countries.size > 0 ? f.countries : null;
   const impacts = f.impacts && f.impacts.size > 0 ? f.impacts : null;
-  if (!q && !countries && !impacts && !f.noMoex && !f.noCommodity && !f.noRu && !f.noCorp && !f.energy) return events.slice();
+  const categories = f.categories && f.categories.size > 0 ? f.categories : null;
+  if (!q && !countries && !impacts && !categories && !f.energy) return events.slice();
   return events.filter((e) => {
     if (f.energy) {
-      // «Нефть и газ»: oil / gas inventories, rigs, OPEC, IEA from any country; the country filter and the MOEX / commodity / Russia / corporate layers do not apply
+      // API `energy=1`: oil / gas inventories, rigs, OPEC, IEA from any country; the country filter and the layers do not apply
       if (e.category === "moex" || e.category === "commodity" || e.category === "ru" || e.category === "corp" || !isEnergyEvent(e)) return false;
-    } else if (countries && e.category !== "moex" && e.category !== "commodity" && e.category !== "ru" && e.category !== "corp" && !countries.has(e.country)) {
-      // the Moscow Exchange, commodity, Russia and corporate layers have their own switches (noMoex, noCommodity, noRu, noCorp): the country filter does not hide them
+    } else if (countries && !countries.has(e.category === "moex" ? "RU" : e.country)) {
+      // the country filter applies to EVERYTHING, layers included: the Moscow Exchange, Russia and corporate rows carry country RU,
+      // commodity reports the issuer's country (US for USDA). So the Moscow Exchange rows show only with RU selected (or no country at all)
       return false;
     }
     if (impacts && !impacts.has(e.impact)) return false;
-    if (f.noMoex && e.category === "moex") return false;
-    if (f.noCommodity && e.category === "commodity") return false;
-    if (f.noRu && e.category === "ru") return false;
-    if (f.noCorp && e.category === "corp") return false;
+    if (categories && !categories.has(eventCategory(e))) return false;
     if (q && !(e.event.toLowerCase().includes(q) || (e.search?.includes(q) ?? false) || (e.eventEn?.toLowerCase().includes(q) ?? false) || e.country.toLowerCase() === q || e.currency.toLowerCase() === q)) return false;
     return true;
   });

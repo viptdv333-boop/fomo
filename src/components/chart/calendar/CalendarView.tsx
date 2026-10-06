@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import { eventCategory, eventCategoryKey } from "@/lib/calendar/categories";
 import { countryName, intlLocale } from "@/lib/calendar/countries";
 import { filterEvents } from "@/lib/calendar/normalize";
 import { useCalPrefs } from "@/lib/calendar/prefs";
@@ -15,7 +16,7 @@ import { EC_ICONS } from "../icons-econ";
 import CalendarBell from "./CalendarBell";
 import ChartEventsButton from "./ChartEventsMenu";
 import EventDetails from "./EventDetails";
-import { CommodityChip, CorpChip, CountryFilter, EnergyChip, MoexChip, QuickChips, RussiaChip, SearchBox } from "./Filters";
+import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
 import FloatingPanel, { anchorOf, type Anchor } from "./FloatingPanel";
 import MiniMonth from "./MiniMonth";
 import { ActualValue, BriefLine, CommodityMark, ImpactDot, ImpactDots, MoexMark, RuMark, SourceFooter, useNow } from "./parts";
@@ -26,8 +27,12 @@ const TABS: { id: Exclude<RangePreset, "custom">; key: string }[] = [
   { id: "today", key: "ec.tab.today" },
   { id: "tomorrow", key: "ec.tab.tomorrow" },
   { id: "week", key: "ec.tab.week" },
+  { id: "d30", key: "ec.tab.d30" },
   { id: "nextweek", key: "ec.tab.nextweek" },
 ];
+
+/** Day groups rendered at a time in a long list (30 days / a custom month). */
+const DAYS_STEP = 7;
 
 export const iconBtn =
   "tv3-press h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-[10px] bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer disabled:opacity-40 disabled:cursor-default";
@@ -42,7 +47,8 @@ export function NextChip({ zone, enabled, onPick }: { zone: string; enabled: boo
   const range = useMemo(() => ({ from: today, to: addDays(today, 6) }), [today]);
   const data = useCalendarRange(range, zone, enabled, locale);
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
-  const next = useMemo(() => filterEvents(data.events, { countries, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy }).find((e) => !e.allDay && e.ts > now), [data.events, countries, prefs.moex, prefs.commodities, prefs.russia, prefs.energy, now]);
+  const categories = useMemo(() => new Set<string>(prefs.categories), [prefs.categories]);
+  const next = useMemo(() => filterEvents(data.events, { countries, categories }).find((e) => !e.allDay && e.ts > now), [data.events, countries, categories, now]);
   if (!next) return <span className="flex-1 truncate text-[12px] text-[var(--tv3-muted)]">{data.status === "loading" ? "" : t("ec.next.none")}</span>;
   return (
     <button
@@ -141,7 +147,7 @@ export const WideRow = memo(function WideRow({ ev, zone, now, locale, reminded, 
         </span>
         <BriefLine ev={ev} />
       </span>
-      {!compact && <span className="truncate text-[11px] text-[var(--tv3-muted)]">{t(`ec.cat.${ev.category}`)}</span>}
+      {!compact && <span className="truncate text-[11px] text-[var(--tv3-muted)]">{t(eventCategoryKey(eventCategory(ev)))}</span>}
       <span title={t(`ec.impact.${ev.impact}`)}><ImpactDots level={ev.impact} /></span>
       <span className="text-right tabular-nums"><ActualValue ev={ev} locale={locale} /></span>
       <span className={`text-right tabular-nums ${val}`}>{formatValue(ev.forecast, ev.unit, locale) || "—"}</span>
@@ -174,9 +180,11 @@ export interface CalendarViewProps {
   onExpand?: () => void;
   /** embedded: the search text of the parent. */
   query?: string;
+  /** embedded: the events of the range after the country and search filters (before the category one): the parent's category picker counts them. */
+  onBase?: (events: CalEvent[]) => void;
 }
 
-export default function CalendarView({ variant, zone, visible, onExpand, query = "" }: CalendarViewProps) {
+export default function CalendarView({ variant, zone, visible, onExpand, query = "", onBase }: CalendarViewProps) {
   const { t, locale } = useT();
   const loc = intlLocale(locale);
   const embedded = variant === "embedded";
@@ -197,15 +205,21 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
   const data = useCalendarRange(range, zone, visible, locale);
 
   const countries = useMemo(() => new Set(prefs.countries), [prefs.countries]);
+  const categories = useMemo(() => new Set<string>(prefs.categories), [prefs.categories]);
   const seen = useMemo(() => [...new Set(data.events.map((e) => e.country).filter(Boolean))], [data.events]);
 
-  const list = useMemo(() => {
+  // country and search first: the category picker counts these (what each category would show), then the category filter itself
+  const base = useMemo(() => {
     const inRange = data.events.filter((e) => {
       const d = eventDay(e, zone);
       return d >= range.from && d <= range.to;
     });
-    return filterEvents(inRange, { countries, q, noMoex: !prefs.moex, noCommodity: !prefs.commodities, noRu: !prefs.russia, energy: prefs.energy });
-  }, [data.events, zone, range, countries, q, prefs.moex, prefs.commodities, prefs.russia, prefs.energy]);
+    return filterEvents(inRange, { countries, q });
+  }, [data.events, zone, range, countries, q]);
+  const list = useMemo(() => filterEvents(base, { categories }), [base, categories]);
+  useEffect(() => {
+    if (embedded) onBase?.(base);
+  }, [embedded, onBase, base]);
 
   const groups = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
@@ -220,8 +234,32 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
 
   const remindedIds = useMemo(() => new Set(reminders.map((r) => r.id)), [reminders]);
 
-  // bring the "now" line into view once per range
+  // a 30-day list holds ~2000 rows: the day groups are rendered a week at a time (the first one always reaches today), the next week
+  // is added when the end of the list scrolls near
+  const resetKey = `${range.from}..${range.to}|${q}|${prefs.countries.join()}|${prefs.categories.join()}|${wide}`;
+  const todayIdx = groups.findIndex(([d]) => d >= today);
+  const firstDays = Math.max(DAYS_STEP, todayIdx + 3);
+  const [grow, setGrow] = useState({ key: "", extra: 0 });
+  const extra = grow.key === resetKey ? grow.extra : 0;
+  const shownDays = firstDays + extra;
+  const visibleGroups = shownDays >= groups.length ? groups : groups.slice(0, shownDays);
+  const moreDays = visibleGroups.length < groups.length;
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!moreDays || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (es) => {
+        if (es.some((e) => e.isIntersecting)) setGrow({ key: resetKey, extra: extra + DAYS_STEP });
+      },
+      { root: scrollRef.current, rootMargin: "600px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [moreDays, resetKey, extra]);
+
+  // bring the "now" line into view once per range
   const scrolledFor = useRef("");
   useEffect(() => {
     const k = `${range.from}..${range.to}|${wide}`;
@@ -236,15 +274,15 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     } else el.scrollTop = 0;
   }, [visible, data.status, range, wide, list.length]);
 
-  const filtersActive = prefs.countries.length > 0 || q.trim() !== "" || !prefs.moex || !prefs.commodities || !prefs.russia || !prefs.corp || prefs.energy;
+  const filtersActive = prefs.countries.length > 0 || prefs.categories.length > 0 || q.trim() !== "";
   const resetFilters = () => {
     setQLocal("");
-    update((p) => ({ ...p, countries: [], moex: true, commodities: true, russia: true, corp: true, energy: false }));
+    update((p) => ({ ...p, countries: [], categories: [], moex: true, commodities: true, russia: true, corp: true, energy: false }));
   };
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
   const rangeTabs = (
-    <div className={`flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${wide ? "mx-3 my-2 w-fit rounded-[9px] bg-[var(--tv3-fill2)] p-0.5" : `rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 ${embedded ? "mx-3 my-2" : ""}`}`} role="tablist" aria-label={t("ec.range")}>
+    <div className={`flex items-center ${wide ? "mx-3 my-2 w-fit overflow-x-auto rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : `flex-wrap gap-y-0.5 rounded-[9px] bg-[var(--tv3-fill2)] p-0.5 ${embedded ? "mx-3 my-2" : ""}`}`} role="tablist" aria-label={t("ec.range")}>
       {TABS.map((tb) => {
         const on = prefs.preset === tb.id;
         return (
@@ -311,7 +349,7 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
     }
     return (
       <div className={wide ? "" : "px-2.5 pb-2.5"}>
-        {groups.map(([day, evs]) => {
+        {visibleGroups.map(([day, evs]) => {
           const isToday = day === today;
           const firstFuture = isToday ? evs.findIndex((e) => !isPast(e, now, zone)) : -1;
           return (
@@ -331,6 +369,13 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             </section>
           );
         })}
+        {moreDays && (
+          <div ref={sentinelRef} className="flex h-12 items-center justify-center">
+            <button type="button" onClick={() => setGrow({ key: resetKey, extra: extra + DAYS_STEP })} className="h-8 cursor-pointer rounded-[10px] bg-[var(--tv3-fill)] px-3 text-xs font-semibold text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]">
+              {t("ec.moreDays")}
+            </button>
+          </div>
+        )}
       </div>
     );
   })();
@@ -398,16 +443,9 @@ export default function CalendarView({ variant, zone, visible, onExpand, query =
             )}
           </div>
           {!prefs.panelGrid && rangeTabs}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <CountryFilter seen={seen} />
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <QuickChips wrap />
-            <EnergyChip />
-            <MoexChip />
-            <CommodityChip />
-            <RussiaChip />
-            <CorpChip />
+            <CategoryFilter events={base} />
           </div>
           <div className="flex"><SearchBox q={qLocal} setQ={setQLocal} /></div>
         </div>

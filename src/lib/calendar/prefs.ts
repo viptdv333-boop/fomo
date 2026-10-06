@@ -2,33 +2,39 @@
 
 import { useSyncExternalStore } from "react";
 import { listUserData, saveUserData } from "@/lib/chart/userdata";
+import { EVENT_CATEGORIES, type EventCategory } from "./categories";
 import type { DateRange, RangePreset } from "./time";
 
 /* Calendar preferences shared by the side panel, the wide dialog and the chart overlay.
    localStorage first (no flicker), the account copy (userdata 'calendar_prefs'/'default') merged in when it is newer.
    There is no importance filter any more: the list, grid, modal and page always show every event (a stored `impacts` of older
-   versions is ignored; only the chart overlay keeps its own `chart.impacts`). */
+   versions is ignored; only the chart overlay keeps its own `chart.impacts`).
+   The layer switches (moex, commodities, corp, russia) and the oil-and-gas chip are gone from the UI: the data of every layer is always
+   shown and narrowed by `categories` (lib/calendar/categories.ts). The old fields stay in the object so stored copies and the chart
+   overlay keep working, but they are normalised to their «on» defaults, whatever an older version saved. */
 
 export interface CalPrefs {
   v: 1;
   at: number;
   /** Selected countries; empty = all. */
   countries: string[];
+  /** Selected categories (eventCategory); empty = all. */
+  categories: EventCategory[];
   /** The "My countries" preset: saved with the "save as mine" action. */
   mine: string[];
   preset: RangePreset;
   custom: DateRange | null;
   /** Events on the chart. */
   chart: { on: boolean; impacts: number[] };
-  /** The Moscow Exchange layer (trading calendar, expirations): list, grid and chart. */
+  /** Legacy, always true (no switch in the UI). The Moscow Exchange layer (trading calendar, expirations): list, grid and chart. */
   moex: boolean;
-  /** The commodities / agriculture layer (USDA, CONAB, cocoa grindings, MPOB ... report dates): list, grid and chart. */
+  /** Legacy, always true. The commodities / agriculture layer (USDA, CONAB, cocoa grindings, MPOB ... report dates): list, grid and chart. */
   commodities: boolean;
-  /** The corporate-events layer (dividends, bond coupons, reporting dates of Russian issuers): the data hook asks the API for it (corp=0 when off). */
+  /** Legacy, always true. The corporate-events layer (dividends, bond coupons, reporting dates of Russian issuers): always requested. */
   corp: boolean;
-  /** The Russia layer (Bank of Russia, Rosstat, Minfin OFZ auction schedules): list, grid and chart. */
+  /** Legacy, always true. The Russia layer (Bank of Russia, Rosstat, Minfin OFZ auction schedules): list, grid and chart. */
   russia: boolean;
-  /** «Нефть и газ» quick filter: only oil / gas events (EIA, API, Baker Hughes, OPEC, IEA ...) from any country. */
+  /** Legacy, always false (replaced by the «Энергетика» category). */
   energy: boolean;
   /** Full-page calendar view: month squares or the list. */
   view: "grid" | "list";
@@ -40,6 +46,7 @@ export const DEFAULT_CAL_PREFS: CalPrefs = {
   v: 1,
   at: 0,
   countries: [],
+  categories: [],
   mine: [],
   preset: "today",
   custom: null,
@@ -54,7 +61,7 @@ export const DEFAULT_CAL_PREFS: CalPrefs = {
 };
 
 const LS = "fomo-calendar-prefs-v1";
-const PRESETS: RangePreset[] = ["yesterday", "today", "tomorrow", "week", "nextweek", "custom"];
+const PRESETS: RangePreset[] = ["yesterday", "today", "tomorrow", "week", "d30", "nextweek", "custom"];
 
 const isDate = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const levels = (v: unknown, def: number[]): number[] => {
@@ -65,6 +72,9 @@ const levels = (v: unknown, def: number[]): number[] => {
 const codes = (v: unknown): string[] =>
   Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && /^[A-Za-z]{2}$/.test(x)).map((x) => x.toUpperCase()))].slice(0, 80) : [];
 
+const categoryList = (v: unknown): EventCategory[] =>
+  Array.isArray(v) ? EVENT_CATEGORIES.filter((c) => v.includes(c)) : [];
+
 export function normalizeCalPrefs(raw: unknown): CalPrefs {
   const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const chart = r.chart && typeof r.chart === "object" ? (r.chart as Record<string, unknown>) : {};
@@ -73,15 +83,18 @@ export function normalizeCalPrefs(raw: unknown): CalPrefs {
     v: 1,
     at: typeof r.at === "number" ? r.at : 0,
     countries: codes(r.countries),
+    // an older copy with the «Нефть и газ» chip on becomes the «Энергетика» category (the nearest thing to what the user had)
+    categories: Array.isArray(r.categories) ? categoryList(r.categories) : r.energy === true ? ["energy"] : [],
     mine: codes(r.mine),
     preset: PRESETS.includes(r.preset as RangePreset) ? (r.preset as RangePreset) : "today",
     custom: custom && isDate(custom.from) && isDate(custom.to) ? { from: custom.from, to: custom.to } : null,
     chart: { on: chart.on === true, impacts: levels(chart.impacts, DEFAULT_CAL_PREFS.chart.impacts) },
-    moex: r.moex !== false,
-    commodities: r.commodities !== false,
-    corp: r.corp !== false,
-    russia: r.russia !== false,
-    energy: r.energy === true,
+    // the layer switches are gone from the UI: a layer an older version switched off is simply shown again
+    moex: true,
+    commodities: true,
+    corp: true,
+    russia: true,
+    energy: false,
     view: r.view === "list" ? "list" : "grid",
     panelGrid: r.panelGrid === true,
   };
