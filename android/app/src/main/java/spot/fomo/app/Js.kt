@@ -11,6 +11,9 @@ object Js {
 
     fun nativePaste(file: FilePayload): String = event("fomo-native-paste", file.toJson())
 
+    /** The app took the system bars back on its own (it was stopped): the chart of the page must leave its full screen. */
+    const val IMMERSIVE_RESET = "(function(){document.dispatchEvent(new CustomEvent('fomo-native-immersive-reset'));})();"
+
     fun pushToken(token: String): String = event("fomo-native-push-token", JSONObject().put("token", token))
 
     /**

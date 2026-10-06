@@ -127,11 +127,14 @@ interface Props {
   appPage?: boolean;
   appHandle?: MutableRefObject<AppChartHandle | null>;
   onAppState?: (s: AppChartState) => void;
+  /** App terminal page, chart full screen (see TradingChart). */
+  appFull?: boolean;
+  appFullLead?: ReactNode;
 }
 
 export default function MultiChart(props: Props) {
   const { t } = useT();
-  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState } = props;
+  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState, appFull, appFullLead } = props;
   const [state, setState] = useState<MultiState>(() => (typeof window === "undefined" ? DEFAULT_STATE : loadLocal()));
   const [active, setActive] = useState(0);
   const [sharedInterval, setSharedInterval] = useState<string | null>(null);
@@ -173,7 +176,7 @@ export default function MultiChart(props: Props) {
   }, []);
 
   // the app terminal page is one chart: a layout saved on the desktop must not squeeze four panes into it
-  const count = appPage ? 1 : LAYOUTS.find((l) => l.id === state.layout)?.panes ?? 1;
+  const count = appPage || appFull ? 1 : LAYOUTS.find((l) => l.id === state.layout)?.panes ?? 1;
   const primary: PaneSym = { source, ticker };
   const symOf = (i: number): PaneSym => (i === 0 ? primary : state.panes[i - 1] ?? primary);
 
@@ -251,7 +254,7 @@ export default function MultiChart(props: Props) {
     </MenuPopover>
   );
 
-  const gridCls = appPage ? GRID["1"] : GRID[state.layout];
+  const gridCls = appPage || appFull ? GRID["1"] : GRID[state.layout];
   const cellCls = (i: number) => `relative min-w-0 min-h-0 flex flex-col overflow-hidden ${count === 3 && i === 0 ? "row-span-2" : ""} ${count > 1 ? "rounded-2xl" : ""} ${count > 1 && active === i ? "outline outline-2 -outline-offset-2 outline-[var(--tv3-accent)]/60" : ""}`;
 
   return (
@@ -270,7 +273,7 @@ export default function MultiChart(props: Props) {
               compact={count > 1 && i === 0}
               storageId={i > 0 ? `p${i}` : undefined}
               active={count === 1 || active === i}
-              toolbarExtra={i === 0 ? picker : undefined}
+              toolbarExtra={i === 0 && !appFull ? picker : undefined}
               hub={count > 1 ? hub : undefined}
               syncInterval={count > 1 && state.sync.interval ? sharedInterval : null}
               onIntervalChange={(id) => {
@@ -279,6 +282,8 @@ export default function MultiChart(props: Props) {
               appPage={appPage}
               appHandle={i === 0 ? appHandle : undefined}
               onAppState={i === 0 ? onAppState : undefined}
+              appFull={appFull}
+              appFullLead={i === 0 ? appFullLead : undefined}
             />
           </div>
         );

@@ -16,6 +16,8 @@ export interface FomoBridge {
   /** Opens the native settings screen of the app (app build 1.0.0+ with the settings screen). */
   openSettings?: () => void;
   lockEnabled?: () => boolean;
+  /** Hides / shows the Android status and navigation bars (the full-screen chart). App builds with the `immersive` feature. */
+  setImmersive?: (on: boolean) => void;
   /** JSON string, see parseAppFeatures. */
   appFeatures?: () => string;
 }
@@ -34,6 +36,7 @@ export const NATIVE_MAX_FILES = 5;
 
 export const NATIVE_PASTE_EVENT = "fomo-native-paste";
 export const NATIVE_SHARE_EVENT = "fomo-native-share";
+export const NATIVE_IMMERSIVE_RESET_EVENT = "fomo-native-immersive-reset";
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/png": "png",
@@ -246,6 +249,8 @@ export interface NativeFeatures {
   /** Android 8+: sound / vibration are set per notification channel. */
   notificationChannels: boolean;
   updateCheck: boolean;
+  /** FomoApp.setImmersive exists: the full-screen chart can hide the system bars. */
+  immersive: boolean;
 }
 
 /** Tolerant parser of FomoApp.appFeatures(): null for anything that is not a JSON object; missing fields become false / "". */
@@ -270,6 +275,7 @@ export function parseAppFeatures(raw: unknown): NativeFeatures | null {
     lockEnabled: d.lockEnabled === true,
     notificationChannels: d.notificationChannels === true,
     updateCheck: d.updateCheck === true,
+    immersive: d.immersive === true,
   };
 }
 
@@ -300,6 +306,33 @@ export function openNativeSettings(): boolean {
   } catch {
     return false;
   }
+}
+
+/** True only inside an app build that can hide the system bars (the full-screen chart); false in a browser / PWA / old app. */
+export function canSetNativeImmersive(): boolean {
+  const b = nativeBridge();
+  if (!b || typeof b.setImmersive !== "function") return false;
+  const f = nativeAppFeatures();
+  return f ? f.immersive : false;
+}
+
+/** Hides (true) or shows (false) the system bars of the app; false when this app build has no such method. Never throws. */
+export function setNativeImmersive(on: boolean): boolean {
+  if (!canSetNativeImmersive()) return false;
+  try {
+    nativeBridge()?.setImmersive?.(on === true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The app left immersive mode on its own (it was stopped while the chart was full screen): the chart must collapse. Returns the unsubscribe function. */
+export function onNativeImmersiveReset(cb: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const h = () => cb();
+  document.addEventListener(NATIVE_IMMERSIVE_RESET_EVENT, h);
+  return () => document.removeEventListener(NATIVE_IMMERSIVE_RESET_EVENT, h);
 }
 
 // ---------------------------------------------------------------------------

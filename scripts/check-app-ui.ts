@@ -11,6 +11,7 @@ import {
   raisesKeyboard,
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
+import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
 import { isValidInterval } from "../src/lib/chart/intervals";
 import {
   CAT_I18N,
@@ -291,6 +292,19 @@ eq("query: dm", chatQuery({ dm: "c1" }), "seg=dms&dm=c1");
 eq("query: with", chatQuery({ with: "u1" }), "seg=dms&with=u1");
 eq("query: groups", chatQuery({ groups: true }), "groups=1");
 eq("query round-trips", ["room=r1", "seg=dms&dm=c1", "groups=1", "seg=dms"].map((q) => chatQuery(parseChatRoute("/chat", P(q)))), ["room=r1", "seg=dms&dm=c1", "groups=1", "seg=dms"]);
+
+// --- full-screen chart: the system Back closes it, the orientation is never forced, the app / browser / old app each get their plan
+eq("fs: marker key", FS_HISTORY_KEY, "fomoChartFs");
+eq("fs: marker detection", [isFsHistoryState({ fomoChartFs: true }), isFsHistoryState({ fomoChartFs: 1 }), isFsHistoryState({}), isFsHistoryState(null), isFsHistoryState("x"), isFsHistoryState(undefined)], [true, false, false, false, false, false]);
+eq("fs: pushed state keeps the router's data", fsPushState({ __NA: true, tree: [1] }), { __NA: true, tree: [1], fomoChartFs: true });
+eq("fs: pushed state from junk", [fsPushState(null), fsPushState("s"), fsPushState([1])], [{ fomoChartFs: true }, { fomoChartFs: true }, { fomoChartFs: true }]);
+eq("fs: pop to an entry without the marker collapses", collapseOnPop(true, { __NA: true }), true);
+eq("fs: pop to a marked entry does not", collapseOnPop(true, { fomoChartFs: true }), false);
+eq("fs: pop when not expanded does nothing", [collapseOnPop(false, null), collapseOnPop(false, { a: 1 })], [false, false]);
+eq("fs: new app hides the system bars", fullscreenPlan({ native: true, nativeImmersive: true, apiAvailable: true }), { immersive: true, api: false });
+eq("fs: old app has only the CSS layer", fullscreenPlan({ native: true, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: false });
+eq("fs: browser / PWA uses the Fullscreen API", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: true });
+eq("fs: browser without the API has only the CSS layer", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: false }), { immersive: false, api: false });
 
 if (fails) {
   console.log(`\n${fails} FAILED`);

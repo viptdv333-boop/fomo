@@ -2,6 +2,8 @@
    Run: npx tsx scripts/check-native-app.ts   (exit code 1 on a failed assertion) */
 import {
   canOpenNativeSettings,
+  canSetNativeImmersive,
+  setNativeImmersive,
   nativeAppFeatures,
   openNativeSettings,
   parseAppFeatures,
@@ -89,8 +91,8 @@ async function main() {
   eq("live share event", shares, ["pending", "live"]);
 
   // --- native settings / app features (feature detection must never throw and must be false outside the app)
-  const full = JSON.stringify({ schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true });
-  eq("features parsed", parseAppFeatures(full), { schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true });
+  const full = JSON.stringify({ schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true });
+  eq("features parsed", parseAppFeatures(full), { schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true });
   eq("features: junk -> null", [parseAppFeatures(""), parseAppFeatures("nope"), parseAppFeatures("[1]"), parseAppFeatures("null"), parseAppFeatures(5), parseAppFeatures(undefined)], [null, null, null, null, null, null]);
   eq("features: too long -> null", parseAppFeatures("{" + " ".repeat(5000) + "}"), null);
   eq("features: missing / wrong-typed fields are false", parseAppFeatures('{"settings":"yes","appLock":1}')?.settings, false);
@@ -108,6 +110,19 @@ async function main() {
   eq("features say settings -> available", canOpenNativeSettings(), true);
   win.FomoApp = { openSettings: () => { throw new Error("boom"); }, appFeatures: () => { throw new Error("boom"); } };
   eq("throwing bridge never throws", [nativeAppFeatures(), openNativeSettings()], [null, false]);
+  // --- immersive mode (the full-screen chart): only a build that says so is called, nothing ever throws
+  eq("no bridge -> no immersive", [canSetNativeImmersive(), setNativeImmersive(true)], [false, false]);
+  const calls: boolean[] = [];
+  win.FomoApp = { setImmersive: (on: boolean) => { calls.push(on); } }; // no appFeatures: not trusted, the old fallback path is used
+  eq("method without features -> not used", [canSetNativeImmersive(), setNativeImmersive(true), calls], [false, false, []]);
+  win.FomoApp = { setImmersive: (on: boolean) => { calls.push(on); }, appFeatures: () => '{"immersive":false}' };
+  eq("features say no immersive -> not used", [canSetNativeImmersive(), setNativeImmersive(true), calls], [false, false, []]);
+  win.FomoApp = { appFeatures: () => full }; // the flag without the method (cannot happen in a real build)
+  eq("flag without method -> not used", canSetNativeImmersive(), false);
+  win.FomoApp = { setImmersive: (on: boolean) => { calls.push(on); }, appFeatures: () => full };
+  eq("new app -> on and off reach the bridge, strictly boolean", [canSetNativeImmersive(), setNativeImmersive(true), setNativeImmersive(false), calls], [true, true, true, [true, false]]);
+  win.FomoApp = { setImmersive: () => { throw new Error("boom"); }, appFeatures: () => full };
+  eq("throwing setImmersive -> false", setNativeImmersive(true), false);
   delete win.FomoApp;
 
   console.log(fails ? `\n${fails} FAILED` : "\nall passed");

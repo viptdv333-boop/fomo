@@ -51,6 +51,8 @@
         android:usesCleartextTraffic="false"
         tools:targetApi="35">
 
+        <!-- Orientation: never locked ("unspecified" = the system auto-rotate setting decides, so the full-screen chart follows the phone).
+             configChanges: rotation / resize is handled in place, the Activity, the WebView page and the app lock are not recreated. -->
         <!-- The only exported component: launcher, https://fomo.spot/* App Links and the system Share sheet. -->
         <activity
             android:name=".MainActivity"
@@ -58,6 +60,7 @@
             android:launchMode="singleTask"
             android:theme="@style/Theme.Fomo.Splash"
             android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="unspecified"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection">
 
             <intent-filter>

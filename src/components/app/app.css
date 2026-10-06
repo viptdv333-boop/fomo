@@ -385,7 +385,8 @@ html.app-ui { --app-gb: 1px solid #e9e9ec; }
 html.app-ui.dark { --app-gb: 1px solid #1d1d1d; }
 /* the design runs on the system font with line-height normal (the site's body line-height of 1.5 would inflate every label) */
 html.app-ui .app-term { display: flex; flex-direction: column; background: var(--app-bg); color: var(--app-tx); line-height: normal; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-html.app-ui .app-term :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+/* not inside the chart block: its own buttons (full-screen toolbar, bottom bar, dialogs) keep their Tailwind padding / background (unlayered CSS beats the utilities layer) */
+html.app-ui .app-term :where(button:not(.app-term-chart button)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
 html.app-ui .app-term [data-tone="up"] { color: #22c55e; }
 html.app-ui .app-term [data-tone="down"] { color: #ef4444; }
 /* sticky symbol bar */
@@ -409,7 +410,6 @@ html.app-ui .app-term-chartbody { position: relative; flex: 1; min-height: 0; }
 html.app-ui .app-term-cap { flex: none; min-height: 26px; padding: 6px 8px 0; box-sizing: border-box; display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--app-tx2); }
 html.app-ui .app-term-cap-t { font-weight: 600; color: var(--app-tx); }
 html.app-ui .app-term-cap-d { padding: 2px 6px; border-radius: 4px; background: var(--app-card2); }
-html.app-ui .app-term-expand { margin-left: auto; height: 20px; padding: 0 9px; border-radius: 10px; background: var(--app-card2); font-size: 11px; font-weight: 600; color: var(--app-tx); }
 /* range row */
 html.app-ui .app-term-ranges { display: flex; justify-content: space-between; padding: 8px 12px; border-top: 0.5px solid var(--app-line); border-bottom: 0.5px solid var(--app-line); }
 html.app-ui .app-term-range { font-size: 12px; font-weight: 600; padding: 4px 6px; border-radius: 6px; color: var(--app-tx2); background: transparent; }
@@ -436,9 +436,3 @@ html.app-ui .app-term-wp { display: block; font-size: 15px; font-weight: 600; }
 html.app-ui .app-term-wc { display: block; font-size: 12px; }
 html.app-ui .app-term-wempty { padding: 14px; font-size: 13px; color: var(--app-tx2); line-height: 1.4; }
 html.app-ui .app-term-disc { font-size: 11px; color: var(--app-tx3); padding: 0 16px 24px; line-height: 1.4; }
-/* full-screen chart (the expand button): the old terminal layer, above the page, below the dock */
-html.app-ui .app-term-full { position: fixed; left: 0; right: 0; top: 0; bottom: var(--app-bottom-inset); z-index: 40; display: flex; flex-direction: column; background: var(--tv3-canvas); }
-html.app-ui .app-term-fullbar { flex: none; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px; background: var(--app-nav); border-bottom: 0.5px solid var(--app-line); color: var(--app-tx); }
-html.app-ui .app-term-back { display: flex; align-items: center; gap: 2px; height: 34px; padding: 0 8px 0 4px; font-size: 14px; font-weight: 600; color: var(--app-green-tx); background: none; border: 0; }
-html.app-ui .app-term-fulltick { font-size: 14px; font-weight: 700; }
-html.app-ui .app-term-fullbody { position: relative; flex: 1; min-height: 0; }

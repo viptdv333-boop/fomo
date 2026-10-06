@@ -452,14 +452,14 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
   const remaining = Math.max(0, search.total - search.items.length);
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-stretch justify-center bg-black/40 sm:items-center sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="app-sd-wrap fixed inset-0 z-[80] flex items-stretch justify-center bg-black/40 sm:items-center sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={rootRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onKeyDown={onRootKey}
-        className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] sm:h-[min(80vh,760px)] sm:w-[820px] sm:max-w-full sm:rounded-2xl"
+        className="app-sd-card flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] sm:h-[min(80vh,760px)] sm:w-[820px] sm:max-w-full sm:rounded-2xl"
       >
         {/* sticky head: title, search, chips, filters */}
         <div className="shrink-0 border-b border-[var(--tv3-hair)]">
@@ -469,7 +469,7 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
               {ICON.close}
             </button>
           </div>
-          <div className="max-h-[52dvh] overflow-y-auto sm:max-h-none sm:overflow-visible">
+          <div className="app-sd-head max-h-[52dvh] overflow-y-auto sm:max-h-none sm:overflow-visible">
             <div className="px-4 pb-1.5 sm:px-5">
               <div className="flex h-11 items-center gap-3 rounded-xl bg-[var(--tv3-fill)] px-3.5 focus-within:ring-2 focus-within:ring-[var(--tv3-accent)]">
                 <span className="text-[var(--tv3-muted)]">{ICON.search}</span>

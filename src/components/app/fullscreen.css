@@ -1,0 +1,92 @@
+/*
+ * Full-screen chart of the app Terminal (src/components/app/AppTerminal.tsx). Kept apart from app.css.
+ * The chart block (.app-term-chart) stays the same DOM element in both modes; while expanded it is a fixed layer over the whole
+ * viewport (dock 45 and header 46 sit below it) in whatever orientation the device is in: portrait stays portrait, a phone held
+ * in landscape gets the landscape layout. In the Android app the system bars are hidden too (FomoApp.setImmersive).
+ */
+
+/* the slot keeps the page's height while the chart block is a fixed layer */
+html.app-ui .app-term-slot { position: relative; border-top: 0.5px solid var(--app-line); }
+html.app-ui .app-term-slot > .app-term-chart { height: 100%; border-top: 0; }
+
+/* the expand icon over the chart, top-right (TradingView puts it there) */
+html.app-ui .app-term-chart .app-term-expand {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-card2) 88%, transparent);
+  color: var(--app-tx);
+  font-size: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+html.app-ui .app-term-chart .app-term-expand:active { background: var(--app-press); }
+/* the caption keeps clear of the icon */
+html.app-ui .app-term-chart .app-term-cap { padding-right: 48px; min-height: 30px; }
+
+/* ---------- full screen ---------- */
+html.app-ui .app-term-chart.app-term-fs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  z-index: 50;
+  box-sizing: border-box;
+  background: var(--tv3-canvas);
+  border: 0;
+  /* display cutouts and gesture areas (in the app the WebView is already inset by the activity; in a browser env() does it) */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  html.app-ui .app-term-chart.app-term-fs { bottom: auto; height: 100dvh; }
+}
+html.app-ui .app-term-chart.app-term-fs .app-term-chartbody { min-height: 0; flex: 1; }
+
+/* nothing under the layer takes part while it is open: no scrolling of the page, no dock / header taps or focus */
+html.app-ui.app-term-fs main { overflow: hidden; }
+html.app-ui.app-term-fs [data-app-tabbar],
+html.app-ui.app-term-fs [data-app-header] { visibility: hidden; }
+
+/* the close icon: first thing in the chart's toolbar (top-left corner), same look as the toolbar's icon buttons */
+html.app-ui .app-term-fsclose {
+  flex: none;
+  width: 37px;
+  height: 37px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tv3-fill);
+  color: var(--tv3-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* the toolbar scrolls sideways: the close icon stays in the corner, with a halo that hides what slides under it */
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  box-shadow: 0 0 0 5px var(--tv3-card);
+}
+html.app-ui .app-term-fsclose:active { filter: brightness(0.92); }
+
+/* ---------- a phone held in landscape (wide, but only ~360px tall): sheets use the whole screen like on a portrait phone ---------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* symbol search: no 24px frame, full height; the head (search, chips, filters) scrolls inside 40% so the list keeps room */
+  html.app-ui .app-sd-wrap { padding: 0; align-items: stretch; }
+  html.app-ui .app-sd-card { height: 100dvh; max-height: 100dvh; width: 100%; border-radius: 0; }
+  html.app-ui .app-sd-head { max-height: 40dvh; overflow-y: auto; }
+}

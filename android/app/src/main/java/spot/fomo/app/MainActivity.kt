@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -86,6 +87,10 @@ class MainActivity : AppCompatActivity() {
     private var pendingWebResources: List<String> = emptyList()
     private var webViewGone = false
     private var clearHistoryOnFinish = false
+
+    /** The full-screen chart has the system bars hidden (FomoApp.setImmersive). */
+    private var immersive = false
+    private var immersiveResetPending = false
 
     // App lock (see AppLock / LockController). While locked, deep links and shares wait here until the owner unlocks.
     private lateinit var authenticator: Authenticator
@@ -159,6 +164,11 @@ class MainActivity : AppCompatActivity() {
         if (!webViewGone) webView.onResume()
         SecureWindow.update(this)
         lock.onResume()
+        if (immersiveResetPending) {
+            // the bars were given back while the app was away: tell the page so its chart leaves the full screen too
+            immersiveResetPending = false
+            if (!webViewGone && UrlPolicy.isTrusted(currentUrl)) webView.evaluateJavascript(Js.IMMERSIVE_RESET, null)
+        }
     }
 
     override fun onPause() {
@@ -170,6 +180,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         FomoApplication.appVisible = false
+        resetImmersive(notifyPage = true) // never leave the app without status / navigation bars in the background
         CookieManager.getInstance().flush()
         super.onStop()
     }
@@ -185,6 +196,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        resetImmersive(notifyPage = false)
         lock.onDestroy()
         PushBridge.onToken = null
         fileChooser.cancel()
@@ -358,7 +370,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun onLockChanged(locked: Boolean) {
         updateKeepScreenOn()
-        if (locked) return
+        if (locked) {
+            resetImmersive(notifyPage = true)
+            return
+        }
         if (deferredInitial || deferredIntent != null) {
             val queued = deferredIntent
             val initial = deferredInitial
@@ -386,6 +401,33 @@ class MainActivity : AppCompatActivity() {
         val keep = AppSettings.keepScreenOnInTerminal(this) && !AppLock.isLocked && UrlPolicy.isTerminal(currentUrl)
         if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    // ---- full-screen chart: immersive mode (system bars only; the orientation follows the sensor / the system setting) -----------
+
+    /** FomoApp.setImmersive: hide or show the status and navigation bars; a swipe from the edge shows them transiently. */
+    fun setChartImmersive(on: Boolean) {
+        if (!ImmersivePolicy.shouldApply(on, immersive, AppLock.isLocked)) return
+        immersive = on
+        applyImmersive(on)
+    }
+
+    private fun applyImmersive(on: Boolean) {
+        val controller = WindowCompat.getInsetsController(window, root)
+        if (on) {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    /** Gives the bars back; with [notifyPage] the page is told on the next resume (its JS may be paused right now). */
+    private fun resetImmersive(notifyPage: Boolean) {
+        if (!immersive) return
+        immersive = false
+        applyImmersive(false)
+        if (notifyPage) immersiveResetPending = true
     }
 
     // ---- called by the helpers ---------------------------------------------------------------------------------------
@@ -561,6 +603,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             currentUrl = url
+            if (ImmersivePolicy.resetOnNavigation(immersive, url)) resetImmersive(notifyPage = false)
             pageCanScrollUp = false
             updateRefreshEnabled()
             updateKeepScreenOn()
@@ -596,6 +639,7 @@ class MainActivity : AppCompatActivity() {
         /** Single-page navigations (history.pushState) do not reload the page but do change the URL. */
         override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
             currentUrl = url
+            if (ImmersivePolicy.resetOnNavigation(immersive, url)) resetImmersive(notifyPage = false)
             updateRefreshEnabled()
             updateKeepScreenOn()
             scheduleThemeColorRead()

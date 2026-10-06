@@ -73,7 +73,8 @@ class FomoBridge(private val activity: MainActivity) {
     /**
      * What this build of the app can do, so the site can show entries only for what exists:
      * `{"schema":1,"versionName":"1.0.0","versionCode":1,"settings":true,"appLock":true,"lockEnabled":false,
-     * "notificationChannels":true,"updateCheck":true}`. `appLock` = the device can ask for a biometric / PIN.
+     * "notificationChannels":true,"updateCheck":true,"immersive":true}`. `appLock` = the device can ask for a biometric / PIN;
+     * `immersive` = [setImmersive] exists (full-screen chart).
      */
     @JavascriptInterface
     fun appFeatures(): String {
@@ -87,7 +88,19 @@ class FomoBridge(private val activity: MainActivity) {
             .put("lockEnabled", AppLock.enforced())
             .put("notificationChannels", Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             .put("updateCheck", true)
+            .put("immersive", true)
             .toString()
+    }
+
+    /**
+     * Full-screen chart: hides (true) / shows (false) the status and navigation bars (swipe from the edge shows them for a moment).
+     * The orientation is NOT touched: the chart is full screen in whatever orientation the device is in. The app gives the bars
+     * back by itself when it stops, closes or the page leaves the terminal.
+     */
+    @JavascriptInterface
+    fun setImmersive(on: Boolean) {
+        if (!trusted()) return
+        activity.runOnUiThread { activity.setChartImmersive(on) }
     }
 
     /** Android 13+: shows the system "allow notifications" dialog once; no-op elsewhere or when already decided. */

@@ -24,7 +24,11 @@ import {
   pickBoardInstrument,
   showDelayNote,
 } from "@/lib/app-terminal";
+import { useDemoGate } from "@/lib/useDemoGate";
+import { canSetNativeImmersive, isNativeApp, onNativeImmersiveReset, setNativeImmersive } from "@/lib/native-app";
+import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/lib/app-fullscreen";
 import AppIcon from "./AppIcon";
+import "./fullscreen.css";
 
 // MultiChart wraps the chart(s); here it is one chart whose toolbar / bottom bar / phone nav are replaced by the page's own (appPage)
 const Chart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -79,11 +83,27 @@ function priceText(q: Quote | undefined, inst: { source: string; dataTicker: str
   return q && Number.isFinite(q.price) ? fmtPrice(q.price, locale, priceDigits(inst)) : NO_VALUE;
 }
 
+/** Expand / collapse glyphs (four corner brackets pointing out / in), 24-grid line icons like AppIcon. */
+function FsGlyph({ on }: { on: boolean }) {
+  const d = on
+    ? ["M8 3v3a2 2 0 0 1-2 2H3", "M21 8h-3a2 2 0 0 1-2-2V3", "M3 16h3a2 2 0 0 1 2 2v3", "M16 21v-3a2 2 0 0 1 2-2h3"]
+    : ["M8 3H5a2 2 0 0 0-2 2v3", "M21 8V5a2 2 0 0 0-2-2h-3", "M3 16v3a2 2 0 0 0 2 2h3", "M16 21h3a2 2 0 0 0 2-2v-3"];
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {d.map((p) => (
+        <path key={p} d={p} />
+      ))}
+    </svg>
+  );
+}
+
 /**
  * The Terminal tab of the app-only UI (html.app-ui): a normal scrolling page like the design: sticky symbol bar, timeframe chips,
- * the chart, range row, tool row, «Идеи FOMO по …», the watchlist and the disclaimer. «Развернуть» turns the chart into the old
- * full-screen terminal and back. The symbol state lives in the terminal page (`selected`), so the last-opened-symbol persistence
- * and the account sync keep working.
+ * the chart, range row, tool row, «Идеи FOMO по …», the watchlist and the disclaimer. The icon over the chart takes the chart to
+ * full screen (like TradingView): the chart block becomes a fixed layer over everything (dock, header, system bars in the app) in
+ * the orientation the device is in, with the chart's own toolbar. It is the SAME chart instance (the block only changes its CSS and
+ * `appFull`), so indicators, drawings and the loaded bars survive the toggle. The symbol state lives in the terminal page
+ * (`selected`), so the last-opened-symbol persistence and the account sync keep working.
  */
 export default function AppTerminal({ selected, onSelectSymbol }: { selected: TerminalInstrument | null; onSelectSymbol: (inst: TerminalInstrument) => void }) {
   const { t, locale } = useT();
@@ -94,6 +114,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const [range, setRange] = useState<RangeId | null>(null);
   const [expanded, setExpanded] = useState(false);
   const scrollTop = useRef(0);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const pushed = useRef(false); // our history entry is on the stack (the system Back closes the full screen)
+  const apiFs = useRef(false); // the browser's Fullscreen API is on for the layer
+  const expandedRef = useRef(false);
+  expandedRef.current = expanded;
+  const { locked } = useDemoGate();
   const watchlist = useWatchlist();
 
   // the page owns the edge-to-edge layout of <main> while it is shown
@@ -123,11 +149,83 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selKey]);
 
-  const toggleExpanded = useCallback((on: boolean) => {
-    const main = document.querySelector("main");
-    if (on) scrollTop.current = main?.scrollTop ?? 0;
-    setExpanded(on);
+  const openFs = useCallback(() => {
+    scrollTop.current = document.querySelector("main")?.scrollTop ?? 0;
+    try {
+      window.history.pushState(fsPushState(window.history.state), "");
+      pushed.current = true;
+    } catch {
+      pushed.current = false;
+    }
+    setExpanded(true);
   }, []);
+  const closeFs = useCallback(() => {
+    if (!expandedRef.current) return;
+    if (pushed.current && isFsHistoryState(window.history.state)) {
+      pushed.current = false;
+      window.history.back(); // the popstate handler below collapses (the same path as the system Back button)
+      return;
+    }
+    pushed.current = false;
+    setExpanded(false);
+  }, []);
+
+  // Back button (Android system / browser) pops our entry: collapse
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (collapseOnPop(expandedRef.current, e.state)) {
+        pushed.current = false;
+        setExpanded(false);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // the app left immersive mode on its own (it was stopped): the chart goes back to the page
+  useEffect(() => onNativeImmersiveReset(closeFs), [closeFs]);
+
+  // a guest whose demo time ran out gets the lock card over the page: do not leave the chart full screen over it
+  useEffect(() => {
+    if (locked) closeFs();
+  }, [locked, closeFs]);
+
+  // while full screen: hide the dock / header, immersive mode in the app, the Fullscreen API in a browser; undone on every exit (also on unmount)
+  useLayoutEffect(() => {
+    if (!expanded) return;
+    const root = document.documentElement;
+    root.classList.add("app-term-fs");
+    const plan = fullscreenPlan({ native: isNativeApp(), nativeImmersive: canSetNativeImmersive(), apiAvailable: typeof root.requestFullscreen === "function" });
+    if (plan.immersive) setNativeImmersive(true);
+    if (plan.api) {
+      try {
+        void layerRef.current?.requestFullscreen().then(
+          () => {
+            apiFs.current = true;
+          },
+          () => {
+            /* refused (no user gesture, policy): the CSS layer is all there is */
+          },
+        );
+      } catch {
+        /* old browser */
+      }
+    }
+    const onFsChange = () => {
+      if (!document.fullscreenElement && apiFs.current) {
+        apiFs.current = false;
+        closeFs(); // the user left the browser's full screen (Esc / gesture)
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      root.classList.remove("app-term-fs");
+      if (plan.immersive) setNativeImmersive(false);
+      apiFs.current = false;
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    };
+  }, [expanded, closeFs]);
   useLayoutEffect(() => {
     if (!expanded) document.querySelector("main")?.scrollTo({ top: scrollTop.current });
   }, [expanded]);
@@ -140,6 +238,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     else watchlist.add(selected);
   };
 
+  // ONE chart element for both modes (same position in the tree): only appPage / appFull and the block's CSS change, so nothing remounts
+  const closeBtn = (
+    <button type="button" className="app-term-fsclose" onClick={closeFs} aria-label={t("appui.term.collapse")} title={t("appui.term.collapse")}>
+      <FsGlyph on />
+    </button>
+  );
   const body = selected ? (
     <Chart
       ticker={selected.dataTicker}
@@ -147,30 +251,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       name={instName(selected, t)}
       onSelectSymbol={onSelectSymbol}
       appPage={!expanded}
-      appHandle={expanded ? undefined : handle}
-      onAppState={expanded ? undefined : onAppState}
+      appFull={expanded}
+      appFullLead={closeBtn}
+      appHandle={handle}
+      onAppState={onAppState}
     />
   ) : null;
-
-  if (expanded) {
-    return (
-      <div className="tv3 app-term-full">
-        <h1 className="sr-only">{t("term2.heading")}</h1>
-        <div className="app-term-fullbar">
-          <button type="button" className="app-term-back" onClick={() => toggleExpanded(false)}>
-            <AppIcon name="chevL" size={18} stroke={2} />
-            {t("appui.term.collapse")}
-          </button>
-          <span className="app-term-fulltick">{selected?.ticker}</span>
-        </div>
-        <div className="app-term-fullbody">
-          <DemoGate kind="terminal" path="/terminal">
-            {body}
-          </DemoGate>
-        </div>
-      </div>
-    );
-  }
 
   const tone = changeTone(quote?.changePercent);
   const delayed = !!selected && showDelayNote(selected.source, !!chart?.delayed, guest);
@@ -215,19 +301,26 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           ))}
         </div>
 
-        <div className="app-term-chart tv3" style={{ height: APP_TERM_CHART_HEIGHT }}>
-          <div className="app-term-cap">
-            {selected && (
-              <span className="app-term-cap-t">
-                {[selected.ticker, tfLabel, exchangeLabel(selected.source)].filter(Boolean).join(" · ")}
-              </span>
+        {/* the slot keeps the page's height while the chart block is a fixed full-screen layer */}
+        <div className="app-term-slot" style={{ height: APP_TERM_CHART_HEIGHT }}>
+          <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
+            {!expanded && (
+              <div className="app-term-cap">
+                {selected && (
+                  <span className="app-term-cap-t">
+                    {[selected.ticker, tfLabel, exchangeLabel(selected.source)].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+                {chart?.delayed && <span className="app-term-cap-d">{t("appui.term.delayed")}</span>}
+              </div>
             )}
-            {chart?.delayed && <span className="app-term-cap-d">{t("appui.term.delayed")}</span>}
-            <button type="button" className="app-term-expand" onClick={() => toggleExpanded(true)}>
-              {t("appui.term.expand")}
-            </button>
+            <div className="app-term-chartbody">{body}</div>
+            {!expanded && (
+              <button type="button" className="app-term-expand" onClick={openFs} aria-label={t("appui.term.expand")} title={t("appui.term.expand")}>
+                <FsGlyph on={false} />
+              </button>
+            )}
           </div>
-          <div className="app-term-chartbody">{body}</div>
         </div>
 
         <div className="app-term-ranges" role="group" aria-label={t("appui.term.range")}>

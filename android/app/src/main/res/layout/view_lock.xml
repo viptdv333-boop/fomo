@@ -9,14 +9,22 @@
     android:focusable="true"
     android:visibility="gone">
 
+    <!-- scrolls (and stays centred when there is room) so a phone held in landscape never clips the button -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:gravity="center_horizontal"
+        android:gravity="center"
         android:orientation="vertical"
         android:paddingStart="32dp"
-        android:paddingEnd="32dp">
+        android:paddingTop="16dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="16dp">
 
         <ImageView
             android:layout_width="144dp"
@@ -53,4 +61,5 @@
             android:minWidth="200dp"
             android:text="@string/lock_unlock" />
     </LinearLayout>
+    </ScrollView>
 </FrameLayout>

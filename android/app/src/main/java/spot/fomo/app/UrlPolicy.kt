@@ -48,10 +48,10 @@ object UrlPolicy {
         return if (u.rawQuery != null) "$path?${u.rawQuery}" else path
     }
 
-    /** Pull-to-refresh fights with inner scrolling on these screens (chart gestures, message history, composers). */
+    /** Pull-to-refresh fights with inner scrolling on these screens (chart gestures, message history, composers; /rooms/<id> is where the app chat opens private groups). */
     fun pullToRefreshAllowed(url: String?): Boolean {
         val p = appPath(url) ?: return true
-        return listOf("/terminal", "/chat", "/messages").none { p == it || p.startsWith("$it/") }
+        return listOf("/terminal", "/chat", "/messages", "/rooms").none { p == it || p.startsWith("$it/") }
     }
 
     /** The terminal (charts): «Не гасить экран в терминале» applies while this is the current page. */

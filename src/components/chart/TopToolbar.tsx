@@ -95,6 +95,9 @@ interface Props {
   onOpenShortcuts?: () => void;
   /** Extra buttons (the multi-chart layout picker). */
   extra?: ReactNode;
+  /** App full-screen chart: the close button goes first, the browser-fullscreen and phone-panel buttons are left out, and the row never wraps (it scrolls) so a landscape phone keeps its height for the chart. */
+  appFull?: boolean;
+  lead?: ReactNode;
 }
 
 /* icons live in ./icons */
@@ -176,7 +179,8 @@ export default function TopToolbar(p: Props) {
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
 
   return (
-    <div className="@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto md:overflow-visible md:flex-wrap border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className={`@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto ${p.appFull ? "" : "md:overflow-visible md:flex-wrap"} border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+      {p.lead}
       <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
         {I.tools}
       </button>
@@ -299,9 +303,9 @@ export default function TopToolbar(p: Props) {
           {CS_ICONS.keyboard}
         </button>
       )}
-      <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
+      {!p.appFull && <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
-      </button>
+      </button>}
       {p.onScreenshotCopy ? (
         <Menu title={t("chart.screenshot")} className={ibtn} width={220} trigger={I.camera}>
           {(close) => (
@@ -334,9 +338,11 @@ export default function TopToolbar(p: Props) {
           {I.camera}
         </button>
       )}
-      <button onClick={p.onTogglePanel} title={t("shell.panel")} aria-label={t("shell.panel")} aria-pressed={p.panelOpen} className={`${btn} md:hidden ${p.panelOpen ? btnOn : ""}`}>
-        {I.panel}
-      </button>
+      {!p.appFull && (
+        <button onClick={p.onTogglePanel} title={t("shell.panel")} aria-label={t("shell.panel")} aria-pressed={p.panelOpen} className={`${btn} md:hidden ${p.panelOpen ? btnOn : ""}`}>
+          {I.panel}
+        </button>
+      )}
     </div>
   );
 }

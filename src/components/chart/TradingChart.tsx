@@ -79,6 +79,9 @@ interface Props {
   appHandle?: MutableRefObject<AppChartHandle | null>;
   /** App-only terminal page: told about the interval, the data delay and the badge counts. */
   onAppState?: (s: AppChartState) => void;
+  /** App-only terminal page, chart full screen: own toolbar + bottom bar, no phone nav / right panel; `appFullLead` (the close button) goes first in the toolbar. The same chart instance keeps running across the switch. */
+  appFull?: boolean;
+  appFullLead?: ReactNode;
 }
 
 interface Prefs {
@@ -238,7 +241,7 @@ function bucketStartWall(nowWall: number, interval: string): number {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
@@ -1422,6 +1425,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onScreenshotCopy={copyScreenshot}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         extra={toolbarExtra}
+        appFull={appFull}
+        lead={appFull ? appFullLead : undefined}
       />
       )}
 
@@ -1509,7 +1514,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             gotoSignal={gotoSignal}
           />
           )}
-          {!embedded && !compact && !appPage && (
+          {!embedded && !compact && !appPage && !appFull && (
             <nav className="md:hidden shrink-0 flex items-stretch border-t border-[var(--tv3-hair)] bg-[var(--tv3-card)] pb-[env(safe-area-inset-bottom)]">
               {(
                 [
@@ -1536,11 +1541,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           )}
         </div>
 
-        <div className={embedded || compact ? "hidden" : "contents"}>
+        <div className={embedded || compact || appFull ? "hidden" : "contents"}>
         <RightPanel
           open={prefs.panelOpen}
           mobileOpen={mobilePanel}
-          visible={panelVisible}
+          visible={panelVisible && !appFull}
           tab={prefs.panelTab}
           onTab={onTab}
           onCollapse={() => update({ panelOpen: false })}
