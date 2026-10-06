@@ -15,10 +15,9 @@ import { useAppUi } from "./useAppUi";
 const TERMINAL = isTerminalSite();
 
 function Header() {
-  const { data: session } = useSession();
   const { locale } = useT();
 
-  // the design's header: the logo, the theme switch and the bell. The profile (photo, menu, settings, text size, update, downloads, sign out)
+  // the design's header: the logo and the theme switch (no bell and no counter: the unread counts are the red badges of the dock, see AppTabBar). The profile (photo, menu, settings, text size, update, downloads, sign out)
   // lives in the «Профиль» tab of the dock (components/app/profile).
   return (
     <header className="app-header" data-app-header>
@@ -33,17 +32,13 @@ function Header() {
         <div className="app-hbtn">
           <ThemeToggle />
         </div>
-        {session && (
-          <div className="app-hbtn">
-            <NotificationBell />
-          </div>
-        )}
       </div>
+      <HiddenBell />
     </header>
   );
 }
 
-/** No header on the terminal, but the bell keeps running (unread count, sound, socket) exactly as it did in the site header. */
+/** The bell is never shown in the app UI, but it keeps running everywhere (sound, socket, push) exactly as it did in the site header. */
 function HiddenBell() {
   const { data: session } = useSession();
   return session ? (
@@ -59,5 +54,5 @@ export default function AppHeader() {
   const pathname = usePathname() || "/";
   if (!on) return null;
   if (appHeaderHidden(pathname)) return <HiddenBell />;
-  return <Header />;
+  return <Header />; // carries its own HiddenBell
 }

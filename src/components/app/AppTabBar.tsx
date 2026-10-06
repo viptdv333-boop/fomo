@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
-import { APP_TABS, activeAppTab, appTabHref, badgeLabel, raisesKeyboard, type AppTabId } from "@/lib/app-ui";
-import { useChatBadge } from "@/components/layout/useChatBadge";
+import { APP_TABS, activeAppTab, appTabHref, raisesKeyboard, type AppTabId } from "@/lib/app-ui";
+import { tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
+import { useTabBadges } from "./useTabBadges";
 import { applyFontStep, readFontStep } from "./fontStep";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
@@ -35,7 +36,7 @@ function TabBar() {
   const { t, locale } = useT();
   const pathname = usePathname() || "/";
   const active = activeAppTab(pathname);
-  const unread = badgeLabel(useChatBadge());
+  const counts = useTabBadges(active); // red badges: Доска / Терминал / Болталка / Календарь / Каналы (src/lib/app-badges.ts)
   const { data: session } = useSession();
   const me = session?.user as { image?: string | null; name?: string | null } | undefined;
   useKeyboardClass();
@@ -86,7 +87,7 @@ function TabBar() {
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
         const label = t(tab.labelKey);
-        const badge = tab.id === "chat" ? unread : "";
+        const badge = tabBadgeLabel(counts, tab.id);
         return (
           <Link
             key={tab.id}

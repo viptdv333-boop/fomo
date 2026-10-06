@@ -88,7 +88,7 @@ const PAGES_CLOSED = [
 const API_OPEN = [
   "/api/auth/session", "/api/auth/csrf", "/api/auth/register", "/api/auth/send-code", "/api/auth/reset-password", "/api/auth/change-password", "/api/terminal/alerts", "/api/terminal/userdata", "/api/terminal/watchlist",
   "/api/terminal/alerts/abc", "/api/calendar/reminders", "/api/economic-calendar", "/api/klines", "/api/quote", "/api/quotes", "/api/market-search", "/api/contracts", "/api/orderbook", "/api/orderflow",
-  "/api/algopack/status", "/api/news", "/api/notifications", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",
+  "/api/algopack/status", "/api/news", "/api/notifications", "/api/notifications/unread-by-type", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",
   "/api/push/subscribe", "/api/push/fcm", "/api/push/beacon", "/api/telegram/account", "/api/me/locale", "/api/languages", "/api/site-settings", "/api/version", "/api/upload", "/api/upload/favicon",
   "/api/users", "/api/users/u1", "/api/admin/stats", "/api/admin/broadcast", "/api/admin/broadcast/users", "/api/admin/site-settings", "/api/captcha", "/api/socketio",
 ];

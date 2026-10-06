@@ -18,5 +18,13 @@ export async function POST(req: NextRequest) {
     update: { lastReadAt: new Date() },
   });
 
+  // the mentions / replies of this room are read together with the room (they light the «Болталка» dock badge)
+  await prisma.notification
+    .updateMany({
+      where: { userId: session.user.id, isRead: false, type: { in: ["chat_mention", "chat_reply"] }, link: { in: [`/chat?room=${roomId}`, `/rooms/${roomId}`] } },
+      data: { isRead: true },
+    })
+    .catch(() => {});
+
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { typesForTab } from "@/lib/app-badges";
 
 // GET: list user notifications
 export async function GET(request: NextRequest) {
@@ -38,14 +39,21 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { ids, markAllRead } = body as {
+  const { ids, markAllRead, tab } = body as {
     ids?: string[];
     markAllRead?: boolean;
+    /// App dock tab ("feed" | "terminal" | "calendar" | "channels" | "chat"): marks that tab's unread notifications read.
+    tab?: string;
   };
 
   if (markAllRead) {
     await prisma.notification.updateMany({
       where: { userId: session.user.id, isRead: false },
+      data: { isRead: true },
+    });
+  } else if (typeof tab === "string" && typesForTab(tab).length > 0) {
+    await prisma.notification.updateMany({
+      where: { userId: session.user.id, isRead: false, type: { in: typesForTab(tab) } },
       data: { isRead: true },
     });
   } else if (ids && ids.length > 0) {
