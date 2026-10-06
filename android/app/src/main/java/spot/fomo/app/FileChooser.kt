@@ -137,7 +137,7 @@ class FileChooser(private val activity: MainActivity) {
 
     private fun uriFor(file: File): Uri = FileProvider.getUriForFile(activity, activity.packageName + ".fileprovider", file)
 
-    /** accept="image/*,.pdf" -> ["image/*", "application/pdf"]; extensions are mapped to MIME types, unknown ones dropped. */
+    /** An accept attribute such as image-wildcard plus .pdf becomes a MIME list; extensions are mapped to MIME types, unknown ones dropped. */
     private fun acceptedMimeTypes(p: WebChromeClient.FileChooserParams): List<String> {
         val out = LinkedHashSet<String>()
         for (raw in p.acceptTypes ?: emptyArray()) {
