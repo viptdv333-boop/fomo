@@ -6,7 +6,7 @@ import AttachMenu from "@/components/shared/AttachMenu";
 import AppIcon from "../AppIcon";
 import AppSheet, { SectionBox } from "./AppSheet";
 import AppMessageSheet, { type MsgAction } from "./AppMessageSheet";
-import { DraftChip, Messages, QuoteChip, ThreadBar, type ViewMsg } from "./AppThreadParts";
+import { DraftChip, Messages, QuoteChip, ThreadBar, useUnreadAnchor, type ViewMsg } from "./AppThreadParts";
 import LookControls from "./LookControls";
 import { useChatLook } from "./useChatPrefs";
 import { initials, pinnedLine } from "@/lib/app-chat";
@@ -93,6 +93,8 @@ export interface RoomThreadApi {
   onShowReplies: (messageId: string) => void;
   members: { id: string; displayName: string; avatarUrl: string | null }[];
   info?: RoomInfo;
+  /** where the reader stopped before opening the room (undefined: unknown, null: never opened) */
+  readAt?: string | null;
 }
 
 function toView(m: RoomMsg, myId: string | undefined, quoteSuffix: string, replies: number): ViewMsg {
@@ -126,6 +128,7 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
   const flash = api.info?.flash;
   const view = useMemo(() => api.messages.map((m) => toView(m, api.myId, "…", api.replyCount(m.id))), [api.messages, api.myId, api.replyCount]); // eslint-disable-line react-hooks/exhaustive-deps
   const pinned = useMemo(() => pinnedLine(api.messages, t("chat2.file")), [api.messages, t]);
+  const unreadFromId = useUnreadAnchor(view, api.readAt);
   const sel = selected ? api.messages.find((m) => m.id === selected) || null : null;
   const closed = api.isClosed || api.isArchived;
 
@@ -222,6 +225,8 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
         look={look}
         onAuthor={api.onOpenAuthor}
         onReplies={api.onShowReplies}
+        unreadFromId={unreadFromId}
+        newLabel={t("chat2.newMessages")}
       />
 
       {closed ? (

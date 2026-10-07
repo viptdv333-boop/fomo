@@ -83,6 +83,36 @@ function useRoomMeta(roomId: string | null, listed: RoomInfo, listLoaded: boolea
 }
 
 /**
+ * Where the reader stopped in a room, asked BEFORE the room opens (opening marks it read, which would erase the marker): the thread puts
+ * «Новые сообщения» above the first message after it. `ready` is false for the moment of that request (a slow / failed one gives up after 2.5 s
+ * and the room opens without a divider). `at`: ISO time, null = never opened.
+ */
+function useRoomReadMarker(roomId: string | null): { ready: boolean; at: string | null } {
+  const [got, setGot] = useState<{ id: string; at: string | null } | null>(null);
+  useEffect(() => {
+    if (!roomId) return;
+    let alive = true;
+    const give = setTimeout(() => alive && setGot((g) => (g?.id === roomId ? g : { id: roomId, at: null })), 2500);
+    void (async () => {
+      let at: string | null = null;
+      try {
+        const r = await fetch(`/api/chat/read?roomId=${encodeURIComponent(roomId)}`, { cache: "no-store" });
+        if (r.ok) at = ((await r.json()) as { lastReadAt?: string | null }).lastReadAt ?? null;
+      } catch {
+        /* no divider this time */
+      }
+      if (alive) setGot((g) => (g?.id === roomId ? g : { id: roomId, at }));
+    })();
+    return () => {
+      alive = false;
+      clearTimeout(give);
+      setGot(null); // a later visit asks again: the marker of the previous visit is stale
+    };
+  }, [roomId]);
+  return got && got.id === roomId ? { ready: true, at: got.at } : { ready: false, at: null };
+}
+
+/**
  * The Chat tab of the app UI («Болталка» + «Личные»): the prototype's chat screens over the site's real data. One component for /chat and
  * /messages; the screen is part of the URL (?room= / ?dm= / ?groups=1, ?seg=dms for the personal list), every opened screen is a history
  * entry, so the Android Back button returns from a thread to the list.
@@ -212,6 +242,7 @@ export default function AppChat() {
 
   const listedRoom = route.room ? rooms.findRoom(route.room, t("chat.generalChat")) : null;
   const { meta, state } = useRoomMeta(route.room, listedRoom, rooms.loaded);
+  const marker = useRoomReadMarker(route.room);
   // what the room sheet shows for a private group (the list knows its owner flag and invite token, the room request adds the description)
   const privateListed = route.room ? rooms.privateRooms.find((r) => r.id === route.room) : undefined;
   const roomInfo: RoomSheetInfo | undefined = route.room
@@ -259,13 +290,13 @@ export default function AppChat() {
   let screen;
   if (route.room) {
     screen =
-      state === "ok" && meta ? (
-        <ChatRoom key={route.room} appVariant appInfo={roomInfo} onBack={back} roomId={route.room} roomName={meta.name} isClosed={meta.isClosed} isArchived={meta.isArchived} />
+      state === "ok" && meta && marker.ready ? (
+        <ChatRoom key={route.room} appVariant appInfo={roomInfo} appReadAt={marker.at} onBack={back} roomId={route.room} roomName={meta.name} isClosed={meta.isClosed} isArchived={meta.isArchived} />
       ) : (
         <div className="ac ac-thread">
-          <ThreadBar title={state === "loading" ? "…" : t(state === "denied" ? "chat2.noAccess" : "chat2.groupNotFound")} onBack={back} />
+          <ThreadBar title={state === "loading" || (state === "ok" && !marker.ready) ? "…" : t(state === "denied" ? "chat2.noAccess" : "chat2.groupNotFound")} onBack={back} />
           <div className="ac-msgs">
-            <div className="ac-empty">{state === "loading" ? t("common.loading") : state === "denied" ? t("chat2.groupClosedAskInvite") : t("appui.chat.groupOpenFailed")}</div>
+            <div className="ac-empty">{state === "loading" || state === "ok" ? t("common.loading") : state === "denied" ? t("chat2.groupClosedAskInvite") : t("appui.chat.groupOpenFailed")}</div>
           </div>
         </div>
       );

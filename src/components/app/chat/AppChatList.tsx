@@ -151,6 +151,7 @@ export default function AppChatList(p: Props) {
         favorites: rooms.favorites,
         generalRoomId: rooms.generalRoomId,
         unread: rooms.unread,
+        mentions: rooms.mentions,
         notify: rooms.notify,
         openCats: p.openCats,
         query: p.query,
@@ -158,11 +159,11 @@ export default function AppChatList(p: Props) {
         catTitle: (slug, name) => (CAT_I18N[slug] ? t(CAT_I18N[slug]) : name),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rooms.categories, rooms.privateRooms, rooms.favorites, rooms.generalRoomId, rooms.unread, rooms.notify, p.openCats, p.query, locale],
+    [rooms.categories, rooms.privateRooms, rooms.favorites, rooms.generalRoomId, rooms.unread, rooms.mentions, rooms.notify, p.openCats, p.query, locale],
   );
 
   const dialogs = useMemo(() => sortFilterDialogs(dms.conversations, p.query, t("msg.deletedUser"), { pinned: p.marks.pinned, favorites: p.marks.favorites, muted: p.marks.muted }), [dms.conversations, p.query, p.marks.pinned, p.marks.favorites, p.marks.muted]); // eslint-disable-line react-hooks/exhaustive-deps
-  const dmBadge = badgeLabel(dmUnreadTotal(dms.conversations));
+  const dmBadge = badgeLabel(dmUnreadTotal(dms.conversations, p.marks.muted));
 
   const roomRow = (r: RoomRowModel, key: string, isFavGroup = false) => {
     const pv = rooms.previews[r.id];
@@ -185,7 +186,12 @@ export default function AppChatList(p: Props) {
             </div>
             <div className="ac-rlast">{roomPreviewLine(pv, p.myId, youWord, fileWord)}</div>
           </div>
-          {r.unread > 0 && <div className="ac-badge">{badgeLabel(r.unread)}</div>}
+          {r.unread > 0 && (
+            <div className="ac-bdgs" aria-label={t("appui.unread", { n: badgeLabel(r.unread) })}>
+              {r.mention > 0 && <span className="ac-badge ac-badge-at" aria-hidden="true">@</span>}
+              <span className="ac-badge">{badgeLabel(r.unread)}</span>
+            </div>
+          )}
           {isFavGroup && (
             <button type="button" className="ac-rx" aria-label={t("msg.removeFav")} onClick={star}>
               <AppIcon name="x" size={16} stroke={2} />
@@ -239,7 +245,12 @@ export default function AppChatList(p: Props) {
                   <button type="button" className="ac-gtitle ac-gtitle-btn" aria-expanded={g.open} onClick={() => p.onToggleCat(g.key.slice(4))}>
                     <AppIcon name="chevR" size={14} stroke={2} />
                     <span className="ac-gname">{g.title}</span>
-                    {!g.open && g.unread > 0 && <span className="ac-badge">{badgeLabel(g.unread)}</span>}
+                    {!g.open && g.unread > 0 && (
+                      <span className="ac-bdgs" aria-label={t("appui.unread", { n: badgeLabel(g.unread) })}>
+                        {g.mention > 0 && <span className="ac-badge ac-badge-at" aria-hidden="true">@</span>}
+                        <span className="ac-badge">{badgeLabel(g.unread)}</span>
+                      </span>
+                    )}
                     <span className="ac-gcount">{g.count}</span>
                   </button>
                 ) : (

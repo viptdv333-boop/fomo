@@ -61,6 +61,9 @@ html.app-ui .ac-rname { font-size: 16px; font-weight: 600; white-space: nowrap; 
 html.app-ui .ac-rtime { font-size: 12px; color: var(--app-tx3); flex: none; }
 html.app-ui .ac-rlast { font-size: 14px; color: var(--app-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 17px; }
 html.app-ui .ac-badge { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; background: var(--app-red); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
+/* «@»: somebody mentioned / answered me in this room — a bolder marker that sits before the count */
+html.app-ui .ac-badge-at { min-width: 20px; padding: 0; background: var(--app-card); color: var(--app-red); box-shadow: inset 0 0 0 2px var(--app-red); font-weight: 800; }
+html.app-ui .ac-bdgs { display: flex; align-items: center; gap: 4px; flex: none; }
 html.app-ui .ac-rbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
 html.app-ui .ac-rbtn { width: 26px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--app-tx3); }
 html.app-ui .ac-rbtn[data-on="1"] { color: var(--app-green-tx); }
@@ -111,6 +114,9 @@ html.app-ui .ac-tbtn[data-on="1"] { color: var(--app-green-tx); }
 html.app-ui .ac-pinned { flex: none; display: flex; gap: 8px; align-items: center; padding: 8px 14px; background: var(--app-card); border-bottom: 0.5px solid var(--app-line); font-size: 13px; width: 100%; box-sizing: border-box; text-align: left; }
 html.app-ui .ac-pinned span:last-child { color: var(--app-tx2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.app-ui .ac-msgs { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; padding: 14px 12px; }
+/* «Новые сообщения»: the line above the first unread message of a thread */
+html.app-ui .ac-newdiv { display: flex; align-items: center; gap: 10px; flex: none; color: var(--app-red); font-size: 12px; font-weight: 600; }
+html.app-ui .ac-newdiv::before, html.app-ui .ac-newdiv::after { content: ""; flex: 1; height: 1px; background: var(--app-red); opacity: 0.55; }
 html.app-ui .ac-day { align-self: center; font-size: 12px; color: var(--app-tx3); padding: 3px 10px; border-radius: 999px; background: var(--app-card2); flex: none; }
 html.app-ui .ac-mrow { display: flex; flex: none; }
 html.app-ui .ac-mrow[data-mine="1"] { justify-content: flex-end; }

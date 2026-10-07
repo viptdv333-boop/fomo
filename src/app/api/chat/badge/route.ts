@@ -5,10 +5,16 @@ import { prisma } from "@/lib/prisma";
 // GET — the number on the messenger icon in the site header: unread personal messages plus unread messages in the
 // болталка rooms the user follows (favourites and rooms with the bell on). Rooms the user never opened are not
 // counted wholesale — otherwise a new account would see thousands.
-export async function GET() {
+// ?mute=id,id — conversations the user muted on this device (the mute list lives in the browser's localStorage): they do not count.
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ dm: 0, rooms: 0, total: 0 });
   const userId = session.user.id;
+  const muted = (new URL(req.url).searchParams.get("mute") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => /^[A-Za-z0-9_-]{1,64}$/.test(s))
+    .slice(0, 100);
 
   const [dmRows, roomRows] = await Promise.all([
     prisma.$queryRaw<{ count: bigint }[]>`
@@ -18,6 +24,7 @@ export async function GET() {
       WHERE m."isDeleted" = false
         AND m."senderId" != ${userId}
         AND m."createdAt" > p."lastReadAt"
+        AND m."conversationId" <> ALL(${muted}::text[])
     `,
     prisma.$queryRaw<{ count: bigint }[]>`
       WITH followed AS (

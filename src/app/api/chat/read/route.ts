@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// GET ?roomId= — where the user stopped reading that room (ChatRoomRead.lastReadAt; null = never opened). The app asks it BEFORE
+// opening the room (opening marks it read) to put «Новые сообщения» above the first unread message.
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const roomId = req.nextUrl.searchParams.get("roomId");
+  if (!roomId) return NextResponse.json({ error: "roomId required" }, { status: 400 });
+  const row = await prisma.chatRoomRead.findUnique({ where: { userId_roomId: { userId: session.user.id, roomId } }, select: { lastReadAt: true } });
+  return NextResponse.json({ lastReadAt: row?.lastReadAt ?? null }, { headers: { "Cache-Control": "no-store" } });
+}
+
 // POST — mark a room read up to now for the current user.
 export async function POST(req: NextRequest) {
   const session = await auth();

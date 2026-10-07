@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
-import { FONT_DEFAULT, bgCss, clockLabel, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
+import { FONT_DEFAULT, bgCss, clockLabel, firstUnreadId, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
 
 /** A message of either kind (болталка room or personal conversation) in the shape the bubbles draw. */
@@ -161,8 +161,19 @@ function FileBlock({ file, fallback }: { file: NonNullable<ViewMsg["file"]>; fal
 }
 
 /**
+ * The message that opens the «Новые сообщения» divider: the first one of somebody else newer than the read marker, worked out once
+ * (when the first messages are there) and then kept, so the divider does not jump while the thread is open. `readAt`: undefined = the
+ * marker is not known yet, null = nothing was read here before (no divider).
+ */
+export function useUnreadAnchor(msgs: ViewMsg[], readAt: string | null | undefined): string | null {
+  const frozen = useRef<{ id: string | null } | null>(null);
+  if (!frozen.current && msgs.length > 0 && readAt !== undefined) frozen.current = { id: firstUnreadId(msgs, readAt) };
+  return frozen.current?.id ?? null;
+}
+
+/**
  * The scrolling message column: day separators (the design's «Сегодня» pill) between days, bubbles, and the stick-to-the-bottom behaviour:
- * the first load lands on the newest message, later arrivals scroll only when the reader is already near the bottom or sent the message.
+ * the first load lands on the newest message (or on the «Новые сообщения» divider when there are unread ones), later arrivals scroll only when the reader is already near the bottom or sent the message.
  */
 export function Messages({
   msgs,
@@ -177,6 +188,8 @@ export function Messages({
   look,
   onAuthor,
   onReplies,
+  unreadFromId = null,
+  newLabel = "",
 }: {
   msgs: ViewMsg[];
   myId: string | undefined;
@@ -191,11 +204,15 @@ export function Messages({
   look?: { bg: string; font: number };
   onAuthor?: (userId: string) => void;
   onReplies?: (messageId: string) => void;
+  /** the first unread message: the divider sits above it and the thread opens there (see useUnreadAnchor) */
+  unreadFromId?: string | null;
+  newLabel?: string;
 }) {
   const { locale } = useT();
   const box = useRef<HTMLDivElement>(null);
   const lastId = useRef<string | null>(null);
-  const items = withDaySeparators(msgs, locale);
+  const stick = useRef(true);
+  const items = withDaySeparators(msgs, locale, Date.now(), unreadFromId);
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -205,19 +222,27 @@ export function Messages({
     if (last.id === lastId.current) return;
     lastId.current = last.id;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (first && unreadFromId) {
+      const mark = el.querySelector<HTMLElement>("[data-new]");
+      if (mark) {
+        // land on the first unread message, not on the bottom; images loading later must not drag the view down again
+        stick.current = false;
+        el.scrollTop += mark.getBoundingClientRect().top - el.getBoundingClientRect().top - 12;
+        return;
+      }
+    }
     if (first || near || last.mine) el.scrollTo({ top: el.scrollHeight, behavior: first ? "auto" : "smooth" });
-  }, [msgs]);
+  }, [msgs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // images and the soft keyboard change the height after the first paint: keep the bottom in view on the first load
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    let stick = true;
     const onScroll = () => {
-      stick = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     };
     const ro = new ResizeObserver(() => {
-      if (stick) el.scrollTop = el.scrollHeight;
+      if (stick.current) el.scrollTop = el.scrollHeight;
     });
     el.addEventListener("scroll", onScroll, { passive: true });
     ro.observe(el);
@@ -239,6 +264,10 @@ export function Messages({
         it.kind === "day" ? (
           <div key={it.key} className="ac-day">
             {it.label}
+          </div>
+        ) : it.kind === "new" ? (
+          <div key={it.key} className="ac-newdiv" data-new="1" role="separator">
+            <span>{newLabel}</span>
           </div>
         ) : (
           <Bubble

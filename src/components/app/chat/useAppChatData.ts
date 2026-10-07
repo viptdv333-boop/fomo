@@ -23,6 +23,8 @@ export interface RoomsData {
   privateRooms: PrivateRoom[];
   favorites: FavoriteRoom[];
   unread: Record<string, number>;
+  /** roomId -> unread @mentions / replies to me */
+  mentions: Record<string, number>;
   generalRoomId: string | null;
   notify: Set<string>;
   previews: Record<string, RoomPreview>;
@@ -48,6 +50,7 @@ export function useAppRooms(otherName: string): RoomsData {
   const [privateRooms, setPrivateRooms] = useState<PrivateRoom[]>([]);
   const [favorites, setFavorites] = useState<FavoriteRoom[]>([]);
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [mentions, setMentions] = useState<Record<string, number>>({});
   const [generalRoomId, setGeneralRoomId] = useState<string | null>(null);
   const [notify, setNotify] = useState<Set<string>>(new Set());
   const [previews, setPreviews] = useState<Record<string, RoomPreview>>({});
@@ -56,10 +59,12 @@ export function useAppRooms(otherName: string): RoomsData {
 
   const loadLive = useCallback(async () => {
     const [u, p] = await Promise.all([
-      getJson<{ counts?: Record<string, number>; generalRoomId?: string | null }>("/api/chat/unread"),
+      // seen=1: only rooms the user has opened before count (a room never opened would show every message it ever had)
+      getJson<{ counts?: Record<string, number>; mentions?: Record<string, number>; generalRoomId?: string | null }>("/api/chat/unread?seen=1"),
       getJson<{ previews?: Record<string, RoomPreview> }>("/api/chat/previews"),
     ]);
     if (u?.counts) setUnread(u.counts);
+    if (u?.mentions) setMentions(u.mentions);
     if (u?.generalRoomId) setGeneralRoomId(u.generalRoomId);
     if (p?.previews) setPreviews(p.previews);
   }, []);
@@ -92,15 +97,36 @@ export function useAppRooms(otherName: string): RoomsData {
     const onVis = () => document.visibilityState === "visible" && void loadLive();
     const onRead = (e: Event) => {
       const roomId = (e as CustomEvent<{ roomId: string }>).detail?.roomId;
-      if (roomId) setUnread((prev) => (prev[roomId] ? { ...prev, [roomId]: 0 } : prev));
+      if (!roomId) return;
+      setUnread((prev) => (prev[roomId] ? { ...prev, [roomId]: 0 } : prev));
+      setMentions((prev) => (prev[roomId] ? { ...prev, [roomId]: 0 } : prev));
+    };
+    // a new message of a room with the bell / a mention arrives as a notification: refresh the counts now, not at the next tick
+    let soon: ReturnType<typeof setTimeout> | null = null;
+    const onPing = () => {
+      if (soon) clearTimeout(soon);
+      soon = setTimeout(() => void loadLive(), 700);
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("chat:room-read", onRead);
+    let socket: ReturnType<typeof getSocket> | null = null;
+    try {
+      socket = getSocket(uid);
+      socket.on("new_notification", onPing);
+    } catch {
+      /* realtime is optional: the timer still refreshes the counts */
+    }
     return () => {
       alive = false;
       clearInterval(iv);
+      if (soon) clearTimeout(soon);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("chat:room-read", onRead);
+      try {
+        socket?.off("new_notification", onPing);
+      } catch {
+        /* ignore */
+      }
     };
   }, [uid, loadAssets, loadLive, loadPrivate, loadFavNotify]);
 
@@ -159,7 +185,7 @@ export function useAppRooms(otherName: string): RoomsData {
     [categories, privateRooms, generalRoomId],
   );
 
-  return { loaded, failed, categories, privateRooms, favorites, unread, generalRoomId, notify, previews, reload, reloadPrivate: loadPrivate, toggleFavorite, toggleNotify, findRoom };
+  return { loaded, failed, categories, privateRooms, favorites, unread, mentions, generalRoomId, notify, previews, reload, reloadPrivate: loadPrivate, toggleFavorite, toggleNotify, findRoom };
 }
 
 /* ---------- personal conversations ---------- */

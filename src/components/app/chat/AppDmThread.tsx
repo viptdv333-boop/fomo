@@ -14,7 +14,7 @@ import AppSheet from "./AppSheet";
 import AppMessageSheet, { type MsgAction } from "./AppMessageSheet";
 import LookControls from "./LookControls";
 import { useChatLook, useDmMarks } from "./useChatPrefs";
-import { DraftChip, Messages, QuoteChip, ThreadBar, type ViewMsg } from "./AppThreadParts";
+import { DraftChip, Messages, QuoteChip, ThreadBar, useUnreadAnchor, type ViewMsg } from "./AppThreadParts";
 import type { Conversation } from "./useAppChatData";
 
 interface DmMsg {
@@ -77,6 +77,8 @@ export default function AppDmThread({
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const [messages, setMessages] = useState<DmMsg[]>([]);
+  // where the reader stopped before opening (the first answer of the server; the later polls come after it marked the thread read)
+  const [readAt, setReadAt] = useState<string | null | undefined>(undefined);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<DmMsg | null>(null);
   const [pending, setPending] = useState<{ url: string; name: string; fileType: string } | null>(null);
@@ -111,6 +113,7 @@ export default function AppDmThread({
       const r = await fetch(`/api/messages/conversations/${convId}/messages`, { cache: "no-store" });
       if (!r.ok) return;
       const data = await r.json();
+      setReadAt((prev) => (prev === undefined ? data.lastReadAt ?? null : prev));
       if (Array.isArray(data.messages)) setMessages(data.messages);
       // the server marks the conversation read when it is fetched: refresh the badges
       window.dispatchEvent(new Event("fomo:unread-changed"));
@@ -213,6 +216,7 @@ export default function AppDmThread({
   }
 
   const view = useMemo(() => messages.map((m) => toView(m, myId)), [messages, myId]);
+  const unreadFromId = useUnreadAnchor(view, readAt);
   const pinned = useMemo(() => pinnedLine(messages, t("chat2.file")), [messages, t]);
   const sel = selected ? messages.find((m) => m.id === selected) || null : null;
 
@@ -296,6 +300,8 @@ export default function AppDmThread({
         editing={{ value: "", onChange: () => {}, onSubmit: () => {}, onCancel: () => {} }}
         empty={t("chat2.startDialog")}
         look={look}
+        unreadFromId={unreadFromId}
+        newLabel={t("chat2.newMessages")}
       />
       <form className="ac-composer" onSubmit={send}>
         {error && <div className="ac-draft" role="alert"><span>{error}</span></div>}

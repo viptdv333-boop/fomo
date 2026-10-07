@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
+import { DM_KEYS, parseIdList } from "@/lib/app-chat";
 
 /** Unread count of personal / болталка messages (/api/chat/badge), kept fresh by polling, visibility and socket events. */
 export function useChatBadge(): number {
@@ -12,7 +13,12 @@ export function useChatBadge(): number {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch("/api/chat/badge", { cache: "no-store" });
+      // conversations muted on this device do not count (the list lives in localStorage, the server cannot know it)
+      let mute = "";
+      try {
+        mute = parseIdList(localStorage.getItem(DM_KEYS.muted)).slice(0, 100).map(encodeURIComponent).join(",");
+      } catch {}
+      const r = await fetch(`/api/chat/badge${mute ? `?mute=${mute}` : ""}`, { cache: "no-store" });
       if (r.ok) setCount((await r.json()).total ?? 0);
     } catch {}
   }, []);
@@ -27,12 +33,13 @@ export function useChatBadge(): number {
     load();
     const iv = setInterval(() => {
       if (!document.hidden) load();
-    }, 45_000);
+    }, 30_000);
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
     // reading a room or a conversation elsewhere in the app asks for a refresh
     window.addEventListener("fomo:unread-changed", reloadSoon);
     window.addEventListener("chat:room-read", reloadSoon);
+    window.addEventListener("fomo:chat-prefs", reloadSoon); // a conversation was muted / unmuted
     let socket: ReturnType<typeof getSocket> | null = null;
     try {
       socket = getSocket(session.user.id);
@@ -45,6 +52,7 @@ export function useChatBadge(): number {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("fomo:unread-changed", reloadSoon);
       window.removeEventListener("chat:room-read", reloadSoon);
+      window.removeEventListener("fomo:chat-prefs", reloadSoon);
       try {
         socket?.off("new_notification", reloadSoon);
         socket?.off("new_dm", reloadSoon);

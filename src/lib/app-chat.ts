@@ -75,6 +75,8 @@ export interface RoomRowModel {
   isPrivate: boolean;
   assetSlug: string | null;
   unread: number;
+  /** unread @mentions / replies to me in this room (they get the bolder «@» marker next to the count) */
+  mention: number;
   fav: boolean;
   bell: boolean;
 }
@@ -91,6 +93,8 @@ export interface RoomGroupModel {
   count: number;
   /** unread of the whole topic, shown on the folded heading */
   unread: number;
+  /** unread mentions of the whole topic (the «@» marker of the folded heading) */
+  mention: number;
   rows: RoomRowModel[];
 }
 
@@ -100,6 +104,8 @@ export interface RoomGroupInput {
   favorites: FavoriteRoom[];
   generalRoomId: string | null;
   unread: Record<string, number>;
+  /** roomId -> unread mentions / replies (optional: older callers have none) */
+  mentions?: Record<string, number>;
   notify: ReadonlySet<string>;
   openCats: ReadonlySet<string>;
   query: string;
@@ -119,6 +125,7 @@ export function matchesQuery(name: string, query: string): boolean {
 export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
   const searching = inp.query.trim().length > 0;
   const un = (id: string) => inp.unread[id] || 0;
+  const men = (id: string) => Math.min(inp.mentions?.[id] || 0, inp.unread[id] || 0);
   const fav = new Set(inp.favorites.map((f) => f.roomId));
   const row = (id: string, name: string, tile: string, isPrivate: boolean, assetSlug: string | null): RoomRowModel => ({
     id,
@@ -127,6 +134,7 @@ export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
     isPrivate,
     assetSlug,
     unread: un(id),
+    mention: men(id),
     fav: fav.has(id),
     bell: inp.notify.has(id),
   });
@@ -138,13 +146,13 @@ export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
 
   if (matchesQuery(inp.labels.general, inp.query)) {
     const id = inp.generalRoomId || "general";
-    groups.push({ key: "general", kind: "general", title: null, collapsible: false, open: true, count: 1, unread: 0, rows: [row(id, inp.labels.general, GENERAL_EMOJI, false, null)] });
+    groups.push({ key: "general", kind: "general", title: null, collapsible: false, open: true, count: 1, unread: 0, mention: 0, rows: [row(id, inp.labels.general, GENERAL_EMOJI, false, null)] });
   }
 
   const favRows = inp.favorites
     .filter((f) => matchesQuery(f.name, inp.query))
     .map((f) => row(f.roomId, f.name, tiles.get(f.roomId) || (f.isPrivate ? PRIVATE_EMOJI : OTHER_EMOJI), f.isPrivate, f.assetSlug));
-  if (favRows.length) groups.push({ key: "fav", kind: "fav", title: inp.labels.favorites, collapsible: false, open: true, count: favRows.length, unread: 0, rows: favRows });
+  if (favRows.length) groups.push({ key: "fav", kind: "fav", title: inp.labels.favorites, collapsible: false, open: true, count: favRows.length, unread: 0, mention: 0, rows: favRows });
 
   for (const cat of inp.categories) {
     const all = cat.assets.filter((a) => a.chatRoom);
@@ -159,12 +167,13 @@ export function buildRoomGroups(inp: RoomGroupInput): RoomGroupModel[] {
       open: searching || inp.openCats.has(cat.slug),
       count: all.length,
       unread: all.reduce((s, a) => s + un(a.chatRoom!.id), 0),
+      mention: all.reduce((s, a) => s + men(a.chatRoom!.id), 0),
       rows,
     });
   }
 
   const priv = inp.privateRooms.filter((r) => matchesQuery(r.name, inp.query)).map((r) => row(r.id, r.name, PRIVATE_EMOJI, true, null));
-  if (priv.length) groups.push({ key: "private", kind: "private", title: inp.labels.privateGroups, collapsible: false, open: true, count: priv.length, unread: 0, rows: priv });
+  if (priv.length) groups.push({ key: "private", kind: "private", title: inp.labels.privateGroups, collapsible: false, open: true, count: priv.length, unread: 0, mention: 0, rows: priv });
   return groups;
 }
 
@@ -184,11 +193,30 @@ export function groupAssets(assets: AssetItem[], otherName: string): CategoryGro
 
 export { badgeLabel };
 
-/** Sum of the DM unread counters shown on the «Личные» segment. */
-export function dmUnreadTotal(convs: { unread?: boolean; unreadCount?: number }[]): number {
+/** Sum of the DM unread counters shown on the «Личные» segment; muted conversations (ids) do not count, as they do not count in the dock. */
+export function dmUnreadTotal(convs: { id?: string; unread?: boolean; unreadCount?: number }[], muted: readonly string[] = []): number {
   let n = 0;
-  for (const c of convs) n += typeof c.unreadCount === "number" ? Math.max(0, c.unreadCount) : c.unread ? 1 : 0;
+  for (const c of convs) {
+    if (c.id && muted.includes(c.id)) continue;
+    n += typeof c.unreadCount === "number" ? Math.max(0, c.unreadCount) : c.unread ? 1 : 0;
+  }
   return n;
+}
+
+/**
+ * The first message the reader has not seen: the oldest message of somebody else (not deleted) newer than the read marker.
+ * null: no marker (the room was never opened — the thread lands on the newest message) or nothing is unread.
+ */
+export function firstUnreadId(msgs: { id: string; createdAt: string; mine: boolean; deleted?: boolean }[], readAt: string | number | Date | null | undefined): string | null {
+  if (readAt === null || readAt === undefined || readAt === "") return null;
+  const mark = new Date(readAt).getTime();
+  if (!Number.isFinite(mark)) return null;
+  for (const m of msgs) {
+    if (m.mine || m.deleted) continue;
+    const t = new Date(m.createdAt).getTime();
+    if (Number.isFinite(t) && t > mark) return m.id;
+  }
+  return null;
 }
 
 /* ---------- dialogs ---------- */
@@ -353,10 +381,10 @@ export function dayLabel(value: string | number | Date, locale: string, now: num
   return `${d.getDate()} ${month}${sameYear ? "" : " " + d.getFullYear()}`;
 }
 
-export type ThreadItem<M> = { kind: "day"; key: string; label: string } | { kind: "msg"; key: string; msg: M };
+export type ThreadItem<M> = { kind: "day"; key: string; label: string } | { kind: "new"; key: string } | { kind: "msg"; key: string; msg: M };
 
-/** Messages (oldest first) with a day separator before the first message of every calendar day. */
-export function withDaySeparators<M extends { id: string; createdAt: string }>(msgs: M[], locale: string, now: number = Date.now()): ThreadItem<M>[] {
+/** Messages (oldest first) with a day separator before the first message of every calendar day, and «Новые сообщения» right above `newFromId`. */
+export function withDaySeparators<M extends { id: string; createdAt: string }>(msgs: M[], locale: string, now: number = Date.now(), newFromId: string | null = null): ThreadItem<M>[] {
   const out: ThreadItem<M>[] = [];
   let last = "";
   for (const m of msgs) {
@@ -366,6 +394,7 @@ export function withDaySeparators<M extends { id: string; createdAt: string }>(m
       out.push({ kind: "day", key: `d:${day}`, label: dayLabel(d, locale, now) });
       last = day;
     }
+    if (newFromId && m.id === newFromId) out.push({ kind: "new", key: "new" });
     out.push({ kind: "msg", key: m.id, msg: m });
   }
   return out;

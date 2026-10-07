@@ -81,6 +81,8 @@ export async function GET(
     messages: messages.reverse(),
     hasMore,
     nextCursor: hasMore ? messages[0]?.id : null,
+    // where the reader stopped BEFORE this request marked the conversation read (the app's «Новые сообщения» divider)
+    lastReadAt: participant.lastReadAt,
   });
 }
 

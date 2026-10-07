@@ -97,6 +97,8 @@ interface ChatRoomProps {
   onBack?: () => void;
   /** App UI: what the room sheet shows besides the messages (private-group data and actions, a «copied» toast) */
   appInfo?: RoomInfo;
+  /** App UI: where the reader stopped before this opening (asked before the room marks itself read); null = never opened */
+  appReadAt?: string | null;
 }
 
 /* ── Constants ── */
@@ -222,7 +224,7 @@ function IconTrash() {
 }
 
 /* ── Component ── */
-export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm, appVariant, onBack, appInfo }: ChatRoomProps) {
+export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpenDm, appVariant, onBack, appInfo, appReadAt }: ChatRoomProps) {
   const { t, locale } = useT();
   const { data: session } = useSession();
   const router = useRouter();
@@ -729,6 +731,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       // the old page: a name opens the personal dialog with that person
       onOpenAuthor: (userId) => { if (userId !== session?.user?.id) router.push(`/messages?startWith=${userId}`); },
       info: appInfo,
+      readAt: appReadAt,
     };
     return <AppRoomThread api={api} />;
   }

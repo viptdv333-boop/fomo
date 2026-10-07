@@ -35,6 +35,7 @@ import {
   dayLabel,
   dialogPreviewLine,
   dmUnreadTotal,
+  firstUnreadId,
   groupAssets,
   initials,
   listTimeLabel,
@@ -271,6 +272,24 @@ const sep = withDaySeparators(
 );
 eq("separators: one per day", sep.map((i) => (i.kind === "day" ? `day:${i.label}` : i.key)), ["day:Вчера", "a", "b", "day:Сегодня", "c"]);
 eq("separators: empty", withDaySeparators([], "ru", CNOW), []);
+const nm = [
+  { id: "a", createdAt: new Date(T(2026, 10, 5, 10)).toISOString(), mine: false },
+  { id: "b", createdAt: new Date(T(2026, 10, 6, 9)).toISOString(), mine: true },
+  { id: "c", createdAt: new Date(T(2026, 10, 6, 10)).toISOString(), mine: false },
+  { id: "d", createdAt: new Date(T(2026, 10, 6, 11)).toISOString(), mine: false },
+];
+eq("separators: «Новые сообщения» sits right above the first unread message", withDaySeparators(nm, "ru", CNOW, "c").map((i) => (i.kind === "msg" ? i.msg.id : i.kind)), ["day", "a", "day", "b", "new", "c", "d"]);
+eq("separators: divider above the first message of a day comes after the day pill", withDaySeparators(nm, "ru", CNOW, "b").map((i) => (i.kind === "msg" ? i.msg.id : i.kind)), ["day", "a", "day", "new", "b", "c", "d"]);
+eq("separators: no anchor / unknown anchor -> no divider", [withDaySeparators(nm, "ru", CNOW).some((i) => i.kind === "new"), withDaySeparators(nm, "ru", CNOW, "zz").some((i) => i.kind === "new")], [false, false]);
+const mark = new Date(T(2026, 10, 6, 9, 30)).toISOString();
+eq("first unread: oldest message of somebody else after the marker (mine skipped)", firstUnreadId(nm, mark), "c");
+eq("first unread: my own message after the marker is not unread", firstUnreadId([{ id: "m", createdAt: nm[1].createdAt, mine: true }], new Date(T(2026, 10, 6, 8)).toISOString()), null);
+eq("first unread: everything read", firstUnreadId(nm, new Date(T(2026, 10, 7)).toISOString()), null);
+eq("first unread: never opened (no marker) / junk marker -> no divider", [firstUnreadId(nm, null), firstUnreadId(nm, undefined), firstUnreadId(nm, "nope")], [null, null, null]);
+eq("first unread: all unread -> the very first of somebody else", firstUnreadId(nm, new Date(T(2020, 1, 1)).toISOString()), "a");
+eq("first unread: deleted messages do not count", firstUnreadId([{ id: "x", createdAt: nm[2].createdAt, mine: false, deleted: true }, nm[3]], mark), "d");
+eq("first unread: the marker itself is not after itself", firstUnreadId([{ id: "e", createdAt: mark, mine: false }], mark), null);
+eq("dm unread total: muted dialogs do not count", dmUnreadTotal([{ id: "a", unreadCount: 3 }, { id: "b", unreadCount: 2 }, { id: "c", unread: true }], ["b"]), 4);
 eq("dm unread total (counts, flags, junk)", [dmUnreadTotal([{ unreadCount: 3 }, { unread: true }, { unread: false }, { unreadCount: 0, unread: true }, { unreadCount: -4 }]), dmUnreadTotal([])], [4, 0]);
 eq("badge label reused (99+)", [badgeLabel(100), badgeLabel(7)], ["99+", "7"]);
 eq("initials two words", initials("Анна Кравец"), "АК");
@@ -339,6 +358,11 @@ const found = buildRoomGroups({ ...gin, query: "нефт" });
 eq("groups: search keeps matching rooms only and opens their topic", found.map((g) => [g.key, g.open, g.rows.map((r) => r.id)]), [["cat:commodities", true, ["r3"]]]);
 eq("groups: no match -> no groups", buildRoomGroups({ ...gin, query: "zzzz" }), []);
 eq("groups: no favourites, no private groups -> those groups vanish", buildRoomGroups({ ...gin, favorites: [], privateRooms: [] }).map((g) => g.key), ["general", "cat:metals", "cat:commodities", "cat:other"]);
+const gm = buildRoomGroups({ ...gin, mentions: { r1: 1, r2: 9, g1: 2 } });
+eq("groups: mention marker per row (never more than the unread of that row)", [gm[0].rows[0].mention, gm[2].rows.map((r) => r.mention)], [2, [1, 1]]);
+eq("groups: mentions of a folded topic are summed", gm.filter((g) => g.kind === "cat").map((g) => g.mention), [2, 0, 0]);
+eq("groups: no mentions given -> none", [groups[0].rows[0].mention, groups[2].mention], [0, 0]);
+eq("groups: 99+ cap on a row and on a folded topic", [badgeLabel(groups[3].unread), badgeLabel(buildRoomGroups({ ...gin, unread: { r3: 250 } }).find((g) => g.key === "cat:commodities")!.rows[0].unread)], ["99+", "99+"]);
 eq("groups: unknown general id falls back to 'general'", buildRoomGroups({ ...gin, generalRoomId: null, favorites: [] })[0].rows[0].id, "general");
 
 // --- old «Личные» marks and look settings (kept under the old localStorage keys)
