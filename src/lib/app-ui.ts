@@ -78,6 +78,24 @@ export function appTabHref(locale: Locale, tab: AppTabDef): string {
   return localizedPath(locale, tab.href);
 }
 
+/** Horizontal swipe between the dock sections: a clear sideways flick (long enough, mostly horizontal, quick). */
+export function isTabSwipe(dx: number, dy: number, ms: number): boolean {
+  return Math.abs(dx) >= 64 && Math.abs(dx) >= 1.6 * Math.abs(dy) && ms > 0 && ms <= 700;
+}
+
+/**
+ * The tab a sideways swipe leads to: dir -1 = swipe right (previous tab), +1 = swipe left (next tab). Only from the root screen of a tab
+ * (no query, not a pushed screen) and never around the ends; the «Настройки» tab (a native screen / a pushed profile screen) is not a swipe target.
+ */
+export function swipeTargetTab(pathname: string, search: string, dir: -1 | 1): AppTabDef | null {
+  if (search && search !== "?") return null;
+  const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path.replace(/\/+$/, "") || "/";
+  const order = APP_TABS.filter((t) => t.id !== "settings");
+  const i = order.findIndex((t) => t.href.split("?")[0] === clean);
+  if (i < 0) return null;
+  return order[i + dir] ?? null;
+}
+
 /** "99+" cap of the red badges. 0 / negative / junk -> "". */
 export function badgeLabel(n: unknown): string {
   const v = typeof n === "number" && Number.isFinite(n) ? Math.floor(n) : 0;

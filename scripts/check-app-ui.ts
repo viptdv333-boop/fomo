@@ -7,8 +7,10 @@ import {
   appHeaderHidden,
   appTabHref,
   badgeLabel,
+  isTabSwipe,
   parseFontStep,
   raisesKeyboard,
+  swipeTargetTab,
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
@@ -498,3 +500,12 @@ if (fails) {
   process.exit(1);
 }
 console.log("\nall ok");
+
+// --- swipe between the dock sections
+eq("swipe: long flat quick flick counts", [isTabSwipe(-120, 10, 200), isTabSwipe(90, -20, 400)], [true, true]);
+eq("swipe: short / diagonal / slow flicks do not", [isTabSwipe(-40, 5, 200), isTabSwipe(-100, 90, 200), isTabSwipe(-120, 10, 900), isTabSwipe(-120, 10, 0)], [false, false, false, false]);
+eq("swipe: left goes to the next tab, right to the previous", [swipeTargetTab("/feed", "", 1)?.id, swipeTargetTab("/terminal", "", -1)?.id, swipeTargetTab("/terminal", "", 1)?.id], ["terminal", "feed", "chat"]);
+eq("swipe: no wrap at the ends", [swipeTargetTab("/feed", "", -1), swipeTargetTab("/profile", "", 1)], [null, null]);
+eq("swipe: the settings tab is skipped", swipeTargetTab("/authors", "", 1)?.id, "me");
+eq("swipe: not from a pushed screen, a query screen or a deep page", [swipeTargetTab("/chat/room1", "", 1), swipeTargetTab("/profile", "?tab=finance", -1), swipeTargetTab("/ideas/123", "", 1)], [null, null, null]);
+eq("swipe: locale prefix is ignored", swipeTargetTab("/en/feed", "", 1)?.id, "terminal");
