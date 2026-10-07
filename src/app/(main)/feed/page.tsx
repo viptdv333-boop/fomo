@@ -8,6 +8,7 @@ import IdeaCard from "@/components/ideas/IdeaCard";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 import DemoGate from "@/components/shared/DemoGate";
+import AppUnreadStrip from "@/components/app/AppUnreadStrip";
 
 interface Instrument {
   id: string;
@@ -89,6 +90,8 @@ export default function FeedPageWrapper() {
           </Link>
         )}
       </div>
+      {/* app UI only: unread comments under ideas, one tap to the first of them */}
+      <AppUnreadStrip />
       {/* a guest browses the board freely for a limited daily demo time (shared with the terminal and the calendar), then sees it blurred under a sign-in card */}
       <DemoGate kind="feed" path="/feed" layout="flow">
         <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>

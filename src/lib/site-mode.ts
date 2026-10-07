@@ -197,6 +197,8 @@ const TERMINAL_API_PREFIX = [
   "upload", // avatar, admin favicon
   "socketio", // price stream / bell
 ];
+/** Closed although the group above is open: routes of the board site (the terminal instance has no ideas). Path after /api, no trailing slash. */
+const TERMINAL_API_CLOSED = ["notifications/unread-by-idea"];
 /** Admin API (needs ADMIN / OWNER, checked by the middleware and the routes) limited to what the instance owner needs. */
 const TERMINAL_ADMIN_API = ["stats", "broadcast", "site-settings"];
 
@@ -222,6 +224,7 @@ export function routeAllowed(mode: SiteMode, pathname: string, isApi: boolean): 
       // the own profile (GET / PATCH /api/users/<id>) and the admin user list; no finances, tariffs, follows, education ...
       return seg.length <= 2 && seg[1] !== "online" && seg[1] !== "dm-enabled" && seg[1] !== "by-fomo-id";
     }
+    if (TERMINAL_API_CLOSED.includes(seg.join("/"))) return false;
     return TERMINAL_API_PREFIX.includes(seg[0]);
   }
   if (TERMINAL_PAGES_CLOSED.includes(p)) return false;

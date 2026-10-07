@@ -2,12 +2,13 @@
 import { badgeLabel, type AppTabId } from "@/lib/app-ui";
 
 /**
- * Notification.type -> dock tab. Every type that is not listed lights no tab (new_follower, new_idea, channel_comment,
- * payment / subscription*, report, broadcast, system ...).
+ * Notification.type -> dock tab. Every type that is not listed lights no tab (new_follower, new_idea, payment / subscription*, room_join,
+ * report, broadcast, system ... : the owner's own money / subscriber events of a paid channel stay tab-less on purpose).
  *   feed      Доска:    comments on my ideas, replies to my comments
  *   terminal  Терминал: price alerts, line alerts
  *   calendar  Календарь: reminders of the events the user subscribed to
- *   channels  Каналы:   posts of the channels the user is subscribed to
+ *   channels  Каналы:   posts of the channels the user is subscribed to, comments under their posts (channel_comment; the unread-by-type
+ *                       endpoint also reports comments / replies under a post of a channel as channel_comment, see effectiveByType)
  *   chat      Болталка: DMs, @mentions, replies/quotes of my messages, messages of rooms with the bell on
  */
 export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
@@ -17,11 +18,19 @@ export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
   line_alert: "terminal",
   calendar_reminder: "calendar",
   channel_post: "channels",
+  channel_comment: "channels",
   new_message: "chat",
   chat_mention: "chat",
   chat_reply: "chat",
   chat_room_message: "chat",
 };
+
+/**
+ * Tabs whose badge is cleared by opening the tab (PATCH /api/notifications {tab}). Доска and Каналы are NOT here: their badges count items
+ * (a comment, a post) and clear when that item is opened (per-idea read, src/lib/app-unread.ts), otherwise the badge would vanish before
+ * the user has seen what it is about.
+ */
+export const AUTO_CLEAR_TABS: readonly AppTabId[] = ["terminal", "calendar", "chat"];
 
 /** Types the dock cares about (what the unread-by-type endpoint selects). */
 export const BADGE_TYPES: readonly string[] = Object.keys(BADGE_TAB_BY_TYPE);
@@ -69,4 +78,29 @@ export function tabBadgeCounts(byType: Record<string, unknown> | null | undefine
 /** The text of a tab's red badge ("" = none, "99+" cap). */
 export function tabBadgeLabel(counts: TabCounts, tab: AppTabId): string {
   return badgeLabel(counts[tab]);
+}
+
+export interface DockTabBox {
+  id: AppTabId;
+  /** offsetLeft / offsetWidth of the tab inside the scrolling dock */
+  left: number;
+  width: number;
+}
+
+/**
+ * The dock is a sideways carousel (five tabs and a half visible): the badge of a tab that has scrolled out of view cannot be seen.
+ * Sums the unread numbers of the tabs whose icon centre lies outside the visible part of the bar, per side (l = scrolled off to the left,
+ * r = to the right): the dock shows them as a small red «‹ 3» / «3 ›» at its edge.
+ */
+export function hiddenTabUnread(tabs: readonly DockTabBox[], scrollLeft: number, clientWidth: number, counts: TabCounts, margin = 14): { l: number; r: number } {
+  let l = 0;
+  let r = 0;
+  for (const t of tabs) {
+    const n = counts[t.id] ?? 0;
+    if (n <= 0) continue;
+    const centre = t.left + t.width / 2 - scrollLeft;
+    if (centre < margin) l += n;
+    else if (centre > clientWidth - margin) r += n;
+  }
+  return { l, r };
 }

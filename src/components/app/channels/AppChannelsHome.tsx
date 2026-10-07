@@ -41,6 +41,8 @@ import AppBuySheet from "./AppBuySheet";
 import ChIcon from "./ChIcon";
 import { useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useAuthorList, useChannelList, useMySubs } from "./useChannelsData";
+import { useUnreadByIdea } from "../useUnreadByIdea";
+import { unreadLabel } from "@/lib/app-unread";
 
 /** the list scroll survives a visit to a channel / an author (the page is a route, so it unmounts while the detail is open) */
 const savedScroll: Record<string, number> = {};
@@ -62,6 +64,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
   const nav = useChNav("/channels");
   const { flash, toast } = useFlash();
   const subs = useMySubs();
+  const unread = useUnreadByIdea(seg === "channels"); // red count of unread comments / new posts per channel
   const chans = useChannelList(seg === "channels");
   const auths = useAuthorList(seg === "authors");
   const [query, setQuery] = useState("");
@@ -225,6 +228,15 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
   // the «ТОП 1..3» / owner marks of the old pages: a small chip on the tile / avatar, so the lines of the design keep their width
   const topBadge = (rank: number | undefined) => (rank === undefined ? null : <span className="ach-chip">{rank === 0 ? "\u{1F451}" : t(`top.${rank}`)}</span>);
 
+  const unreadPill = (c: ChannelItem) => {
+    const n = unreadLabel(unread.byChannel[c.id]);
+    return n ? (
+      <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n })}>
+        {n}
+      </span>
+    ) : null;
+  };
+
   const channelCard = (c: ChannelItem) => {
     const st = statusFor(c);
     const tags = channelTags(c);
@@ -238,6 +250,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
           <div className="ach-ctxt">
             <div className="ach-cname">
               <span>{c.name}</span>
+              {unreadPill(c)}
             </div>
             <div className="ach-csub">
               {c.author.displayName} · ★ {ratingText(c.author.rating)} · {subscribersLabel(c.subscribersCount, locale)}
@@ -282,6 +295,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
           <div className="ach-atxt">
             <div className="ach-aname">
               <span className="ach-ellip">{c.name}</span>
+              {unreadPill(c)}
             </div>
             <div className="ach-asub">
               {c.author.displayName} · {c.price > 0 ? priceAndPeriod(c.price, c.durationDays, locale) : t("appch.free")}

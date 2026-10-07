@@ -105,7 +105,7 @@ const API_CLOSED = [
   "/api/ideas", "/api/ideas/1/comments", "/api/chat/messages", "/api/messages/conversations", "/api/channels", "/api/authors", "/api/payments", "/api/subscriptions", "/api/yukassa/webhook", "/api/rooms",
   "/api/users/u1/finances", "/api/users/u1/tariffs", "/api/users/u1/follow", "/api/users/online", "/api/users/by-fomo-id/x", "/api/instruments", "/api/instruments/search", "/api/assets", "/api/categories",
   "/api/exchanges", "/api/watchlist", "/api/feed/mutes", "/api/bot/ideas", "/api/contacts", "/api/stats/public", "/api/admin/chat", "/api/admin/ideas/moderate", "/api/admin/languages", "/api/admin/rating",
-  "/api/sandbox/account", "/api/reports", "/api/payment-methods", "/api/futures/spec", "/api/fmp-stats", "/api/crypto-stats", "/api/unknown-new-route", "/api", "/api/", "/api/../ideas",
+  "/api/notifications/unread-by-idea", "/api/notifications/unread-by-idea/", "/api/sandbox/account", "/api/reports", "/api/payment-methods", "/api/futures/spec", "/api/fmp-stats", "/api/crypto-stats", "/api/unknown-new-route", "/api", "/api/", "/api/../ideas",
 ];
 eq("pages: every example is open on the terminal site", PAGES_OPEN.filter((p) => !routeAllowed("terminal", p, false)), []);
 eq("pages: every example is closed on the terminal site", PAGES_CLOSED.filter((p) => routeAllowed("terminal", p, false)), []);

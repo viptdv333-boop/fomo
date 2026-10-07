@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
-import { tabBadgeCounts, tabForNotifType, type TabCounts } from "@/lib/app-badges";
+import { AUTO_CLEAR_TABS, tabBadgeCounts, tabForNotifType, type TabCounts } from "@/lib/app-badges";
 import { useChatBadge } from "@/components/layout/useChatBadge";
 import type { AppTabId } from "@/lib/app-ui";
-
-const NOTIF_TABS: AppTabId[] = ["feed", "terminal", "calendar", "channels", "chat"];
 
 /**
  * Unread numbers of the dock's red badges per tab. Notification counts come from /api/notifications/unread-by-type (polled, refreshed on
  * the socket's new_notification, on room reads and on `fomo:unread-changed`); the chat tab also folds in the chat badge (max, see
- * tabBadgeCounts). `activeTab`: the tab whose screen is open; its notifications are marked read after a short moment on it
- * (the bell with the notification list is not shown in the app UI, so a badge would otherwise never clear).
+ * tabBadgeCounts). `activeTab`: the tab whose screen is open; for the tabs in AUTO_CLEAR_TABS (Терминал, Календарь, Болталка) its
+ * notifications are marked read after a short moment on it. Доска and Каналы are NOT cleared that way: their badges count items (a comment,
+ * a post) and the notification is read when that idea is opened (PATCH /api/notifications {ideaId}, IdeaComments), otherwise the badge
+ * vanished 1.5 s after the app opened and the user never found out which comment it was about.
  */
 export function useTabBadges(activeTab: AppTabId | null = null): TabCounts {
   const { data: session } = useSession();
@@ -62,8 +62,8 @@ export function useTabBadges(activeTab: AppTabId | null = null): TabCounts {
 
   const counts = useMemo(() => tabBadgeCounts(byType, chat), [byType, chat]);
 
-  // being on a tab = having seen what its badge counts
-  const pending = activeTab && NOTIF_TABS.includes(activeTab) ? activeTab : null;
+  // being on a tab = having seen what its badge counts (only where the badge does not count items, see AUTO_CLEAR_TABS)
+  const pending = activeTab && AUTO_CLEAR_TABS.includes(activeTab) ? activeTab : null;
   const hasUnread = pending ? Object.keys(byType).some((t) => (byType[t] ?? 0) > 0 && tabForNotifType(t) === pending) : false;
   useEffect(() => {
     if (!userId || !pending || !hasUnread) return;

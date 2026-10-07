@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { agoLabel } from "@/lib/app-ui";
 import { ideaSubLine } from "@/lib/app-profile";
+import { unreadLabel } from "@/lib/app-unread";
+import { useUnreadByIdea } from "../useUnreadByIdea";
 import { Sections, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { Loading, ScreenFrame } from "./parts";
@@ -36,6 +38,7 @@ export default function MyIdeas() {
   const uid = user?.id;
   const [ideas, setIdeas] = useState<MyIdea[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const unread = useUnreadByIdea(); // red count of unread comments under each idea
 
   const load = useCallback(async () => {
     if (!uid) return;
@@ -103,6 +106,7 @@ export default function MyIdeas() {
         key: i.id,
         label: i.title,
         sub: ideaSubLine(i.voteScore ?? 0, agoLabel(i.createdAt, locale), i.moderationStatus === "archived" ? t("appprof.inArchive") : i.moderationStatus === "hidden" ? t("appprof.hiddenIdea") : null),
+        badge: unreadLabel(unread.byIdea[i.id]) || undefined,
         onClick: () => open(`/ideas/${i.id}`),
         actions: [
           { label: t("appprof.edit"), onClick: () => open(`/ideas/${i.id}/edit`) },

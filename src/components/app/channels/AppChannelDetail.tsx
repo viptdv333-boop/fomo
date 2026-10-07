@@ -33,6 +33,8 @@ import AppReportSheet from "./AppReportSheet";
 import ChIcon from "./ChIcon";
 import { ChNav, shareOrCopy, useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useChannelList, useMySubs } from "./useChannelsData";
+import { useUnreadByIdea } from "../useUnreadByIdea";
+import { unreadLabel } from "@/lib/app-unread";
 
 interface PostItem {
   id: string;
@@ -113,6 +115,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const chatOpen = params.get("chat") === "1";
   const list = useChannelList();
   const subs = useMySubs();
+  const unread = useUnreadByIdea(); // red count of unread comments under each post
 
   const channel = useMemo(() => (list.items ?? []).find((c) => c.id === idParam || c.slug === idParam) ?? null, [list.items, idParam]);
   const others = useMemo(() => (channel ? (list.items ?? []).filter((c) => c.author.id === channel.author.id && c.id !== channel.id) : []), [list.items, channel]);
@@ -157,6 +160,16 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
       .then((d) => setTgVerified(Boolean(d?.verified)))
       .catch(() => {});
   }, [subs.loggedIn]);
+
+  // a viewer without access cannot open the posts, so nothing could clear their notifications: read them here
+  useEffect(() => {
+    if (!channel || !subs.loaded || !subs.loggedIn || canView) return;
+    if (!unread.byChannel[channel.id]) return;
+    void fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channelId: channel.id }) })
+      .then(() => window.dispatchEvent(new Event("fomo:unread-changed")))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel?.id, subs.loaded, subs.loggedIn, canView, !!unread.byChannel[channel?.id ?? ""]]);
 
   const needLogin = () => nav.go("/login");
   const chatUrl = channel ? `${channelPath(channel)}?chat=1` : "";
@@ -432,6 +445,11 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                   <div className="ach-post-title">
                     {p.isPinned && <span className="ach-rank">{"\u{1F4CC}"}</span>}
                     <span>{p.title}</span>
+                    {canView && unreadLabel(unread.byIdea[p.id]) && (
+                      <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n: unreadLabel(unread.byIdea[p.id]) })}>
+                        {unreadLabel(unread.byIdea[p.id])}
+                      </span>
+                    )}
                   </div>
                   {(p.content || p.preview) && (
                     <div className="ach-post-body" data-open={p.content ? "1" : undefined} data-locked={canView ? undefined : "1"}>

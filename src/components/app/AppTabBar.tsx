@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
-import { APP_TABS, activeAppTab, appTabHref, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
-import { tabBadgeLabel } from "@/lib/app-badges";
+import { APP_TABS, activeAppTab, appTabHref, badgeLabel, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
+import { hiddenTabUnread, tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { useTabBadges } from "./useTabBadges";
@@ -34,7 +34,7 @@ function useKeyboardClass() {
 
 
 /** Where a sideways swipe must NOT switch the section: fields, the chart, sheets / dialogs, the dock itself, anything that really scrolls sideways. */
-const NO_SWIPE = "input, textarea, select, canvas, [contenteditable], [data-no-swipe], [role=dialog], .app-tabbar, .app-term-chart, .ac-sheet-wrap, .app-sheet, .app-term-fs";
+const NO_SWIPE = "input, textarea, select, canvas, [contenteditable], [data-no-swipe], [role=dialog], .app-tabbar, .app-dock-more, .app-term-chart, .ac-sheet-wrap, .app-sheet, .app-term-fs";
 function scrollsSideways(el: Element | null): boolean {
   for (let n: Element | null = el; n && n !== document.body && n.tagName !== "MAIN"; n = n.parentElement) {
     const cs = getComputedStyle(n);
@@ -204,10 +204,15 @@ function TabBar() {
 
   // the dock is a carousel: a scroll thumb above the bar (plus the half-visible last tab) (all driven by the bar's scroll position)
   const thumb = useRef<HTMLSpanElement>(null);
+  // unread numbers of the tabs that have scrolled out of sight (their own badge cannot be seen): a red «‹ 3» / «3 ›» at the edge of the dock
+  const [edge, setEdge] = useState({ l: 0, r: 0 });
   useEffect(() => {
     const nav = bar.current;
     if (!nav) return;
     const sync = () => {
+      const boxes = [...nav.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => ({ id: el.dataset.tab as AppTabId, left: el.offsetLeft, width: el.offsetWidth }));
+      const h = hiddenTabUnread(boxes, nav.scrollLeft, nav.clientWidth, counts);
+      setEdge((cur) => (cur.l === h.l && cur.r === h.r ? cur : h));
       const max = nav.scrollWidth - nav.clientWidth;
       if (thumb.current) {
         const w = max > 2 ? (nav.clientWidth / nav.scrollWidth) * 100 : 100;
@@ -223,7 +228,7 @@ function TabBar() {
       nav.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
     };
-  }, []);
+  }, [counts]);
   return (
     <>
     <nav ref={bar} className="app-tabbar" style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
@@ -237,6 +242,7 @@ function TabBar() {
             href={appTabHref(locale as "ru" | "en" | "cn", tab)}
             prefetch={false}
             className="app-tab"
+            data-tab={tab.id}
             data-active={on ? "1" : undefined}
             aria-current={on ? "page" : undefined}
             aria-label={badge ? `${label}, ${t("appui.unread", { n: badge })}` : label}
@@ -277,6 +283,22 @@ function TabBar() {
     <div className="app-dock-track" aria-hidden="true">
       <span ref={thumb} className="app-dock-thumb" />
     </div>
+    {(["l", "r"] as const).map((side) =>
+      edge[side] > 0 ? (
+        <button
+          key={side}
+          type="button"
+          className="app-dock-more"
+          data-side={side}
+          aria-label={t("appui.unread", { n: badgeLabel(edge[side]) })}
+          onClick={() => bar.current?.scrollTo({ left: side === "l" ? 0 : bar.current.scrollWidth, behavior: "smooth" })}
+        >
+          {side === "l" ? "‹ " : ""}
+          {badgeLabel(edge[side])}
+          {side === "r" ? " ›" : ""}
+        </button>
+      ) : null
+    )}
     </>
   );
 }

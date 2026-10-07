@@ -239,3 +239,7 @@ html.app-ui .ach-done-btn { margin-top: 8px; }
 
 /* toast */
 html.app-ui .ach-toast { position: fixed; left: 50%; bottom: calc(var(--app-bottom-inset) + 44px); transform: translateX(-50%); z-index: 90; padding: 10px 16px; border-radius: 12px; background: var(--app-inv); color: var(--app-inv-tx); font-size: 14px; font-weight: 500; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+
+/* unread count pill next to a channel name / in a post title (the shared .app-ubadge, no extra left margin: the flex gap spaces it) */
+html.app-ui .ach-cname .app-ubadge, html.app-ui .ach-aname .app-ubadge { margin-left: 0; }
+html.app-ui .ach-post-title .app-ubadge { margin-left: auto; }

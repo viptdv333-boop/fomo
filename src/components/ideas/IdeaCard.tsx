@@ -11,6 +11,8 @@ import { FomoMark } from "@/components/shared/Watermark";
 import { formatMessageTime } from "@/lib/format-message-time";
 import { agoLabel } from "@/lib/app-ui";
 import { useAppUi } from "@/components/app/useAppUi";
+import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
+import { unreadLabel } from "@/lib/app-unread";
 import { useT } from "@/lib/i18n/client";
 
 const AVATAR_COLORS = [
@@ -82,6 +84,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const { t, locale } = useT();
   const { data: session } = useSession();
   const appUi = useAppUi();
+  // red count of unread comments under this idea (app UI board card only)
+  const unreadMap = useUnreadByIdea(appUi && !minimal && !compact);
+  const unreadBadge = unreadLabel(unreadMap.byIdea[idea.id]);
   const [liked, setLiked] = useState(idea.userVote === 1);
   const [likeCount, setLikeCount] = useState(idea.voteScore);
   const [showDonateModal, setShowDonateModal] = useState(false);
@@ -156,6 +161,11 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <div className="app-idea-head">
           <div className="app-idea-title">
             <Link href={`/ideas/${idea.id}`}>{idea.title}</Link>
+            {unreadBadge && (
+              <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n: unreadBadge })}>
+                {unreadBadge}
+              </span>
+            )}
             {isNew && <NewBadge className="ml-2 align-middle" />}
             {isArchived && <ArchivedBadge className="ml-2 align-middle" />}
           </div>

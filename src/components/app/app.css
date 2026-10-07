@@ -101,6 +101,11 @@ html.app-ui .app-tabbar::-webkit-scrollbar { display: none; }
 html.app-ui .app-dock-track { position: fixed; left: 0; right: 0; bottom: var(--app-bottom-inset); height: 3px; z-index: 46; background: var(--app-line); pointer-events: none; }
 html.app-ui .app-dock-thumb { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--app-green-tx); }
 html.app-ui.app-kbd .app-dock-track { display: none; }
+/* unread count of the tabs scrolled out of sight, at the edge of the dock */
+html.app-ui .app-dock-more { position: fixed; bottom: calc(var(--app-bottom-inset) + 8px); z-index: 47; min-width: 28px; height: 22px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 11px; background: var(--app-red); color: #fff; font: 700 12px/22px system-ui, sans-serif; cursor: pointer; }
+html.app-ui .app-dock-more[data-side="l"] { left: 8px; }
+html.app-ui .app-dock-more[data-side="r"] { right: 8px; }
+html.app-ui.app-kbd .app-dock-more { display: none; }
 /* the dock shows five tabs and a half: the cut-off sixth tab is the cue that the bar scrolls sideways */
 html.app-ui.app-kbd .app-tabbar { display: none; }
 html.app-ui .app-tab {
@@ -148,6 +153,34 @@ html.app-ui .app-badge {
   line-height: 18px;
   text-align: center;
 }
+
+/* per-item unread count (board card, post card, channel row, «Мои идеи»): the same red pill as the dock badge, but in the flow of the line */
+html.app-ui .app-ubadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 8px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--app-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  position: relative;
+  z-index: 1;
+}
+/* board: «Новых комментариев: N» strip above the list, opens the first unread idea */
+html.app-ui .app-unread-strip { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 11px 14px; border-radius: 14px; background: var(--app-card); border: 1px solid var(--app-line); color: var(--app-tx); text-decoration: none; font-size: 15px; font-weight: 600; }
+html.app-ui .app-unread-strip:active { background: var(--app-press); }
+html.app-ui .app-unread-strip .app-ubadge { margin-left: 0; }
+html.app-ui .app-unread-strip-txt { flex: 1; min-width: 0; }
+html.app-ui .app-unread-strip svg { color: var(--app-tx3); flex: none; }
 
 /* ---------- compact header ---------- */
 html.app-ui .app-header {

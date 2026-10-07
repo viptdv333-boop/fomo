@@ -11,6 +11,7 @@ import ComposerInput, { type ComposerHandle } from "@/components/shared/Composer
 
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
+import { pickCommentToShow } from "@/lib/app-unread";
 
 interface Comment {
   id: string;
@@ -28,7 +29,7 @@ interface Props {
 
 export default function IdeaComments({ ideaId }: Props) {
   const { t, locale } = useT();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
@@ -38,6 +39,31 @@ export default function IdeaComments({ ideaId }: Props) {
   const [pendingFile, setPendingFile] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<ComposerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Unread notifications of THIS idea (read before they are marked read): where to jump to. null = not known yet, "none" = nothing / guest.
+  const uid = session?.user?.id;
+  const sessionLoading = sessionStatus === "loading";
+  const [unread, setUnread] = useState<{ ids: string[]; since: string | null } | "none" | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const jumped = useRef(false);
+
+  useEffect(() => {
+    jumped.current = false;
+    setUnread(null);
+    if (sessionLoading) return; // the session is still loading
+    if (!uid) {
+      setUnread("none");
+      return;
+    }
+    let alive = true;
+    fetch(`/api/notifications/unread-by-idea?ideaId=${encodeURIComponent(ideaId)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => alive && setUnread(j && Array.isArray(j.ids) ? { ids: j.ids, since: j.since ?? null } : "none"))
+      .catch(() => alive && setUnread("none"));
+    return () => {
+      alive = false;
+    };
+  }, [ideaId, uid, sessionLoading]);
 
   const loadComments = useCallback(async () => {
     const res = await fetch(`/api/ideas/${ideaId}/comments`);
@@ -102,6 +128,37 @@ export default function IdeaComments({ ideaId }: Props) {
     }
   }
 
+  // Opening the idea = having seen it: jump to the comment the user came for (?comment=<id> of the notification link, else the first unread
+  // one) with a short highlight, then mark the idea's notifications read (the red counts of the cards and the dock clear).
+  useEffect(() => {
+    if (loading || unread === null || jumped.current) return;
+    jumped.current = true;
+    let wanted: string | null = null;
+    try {
+      wanted = new URLSearchParams(window.location.search).get("comment");
+    } catch {
+      /* no window */
+    }
+    const info = unread === "none" ? null : unread;
+    const target = pickCommentToShow(comments, { wanted, ids: info?.ids, since: info?.since, myId: uid });
+    if (target) {
+      // instant (a smooth scroll is cancelled by the layout shifts of the idea above while it is still drawing), repeated once when it settled
+      const go = () => document.getElementById(`comment-${target}`)?.scrollIntoView({ block: "center" });
+      setTimeout(() => {
+        go();
+        setFlashId(target);
+        setTimeout(() => setFlashId(null), 2600);
+      }, 150);
+      setTimeout(go, 700);
+    }
+    if (uid) {
+      fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ideaId }) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => j?.marked > 0 && window.dispatchEvent(new Event("fomo:unread-changed")))
+        .catch(() => {});
+    }
+  }, [loading, unread, comments, uid, ideaId]);
+
   // Cards link here with #comments; the page renders the comments after a
   // fetch, so the browser's own anchor scroll has nothing to land on yet.
   useEffect(() => {
@@ -125,7 +182,11 @@ export default function IdeaComments({ ideaId }: Props) {
       ) : comments.length > 0 ? (
         <div className="space-y-2 mb-3">
           {comments.map((c) => (
-            <div key={c.id} className="flex gap-2 group">
+            <div
+              key={c.id}
+              id={`comment-${c.id}`}
+              className={`flex gap-2 group scroll-mt-24 rounded-lg transition-colors duration-700 ${flashId === c.id ? "bg-green-100 dark:bg-green-900/40 ring-2 ring-green-500/50 -mx-1 px-1" : ""}`}
+            >
               <Link href={`/profile/${c.user.id}`} className="shrink-0">
                 {c.user.avatarUrl ? (
                   <img src={c.user.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover mt-0.5" />

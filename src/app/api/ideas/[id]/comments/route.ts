@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification, notifyChannelSubscribers } from "@/lib/notifications";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
+import { ideaCommentLink } from "@/lib/app-unread";
 
 // GET — list comments for an idea
 export async function GET(
@@ -75,6 +76,8 @@ export async function POST(
     ? { fullText: commentText, author: authorName, images: imageUrlsFromAttachments(comment.fileUrl ? [{ url: comment.fileUrl, name: comment.fileUrl }] : []) }
     : undefined;
   const notified = new Set<string>([session.user.id]);
+  // The idea page scrolls to this comment (and the unread markers of the app find it): /ideas/<id>?comment=<commentId>
+  const link = ideaCommentLink(ideaId, comment.id);
 
   const idea = await prisma.idea.findUnique({
     where: { id: ideaId },
@@ -87,7 +90,7 @@ export async function POST(
       type: "new_comment",
       title: { key: "notif.newComment.title", vars: { name: authorName } },
       body: preview,
-      link: `/ideas/${ideaId}`,
+      link,
       full,
     });
   }
@@ -104,7 +107,7 @@ export async function POST(
         type: "comment_reply",
         title: { key: "notif.commentReply.title", vars: { name: authorName } },
         body: preview,
-        link: `/ideas/${ideaId}`,
+        link,
         full,
       });
     }
@@ -118,7 +121,7 @@ export async function POST(
       [...notified],
       { key: "notif.channelComment.title", vars: { name: authorName, channel: idea.tariff?.name ?? { key: "notif.fallback.channel" } } },
       preview || { key: "notif.attachment" },
-      `/ideas/${ideaId}`,
+      link,
       "channel_comment",
       full
     ).catch(() => {});
