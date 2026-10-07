@@ -151,3 +151,62 @@ export function agoLabel(iso: string | number | Date, locale: string, now: numbe
   if (mins < 1440) return `${Math.round(mins / 60)} ${s.h}`;
   return `${Math.round(mins / 1440)} ${s.d}`;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Desktop window (html.app-desktop: the Windows / macOS app, or the ?appui=1&appdesktop=1 preview): mouse and keyboard navigation of the dock.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The key combinations that move between the dock sections. Alt+← / Alt+→ stay the browser's / the shell's Back and Forward. */
+export type DockKeyAction = { kind: "step"; dir: -1 | 1 } | { kind: "jump"; index: number };
+
+export interface DockKeyEvent {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+}
+
+/**
+ * Ctrl+← / Ctrl+→ (⌘ on a Mac): the previous / next section; Ctrl+1 … Ctrl+8: the n-th section of the dock (index 0 … 7). Anything else, and any
+ * combination with Alt or Shift (Alt+← is Back, Ctrl+Shift+… belongs to the shell), is null.
+ */
+export function dockKeyAction(e: DockKeyEvent): DockKeyAction | null {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return null;
+  if (e.key === "ArrowLeft") return { kind: "step", dir: -1 };
+  if (e.key === "ArrowRight") return { kind: "step", dir: 1 };
+  if (/^[1-8]$/.test(e.key)) return { kind: "jump", index: Number(e.key) - 1 };
+  return null;
+}
+
+/**
+ * The dock section a key action leads to from the current page (null: nothing to do). A step goes from the tab the page belongs to and stops at the ends;
+ * a page that belongs to no tab (help, a form) has no neighbours. A jump to the tab that is already open is null too.
+ */
+export function dockKeyTarget(action: DockKeyAction, pathname: string, tabs: readonly AppTabDef[] = APP_TABS): AppTabDef | null {
+  const cur = activeAppTab(pathname);
+  const i = tabs.findIndex((t) => t.id === cur);
+  if (action.kind === "jump") {
+    const t = tabs[action.index] ?? null;
+    return t && t.id !== cur ? t : null;
+  }
+  if (i < 0) return null;
+  return tabs[i + action.dir] ?? null;
+}
+
+/** Wheel over the dock → sideways scroll in pixels. A mostly-vertical wheel turns into horizontal movement; a sideways gesture (touchpad) is left to the browser (null). */
+export function dockWheelDelta(dx: number, dy: number, deltaMode: number = 0): number | null {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy) || dy === 0 || Math.abs(dx) >= Math.abs(dy)) return null;
+  return deltaMode === 1 ? dy * 24 : deltaMode === 2 ? dy * 400 : dy;
+}
+
+/** The mouse has moved far enough with the button down to be a drag of the dock (and not a click on a tab). */
+export const DOCK_DRAG_PX = 5;
+export function isDockDrag(dx: number): boolean {
+  return Math.abs(dx) >= DOCK_DRAG_PX;
+}
+
+/** The scrollLeft of a dock that is being dragged by the mouse, clamped to the scrollable range. */
+export function dockDragScroll(startLeft: number, startX: number, x: number, max: number): number {
+  return Math.min(Math.max(0, max), Math.max(0, startLeft - (x - startX)));
+}

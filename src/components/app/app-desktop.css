@@ -1,0 +1,215 @@
+/*
+ * Desktop window of the app UI (the Windows / macOS app, or ?appui=1&appdesktop=1 in a browser): `html.app-ui.app-desktop`.
+ * The same screens, dock and sheets as the phone app, adapted to a big window instead of stretched across it:
+ *  - list / feed / chat / channels / authors / profile screens live in a centred column (--app-col); <main> keeps the full width so its scrollbar
+ *    stays at the window edge, the column is made of <main>'s side padding;
+ *  - the dock stays at the bottom of the window, its tabs centred in the same column width, the bar background spans the window;
+ *  - sheets are centred cards with a maximum width, not bottom sheets stretched across the window;
+ *  - the Terminal uses the whole window (the chart is the product).
+ * Everything here hangs on `html.app-ui.app-desktop`, so the phone app, the mobile preview and the ordinary site never see it. The `[class]` on the root
+ * selector only raises the specificity above the screens' own `html.app-ui.app-xxx-on main` rules, whatever order the stylesheets load in.
+ */
+
+/* the dock's full-width background exists in the DOM of every app UI, but only the desktop window uses it */
+.app-dock-bg { display: none; }
+
+html.app-ui.app-desktop {
+  /* the width of a screen's column: pushed screens, details and the other site pages ... */
+  --app-col: min(800px, 92vw);
+  /* ... and the dock, which keeps its width on every screen */
+  --app-dock-w: min(1100px, 92vw);
+  --app-gutter: 16px;
+  --app-sheet-w: 560px;
+}
+/* a dock of three tabs (terminal.fomo.spot) does not need the whole column */
+html.app-ui.app-desktop:has(.app-tabbar[data-tabs="3"]) { --app-dock-w: min(560px, 92vw); }
+/* list screens use the wide column: the board, channels / authors (their cards go into columns below) */
+html.app-ui.app-desktop:has([data-app="feed-head"]),
+html.app-ui.app-desktop:has(.ach-list) { --app-col: min(1100px, 92vw); }
+/* screens that bring their own paddings */
+html.app-ui.app-desktop.app-chat-on,
+html.app-ui.app-desktop.app-ch-on,
+html.app-ui.app-desktop.app-prof-on { --app-gutter: 0px; }
+/* the profile: a wide settings column */
+html.app-ui.app-desktop.app-prof-on { --app-col: min(760px, 92vw); }
+/* an open thread (a chat, a dialog, a channel) */
+html.app-ui.app-desktop.app-thread-on { --app-col: min(900px, 92vw); }
+/* the chat list and the thread side by side */
+html.app-ui.app-desktop.app-split-on { --app-col: min(1400px, 96vw); --app-dock-w: min(1400px, 96vw); }
+/* the terminal takes the whole window */
+html.app-ui.app-desktop.app-term-on { --app-col: 100vw; --app-gutter: 0px; }
+
+html.app-ui.app-desktop[class] main {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: max(var(--app-gutter), calc((100% - var(--app-col)) / 2));
+  padding-right: max(var(--app-gutter), calc((100% - var(--app-col)) / 2));
+}
+
+/* ---------- scrollbars: thin, in the app's colours ---------- */
+html.app-ui.app-desktop main,
+html.app-ui.app-desktop .ac-msgs,
+html.app-ui.app-desktop .app-term-cal,
+html.app-ui.app-desktop .ac-sheet-wrap .ac-sbody {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-tx3) transparent;
+}
+
+/* ---------- pointer: hover instead of press, text can be selected ---------- */
+html.app-ui.app-desktop .app-tab { cursor: pointer; }
+html.app-ui.app-desktop .app-tab:hover:not([data-active="1"]) { background: var(--app-press); color: var(--app-tx); }
+html.app-ui.app-desktop .app-row:hover,
+html.app-ui.app-desktop .ac-row:hover,
+html.app-ui.app-desktop button.ac-sr:hover,
+html.app-ui.app-desktop .app-term-wrow:hover,
+html.app-ui.app-desktop .app-term-tool:hover,
+html.app-ui.app-desktop .app-unread-strip:hover { background: var(--app-press); }
+html.app-ui.app-desktop .app-term-chip:hover:not([data-on="1"]),
+html.app-ui.app-desktop .app-term-range:hover:not([data-on="1"]),
+html.app-ui.app-desktop .app-chips > button:hover:not([data-on="1"]),
+html.app-ui.app-desktop .ac-segs button:hover:not([data-on="1"]) { background: var(--app-press); }
+html.app-ui.app-desktop [data-app-card]:hover { border-color: var(--app-tx3); }
+html.app-ui.app-desktop .app-idea:active { transform: none; }
+
+/* ---------- compact header: its content sits in the column, the bar spans the window ---------- */
+html.app-ui.app-desktop .app-header {
+  padding-left: max(16px, calc((100% - var(--app-col)) / 2));
+  padding-right: max(6px, calc((100% - var(--app-col)) / 2));
+}
+
+/* ---------- dock: bottom of the window, tabs centred in the column, background across the window ---------- */
+html.app-ui.app-desktop .app-dock-bg {
+  display: block;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 44;
+  height: var(--app-bottom-inset);
+  background: var(--app-nav);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--app-line);
+  pointer-events: none;
+}
+html.app-ui.app-desktop.app-term-fs .app-dock-bg { visibility: hidden; }
+html.app-ui.app-desktop .app-tabbar {
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  width: min(100%, var(--app-dock-w));
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-top: 0;
+  /* the mouse drags it sideways (see useDesktopNav) */
+  cursor: grab;
+}
+html.app-ui.app-desktop .app-tabbar[data-drag="1"] { cursor: grabbing; }
+html.app-ui.app-desktop .app-tabbar[data-drag="1"] .app-tab { pointer-events: none; }
+html.app-ui.app-desktop .app-dock-track {
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  width: min(100%, var(--app-dock-w));
+  z-index: 46;
+}
+/* a wide window shows every tab at once, evenly spread: no carousel (the scroll thumb hides itself when nothing scrolls); the half-tab carousel stays on narrow windows */
+@media (min-width: 900px) {
+  html.app-ui.app-desktop .app-tab { flex: 1 1 0; }
+  html.app-ui.app-desktop .app-tabbar { cursor: default; }
+}
+html.app-ui.app-desktop .app-dock-more[data-side="l"] { left: max(8px, calc((100% - var(--app-dock-w)) / 2 + 8px)); }
+html.app-ui.app-desktop .app-dock-more[data-side="r"] { right: max(8px, calc((100% - var(--app-dock-w)) / 2 + 8px)); }
+/* a thread keeps the dock on the desktop: there is room for it and the keyboard shortcuts / mouse stay available */
+html.app-ui.app-desktop.app-thread-on { --app-bottom-inset: calc(var(--app-bar-h) + env(safe-area-inset-bottom, 0px)); }
+html.app-ui.app-desktop.app-thread-on .app-tabbar { display: flex; }
+html.app-ui.app-desktop.app-thread-on main { padding-bottom: var(--app-bottom-inset); }
+
+/* ---------- sheets: a centred card with a maximum width, not a bottom sheet across the window ---------- */
+html.app-ui.app-desktop .ac-sheet-wrap { justify-content: center; align-items: center; padding: 24px; box-sizing: border-box; }
+html.app-ui.app-desktop .ac-sheet {
+  width: min(100%, var(--app-sheet-w));
+  max-height: min(88%, 780px);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  animation: acFade 0.18s;
+}
+html.app-ui.app-desktop .ac-sheet[data-h="full"] { height: min(88%, 780px); }
+html.app-ui.app-desktop .ac-grip { display: none; }
+html.app-ui.app-desktop .ac-sheet-wrap[data-wide="1"] .ac-sheet { width: min(100%, 760px); }
+
+/* ---------- Terminal: the whole window ---------- */
+html.app-ui.app-desktop .app-term-bar { padding: 8px 16px; gap: 14px; }
+html.app-ui.app-desktop .app-term-px { flex-direction: row; align-items: baseline; gap: 12px; }
+html.app-ui.app-desktop .app-term-price { font-size: 20px; }
+html.app-ui.app-desktop .app-term-chg { font-size: 13px; }
+html.app-ui.app-desktop .app-term-ico { cursor: pointer; border-radius: 10px; }
+html.app-ui.app-desktop .app-term-ico:hover { background: var(--app-press); }
+html.app-ui.app-desktop .app-term-tick { cursor: pointer; }
+
+/* the first screen: timeframes, the chart (with its own drawing bar and side panel) filling the rest, then ranges and the tool row side by side */
+html.app-ui.app-desktop .app-term-first {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: calc(100dvh - var(--app-bottom-inset) - 54px);
+  min-height: 360px;
+}
+html.app-ui.app-desktop .app-term-tfs { grid-column: 1 / -1; padding: 6px 12px; gap: 4px; }
+html.app-ui.app-desktop .app-term-chip { flex: 0 0 auto; min-width: 52px; padding: 0 10px; cursor: pointer; }
+html.app-ui.app-desktop .app-term-slot { grid-column: 1 / -1; min-height: 0; }
+html.app-ui.app-desktop .app-term-ranges { grid-column: 1; grid-row: 3; justify-content: flex-start; gap: 4px; padding: 6px 12px; }
+html.app-ui.app-desktop .app-term-range { cursor: pointer; padding: 4px 10px; }
+html.app-ui.app-desktop .app-term-first > .app-term-tools {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 0;
+  border: 0;
+  border-top: 0.5px solid var(--app-line);
+  border-bottom: 0.5px solid var(--app-line);
+  background: transparent;
+}
+html.app-ui.app-desktop .app-term-tool { flex-direction: row; gap: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+
+/* below the first screen: the lists keep a readable width, the calendar uses the whole window */
+html.app-ui.app-desktop .app-term > :is(.app-term-ideas, .app-term-wtitle, .app-term-watch, .app-term-seg, .app-term-disc) {
+  width: min(100% - 24px, 720px);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+html.app-ui.app-desktop .app-term > .app-term-disc { padding-left: 4px; padding-right: 4px; }
+html.app-ui.app-desktop .app-term-cal { height: min(78dvh, 960px); }
+html.app-ui.app-desktop .app-term-expand { cursor: pointer; }
+
+/* ---------- wide window: lists in columns ---------- */
+@media (min-width: 900px) {
+  /* the board: two columns (the three-card strip on top keeps its own grid); the compact list view stays one card */
+  html.app-ui.app-desktop [data-app-grid] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  /* channels (cards view): two columns, every other block of the screen spans them */
+  html.app-ui.app-desktop .ach-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-content: start; }
+  html.app-ui.app-desktop .ach-list > :not(.ach-card) { grid-column: 1 / -1; }
+  html.app-ui.app-desktop .ach-agrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1500px) {
+  html.app-ui.app-desktop [data-app-grid] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.app-ui.app-desktop .ach-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.app-ui.app-desktop .ach-agrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---------- chat: the list on the left, the thread on the right ---------- */
+html.app-ui.app-desktop .ac-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); border-left: 1px solid var(--app-line); border-right: 1px solid var(--app-line); }
+html.app-ui.app-desktop .ac-split-list { min-height: 0; overflow-y: auto; border-right: 1px solid var(--app-line); scrollbar-width: thin; scrollbar-color: var(--app-tx3) transparent; }
+html.app-ui.app-desktop .ac-split-list .ac-list { animation: none; }
+html.app-ui.app-desktop .ac-split-detail { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+html.app-ui.app-desktop .ac-split-detail > .ac-thread { animation: none; }
+html.app-ui.app-desktop .ac-split-detail .ac-tback { display: none; }
+html.app-ui.app-desktop .ac-split-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); font-size: 16px; }

@@ -624,7 +624,7 @@ function FeedPage() {
           )}
         </div>
       ) : viewMode === "cards" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} compact />
           ))}
@@ -636,7 +636,7 @@ function FeedPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div data-app-grid className="flex flex-col gap-4">
           {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} />
           ))}

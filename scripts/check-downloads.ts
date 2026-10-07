@@ -99,6 +99,17 @@ withUA(UA.androidApp, false, () => eq("android app by UA", [isDesktopApp(), isNa
 withUA(UA.android, true, () => eq("android bridge without UA marker", [isDesktopApp(), isNativeApp(), isAnyNativeShell()], [false, true, true]));
 withUA(UA.windows, false, () => eq("plain browser is no shell", [isDesktopApp(), isNativeApp(), isAnyNativeShell()], [false, false, false]));
 withUA("Mozilla/5.0 NotFomoDesktop/1 Windows", false, () => eq("marker needs a word boundary", isDesktopApp(), false));
+withUA(UA.windows, false, () => {
+  // the ?appui=1&appdesktop=1 preview: the class on <html> makes a browser behave like the shell (no download / install blocks)
+  const gd = globalThis as unknown as { document?: unknown };
+  const prev = gd.document;
+  gd.document = { documentElement: { classList: { contains: (c: string) => c === "app-desktop" } } };
+  try {
+    eq("desktop preview class counts as the desktop shell", [isDesktopApp(), isNativeApp(), isAnyNativeShell()], [true, false, true]);
+  } finally {
+    gd.document = prev;
+  }
+});
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

@@ -31,6 +31,7 @@ import {
 import { useDemoGate } from "@/lib/useDemoGate";
 import { canSetNativeImmersive, isNativeApp, onNativeImmersiveReset, setNativeImmersive } from "@/lib/native-app";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/lib/app-fullscreen";
+import { raisesKeyboard } from "@/lib/app-ui";
 import AppIcon from "./AppIcon";
 import "./fullscreen.css";
 
@@ -243,8 +244,18 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       }
     };
     document.addEventListener("fullscreenchange", onFsChange);
+    // the desktop window: Esc closes the full-screen layer when the browser's own full screen is not on (it handles Esc itself when it is);
+    // not while a dialog is open or a field is focused, they use Esc for themselves
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.fullscreenElement || !root.classList.contains("app-desktop")) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (raisesKeyboard(el) || el?.tagName === "SELECT" || document.querySelector("[role=dialog]")) return;
+      closeFs();
+    };
+    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("keydown", onKey);
       root.classList.remove("app-term-fs");
       if (plan.immersive) setNativeImmersive(false);
       apiFs.current = false;

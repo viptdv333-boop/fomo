@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
-import { APP_TABS, activeAppTab, appTabHref, badgeLabel, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
+import { APP_TABS, activeAppTab, appTabHref, badgeLabel, dockDragScroll, dockKeyAction, dockKeyTarget, dockWheelDelta, isDockDrag, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
 import { hiddenTabUnread, tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
@@ -15,10 +15,11 @@ import { applyFontStep, readFontStep } from "./fontStep";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
-/** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. */
+/** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. (Not in the desktop window: there is no soft keyboard.) */
 function useKeyboardClass() {
   useEffect(() => {
     const root = document.documentElement;
+    if (root.classList.contains("app-desktop")) return;
     const sync = () => root.classList.toggle("app-kbd", raisesKeyboard(document.activeElement as HTMLElement | null));
     const onOut = () => window.setTimeout(sync, 0); // focus moving from one field to another must not flicker the bar
     document.addEventListener("focusin", sync);
@@ -180,6 +181,103 @@ function useSwipeTabs() {
   }, [pathname, loc, router]);
 }
 
+/**
+ * Mouse and keyboard on the desktop window (html.app-desktop only): the wheel over the dock scrolls it sideways, the dock can be dragged with the
+ * mouse (a click on a tab still opens it), Ctrl+← / Ctrl+→ switch to the previous / next section and Ctrl+1 … Ctrl+8 jump to the n-th one
+ * (never while a field is focused, a sheet / dialog is open or the chart is full screen). Touch is untouched: the swipe code above listens to touches only.
+ */
+function useDesktopNav(bar: React.RefObject<HTMLElement | null>) {
+  const router = useRouter();
+  const pathname = usePathname() || "/";
+  const { locale } = useT();
+  const loc = locale as "ru" | "en" | "cn";
+
+  useEffect(() => {
+    const nav = bar.current;
+    const root = document.documentElement;
+    if (!nav || !root.classList.contains("app-desktop")) return;
+    const onWheel = (e: WheelEvent) => {
+      const d = dockWheelDelta(e.deltaX, e.deltaY, e.deltaMode);
+      if (d === null || nav.scrollWidth <= nav.clientWidth + 1) return;
+      e.preventDefault();
+      nav.scrollLeft += d;
+    };
+    let down = false;
+    let dragging = false;
+    let startX = 0;
+    let startLeft = 0;
+    const eatClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      down = true;
+      dragging = false;
+      startX = e.clientX;
+      startLeft = nav.scrollLeft;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      if (!dragging) {
+        if (!isDockDrag(e.clientX - startX)) return;
+        dragging = true;
+        try {
+          nav.setPointerCapture(e.pointerId);
+        } catch {
+          /* pointer already gone */
+        }
+        nav.dataset.drag = "1";
+      }
+      nav.scrollLeft = dockDragScroll(startLeft, startX, e.clientX, nav.scrollWidth - nav.clientWidth);
+    };
+    const onUp = () => {
+      if (dragging) {
+        // the click that ends a drag must not open the tab under the pointer
+        nav.addEventListener("click", eatClick, { capture: true, once: true });
+        window.setTimeout(() => nav.removeEventListener("click", eatClick, { capture: true }), 80);
+      }
+      down = false;
+      dragging = false;
+      delete nav.dataset.drag;
+    };
+    const noDrag = (e: Event) => e.preventDefault(); // a dragged link would start the browser's own link drag
+    nav.addEventListener("wheel", onWheel, { passive: false });
+    nav.addEventListener("pointerdown", onDown);
+    nav.addEventListener("pointermove", onMove);
+    nav.addEventListener("pointerup", onUp);
+    nav.addEventListener("pointercancel", onUp);
+    nav.addEventListener("dragstart", noDrag);
+    return () => {
+      nav.removeEventListener("wheel", onWheel);
+      nav.removeEventListener("pointerdown", onDown);
+      nav.removeEventListener("pointermove", onMove);
+      nav.removeEventListener("pointerup", onUp);
+      nav.removeEventListener("pointercancel", onUp);
+      nav.removeEventListener("dragstart", noDrag);
+    };
+  }, [bar]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!root.classList.contains("app-desktop")) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      const action = dockKeyAction(e);
+      if (!action) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (raisesKeyboard(el) || el?.tagName === "SELECT") return; // typing: Ctrl+← moves the caret by a word
+      if (root.classList.contains("app-term-fs") || document.querySelector("[role=dialog], .ac-sheet-wrap")) return;
+      const target = dockKeyTarget(action, pathname);
+      if (!target) return;
+      e.preventDefault();
+      router.push(appTabHref(loc, target));
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pathname, loc, router]);
+}
+
 function TabBar() {
   const { t, locale } = useT();
   const pathname = usePathname() || "/";
@@ -190,6 +288,7 @@ function TabBar() {
   useKeyboardClass();
   useSwipeTabs();
   const bar = useRef<HTMLElement>(null);
+  useDesktopNav(bar);
   useEffect(() => {
     applyFontStep(readFontStep());
   }, []);
@@ -231,7 +330,9 @@ function TabBar() {
   }, [counts]);
   return (
     <>
-    <nav ref={bar} className="app-tabbar" style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
+    {/* desktop window: the bar's background spans the whole window while the tabs sit in the centred column (see app-desktop.css) */}
+    <div className="app-dock-bg" aria-hidden="true" />
+    <nav ref={bar} className="app-tabbar" data-tabs={APP_TABS.length} style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
         const label = t(tab.labelKey);

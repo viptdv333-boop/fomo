@@ -18,6 +18,7 @@ import { deleteGroup, inviteGroup, leaveGroup } from "./groupActions";
 import type { RoomInfo as RoomSheetInfo } from "./AppRoomThread";
 import { ThreadBar } from "./AppThreadParts";
 import { useAppDms, useAppRooms } from "./useAppChatData";
+import { DESKTOP_WIDE_PX, useAppDesktop, useMinWidth } from "../useAppUi";
 import "./app-chat.css";
 
 const CATS_KEY = "fomo-app-chat-cats";
@@ -125,6 +126,8 @@ export default function AppChat() {
   const params = useSearchParams();
   const route = useMemo(() => parseChatRoute(pathname, params), [pathname, params]);
   const inThread = !!(route.room || route.dm || route.with);
+  // desktop window, wide enough: the list stays on the left and the thread opens on the right (master-detail); the private-groups screen stays a screen of its own
+  const split = useAppDesktop() && useMinWidth(DESKTOP_WIDE_PX) && !route.groups;
 
   const rooms = useAppRooms(t("chat2.otherCategory"));
   const dms = useAppDms();
@@ -149,9 +152,10 @@ export default function AppChat() {
     return () => document.documentElement.classList.remove("app-chat-on");
   }, []);
   useEffect(() => {
-    document.documentElement.classList.toggle("app-thread-on", inThread);
-    return () => document.documentElement.classList.remove("app-thread-on");
-  }, [inThread]);
+    document.documentElement.classList.toggle("app-thread-on", inThread || split);
+    document.documentElement.classList.toggle("app-split-on", split);
+    return () => document.documentElement.classList.remove("app-thread-on", "app-split-on");
+  }, [inThread, split]);
 
   const base = useMemo(() => localizedPath(stripLocale(pathname).locale ?? (locale as Locale), "/chat"), [pathname, locale]);
   const urlFor = useCallback(
@@ -287,6 +291,27 @@ export default function AppChat() {
     [go],
   );
 
+  const listEl = (
+    <AppChatList
+      seg={route.seg}
+      onSeg={setSeg}
+      rooms={rooms}
+      dms={dms}
+      query={query}
+      onQuery={setQuery}
+      openCats={openCats}
+      onToggleCat={toggleCat}
+      myId={myId}
+      // in the split view the next chat replaces the open one instead of piling up history entries
+      onOpenRoom={(id) => go({ room: id }, split && inThread)}
+      onOpenDm={(id) => go({ dm: id }, split && inThread)}
+      onCreate={() => go({ groups: true })}
+      onNewChat={() => setNewChat(true)}
+      marks={marks}
+      onDialogMenu={setDialogMenu}
+    />
+  );
+
   let screen;
   if (route.room) {
     screen =
@@ -314,30 +339,21 @@ export default function AppChat() {
   } else if (route.groups) {
     screen = <AppGroupsScreen rooms={rooms.privateRooms} onBack={back} onOpen={(id) => go({ room: id })} onChanged={rooms.reloadPrivate} flash={flash} />;
   } else {
-    screen = (
-      <AppChatList
-        seg={route.seg}
-        onSeg={setSeg}
-        rooms={rooms}
-        dms={dms}
-        query={query}
-        onQuery={setQuery}
-        openCats={openCats}
-        onToggleCat={toggleCat}
-        myId={myId}
-        onOpenRoom={(id) => go({ room: id })}
-        onOpenDm={(id) => go({ dm: id })}
-        onCreate={() => go({ groups: true })}
-        onNewChat={() => setNewChat(true)}
-        marks={marks}
-        onDialogMenu={setDialogMenu}
-      />
-    );
+    screen = listEl;
   }
 
   return (
     <>
-      {screen}
+      {split ? (
+        <div className="ac-split">
+          <div className="ac-split-list">{listEl}</div>
+          <div className="ac-split-detail">
+            {inThread ? screen : <div className="ac ac-split-empty">{t("appui.chat.pickChat")}</div>}
+          </div>
+        </div>
+      ) : (
+        screen
+      )}
       {dialogMenu && <AppDialogSheet conv={dialogMenu} marks={marks} onClose={() => setDialogMenu(null)} flash={flash} />}
       {newChat && <AppNewChatSheet onClose={() => setNewChat(false)} onPick={startWith} myId={myId} />}
       {toast && <div className="ac ac-toast" role="status">{toast}</div>}

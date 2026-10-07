@@ -2,11 +2,18 @@
    Run: npx tsx scripts/check-app-ui.ts   (exit code 1 on a failed assertion) */
 import {
   APP_TABS,
+  TERMINAL_APP_TABS,
   activeAppTab,
   agoLabel,
   appHeaderHidden,
   appTabHref,
   badgeLabel,
+  DOCK_DRAG_PX,
+  dockDragScroll,
+  dockKeyAction,
+  dockKeyTarget,
+  dockWheelDelta,
+  isDockDrag,
   isTabSwipe,
   parseFontStep,
   raisesKeyboard,
@@ -46,7 +53,7 @@ import {
   withDaySeparators,
   type AssetItem,
 } from "../src/lib/app-chat";
-import { APP_UI_BOOT_SCRIPT, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
+import { APP_UI_BOOT_SCRIPT, appDesktopQuery, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
 import {
   avatarInitial,
   countValue,
@@ -178,40 +185,89 @@ eq("ago future", agoLabel(new Date(NOW + 3600_000), "ru", NOW), "");
 eq("ago junk", agoLabel("nope", "ru", NOW), "");
 
 // --- detection / preview switch (pure decision)
-const base: AppUiInput = { userAgent: "Mozilla/5.0 Chrome/120", hasBridge: false, search: "", stored: null };
+const base: AppUiInput = { userAgent: "Mozilla/5.0 Chrome/120", hasBridge: false, search: "", stored: null, storedDesktop: null };
 const d = (o: Partial<AppUiInput>) => resolveAppUi({ ...base, ...o });
-eq("plain browser: off", d({}), { active: false, store: null });
-eq("app UA: on", d({ userAgent: "Mozilla/5.0 Chrome/120 FomoApp/1.0.0 Android" }), { active: true, store: null });
-eq("bridge: on", d({ hasBridge: true }), { active: true, store: null });
-eq("?appui=1: on + store", d({ search: "?appui=1" }), { active: true, store: "1" });
-eq("?x=1&appui=1: on", d({ search: "?x=1&appui=1" }), { active: true, store: "1" });
-eq("stored flag: on", d({ stored: "1" }), { active: true, store: null });
-eq("?appui=0 clears the flag", d({ search: "?appui=0", stored: "1" }), { active: false, store: "0" });
-eq("?appui=0 does not switch the real app off", d({ search: "?appui=0", hasBridge: true }), { active: true, store: "0" });
-eq("?appui=2 ignored", d({ search: "?appui=2" }), { active: false, store: null });
-eq("?myappui=1 ignored", d({ search: "?myappui=1" }), { active: false, store: null });
+const ui = (o: Partial<AppUiInput>) => {
+  const r = d(o);
+  return { active: r.active, store: r.store };
+};
+const DESK_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140 Safari/537.36 FomoDesktop/1.0.0 Windows";
+eq("plain browser: off", ui({}), { active: false, store: null });
+eq("app UA: on", ui({ userAgent: "Mozilla/5.0 Chrome/120 FomoApp/1.0.0 Android" }), { active: true, store: null });
+eq("bridge: on", ui({ hasBridge: true }), { active: true, store: null });
+eq("?appui=1: on + store", ui({ search: "?appui=1" }), { active: true, store: "1" });
+eq("?x=1&appui=1: on", ui({ search: "?x=1&appui=1" }), { active: true, store: "1" });
+eq("stored flag: on", ui({ stored: "1" }), { active: true, store: null });
+eq("?appui=0 clears the flag", ui({ search: "?appui=0", stored: "1" }), { active: false, store: "0" });
+eq("?appui=0 does not switch the real app off", ui({ search: "?appui=0", hasBridge: true }), { active: true, store: "0" });
+eq("?appui=2 ignored", ui({ search: "?appui=2" }), { active: false, store: null });
+eq("?myappui=1 ignored", ui({ search: "?myappui=1" }), { active: false, store: null });
 eq("last ?appui wins", appUiQuery("?appui=1&appui=0"), "0");
-eq("FomoApp in a word is not the marker", d({ userAgent: "MyFomoApp/1" }), { active: false, store: null });
+eq("FomoApp in a word is not the marker", ui({ userAgent: "MyFomoApp/1" }), { active: false, store: null });
 
-// --- the inline boot script must make the same decision as resolveAppUi
-function runBoot(i: AppUiInput): boolean {
-  let added = false;
-  const store: Record<string, string> = i.stored !== null ? { "fomo-appui": i.stored } : {};
-  const doc = { documentElement: { classList: { add: (c: string) => { if (c === "app-ui") added = true; } } } };
+// --- the desktop window (Electron app, UA marker FomoDesktop/)
+eq("desktop app UA: app UI + desktop layout, no flags needed (an installed app gets it without reinstalling)", d({ userAgent: DESK_UA }), { active: true, store: null, desktop: true, storeDesktop: null });
+eq("desktop app on the Mac", d({ userAgent: "Mozilla/5.0 (Macintosh) Chrome/140 FomoDesktop/1.0.0 Mac" }).desktop, true);
+eq("desktop app: ?appui=0 is the escape hatch to the ordinary site", d({ userAgent: DESK_UA, search: "?appui=0" }), { active: false, store: "0", desktop: false, storeDesktop: null });
+eq("desktop app: a stale ?appui flag does not matter", d({ userAgent: DESK_UA, stored: "1" }).desktop, true);
+eq("plain desktop browser: no app UI, no desktop layout", d({}), { active: false, store: null, desktop: false, storeDesktop: null });
+eq("?appdesktop=1 alone changes nothing in a browser", d({ search: "?appdesktop=1" }), { active: false, store: null, desktop: false, storeDesktop: "1" });
+eq("?appui=1&appdesktop=1: the preview of the desktop window", d({ search: "?appui=1&appdesktop=1" }), { active: true, store: "1", desktop: true, storeDesktop: "1" });
+eq("both flags are remembered for the session", d({ stored: "1", storedDesktop: "1" }), { active: true, store: null, desktop: true, storeDesktop: null });
+eq("?appdesktop=0 clears the desktop flag", d({ search: "?appdesktop=0", stored: "1", storedDesktop: "1" }), { active: true, store: null, desktop: false, storeDesktop: "0" });
+eq("mobile preview ?appui=1 stays the phone layout", d({ search: "?appui=1" }).desktop, false);
+eq("Android app never gets the desktop layout", d({ userAgent: "x FomoApp/1.2 Android", search: "?appdesktop=1", storedDesktop: "1" }).desktop, false);
+eq("Android bridge never gets the desktop layout", d({ hasBridge: true, storedDesktop: "1" }).desktop, false);
+eq("last ?appdesktop wins", appDesktopQuery("?appdesktop=1&appdesktop=0"), "0");
+eq("?myappdesktop=1 ignored", appDesktopQuery("?myappdesktop=1"), null);
+
+// --- the inline boot script must make the same decision as resolveAppUi (both classes)
+function runBoot(i: AppUiInput): { ui: boolean; desktop: boolean } {
+  const added: string[] = [];
+  const store: Record<string, string> = {};
+  if (i.stored !== null) store["fomo-appui"] = i.stored;
+  if (i.storedDesktop != null) store["fomo-appdesktop"] = i.storedDesktop;
+  const doc = { documentElement: { classList: { add: (c: string) => added.push(c) } } };
   const ss = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v; }, removeItem: (k: string) => { delete store[k]; } };
   new Function("document", "location", "navigator", "sessionStorage", "window", APP_UI_BOOT_SCRIPT)(doc, { search: i.search }, { userAgent: i.userAgent }, ss, i.hasBridge ? { FomoApp: {} } : {});
-  return added;
+  return { ui: added.includes("app-ui"), desktop: added.includes("app-desktop") };
 }
 const scenarios: Partial<AppUiInput>[] = [
   {}, { userAgent: "x FomoApp/1.2 Android" }, { hasBridge: true }, { search: "?appui=1" }, { search: "?a=b&appui=1&c=d" }, { stored: "1" },
   { search: "?appui=0", stored: "1" }, { search: "?appui=0", hasBridge: true }, { search: "?appui=2" }, { search: "?myappui=1" }, { userAgent: "MyFomoApp/1" },
   { search: "?appui=1&appui=0", stored: "1" }, { search: "?appui=0&appui=1" },
+  { userAgent: DESK_UA }, { userAgent: DESK_UA, search: "?appui=0" }, { userAgent: DESK_UA, stored: "1" }, { userAgent: "x MyFomoDesktop/1" },
+  { search: "?appdesktop=1" }, { search: "?appui=1&appdesktop=1" }, { search: "?appui=1&appdesktop=0", storedDesktop: "1" }, { stored: "1", storedDesktop: "1" },
+  { stored: "1", storedDesktop: "0" }, { search: "?appdesktop=1", hasBridge: true }, { userAgent: "x FomoApp/1.2 Android", storedDesktop: "1" }, { search: "?appui=1&appdesktop=2" },
 ];
 for (const s of scenarios) {
   const i = { ...base, ...s };
-  eq(`boot script == resolveAppUi ${JSON.stringify(s)}`, runBoot(i), resolveAppUi(i).active);
+  const r = resolveAppUi(i);
+  eq(`boot script == resolveAppUi ${JSON.stringify(s)}`, runBoot(i), { ui: r.active, desktop: r.desktop });
 }
 eq("boot script has no backspace chars", APP_UI_BOOT_SCRIPT.includes("\b"), false);
+
+// --- desktop window: keyboard / wheel / drag of the dock
+eq("Ctrl+Right / Ctrl+Left: next / previous section", [dockKeyAction({ key: "ArrowRight", ctrlKey: true }), dockKeyAction({ key: "ArrowLeft", ctrlKey: true })], [{ kind: "step", dir: 1 }, { kind: "step", dir: -1 }]);
+eq("Cmd+Right works on a Mac", dockKeyAction({ key: "ArrowRight", metaKey: true }), { kind: "step", dir: 1 });
+eq("Ctrl+1 ... Ctrl+8 jump", [dockKeyAction({ key: "1", ctrlKey: true }), dockKeyAction({ key: "8", ctrlKey: true })], [{ kind: "jump", index: 0 }, { kind: "jump", index: 7 }]);
+eq("Ctrl+0 / Ctrl+9 are not ours (zoom reset, last tab of a browser)", [dockKeyAction({ key: "0", ctrlKey: true }), dockKeyAction({ key: "9", ctrlKey: true })], [null, null]);
+eq("Alt+Left / Alt+Right stay Back / Forward", [dockKeyAction({ key: "ArrowLeft", altKey: true }), dockKeyAction({ key: "ArrowRight", altKey: true })], [null, null]);
+eq("plain arrows, Shift / Alt combinations and other keys are ignored", [dockKeyAction({ key: "ArrowRight" }), dockKeyAction({ key: "ArrowRight", ctrlKey: true, shiftKey: true }), dockKeyAction({ key: "ArrowRight", ctrlKey: true, altKey: true }), dockKeyAction({ key: "r", ctrlKey: true }), dockKeyAction({ key: "3" })], [null, null, null, null, null]);
+const STEP = (dir: -1 | 1) => ({ kind: "step", dir }) as const;
+eq("dock key: step from a tab", [dockKeyTarget(STEP(1), "/feed")?.id, dockKeyTarget(STEP(-1), "/terminal")?.id, dockKeyTarget(STEP(1), "/en/calendar")?.id], ["terminal", "feed", "channels"]);
+eq("dock key: a pushed screen belongs to its tab", [dockKeyTarget(STEP(1), "/chat/room1")?.id, dockKeyTarget(STEP(-1), "/profile")?.id], ["calendar", "settings"]);
+eq("dock key: the settings tab is part of the steps (Ctrl+7)", [dockKeyTarget(STEP(1), "/authors")?.id, dockKeyTarget({ kind: "jump", index: 6 }, "/feed")?.id], ["settings", "settings"]);
+eq("dock key: no wrap at the ends", [dockKeyTarget(STEP(-1), "/feed"), dockKeyTarget(STEP(1), "/profile")], [null, null]);
+eq("dock key: a page of no tab has no neighbours", dockKeyTarget(STEP(1), "/help"), null);
+eq("dock key: jump to a tab, not to the open one", [dockKeyTarget({ kind: "jump", index: 4 }, "/feed")?.id, dockKeyTarget({ kind: "jump", index: 0 }, "/feed")], ["channels", null]);
+eq("dock key: jump past the dock does nothing", dockKeyTarget({ kind: "jump", index: 9 }, "/feed"), null);
+eq("dock key on the terminal site (3 tabs): steps and jumps", [dockKeyTarget(STEP(1), "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 3 }, "/terminal", TERMINAL_APP_TABS)], ["settings", "me", null]);
+eq("wheel: vertical turns sideways", [dockWheelDelta(0, 100), dockWheelDelta(0, -53), dockWheelDelta(5, 100)], [100, -53, 100]);
+eq("wheel: line / page modes are scaled", [dockWheelDelta(0, 3, 1), dockWheelDelta(0, 1, 2)], [72, 400]);
+eq("wheel: a sideways gesture is left to the browser", [dockWheelDelta(120, 10), dockWheelDelta(50, 50), dockWheelDelta(0, 0), dockWheelDelta(NaN, 4)], [null, null, null, null]);
+eq("drag: a click is not a drag", [isDockDrag(0), isDockDrag(DOCK_DRAG_PX - 1), isDockDrag(DOCK_DRAG_PX), isDockDrag(-40)], [false, false, true, true]);
+eq("drag scroll follows the mouse and is clamped", [dockDragScroll(100, 300, 250, 400), dockDragScroll(100, 300, 400, 400), dockDragScroll(380, 300, 100, 400), dockDragScroll(10, 300, 900, 0)], [150, 0, 400, 0]);
 
 // --- Terminal screen helpers
 eq("terminal chips are the design's nine timeframes", APP_TERM_TFS, ["1", "5", "15", "30", "60", "240", "D", "W", "M"]);

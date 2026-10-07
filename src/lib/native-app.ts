@@ -62,10 +62,11 @@ export function isNativeApp(): boolean {
   return typeof navigator !== "undefined" && /\bFomoApp\//.test(navigator.userAgent);
 }
 
-/** True inside the Windows desktop app (desktop/): its shell adds " FomoDesktop/<version> Windows" to the user agent. */
+/** True inside the Windows desktop app (desktop/): its shell adds " FomoDesktop/<version> Windows" to the user agent (or the ?appui=1&appdesktop=1 browser preview, which behaves like the shell). */
 export function isDesktopApp(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /\bFomoDesktop\//.test(navigator.userAgent);
+  if (/\bFomoDesktop\//.test(navigator.userAgent)) return true;
+  return typeof document !== "undefined" && !!document.documentElement?.classList?.contains(APP_DESKTOP_CLASS);
 }
 
 /** True inside either shell (the Android app or the Windows desktop app): nothing to install or download there. */
@@ -354,6 +355,10 @@ export function onNativeImmersiveReset(cb: () => void): () => void {
 export const APP_UI_FLAG_KEY = "fomo-appui";
 /** Class on <html> that every app-only style hangs on. */
 export const APP_UI_CLASS = "app-ui";
+/** Preview of the desktop-window layout of the app UI in a browser: ?appui=1&appdesktop=1 (sessionStorage), ?appdesktop=0 clears it. */
+export const APP_DESKTOP_FLAG_KEY = "fomo-appdesktop";
+/** Class on <html> next to `app-ui` inside the Windows / macOS desktop app (user agent marker FomoDesktop/) or in the preview: the wide-window layout, the mouse + keyboard navigation. */
+export const APP_DESKTOP_CLASS = "app-desktop";
 
 export interface AppUiInput {
   userAgent: string;
@@ -363,26 +368,43 @@ export interface AppUiInput {
   search: string;
   /** sessionStorage[APP_UI_FLAG_KEY] (null when unset or unreadable) */
   stored: string | null;
+  /** sessionStorage[APP_DESKTOP_FLAG_KEY] (null when unset or unreadable) */
+  storedDesktop?: string | null;
 }
 
-/** The ?appui= query value ("1" / "0") or null. The last occurrence wins. */
-export function appUiQuery(search: string): "1" | "0" | null {
+function flagQuery(search: string, name: string): "1" | "0" | null {
   let out: "1" | "0" | null = null;
-  const re = /[?&]appui=([01])(?=&|#|$)/g;
+  const re = new RegExp("[?&]" + name + "=([01])(?=&|#|$)", "g");
   let m: RegExpExecArray | null;
   while ((m = re.exec(search || ""))) out = m[1] as "1" | "0";
   return out;
 }
 
+/** The ?appui= query value ("1" / "0") or null. The last occurrence wins. */
+export function appUiQuery(search: string): "1" | "0" | null {
+  return flagQuery(search, "appui");
+}
+
+/** The ?appdesktop= query value ("1" / "0") or null. The last occurrence wins. */
+export function appDesktopQuery(search: string): "1" | "0" | null {
+  return flagQuery(search, "appdesktop");
+}
+
 /**
- * Pure decision of the app UI: active inside the app (UA marker or bridge) or when the preview flag is set.
- * `store` says what to do with the flag: "1" write it, "0" clear it, null leave it alone.
+ * Pure decision of the app UI: active inside the Android app (UA marker or bridge), inside the desktop app (UA marker FomoDesktop/, which ?appui=0
+ * switches off for that page: the escape hatch to the ordinary site), or when the preview flag is set.
+ * `store` says what to do with the ?appui flag: "1" write it, "0" clear it, null leave it alone; `storeDesktop` the same for ?appdesktop.
+ * `desktop`: the wide-window layout (desktop shell or the ?appdesktop=1 preview), never inside the Android app.
  */
-export function resolveAppUi(i: AppUiInput): { active: boolean; store: "1" | "0" | null } {
+export function resolveAppUi(i: AppUiInput): { active: boolean; store: "1" | "0" | null; desktop: boolean; storeDesktop: "1" | "0" | null } {
   const q = appUiQuery(i.search);
+  const qd = appDesktopQuery(i.search);
   const flag = q === "1" ? true : q === "0" ? false : i.stored === "1";
-  const native = i.hasBridge || /\bFomoApp\//.test(i.userAgent || "");
-  return { active: native || flag, store: q };
+  const flagDesktop = qd === "1" ? true : qd === "0" ? false : i.storedDesktop === "1";
+  const android = i.hasBridge || /\bFomoApp\//.test(i.userAgent || "");
+  const shell = /\bFomoDesktop\//.test(i.userAgent || "");
+  const active = android || (shell && q !== "0") || flag;
+  return { active, store: q, desktop: active && !android && (shell || flagDesktop), storeDesktop: qd };
 }
 
 /**
@@ -390,20 +412,35 @@ export function resolveAppUi(i: AppUiInput): { active: boolean; store: "1" | "0"
  * scripts/check-app-ui.ts runs both against the same cases so they cannot drift apart.
  */
 export const APP_UI_BOOT_SCRIPT =
-  "try{var d=document.documentElement,q=null,r=/[?&]appui=([01])(?=&|#|$)/g,m,f=null;" +
-  "while((m=r.exec(location.search)))q=m[1];" +
-  "try{if(q==='1')sessionStorage.setItem('fomo-appui','1');else if(q==='0')sessionStorage.removeItem('fomo-appui');f=sessionStorage.getItem('fomo-appui')}catch(e){f=q==='1'?'1':null}" +
-  "if(/\\bFomoApp\\//.test(navigator.userAgent)||(window.FomoApp&&typeof window.FomoApp==='object')||(q!=='0'&&f==='1')||q==='1')d.classList.add('app-ui')}catch(e){}";
+  "try{var d=document.documentElement,u=navigator.userAgent,q=null,w=null,r=/[?&]appui=([01])(?=&|#|$)/g,v=/[?&]appdesktop=([01])(?=&|#|$)/g,m,f=null,g=null;" +
+  "while((m=r.exec(location.search)))q=m[1];while((m=v.exec(location.search)))w=m[1];" +
+  "try{if(q==='1')sessionStorage.setItem('fomo-appui','1');else if(q==='0')sessionStorage.removeItem('fomo-appui');f=sessionStorage.getItem('fomo-appui');" +
+  "if(w==='1')sessionStorage.setItem('fomo-appdesktop','1');else if(w==='0')sessionStorage.removeItem('fomo-appdesktop');g=sessionStorage.getItem('fomo-appdesktop')}catch(e){f=q==='1'?'1':null;g=w==='1'?'1':null}" +
+  "var a=/\\bFomoApp\\//.test(u)||!!(window.FomoApp&&typeof window.FomoApp==='object'),s=/\\bFomoDesktop\\//.test(u);" +
+  "if(a||(s&&q!=='0')||(q!=='0'&&f==='1')||q==='1'){d.classList.add('app-ui');if(!a&&(s||w==='1'||(w!=='0'&&g==='1')))d.classList.add('app-desktop')}}catch(e){}";
 
 /** True when the app UI is on: the class the boot script set, or the same decision made right now. Always false on the server. */
 export function isNativeUi(): boolean {
   if (typeof window === "undefined" || typeof document === "undefined") return false;
   if (document.documentElement.classList.contains(APP_UI_CLASS)) return true;
+  return currentAppUi().active;
+}
+
+/** True when the wide-window layout of the app UI is on (desktop shell, or the preview): the class the boot script set, or the same decision made right now. Always false on the server. */
+export function isDesktopUi(): boolean {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  if (document.documentElement.classList.contains(APP_DESKTOP_CLASS)) return true;
+  return currentAppUi().desktop;
+}
+
+function currentAppUi() {
   let stored: string | null = null;
+  let storedDesktop: string | null = null;
   try {
     stored = sessionStorage.getItem(APP_UI_FLAG_KEY);
+    storedDesktop = sessionStorage.getItem(APP_DESKTOP_FLAG_KEY);
   } catch {
     /* private mode */
   }
-  return resolveAppUi({ userAgent: navigator.userAgent, hasBridge: nativeBridge() !== null, search: window.location.search, stored }).active;
+  return resolveAppUi({ userAgent: navigator.userAgent, hasBridge: nativeBridge() !== null, search: window.location.search, stored, storedDesktop });
 }
