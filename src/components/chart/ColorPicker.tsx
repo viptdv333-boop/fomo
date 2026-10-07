@@ -1,10 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import "./terminal-v3.css";
 
 /* Shared colour picker for the terminal (drawing settings, indicator styles, chart settings).
    TradingView-like popover: grey ramp + hue ramps in 10 columns, recently used, custom colour, opacity slider.
-   Values are CSS colours ("#rrggbb" or "rgba(r,g,b,a)"); the picker keeps opacity inside the value. */
+   Values are CSS colours ("#rrggbb" or "rgba(r,g,b,a)"); the picker keeps opacity inside the value.
+   The popover is portaled to the page top level and positioned against the VIEWPORT (clamped, flipped above the swatch when there
+   is no room below, scrollable when taller than the screen). Inside a dialog's scrolling body an absolute popover was clipped by the
+   body: on a phone only a narrow strip of it showed at the bottom / the right edge and could not be opened up. */
+
+const PICKER_W = 226;
+const EDGE = 8;
+
+/** Where the popover goes: below the swatch if it fits, else above, else pinned to the top with its own scroll; always inside the screen. */
+export function placePicker(
+  anchor: { left: number; right: number; top: number; bottom: number },
+  panel: { w: number; h: number },
+  vw: number,
+  vh: number,
+): { left: number; top: number; maxHeight: number } {
+  const maxHeight = Math.max(120, vh - EDGE * 2);
+  const h = Math.min(panel.h, maxHeight);
+  let left = anchor.left;
+  if (left + panel.w > vw - EDGE) left = anchor.right - panel.w; // the swatch sits at the right edge: open leftwards
+  left = Math.max(EDGE, Math.min(left, vw - panel.w - EDGE));
+  let top: number;
+  if (anchor.bottom + 4 + h <= vh - EDGE) top = anchor.bottom + 4;
+  else if (anchor.top - 4 - h >= EDGE) top = anchor.top - 4 - h;
+  else top = Math.max(EDGE, Math.min(anchor.bottom + 4, vh - EDGE - h));
+  return { left, top, maxHeight };
+}
 
 const GRAYS = ["#ffffff", "#d1d4dc", "#b2b5be", "#9598a1", "#787b86", "#5d606b", "#434651", "#2a2e39", "#131722", "#000000"];
 const HUES = ["#f23645", "#ff9800", "#ffeb3b", "#4caf50", "#089981", "#00bcd4", "#2962ff", "#673ab7", "#9c27b0", "#e91e63"];
@@ -71,6 +98,9 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   const root = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const { hex, a } = parseColor(value);
   const L = labels ?? { opacity: "Opacity", custom: "Custom", recent: "Recent" };
 
@@ -78,18 +108,48 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
     if (!open) return;
     setRecent(readRecent());
     const close = (e: MouseEvent | TouchEvent) => {
-      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
+      const n = e.target as Node;
+      if (root.current?.contains(n) || panelRef.current?.contains(n)) return;
+      setOpen(false);
     };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Escape closes only the picker, not the dialog under it
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      e.preventDefault();
+      setOpen(false);
+    };
     document.addEventListener("mousedown", close);
     document.addEventListener("touchstart", close);
-    document.addEventListener("keydown", key);
+    window.addEventListener("keydown", key, true);
     return () => {
       document.removeEventListener("mousedown", close);
       document.removeEventListener("touchstart", close);
-      document.removeEventListener("keydown", key);
+      window.removeEventListener("keydown", key, true);
     };
   }, [open]);
+
+  // place the popover against the viewport, and again when the screen or a scrolled ancestor moves the swatch
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null);
+      return;
+    }
+    const place = () => {
+      const b = btnRef.current?.getBoundingClientRect();
+      const p = panelRef.current;
+      if (!b || !p) return;
+      const next = placePicker(b, { w: p.offsetWidth || PICKER_W, h: p.scrollHeight || p.offsetHeight }, window.innerWidth, window.innerHeight);
+      setPos((o) => (o && o.left === next.left && o.top === next.top && o.maxHeight === next.maxHeight ? o : next));
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, recent.length, opacity]);
 
   const pick = (h: string) => {
     pushRecent(h);
@@ -99,6 +159,7 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
   return (
     <div ref={root} className={`relative inline-block ${className}`}>
       <button
+        ref={btnRef}
         type="button"
         title={title}
         onClick={() => setOpen((o) => !o)}
@@ -112,8 +173,14 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
           />
         )}
       </button>
-      {open && (
-        <div className="absolute z-[80] mt-1 left-0 w-[226px] rounded-xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] p-2.5 text-[var(--tv3-text2)]">
+      {open &&
+        createPortal(
+        <div className="tv3" style={{ display: "contents" }}>
+        <div
+          ref={panelRef}
+          className="fixed z-[100] w-[226px] max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-xl bg-[var(--tv3-card)] shadow-[var(--tv3-shadow-pop)] p-2.5 text-[var(--tv3-text2)]"
+          style={{ left: pos?.left ?? EDGE, top: pos?.top ?? EDGE, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden" } as CSSProperties}
+        >
           <div className="flex flex-col gap-[3px]">
             {PALETTE_ROWS.map((row, ri) => (
               <div key={ri} className={`flex gap-[3px] ${ri === 0 ? "mb-1" : ""}`}>
@@ -162,7 +229,9 @@ export default function ColorPicker({ value, onChange, opacity = true, title, si
             </div>
           )}
         </div>
-      )}
+        </div>,
+        document.fullscreenElement ?? document.body,
+        )}
     </div>
   );
 }

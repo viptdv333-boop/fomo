@@ -1439,7 +1439,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         compareCount={compares.length}
         settingsApi={csApi}
         transformBox={transformBox}
-        templates={{ getTemplate, applyTemplate, getLayout, applyLayout }}
+        templates={{ getTemplate, applyTemplate, getLayout, applyLayout, applyIndicators: (json) => indicators.restore(json) }}
         onScreenshotCopy={copyScreenshot}
         onOpenShortcuts={() => setShortcutsOpen(true)}
         extra={toolbarExtra}

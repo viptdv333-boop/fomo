@@ -313,6 +313,21 @@ async function main() {
   eq(S.hasAccountHint(), false, "no account hint for a guest");
   g.dispose();
   g2.dispose();
+
+  console.log("-- a guest signs in without a page reload");
+  sessionUser = "u1";
+  reset();
+  S.noteSignedIn();
+  const g3Live = { v: j(IND2) };
+  const g3 = mkChan("chart_indicators", "main", "fomo-chart-indicators", g3Live);
+  const g3Before = log.length;
+  await g3.start();
+  ok(log.length > g3Before && log[log.length - 1].status === 200, "noteSignedIn: the guest verdict is forgotten at once, the account is asked again (no wait for the guest window)");
+  g3.changed(j([...IND, ...IND2]));
+  await sleep(120);
+  eq(putsOf().length >= 1, true, "after signing in, changes reach the account");
+  ok(S.hasAccountHint(), "the browser knows it is signed in now");
+  g3.dispose();
   await sleep(450);
   sessionUser = "u1";
 

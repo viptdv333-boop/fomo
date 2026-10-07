@@ -90,6 +90,7 @@ interface Props {
     applyTemplate: (d: ChartTemplateData) => void;
     getLayout: () => ChartLayoutData;
     applyLayout: (d: ChartLayoutData) => void;
+    applyIndicators?: (json: string) => void;
   };
   onScreenshotCopy?: () => void;
   onOpenShortcuts?: () => void;

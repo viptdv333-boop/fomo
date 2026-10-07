@@ -8,6 +8,7 @@
  * means that the next load pushes again. Guests (401) never reach the network again.
  */
 
+import { resetUserDataGuest } from "./userdata";
 import {
   PUSH_DEBOUNCE_MS,
   MIN_GAP_MS,
@@ -28,7 +29,10 @@ const META_PREFIX = "fomo-chart-sync:";
 const BACKUP_PREFIX = "fomo-chart-sync-bak:";
 /** Id of the account this browser last synced with: lets the terminal page decide whether waiting for the account is worth it. */
 export const SYNC_UID_HINT = "fomo-chart-sync-uid";
-const GUEST_FOR_MS = 5 * 60_000;
+/* A 401 marks this page "guest" for a short while (no request storm from a guest changing the chart). It is short on purpose and
+   noteSignedIn() clears it at once: a guest who signs in WITHOUT a page reload (the login page navigates client-side) used to stay a
+   "guest" for the rest of the window, so the chart opened clean and nothing was saved to the account until the next reload. */
+const GUEST_FOR_MS = 60_000;
 
 /** Tunable for the checks only. */
 export const timing = { debounce: PUSH_DEBOUNCE_MS, gap: MIN_GAP_MS, recheck: RECHECK_MS, guestFor: GUEST_FOR_MS };
@@ -86,6 +90,14 @@ function markUid(uid: string) {
     uidSeen = uid;
     lsSet(SYNC_UID_HINT, uid);
   }
+}
+
+/** The visitor has just signed in (or the session turned out to be live): forget the guest verdict and reconcile every open channel now. */
+export function noteSignedIn() {
+  const wasGuest = guestUntil !== 0;
+  guestUntil = 0;
+  const wasListGuest = resetUserDataGuest();
+  if (wasGuest || wasListGuest) for (const c of Array.from(channels)) c.recheck(true);
 }
 
 /** True when this browser has synced with an account before (and has not seen a 401 since). */
@@ -243,7 +255,7 @@ export interface Channel {
   dispose(): void;
 }
 
-const channels = new Set<{ recheck(): void }>();
+const channels = new Set<{ recheck(force?: boolean): void }>();
 let globalHooks = false;
 
 function installHooks() {
@@ -318,8 +330,8 @@ export function openChannel(o: ChannelOpts): Channel {
   }
 
   const self = {
-    recheck() {
-      if (disposed || !recheckDue(Date.now(), lastCheck, timing.recheck)) return;
+    recheck(force?: boolean) {
+      if (disposed || (!force && !recheckDue(Date.now(), lastCheck, timing.recheck))) return;
       void reconcile();
     },
   };

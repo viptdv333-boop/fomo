@@ -9,6 +9,9 @@ import { authCookieNames, authCookiesSecure, siteMode } from "./site-mode";
 // with a cookie prefix (terminal.fomo.spot: "terminal", or AUTH_COOKIE_PREFIX) names every auth cookie differently and never sets a
 // Domain attribute (host-only), so a fomo.spot session can never be read as a terminal one and vice versa, even though the hosts
 // are related. Each instance also has its own AUTH_SECRET, and the JWT salt is the cookie name.
+// The login is persistent: the session cookie carries Expires / Max-Age of 30 days (next-auth sets Expires from session.maxAge on every
+// issue; the instance cookies below also state Max-Age explicitly), so closing the tab or the browser never signs a user out.
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 const COOKIE_SECURE = authCookiesSecure();
 const COOKIE_NAMES = authCookieNames(siteMode(), COOKIE_SECURE);
 const HTTP_ONLY_LAX = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: COOKIE_SECURE };
@@ -16,7 +19,7 @@ const cookieConfig = COOKIE_NAMES
   ? {
       useSecureCookies: COOKIE_SECURE,
       cookies: {
-        sessionToken: { name: COOKIE_NAMES.sessionToken, options: HTTP_ONLY_LAX },
+        sessionToken: { name: COOKIE_NAMES.sessionToken, options: { ...HTTP_ONLY_LAX, maxAge: SESSION_MAX_AGE } },
         callbackUrl: { name: COOKIE_NAMES.callbackUrl, options: HTTP_ONLY_LAX },
         csrfToken: { name: COOKIE_NAMES.csrfToken, options: HTTP_ONLY_LAX },
         pkceCodeVerifier: { name: COOKIE_NAMES.pkceCodeVerifier, options: { ...HTTP_ONLY_LAX, maxAge: 60 * 15 } },
@@ -89,7 +92,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: SESSION_MAX_AGE, // 30 days
   },
   pages: {
     signIn: "/login",

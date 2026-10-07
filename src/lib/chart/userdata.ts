@@ -27,13 +27,29 @@ function lsWrite(kind: string, items: UserDataItem[]) {
 }
 
 let signedIn: boolean | null = null; // null = unknown yet
+let guestUntil = 0;
+/** A 401 means "guest" only for a minute: signing in without a page reload (client-side navigation) must not keep every list / save local. */
+const GUEST_FOR_MS = 60_000;
+function noteGuest() {
+  signedIn = false;
+  guestUntil = Date.now() + GUEST_FOR_MS;
+}
+const useServer = () => signedIn !== false || Date.now() >= guestUntil;
+
+/** The visitor has signed in: ask the server again from the next call on. */
+export function resetUserDataGuest(): boolean {
+  const was = signedIn === false;
+  signedIn = null;
+  guestUntil = 0;
+  return was;
+}
 
 /** All items of a kind (optionally one key). Never throws. */
 export async function listUserData<T = unknown>(kind: string, key?: string): Promise<UserDataItem<T>[]> {
-  if (signedIn !== false) {
+  if (useServer()) {
     try {
       const r = await fetch(`/api/terminal/userdata?kind=${encodeURIComponent(kind)}${key ? `&key=${encodeURIComponent(key)}` : ""}`, { cache: "no-store" });
-      if (r.status === 401) signedIn = false;
+      if (r.status === 401) noteGuest();
       else if (r.ok) {
         signedIn = true;
         return ((await r.json()).items ?? []) as UserDataItem<T>[];
@@ -48,10 +64,10 @@ export async function listUserData<T = unknown>(kind: string, key?: string): Pro
 
 /** Create or replace an item. Resolves false when the server refused (limit, size). */
 export async function saveUserData(kind: string, key: string, data: unknown): Promise<boolean> {
-  if (signedIn !== false) {
+  if (useServer()) {
     try {
       const r = await fetch("/api/terminal/userdata", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, key, data }) });
-      if (r.status === 401) signedIn = false;
+      if (r.status === 401) noteGuest();
       else return r.ok;
     } catch {
       /* fall through to local */
@@ -64,10 +80,10 @@ export async function saveUserData(kind: string, key: string, data: unknown): Pr
 }
 
 export async function deleteUserData(kind: string, key: string): Promise<void> {
-  if (signedIn !== false) {
+  if (useServer()) {
     try {
       const r = await fetch(`/api/terminal/userdata?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`, { method: "DELETE" });
-      if (r.status === 401) signedIn = false;
+      if (r.status === 401) noteGuest();
       else return;
     } catch {
       /* fall through */

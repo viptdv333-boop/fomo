@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import DemoGate from "@/components/shared/DemoGate";
 import {
@@ -18,7 +19,7 @@ import "@/components/chart/terminal-v3.css";
 import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
-import { hasAccountHint, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
+import { hasAccountHint, noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
 import { KIND_LAST } from "@/lib/chart/sync-logic";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppTerminal from "@/components/app/AppTerminal";
@@ -106,6 +107,13 @@ export default function TerminalPage() {
   const appUi = useAppUi();
   const [selected, setSelected] = useState<TerminalInstrument | null>(null);
   const [top, setTop] = useState(56);
+
+  // A visitor who was a guest on this page a moment ago and has signed in without a reload: the chart state of the account is
+  // taken in now (the sync had written the page off as "guest" after its first 401)
+  const { status: sessionStatus } = useSession();
+  useEffect(() => {
+    if (sessionStatus === "authenticated") noteSignedIn();
+  }, [sessionStatus]);
 
   // the symbol comes from the URL, so a shared link opens the same chart
   useEffect(() => {
