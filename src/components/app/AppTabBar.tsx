@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
-import { APP_TABS, activeAppTab, appTabHref, isTabSwipe, raisesKeyboard, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
+import { APP_TABS, activeAppTab, appTabHref, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
 import { tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
@@ -33,64 +33,151 @@ function useKeyboardClass() {
 }
 
 
-/** Where a sideways swipe must NOT switch the section: fields, the chart, sheets / dialogs, the dock itself, anything that scrolls sideways. */
+/** Where a sideways swipe must NOT switch the section: fields, the chart, sheets / dialogs, the dock itself, anything that really scrolls sideways. */
 const NO_SWIPE = "input, textarea, select, canvas, [contenteditable], [data-no-swipe], [role=dialog], .app-tabbar, .app-term-chart, .ac-sheet-wrap, .app-sheet, .app-term-fs";
 function scrollsSideways(el: Element | null): boolean {
-  for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) {
+  for (let n: Element | null = el; n && n !== document.body && n.tagName !== "MAIN"; n = n.parentElement) {
     const cs = getComputedStyle(n);
-    if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && n.scrollWidth > n.clientWidth + 2) return true;
+    if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && n.scrollWidth > n.clientWidth + 8) return true;
   }
   return false;
 }
+const SLIDE_KEY = "fomo-tab-slide";
 
-/** Swipe left / right on a tab's root screen switches to the next / previous dock section (the dock is a carousel). */
+/**
+ * Swipe left / right on a tab's root screen switches to the next / previous dock section. It follows the finger (the screen slides a little),
+ * fires as soon as the move is long enough (no waiting for the finger to lift), the screen slides out at once and the new one slides in.
+ * The neighbours are prefetched so the switch does not wait for the network more than it has to.
+ */
 function useSwipeTabs() {
   const router = useRouter();
   const pathname = usePathname() || "/";
   const { locale } = useT();
+  const loc = locale as "ru" | "en" | "cn";
+
+  // the new screen slides in from the side the swipe came from
+  useEffect(() => {
+    const m = document.querySelector("main") as HTMLElement | null;
+    if (m) {
+      m.style.transition = "";
+      m.style.transform = "";
+      m.style.opacity = "";
+    }
+    let dir = "";
+    try {
+      dir = sessionStorage.getItem(SLIDE_KEY) || "";
+      sessionStorage.removeItem(SLIDE_KEY);
+    } catch {
+      /* private mode */
+    }
+    if (dir !== "l" && dir !== "r") return;
+    const root = document.documentElement;
+    root.dataset.slide = dir;
+    const t = window.setTimeout(() => delete root.dataset.slide, 320);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
+
+  // warm up the two neighbours
+  useEffect(() => {
+    const search = window.location.search;
+    for (const d of [-1, 1] as const) {
+      const tab = swipeTargetTab(pathname, search, d);
+      if (!tab) continue;
+      try {
+        router.prefetch(appTabHref(loc, tab));
+      } catch {
+        /* old router */
+      }
+    }
+  }, [pathname, loc, router]);
+
   useEffect(() => {
     let sx = 0;
     let sy = 0;
-    let st = 0;
     let ok = false;
+    let axis: "h" | "v" | null = null;
+    const main = () => document.querySelector("main") as HTMLElement | null;
+    const reset = (animate: boolean) => {
+      const m = main();
+      if (!m) return;
+      m.style.transition = animate ? "transform 0.16s ease-out, opacity 0.16s ease-out" : "";
+      m.style.transform = "";
+      m.style.opacity = "";
+      if (animate) window.setTimeout(() => (m.style.transition = ""), 200);
+    };
     const start = (e: TouchEvent) => {
       ok = false;
+      axis = null;
       if (e.touches.length !== 1) return;
       const t = e.target as Element | null;
       if (!t || t.closest(NO_SWIPE) || scrollsSideways(t)) return;
       if (document.documentElement.classList.contains("app-term-fs") || document.querySelector("[role=dialog], .ac-sheet-wrap")) return;
       if (window.history.state && (window.history.state.appChat || window.history.state.appProf)) return;
-      const c = e.touches[0];
-      sx = c.clientX;
-      sy = c.clientY;
-      st = Date.now();
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
       ok = true;
     };
-    const end = (e: TouchEvent) => {
+    const move = (e: TouchEvent) => {
       if (!ok) return;
-      ok = false;
-      const c = e.changedTouches[0];
+      const c = e.touches[0];
       if (!c) return;
       const dx = c.clientX - sx;
       const dy = c.clientY - sy;
-      if (!isTabSwipe(dx, dy, Date.now() - st)) return;
-      if (window.getSelection()?.toString()) return; // a text selection drag is not a swipe
-      const tab = swipeTargetTab(pathname, window.location.search, dx < 0 ? 1 : -1);
-      if (!tab) return;
-      try {
-        nativeBridge()?.haptic?.();
-      } catch {
-        /* old app build */
+      if (!axis) {
+        axis = swipeAxis(dx, dy);
+        if (!axis) return;
       }
-      router.push(appTabHref(locale as "ru" | "en" | "cn", tab));
+      if (axis === "v") {
+        ok = false;
+        return;
+      }
+      const dir = dx < 0 ? 1 : -1;
+      const target = swipeTargetTab(pathname, window.location.search, dir);
+      const m = main();
+      if (m && !window.getSelection()?.toString()) {
+        // follows the finger, with resistance (and almost none where there is nothing to switch to)
+        m.style.transition = "none";
+        m.style.transform = `translateX(${Math.round(dx * (target ? 0.45 : 0.12))}px)`;
+        m.style.opacity = target ? String(Math.max(0.55, 1 - Math.abs(dx) / 420)) : "";
+      }
+      if (target && isTabSwipe(dx, dy)) {
+        ok = false;
+        try {
+          nativeBridge()?.haptic?.();
+        } catch {
+          /* old app build */
+        }
+        try {
+          sessionStorage.setItem(SLIDE_KEY, dir === 1 ? "l" : "r");
+        } catch {
+          /* private mode */
+        }
+        if (m) {
+          m.style.transition = "transform 0.12s ease-in, opacity 0.12s ease-in";
+          m.style.transform = `translateX(${dir === 1 ? "-32%" : "32%"})`;
+          m.style.opacity = "0.25";
+          window.setTimeout(() => reset(false), 3500); // the screen waits faded until the new one arrives (the route effect clears it); this only guards a stalled load
+        }
+        router.push(appTabHref(loc, target));
+      }
+    };
+    const end = () => {
+      if (axis === "h" && ok) reset(true);
+      ok = false;
+      axis = null;
     };
     document.addEventListener("touchstart", start, { passive: true });
+    document.addEventListener("touchmove", move, { passive: true });
     document.addEventListener("touchend", end, { passive: true });
+    document.addEventListener("touchcancel", end, { passive: true });
     return () => {
       document.removeEventListener("touchstart", start);
+      document.removeEventListener("touchmove", move);
       document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+      reset(false);
     };
-  }, [pathname, locale, router]);
+  }, [pathname, loc, router]);
 }
 
 function TabBar() {

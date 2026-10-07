@@ -78,9 +78,18 @@ export function appTabHref(locale: Locale, tab: AppTabDef): string {
   return localizedPath(locale, tab.href);
 }
 
-/** Horizontal swipe between the dock sections: a clear sideways flick (long enough, mostly horizontal, quick). */
-export function isTabSwipe(dx: number, dy: number, ms: number): boolean {
-  return Math.abs(dx) >= 64 && Math.abs(dx) >= 1.6 * Math.abs(dy) && ms > 0 && ms <= 700;
+/** Horizontal swipe between the dock sections. The gesture fires while the finger is still down, as soon as it is clearly sideways and long enough. */
+export const SWIPE_MIN_DX = 56;
+export function isTabSwipe(dx: number, dy: number): boolean {
+  return Math.abs(dx) >= SWIPE_MIN_DX && Math.abs(dx) >= 1.5 * Math.abs(dy);
+}
+
+/** Which way a touch is going once it has moved a little: "h" sideways (a swipe candidate), "v" vertical (a scroll: never a swipe), null undecided. */
+export function swipeAxis(dx: number, dy: number): "h" | "v" | null {
+  const ax = Math.abs(dx);
+  const ay = Math.abs(dy);
+  if (ax < 10 && ay < 10) return null;
+  return ax > 1.3 * ay ? "h" : "v";
 }
 
 /**

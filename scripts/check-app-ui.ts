@@ -10,6 +10,7 @@ import {
   isTabSwipe,
   parseFontStep,
   raisesKeyboard,
+  swipeAxis,
   swipeTargetTab,
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
@@ -502,8 +503,9 @@ if (fails) {
 console.log("\nall ok");
 
 // --- swipe between the dock sections
-eq("swipe: long flat quick flick counts", [isTabSwipe(-120, 10, 200), isTabSwipe(90, -20, 400)], [true, true]);
-eq("swipe: short / diagonal / slow flicks do not", [isTabSwipe(-40, 5, 200), isTabSwipe(-100, 90, 200), isTabSwipe(-120, 10, 900), isTabSwipe(-120, 10, 0)], [false, false, false, false]);
+eq("swipe: a clear sideways move counts", [isTabSwipe(-120, 10), isTabSwipe(60, -20), isTabSwipe(-56, 0)], [true, true, true]);
+eq("swipe: short / diagonal moves do not", [isTabSwipe(-40, 5), isTabSwipe(-100, 90), isTabSwipe(55, 0)], [false, false, false]);
+eq("swipe axis: sideways / vertical / undecided", [swipeAxis(14, 3), swipeAxis(4, -18), swipeAxis(5, 4), swipeAxis(-30, 28)], ["h", "v", null, "v"]);
 eq("swipe: left goes to the next tab, right to the previous", [swipeTargetTab("/feed", "", 1)?.id, swipeTargetTab("/terminal", "", -1)?.id, swipeTargetTab("/terminal", "", 1)?.id], ["terminal", "feed", "chat"]);
 eq("swipe: no wrap at the ends", [swipeTargetTab("/feed", "", -1), swipeTargetTab("/profile", "", 1)], [null, null]);
 eq("swipe: the settings tab is skipped", swipeTargetTab("/authors", "", 1)?.id, "me");

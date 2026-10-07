@@ -395,3 +395,10 @@ html.app-ui .app-term-wp { display: block; font-size: 15px; font-weight: 600; }
 html.app-ui .app-term-wc { display: block; font-size: 12px; }
 html.app-ui .app-term-wempty { padding: 14px; font-size: 13px; color: var(--app-tx2); line-height: 1.4; }
 html.app-ui .app-term-disc { font-size: 11px; color: var(--app-tx3); padding: 0 16px 24px; line-height: 1.4; }
+
+/* switching the dock section by a swipe: the new screen slides in from the side the finger came from */
+@keyframes appSlideL { from { transform: translateX(26%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes appSlideR { from { transform: translateX(-26%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+html.app-ui[data-slide="l"] main { animation: appSlideL 0.22s ease-out; }
+html.app-ui[data-slide="r"] main { animation: appSlideR 0.22s ease-out; }
+@media (prefers-reduced-motion: reduce) { html.app-ui[data-slide] main { animation: none; } }
