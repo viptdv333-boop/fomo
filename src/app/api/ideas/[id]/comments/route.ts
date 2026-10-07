@@ -12,6 +12,33 @@ export async function GET(
 ) {
   const { id: ideaId } = await params;
 
+  // The comments of a paid post (a channel post or a paid idea) are part of the paid content: they are shown only to the author,
+  // a buyer, a subscriber of that channel / author and the staff — the same rule as the idea itself (api/ideas/[id]).
+  const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { isPaid: true, authorId: true, tariffId: true } });
+  if (!idea) return NextResponse.json([]);
+  if (idea.isPaid) {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    let allowed = !!userId && (idea.authorId === userId || role === "ADMIN" || role === "OWNER");
+    if (!allowed && userId) {
+      const [purchase, subscription] = await Promise.all([
+        prisma.purchase.findUnique({ where: { userId_ideaId: { userId, ideaId } } }),
+        prisma.subscription.findFirst({
+          where: {
+            subscriberId: userId,
+            authorId: idea.authorId,
+            status: "active",
+            endDate: { gt: new Date() },
+            ...(idea.tariffId ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] } : {}),
+          },
+        }),
+      ]);
+      allowed = !!(purchase || subscription);
+    }
+    if (!allowed) return NextResponse.json([]);
+  }
+
   const comments = await prisma.ideaComment.findMany({
     where: { ideaId, isDeleted: false },
     select: {
