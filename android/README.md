@@ -7,7 +7,7 @@
 | Вставка картинок из клавиатуры | Gboard (буфер обмена, стикеры, GIF) отдаёт картинку в поле ввода сайта — в Chrome на Android этого нет. Плюс «Вставить из буфера обмена» в меню скрепки читает картинку из системного буфера. |
 | «Поделиться → FOMO» | Скриншоты, фото, PDF, Word, текст из системного меню «Поделиться» открывают экран «Куда отправить?». |
 | Загрузка файлов | Камера (фото), галерея, файлы; `accept=` и несколько файлов поддерживаются; камера запрашивается только когда нужна. |
-| Скачивание | Экспорт/CSV через системный DownloadManager с cookie сессии. |
+| Скачивание | Файлы с сайта (адрес `https://…`) — через системный DownloadManager с cookie сессии. Файлы, которые страница собирает сама (CSV свечей, скриншот графика — `blob:`/`data:` ссылки), сохраняются мостом `FomoApp.saveFile*` в «Загрузки» (раздел 8). |
 | Push через Firebase | Уведомления приходят, даже когда приложение закрыто (каналы «Сообщения», «Алерты терминала», «Календарь»). |
 | Ссылки | `https://fomo.spot/...` открываются в приложении; внешние — во вкладках Chrome (Custom Tabs); `mailto:`/`tel:`/`tg:` — в своих приложениях. |
 | Обновление APK | Необязательное окно «Доступно обновление» (см. ниже). |
@@ -79,6 +79,7 @@ android/
       FileChooser.kt    выбор файлов/камера
       ExternalLinks.kt  внешние ссылки (Custom Tabs, mailto/tel/tg, защищённый intent:)
       UrlPolicy.kt      все решения «своя ли это страница» (юнит-тесты в app/src/test)
+      FileSaver.kt, SaveFilePolicy.kt   сохранение файлов страницы в «Загрузки» (MediaStore), имя/MIME/дубликаты/data: URL
       Media.kt, Js.kt, ShareIntake.kt, ThemeColor.kt, UpdateChecker.kt
       PushBridge.kt, FcmService.kt, Notifications.kt, FomoApplication.kt   — push (этап 2)
       SettingsActivity.kt, SettingsFragment.kt, AppSettings.kt, SettingsSpec.kt   — экран настроек (раздел 10)
@@ -183,7 +184,7 @@ keytool -genkeypair -v -keystore fomo-release.jks -alias fomo -keyalg RSA -keysi
 APK `https://terminal.fomo.spot/app/dl/FOMO-Terminal.apk`):
 
 ```json
-{ "versionCode": 2, "versionName": "1.0.1", "url": "https://fomo.spot/app/fomo.apk" }
+{ "versionCode": 3, "versionName": "1.0.2", "url": "https://fomo.spot/app/fomo.apk" }
 ```
 
 Если `versionCode` больше, чем у установленной сборки, показывается окно «Доступно обновление» с кнопкой «Скачать» (открывает `url` в браузере, который скачивает APK)
@@ -256,7 +257,7 @@ APK-файл в публичный репозиторий не коммитьт�
 - Методы `window.FomoApp`: `getClipboardImage()` (JSON `{name,type,dataBase64}` или `""`), `hasClipboardImage()`, `appVersion()`, `openExternal(url)`, `share(text,url)`,
   `haptic()` (учитывает «Вибро-отклик»), `getPushToken()`, `requestNotificationPermission()`, `openSettings()` (открыть экран настроек приложения),
   `lockEnabled()` (включена ли блокировка), `setImmersive(on)` (скрыть / показать строку состояния и панель навигации для полноэкранного графика, см. ниже), `appFeatures()` (JSON возможностей этой сборки:
-  `{"schema":1,"versionName":"1.0.0","versionCode":1,"settings":true,"appLock":true,"lockEnabled":false,"notificationChannels":true,"updateCheck":true,"immersive":true}`). Файлы больше 8 МБ отклоняются, большие скриншоты уменьшаются до JPEG 2560 px.
+  `{"schema":1,"versionName":"1.0.0","versionCode":1,"settings":true,"appLock":true,"lockEnabled":false,"notificationChannels":true,"updateCheck":true,"immersive":true,"saveFile":true}`), `saveFile(name,mime,base64)` / `saveFileBegin(name,mime)` + `saveFileChunk(token,base64)` + `saveFileEnd(token)` / `saveFileFailed(token)` (сохранить файл в «Загрузки», см. ниже). Файлы больше 8 МБ отклоняются, большие скриншоты уменьшаются до JPEG 2560 px.
 - События на `document`: `fomo-native-paste` (картинка из клавиатуры), `fomo-native-share` (файлы из «Поделиться»; ещё лежат в `window.__fomoNativeShare`),
   `fomo-native-push-token` (новый токен), `fomo-native-immersive-reset` (приложение само вернуло системные панели, например при сворачивании: график на странице должен выйти из полного экрана). Код на стороне сайта: `src/lib/native-app.ts`, `src/lib/native-push.ts`, `src/components/layout/NativePushRegistrar.tsx`.
 - В приложении скрыты «Установить приложение» и баннер переустановки PWA; «Обновить приложение» оставлено (сбрасывает кэш сайта).
@@ -318,6 +319,15 @@ APK-файл в публичный репозиторий не коммитьт�
   3) экран, открытый «вглубь» (идея, канал, автор, переписка, экран профиля): один шаг истории, если запись под ним создало само приложение (счётчик `fomoBackIdx` в `history.state`), иначе — на уровень выше по адресу (`/ideas/<id>` → `/feed`, `/channels/<id>` → `/channels`, `/authors/<id>`, `/profile/<id>` → `/authors`, переписка → список чатов, `/profile?tab=…` → `/profile`) — так работают push и ссылки без записи в истории;
   4) корень раздела (календарь, каналы, авторы, список чатов, профиль, терминал на основном сайте) → домашний раздел «Доска» (`/feed`; на terminal.fomo.spot — `/terminal`); 5) дома страница отвечает «home», и приложение сворачивается (`moveTaskToBack`), WebView-история не перебирается.
   Нет ответа (страница без обработчика — вход, лендинг; ошибка; нет ответа за 400 мс) → прежнее поведение: `WebView.goBack()`, иначе свернуть. Экран блокировки (`LockController`) по-прежнему первый. Причина «всегда сворачивает»: прежний обработчик перед сворачиванием делал `isEnabled = false` и больше никогда не включал; свёрнутая (не уничтоженная) активность продолжала жить с выключенным обработчиком, и любая следующая «Назад» только сворачивала приложение. Нужна новая сборка APK: старый `MainActivity` страничный обработчик не вызывает (сайт с `window.FomoBack` на старом приложении ничего не меняет).
+- **Сохранение файлов страницы (versionCode 3, 1.0.2).** Раньше «Скачать свечи (CSV)» и «Скачать изображение» в терминале в приложении ничего не делали: страница создаёт `blob:`/`data:` ссылку (`<a download>`),
+  WebView отдавал её в `DownloadListener`, а `DownloadManager` такие адреса скачать не умеет (а `onDownload` ещё и отправлял их во внешний браузер). Теперь:
+  - Сайт зовёт `saveBlobAsFile(blob, имя)` (`src/lib/save-file.ts`) — единственный путь для таких скачиваний (`TradingChart.tsx`: CSV и PNG, `IndicatorEditor.tsx`: код индикатора). Внутри приложения со сборкой, у которой `appFeatures().saveFile === true`,
+    файл идёт в мост: до 576 КБ одним вызовом `saveFile(name, mime, base64)`, больше — кусками по 384 КБ (`saveFileBegin` -> `ok:<token>`, `saveFileChunk(token, base64)` -> `ok`, `saveFileEnd(token)` -> `ok`; каждый кусок — самостоятельный base64, длина кратна 4). В браузере, PWA и окне Windows — обычный `<a download>` (в Electron при этом открывается стандартный диалог «Сохранить как»).
+  - Ответ моста: `ok` или код ошибки (`untrusted`, `bad_args`, `too_large` > 64 МБ, `blocked_type` — apk/exe/sh и т. п. не пишутся, `busy`, `io`, `no_session`, `bad_chunk`, `bad_base64`). Приложение само показывает тост: «Файл сохранён в «Загрузки»: имя» или «Не удалось начать загрузку».
+  - Куда пишется: Android 10+ — публичная папка `Загрузки` через `MediaStore.Downloads` (разрешения не нужны, `IS_PENDING` до конца записи, при совпадении имени система добавляет « (1)»); Android 7–9 — папка приложения `Android/data/<пакет>/files/Download` (как и у `DownloadManager`: публичная папка требовала бы разрешения на память), имя с « (1)» делает `SaveFilePolicy.uniqueName`.
+  - Имя файла чистится (`SaveFilePolicy.sanitizeName`, юнит-тест `SaveFilePolicyTest`): только последний сегмент пути, без управляющих и `<>:"|?*`, без точек в начале/конце, до 100 символов с сохранением расширения, расширение по MIME, если его нет. Незавершённая запись удаляется (ошибка, отмена, 3 минуты простоя).
+  - `onDownload` теперь понимает `data:` (декодирует и сохраняет) и `blob:` (внедряет в страницу `Js.saveBlob`, который читает blob и шлёт его мосту) — `blob:`-ссылки из чужого/старого кода больше не пропадают молча; неудача даёт тост `download_failed`.
+  - Размер: сквозной тест на устройстве не проводился; отдельная строка WebView в несколько МБ через `addJavascriptInterface` проходит, но копируется несколько раз, поэтому большие файлы идут кусками.
 - Проверка логики (вкладки, определение, переключатель): `npx tsx scripts/check-app-ui.ts`; мост и флаги: `npx tsx scripts/check-native-app.ts`.
 
 ## 9. Безопасность и ограничения

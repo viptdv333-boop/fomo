@@ -20,6 +20,16 @@ export interface FomoBridge {
   setImmersive?: (on: boolean) => void;
   /** JSON string, see parseAppFeatures. */
   appFeatures?: () => string;
+  /**
+   * Saves a file into the phone's Downloads (the WebView cannot download blob: / data: links). Returns "ok" or an error code; the app shows its own
+   * toast. App builds with the `saveFile` feature (1.0.2+). Use saveBlobAsFile (src/lib/save-file.ts), not these directly.
+   */
+  saveFile?: (name: string, mime: string, base64: string) => string;
+  /** Chunked form for big files: begin -> "ok:<token>", then chunks (base64, length multiple of 4) -> "ok", end -> "ok". */
+  saveFileBegin?: (name: string, mime: string) => string;
+  saveFileChunk?: (token: string, base64: string) => string;
+  saveFileEnd?: (token: string) => string;
+  saveFileFailed?: (token: string) => void;
 }
 
 /** One file as the app serialises it: base64 without the data: prefix. */
@@ -263,6 +273,8 @@ export interface NativeFeatures {
   updateCheck: boolean;
   /** FomoApp.setImmersive exists: the full-screen chart can hide the system bars. */
   immersive: boolean;
+  /** FomoApp.saveFile / saveFileBegin exist: blob / data downloads (chart CSV, screenshot) go to the phone's Downloads. */
+  saveFile: boolean;
 }
 
 /** Tolerant parser of FomoApp.appFeatures(): null for anything that is not a JSON object; missing fields become false / "". */
@@ -288,6 +300,7 @@ export function parseAppFeatures(raw: unknown): NativeFeatures | null {
     notificationChannels: d.notificationChannels === true,
     updateCheck: d.updateCheck === true,
     immersive: d.immersive === true,
+    saveFile: d.saveFile === true,
   };
 }
 

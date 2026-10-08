@@ -30,6 +30,7 @@ import { isSignedInForUserData } from "@/lib/chart/userdata";
 import ModalPortal from "./ModalPortal";
 import ScriptCodeEditor from "./ScriptCodeEditor";
 import { IND_ICONS } from "./icons";
+import { saveBlobAsFile } from "@/lib/save-file";
 
 /* Editor for user-written indicators (opens as a panel on the right so that the live preview stays visible on the
    chart): code editor, toolbar (save / save as / add to chart / templates / docs / import / export / delete),
@@ -63,14 +64,7 @@ type Side = null | "docs" | "tpl";
 type Panel = "problems" | "console" | "alerts";
 
 function download(filename: string, text: string, type: string) {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  void saveBlobAsFile(new Blob([text], { type }), filename);
 }
 
 function Body({ controller, scriptId, onClose }: { controller: IndicatorsController; scriptId: string; onClose: () => void }) {

@@ -49,6 +49,7 @@ import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
 import type { ChartSyncHub } from "@/lib/chart/sync";
+import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
 import { adHocInstrument, findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
 
@@ -981,23 +982,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const head = source === "moex" ? "time_msk" : "time_utc";
     const rows = candles.map((c) => `${stamp(c.t)},${c.o},${c.h},${c.l},${c.c},${c.v}`);
     const blob = new Blob([`${head},open,high,low,close,volume\n${rows.join("\n")}\n`], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${instrument.ticker}_${prefs.interval}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    void saveBlobAsFile(blob, `${instrument.ticker}_${prefs.interval}.csv`);
   };
 
   const screenshot = () => {
     const url = engineRef.current?.screenshot();
     if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${ticker}-${prefs.interval}.png`;
-    a.click();
+    void saveDataUrlAsFile(url, `${ticker}-${prefs.interval}.png`);
   };
 
   const copyScreenshot = async () => {

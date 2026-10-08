@@ -45,4 +45,20 @@ object Js {
             "var s=document.scrollingElement||document.documentElement;return s.scrollTop>0;}" +
             "document.addEventListener('touchstart',function(e){try{FomoScroll.setCanScrollUp(up(e.target));}catch(_){}}," +
             "{passive:true,capture:true});})();"
+
+    /**
+     * Reads a blob: URL in the page and hands it to the saveFile* bridge in 384 KB pieces (a multiple of 3 bytes, so every base64 piece
+     * stands on its own). The app has already shown its own toast for every error that comes back from the bridge; a failure inside
+     * the page (blob revoked, read error) is reported with saveFileFailed.
+     */
+    fun saveBlob(url: String, name: String, mime: String): String =
+        "(function(u,n,m){var B=window.FomoApp;if(!B||!B.saveFileBegin)return;" +
+            "function fail(t){try{B.saveFileFailed(t||'');}catch(_){}}" +
+            "fetch(u).then(function(r){return r.blob();}).then(function(b){" +
+            "var r=B.saveFileBegin(n,m||b.type||'application/octet-stream');if(String(r).indexOf('ok:')!==0)return;" +
+            "var t=String(r).slice(3),C=393216,i=0;" +
+            "function next(){if(i>=b.size){B.saveFileEnd(t);return;}var s=b.slice(i,i+C);i+=C;var fr=new FileReader();" +
+            "fr.onload=function(){var d=String(fr.result);if(B.saveFileChunk(t,d.slice(d.indexOf(',')+1))==='ok')next();};" +
+            "fr.onerror=function(){fail(t);};fr.readAsDataURL(s);}next();" +
+            "}).catch(function(){fail('');});})(${JSONObject.quote(url)},${JSONObject.quote(name)},${JSONObject.quote(mime)});"
 }

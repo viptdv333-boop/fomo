@@ -5,6 +5,8 @@
     <string name="chooser_title">Выберите файл</string>
     <string name="camera_denied">Нет доступа к камере — разрешите его в настройках приложения</string>
     <string name="download_started">Загрузка началась…</string>
+    <string name="file_saved">Файл сохранён в «Загрузки»: %1$s</string>
+    <string name="file_saved_app">Файл сохранён в папку приложения (Android/data/…/files/Download): %1$s</string>
     <string name="download_failed">Не удалось начать загрузку</string>
     <string name="no_app_for_link">Нет приложения, которое открывает эту ссылку</string>
     <string name="share_chooser">Поделиться</string>

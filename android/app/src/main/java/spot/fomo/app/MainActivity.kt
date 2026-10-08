@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -612,8 +613,58 @@ class MainActivity : AppCompatActivity() {
 
     // ---- downloads ---------------------------------------------------------------------------------------------------
 
+    /** Saves files the page produced itself (chart CSV / PNG) into Downloads — see FileSaver and FomoApp.saveFile*. */
+    val fileSaver by lazy { FileSaver(applicationContext) }
+
+    fun toastSaved(name: String) {
+        val text = getString(if (fileSaver.publicFolder) R.string.file_saved else R.string.file_saved_app, name)
+        Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+    }
+
+    fun toastSaveFailed() {
+        Toast.makeText(this, R.string.download_failed, Toast.LENGTH_SHORT).show()
+    }
+
+    /** `data:` URL (an `<a download href="data:...">`): decoded here and saved; DownloadManager cannot fetch it. */
+    private fun saveDataUrl(d: DownloadRequest) {
+        val parsed = SaveFilePolicy.parseDataUrl(d.url)
+        if (parsed == null || !UrlPolicy.isTrusted(currentUrl)) {
+            toastSaveFailed()
+            return
+        }
+        io.execute {
+            val bytes = try {
+                if (parsed.base64) Base64.decode(parsed.payload, Base64.DEFAULT) else SaveFilePolicy.percentDecode(parsed.payload)
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+            val mime = d.mime?.takeIf { it.isNotBlank() } ?: parsed.mime
+            val r = if (bytes == null) null else fileSaver.saveBytes(SaveFilePolicy.nameFromDisposition(d.disposition), mime, bytes)
+            runOnUiThread { if (r != null && r.ok) toastSaved(r.name) else toastSaveFailed() }
+        }
+    }
+
+    /**
+     * `blob:` URL: only the page can read it, so the page is asked to (FomoApp.saveFileBegin/Chunk/End, Js.saveBlob). The site's own
+     * code normally saves through the bridge before ever creating a blob link (saveBlobAsFile in src/lib/native-app.ts); this path
+     * keeps `<a download href=blob:>` from other/older code working instead of failing silently.
+     */
+    private fun saveBlobUrl(d: DownloadRequest) {
+        val inner = d.url.substring(5)
+        if (!UrlPolicy.isTrusted(currentUrl) || !UrlPolicy.isTrusted(inner)) {
+            toastSaveFailed()
+            return
+        }
+        val name = SaveFilePolicy.nameFromDisposition(d.disposition).orEmpty()
+        webView.evaluateJavascript(Js.saveBlob(d.url, name, d.mime.orEmpty()), null)
+    }
+
     private fun onDownload(d: DownloadRequest) {
-        // Cookies are only attached for the trusted origin; blob:/data: URLs cannot be fetched by DownloadManager.
+        when (UrlPolicy.scheme(d.url)) {
+            "data" -> return saveDataUrl(d)
+            "blob" -> return saveBlobUrl(d)
+        }
+        // Cookies are only attached for the trusted origin.
         if (!UrlPolicy.isTrusted(d.url)) {
             ExternalLinks.open(this, d.url)
             return
