@@ -237,6 +237,10 @@ model Idea {
 
   attachments Json?
 
+  /// 08.10.2026: метки только сетапов терминала; прогнозы и события сделок не архивируются.
+  botSetupTicker  String?
+  botSetupBatchAt DateTime?
+
   /// Пост закрытого канала (13.09.2026): виден в канале, открывается подпиской
   /// на этот канал. null — обычная идея (бесплатная или продаваемая поштучно).
   tariffId        String?
@@ -252,6 +256,7 @@ model Idea {
   @@index([createdAt])
   @@index([authorId])
   @@index([tariffId])
+  @@index([authorId, tariffId, botSetupTicker, createdAt])
 }
 
 model IdeaComment {
