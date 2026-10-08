@@ -42,8 +42,8 @@ android {
             dimension = "site"
             applicationId = "spot.fomo.app"
             // Bump BOTH together with public/app/version.json on the site when you publish a new APK.
-            versionCode = 1
-            versionName = "1.0.0"
+            versionCode = 2
+            versionName = "1.0.1"
             // BASE_URL itself is set per variant (androidComponents.onVariants below), because debug may override it.
             buildConfigField("String", "UPDATE_PATH", "\"/app/version.json\"")
             buildConfigField("boolean", "SHARE_ENABLED", "true")
@@ -53,8 +53,8 @@ android {
             dimension = "site"
             applicationId = "spot.fomo.terminal"
             // Bump BOTH together with public/app/terminal-version.json when you publish a new FOMO-Terminal.apk.
-            versionCode = 1
-            versionName = "1.0.0"
+            versionCode = 2
+            versionName = "1.0.1"
             buildConfigField("String", "UPDATE_PATH", "\"/app/terminal-version.json\"")
             // no /share page on the terminal site (and no SEND intent filters, see src/fomo/AndroidManifest.xml)
             buildConfigField("boolean", "SHARE_ENABLED", "false")

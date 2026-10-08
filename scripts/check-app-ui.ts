@@ -22,6 +22,23 @@ import {
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
+import {
+  BACK_INDEX_KEY,
+  backHome,
+  backHrefFor,
+  backLayerCount,
+  backTarget,
+  canStepBack,
+  closeTopBackLayer,
+  entryIndex,
+  isMarkedScreenState,
+  nextEntryIndex,
+  parentHref,
+  planBack,
+  registerBackLayer,
+  resetBackLayers,
+  withEntryIndex,
+} from "../src/lib/app-back";
 import { isValidInterval } from "../src/lib/chart/intervals";
 import {
   CAT_I18N,
@@ -574,6 +591,60 @@ eq("dock: a user's page lights «Авторы», the own profile stays «Про�
     [notifEventsFor(true, [{ id: "mention" }, { id: "system" }, { id: "price_alert" }, { id: "dm" }, { id: "line_alert" }, { id: "calendar_reminder" }]).map((e) => e.id), notifEventsFor(false, [{ id: "mention" }, { id: "system" }]).map((e) => e.id)],
     [["system", "price_alert", "line_alert", "calendar_reminder"], ["mention", "system"]],
   );
+}
+
+
+// --- the Android Back button (window.FomoBack): path -> parent, the history ledger, the priority of the rules
+{
+  eq("back: pushed screens go one level up", [parentHref("/ideas/42", ""), parentHref("/ideas/new", ""), parentHref("/feed/some-slug", ""), parentHref("/ideas/42/edit", "")], ["/feed", "/feed", "/feed", "/ideas/42"]);
+  eq("back: channels and authors", [parentHref("/channels/7", ""), parentHref("/channels/create", ""), parentHref("/channels/edit/7", ""), parentHref("/authors/zed", ""), parentHref("/profile/u1", "")], ["/channels", "/channels", "/channels/7", "/authors", "/authors"]);
+  eq("back: chat thread -> the list, a dialog -> the dialogs list", [parentHref("/chat", "?room=r1"), parentHref("/chat", "?seg=dms&dm=c1"), parentHref("/chat", "?with=u9"), parentHref("/chat", "?groups=1"), parentHref("/chat/btc", ""), parentHref("/rooms/g1", ""), parentHref("/rooms/join/tok", ""), parentHref("/messages", "?conversation=c1"), parentHref("/messages", "")], ["/chat", "/chat?seg=dms", "/chat?seg=dms", "/chat", "/chat", "/chat", "/chat", "/chat?seg=dms", null]);
+  eq("back: profile sub-screens -> the profile list", [parentHref("/profile", "?tab=finance"), parentHref("/profile", "?tab=notifications&appui=1"), parentHref("/subscriptions", ""), parentHref("/payments", ""), parentHref("/profile", ""), parentHref("/profile", "?tab=zzz")], ["/profile", "/profile", "/profile", "/profile", null, null]);
+  eq("back: section roots have no parent", [parentHref("/feed", ""), parentHref("/chat", ""), parentHref("/chat", "?seg=dms"), parentHref("/calendar", ""), parentHref("/channels", ""), parentHref("/authors", ""), parentHref("/terminal", ""), parentHref("/", ""), parentHref("/help", "")], [null, null, null, null, null, null, null, null, null]);
+  eq("back: other pages", [parentHref("/terminal/features", ""), parentHref("/instruments/category/crypto", ""), parentHref("/instruments/btc", ""), parentHref("/instruments", "")], ["/terminal", "/instruments", "/instruments", null]);
+  eq("back: the locale prefix is ignored", [parentHref("/en/ideas/42", ""), parentHref("/zh/channels/7", ""), parentHref("/en/chat", "?room=r1")], ["/feed", "/channels", "/chat"]);
+  eq("back target: up from a pushed screen, home from a section root, nothing at home", [backTarget("/ideas/1", "", false), backTarget("/calendar", "", false), backTarget("/chat", "?seg=dms", false), backTarget("/feed", "", false), backTarget("/", "", false)], [{ href: "/feed", level: "up" }, { href: "/feed", level: "home" }, { href: "/feed", level: "home" }, null, null]);
+  eq("back target on the terminal site: home is the terminal", [backHome(true), backHome(false), backTarget("/profile", "", true), backTarget("/terminal", "", true), backTarget("/profile", "?tab=notifications", true)], ["/terminal", "/feed", { href: "/terminal", level: "home" }, null, { href: "/profile", level: "up" }]);
+  eq("back target: the main site's terminal is a section, a legal page too", [backTarget("/terminal", "", false), backTarget("/help", "", false), backTarget("/en/calendar", "", false)], [{ href: "/feed", level: "home" }, { href: "/feed", level: "home" }, { href: "/feed", level: "home" }]);
+  eq("back href: locale prefix and the preview flags are put back", [backHrefFor("/feed", "ru", ""), backHrefFor("/feed", "en", "?appui=1"), backHrefFor("/chat?seg=dms", "cn", "?room=x&appui=1&appdesktop=1"), backHrefFor("/profile", "ru", "?tab=finance")], ["/feed", "/en/feed?appui=1", "/zh/chat?seg=dms&appui=1&appdesktop=1", "/profile"]);
+
+  eq("ledger: index of a state (junk-safe)", [entryIndex(null), entryIndex("x"), entryIndex({}), entryIndex({ [BACK_INDEX_KEY]: 3 }), entryIndex({ [BACK_INDEX_KEY]: -2 }), entryIndex({ [BACK_INDEX_KEY]: "4" }), entryIndex({ [BACK_INDEX_KEY]: 2.9 })], [0, 0, 0, 3, 0, 0, 2]);
+  eq("ledger: a push is one past the current entry, a replace keeps it", [nextEntryIndex("push", { [BACK_INDEX_KEY]: 2 }, {}), nextEntryIndex("push", null, null), nextEntryIndex("replace", { [BACK_INDEX_KEY]: 2 }, { appChat: 1 }), nextEntryIndex("replace", { [BACK_INDEX_KEY]: 2 }, { [BACK_INDEX_KEY]: 5 }), nextEntryIndex("replace", null, {})], [3, 1, 2, 5, 0]);
+  eq("ledger: the index is written into plain objects only", [withEntryIndex({ appChat: 1 }, 2), withEntryIndex(null, 2), withEntryIndex([1], 2), withEntryIndex("s", 2)], [{ appChat: 1, [BACK_INDEX_KEY]: 2 }, null, null, null]);
+  eq("ledger: a step back needs an in-app entry behind and a real history", [canStepBack({ [BACK_INDEX_KEY]: 1 }, 3), canStepBack({ [BACK_INDEX_KEY]: 1 }, 1), canStepBack({}, 5), canStepBack(null, 5)], [true, false, false, false]);
+  eq("marked screens: chat thread, profile screen", [isMarkedScreenState({ appChat: 1 }), isMarkedScreenState({ appProf: 1 }), isMarkedScreenState({ __NA: true }), isMarkedScreenState(null)], [true, true, false, false]);
+
+  const snap = (over: Partial<Parameters<typeof planBack>[0]> = {}) => ({ layers: 0, overlay: false, fullscreen: false, state: {}, historyLength: 1, target: null as ReturnType<typeof backTarget>, ...over });
+  const idea = backTarget("/ideas/1", "", false);
+  const cal = backTarget("/calendar", "", false);
+  eq("planBack: a sheet is closed first, then an overlay, then the full-screen chart", [planBack(snap({ layers: 1, overlay: true, fullscreen: true, target: idea })), planBack(snap({ overlay: true, fullscreen: true, target: idea })), planBack(snap({ fullscreen: true, target: idea }))], ["layer", "overlay", "fullscreen"]);
+  eq("planBack: a deep screen with an in-app entry behind it steps back", planBack(snap({ target: idea, state: { [BACK_INDEX_KEY]: 2 }, historyLength: 4 })), "history");
+  eq("planBack: a deep screen opened from a notification (no entry behind) goes to its parent", [planBack(snap({ target: idea, state: {}, historyLength: 1 })), planBack(snap({ target: idea, state: {}, historyLength: 6 }))], ["parent", "parent"]);
+  eq("planBack: a marked screen (chat thread) steps back even without a ledger", planBack(snap({ target: backTarget("/chat", "?room=1", false), state: { appChat: 1 }, historyLength: 2 })), "history");
+  eq("planBack: a section root goes to the home section whatever the history is", [planBack(snap({ target: cal, state: { [BACK_INDEX_KEY]: 3 }, historyLength: 9 })), planBack(snap({ target: cal }))], ["home", "home"]);
+  eq("planBack: home does nothing (the app minimises)", [planBack(snap()), planBack(snap({ state: { [BACK_INDEX_KEY]: 4 }, historyLength: 9 }))], ["none", "none"]);
+
+  resetBackLayers();
+  const closed: string[] = [];
+  const offA = registerBackLayer(() => closed.push("a"));
+  const offB = registerBackLayer(() => closed.push("b"));
+  const offFs = registerBackLayer(() => closed.push("fs"), "screen");
+  eq("layers: counted per kind, the last registered is closed first", [backLayerCount("sheet"), backLayerCount("screen"), closeTopBackLayer("sheet"), closed.join("")], [2, 1, true, "b"]);
+  offB();
+  eq("layers: an unregistered layer is gone", [backLayerCount("sheet"), closeTopBackLayer("sheet"), closed.join("")], [1, true, "ba"]);
+  offA();
+  eq("layers: nothing left -> false, the screen layer is separate", [closeTopBackLayer("sheet"), closeTopBackLayer("screen"), closed.join("")], [false, true, "bafs"]);
+  offFs();
+  const stuck = registerBackLayer(() => {});
+  for (let i = 0; i < 3; i++) closeTopBackLayer("sheet");
+  eq("layers: one that ignores Back three times is left alone (Back never gets stuck)", [backLayerCount("sheet"), closeTopBackLayer("sheet")], [0, false]);
+  stuck();
+  const throwing = registerBackLayer(() => {
+    throw new Error("boom");
+  });
+  eq("layers: a failing close handler does not break Back", closeTopBackLayer("sheet"), true);
+  throwing();
+  resetBackLayers();
 }
 
 if (fails) {

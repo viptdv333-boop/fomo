@@ -268,6 +268,18 @@ class MainActivity : AppCompatActivity() {
         refresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 || pageCanScrollUp }
     }
 
+    /** A Back press is being answered by the page (window.FomoBack): further presses wait for the answer instead of stacking up. */
+    private var backAskPending = false
+
+    /**
+     * Back = two levels. 1) The page decides first (window.FomoBack: close the sheet, collapse the chart, one screen up, to the home section;
+     * see BackPolicy and src/components/app/AppBackHandler.tsx). 2) No answer (a page without the handler, an error, no reply in 400 ms) ->
+     * the old behaviour: WebView history, else minimise. The page's own "I am at home" answer minimises at once, whatever the WebView history holds.
+     * The lock screen has its own, later added callback (LockController) and wins while the app is locked.
+     *
+     * The callback is NEVER disabled: it used to switch itself off before handing Back to the system, and a minimised (not destroyed) activity
+     * kept it off for good, so every later Back only minimised the app, whatever screen was open.
+     */
     private fun setupBack() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -276,14 +288,52 @@ class MainActivity : AppCompatActivity() {
                         hideOffline()
                         if (webView.canGoBack()) webView.goBack() else finish()
                     }
-                    webView.canGoBack() -> webView.goBack()
-                    else -> {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                    }
+                    BackPolicy.mayAskPage(currentUrl, offlineShown, webViewGone) -> askPageBack()
+                    else -> historyBack()
                 }
             }
         })
+    }
+
+    private fun askPageBack() {
+        if (backAskPending) return
+        backAskPending = true
+        var answered = false
+        val timeout = Runnable {
+            if (answered) return@Runnable
+            answered = true
+            backAskPending = false
+            historyBack()
+        }
+        main.postDelayed(timeout, BackPolicy.ASK_TIMEOUT_MS)
+        try {
+            webView.evaluateJavascript(BackPolicy.ASK_PAGE) { raw ->
+                if (answered) return@evaluateJavascript
+                answered = true
+                main.removeCallbacks(timeout)
+                backAskPending = false
+                when (BackPolicy.verdict(raw)) {
+                    BackPolicy.Verdict.HANDLED -> Unit
+                    BackPolicy.Verdict.HOME -> minimizeApp()
+                    BackPolicy.Verdict.FALLBACK -> historyBack()
+                }
+            }
+        } catch (e: Exception) {
+            answered = true
+            main.removeCallbacks(timeout)
+            backAskPending = false
+            historyBack()
+        }
+    }
+
+    /** The old Back: one step of the WebView history, or minimise when there is none. */
+    private fun historyBack() {
+        if (!webViewGone && webView.canGoBack()) webView.goBack() else minimizeApp()
+    }
+
+    /** Leaves the app the way Home does (the activity stays alive, the next launch resumes it); finishes only when the task cannot move back. */
+    private fun minimizeApp() {
+        if (!moveTaskToBack(true)) finish()
     }
 
     // ---- intents: launcher, App Links, notification taps, Share ------------------------------------------------------

@@ -33,6 +33,7 @@ import { canSetNativeImmersive, isNativeApp, onNativeImmersiveReset, setNativeIm
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/lib/app-fullscreen";
 import { raisesKeyboard } from "@/lib/app-ui";
 import AppIcon from "./AppIcon";
+import { useBackLayer } from "./useBackLayer";
 import "./fullscreen.css";
 
 // MultiChart wraps the chart(s); here it is one chart whose toolbar / bottom bar / phone nav are replaced by the page's own (appPage)
@@ -195,6 +196,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     pushed.current = false;
     setExpanded(false);
   }, []);
+  // the Android Back button (window.FomoBack) collapses the chart: through closeFs, i.e. the same history step as the browser's Back
+  useBackLayer(expanded, closeFs, "screen");
 
   // Back button (Android system / browser) pops our entry: collapse
   useEffect(() => {

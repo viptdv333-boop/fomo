@@ -3,6 +3,7 @@
 import { Fragment, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import AppIcon from "../AppIcon";
+import { useBackLayer } from "../useBackLayer";
 
 /** One row of a sheet or a pushed screen: the design's R() row (icon tile, label, sub, check / chevron, action buttons). */
 export interface SheetRow {
@@ -223,6 +224,7 @@ export interface AppSheetProps {
 
 /** The design's bottom sheet (SH): grip, 46px title bar (left / title / right), body, optional big button. Slides up with fomoUp. */
 export default function AppSheet(p: AppSheetProps) {
+  useBackLayer(true, p.onClose); // the Android Back button closes the sheet (src/lib/app-back.ts)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && p.onClose();
     document.addEventListener("keydown", onKey);

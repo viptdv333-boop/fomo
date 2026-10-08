@@ -9,6 +9,7 @@ import NativePushRegistrar from "@/components/layout/NativePushRegistrar";
 import { getHiddenPages } from "@/lib/hidden-pages";
 import AppHeader from "@/components/app/AppHeader";
 import AppTabBar from "@/components/app/AppTabBar";
+import AppBackHandler from "@/components/app/AppBackHandler";
 import "@/components/app/app.css";
 import "@/components/app/app-desktop.css";
 
@@ -31,6 +32,7 @@ export default async function MainLayout({
         {terminal ? <TerminalFooter /> : <Footer />}
       </div>
       <AppTabBar />
+      <AppBackHandler />
     </SessionProvider>
   );
 }
