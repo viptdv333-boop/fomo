@@ -259,7 +259,6 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
 
   /* ---------- the channel ---------- */
   const tags = channelTags(channel);
-  const pinned = (posts ?? []).find((p) => p.isPinned) ?? null;
   const tgOn = authorTg ?? !!channel.authorTelegramNotify;
   const myTgOn = myTg ?? mySub?.telegramNotify ?? false;
   const subsCount = subscribersLabel(channel.subscribersCount, locale);
@@ -385,14 +384,6 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
           </button>
         )}
         <div className="ach-note">{t("appch.note")}</div>
-
-        {pinned && (
-          <div className="ach-pinned">
-            <div className="ach-pinned-cap">{"\u{1F4CC}"} {t("appch.pinned")}</div>
-            <div className="ach-pinned-text">{pinned.title}</div>
-            {canView && (pinned.content || pinned.preview) && pinned.title !== (pinned.content || pinned.preview) ? <div className="ach-pinned-sub">{pinned.content || pinned.preview}</div> : null}
-          </div>
-        )}
 
         <Sections sections={rows} />
 
