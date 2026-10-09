@@ -36,6 +36,10 @@ const dict: SectionDict = {
       "Спасибо за подписку! Добро пожаловать. Теперь вам доступны все мои платные идеи на {days} дней. Если есть вопросы — пишите!",
     "notif.dm.yukassaWelcome":
       "Спасибо за подписку! Оплата через ЮKassa прошла успешно. Доступ на {days} дней активирован. Если есть вопросы — пишите!",
+    "notif.dm.channelWelcome":
+      "Спасибо за подписку на канал «{channel}»! Доступ открыт до {date}. Открыть канал: {url} Если есть вопросы — пишите!",
+    "notif.dm.channelWelcomeChat":
+      "Спасибо за подписку на канал «{channel}»! Доступ открыт до {date}. Открыть канал: {url} Закрытый чат для подписчиков — внутри канала. Если есть вопросы — пишите!",
 
     // Payments
     "notif.payment.wantsIdea.title": "{name} хочет купить идею",
@@ -56,6 +60,9 @@ const dict: SectionDict = {
     "notif.subscription.done.title": "Подписка на {name} оформлена",
     "notif.subscription.done.body": "Доступ на {days} дней",
     "notif.subscription.yukassaDone.body": "Оплата {amount} ₽ прошла. Доступ на {days} дней",
+    "notif.subscription.channelDone.title": "Подписка на канал «{channel}» оформлена",
+    "notif.subscription.channelDone.body": "Доступ до {date}. Нажмите, чтобы открыть канал.",
+    "notif.subscription.channelYukassaDone.body": "Оплата {amount} ₽ прошла. Доступ до {date}. Нажмите, чтобы открыть канал.",
     "notif.subscription.added.title": "Вас добавили в канал «{channel}» на {days} дн.",
     "notif.subscription.extended.title": "Автор продлил вашу подписку на {days} дн.",
     "notif.subscription.removed.title": "Автор закрыл вам доступ к каналу",
@@ -124,6 +131,10 @@ const dict: SectionDict = {
       "Thanks for subscribing, and welcome! You now have access to all my paid ideas for {days} days. Any questions — just message me!",
     "notif.dm.yukassaWelcome":
       "Thanks for subscribing! Your YooKassa payment went through, and access for {days} days is now active. Any questions — just message me!",
+    "notif.dm.channelWelcome":
+      "Thanks for subscribing to “{channel}”! Your access is open until {date}. Open the channel: {url} Any questions — just message me!",
+    "notif.dm.channelWelcomeChat":
+      "Thanks for subscribing to “{channel}”! Your access is open until {date}. Open the channel: {url} The subscribers' private chat is inside the channel. Any questions — just message me!",
 
     "notif.payment.wantsIdea.title": "{name} wants to buy your idea",
     "notif.payment.subscriptionRequest.title": "{name} requested a subscription",
@@ -142,6 +153,9 @@ const dict: SectionDict = {
     "notif.subscription.done.title": "You're subscribed to {name}",
     "notif.subscription.done.body": "Access for {days} days",
     "notif.subscription.yukassaDone.body": "Payment of {amount} ₽ received. Access for {days} days",
+    "notif.subscription.channelDone.title": "You're subscribed to “{channel}”",
+    "notif.subscription.channelDone.body": "Access until {date}. Tap to open the channel.",
+    "notif.subscription.channelYukassaDone.body": "Payment of {amount} ₽ received. Access until {date}. Tap to open the channel.",
     "notif.subscription.added.title": "You were added to “{channel}” for {days} days",
     "notif.subscription.extended.title": "The author extended your subscription by {days} days",
     "notif.subscription.removed.title": "The author removed your access to the channel",
@@ -208,6 +222,10 @@ const dict: SectionDict = {
       "感谢订阅，欢迎加入！接下来 {days} 天内你可以查看我所有的付费观点。有任何问题请随时联系我！",
     "notif.dm.yukassaWelcome":
       "感谢订阅！通过 YooKassa 的付款已成功，{days} 天的访问权限已开通。有任何问题请随时联系我！",
+    "notif.dm.channelWelcome":
+      "感谢订阅频道「{channel}」！访问权限有效期至 {date}。打开频道：{url} 有任何问题请随时联系我！",
+    "notif.dm.channelWelcomeChat":
+      "感谢订阅频道「{channel}」！访问权限有效期至 {date}。打开频道：{url} 订阅者专属的私密聊天就在频道内。有任何问题请随时联系我！",
 
     "notif.payment.wantsIdea.title": "{name} 想购买你的观点",
     "notif.payment.subscriptionRequest.title": "{name} 提交了订阅申请",
@@ -226,6 +244,9 @@ const dict: SectionDict = {
     "notif.subscription.done.title": "已成功订阅 {name}",
     "notif.subscription.done.body": "访问期 {days} 天",
     "notif.subscription.yukassaDone.body": "已收到 {amount} ₽ 付款，访问期 {days} 天",
+    "notif.subscription.channelDone.title": "已成功订阅频道「{channel}」",
+    "notif.subscription.channelDone.body": "访问期至 {date}。点击打开频道。",
+    "notif.subscription.channelYukassaDone.body": "已收到 {amount} ₽ 付款，访问期至 {date}。点击打开频道。",
     "notif.subscription.added.title": "你已被加入频道「{channel}」，为期 {days} 天",
     "notif.subscription.extended.title": "作者将你的订阅延长了 {days} 天",
     "notif.subscription.removed.title": "作者已关闭你的频道访问权限",

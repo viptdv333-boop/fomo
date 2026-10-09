@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
+import { loadPaidChannel } from "@/lib/subscription-welcome-server";
+import { subscriptionNotice, welcomeDmText } from "@/lib/subscription-welcome";
 import { tFor } from "@/lib/i18n/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -115,6 +117,9 @@ export async function PATCH(
         durationDays,
       });
 
+      // Канал, на который оформлена подписка (для текстов и ссылки); null -> старое поведение.
+      const paidChannel = await loadPaidChannel(tariffId);
+
       // Auto-DM: create conversation and send welcome message
       const seller = await prisma.user.findUnique({
         where: { id: paymentRequest.sellerId },
@@ -157,7 +162,7 @@ export async function PATCH(
         data: {
           conversationId,
           senderId: paymentRequest.sellerId,
-          text: tFor(buyerLocale?.locale)("notif.dm.subscriptionWelcome", { days: durationDays }),
+          text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.subscriptionWelcome"),
         },
       });
 
@@ -165,9 +170,7 @@ export async function PATCH(
       await createNotification({
         userId: paymentRequest.buyerId,
         type: "subscription",
-        title: { key: "notif.subscription.done.title", vars: { name: seller?.displayName || { key: "notif.fallback.author" } } },
-        body: { key: "notif.subscription.done.body", vars: { days: durationDays } },
-        link: `/messages`,
+        ...subscriptionNotice(paidChannel, endDate, { sellerName: seller?.displayName, days: durationDays }),
       });
     }
 

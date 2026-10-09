@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
 import { tFor } from "@/lib/i18n/server";
+import { loadPaidChannel } from "@/lib/subscription-welcome-server";
+import { subscriptionNotice, welcomeDmText } from "@/lib/subscription-welcome";
 
 /**
  * POST /api/yukassa/webhook
@@ -90,6 +92,9 @@ async function handlePaymentSucceeded(payment: any) {
     durationDays,
   });
 
+  // Канал, на который оформлена подписка (для текстов и ссылки); null -> старое поведение.
+  const paidChannel = await loadPaidChannel(tariffId);
+
   // Auto-DM: welcome message
   const seller = await prisma.user.findUnique({
     where: { id: paymentRequest.sellerId },
@@ -131,7 +136,7 @@ async function handlePaymentSucceeded(payment: any) {
     data: {
       conversationId,
       senderId: paymentRequest.sellerId,
-      text: tFor(buyerLocale?.locale)("notif.dm.yukassaWelcome", { days: durationDays }),
+      text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.yukassaWelcome"),
     },
   });
 
@@ -139,12 +144,11 @@ async function handlePaymentSucceeded(payment: any) {
   await createNotification({
     userId: paymentRequest.buyerId,
     type: "subscription",
-    title: { key: "notif.subscription.done.title", vars: { name: seller?.displayName || { key: "notif.fallback.author" } } },
-    body: {
-      key: "notif.subscription.yukassaDone.body",
-      vars: { amount: Number(paymentRequest.amount), days: durationDays },
-    },
-    link: `/messages`,
+    ...subscriptionNotice(paidChannel, endDate, {
+      sellerName: seller?.displayName,
+      days: durationDays,
+      amount: Number(paymentRequest.amount),
+    }),
   });
 
   // Notify seller about income

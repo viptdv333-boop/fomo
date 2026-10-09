@@ -23,6 +23,8 @@ import { renderNotifText } from "../src/lib/notif-render";
 import { MAX_HARD_FAILS, nextChannelState } from "../src/lib/notify-dispatch";
 import { channelStatus, maskAddress } from "../src/lib/notify-link";
 import { translate } from "../src/lib/i18n/dictionaries";
+import { tFor } from "../src/lib/i18n/for-locale";
+import { channelLink, channelPublicUrl, formatAccessEnd, subscriptionNotice, welcomeDmText } from "../src/lib/subscription-welcome";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
