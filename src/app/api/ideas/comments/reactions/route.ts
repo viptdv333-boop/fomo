@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { recalculateRating } from "@/lib/rating";
+import { LIKE_EMOJI } from "@/lib/like-notify";
+import { notifyLike } from "@/lib/like-notify-server";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const index = reactions[emoji].indexOf(userId);
+  const addedLike = index < 0 && emoji === LIKE_EMOJI;
   if (index >= 0) {
     reactions[emoji].splice(index, 1);
     if (reactions[emoji].length === 0) {
@@ -47,6 +50,14 @@ export async function POST(req: NextRequest) {
   });
 
   await recalculateRating(comment.userId).catch(() => {});
+
+  // Tell the comment's author about a NEW 👍 (not about a removed one, a 👎 or a self-like; once per liker, bursts merged).
+  if (addedLike && comment.userId !== userId) {
+    void prisma.idea
+      .findUnique({ where: { id: comment.ideaId }, select: { title: true } })
+      .then((idea) => notifyLike({ kind: "comment_like", ownerId: comment.userId, actorId: userId, ideaId: comment.ideaId, commentId, quote: comment.text || idea?.title }))
+      .catch(() => {});
+  }
 
   return NextResponse.json({ reactions });
 }

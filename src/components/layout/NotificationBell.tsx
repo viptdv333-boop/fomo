@@ -148,6 +148,8 @@ export default function NotificationBell() {
       case "channel_comment": return "💬";
       case "new_comment": return "🗨️";
       case "comment_reply": return "↩️";
+      case "idea_like": return "👍";
+      case "comment_like": return "❤️";
       case "payment": return "💰";
       case "price_alert": return "⏰";
       case "line_alert": return "📈";

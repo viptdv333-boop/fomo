@@ -29,7 +29,7 @@ import type { NotifFull } from "@/lib/notify-text";
 
 const globalForIO = globalThis as unknown as { io?: { to(room: string): { emit(ev: string): void } } };
 
-function emitNotification(userId: string) {
+export function emitNotification(userId: string) {
   globalForIO.io?.to(`user_${userId}`).emit("new_notification");
 }
 

@@ -32,6 +32,8 @@ export const EVENT_IDS = [
   "quote_me",
   "comment_on_my_idea",
   "comment_on_my_comment",
+  "like_on_my_idea",
+  "like_on_my_comment",
   "new_subscriber",
   "dm",
   "chat_room_message",
@@ -75,6 +77,9 @@ export const EVENTS: EventDef[] = [
   { id: "quote_me", group: "mine", labelKey: "ns.ev.quote_me", descKey: "ns.ev.quote_me.d", externalDefault: true, webpushDefault: true },
   { id: "comment_on_my_idea", group: "mine", labelKey: "ns.ev.comment_on_my_idea", descKey: "ns.ev.comment_on_my_idea.d", externalDefault: true, webpushDefault: true },
   { id: "comment_on_my_comment", group: "mine", labelKey: "ns.ev.comment_on_my_comment", descKey: "ns.ev.comment_on_my_comment.d", externalDefault: true, webpushDefault: true },
+  // Likes: bell + push on, e-mail / Telegram / ... off even once connected (a popular post would flood them)
+  { id: "like_on_my_idea", group: "mine", labelKey: "ns.ev.like_on_my_idea", descKey: "ns.ev.like_on_my_idea.d", externalDefault: false, webpushDefault: true },
+  { id: "like_on_my_comment", group: "mine", labelKey: "ns.ev.like_on_my_comment", descKey: "ns.ev.like_on_my_comment.d", externalDefault: false, webpushDefault: true },
   { id: "new_subscriber", group: "mine", labelKey: "ns.ev.new_subscriber", descKey: "ns.ev.new_subscriber.d", externalDefault: true, webpushDefault: true },
   // --- Разговоры
   { id: "dm", group: "talk", labelKey: "ns.ev.dm", descKey: "ns.ev.dm.d", externalDefault: true, webpushDefault: true },
@@ -123,6 +128,8 @@ export const EVENT_FOR_TYPE: Record<string, EventId> = {
   chat_reply: "quote_me",
   new_comment: "comment_on_my_idea",
   comment_reply: "comment_on_my_comment",
+  idea_like: "like_on_my_idea",
+  comment_like: "like_on_my_comment",
   new_follower: "new_subscriber",
   new_message: "dm",
   chat_room_message: "chat_room_message",

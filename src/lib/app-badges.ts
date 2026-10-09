@@ -4,16 +4,20 @@ import { badgeLabel, type AppTabId } from "@/lib/app-ui";
 /**
  * Notification.type -> dock tab. Every type that is not listed lights no tab (new_follower, new_idea, payment / subscription*, room_join,
  * report, broadcast, system ... : the owner's own money / subscriber events of a paid channel stay tab-less on purpose).
- *   feed      Доска:    comments on my ideas, replies to my comments
+ *   feed      Доска:    comments on my ideas, replies to my comments, likes of my ideas / comments (idea_like, comment_like)
  *   terminal  Терминал: price alerts, line alerts
  *   calendar  Календарь: reminders of the events the user subscribed to
  *   channels  Каналы:   posts of the channels the user is subscribed to, comments under their posts (channel_comment; the unread-by-type
- *                       endpoint also reports comments / replies under a post of a channel as channel_comment, see effectiveByType)
+ *                       endpoint also reports comments / replies under a post of a channel as channel_comment, and the likes of a channel
+ *                       post / of a comment under it as channel_like (virtual type, never stored), see effectiveByType)
  *   chat      Болталка: DMs, @mentions, replies/quotes of my messages, messages of rooms with the bell on
  */
 export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
   new_comment: "feed",
   comment_reply: "feed",
+  idea_like: "feed",
+  comment_like: "feed",
+  channel_like: "channels",
   price_alert: "terminal",
   line_alert: "terminal",
   calendar_reminder: "calendar",

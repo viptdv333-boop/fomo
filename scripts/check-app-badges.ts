@@ -35,7 +35,7 @@ eq("Календарь: reminders", tabForNotifType("calendar_reminder"), "calen
 eq("Каналы: channel posts and comments under channel posts", [tabForNotifType("channel_post"), tabForNotifType("channel_comment")], ["channels", "channels"]);
 eq("Болталка: DMs, mentions, replies, room messages", ["new_message", "chat_mention", "chat_reply", "chat_room_message"].map(tabForNotifType), ["chat", "chat", "chat", "chat"]);
 eq("everything else lights nothing (incl. prototype keys / junk)", ["new_follower", "new_idea", "payment", "subscription", "subscription_extended", "system", "constructor", "toString", "", null, 5].map(tabForNotifType), [null, null, null, null, null, null, null, null, null, null, null]);
-eq("typesForTab", [typesForTab("feed"), typesForTab("terminal"), typesForTab("channels"), typesForTab("me"), typesForTab(undefined)], [["new_comment", "comment_reply"], ["price_alert", "line_alert"], ["channel_post", "channel_comment"], [], []]);
+eq("typesForTab", [typesForTab("feed"), typesForTab("terminal"), typesForTab("channels"), typesForTab("me"), typesForTab(undefined)], [["new_comment", "comment_reply", "idea_like", "comment_like"], ["price_alert", "line_alert"], ["channel_like", "channel_post", "channel_comment"], [], []]);
 eq("auto-clear on opening a tab only where the badge does not count items (Доска / Каналы keep theirs until the idea is opened)", [...AUTO_CLEAR_TABS], ["terminal", "calendar", "chat"]);
 eq("BADGE_TYPES = the mapped keys", BADGE_TYPES.length, Object.keys(BADGE_TAB_BY_TYPE).length);
 
@@ -92,6 +92,23 @@ const eff = effectiveByType({ price_alert: 2 }, rows.filter((r) => IDEA_UNREAD_T
 eq("dock: a comment / reply under a channel post counts as channel_comment (Каналы), deleted ideas are dropped, linkless rows keep their type", eff, { price_alert: 2, new_comment: 2, comment_reply: 1, channel_comment: 2, channel_post: 2 });
 eq("dock: Доска = comments + replies under ordinary ideas (+ the linkless one), Каналы = channel comments + posts", [tabBadgeCounts(eff).feed, tabBadgeCounts(eff).channels], [3, 4]);
 eq("dock: a comment on my idea inside my own channel lights Каналы, not Доска", tabBadgeCounts(effectiveByType({}, [{ type: "new_comment", link: "/ideas/ideaB00001?comment=cm00000009" }], tariff)), { channels: 1 });
+
+/* ---------- likes: dock badge yes, per-post red counter no ---------- */
+eq("likes: idea_like / comment_like light Доска, the virtual channel_like lights Каналы", [tabForNotifType("idea_like"), tabForNotifType("comment_like"), tabForNotifType("channel_like")], ["feed", "feed", "channels"]);
+const likeRows = [
+  { type: "idea_like", link: "/ideas/ideaA00001?lk=2_aaaaaaaa.bbbbbbbb" },
+  { type: "comment_like", link: "/ideas/ideaA00001?comment=cm00000001&lk=1_cccccccc" },
+  { type: "idea_like", link: "/ideas/ideaB00001?lk=1_dddddddd" },
+  { type: "comment_like", link: "/ideas/ideaC00001?comment=cm00000003&lk=3_eeeeeeee" },
+  { type: "idea_like", link: "/ideas/ideaGONE001?lk=1_ffffffff" },
+];
+eq("likes: they are read on open and fetched with the idea rows", [IDEA_READ_TYPES.includes("idea_like"), IDEA_READ_TYPES.includes("comment_like"), IDEA_UNREAD_TYPES.includes("idea_like"), IDEA_UNREAD_TYPES.includes("comment_like")], [true, true, true, true]);
+eq("likes: NOT part of the red per-post / per-channel comment counter, the board strip or the jump", aggregateUnread(likeRows, tariff), { byIdea: {}, byChannel: {}, first: null, board: { n: 0, first: null } });
+const effLikes = effectiveByType({}, likeRows, tariff);
+eq("likes: under an ordinary idea idea_like / comment_like, under a channel post channel_like, deleted ideas dropped", effLikes, { idea_like: 1, comment_like: 1, channel_like: 2 });
+eq("likes: dock = Доска 2 (a like of the idea + of a comment), Каналы 2", tabBadgeCounts(effLikes), { feed: 2, channels: 2 });
+eq("likes: ids of the unread comments (jump target) ignore like rows", likeRows.filter((r) => IDEA_COMMENT_TYPES.includes(r.type)), []);
+eq("likes: the link with lk= still names its idea and comment", [ideaIdFromLink(likeRows[1].link), commentIdFromLink(likeRows[1].link), ideaIdFromLink(likeRows[0].link), commentIdFromLink(likeRows[0].link)], ["ideaA00001", "cm00000001", "ideaA00001", null]);
 
 const thread = [
   { id: "cm00000001", createdAt: "2026-10-07T10:00:00.000Z", user: { id: "me" } },

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { recalculateRating } from "@/lib/rating";
+import { notifyLike } from "@/lib/like-notify-server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -42,7 +43,7 @@ export async function POST(
   // Verify idea exists
   const idea = await prisma.idea.findUnique({
     where: { id: ideaId },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, title: true },
   });
 
   if (!idea) {
@@ -54,6 +55,8 @@ export async function POST(
     where: { userId_ideaId: { userId, ideaId } },
   });
 
+  // a like is a NEW +1 (no vote before, or switched from -1); removing a like or any -1 never notifies
+  let becameLike = false;
   if (existingVote) {
     if (existingVote.value === value) {
       // Same value: toggle off (remove vote)
@@ -66,12 +69,14 @@ export async function POST(
         where: { id: existingVote.id },
         data: { value },
       });
+      becameLike = value === 1;
     }
   } else {
     // Create new vote
     await prisma.ideaVote.create({
       data: { userId, ideaId, value },
     });
+    becameLike = value === 1;
   }
 
   // Recalculate author rating
@@ -85,6 +90,11 @@ export async function POST(
 
   const voteScore = votes.reduce((sum, v) => sum + v.value, 0);
   const userVote = votes.find((v) => v.userId === userId)?.value ?? null;
+
+  // Tell the author (not on self-likes; once per liker, bursts merged: src/lib/like-notify.ts). Never delays or fails the vote.
+  if (becameLike && idea.authorId !== userId) {
+    void notifyLike({ kind: "idea_like", ownerId: idea.authorId, actorId: userId, ideaId, quote: idea.title });
+  }
 
   return NextResponse.json({ voteScore, userVote });
 }

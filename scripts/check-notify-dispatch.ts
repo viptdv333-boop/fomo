@@ -83,11 +83,16 @@ eq("quiet hours: only the bell is delivered", decide({ event: "dm", channels: [t
 eq("outside quiet hours: everything flows", decide({ event: "dm", channels: [tg], quiet, now: new Date("2026-10-04T12:00:00Z") }).webpush, true);
 
 /* ---- 6. every type string used in the codebase maps to a real event ---- */
-const usedTypes = ["chat_mention", "chat_reply", "chat_room_message", "new_comment", "comment_reply", "new_message", "new_idea", "channel_post", "channel_comment", "new_follower", "subscription_extended", "subscription_removed", "subscription", "payment", "room_join", "price_alert", "line_alert", "calendar_reminder", "report", "broadcast", "email_broadcast"];
+const usedTypes = ["chat_mention", "chat_reply", "chat_room_message", "new_comment", "comment_reply", "new_message", "new_idea", "channel_post", "channel_comment", "idea_like", "comment_like", "new_follower", "subscription_extended", "subscription_removed", "subscription", "payment", "room_join", "price_alert", "line_alert", "calendar_reminder", "report", "broadcast", "email_broadcast"];
 eq("all known types are mapped explicitly", usedTypes.filter((t) => !(t in EVENT_FOR_TYPE)), []);
 eq("all mapped events exist in the catalog", Object.values(EVENT_FOR_TYPE).filter((e) => !EVENT_IDS.includes(e)), []);
 eq("unknown type falls back to system", eventForType("something_new"), "system");
 eq("a few mappings", [eventForType("chat_mention"), eventForType("new_message"), eventForType("channel_post"), eventForType("payment"), eventForType("price_alert")], ["mention", "dm", "new_post_in_subscribed_channel", "payment_events", "price_alert"]);
+
+eq("likes: map to their own events", [eventForType("idea_like"), eventForType("comment_like")], ["like_on_my_idea", "like_on_my_comment"]);
+eq("likes: default = bell + push ON, e-mail / Telegram / others OFF (even when connected)", ["like_on_my_idea", "like_on_my_comment"].map((e) => ["inapp", "webpush", "email", "telegram", "whatsapp", "max", "vk", "webhook"].map((c) => defaultEnabled(e as never, c as never))), [[true, true, false, false, false, false, false, false], [true, true, false, false, false, false, false, false]]);
+eq("likes: a connected e-mail + Telegram gets nothing by default, an explicit opt-in works", [decide({ event: "like_on_my_idea", channels: [tg, mail] }).external.length, decide({ event: "like_on_my_idea", overrides: { "like_on_my_idea:email": true }, channels: [tg, mail] }).external.map((c) => c.channel)], [0, ["email"]]);
+eq("likes: the events are labelled in ru / en / cn and sit in «Мои публикации»", ["like_on_my_idea", "like_on_my_comment"].map((e) => { const d = EVENTS.find((x) => x.id === e)!; return [d.group, ["ru", "en", "cn"].every((l) => translate(l as never, d.labelKey) !== d.labelKey && translate(l as never, d.descKey) !== d.descKey)]; }), [["mine", true], ["mine", true]]);
 
 /* ---- 7. per-recipient locale rendering ---- */
 const text = { key: "notif.newFollower.title", vars: { name: "Anna" } };

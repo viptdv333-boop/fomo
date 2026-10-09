@@ -9,8 +9,10 @@ import { badgeLabel } from "@/lib/app-ui";
 export const IDEA_COMMENT_TYPES: readonly string[] = ["new_comment", "comment_reply", "channel_comment"];
 /** A new post of a channel I follow. */
 export const IDEA_POST_TYPES: readonly string[] = ["channel_post"];
+/** Likes of my idea / of my comment (src/lib/like-notify.ts): they light the dock badge but are NOT part of the red per-post comment counter. */
+export const IDEA_LIKE_TYPES: readonly string[] = ["idea_like", "comment_like"];
 /** Everything the per-item markers read from (the types of the unread-by-idea endpoint). */
-export const IDEA_UNREAD_TYPES: readonly string[] = [...IDEA_COMMENT_TYPES, ...IDEA_POST_TYPES];
+export const IDEA_UNREAD_TYPES: readonly string[] = [...IDEA_COMMENT_TYPES, ...IDEA_POST_TYPES, ...IDEA_LIKE_TYPES];
 /** Opening an idea marks all of these read: its comments, its post notification, and «new idea of an author I follow». */
 export const IDEA_READ_TYPES: readonly string[] = [...IDEA_UNREAD_TYPES, "new_idea"];
 
@@ -93,6 +95,7 @@ export function aggregateUnread(rows: readonly UnreadRow[], tariffByIdea: Tariff
 /**
  * The per-type counts of the dock (BADGE_TAB_BY_TYPE input) with the idea notifications corrected:
  *  - a comment / reply under a post of a channel counts as `channel_comment` (the «Каналы» tab: that is where its post lives),
+ *  - a like of a channel post / of a comment under it counts as `channel_like` (same tab); likes under ordinary ideas keep idea_like / comment_like (Доска),
  *  - notifications of a deleted idea are dropped,
  *  - rows without a parseable idea link keep their own type.
  * `others` = the counts of the types that do not point at an idea (price alerts, calendar, chat ...).
@@ -105,6 +108,7 @@ export function effectiveByType(others: Record<string, number>, ideaRows: readon
     if (id) {
       if (!tariffByIdea.has(id)) continue;
       if ((type === "new_comment" || type === "comment_reply") && tariffByIdea.get(id)) type = "channel_comment";
+      else if (IDEA_LIKE_TYPES.includes(type) && tariffByIdea.get(id)) type = "channel_like";
     }
     out[type] = (out[type] ?? 0) + 1;
   }
