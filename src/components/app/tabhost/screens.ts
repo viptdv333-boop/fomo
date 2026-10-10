@@ -86,10 +86,20 @@ export function preloadScreens(active: HostScreenId | null, tabs?: readonly Host
   const order = prefetchOrder(active).filter((t) => !tabs || tabs.includes(t));
   const steps: (() => Promise<unknown>)[] = order.filter((t) => !loaded.has(t) && LOADERS[t]).map((t) => () => LOADERS[t]!().then(() => void loaded.add(t)));
   if (!tabs || tabs.includes("terminal")) steps.push(() => import("@/components/chart/MultiChart"));
+  // the two neighbours (a swipe or a tap goes there first) start almost at once, like the router's own prefetch of them used to; the rest wait for the page to settle
+  const near = steps.splice(0, 2);
+  const t0 = Date.now();
+  let queue = near;
   const next = () => {
     if (stop) return;
-    const step = steps.shift();
-    if (!step) return;
+    const step = queue.shift();
+    if (!step) {
+      if (queue === near && steps.length) {
+        queue = steps;
+        start = setTimeout(next, Math.max(0, 2500 - (Date.now() - t0)));
+      }
+      return;
+    }
     whenIdle(() => {
       if (stop || document.hidden) return;
       step()
@@ -97,7 +107,7 @@ export function preloadScreens(active: HostScreenId | null, tabs?: readonly Host
         .finally(() => setTimeout(next, 150));
     });
   };
-  const start = setTimeout(next, 2500);
+  let start = setTimeout(next, 700);
   return () => {
     stop = true;
     clearTimeout(start);

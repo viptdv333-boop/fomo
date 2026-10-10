@@ -1497,7 +1497,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             {storedAt !== null && !loading && !empty && freshness(storedAt, Date.now(), intervalToMs(prefs.interval), online) !== "live" && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" data-stored-bars>
+              <div className={`absolute ${appPage ? "top-1.5" : "top-7"} left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500`} data-stored-bars>
                 {t(online ? "chart.staleAt" : "chart.offlineAt", { time: clockLabel(storedAt) })}
               </div>
             )}
