@@ -30,19 +30,20 @@
 ### Что делает режим terminal
 
 - **Страницы — allowlist** (`routeAllowed`, middleware): `/`, `/login`, `/register`, `/forgot-password`, `/terminal`,
-  `/profile`, `/privacy`, `/terms`, `/admin`, `/admin/users`, `/admin/broadcast`, `/admin/site-settings`.
+  `/profile`, `/calculator`, `/privacy`, `/terms`, `/admin`, `/admin/users`, `/admin/broadcast`, `/admin/site-settings`.
+  `/calculator` — калькулятор риска и размера позиции (фьючерсы Мосбиржи; данные контракта — `GET /api/futures/spec` из публичного ISS, без БД и без идей); в приложении — экран «Калькулятор» (профиль → «Калькулятор» и карточка в терминале по фьючерсу), входа требует так же, как `/terminal`.
   Всё остальное (в т. ч. любые новые страницы) — редирект на `/terminal` (закрытые разделы админки — на `/admin`).
   `/` для гостя — лендинг «FOMO Terminal» (`TerminalLanding`), для вошедшего — редирект на `/terminal`.
   Отдельной страницы `/calendar` и страницы `/terminal/features` нет: `/calendar` ведёт на `/terminal?panel=calendar` (открывает вкладку
   «Календарь»; так же работают старые ссылки напоминаний `/calendar#дата`), `/terminal/features` — на `/terminal`.
-- **Вход обязателен, гостевого демо нет**: `/terminal*` (и `/calendar`) для гостя — редирект на `/login?callbackUrl=<путь>`
+- **Вход обязателен, гостевого демо нет**: `/terminal*`, `/calculator` (и `/calendar`) для гостя — редирект на `/login?callbackUrl=<путь>`
   (middleware, `terminalNeedsLogin` в `site-mode.ts`); после входа человек попадает на запрошенную страницу (по умолчанию `/terminal`).
   Публичны только `/`, `/privacy`, `/terms`, `/login`, `/register`, `/forgot-password`. **Публичные API с рыночными данными**
   (`klines`, `quote(s)`, `market-search`, `orderbook`, `news`, `economic-calendar` и др.) по-прежнему открыты без входа: закрывать их
   было бы отдельной задачей (могут ломаться приложение и виджеты). Код демо-режима (`DemoGate`) в сборке остаётся для fomo.spot.
 - **API — тоже allowlist**: чужие маршруты отвечают `404 {"error":"Not found"}`. Проверка стоит в `server.ts` (видит все
   `/api/*`) и в middleware (дублирует для тех, что он видит). Открыты: `auth`, `captcha`, `terminal`, `calendar`,
-  `economic-calendar`, `klines`, `quote(s)`, `market-search`, `contracts`, `orderbook`, `orderflow`, `algopack`, `news`,
+  `economic-calendar`, `klines`, `quote(s)`, `market-search`, `contracts`, `orderbook`, `orderflow`, `algopack`, `futures` (только `spec` — калькулятор), `news`,
   `notifications`, `notification-settings` (в т. ч. вебхуки ботов), `push`, `telegram`, `me`, `languages`, `site-settings`,
   `version`, `upload`, `socketio`, `fomo-ideas` (см. ниже), `users` и `users/<id>` (профиль и список для админа), `admin/stats|broadcast|site-settings`.
 - **Админка** `/admin` доступна только ADMIN / OWNER (проверяет middleware), в меню сайта ссылки на неё нет; в самой админке

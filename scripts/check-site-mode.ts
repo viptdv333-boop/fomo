@@ -88,16 +88,16 @@ withEnv({}, () => {
 });
 
 // --- route allowlist ----------------------------------------------------------------------------------------------
-const PAGES_OPEN = ["/", "/login", "/register", "/forgot-password", "/terminal", "/profile", "/privacy", "/terms", "/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings", "/terminal/"];
+const PAGES_OPEN = ["/", "/login", "/register", "/forgot-password", "/terminal", "/profile", "/calculator", "/calculator/", "/privacy", "/terms", "/admin", "/admin/users", "/admin/broadcast", "/admin/site-settings", "/terminal/"];
 const PAGES_CLOSED = [
-  "/feed", "/feed/btc", "/ideas/5", "/ideas/new", "/chat", "/chat/sber", "/messages", "/channels", "/channels/create", "/authors", "/authors/x", "/calculator",
+  "/feed", "/feed/btc", "/ideas/5", "/ideas/new", "/chat", "/chat/sber", "/messages", "/channels", "/channels/create", "/authors", "/authors/x", "/calculatorx",
   "/payments", "/subscriptions", "/rooms/1", "/rooms/join/abc", "/instruments", "/instruments/btc", "/profile/u1", "/help", "/share", "/share-target", "/design-preview",
   "/dev-notifications", "/clip-test", "/admin/ideas", "/admin/chat", "/admin/users/1", "/terminalx", "/calendarx", "/terminal/features", "/calendar", "/calendar/x", "/profilex", "/..%2Ffeed",
 ];
 const API_OPEN = [
   "/api/auth/session", "/api/auth/csrf", "/api/auth/register", "/api/auth/send-code", "/api/auth/reset-password", "/api/auth/change-password", "/api/terminal/alerts", "/api/terminal/userdata", "/api/terminal/watchlist",
   "/api/terminal/alerts/abc", "/api/calendar/reminders", "/api/economic-calendar", "/api/klines", "/api/quote", "/api/quotes", "/api/market-search", "/api/contracts", "/api/orderbook", "/api/orderflow",
-  "/api/algopack/status", "/api/news", "/api/notifications", "/api/notifications/unread-by-type", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",
+  "/api/algopack/status", "/api/futures/spec", "/api/news", "/api/notifications", "/api/notifications/unread-by-type", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",
   "/api/push/subscribe", "/api/push/fcm", "/api/push/beacon", "/api/telegram/account", "/api/me/locale", "/api/fomo-ideas", "/api/languages", "/api/site-settings", "/api/version", "/api/upload", "/api/upload/favicon",
   "/api/users", "/api/users/u1", "/api/admin/stats", "/api/admin/broadcast", "/api/admin/broadcast/users", "/api/admin/site-settings", "/api/captcha", "/api/socketio",
 ];
@@ -105,7 +105,7 @@ const API_CLOSED = [
   "/api/ideas", "/api/ideas/1/comments", "/api/chat/messages", "/api/messages/conversations", "/api/channels", "/api/authors", "/api/payments", "/api/subscriptions", "/api/yukassa/webhook", "/api/rooms",
   "/api/users/u1/finances", "/api/users/u1/tariffs", "/api/users/u1/follow", "/api/users/online", "/api/users/by-fomo-id/x", "/api/instruments", "/api/instruments/search", "/api/assets", "/api/categories",
   "/api/exchanges", "/api/watchlist", "/api/feed/mutes", "/api/bot/ideas", "/api/contacts", "/api/stats/public", "/api/admin/chat", "/api/admin/ideas/moderate", "/api/admin/languages", "/api/admin/rating",
-  "/api/notifications/unread-by-idea", "/api/notifications/unread-by-idea/", "/api/sandbox/account", "/api/reports", "/api/payment-methods", "/api/futures/spec", "/api/fmp-stats", "/api/crypto-stats", "/api/unknown-new-route", "/api", "/api/", "/api/../ideas",
+  "/api/notifications/unread-by-idea", "/api/notifications/unread-by-idea/", "/api/sandbox/account", "/api/reports", "/api/payment-methods", "/api/fmp-stats", "/api/crypto-stats", "/api/unknown-new-route", "/api", "/api/", "/api/../ideas",
 ];
 eq("pages: every example is open on the terminal site", PAGES_OPEN.filter((p) => !routeAllowed("terminal", p, false)), []);
 eq("pages: every example is closed on the terminal site", PAGES_CLOSED.filter((p) => routeAllowed("terminal", p, false)), []);
@@ -120,6 +120,7 @@ eq("main site keeps /calendar and /terminal/features", [routeAllowed("main", "/c
 
 // --- login gate of the terminal site (the middleware redirects a guest to /login?callbackUrl=...) ------------------------------
 eq("gate: the terminal and its sub-pages need a login", ["/terminal", "/terminal/", "/terminal/anything", "/terminal?symbol=SBER", "/calendar", "/calendar/x"].filter((p) => !terminalNeedsLogin(p)), []);
+eq("gate: the risk calculator needs a login like the terminal", ["/calculator", "/calculator/", "/calculator?ticker=Si"].filter((p) => !terminalNeedsLogin(p)), []);
 eq("gate: the landing, legal pages and the sign-in screens stay public", ["/", "/privacy", "/terms", "/login", "/register", "/forgot-password", "/terminalx", "/calendarx"].filter((p) => terminalNeedsLogin(p)), []);
 
 // --- auth cookies -------------------------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { avatarInitial, countValue, heroLine, pendingSalesCount, ratingLabel, specLabels } from "@/lib/app-profile";
 import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import AppIcon from "../AppIcon";
-import { Sections, type SheetSection } from "../chat/AppSheet";
+import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { PickerSheet } from "./parts";
 
@@ -91,8 +91,11 @@ export default function ProfileHome() {
   const themeLabel = theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight");
 
   const sections: SheetSection[] = [];
-  // terminal site: no sections of the board site; the calendar is a segment of the terminal screen, and one quiet row invites to fomo.spot
-  if (TERMINAL)
+  // the risk calculator is a pushed screen (src/components/app/calculator): Android Back returns to this list
+  const calcRow: SheetRow = { key: "calc", label: t("nav.calculator"), icon: ico("calc"), sub: t("appprof.calcSub"), chev: true, onClick: () => open("/calculator") };
+  // terminal site: no sections of the board site; the calendar is a segment of the terminal screen, the calculator is a tool, and one quiet row invites to fomo.spot
+  if (TERMINAL) {
+    sections.push({ key: "tools", rows: [calcRow] });
     sections.push({
       key: "community",
       rows: [
@@ -107,14 +110,14 @@ export default function ProfileHome() {
         },
       ],
     });
-  else
+  } else
     sections.push({
       key: "sections",
       title: t("appprof.sections"),
       rows: [
         { key: "authors", label: t("nav.authors"), icon: ico("users"), chev: true, onClick: () => open("/authors") },
         { key: "calendar", label: t("nav.calendar"), icon: ico("cal"), chev: true, onClick: () => open("/calendar") },
-        { key: "calc", label: t("nav.calculator"), icon: ico("calc"), sub: t("appprof.calcSub"), chev: true, onClick: () => open("/calculator") },
+        calcRow,
       ],
     });
   if (!TERMINAL)

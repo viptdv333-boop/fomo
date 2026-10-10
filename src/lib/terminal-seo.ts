@@ -36,7 +36,7 @@ export const TERMINAL_SITEMAP_ROUTES: { path: string; priority: number; changeFr
 ];
 
 /** robots.txt of the terminal site: the landing and the legal pages are open, the app, the account pages and the APIs are not. */
-export const TERMINAL_ROBOTS_DISALLOW = ["/terminal", "/calendar", "/login", "/register", "/forgot-password", "/profile", "/admin", "/api"];
+export const TERMINAL_ROBOTS_DISALLOW = ["/terminal", "/calendar", "/calculator", "/login", "/register", "/forgot-password", "/profile", "/admin", "/api"];
 
 /** Same Yandex Clean-param list as the main site (tracking parameters, so UTM links do not create duplicates). */
 const CLEAN_PARAMS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yclid", "ymclid", "gclid", "fbclid", "from", "ref", "referrer"];

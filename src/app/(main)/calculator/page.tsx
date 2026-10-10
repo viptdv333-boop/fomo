@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import type { FuturesInstrument, FuturesSpec } from "@/lib/moex-futures-spec";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
+import { isNativeUi } from "@/lib/native-app";
+import { RISK_PRESETS, calcPosition, fmtRub, intlLocale, type CalcResult } from "@/lib/futures-calc";
 
-const RISK_PRESETS = [0.5, 1, 1.5, 2];
-
-const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
-function fmtRub(n: number, locale: string = "ru"): string {
-  const fmt = new Intl.NumberFormat(LOCALES[locale] || "ru-RU", { maximumFractionDigits: 0 });
-  return `${fmt.format(Math.round(n))} ₽`;
-}
+// the app UI (Android / Windows app, ?appui=1) draws its own calculator screen; it is loaded only there (the browser's page below never pays for it).
+// The math is the same function (src/lib/futures-calc.ts calcPosition) in both.
+const AppCalculator = dynamic(() => import("@/components/app/calculator/AppCalculator"), { ssr: false });
 
 function AssetPicker({
   instruments,
@@ -133,6 +133,11 @@ function NumberField({
 }
 
 export default function CalculatorPage() {
+  const appUi = useAppUi();
+  return appUi ? <AppCalculator /> : <SiteCalculator />;
+}
+
+function SiteCalculator() {
   const { t, locale } = useT();
   const [instruments, setInstruments] = useState<FuturesInstrument[]>([]);
   const [selected, setSelected] = useState<FuturesInstrument | null>(null);
@@ -147,6 +152,7 @@ export default function CalculatorPage() {
   const [riskPercent, setRiskPercent] = useState(1);
 
   useEffect(() => {
+    if (isNativeUi()) return; // the first frame of the app is the site page until the app UI flag is read: no request for a screen that is replaced at once
     fetch("/api/futures/spec")
       .then((r) => r.json())
       .then((data) => Array.isArray(data) && setInstruments(data))
@@ -181,61 +187,10 @@ export default function CalculatorPage() {
     loadSpec(i.ticker);
   }
 
-  interface CalcResult {
-    error: string | null;
-    contracts: number;
-    actualRisk: number;
-    riskBudget: number;
-    riskPerContract: number;
-    requiredMargin: number;
-    marginShort: boolean;
-    potentialProfit: number | null;
-    rr: number | null;
-  }
-
-  const calc: CalcResult | null = useMemo(() => {
-    if (!spec) return null;
-    const blank = (error: string): CalcResult => ({
-      error,
-      contracts: 0,
-      actualRisk: 0,
-      riskBudget: 0,
-      riskPerContract: 0,
-      requiredMargin: 0,
-      marginShort: false,
-      potentialProfit: null,
-      rr: null,
-    });
-
-    const dep = parseFloat(deposit);
-    const en = parseFloat(entry);
-    const st = parseFloat(stop);
-    const tk = parseFloat(take);
-
-    if (!dep || dep <= 0) return blank("calc.err.deposit");
-    if (!en || !st) return blank("calc.err.entryStop");
-    const priceRisk = Math.abs(en - st);
-    if (priceRisk === 0) return blank("calc.err.stopEqEntry");
-    if (!spec.minStep || !spec.stepPrice) return blank("calc.err.noStep");
-
-    const tickValue = spec.stepPrice / spec.minStep;
-    const riskBudget = dep * (riskPercent / 100);
-    const riskPerContract = priceRisk * tickValue;
-    const contracts = Math.floor(riskBudget / riskPerContract);
-    const actualRisk = contracts * riskPerContract;
-    const requiredMargin = contracts * spec.initialMargin;
-    const marginShort = contracts > 0 && requiredMargin > dep;
-
-    let potentialProfit: number | null = null;
-    let rr: number | null = null;
-    if (tk && !isNaN(tk)) {
-      const priceReward = Math.abs(tk - en);
-      potentialProfit = contracts * priceReward * tickValue;
-      rr = priceReward / priceRisk;
-    }
-
-    return { error: null, contracts, actualRisk, riskBudget, riskPerContract, requiredMargin, marginShort, potentialProfit, rr };
-  }, [spec, deposit, entry, stop, take, riskPercent]);
+  const calc: CalcResult | null = useMemo(
+    () => (spec ? calcPosition(spec, { deposit, entry, stop, take, riskPercent }) : null),
+    [spec, deposit, entry, stop, take, riskPercent],
+  );
 
   return (
     <div className="max-w-2xl w-full mx-auto">
@@ -255,7 +210,7 @@ export default function CalculatorPage() {
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span className="font-mono">{spec.secid}</span>
               <span>·</span>
-              <span>{t("calc.expiry", { date: new Date(spec.expiry).toLocaleDateString(LOCALES[locale] || "ru-RU") })}</span>
+              <span>{t("calc.expiry", { date: new Date(spec.expiry).toLocaleDateString(intlLocale(locale)) })}</span>
               {spec.last != null && (
                 <>
                   <span>·</span>

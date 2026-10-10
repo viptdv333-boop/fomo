@@ -1,0 +1,61 @@
+/*
+ * App-only «Калькулятор»: the position-size / risk calculator as a pushed screen (bar with «‹ Профиль», large title, cards, rows). It reuses the
+ * chat's / profile's classes (`ac-*`, `ap-*`, app-chat.css / app-profile.css) and the --app-* tokens (app.css); only what the calculator adds is
+ * here. Everything hangs on `html.app-ui`, so the ordinary site never sees it.
+ */
+
+/* the screen is edge to edge: <main> keeps the dock clearance, the screen brings its own paddings */
+html.app-ui.app-calc-on main { padding: 0 0 var(--app-bottom-inset); max-width: none; display: block; }
+/* the desktop window (app-desktop.css): a centred column like the profile's pushed screens */
+html.app-ui.app-desktop.app-calc-on { --app-gutter: 0px; --app-col: min(640px, 92vw); }
+html.app-ui .acalc { min-height: 100%; }
+html.app-ui .acalc-mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+html.app-ui .acalc h1 { margin: 0; }
+
+/* the result: pins under the bar while the form scrolls */
+html.app-ui .acalc-stick { position: sticky; top: 44.5px; z-index: 5; margin: 0 0 12px; padding: 4px 16px 6px; background: var(--app-bg); }
+html.app-ui .acalc-sum { display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 12px 16px; background: var(--app-card); border: var(--app-gb); border-radius: 16px; box-sizing: border-box; }
+html.app-ui .acalc-sum-l { flex: none; min-width: 84px; display: flex; flex-direction: column; gap: 2px; }
+html.app-ui .acalc-sum-k { font-size: 12px; color: var(--app-tx2); text-transform: uppercase; letter-spacing: 0.03em; }
+html.app-ui .acalc-sum-n { font-size: 40px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--app-tx3); }
+html.app-ui .acalc-sum[data-state="ok"] .acalc-sum-n { color: var(--app-green-tx); }
+html.app-ui .acalc-sum[data-state="zero"] .acalc-sum-n { color: var(--app-red); }
+html.app-ui .acalc-sum-r { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+html.app-ui .acalc-sum-r > div:not(.acalc-sum-msg) { display: flex; justify-content: space-between; gap: 8px; }
+html.app-ui .acalc-sum-r span { color: var(--app-tx2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.app-ui .acalc-sum-r b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.app-ui .acalc-sum-r b[data-bad="1"] { color: var(--app-red); }
+html.app-ui .acalc-sum-msg { font-size: 13px; line-height: 1.35; color: #b58105; }
+html.app-ui.dark .acalc-sum-msg { color: #eab308; }
+html.app-ui .acalc-sum-msg[data-idle="1"] { color: var(--app-tx2); }
+
+/* cards with the fields */
+html.app-ui .acalc-title { display: flex; align-items: center; justify-content: space-between; min-height: 22px; }
+html.app-ui .acalc-pill { margin-right: 16px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--app-green-bg); color: var(--app-green-tx); }
+html.app-ui .acalc-pill[data-side="short"] { background: rgba(229, 33, 46, 0.12); color: var(--app-red); }
+html.app-ui .acalc-card { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; background: var(--app-card); border: var(--app-gb); border-radius: 12px; }
+html.app-ui .acalc-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+html.app-ui .acalc-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+html.app-ui .acalc-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--app-tx2); min-height: 18px; }
+html.app-ui .acalc-lbl > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.app-ui .acalc-in { width: 100%; box-sizing: border-box; height: 52px; padding: 0 14px; border-radius: 12px; border: 1px solid transparent; background: var(--app-card2); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--app-tx); }
+html.app-ui .acalc-in:focus { border-color: var(--app-green); }
+html.app-ui .acalc-in::placeholder { color: var(--app-tx3); font-weight: 400; }
+html.app-ui .acalc-mkt { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--app-green-bg); color: var(--app-green-tx); }
+html.app-ui .acalc-warn { font-size: 13px; line-height: 1.35; color: #b58105; }
+html.app-ui.dark .acalc-warn { color: #eab308; }
+
+/* risk per trade */
+html.app-ui .acalc-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+html.app-ui .acalc-chip { height: 40px; min-width: 56px; padding: 0 14px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+html.app-ui .acalc-risk { flex: 1 1 110px; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 999px; border: 1px solid var(--app-line); background: transparent; font-size: 16px; font-variant-numeric: tabular-nums; color: var(--app-tx); }
+html.app-ui .acalc-risk[data-on="1"] { background: var(--app-green-bg); color: var(--app-green-tx); border-color: transparent; font-weight: 600; }
+html.app-ui .acalc-risk:focus { border-color: var(--app-green); }
+
+/* status line under the contract rows (stored data, no connection) */
+html.app-ui .acalc-note { margin: -14px 16px 22px; padding: 0; font-size: 13px; line-height: 1.4; color: var(--app-tx2); }
+html.app-ui .acalc-note[data-err="1"] { color: var(--app-red); }
+html.app-ui .acalc-disc { margin-top: -8px; padding-bottom: 8px; }
+
+/* the toggle rows of the sheet use the shared switch; keep the field rows readable at big text sizes */
+html.app-ui .acalc .ac-sfield { font-size: 17px; font-variant-numeric: tabular-nums; }

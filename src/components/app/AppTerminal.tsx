@@ -29,6 +29,7 @@ import {
   showDelayNote,
 } from "@/lib/app-terminal";
 import { useDemoGate } from "@/lib/useDemoGate";
+import { calcTickerFor, calculatorHref } from "@/lib/futures-calc";
 import { canSetNativeImmersive, isNativeApp, onNativeImmersiveReset, setNativeImmersive } from "@/lib/native-app";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/lib/app-fullscreen";
 import { raisesKeyboard } from "@/lib/app-ui";
@@ -406,6 +407,22 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
             <AppIcon name="chevR" size={18} stroke={1.8} />
           </a>
+        )}
+
+        {selected && calcTickerFor(selected.source, selected.dataTicker) && (
+          <Link
+            href={calculatorHref(locale as Locale, { ticker: calcTickerFor(selected.source, selected.dataTicker), entry: quote && Number.isFinite(quote.price) ? quote.price : null, from: "terminal" })}
+            prefetch={false}
+            className="app-term-ideas"
+            data-calc-link
+          >
+            <AppIcon name="calc" size={18} stroke={1.8} />
+            <span className="app-term-ideas-t">
+              {t("nav.calculator")}
+              <span className="app-term-ideas-s">{t("appprof.calcSub")}</span>
+            </span>
+            <AppIcon name="chevR" size={18} stroke={1.8} />
+          </Link>
         )}
 
         {TERMINAL_SITE ? (

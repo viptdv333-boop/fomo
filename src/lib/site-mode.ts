@@ -145,6 +145,8 @@ const TERMINAL_PAGES_EXACT = [
   "/register",
   "/forgot-password",
   "/profile",
+  // the risk calculator (position size): a terminal tool, MOEX futures specs only (/api/futures/spec), no board / database features
+  "/calculator",
   "/privacy",
   "/terms",
   // the instance owner manages users here (ADMIN / OWNER only, the middleware checks the role); not linked from the navigation
@@ -166,7 +168,7 @@ const TERMINAL_PAGES_CLOSED = ["/terminal/features"];
 export function terminalNeedsLogin(pathname: string): boolean {
   let p = (pathname || "/").split(/[?#]/)[0];
   if (p.length > 1) p = p.replace(/\/+$/, "");
-  return underPrefix(p, "/terminal") || underPrefix(p, "/calendar");
+  return underPrefix(p, "/terminal") || underPrefix(p, "/calendar") || underPrefix(p, "/calculator");
 }
 
 /** API groups (first segment after /api) open on the terminal site. */
@@ -184,6 +186,7 @@ const TERMINAL_API_PREFIX = [
   "orderbook",
   "orderflow",
   "algopack",
+  "futures", // the risk calculator's contract specs (live MOEX ISS, no database): /api/futures/spec
   "news",
   "notifications",
   "notification-settings", // channels, preferences, bot webhooks

@@ -46,7 +46,7 @@ const PROFILE_TABS = ["profile", "finance", "subs", "ideas", "rooms", "notificat
  *   /authors/<id>, /profile/<userId>          -> /authors
  *   /chat?room= | ?dm= | ?with= | ?groups=1, /chat/<slug>, /rooms/<id>, /messages?dm=   -> the chat list (/chat, /chat?seg=dms)
  *   /profile?tab=<screen>, /subscriptions, /payments  -> /profile
- *   /terminal/features -> /terminal      /instruments/category/<x>, /instruments/<x> -> /instruments
+ *   /calculator -> /profile (?from=terminal: /terminal)   /terminal/features -> /terminal      /instruments/category/<x>, /instruments/<x> -> /instruments
  */
 export function parentHref(pathname: string, search: string): string | null {
   const path = stripLocale((pathname || "/").split(/[?#]/)[0]).path.replace(/\/+$/, "") || "/";
@@ -80,6 +80,9 @@ export function parentHref(pathname: string, search: string): string | null {
     }
     case "terminal":
       return s.length >= 2 ? "/terminal" : null;
+    case "calculator":
+      // pushed from the profile list («Разделы → Калькулятор») or from the terminal's «Калькулятор» card (?from=terminal)
+      return q.get("from") === "terminal" ? "/terminal" : "/profile";
     case "instruments":
       return s.length >= 2 ? "/instruments" : null;
     default:
