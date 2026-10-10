@@ -19,7 +19,7 @@ import "@/components/chart/terminal-v3.css";
 import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
-import { hasAccountHint, noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
+import { noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
 import { KIND_LAST } from "@/lib/chart/sync-logic";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppTerminal from "@/components/app/AppTerminal";
@@ -127,7 +127,9 @@ export default function TerminalPage() {
         try {
           hasLocal = !!localStorage.getItem(LAST_KEY);
         } catch {}
-        if (!hasLocal || hasAccountHint()) await withTimeout(ch.start(), 700);
+        // a symbol is stored on this device: the chart opens with it at once and the account is asked in the background (a newer symbol from another device
+        // is in the local copy the next time the terminal opens). Waiting for the account only when nothing is stored here.
+        if (!hasLocal) await withTimeout(ch.start(), 700);
         else void ch.start();
         if (cancelled) return;
       }

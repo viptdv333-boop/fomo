@@ -202,7 +202,10 @@ async function drain() {
   if (status === 401) markGuest();
   else if (pending.get(id) === p) {
     if (status >= 200 && status < 300) pending.delete(id);
-    else {
+    else if (status === 0 && typeof navigator !== "undefined" && navigator.onLine === false) {
+      // no network: the change stays queued (it is already in localStorage) and goes out when the browser reports the network back (installHooks)
+      p.due = Date.now() + 30_000;
+    } else {
       const wait = retryDelay(status, p.attempt);
       if (wait === null) pending.delete(id);
       else {
@@ -262,6 +265,16 @@ function installHooks() {
   if (globalHooks || typeof window === "undefined") return;
   globalHooks = true;
   window.addEventListener("pagehide", flushPending);
+  // the network is back: changes made offline are pushed now, and every channel checks whether the account has something newer
+  window.addEventListener("online", () => {
+    const now = Date.now();
+    for (const p of pending.values()) {
+      p.due = now;
+      p.attempt = 0;
+    }
+    schedule();
+    for (const c of Array.from(channels)) c.recheck(true);
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushPending();
     else for (const c of Array.from(channels)) c.recheck();

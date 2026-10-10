@@ -45,6 +45,8 @@ import { aggregateCandles, formatInterval, intervalPlan, isValidInterval } from 
 import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
+import { candleKey, clockLabel, freshness, peekBars, readBars, writeBars, type BarsResult } from "@/lib/chart/candle-cache";
+import { useOnline } from "@/lib/offline/useOnline";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
@@ -204,6 +206,23 @@ async function fetchBars(source: string, ticker: string, interval: string, limit
   return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err };
 }
 
+/**
+ * Idle warm-up of the terminal (the tab host calls it after the other screens have been pre-mounted): the last opened symbol's bars go from IndexedDB into
+ * memory and a fresh answer is stored, so the chart opens from bars that are minutes old and without waiting for the database. Silent, bounded to one symbol.
+ */
+export async function warmLastSymbolBars(): Promise<void> {
+  try {
+    const last = JSON.parse(localStorage.getItem("fomo-terminal-last-v1") || "null") as { source?: unknown; dataTicker?: unknown } | null;
+    if (!last || typeof last.source !== "string" || typeof last.dataTicker !== "string") return;
+    const iv = loadPrefs().interval;
+    await readBars(candleKey(last.source, last.dataTicker, iv, 600));
+    const fresh = await fetchBars(last.source, last.dataTicker, iv, 600);
+    if (fresh.candles.length > 0) await writeBars(last.source, last.dataTicker, iv, 600, fresh);
+  } catch {
+    /* offline / a hiccup: the stored bars stay */
+  }
+}
+
 const COMPARE_COLORS = ["#f5a623", "#e91e63", "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722"];
 
 interface CompareState {
@@ -269,7 +288,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [vpLayer] = useState(() => new VpLayer(indicators));
   const alertsApi = useAlerts();
 
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  // read from the local mirror in the very first render (the chart is client only): the toolbar and the interval are right from the first paint, no flash of the defaults
+  const [prefs, setPrefs] = useState<Prefs>(() => (typeof window === "undefined" ? DEFAULT_PREFS : loadPrefs(prefsKey, storageId ? PREFS_KEY : undefined)));
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
@@ -279,6 +299,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [reloadTick, setReloadTick] = useState(0);
   /** MOEX bars up to the 15-minute delay of the public ISS (no online feed for this requester) */
   const [candlesDelayed, setCandlesDelayed] = useState(false);
+  /** when the bars on the chart were stored, while they are the stored ones (a live answer replaces them and clears this): drives the «Данные на HH:MM» badge */
+  const [storedAt, setStoredAt] = useState<number | null>(null);
+  const online = useOnline();
   /** spot FX: provider / volume kind of the bars on the chart (drives the "no exchange volume" badge) */
   const [fxInfo, setFxInfo] = useState<FxInfo | null>(null);
   const [autoScale, setAutoScale] = useState(true);
@@ -584,6 +607,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     return () => clearTimeout(id);
   }, [emptyWhy, reloadTick]);
 
+  /* the network is back while stored bars are on the chart: load the live ones now */
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnline.current && storedAt !== null) setReloadTick((x) => x + 1);
+    wasOnline.current = online;
+  }, [online, storedAt]);
+
   /* data for the current symbol and timeframe */
   useEffect(() => {
     if (!prefsLoaded) return;
@@ -592,15 +622,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     let cancelled = false;
     const gen = ++genRef.current;
     replayRef.current.exit(false);
-    setLoading(true);
+    const iv = prefs.interval;
+    // stored bars in memory paint at once: no spinner over them
+    if (!peekBars(candleKey(source, ticker, iv, 600))) setLoading(true);
     setEmpty(false);
     setEmptyWhy(null);
-    const iv = prefs.interval;
     const label = formatInterval(iv, t);
 
     (async () => {
-      const { candles, tzMin, delayed, fx, err } = await fetchBars(source, ticker, iv, 600);
-      if (cancelled) return;
+      // the picture goes up from the stored bars (if any), the live answer replaces it as soon as it is here; the live feed waits for the live bars
+      const apply = (res: BarsResult, stored: number | null) => {
+      const { candles, tzMin, delayed, fx, err } = res;
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
       const displayShiftMs = source === "moex" ? tzMs : -new Date().getTimezoneOffset() * 60_000;
@@ -625,13 +657,31 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         locale: LOCALES[locale] ?? "ru-RU",
       });
       engine.setData(candles);
-      dataKeyRef.current = `${source}|${ticker}|${iv}`;
+      if (stored === null) dataKeyRef.current = `${source}|${ticker}|${iv}`;
       refreshInd();
       setEmpty(candles.length === 0);
       setEmptyWhy(candles.length === 0 && source === "fmp" ? err ?? null : null);
+      setStoredAt(stored);
       setLoading(false);
       setTransformBox(engine.getTransformBox());
       setDataVersion((v) => v + 1);
+      };
+      const hit = await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
+      if (cancelled) return;
+      if (hit) apply(hit.res, hit.savedAt);
+      let fresh: BarsResult | null = null;
+      try {
+        fresh = await fetchBars(source, ticker, iv, 600);
+      } catch {
+        fresh = null; // no network: the stored bars stay (with the badge)
+      }
+      if (cancelled) return;
+      if (fresh && (fresh.candles.length > 0 || !hit)) {
+        apply(fresh, null);
+        void writeBars(source, ticker, iv, 600, fresh);
+      } else if (!hit) {
+        apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: undefined }, null);
+      }
     })();
 
     engine.onNeedHistory = async () => {
@@ -1444,6 +1494,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="inline-block w-6 h-6 border-2 border-[var(--tv3-hair)] border-t-[var(--tv3-accent)] rounded-full animate-spin" />
+              </div>
+            )}
+            {storedAt !== null && !loading && !empty && freshness(storedAt, Date.now(), intervalToMs(prefs.interval), online) !== "live" && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" data-stored-bars>
+                {t(online ? "chart.staleAt" : "chart.offlineAt", { time: clockLabel(storedAt) })}
               </div>
             )}
             {candlesDelayed && !loading && !empty && !appPage && (

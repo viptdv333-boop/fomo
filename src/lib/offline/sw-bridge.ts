@@ -86,6 +86,12 @@ export function announceIdentity(uid: string, locale: string, home: string): voi
 /** «Очистить сохранённые данные»: pages, API answers, uploads of this device (and, with `outbox`, the unsent queue). */
 export async function clearSavedData(opts: { outbox?: boolean; signOut?: boolean } = {}): Promise<void> {
   await swAsk({ type: "fomo-purge", outbox: opts.outbox === true, signOut: opts.signOut === true });
+  // the chart's stored candles live in IndexedDB (src/lib/chart/candle-cache.ts), not in the worker's caches
+  try {
+    await (await import("@/lib/chart/candle-cache")).clearBars();
+  } catch {
+    /* nothing stored */
+  }
 }
 
 /** A successful write happened: stored copies of lists may be out of date, the worker asks the network first from now on. */

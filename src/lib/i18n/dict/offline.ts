@@ -22,6 +22,9 @@ const dict: SectionDict = {
     "offline.cleared": "Сохранённые данные удалены",
     "offline.used": "Занято на устройстве: {mb} МБ",
     "offline.clearConfirm": "Удалить сохранённые данные? Неотправленные сообщения ({n}) тоже будут удалены.",
+    "tabhost.newPosts": "Новое: {n}",
+    "chart.offlineAt": "Нет сети — данные на {time}",
+    "chart.staleAt": "Данные на {time}",
   },
   en: {
     "offline.banner": "No connection — showing saved data",
@@ -43,6 +46,9 @@ const dict: SectionDict = {
     "offline.cleared": "Saved data deleted",
     "offline.used": "Used on this device: {mb} MB",
     "offline.clearConfirm": "Delete saved data? Unsent messages ({n}) will be deleted too.",
+    "tabhost.newPosts": "New: {n}",
+    "chart.offlineAt": "No connection — data as of {time}",
+    "chart.staleAt": "Data as of {time}",
   },
   cn: {
     "offline.banner": "无网络 — 显示已保存的数据",
@@ -64,6 +70,9 @@ const dict: SectionDict = {
     "offline.cleared": "已保存的数据已删除",
     "offline.used": "此设备占用：{mb} MB",
     "offline.clearConfirm": "删除已保存的数据？未发送的消息（{n}）也会被删除。",
+    "tabhost.newPosts": "新内容：{n}",
+    "chart.offlineAt": "无网络 — 数据截至 {time}",
+    "chart.staleAt": "数据截至 {time}",
   },
 };
 
