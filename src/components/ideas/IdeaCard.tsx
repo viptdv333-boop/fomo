@@ -14,6 +14,11 @@ import { useAppUi } from "@/components/app/useAppUi";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
 import { unreadLabel } from "@/lib/app-unread";
 import { useT } from "@/lib/i18n/client";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { applyPendingVote, pendingVoteOf } from "@/lib/outbox/votes";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 const AVATAR_COLORS = [
   "bg-green-600", "bg-teal-600", "bg-emerald-600", "bg-cyan-600",
@@ -87,8 +92,18 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   // red count of unread comments under this idea (app UI board card only)
   const unreadMap = useUnreadByIdea(appUi && !minimal && !compact);
   const unreadBadge = unreadLabel(unreadMap.byIdea[idea.id]);
-  const [liked, setLiked] = useState(idea.userVote === 1);
-  const [likeCount, setLikeCount] = useState(idea.voteScore);
+  const [likedLocal, setLiked] = useState(idea.userVote === 1);
+  const [likeCountLocal, setLikeCount] = useState(idea.voteScore);
+  // offline outbox: a like that is still waiting for the network is shown as given (survives a restart) with a clock on the count
+  const voteTarget = `vote:${idea.id}`;
+  const waitingVote = useOutboxItems(voteTarget).find((i) => i.status === "queued" || i.status === "retry" || i.status === "sending" || i.status === "auth");
+  const pendVote = waitingVote ? pendingVoteOf(waitingVote.preview) : null;
+  const eff = pendVote ? applyPendingVote({ userVote: idea.userVote, voteScore: idea.voteScore }, pendVote) : null;
+  const liked = eff ? eff.userVote === 1 : likedLocal;
+  const likeCount = eff ? eff.voteScore : likeCountLocal;
+  // delivered: the lists reload (the real count, not the one this card computed offline)
+  useOutboxSent(voteTarget, () => onVote?.());
+  const likeMark = pendVote ? <span data-pending="queued" title={t("offline.pendingMark")} aria-label={t("offline.pendingMark")}>{" \u{1F551}"}</span> : null;
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -120,14 +135,23 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
 
   async function handleLike() {
     if (!session) return;
-    const newValue = liked ? 0 : 1;
-    setLiked(!liked);
-    setLikeCount((prev) => prev + (liked ? -1 : 1));
-    await fetch(`/api/ideas/${idea.id}/vote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: newValue }),
+    const want = !liked;
+    setLiked(want);
+    setLikeCount((prev) => prev + (want ? 1 : -1));
+    // the DESIRED state is sent (not a toggle), so a replay after a lost reply changes nothing; offline it waits in the outbox
+    const r = await sendOrQueue({
+      kind: "idea_vote",
+      target: voteTarget,
+      coalesceKey: voteTarget,
+      url: `/api/ideas/${idea.id}/vote`,
+      body: { value: 1, state: want },
+      preview: { value: 1, state: want, label: "\u2764\uFE0F" },
     });
+    if (r.state === "queued" && !isOnline()) showToast(t("offline.queuedToast"));
+    if (r.state === "rejected") {
+      setLiked(!want);
+      setLikeCount((prev) => prev + (want ? -1 : 1));
+    }
     onVote?.();
   }
 
@@ -184,7 +208,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               </span>
             )}
             <button type="button" onClick={handleLike} data-on={liked ? "1" : undefined} className="app-idea-like" aria-pressed={liked}>
-              ❤️ {likeCount}
+              ❤️ {likeCount}{likeMark}
             </button>
           </span>
         </div>
@@ -239,7 +263,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <svg className="w-3.5 h-3.5" fill={likeCount > 0 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
           </svg>
-          {likeCount}
+          {likeCount}{likeMark}
         </span>
         <ShareButtons url={`https://fomo.spot/ideas/${idea.id}`} text={idea.title} />
       </div>
@@ -306,7 +330,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             <svg className="w-3.5 h-3.5" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            {likeCount}
+            {likeCount}{likeMark}
           </button>
         </div>
       </div>
@@ -428,7 +452,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             <svg className="w-3.5 h-3.5" fill={liked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            {likeCount}
+            {likeCount}{likeMark}
           </button>
         </div>
       </div>

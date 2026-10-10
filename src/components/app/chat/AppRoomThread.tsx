@@ -26,6 +26,9 @@ export interface RoomMsg {
   replyToId: string | null;
   replyTo: { id: string; text: string; user: { displayName: string } } | null;
   user: { id: string; displayName: string; avatarUrl: string | null };
+  /** an unsent message of the offline outbox (ChatRoom appends them to the list); pendingId = its outbox item */
+  pending?: "queued" | "failed";
+  pendingId?: string;
 }
 
 export interface EmojiCategory {
@@ -113,6 +116,8 @@ function toView(m: RoomMsg, myId: string | undefined, quoteSuffix: string, repli
     reply: m.replyTo ? `${m.replyTo.user.displayName}: ${m.replyTo.text.slice(0, 80)}${m.replyTo.text.length > 80 ? quoteSuffix : ""}` : null,
     file: m.fileUrl ? { url: m.fileUrl, name: m.fileName, type: m.fileType } : null,
     reactions: m.reactions,
+    pending: m.pending,
+    pendingId: m.pendingId,
   };
 }
 

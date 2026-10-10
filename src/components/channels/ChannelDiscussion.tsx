@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
@@ -11,6 +11,11 @@ import ComposerInput, { type ComposerHandle } from "@/components/shared/Composer
 
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 interface Message {
   id: string;
@@ -23,6 +28,26 @@ interface Message {
   fileType?: string | null;
   user: { id: string; displayName: string; avatarUrl: string | null };
   replyTo?: { id: string; text: string; user: { displayName: string } } | null;
+  /** an unsent message of the offline outbox (appended to the list while it waits) */
+  pending?: "queued" | "failed";
+  pendingId?: string;
+}
+
+function pendingToMessage(it: OutboxItem, me: Message["user"]): Message {
+  const p = (it.preview || {}) as { text?: string; fileUrl?: string; fileName?: string; fileType?: string };
+  return {
+    id: "pending:" + it.clientId,
+    text: p.text || "",
+    isPinned: false,
+    isDeleted: false,
+    createdAt: new Date(it.createdAt).toISOString(),
+    fileUrl: p.fileUrl || null,
+    fileName: p.fileName || null,
+    fileType: p.fileType || null,
+    user: me,
+    pending: it.status === "failed" ? "failed" : it.status === "sent" ? undefined : "queued",
+    pendingId: it.clientId,
+  };
 }
 
 interface PendingFile {
@@ -46,6 +71,9 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const outboxTarget = roomId ? `room:${roomId}` : null;
+  const serverIds = useMemo(() => new Set(messages.map((m) => m.id)), [messages]);
+  const queued = useOutboxItems(outboxTarget, serverIds);
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
@@ -91,6 +119,9 @@ export default function ChannelDiscussion({ tariffId }: Props) {
     }
   }, [roomId, loadMessages]);
 
+  // a queued message was delivered: show the server's list now
+  useOutboxSent(outboxTarget, loadMessages);
+
   useEffect(() => {
     // scrollIntoView bubbles up through every scrollable ancestor, including
     // the page itself — on a long channel page (especially on mobile, with
@@ -108,6 +139,10 @@ export default function ChannelDiscussion({ tariffId }: Props) {
 
   async function uploadFile(file: File) {
     if (uploading) return;
+    if (!isOnline()) {
+      showToast(t("offline.attachHint"));
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -128,22 +163,26 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   async function handleSend() {
     if ((!input.trim() && !pendingFile) || !roomId || sending) return;
     setSending(true);
-    const res = await fetch("/api/chat/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
+    const r = await sendOrQueue({
+      kind: "room_message",
+      target: `room:${roomId}`,
+      url: "/api/chat/messages",
+      body: {
         roomId,
         text: input.trim(),
         replyToId: replyTo?.id,
         fileUrl: pendingFile?.url,
         fileName: pendingFile?.name,
         fileType: pendingFile?.fileType,
-      }),
+      },
+      preview: { text: input.trim(), fileUrl: pendingFile?.url, fileName: pendingFile?.name, fileType: pendingFile?.fileType },
     });
-    if (res.ok) {
+    if (r.state === "sent" || r.state === "queued") {
       setInput("");
       setReplyTo(null);
       setPendingFile(null);
+      if (r.state === "queued" && !isOnline()) showToast(t("offline.queuedToast"));
     } else {
       alert(t("channel2.sendFailed"));
     }
@@ -174,6 +213,8 @@ export default function ChannelDiscussion({ tariffId }: Props) {
   if (!roomId) return null;
 
   const pinnedMessages = messages.filter((m) => m.isPinned && !m.isDeleted);
+  const me = { id: userId || "", displayName: (session?.user as { displayName?: string } | undefined)?.displayName || session?.user?.name || "", avatarUrl: null as string | null };
+  const visible = [...messages.filter((m) => !m.isDeleted), ...(userId ? queued.map((it) => pendingToMessage(it, me)) : [])];
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden">
@@ -198,10 +239,10 @@ export default function ChannelDiscussion({ tariffId }: Props) {
 
       {/* Messages */}
       <div ref={messagesBoxRef} className="max-h-[400px] overflow-y-auto p-4 space-y-3">
-        {messages.filter((m) => !m.isDeleted).length === 0 ? (
+        {visible.length === 0 ? (
           <div className="text-gray-400 text-center py-8 text-sm">{t("channel2.startDiscussion")}</div>
         ) : (
-          messages.filter((m) => !m.isDeleted).map((msg) => (
+          visible.map((msg) => (
             <div key={msg.id} className="flex gap-2.5 group">
               <Link href={`/profile/${msg.user.id}`} className="shrink-0">
                 {msg.user.avatarUrl ? (
@@ -218,6 +259,14 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                     {msg.user.displayName}
                   </Link>
                   <span className="text-[10px] text-gray-400">{formatMessageTime(msg.createdAt, locale)}</span>
+                  {msg.pending === "queued" && <span data-pending="queued" className="text-[10px] text-gray-400" title={t("offline.pendingMark")}>{"\u{1F551}"}</span>}
+                  {msg.pending === "failed" && msg.pendingId && (
+                    <span data-pending="failed" className="text-[10px] text-red-600">
+                      {"\u26A0\uFE0F"} {t("offline.failedMark")}{" "}
+                      <button type="button" className="underline font-semibold" onClick={() => void retryItem(msg.pendingId!)}>{t("offline.retry")}</button>{" "}
+                      <button type="button" className="underline font-semibold" onClick={() => void removeItem(msg.pendingId!)}>{t("offline.remove")}</button>
+                    </span>
+                  )}
                   {msg.isPinned && <span className="text-[10px] text-yellow-500">📌</span>}
                 </div>
                 {msg.replyTo && (
@@ -241,7 +290,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                   </a>
                 )}
                 {/* Actions */}
-                <div className="flex gap-2 mt-0.5 opacity-0 group-hover:opacity-100 transition">
+                <div className={`flex gap-2 mt-0.5 opacity-0 group-hover:opacity-100 transition ${msg.pending ? "hidden" : ""}`}>
                   <button onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
                     className="text-[10px] text-gray-400 hover:text-green-600">{t("msg.reply")}</button>
                   {isAuthor && (

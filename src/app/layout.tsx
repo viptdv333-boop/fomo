@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n/client";
 import SiteSettingsInjector from "@/components/layout/SiteSettingsInjector";
 import PWARegister from "@/components/PWARegister";
+import OfflineSync from "@/components/offline/OfflineSync";
 import UpdateBanner from "@/components/UpdateBanner";
 import IosInstallModal from "@/components/shared/IosInstallModal";
 import YandexMetrika from "@/components/YandexMetrika";
@@ -166,6 +167,7 @@ export default async function RootLayout({
           <I18nProvider locale={locale} messages={DICTIONARIES[locale]}>
             <SiteSettingsInjector />
             <PWARegister />
+            <OfflineSync />
             <UpdateBanner />
             <IosInstallModal />
             {/* the counters belong to fomo.spot: the terminal instance would write its visits (and Webvisor) into them */}

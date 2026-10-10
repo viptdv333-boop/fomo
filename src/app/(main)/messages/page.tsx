@@ -13,6 +13,11 @@ import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type Sheet
 import ComposerInput, { type ComposerHandle } from "@/components/shared/ComposerInput";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChat from "@/components/app/chat/AppChat";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 
 
@@ -52,6 +57,30 @@ interface Message {
   reactions: Record<string, string[]> | null;
   sender: { id: string; displayName: string; avatarUrl: string | null };
   replyTo: { id: string; text: string; sender: { displayName: string } } | null;
+  /** an unsent message of the offline outbox (appended to the list while it waits) */
+  pending?: "queued" | "failed";
+  pendingId?: string;
+}
+
+function pendingToMessage(it: OutboxItem, me: Message["sender"]): Message {
+  const p = (it.preview || {}) as { text?: string; fileUrl?: string; fileName?: string; fileType?: string };
+  return {
+    id: "pending:" + it.clientId,
+    text: p.text || "",
+    fileUrl: p.fileUrl || null,
+    fileName: p.fileName || null,
+    fileType: p.fileType || null,
+    createdAt: new Date(it.createdAt).toISOString(),
+    senderId: me.id,
+    replyToId: null,
+    isPinned: false,
+    isDeleted: false,
+    reactions: null,
+    sender: me,
+    replyTo: null,
+    pending: it.status === "failed" ? "failed" : it.status === "sent" ? undefined : "queued",
+    pendingId: it.clientId,
+  };
 }
 
 interface Contact {
@@ -107,6 +136,9 @@ function MessagesPage() {
     searchParams.get("conversation")
   );
   const [messages, setMessages] = useState<Message[]>([]);
+  // offline outbox: my unsent messages of the open conversation, drawn after the server's list
+  const outboxTarget = activeConvId ? `dm:${activeConvId}` : null;
+  const queued = useOutboxItems(outboxTarget, new Set(messages.map((m) => m.id)));
   const [newText, setNewText] = useState("");
   const [sending, setSending] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -299,24 +331,21 @@ function MessagesPage() {
     e.preventDefault();
     if ((!newText.trim() && !pendingAttachment) || !activeConvId || sending || uploading) return;
     setSending(true);
-    const res = await fetch(`/api/messages/conversations/${activeConvId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: newText,
-        replyToId: replyTo?.id,
-        ...(pendingAttachment && {
-          fileUrl: pendingAttachment.url,
-          fileName: pendingAttachment.name,
-          fileType: pendingAttachment.fileType || "document",
-        }),
-      }),
+    // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
+    const file = pendingAttachment ? { fileUrl: pendingAttachment.url, fileName: pendingAttachment.name, fileType: pendingAttachment.fileType || "document" } : null;
+    const r = await sendOrQueue({
+      kind: "dm_message",
+      target: `dm:${activeConvId}`,
+      url: `/api/messages/conversations/${activeConvId}/messages`,
+      body: { text: newText, replyToId: replyTo?.id, ...(file || {}) },
+      preview: { text: newText.trim(), ...(file || {}) },
     });
-    if (res.ok) {
+    if (r.state === "sent" || r.state === "queued") {
       setNewText("");
       setPendingAttachment(null);
       setReplyTo(null);
       setShowEmoji(false);
+      if (r.state === "queued" && !isOnline()) showToast(t("offline.queuedToast"));
       await loadMessages(activeConvId);
       await loadConversations();
     }
@@ -524,6 +553,8 @@ function MessagesPage() {
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
   const myId = session?.user?.id;
+  const shown: Message[] = myId && queued.length ? [...messages, ...queued.map((it) => pendingToMessage(it, { id: myId, displayName: "", avatarUrl: null }))] : messages;
+  useOutboxSent(outboxTarget, () => { if (activeConvId) void loadMessages(activeConvId); });
   const bgClass = CHAT_BACKGROUNDS.find(b => b.id === chatBg)?.class || "";
 
   const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "👎", "😮"];
@@ -837,19 +868,19 @@ function MessagesPage() {
               className={`flex-1 overflow-y-auto p-4 space-y-3 ${bgClass}`}
               onClick={() => { setContextMenu(null); setShowSettings(false); setUserContextMenu(null); }}
             >
-              {messages.map((msg) => {
+              {shown.map((msg) => {
                 const isMe = msg.senderId === myId;
                 return (
                   <div
                     key={msg.id}
                     className={`flex ${isMe ? "justify-end" : "justify-start"} group animate-[fadeIn_0.3s_ease-out] rounded-lg`}
-                    onContextMenu={(e) => handleContextMenu(e, msg)}
+                    onContextMenu={(e) => { if (msg.pending) { e.preventDefault(); return; } handleContextMenu(e, msg); }}
                     onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
                     onPointerEnter={(e) => { if (e.pointerType === "mouse" && !isTouchInteraction(e.pointerType)) setHoveredMsgId(msg.id); }}
                     onPointerLeave={(e) => { if (e.pointerType === "mouse") setHoveredMsgId((cur) => (cur === msg.id ? null : cur)); }}
                     onClick={(e) => {
                       if (!isTouchInteraction(lastPointerType.current)) return;
-                      if (msg.isDeleted || isInteractiveTarget(e.target)) return;
+                      if (msg.isDeleted || msg.pending || isInteractiveTarget(e.target)) return;
                       if (window.getSelection()?.toString()) return; // selecting text, not tapping
                       setHoveredMsgId(null);
                       setSheetMsgId(msg.id);
@@ -899,8 +930,16 @@ function MessagesPage() {
                               minute: "2-digit",
                             })}
                           </span>
-                          {isMe && !msg.isDeleted && (
+                          {isMe && !msg.isDeleted && !msg.pending && (
                             <span className="text-[10px] text-green-200">✓✓</span>
+                          )}
+                          {msg.pending === "queued" && <span data-pending="queued" className="text-[10px] text-green-200" title={t("offline.pendingMark")}>{"\u{1F551}"}</span>}
+                          {msg.pending === "failed" && msg.pendingId && (
+                            <span data-pending="failed" className="text-[10px] text-red-200">
+                              {"\u26A0\uFE0F"} {t("offline.failedMark")}{" "}
+                              <button type="button" className="underline font-semibold" onClick={() => void retryItem(msg.pendingId!)}>{t("offline.retry")}</button>{" "}
+                              <button type="button" className="underline font-semibold" onClick={() => void removeItem(msg.pendingId!)}>{t("offline.remove")}</button>
+                            </span>
                           )}
                         </div>
                       </div>

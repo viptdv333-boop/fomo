@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createNotification, notifyChannelSubscribers } from "@/lib/notifications";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { ideaCommentLink } from "@/lib/app-unread";
+import { claimClientRequest } from "@/lib/client-request";
 
 // GET — list comments for an idea
 export async function GET(
@@ -68,7 +69,7 @@ export async function POST(
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: ideaId } = await params;
-  const { text, replyToId, fileUrl } = await request.json();
+  const { text, replyToId, fileUrl, clientId } = await request.json();
 
   if (!text?.trim() && !fileUrl) {
     return NextResponse.json({ error: "Text or file required" }, { status: 400 });
@@ -77,18 +78,30 @@ export async function POST(
     return NextResponse.json({ error: "Invalid fileUrl" }, { status: 400 });
   }
 
-  const comment = await prisma.ideaComment.create({
-    data: {
-      ideaId,
-      userId: session.user.id,
-      text: (text || "").trim(),
-      fileUrl: fileUrl || null,
-      replyToId: replyToId || null,
-    },
-    include: {
-      user: { select: { id: true, displayName: true, avatarUrl: true } },
-    },
-  });
+  // Offline outbox: the same clientId again (a lost reply, a retry) is answered with the first result, nothing is created or notified twice.
+  const claim = await claimClientRequest(session.user.id, clientId, "idea_comment");
+  if (claim.kind === "duplicate") return NextResponse.json({ duplicate: true, id: claim.resourceId });
+  if (claim.kind === "busy") return NextResponse.json({ error: "Request in progress" }, { status: 409 });
+
+  let comment;
+  try {
+    comment = await prisma.ideaComment.create({
+      data: {
+        ideaId,
+        userId: session.user.id,
+        text: (text || "").trim(),
+        fileUrl: fileUrl || null,
+        replyToId: replyToId || null,
+      },
+      include: {
+        user: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+    });
+  } catch (e) {
+    await claim.release();
+    throw e;
+  }
+  await claim.attach(comment.id);
 
   // Notify the idea's author and — separately, so a reply doesn't get lost in
   // a busy thread — whoever's comment this one replies to. Never notify

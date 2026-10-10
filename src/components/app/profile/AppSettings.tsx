@@ -6,6 +6,8 @@ import { forceUpdate } from "@/lib/force-update";
 import { switchLocale } from "@/lib/i18n/client";
 import { APP_FONT_STEPS, type AppFontStep } from "@/lib/app-ui";
 import { canOpenNativeSettings, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
+import { clearSavedData, isOfflineModeEnabled, setOfflineModeEnabled, swStats } from "@/lib/offline/sw-bridge";
+import { outboxCounts, purgeOutboxAll } from "@/lib/outbox/outbox";
 import { getExistingPushSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
 import { isTerminalSite } from "@/lib/site-mode";
 import { DownloadAppsRow } from "@/components/shared/DownloadApps";
@@ -37,8 +39,19 @@ export default function AppSettings() {
   const [push, setPush] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushErr, setPushErr] = useState("");
+  const [offlineOn, setOfflineOn] = useState(true);
+  const [usedMb, setUsedMb] = useState("");
+  const [cleared, setCleared] = useState(false);
+
+  const refreshUsed = () =>
+    void swStats().then((st) => {
+      if (st && st.usage > 0) setUsedMb(String(Math.max(1, Math.round(st.usage / (1024 * 1024)))));
+      else setUsedMb("");
+    });
 
   useEffect(() => {
+    setOfflineOn(isOfflineModeEnabled());
+    refreshUsed();
     setFz(readFontStep());
     setNative(canOpenNativeSettings());
     setVersion(nativeAppFeatures()?.versionName || process.env.NEXT_PUBLIC_BUILD_ID || "");
@@ -51,6 +64,23 @@ export default function AppSettings() {
       void getExistingPushSubscription().then((sub) => setPush(Boolean(sub)));
     }
   }, []);
+
+  function toggleOffline() {
+    const next = !offlineOn;
+    setOfflineOn(next);
+    setOfflineModeEnabled(next);
+    setCleared(false);
+    window.setTimeout(refreshUsed, 600);
+  }
+
+  async function clearOffline() {
+    const n = outboxCounts().pending + outboxCounts().failed;
+    if (n > 0 && !window.confirm(t("offline.clearConfirm", { n }))) return;
+    await clearSavedData({ outbox: n > 0 });
+    if (n > 0) await purgeOutboxAll();
+    setCleared(true);
+    refreshUsed();
+  }
 
   const fzLabel: Record<AppFontStep, string> = { s: t("appui.fontS"), m: t("appui.fontM"), l: t("appui.fontL"), xl: t("appui.fontXl") };
   const themeLabel = theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight");
@@ -97,6 +127,15 @@ export default function AppSettings() {
         ...(native ? [{ key: "native", label: t("app.settings"), sub: t("app.settings.cardDesc"), icon: ico("sliders"), chev: true, onClick: () => void openNativeSettings() }] : []),
         ...(pushOk ? [{ key: "push", label: t("profile.pushNotifications"), sub: t("profile.pushNotificationsDesc"), icon: ico("bell"), toggle: push, disabled: pushBusy, onClick: () => void togglePush() }] : []),
         { key: "notif", label: t("appprof.whatAndWhere"), icon: ico("sliders"), chev: true, onClick: () => go("notifications") },
+      ],
+    },
+    {
+      key: "offline",
+      title: t("offline.mode"),
+      footer: cleared ? t("offline.cleared") : undefined,
+      rows: [
+        { key: "offmode", label: t("offline.mode"), sub: t("offline.modeSub"), icon: ico("clock"), toggle: offlineOn, onClick: toggleOffline },
+        { key: "offclear", label: t("offline.clear"), sub: usedMb ? t("offline.used", { mb: usedMb }) : t("offline.clearSub"), icon: ico("trash"), onClick: () => void clearOffline() },
       ],
     },
     {

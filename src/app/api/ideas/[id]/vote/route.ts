@@ -9,6 +9,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 const voteSchema = z.object({
   value: z.union([z.literal(1), z.literal(-1)]),
+  // The DESIRED state (offline outbox): true = «this vote must exist», false = «it must not». Without it the call is the old toggle.
+  // Idempotent: a replayed request (lost reply, retry) changes nothing and notifies nobody a second time.
+  state: z.boolean().optional(),
 });
 
 export async function POST(
@@ -37,7 +40,7 @@ export async function POST(
     );
   }
 
-  const { value } = parsed.data;
+  const { value, state: desired } = parsed.data;
   const userId = session.user.id;
 
   // Verify idea exists
@@ -58,7 +61,11 @@ export async function POST(
   // a like is a NEW +1 (no vote before, or switched from -1); removing a like or any -1 never notifies
   let becameLike = false;
   if (existingVote) {
-    if (existingVote.value === value) {
+    if (desired === true && existingVote.value === value) {
+      // already in the desired state: nothing to do
+    } else if (desired === false && existingVote.value !== value) {
+      // asked to remove a vote the user does not have (it was switched to the other value meanwhile): nothing to do
+    } else if (existingVote.value === value) {
       // Same value: toggle off (remove vote)
       await prisma.ideaVote.delete({
         where: { id: existingVote.id },
@@ -71,7 +78,7 @@ export async function POST(
       });
       becameLike = value === 1;
     }
-  } else {
+  } else if (desired !== false) {
     // Create new vote
     await prisma.ideaVote.create({
       data: { userId, ideaId, value },

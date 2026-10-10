@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
@@ -12,6 +12,11 @@ import ComposerInput, { type ComposerHandle } from "@/components/shared/Composer
 import { formatMessageTime } from "@/lib/format-message-time";
 import Linkify from "@/components/shared/Linkify";
 import { pickCommentToShow } from "@/lib/app-unread";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxAll, useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { OUTBOX_SENT_EVENT, outboxUid, removeItem, retryItem, type OutboxItem, type OutboxSentDetail } from "@/lib/outbox/outbox";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 interface Comment {
   id: string;
@@ -21,6 +26,43 @@ interface Comment {
   createdAt: string;
   user: { id: string; displayName: string; avatarUrl: string | null };
   replyTo?: { id: string; text: string; user: { displayName: string } } | null;
+  /** an unsent comment of the offline outbox (appended to the list while it waits) */
+  pending?: "queued" | "failed";
+  pendingId?: string;
+}
+
+function pendingToComment(it: OutboxItem, me: Comment["user"]): Comment {
+  const p = (it.preview || {}) as { text?: string; fileUrl?: string; replyToUser?: string; replyToText?: string; replyToId?: string };
+  return {
+    id: "pending:" + it.clientId,
+    text: p.text || "",
+    fileUrl: p.fileUrl || null,
+    reactions: null,
+    createdAt: new Date(it.createdAt).toISOString(),
+    user: me,
+    replyTo: p.replyToId ? { id: p.replyToId, text: p.replyToText || "", user: { displayName: p.replyToUser || "" } } : null,
+    pending: it.status === "failed" ? "failed" : it.status === "sent" ? undefined : "queued",
+    pendingId: it.clientId,
+  };
+}
+
+/** Pending 👍/👎 of the outbox laid over the server's reactions: the count and my highlight move at once, offline too. */
+function withPendingReactions(comments: Comment[], items: OutboxItem[], myId: string): Comment[] {
+  const mine = items.filter((i) => i.kind === "comment_reaction" && (i.status === "queued" || i.status === "retry" || i.status === "sending" || i.status === "auth"));
+  if (!mine.length || !myId) return comments;
+  return comments.map((c) => {
+    const mineHere = mine.filter((i) => (i.preview as { commentId?: string } | null)?.commentId === c.id);
+    if (!mineHere.length) return c;
+    const reactions: Record<string, string[]> = { ...(c.reactions || {}) };
+    for (const it of mineHere) {
+      const p = it.preview as { emoji: string; state: boolean };
+      const ids = (reactions[p.emoji] || []).filter((x) => x !== myId);
+      if (p.state) ids.push(myId);
+      if (ids.length) reactions[p.emoji] = ids;
+      else delete reactions[p.emoji];
+    }
+    return { ...c, reactions };
+  });
 }
 
 interface Props {
@@ -31,6 +73,11 @@ export default function IdeaComments({ ideaId }: Props) {
   const { t, locale } = useT();
   const { data: session, status: sessionStatus } = useSession();
   const [comments, setComments] = useState<Comment[]>([]);
+  // offline outbox: my unsent comments / reactions of this idea, drawn over the server's list (src/lib/outbox)
+  const commentsTarget = `comments:${ideaId}`;
+  const serverIds = useMemo(() => new Set(comments.map((c) => c.id)), [comments]);
+  const queuedComments = useOutboxItems(commentsTarget, serverIds);
+  const outboxAll = useOutboxAll();
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [sending, setSending] = useState(false);
@@ -72,6 +119,15 @@ export default function IdeaComments({ ideaId }: Props) {
   }, [ideaId]);
 
   useEffect(() => { loadComments(); }, [loadComments]);
+  useOutboxSent(commentsTarget, loadComments);
+  // a queued 👍 / 👎 reached the server: show the real counts
+  useEffect(() => {
+    const h = (e: Event) => {
+      if ((e as CustomEvent<OutboxSentDetail>).detail?.kind === "comment_reaction") loadComments();
+    };
+    window.addEventListener(OUTBOX_SENT_EVENT, h);
+    return () => window.removeEventListener(OUTBOX_SENT_EVENT, h);
+  }, [loadComments]);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -81,6 +137,10 @@ export default function IdeaComments({ ideaId }: Props) {
 
   async function uploadFile(file: File) {
     if (uploading) return;
+    if (!isOnline()) {
+      showToast(t("offline.attachHint"));
+      return;
+    }
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
@@ -98,14 +158,20 @@ export default function IdeaComments({ ideaId }: Props) {
   async function handleSend() {
     if ((!input.trim() && !pendingFile) || sending) return;
     setSending(true);
-    await fetch(`/api/ideas/${ideaId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: input.trim(), replyToId: replyTo?.id, fileUrl: pendingFile?.url }),
+    // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
+    const r = await sendOrQueue({
+      kind: "idea_comment",
+      target: commentsTarget,
+      url: `/api/ideas/${ideaId}/comments`,
+      body: { text: input.trim(), replyToId: replyTo?.id, fileUrl: pendingFile?.url },
+      preview: { text: input.trim(), fileUrl: pendingFile?.url, replyToId: replyTo?.id, replyToUser: replyTo?.user.displayName, replyToText: replyTo?.text.slice(0, 50) },
     });
-    setInput("");
-    setReplyTo(null);
-    setPendingFile(null);
+    if (r.state === "sent" || r.state === "queued") {
+      setInput("");
+      setReplyTo(null);
+      setPendingFile(null);
+      if (r.state === "queued" && !isOnline()) showToast(t("offline.queuedToast"));
+    }
     setSending(false);
     loadComments();
   }
@@ -116,15 +182,22 @@ export default function IdeaComments({ ideaId }: Props) {
   }
 
   async function toggleReaction(commentId: string, emoji: "👍" | "👎") {
-    if (!session?.user) return;
-    const res = await fetch("/api/ideas/comments/reactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commentId, emoji }),
+    if (!session?.user || commentId.startsWith("pending:")) return;
+    // the DESIRED state is sent (not a toggle): a replay of the request after a lost reply changes nothing
+    const have = (shownComments.find((c) => c.id === commentId)?.reactions?.[emoji] || []).includes(session.user.id);
+    const key = `react:${commentId}:${emoji}`;
+    const r = await sendOrQueue({
+      kind: "comment_reaction",
+      target: key,
+      coalesceKey: key,
+      url: "/api/ideas/comments/reactions",
+      body: { commentId, emoji, state: !have },
+      preview: { commentId, emoji, state: !have, label: emoji },
     });
-    if (res.ok) {
-      const { reactions } = await res.json();
-      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, reactions } : c)));
+    if (r.state === "sent" && r.data?.reactions !== undefined) {
+      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, reactions: r.data.reactions } : c)));
+    } else if (r.state === "queued" && !isOnline()) {
+      showToast(t("offline.queuedToast"));
     }
   }
 
@@ -167,21 +240,28 @@ export default function IdeaComments({ ideaId }: Props) {
     }
   }, [loading]);
 
+  const me = { id: uid || "", displayName: (session?.user as { displayName?: string } | undefined)?.displayName || session?.user?.name || "", avatarUrl: null as string | null };
+  const shownComments = useMemo(
+    () => withPendingReactions([...comments, ...(uid ? queuedComments.map((it) => pendingToComment(it, me)) : [])], outboxAll.filter((i) => i.uid === outboxUid()), uid || ""),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [comments, queuedComments, outboxAll, uid]
+  );
+
   return (
     <div className="mt-4" id="comments">
       <div className="flex items-center gap-2 mb-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           💬 {t("idea.comments")}
         </h4>
-        <span className="text-xs text-gray-400">{comments.length}</span>
+        <span className="text-xs text-gray-400">{shownComments.length}</span>
       </div>
 
       {/* Comments */}
       {loading ? (
         <div className="text-xs text-gray-400 py-2">...</div>
-      ) : comments.length > 0 ? (
+      ) : shownComments.length > 0 ? (
         <div className="space-y-2 mb-3">
-          {comments.map((c) => (
+          {shownComments.map((c) => (
             <div
               key={c.id}
               id={`comment-${c.id}`}
@@ -202,6 +282,14 @@ export default function IdeaComments({ ideaId }: Props) {
                     {c.user.displayName}
                   </Link>
                   <span className="text-[10px] text-gray-400">{formatMessageTime(c.createdAt, locale)}</span>
+                  {c.pending === "queued" && <span data-pending="queued" className="text-[10px] text-gray-400" title={t("offline.pendingMark")}>{"\u{1F551}"}</span>}
+                  {c.pending === "failed" && c.pendingId && (
+                    <span data-pending="failed" className="text-[10px] text-red-600">
+                      {"\u26A0\uFE0F"} {t("offline.failedMark")}{" "}
+                      <button type="button" className="underline font-semibold" onClick={() => void retryItem(c.pendingId!)}>{t("offline.retry")}</button>{" "}
+                      <button type="button" className="underline font-semibold" onClick={() => void removeItem(c.pendingId!)}>{t("offline.remove")}</button>
+                    </span>
+                  )}
                 </div>
                 {c.replyTo && (
                   <div className="text-[10px] text-gray-500 dark:text-gray-400 border-l-2 border-green-400 pl-1.5 my-0.5 truncate">
@@ -243,11 +331,11 @@ export default function IdeaComments({ ideaId }: Props) {
                       </>
                     );
                   })()}
-                  {session?.user && (
+                  {session?.user && !c.pending && (
                     <button onClick={() => { setReplyTo(c); setInput(`@${c.user.displayName}, `); inputRef.current?.focus(); }}
                       className="text-[10px] text-gray-400 hover:text-green-600 font-medium">↩ {t("idea.reply")}</button>
                   )}
-                  {(session?.user?.id === c.user.id || (session?.user as any)?.role === "ADMIN") && (
+                  {!c.pending && (session?.user?.id === c.user.id || (session?.user as any)?.role === "ADMIN") && (
                     <button onClick={() => handleDelete(c.id)}
                       className="text-[10px] text-gray-400 hover:text-red-500">{t("common.delete")}</button>
                   )}

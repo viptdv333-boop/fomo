@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/lib/socket";
@@ -12,6 +12,11 @@ import AppRoomThread, { type RoomThreadApi, type RoomInfo } from "@/components/a
 import { roomMembers } from "@/lib/app-chat";
 
 import { formatMessageTime } from "@/lib/format-message-time";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -84,7 +89,30 @@ interface Message {
     displayName: string;
     avatarUrl: string | null;
   };
+  /** an unsent message of the offline outbox (appended to the list while it waits); pendingId = its outbox item */
+  pending?: "queued" | "failed";
+  pendingId?: string;
 }
+
+/** An outbox item as a message of the list: mine, with a clock / «Не отправлено» until the server twin arrives. */
+function pendingToMessage(it: OutboxItem, me: Message["user"]): Message {
+  const p = (it.preview || {}) as { text?: string; fileUrl?: string; fileName?: string; fileType?: string; replyToId?: string };
+  return {
+    id: "pending:" + it.clientId,
+    text: p.text || "",
+    fileUrl: p.fileUrl || null,
+    fileName: p.fileName || null,
+    fileType: p.fileType || null,
+    createdAt: new Date(it.createdAt).toISOString(),
+    reactions: null,
+    replyToId: p.replyToId || null,
+    replyTo: null,
+    user: me,
+    pending: it.status === "failed" ? "failed" : it.status === "sent" ? undefined : "queued",
+    pendingId: it.clientId,
+  };
+}
+const isPendingId = (id: string) => id.startsWith("pending:");
 
 interface ChatRoomProps {
   roomId: string;
@@ -230,6 +258,17 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
+  // offline outbox: my unsent messages of this room, drawn after the server's list (see src/lib/outbox)
+  const outboxTarget = `room:${roomId}`;
+  const serverIds = useMemo(() => new Set(messages.map((m) => m.id)), [messages]);
+  const queued = useOutboxItems(outboxTarget, serverIds);
+  const myId = session?.user?.id;
+  const myName = (session?.user as { displayName?: string; name?: string | null } | undefined)?.displayName || session?.user?.name || "";
+  const myImage = (session?.user as { image?: string | null; avatarUrl?: string | null } | undefined)?.avatarUrl ?? (session?.user as { image?: string | null } | undefined)?.image ?? null;
+  const shown = useMemo(
+    () => (queued.length && myId ? [...messages, ...queued.map((it) => pendingToMessage(it, { id: myId, displayName: myName, avatarUrl: myImage }))] : messages),
+    [messages, queued, myId, myName, myImage]
+  );
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [hoveredMsg, setHoveredMsg] = useState<string | null>(null);
@@ -278,15 +317,23 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       .catch(() => {});
   }
 
-  useEffect(() => {
+  const loadMessages = useCallback(() => {
     fetch(`/api/chat/messages?roomId=${roomId}`)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setMessages(data);
-      });
+      })
+      .catch(() => {});
+  }, [roomId]);
+
+  useEffect(() => {
+    loadMessages();
     setReplyTo(null);
     if (session?.user) markRoomRead();
-  }, [roomId, session?.user]);
+  }, [roomId, session?.user, loadMessages]);
+
+  // a queued message was delivered: show the server's list now
+  useOutboxSent(outboxTarget, loadMessages);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -400,21 +447,27 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     setPendingAttachment(null);
 
     try {
-      const res = await fetch("/api/chat/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
+      const r = await sendOrQueue({
+        kind: "room_message",
+        target: outboxTarget,
+        url: "/api/chat/messages",
+        body: {
           roomId,
           text: textToSend,
           fileUrl: attachmentToSend?.url,
           fileName: attachmentToSend?.name,
           fileType: attachmentToSend?.fileType,
           replyToId: replyToSend?.id || undefined,
-        }),
+        },
+        preview: { text: textToSend, fileUrl: attachmentToSend?.url, fileName: attachmentToSend?.name, fileType: attachmentToSend?.fileType, replyToId: replyToSend?.id },
       });
-      if (res.ok) {
-        const msg = await res.json();
-        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      if (r.state === "sent") {
+        const msg = r.data;
+        if (msg && msg.id && !msg.duplicate) setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        else loadMessages();
+      } else if (r.state === "queued" && !isOnline()) {
+        showToast(t("offline.queuedToast"));
       }
     } catch {}
   }
@@ -428,6 +481,11 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   async function uploadAttachment(file: File) {
     if (!session?.user?.id || uploading) return;
+    if (!isOnline()) {
+      showToast(t("offline.attachHint"));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     if (file.size > 100 * 1024 * 1024) {
       alert(t("chat2.fileTooLarge"));
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -482,6 +540,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   /* ── Edit / delete own message ── */
   function startEdit(msg: Message) {
+    if (isPendingId(msg.id)) return;
     setEditingId(msg.id);
     setEditText(msg.text);
     setHoveredMsg(null);
@@ -511,6 +570,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   async function deleteMessage(messageId: string) {
+    if (isPendingId(messageId)) return;
     if (!confirm(t("chat2.confirmDeleteMessage"))) return;
     try {
       const res = await fetch(`/api/chat/messages/${messageId}`, {
@@ -527,6 +587,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   /* ── Reactions ── */
   async function toggleReaction(messageId: string, emoji: string) {
+    if (isPendingId(messageId)) return;
     try {
       const res = await fetch("/api/chat/reactions", {
         method: "POST",
@@ -693,7 +754,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       isAdmin,
       isRoomArchived: !!isArchived,
       onAdminAction: (action) => adminAction(action),
-      messages: messages as unknown as RoomThreadApi["messages"],
+      messages: shown as unknown as RoomThreadApi["messages"],
       myId: session?.user?.id,
       quickReactions: QUICK_REACTIONS,
       onReact: (id, emoji) => toggleReaction(id, emoji),
@@ -838,14 +899,14 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
         {/* ── MESSAGES ── */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-900 px-3 sm:px-4 py-4 min-h-0">
-          {messages.length === 0 && (
+          {shown.length === 0 && (
             <div className="text-center text-gray-400 dark:text-gray-500 py-12 text-sm">
               {t("chat.notFound")}
             </div>
           )}
 
           <div className="flex flex-col gap-5">
-            {messages.map((msg) => {
+            {shown.map((msg) => {
               const isHovered = hoveredMsg === msg.id;
               const reactions = msg.reactions || {};
               const replyCount = getReplyCount(msg.id);
@@ -910,6 +971,16 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                         <span className="text-xs text-gray-400 dark:text-gray-500">
                           {formatMessageTime(msg.createdAt, locale)}
                         </span>
+                        {msg.pending === "queued" && (
+                          <span data-pending="queued" className="text-xs text-gray-400" title={t("offline.pendingMark")}>{"\u{1F551}"}</span>
+                        )}
+                        {msg.pending === "failed" && msg.pendingId && (
+                          <span data-pending="failed" className="text-xs text-red-600">
+                            {"\u26A0\uFE0F"} {t("offline.failedMark")}{" "}
+                            <button type="button" className="underline font-semibold" onClick={() => void retryItem(msg.pendingId!)}>{t("offline.retry")}</button>{" "}
+                            <button type="button" className="underline font-semibold" onClick={() => void removeItem(msg.pendingId!)}>{t("offline.remove")}</button>
+                          </span>
+                        )}
                       </div>
 
                       {/* Reply preview */}

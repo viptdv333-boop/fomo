@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { commentId, emoji } = await req.json();
+  const { commentId, emoji, state: desired } = await req.json();
   if (!commentId || (emoji !== "👍" && emoji !== "👎")) {
     return NextResponse.json({ error: "commentId and emoji (👍 or 👎) required" }, { status: 400 });
   }
@@ -30,8 +30,13 @@ export async function POST(req: NextRequest) {
   }
 
   const index = reactions[emoji].indexOf(userId);
-  const addedLike = index < 0 && emoji === LIKE_EMOJI;
-  if (index >= 0) {
+  // `state` (boolean) = the DESIRED state sent by the offline outbox: idempotent, a replay changes nothing. Without it the call is the old toggle.
+  const want = typeof desired === "boolean" ? desired : index < 0;
+  const addedLike = index < 0 && want && emoji === LIKE_EMOJI;
+  if (want === index >= 0) {
+    // already as wanted
+    if (reactions[emoji].length === 0) delete reactions[emoji];
+  } else if (index >= 0) {
     reactions[emoji].splice(index, 1);
     if (reactions[emoji].length === 0) {
       delete reactions[emoji];

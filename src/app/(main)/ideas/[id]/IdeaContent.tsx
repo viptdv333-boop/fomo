@@ -13,6 +13,11 @@ import Linkify from "@/components/shared/Linkify";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import IdeaComments from "@/components/ideas/IdeaComments";
 import { useT } from "@/lib/i18n/client";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { applyPendingVote, pendingVoteOf } from "@/lib/outbox/votes";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 interface IdeaDetail {
   id: string;
@@ -96,18 +101,32 @@ export default function IdeaContent() {
     fetch(`/api/ideas/${params.id}/view`, { method: "POST" }).catch(() => {});
   }, [params.id]);
 
-  async function handleVote(value: number) {
-    if (!session) return;
-    await fetch(`/api/ideas/${params.id}/vote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value }),
+  // offline outbox: a vote that is still waiting for the network is shown as given, with a clock on the score
+  const voteTarget = `vote:${params.id}`;
+  const waitingVote = useOutboxItems(voteTarget).find((i) => i.status === "queued" || i.status === "retry" || i.status === "sending" || i.status === "auth");
+  const pendVote = waitingVote ? pendingVoteOf(waitingVote.preview) : null;
+  useOutboxSent(voteTarget, () => void loadIdea());
+
+  async function handleVote(value: 1 | -1) {
+    if (!session || !idea) return;
+    // the DESIRED state is sent (not a toggle): the same value again removes the vote; a replay after a lost reply changes nothing
+    const shown = applyPendingVote({ userVote: idea.userVote, voteScore: idea.voteScore }, pendVote);
+    const state = shown.userVote !== value;
+    const r = await sendOrQueue({
+      kind: "idea_vote",
+      target: voteTarget,
+      coalesceKey: voteTarget,
+      url: `/api/ideas/${params.id}/vote`,
+      body: { value, state },
+      preview: { value, state, label: value === 1 ? "\u{1F44D}" : "\u{1F44E}" },
     });
-    loadIdea();
+    if (r.state === "queued" && !isOnline()) showToast(t("offline.queuedToast"));
+    if (r.state !== "queued") loadIdea();
   }
 
   if (loading) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">...</div>;
   if (!idea) return <div className="text-gray-500 dark:text-gray-400 py-12 text-center">{t("idea.notFound")}</div>;
+  const vote = applyPendingVote({ userVote: idea.userVote, voteScore: idea.voteScore }, pendVote);
 
   return (
     <div className="max-w-3xl w-full mx-auto">
@@ -269,7 +288,7 @@ export default function IdeaContent() {
             <button
               onClick={() => handleVote(1)}
               className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                idea.userVote === 1
+                vote.userVote === 1
                   ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                   : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-green-600"
               }`}
@@ -277,14 +296,15 @@ export default function IdeaContent() {
               {t("idea.like")}
             </button>
             <span className={`text-lg font-bold ${
-              idea.voteScore > 0 ? "text-green-600" : idea.voteScore < 0 ? "text-red-600" : "text-gray-400"
+              vote.voteScore > 0 ? "text-green-600" : vote.voteScore < 0 ? "text-red-600" : "text-gray-400"
             }`}>
-              {idea.voteScore}
+              {vote.voteScore}
+              {pendVote && <span data-pending="queued" className="text-xs font-normal" title={t("offline.pendingMark")}>{" \u{1F551}"}</span>}
             </span>
             <button
               onClick={() => handleVote(-1)}
               className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                idea.userVote === -1
+                vote.userVote === -1
                   ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                   : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-600"
               }`}

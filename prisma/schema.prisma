@@ -992,3 +992,17 @@ model CorporateEvent {
   @@index([kind, date])
   @@index([ticker])
 }
+
+// Idempotency guard of the offline outbox (src/lib/client-request.ts): one row per (user, clientId) request that created something.
+// resourceId = what it created (null while the request is running). Rows older than 7 days are pruned opportunistically.
+model ClientRequest {
+  id         String   @id @default(cuid())
+  userId     String
+  clientId   String
+  kind       String
+  resourceId String?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, clientId])
+  @@index([createdAt])
+}

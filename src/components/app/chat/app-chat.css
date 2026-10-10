@@ -225,3 +225,8 @@ html.app-ui .ac-rx:active { color: var(--app-red); }
 /* thread extras: reply counter chip, copied toast spacing */
 html.app-ui .ac-replies { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; opacity: 1; color: inherit; }
 html.app-ui .ac-who[role="button"] { cursor: pointer; }
+
+/* unsent messages of the offline outbox (src/lib/outbox): the clock in the footer, and «Не отправлено · Повторить · Удалить» */
+html.app-ui .ac-meta > .ac-failed { opacity: 1; background: #fff; color: #b91c1c; border-radius: 6px; padding: 1px 6px; }
+html.app-ui .ac-failed button { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; text-decoration: underline; color: inherit; cursor: pointer; }
+html.app-ui .ac-mrow:has([data-pending="queued"]) .ac-bubble { opacity: 0.85; }

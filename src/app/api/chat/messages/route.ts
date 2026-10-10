@@ -8,6 +8,7 @@ import { canAccessRoom } from "@/lib/channel-access";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { getT } from "@/lib/i18n/server";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
+import { claimClientRequest } from "@/lib/client-request";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -127,29 +128,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
   }
 
-  const message = await prisma.chatMessage.create({
-    data: {
-      roomId: parsed.data.roomId,
-      userId: session.user.id!,
-      text: parsed.data.text,
-      fileUrl: parsed.data.fileUrl || null,
-      fileName: parsed.data.fileName || null,
-      fileType: parsed.data.fileType || null,
-      replyToId: parsed.data.replyToId || null,
-    },
-    include: {
-      user: {
-        select: { id: true, displayName: true, avatarUrl: true },
+  // Offline outbox: the same clientId again (a lost reply, a retry) is answered with the first result, nothing is created or notified twice.
+  const claim = await claimClientRequest(session.user.id!, (body as { clientId?: unknown }).clientId, "room_message");
+  if (claim.kind === "duplicate") return NextResponse.json({ duplicate: true, id: claim.resourceId });
+  if (claim.kind === "busy") return NextResponse.json({ error: "Request in progress" }, { status: 409 });
+
+  let message;
+  try {
+    message = await prisma.chatMessage.create({
+      data: {
+        roomId: parsed.data.roomId,
+        userId: session.user.id!,
+        text: parsed.data.text,
+        fileUrl: parsed.data.fileUrl || null,
+        fileName: parsed.data.fileName || null,
+        fileType: parsed.data.fileType || null,
+        replyToId: parsed.data.replyToId || null,
       },
-      replyTo: {
-        select: {
-          id: true,
-          text: true,
-          user: { select: { displayName: true } },
+      include: {
+        user: {
+          select: { id: true, displayName: true, avatarUrl: true },
+        },
+        replyTo: {
+          select: {
+            id: true,
+            text: true,
+            user: { select: { displayName: true } },
+          },
         },
       },
-    },
-  });
+    });
+  } catch (e) {
+    await claim.release();
+    throw e;
+  }
+  await claim.attach(message.id);
 
   // Emit via Socket.IO to room
   const io = globalForIO.io;

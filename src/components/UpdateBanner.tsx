@@ -35,7 +35,10 @@ export default function UpdateBanner() {
       if (document.visibilityState === "visible") check();
     };
     document.addEventListener("visibilitychange", onVisible);
+    // the service worker saw a newer release in a response (sw.js noteBuild): compare with /api/version right away
+    window.addEventListener("fomo-build-changed", check);
     return () => {
+      window.removeEventListener("fomo-build-changed", check);
       stopped = true;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
@@ -50,7 +53,7 @@ export default function UpdateBanner() {
       <button
         onClick={() => {
           setBusy(true);
-          forceUpdate();
+          void forceUpdate().finally(() => setBusy(false)); // offline it does nothing (see force-update.ts)
         }}
         disabled={busy}
         className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-60"

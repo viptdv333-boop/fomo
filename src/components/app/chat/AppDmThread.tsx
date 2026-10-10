@@ -16,6 +16,11 @@ import LookControls from "./LookControls";
 import { useChatLook, useDmMarks } from "./useChatPrefs";
 import { DraftChip, Messages, QuoteChip, ThreadBar, useUnreadAnchor, type ViewMsg } from "./AppThreadParts";
 import type { Conversation } from "./useAppChatData";
+import { sendOrQueue } from "@/lib/outbox/send";
+import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
+import { pendingToView } from "@/lib/outbox/view";
+import { isOnline } from "@/lib/offline/online";
+import { showToast } from "@/lib/offline/toast";
 
 interface DmMsg {
   id: string;
@@ -91,6 +96,7 @@ export default function AppDmThread({
   const [settings, setSettings] = useState(false);
   const [contactIds, setContactIds] = useState<Set<string>>(new Set());
   const marks = useDmMarks();
+  const outboxTarget = `dm:${convId}`;
   const look = useChatLook();
   const loadContacts = useCallback(async () => {
     try {
@@ -149,6 +155,10 @@ export default function AppDmThread({
   const uploadAttachment = useCallback(
     async (file: File) => {
       if (uploading) return;
+      if (!isOnline()) {
+        showToast(t("offline.attachHint"));
+        return;
+      }
       if (file.size > 100 * 1024 * 1024) {
         alert(t("chat2.fileTooLarge"));
         return;
@@ -184,21 +194,26 @@ export default function AppDmThread({
     setSending(true);
     setError("");
     try {
-      const r = await fetch(`/api/messages/conversations/${convId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          replyToId: replyTo?.id,
-          ...(pending && { fileUrl: pending.url, fileName: pending.name, fileType: pending.fileType || "document" }),
-        }),
+      // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
+      const file = pending ? { fileUrl: pending.url, fileName: pending.name, fileType: pending.fileType || "document" } : null;
+      const r = await sendOrQueue({
+        kind: "dm_message",
+        target: outboxTarget,
+        url: `/api/messages/conversations/${convId}/messages`,
+        body: { text, replyToId: replyTo?.id, ...(file || {}) },
+        preview: { text: text.trim(), ...(file || {}), reply: replyTo ? `${replyTo.sender.displayName}: ${replyTo.text.slice(0, 80)}` : undefined },
       });
-      if (r.ok) {
+      if (r.state === "sent") {
         setText("");
         setPending(null);
         setReplyTo(null);
         await load();
         onChanged();
+      } else if (r.state === "queued") {
+        setText("");
+        setPending(null);
+        setReplyTo(null);
+        if (!isOnline()) showToast(t("offline.queuedToast"));
       } else setError(t("appui.chat.sendFailed"));
     } catch {
       setError(t("appui.chat.sendFailed"));
@@ -215,7 +230,10 @@ export default function AppDmThread({
     await load();
   }
 
-  const view = useMemo(() => messages.map((m) => toView(m, myId)), [messages, myId]);
+  const serverIds = useMemo(() => new Set(messages.map((m) => m.id)), [messages]);
+  const queued = useOutboxItems(outboxTarget, serverIds);
+  useOutboxSent(outboxTarget, () => void load());
+  const view = useMemo(() => [...messages.map((m) => toView(m, myId)), ...queued.map(pendingToView)], [messages, myId, queued]);
   const unreadFromId = useUnreadAnchor(view, readAt);
   const pinned = useMemo(() => pinnedLine(messages, t("chat2.file")), [messages, t]);
   const sel = selected ? messages.find((m) => m.id === selected) || null : null;

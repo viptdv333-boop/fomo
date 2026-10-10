@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
+import { claimClientRequest } from "@/lib/client-request";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -69,13 +70,15 @@ export async function GET(
   const hasMore = messages.length > limit;
   if (hasMore) messages.pop();
 
-  // Update lastReadAt
-  await prisma.directConversationParticipant.update({
-    where: {
-      conversationId_userId: { conversationId, userId },
-    },
-    data: { lastReadAt: new Date() },
-  });
+  // Update lastReadAt. ?peek=1 (the background warm-up of the offline mode) only looks ahead: it must not mark the conversation as read.
+  if (searchParams.get("peek") !== "1") {
+    await prisma.directConversationParticipant.update({
+      where: {
+        conversationId_userId: { conversationId, userId },
+      },
+      data: { lastReadAt: new Date() },
+    });
+  }
 
   return NextResponse.json({
     messages: messages.reverse(),
@@ -110,12 +113,19 @@ export async function POST(
     return NextResponse.json({ error: "Not a participant" }, { status: 403 });
   }
 
-  const { text, replyToId, fileUrl, fileName, fileType } = await request.json();
+  const { text, replyToId, fileUrl, fileName, fileType, clientId } = await request.json();
   if ((!text || typeof text !== "string" || text.trim().length === 0) && !fileUrl) {
     return NextResponse.json({ error: "Text or file required" }, { status: 400 });
   }
 
-  const message = await prisma.directMessage.create({
+  // Offline outbox: the same clientId again (a lost reply, a retry) is answered with the first result, nothing is created or notified twice.
+  const claim = await claimClientRequest(userId, clientId, "dm_message");
+  if (claim.kind === "duplicate") return NextResponse.json({ duplicate: true, id: claim.resourceId });
+  if (claim.kind === "busy") return NextResponse.json({ error: "Request in progress" }, { status: 409 });
+
+  let message;
+  try {
+  message = await prisma.directMessage.create({
     data: {
       conversationId,
       senderId: userId,
@@ -147,6 +157,11 @@ export async function POST(
       },
     },
   });
+  } catch (e) {
+    await claim.release();
+    throw e;
+  }
+  await claim.attach(message.id);
 
   // Update conversation updatedAt
   await prisma.directConversation.update({

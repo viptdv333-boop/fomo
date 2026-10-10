@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>FOMO</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; align-items: center; justify-content: center; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f9fafb; color: #111827; text-align: center; padding: 24px; box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) { body { background: #030712; color: #f3f4f6; } }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 0 0 20px; color: #6b7280; max-width: 320px; }
+  a, button { display: inline-block; font: inherit; font-weight: 600; background: #16a34a; color: #fff; border: 0; border-radius: 10px; padding: 10px 20px; text-decoration: none; cursor: pointer; margin: 4px; }
+  a.alt { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
+</style>
+</head>
+<body>
+<div>
+  <h1 id="t">Нет сети</h1>
+  <p id="d">Этой страницы нет в сохранённых данных. Подключитесь к интернету и повторите.</p>
+  <button id="r" type="button">Повторить</button>
+  <a class="alt" id="h" href="/">На главную</a>
+</div>
+<script>
+(function () {
+  var en = /^en/i.test(navigator.language || "");
+  var zh = /^zh/i.test(navigator.language || "");
+  if (en) { t.textContent = "No connection"; d.textContent = "This page is not in the saved data. Connect to the internet and try again."; r.textContent = "Retry"; h.textContent = "Home"; document.documentElement.lang = "en"; }
+  if (zh) { t.textContent = "无网络"; d.textContent = "此页面没有已保存的数据。请连接互联网后重试。"; r.textContent = "重试"; h.textContent = "首页"; document.documentElement.lang = "zh"; }
+  r.onclick = function () { location.reload(); };
+  window.addEventListener("online", function () { location.reload(); });
+})();
+</script>
+</body>
+</html>

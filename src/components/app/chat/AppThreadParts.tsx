@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode 
 import { useT } from "@/lib/i18n/client";
 import { FONT_DEFAULT, bgCss, clockLabel, firstUnreadId, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
+import { removeItem, retryItem } from "@/lib/outbox/outbox";
 
 /** A message of either kind (болталка room or personal conversation) in the shape the bubbles draw. */
 export interface ViewMsg {
@@ -27,6 +28,10 @@ export interface ViewMsg {
   replies?: number;
   /** author of a room message: tapping the name opens the personal dialog, as on the old page */
   authorId?: string;
+  /** an unsent message of the offline outbox (src/lib/outbox): waiting for the network / for sign-in, or refused by the server */
+  pending?: "queued" | "failed";
+  /** the outbox item behind it (Повторить / Удалить) */
+  pendingId?: string;
 }
 
 /** Header of a thread: «‹ Назад», title (emoji + name) with a line under it, the bell (and extra buttons) on the right. */
@@ -79,7 +84,7 @@ export function Bubble({
         className="ac-bubble"
         data-sel={selected ? "1" : undefined}
         onClick={(e) => {
-          if (m.deleted || editing || interactive(e.target)) return;
+          if (m.deleted || m.pending || editing || interactive(e.target)) return;
           if (typeof window !== "undefined" && window.getSelection()?.toString()) return; // selecting text, not tapping
           onTap();
         }}
@@ -137,7 +142,23 @@ export function Bubble({
           {m.pinned && !m.deleted && <span aria-label={t("msg.pinned")}>{"\u{1F4CC}"}</span>}
           {m.edited && !m.deleted && <span>{t("appui.chat.edited")}</span>}
           <span>{clockLabel(m.createdAt)}</span>
-          {m.ticks && !m.deleted && <span>{"\u2713\u2713"}</span>}
+          {m.pending === "queued" && (
+            <span data-pending="queued" title={t("offline.pendingMark")} aria-label={t("offline.pendingMark")}>
+              {"\u{1F551}"}
+            </span>
+          )}
+          {m.pending === "failed" && m.pendingId && (
+            <span data-pending="failed" className="ac-failed">
+              {"\u26A0\uFE0F"} {t("offline.failedMark")}{" "}
+              <button type="button" onClick={() => void retryItem(m.pendingId!)}>
+                {t("offline.retry")}
+              </button>{" "}
+              <button type="button" onClick={() => void removeItem(m.pendingId!)}>
+                {t("offline.remove")}
+              </button>
+            </span>
+          )}
+          {m.ticks && !m.deleted && !m.pending && <span>{"\u2713\u2713"}</span>}
         </div>
       </div>
     </div>
