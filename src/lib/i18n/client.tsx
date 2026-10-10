@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { isLocale, localizedPath, stripLocale } from "./locale-url";
 
 /**
@@ -32,9 +32,21 @@ const Ctx = createContext<I18nContext>({
   setLocale: () => {},
 });
 
-// Only the current language's dictionary reaches the browser (passed from the
-// root layout); shipping all three cost ~280 KB of JS on every page. Changing
-// language reloads the page, so the dictionary never has to swap client-side.
+// Only the current language's dictionary reaches the browser, and not inside the HTML: the root layout puts a <script src="/i18n/<locale>-<hash>.js">
+// (long-cached, kept by the service worker) in <head>, which sets self.__FOMO_I18N[locale] before React hydrates. On the server the dictionary is read
+// straight from the module (the require below is cut out of the browser bundle: `typeof window` is a constant there). The `messages` prop is only a
+// fallback for callers that pass the dictionary themselves. Changing language reloads the page, so the dictionary never has to swap client-side.
+type Messages = Record<string, string>;
+function readDict(locale: string, fallback?: Messages): Messages | null {
+  if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const all = require("./dictionaries").DICTIONARIES as Record<string, Messages>;
+    return fallback ?? all[locale] ?? null;
+  }
+  const g = (window as unknown as { __FOMO_I18N?: Record<string, Messages> }).__FOMO_I18N;
+  return g?.[locale] ?? fallback ?? null;
+}
+
 export function I18nProvider({
   children,
   locale,
@@ -42,8 +54,21 @@ export function I18nProvider({
 }: {
   children: ReactNode;
   locale: string;
-  messages: Record<string, string>;
+  messages?: Messages;
 }) {
+  const [dict, setDict] = useState<Messages | null>(() => readDict(locale, messages));
+
+  useEffect(() => {
+    // the script did not load (blocked, a failed request): fetch it once more, the texts appear when it arrives
+    if (dict) return;
+    const el = document.createElement("script");
+    el.src = `/i18n/${locale}.js`;
+    el.onload = () => setDict(readDict(locale, messages));
+    document.head.appendChild(el);
+    return () => el.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dict, locale]);
+
   useEffect(() => {
     // Users who chose a language before it was stored on the account.
     try {
@@ -62,13 +87,13 @@ export function I18nProvider({
     () => ({
       locale,
       t: (key, vars) => {
-        let s = messages[key] ?? key;
+        let s = dict?.[key] ?? key;
         if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
         return s;
       },
       setLocale: switchLocale,
     }),
-    [locale, messages]
+    [locale, dict]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

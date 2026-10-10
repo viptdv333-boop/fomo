@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { keywordList, ogLocales } from "@/lib/i18n/seo-metadata";
 import { HTML_LANG } from "@/lib/i18n/locale-url";
-import { DICTIONARIES } from "@/lib/i18n/dictionaries";
+import { dictScriptUrl } from "@/lib/i18n/dict-script";
 import { APP_UI_BOOT_SCRIPT } from "@/lib/native-app";
 import { brandName, isTerminalSite, siteUrl } from "@/lib/site-mode";
 import { TERMINAL_OG_IMAGE, terminalVerification } from "@/lib/terminal-seo";
@@ -161,10 +161,12 @@ export default async function RootLayout({
         />
         {/* app-only UI switch (Android app or ?appui=1 preview): only adds the class "app-ui" to <html>, see src/lib/native-app.ts */}
         <script dangerouslySetInnerHTML={{ __html: APP_UI_BOOT_SCRIPT }} />
+        {/* the dictionary of the page's language: a static script cached for a year (and by the service worker) instead of ~280 KB inside every HTML document; must run before hydration, so no async / defer */}
+        <script src={dictScriptUrl(locale)} />
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
-          <I18nProvider locale={locale} messages={DICTIONARIES[locale]}>
+          <I18nProvider locale={locale}>
             <SiteSettingsInjector />
             <PWARegister />
             <OfflineSync />
