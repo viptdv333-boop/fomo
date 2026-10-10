@@ -30,6 +30,8 @@ export interface SheetRow {
   chips?: { key: string; label: string; on: boolean; locked?: boolean; onClick?: () => void }[];
   inline?: { value: string; ph: string; onChange: (v: string) => void; inputMode?: "text" | "numeric" | "decimal"; type?: string };
   extra?: ReactNode;
+  /** the row has something unread: tinted with a 2px border (data-unread), "c" = red, "l" = pink */
+  unread?: "c" | "l";
   /** a complete custom row (its own `ac-sr` markup) instead of the generated one; may render nothing */
   node?: ReactNode;
 }
@@ -177,11 +179,11 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
           </>
         );
         return r.onClick && !r.disabled ? (
-          <button key={r.key} type="button" className="ac-sr" onClick={r.onClick}>
+          <button key={r.key} type="button" className="ac-sr" data-unread={r.unread} onClick={r.onClick}>
             {body}
           </button>
         ) : (
-          <div key={r.key} className="ac-sr" data-disabled={r.disabled ? "1" : undefined}>
+          <div key={r.key} className="ac-sr" data-unread={r.unread} data-disabled={r.disabled ? "1" : undefined}>
             {body}
           </div>
         );

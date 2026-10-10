@@ -34,7 +34,9 @@ import ChIcon from "./ChIcon";
 import { ChNav, shareOrCopy, useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useChannelList, useMySubs } from "./useChannelsData";
 import { useUnreadByIdea } from "../useUnreadByIdea";
-import { likeLabel, unreadAccent, unreadLabel } from "@/lib/app-unread";
+import { unreadAccent, unreadLabel, unreadOffList } from "@/lib/app-unread";
+import { UnreadChip } from "../IdeaUnreadMarks";
+import { useUnreadIdeaCards } from "../useUnreadIdeaCards";
 
 interface PostItem {
   id: string;
@@ -135,6 +137,15 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const pending = !!channel && subs.pending.has(channel.id) && !subscribed;
   const canView = isOwner || subscribed;
   const mySub = channel ? subs.index.subByChannel.get(channel.id) : undefined;
+
+  // a post of this channel with something new (a comment, a reply, a like) that is not among the loaded ones goes on top as a highlighted post
+  // (the dock badge of «Каналы» counts it, so it has to be found here); at most 5
+  const offIds = useMemo(
+    () => (canView && posts ? unreadOffList(channel ? unread.byChannel[channel.id]?.ideas ?? [] : [], posts.map((p) => p.id), 5) : []),
+    [canView, posts, channel, unread.byChannel],
+  );
+  const fetchedPosts = useUnreadIdeaCards(offIds);
+  const shownPosts = useMemo(() => [...offIds.map((id) => fetchedPosts[id] as PostItem | undefined).filter((p): p is PostItem => !!p), ...(posts ?? [])], [offIds, fetchedPosts, posts]);
 
   const loadPosts = useCallback(async () => {
     if (!channel) return;
@@ -405,7 +416,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
           <div className="ach-note">{t("channels.noPublications")}</div>
         ) : (
           <div className="ach-posts">
-            {posts.map((p) => (
+            {shownPosts.map((p) => (
               <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {isOwner && (
                   <div className="ach-postacts">
@@ -442,12 +453,8 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                         {unreadLabel(unread.byIdea[p.id])}
                       </span>
                     )}
-                    {canView && likeLabel(unread.byIdea[p.id]) && (
-                      <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: likeLabel(unread.byIdea[p.id]) })}>
-                        {"♥"} {likeLabel(unread.byIdea[p.id])}
-                      </span>
-                    )}
                   </div>
+                  {canView && <UnreadChip entry={unread.byIdea[p.id]} />}
                   {(p.content || p.preview) && (
                     <div className="ach-post-body" data-open={p.content ? "1" : undefined} data-locked={canView ? undefined : "1"}>
                       {p.content || p.preview}

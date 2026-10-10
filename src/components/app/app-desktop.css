@@ -63,8 +63,7 @@ html.app-ui.app-desktop .app-row:hover,
 html.app-ui.app-desktop .ac-row:hover,
 html.app-ui.app-desktop button.ac-sr:hover,
 html.app-ui.app-desktop .app-term-wrow:hover,
-html.app-ui.app-desktop .app-term-tool:hover,
-html.app-ui.app-desktop .app-unread-strip:hover { background: var(--app-press); }
+html.app-ui.app-desktop .app-term-tool:hover { background: var(--app-press); }
 html.app-ui.app-desktop .app-term-chip:hover:not([data-on="1"]),
 html.app-ui.app-desktop .app-term-range:hover:not([data-on="1"]),
 html.app-ui.app-desktop .app-chips > button:hover:not([data-on="1"]),

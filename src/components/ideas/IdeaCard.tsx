@@ -12,8 +12,8 @@ import { formatMessageTime } from "@/lib/format-message-time";
 import { agoLabel } from "@/lib/app-ui";
 import { useAppUi } from "@/components/app/useAppUi";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
-import { likeLabel, unreadAccent, unreadLabel } from "@/lib/app-unread";
-import IdeaUnreadMarks from "@/components/app/IdeaUnreadMarks";
+import { unreadAccent, unreadLabel } from "@/lib/app-unread";
+import IdeaUnreadMarks, { UnreadChip } from "@/components/app/IdeaUnreadMarks";
 import { useT } from "@/lib/i18n/client";
 import { sendOrQueue } from "@/lib/outbox/send";
 import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
@@ -90,11 +90,10 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const { t, locale } = useT();
   const { data: session } = useSession();
   const appUi = useAppUi();
-  // red count of unread comments + pink hearts of unread likes under this idea (app UI: the board card, the list and the grid view)
+  // app UI: an idea with a new comment / reply / like is tinted with a 2px border (data-unread) and carries a label of what is new (UnreadChip), in the
+  // board card, the list and the grid view; the red count of unread comments stays in the title line
   const unreadMap = useUnreadByIdea(appUi);
   const unreadBadge = unreadLabel(unreadMap.byIdea[idea.id]);
-  // pink «♥ N»: unread likes of this idea / of comments under it (they are in the dock badge but not in the red comment count)
-  const likeBadge = likeLabel(unreadMap.byIdea[idea.id]);
   const unreadMark = unreadAccent(unreadMap.byIdea[idea.id]);
   const [likedLocal, setLiked] = useState(idea.userVote === 1);
   const [likeCountLocal, setLikeCount] = useState(idea.voteScore);
@@ -187,17 +186,13 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
+        <UnreadChip entry={unreadMap.byIdea[idea.id]} />
         <div className="app-idea-head">
           <div className="app-idea-title">
             <Link href={`/ideas/${idea.id}`}>{idea.title}</Link>
             {unreadBadge && (
               <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n: unreadBadge })}>
                 {unreadBadge}
-              </span>
-            )}
-            {likeBadge && (
-              <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: likeBadge })}>
-                {"♥"} {likeBadge}
               </span>
             )}
             {isNew && <NewBadge className="ml-2 align-middle" />}
@@ -255,6 +250,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               </span>
             )}
           </div>
+          {appUi && <UnreadChip entry={unreadMap.byIdea[idea.id]} className="app-uchip-row" />}
         </Link>
         <FomoMark className="shrink-0" />
         <span className="text-xs text-gray-400 shrink-0">{idea.author.displayName}</span>
@@ -292,6 +288,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
+        {appUi && <UnreadChip entry={unreadMap.byIdea[idea.id]} className="app-uchip-row" />}
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}>
             {idea.author.avatarUrl ? (

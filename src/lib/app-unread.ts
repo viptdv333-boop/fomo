@@ -46,10 +46,14 @@ export function ideaCommentLink(ideaId: string, commentId: string): string {
 export interface UnreadEntry {
   /** unread comments (new_comment + comment_reply + channel_comment) */
   c: number;
+  /** of those `c`: replies to MY comment (comment_reply): «Ответ на ваш комментарий». Not an extra count (c already has them). */
+  r: number;
   /** unread «new post» notifications (channel_post): 0 or 1 in practice */
   p: number;
   /** unread like notifications (idea_like + comment_like), one per notification row (a row may name several people): the pink «♥ N», NOT part of the red comment count */
   l: number;
+  /** per-channel entries only: the ideas (posts) of the channel that have something unread, oldest unread first */
+  ideas?: string[];
 }
 /** What kind of unread item a notification is: a comment, a new post, a like. */
 export type UnreadKind = "c" | "p" | "l";
@@ -57,7 +61,8 @@ export type UnreadKind = "c" | "p" | "l";
  * Everything the dock counts for one tab, explained inside the section:
  *   n comments + replies, p new posts, l likes, total = n + p + l (= the dock number of that tab),
  *   first = the idea of the OLDEST unread item of any kind (the strip opens it), firstKind its kind,
- *   firstComment = the comment named by that item's link (`?comment=`), null when the link names none.
+ *   firstComment = the comment named by that item's link (`?comment=`), null when the link names none,
+ *   ideas = the ideas that carry something unread, oldest unread first: the screens put the ones that are not in the loaded list on top as highlighted cards.
  */
 export interface UnreadBucket {
   n: number;
@@ -67,6 +72,7 @@ export interface UnreadBucket {
   first: string | null;
   firstKind: UnreadKind | null;
   firstComment: string | null;
+  ideas: string[];
 }
 export interface UnreadMap {
   byIdea: Record<string, UnreadEntry>;
@@ -84,7 +90,7 @@ export interface UnreadRow {
 }
 
 export function emptyBucket(): UnreadBucket {
-  return { n: 0, p: 0, l: 0, total: 0, first: null, firstKind: null, firstComment: null };
+  return { n: 0, p: 0, l: 0, total: 0, first: null, firstKind: null, firstComment: null, ideas: [] };
 }
 export function emptyUnread(): UnreadMap {
   return { byIdea: {}, byChannel: {}, first: null, board: emptyBucket(), channels: emptyBucket() };
@@ -118,6 +124,7 @@ function addTo(b: UnreadBucket, kind: UnreadKind, ideaId: string, link: string |
   else if (kind === "p") b.p++;
   else b.l++;
   b.total++;
+  if (!b.ideas.includes(ideaId)) b.ideas.push(ideaId);
   if (b.first === null) {
     b.first = ideaId;
     b.firstKind = kind;
@@ -137,9 +144,17 @@ export function aggregateUnread(rows: readonly UnreadRow[], tariffByIdea: Tariff
     if (!kind) continue;
     const id = ideaIdFromLink(r.link);
     if (!id || !tariffByIdea.has(id)) continue;
-    (out.byIdea[id] ??= { c: 0, p: 0, l: 0 })[kind]++;
+    const reply = r.type === "comment_reply" ? 1 : 0;
+    const mine = (out.byIdea[id] ??= { c: 0, r: 0, p: 0, l: 0 });
+    mine[kind]++;
+    mine.r += reply;
     const ch = tariffByIdea.get(id);
-    if (ch) (out.byChannel[ch] ??= { c: 0, p: 0, l: 0 })[kind]++;
+    if (ch) {
+      const chE = (out.byChannel[ch] ??= { c: 0, r: 0, p: 0, l: 0, ideas: [] });
+      chE[kind]++;
+      chE.r += reply;
+      if (!chE.ideas!.includes(id)) chE.ideas!.push(id);
+    }
     if (kind === "c" && out.first === null) out.first = id;
     // the dock tab decides where the item is explained (same rule as effectiveByType)
     const tab = tabForNotifType(dockTypeOf(r.type, ch));
@@ -171,26 +186,6 @@ export function effectiveByType(others: Record<string, number>, ideaRows: readon
   return out;
 }
 
-/** The text of a strip: comments only / likes only / posts only / a mix («Новое: N»). null = nothing to show. */
-export type StripText = { key: "appui.newComments" | "appui.newLikes" | "appui.newPosts" | "appui.newAny"; n: number };
-export function stripText(b: Pick<UnreadBucket, "n" | "p" | "l"> | null | undefined): StripText | null {
-  if (!b) return null;
-  const n = Math.max(0, b.n || 0);
-  const p = Math.max(0, b.p || 0);
-  const l = Math.max(0, b.l || 0);
-  const total = n + p + l;
-  if (total <= 0) return null;
-  if (n === total) return { key: "appui.newComments", n: total };
-  if (l === total) return { key: "appui.newLikes", n: total };
-  if (p === total) return { key: "appui.newPosts", n: total };
-  return { key: "appui.newAny", n: total };
-}
-/** Where a strip leads: the oldest unread idea, on the comment its notification names (the idea page scrolls to it). null = nothing to open. */
-export function stripHref(b: Pick<UnreadBucket, "first" | "firstComment"> | null | undefined): string | null {
-  if (!b || !b.first) return null;
-  return `/ideas/${b.first}${b.firstComment ? `?comment=${b.firstComment}` : ""}`;
-}
-
 /** The red number of an idea / channel: its comments (a new post alone shows as 1). Likes are not in it (see likeLabel). */
 export function unreadCount(e: Pick<UnreadEntry, "c" | "p"> | undefined | null): number {
   if (!e) return 0;
@@ -212,6 +207,63 @@ export function unreadAccent(e: Partial<UnreadEntry> | undefined | null): "c" | 
   if (!e) return undefined;
   if ((e.c ?? 0) + (e.p ?? 0) > 0) return "c";
   return (e.l ?? 0) > 0 ? "l" : undefined;
+}
+
+/** One kind of what is new on a card: comments (without replies), replies to my comment, a new post, likes. */
+export type ChipKind = "c" | "r" | "p" | "l";
+export interface ChipPart {
+  kind: ChipKind;
+  n: number;
+}
+/** What the label chip of a card says is new, in the order comments, replies, post, likes. The sum of the parts = c + p + l (the dock counts the same rows). */
+export function unreadChipParts(e: Partial<UnreadEntry> | undefined | null): ChipPart[] {
+  if (!e) return [];
+  const c = Math.max(0, e.c ?? 0);
+  const r = Math.min(c, Math.max(0, e.r ?? 0));
+  const parts: ChipPart[] = [
+    { kind: "c", n: c - r },
+    { kind: "r", n: r },
+    { kind: "p", n: Math.max(0, e.p ?? 0) },
+    { kind: "l", n: Math.max(0, e.l ?? 0) },
+  ];
+  return parts.filter((x) => x.n > 0);
+}
+/** Plural category of a count for the chip texts: Russian one / few / many, English one / many, Chinese many. */
+export function chipPlural(n: number, locale: string): "one" | "few" | "many" {
+  const v = Math.abs(Math.floor(n));
+  if (locale === "ru") {
+    if (v % 10 === 1 && v % 100 !== 11) return "one";
+    if (v % 10 >= 2 && v % 10 <= 4 && (v % 100 < 12 || v % 100 > 14)) return "few";
+    return "many";
+  }
+  if (locale === "en") return v === 1 ? "one" : "many";
+  return "many";
+}
+/**
+ * The i18n key + count of one part of the chip. A chip with ONE kind says it in full («Новый комментарий» / «Новых комментариев: N» / «Ответ на ваш
+ * комментарий» / «Ответов: N» / «Новый пост» / «♥ Лайк» / «♥ N»); a chip with several kinds is short («2 комментария · 1 ответ · ♥ 3»).
+ */
+export function chipText(part: ChipPart, alone: boolean, locale: string): { key: string; n: number } {
+  if (alone) return { key: `appui.chip.${part.kind}${part.n === 1 ? "1" : "N"}`, n: part.n };
+  if (part.kind === "l") return { key: "appui.chip.lN", n: part.n };
+  return { key: `appui.chipS.${part.kind}.${chipPlural(part.n, locale)}`, n: part.n };
+}
+/** The accent of the chip: "l" (pink) when there are only likes, otherwise "c" (red). undefined = nothing unread. Same rule as the accent on the card's edge. */
+export function chipAccent(e: Partial<UnreadEntry> | undefined | null): "c" | "l" | undefined {
+  return unreadAccent(e);
+}
+/**
+ * The unread ideas that must be put on top of a list because the list as loaded does not show them: from `unreadIds` (oldest unread first) those that are
+ * not among `shownIds` (the cards the reader sees without scrolling), at most `cap`. Keeps the order; duplicates dropped.
+ */
+export function unreadOffList(unreadIds: readonly string[], shownIds: readonly string[], cap = 5): string[] {
+  const shown = new Set(shownIds);
+  const out: string[] = [];
+  for (const id of unreadIds) {
+    if (out.length >= cap) break;
+    if (!shown.has(id) && !out.includes(id)) out.push(id);
+  }
+  return out;
 }
 
 export interface ThreadComment {

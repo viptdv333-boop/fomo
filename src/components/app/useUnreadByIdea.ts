@@ -6,7 +6,7 @@ import { getSocket } from "@/lib/socket";
 import { emptyBucket, emptyUnread, type UnreadBucket, type UnreadEntry, type UnreadMap } from "@/lib/app-unread";
 
 /**
- * Unread comments / new posts / likes per idea and per channel (plus the two strips: board, channels) (GET /api/notifications/unread-by-idea) for the red counts on channel rows, post cards,
+ * Unread comments / new posts / likes per idea and per channel (plus the two buckets that add up to the dock numbers: board, channels) (GET /api/notifications/unread-by-idea) for the red counts on channel rows, post cards,
  * board cards and «Мои идеи». One shared store: every card that asks for the numbers uses the same request. Refreshed on the socket's
  * new_notification, on `fomo:unread-changed` (an idea was opened and marked its notifications read), when the app comes back to the
  * foreground and every minute while a screen shows them.
@@ -18,11 +18,11 @@ function bucketOf(b: Partial<UnreadBucket> | undefined): UnreadBucket {
   const n = b?.n ?? 0;
   const p = b?.p ?? 0;
   const l = b?.l ?? 0;
-  return { ...emptyBucket(), ...b, n, p, l, total: b?.total ?? n + p + l };
+  return { ...emptyBucket(), ...b, n, p, l, total: b?.total ?? n + p + l, ideas: Array.isArray(b?.ideas) ? b.ideas : [] };
 }
 function entriesOf(m: Record<string, Partial<UnreadEntry>> | undefined): Record<string, UnreadEntry> {
   const out: Record<string, UnreadEntry> = {};
-  for (const [k, e] of Object.entries(m ?? {})) out[k] = { c: e.c ?? 0, p: e.p ?? 0, l: e.l ?? 0 };
+  for (const [k, e] of Object.entries(m ?? {})) out[k] = { c: e.c ?? 0, r: e.r ?? 0, p: e.p ?? 0, l: e.l ?? 0, ...(Array.isArray(e.ideas) ? { ideas: e.ideas } : {}) };
   return out;
 }
 let state: UnreadMap = EMPTY;

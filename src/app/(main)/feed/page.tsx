@@ -8,8 +8,9 @@ import IdeaCardBase from "@/components/ideas/IdeaCard";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 import DemoGate from "@/components/shared/DemoGate";
-import AppUnreadStrip from "@/components/app/AppUnreadStrip";
-import IdeaUnreadMarks, { ideaUnreadMarks } from "@/components/app/IdeaUnreadMarks";
+import IdeaUnreadMarks, { UnreadChip, ideaUnreadMarks } from "@/components/app/IdeaUnreadMarks";
+import { useUnreadIdeaCards } from "@/components/app/useUnreadIdeaCards";
+import { unreadOffList } from "@/lib/app-unread";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
 import { useAppUi } from "@/components/app/useAppUi";
 
@@ -99,8 +100,6 @@ export default function FeedPageWrapper() {
           </Link>
         )}
       </div>
-      {/* app UI only: unread comments under ideas, one tap to the first of them */}
-      <AppUnreadStrip />
       {/* a guest browses the board freely for a limited daily demo time (shared with the terminal and the calendar), then sees it blurred under a sign-in card */}
       <DemoGate kind="feed" path="/feed" layout="flow">
         <Suspense fallback={<div className="text-gray-500 py-12 text-center">{t("common.loading")}</div>}>
@@ -111,7 +110,7 @@ export default function FeedPageWrapper() {
   );
 }
 
-/** The «ТОП 1..3» card: a link to the idea carrying the thin accent of an unread one (app UI only; the red / pink marks come from TopIdeaMarks). */
+/** The «ТОП 1..3» card: a link to the idea; an unread one is tinted with a 2px border (app UI only; the red count + the label come from TopIdeaMarks / TopIdeaChip). */
 function TopIdeaLink({ idea, children, ...rest }: { idea: { id: string }; children: React.ReactNode } & Omit<React.ComponentProps<typeof Link>, "href">) {
   const appUi = useAppUi();
   const u = useUnreadByIdea(appUi);
@@ -125,6 +124,11 @@ function TopIdeaMarks({ id }: { id: string }) {
   const appUi = useAppUi();
   const u = useUnreadByIdea(appUi);
   return appUi ? <IdeaUnreadMarks entry={u.byIdea[id]} /> : null;
+}
+function TopIdeaChip({ id }: { id: string }) {
+  const appUi = useAppUi();
+  const u = useUnreadByIdea(appUi);
+  return appUi ? <UnreadChip entry={u.byIdea[id]} className="app-uchip-row" /> : null;
 }
 
 function FeedPage() {
@@ -312,8 +316,23 @@ function FeedPage() {
     });
   }, []);
 
+  // App UI: an idea with a new comment / reply / like that the first screen of the list does not show (an old post, another page) goes on top as a highlighted
+  // card, so everything the dock badge of «Доска» counts is found among the highlighted cards. Only on the plain board (no filter / sort / page): there the
+  // list is "everything", elsewhere a foreign card on top would be a surprise. At most 5; the idea comes from the loaded list or from the idea endpoint.
+  const appUi = useAppUi();
+  const unreadMap = useUnreadByIdea(appUi);
+  const plainBoard = board === "all" && page === 1 && !selectedInstrument && !selectedAssetSlug && !authorFilter && paidFilter === "all" && !showArchived && sortBy === "date" && sortOrder === "desc";
+  const offIds = useMemo(
+    () => (appUi && plainBoard && !loading ? unreadOffList(unreadMap.board.ideas, ideas.slice(0, FIRST_CARDS).map((i) => i.id), 5) : []),
+    [appUi, plainBoard, loading, unreadMap.board.ideas, ideas],
+  );
+  const fetchedIdeas = useUnreadIdeaCards(useMemo(() => offIds.filter((id) => !ideas.some((i) => i.id === id)), [offIds, ideas]));
+  const topUnread = useMemo(() => offIds.map((id) => ideas.find((i) => i.id === id) ?? (fetchedIdeas[id] as IdeaData | undefined)).filter((i): i is IdeaData => !!i), [offIds, ideas, fetchedIdeas]);
+  const restIdeas = useMemo(() => (offIds.length ? ideas.filter((i) => !offIds.includes(i.id)) : ideas), [offIds, ideas]);
+  const shownIdeas = useMemo(() => [...topUnread, ...restIdeas.slice(0, shownCount)], [topUnread, restIdeas, shownCount]);
+
   // more cards when the reader gets near the end of the ones that are there
-  const total = ideas.length;
+  const total = restIdeas.length;
   useEffect(() => {
     const el = sentinel.current;
     if (!el || total <= shownCount || typeof IntersectionObserver === "undefined") return;
@@ -692,6 +711,7 @@ function FeedPage() {
                   <TopIdeaMarks id={idea.id} />
                   {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
                 </div>
+                <TopIdeaChip id={idea.id} />
                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <span>{idea.author.displayName}</span>
@@ -754,25 +774,25 @@ function FeedPage() {
         </div>
       ) : viewMode === "cards" ? (
         <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ideas.slice(0, shownCount).map((idea) => (
+          {shownIdeas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact />
           ))}
         </div>
       ) : viewMode === "list" ? (
         <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
-          {ideas.slice(0, shownCount).map((idea) => (
+          {shownIdeas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
           ))}
         </div>
       ) : (
         <div data-app-grid className="flex flex-col gap-4">
-          {ideas.slice(0, shownCount).map((idea) => (
+          {shownIdeas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} />
           ))}
         </div>
       )}
 
-      {ideas.length > shownCount && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
+      {restIdeas.length > shownCount && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
 
       {/* Pagination */}
       {!loading && ideas.length > 0 && (

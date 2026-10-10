@@ -8,11 +8,12 @@ import { isTerminalSite } from "@/lib/site-mode";
 // Main site only (the terminal site has no ideas: src/lib/site-mode.ts keeps this route closed there).
 //
 // GET                 — unread comment / new-post / like notifications of the session user per idea and per channel:
-//                       { byIdea: { <ideaId>: { c, p, l } }, byChannel: { <channelId>: { c, p, l } }, first: <ideaId> | null,
-//                         board: { n, p, l, total, first, firstKind, firstComment }, channels: { ...same } }.
-//                       c = comments + replies, p = new post, l = likes; board / channels explain the dock numbers of «Доска» / «Каналы»
-//                       (total = the dock number). Red counts + pink hearts on channel rows, post cards, board cards, «Мои идеи» and the strips
-//                       (src/components/app/useUnreadByIdea.ts).
+//                       { byIdea: { <ideaId>: { c, r, p, l } }, byChannel: { <channelId>: { c, r, p, l, ideas } }, first: <ideaId> | null,
+//                         board: { n, p, l, total, first, firstKind, firstComment, ideas }, channels: { ...same } }.
+//                       c = comments + replies (r = of those the replies to my comment), p = new post, l = likes; board / channels explain the dock
+//                       numbers of «Доска» / «Каналы» (total = the dock number); `ideas` = the ideas that carry something unread, oldest first. The app UI
+//                       tints those cards with a label of what is new (src/components/app/useUnreadByIdea.ts, IdeaUnreadMarks.tsx) and puts the ones
+//                       that are not in the loaded list on top.
 // GET ?ideaId=<id>    — the unread notifications of ONE idea, read BEFORE the idea marks them read: { total, ids, since, likes } where ids are the
 //                       comment ids named by the links (?comment=<id>; comments first, then the comments that were liked, oldest first), since the time
 //                       of the oldest comment notification (the jump target of an old notification without a comment id) and likes the number of people

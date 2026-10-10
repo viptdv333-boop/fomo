@@ -42,8 +42,8 @@ import ChIcon from "./ChIcon";
 import { useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useAuthorList, useChannelList, useMySubs } from "./useChannelsData";
 import { useUnreadByIdea } from "../useUnreadByIdea";
-import { likeLabel, unreadLabel, unreadAccent } from "@/lib/app-unread";
-import { UnreadStripView } from "../AppUnreadStrip";
+import { hasUnread, unreadLabel, unreadAccent } from "@/lib/app-unread";
+import { UnreadChip } from "../IdeaUnreadMarks";
 
 /** the list scroll survives a visit to a channel / an author (the page is a route, so it unmounts while the detail is open) */
 const savedScroll: Record<string, number> = {};
@@ -90,8 +90,11 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
 
   const channelList = useMemo(() => {
     const all = chans.items ?? [];
-    return sortChannels(channelsWithInstrument(filterChannels(all, query), instrument), cSort.f, cSort.d);
-  }, [chans.items, query, instrument, cSort]);
+    const sorted = sortChannels(channelsWithInstrument(filterChannels(all, query), instrument), cSort.f, cSort.d);
+    // channels with something new (a post, a comment, a reply, a like) come first as highlighted cards: what the dock badge of «Каналы» counts is on top
+    const fresh = sorted.filter((c) => hasUnread(unread.byChannel[c.id]));
+    return fresh.length && fresh.length < sorted.length ? [...fresh, ...sorted.filter((c) => !hasUnread(unread.byChannel[c.id]))] : sorted;
+  }, [chans.items, query, instrument, cSort, unread.byChannel]);
   const topRanks = useMemo(() => topChannelRanks(chans.items ?? []), [chans.items]);
   const instruments = useMemo(() => channelInstruments(chans.items ?? []), [chans.items]);
 
@@ -229,24 +232,14 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
   // the «ТОП 1..3» / owner marks of the old pages: a small chip on the tile / avatar, so the lines of the design keep their width
   const topBadge = (rank: number | undefined) => (rank === undefined ? null : <span className="ach-chip">{rank === 0 ? "\u{1F451}" : t(`top.${rank}`)}</span>);
 
+  // the red count of unread comments / the new post next to the channel name; WHAT is new is said by the label chip (UnreadChip) and the tinted card
   const unreadPill = (c: ChannelItem) => {
     const n = unreadLabel(unread.byChannel[c.id]);
-    const lk = likeLabel(unread.byChannel[c.id]);
-    if (!n && !lk) return null;
-    return (
-      <>
-        {n && (
-          <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n })}>
-            {n}
-          </span>
-        )}
-        {lk && (
-          <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: lk })}>
-            {"♥"} {lk}
-          </span>
-        )}
-      </>
-    );
+    return n ? (
+      <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n })}>
+        {n}
+      </span>
+    ) : null;
   };
 
   const channelCard = (c: ChannelItem) => {
@@ -254,6 +247,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
     const tags = channelTags(c);
     return (
       <div key={c.id} role="link" tabIndex={0} className="ach-card" data-unread={unreadAccent(unread.byChannel[c.id])} onClick={() => openChannel(c)} onKeyDown={onEnter(() => openChannel(c))}>
+        <UnreadChip entry={unread.byChannel[c.id]} />
         <div className="ach-ctop">
           <div className="ach-tile">
             {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : channelEmoji(c.id)}
@@ -312,6 +306,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
             <div className="ach-asub">
               {c.author.displayName} · {c.price > 0 ? priceAndPeriod(c.price, c.durationDays, locale) : t("appch.free")}
             </div>
+            <UnreadChip entry={unread.byChannel[c.id]} className="app-uchip-row" />
           </div>
           <span className="ach-status" data-kind={st.kind} onClick={(e) => onPill(e, c, st.kind)}>
             {st.kind === "active" ? t("channels.subscribed") : st.label}
@@ -419,9 +414,6 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
           </button>
         ))}
       </div>
-
-      {/* everything the «Каналы» dock badge counts (new posts, comments, likes), one tap to the oldest unread post */}
-      {seg === "channels" && <UnreadStripView bucket={unread.channels} scope="channels" />}
 
       {seg === "channels" ? <div className="ach-intro">{t("appch.intro")}</div> : (
         <div className="ach-search">
