@@ -60,6 +60,7 @@ service worker keeps it cache-first, `I18nProvider` reads it before hydration (o
 
 ## Risks / things to know
 
+* A different account (sign-in after browsing as a guest, sign-out) throws every kept screen away: they mount again with the new user's data.
 * Effects of a screen run again on every show (refresh). A screen that resets its state in a mount effect would flash: the feed was fixed (silent
   refresh); the others keep their data.
 * `Activity` is taken from the vendored React by its symbol (`Symbol.for("react.activity")`); a Next upgrade that changes it shows up as the host

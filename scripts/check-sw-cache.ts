@@ -113,6 +113,7 @@ const HTML = '<link rel="stylesheet" href="/_next/static/css/e4c19c25e77f3031.cs
 eq("html: script / link tags and the flight data's relative chunk names", chunkUrlsFromHtml(HTML).sort(), ["/_next/static/chunks/app/(main)/chat/page-aa11.js", "/_next/static/chunks/webpack-057fd5dd37bf6c06.js", "/_next/static/css/e4c19c25e77f3031.css"].sort());
 eq("runtime url found among loaded resources", runtimeUrl(["http://x/_next/static/chunks/a.js", "http://x/_next/static/chunks/webpack-057fd5dd37bf6c06.js?dpl=1"]), "http://x/_next/static/chunks/webpack-057fd5dd37bf6c06.js?dpl=1");
 eq("loaded resources worth storing", storableResources(["http://x/_next/static/chunks/a.js", "http://x/images/h.webp", "http://x/api/ideas", "http://y/_next/static/z.js", "http://x/logo-fomo-sm.webp"], "http://x"), ["/_next/static/chunks/a.js", "/images/h.webp", "/logo-fomo-sm.webp"]);
+eq("the dictionary script is worth storing (loaded before the worker controlled the page)", storableResources(["http://x/i18n/ru-5b615a9c26.js"], "http://x"), ["/i18n/ru-5b615a9c26.js"]);
 
 // --- the warm-up: when it may run, what it asks for
 const base = { enabled: true, online: true, hidden: false, slow: false, last: 0, now: 10 * WARMUP_EVERY_MS, force: false };

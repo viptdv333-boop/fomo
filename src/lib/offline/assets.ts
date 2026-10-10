@@ -50,7 +50,7 @@ export function storableResources(resourceNames: string[], origin: string): stri
   for (const n of resourceNames) {
     if (!n.startsWith(origin)) continue;
     const p = n.slice(origin.length).split("#")[0];
-    if (/^\/(?:_next\/static\/|icons\/|icons-terminal\/|images\/|landing\/|logo-|icon-)/.test(p)) out.push(p);
+    if (/^\/(?:_next\/static\/|i18n\/|icons\/|icons-terminal\/|images\/|landing\/|logo-|icon-)/.test(p)) out.push(p);
   }
   return Array.from(new Set(out));
 }

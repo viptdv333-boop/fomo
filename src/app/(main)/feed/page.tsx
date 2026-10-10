@@ -13,6 +13,9 @@ import AppUnreadStrip from "@/components/app/AppUnreadStrip";
 // the cards do not re-render when the board re-renders for a reason that does not touch them (a tab switch changes the URL: useSearchParams)
 const IdeaCard = memo(IdeaCardBase);
 
+const FIRST_CARDS = 12;
+const MORE_CARDS = 12;
+
 interface Instrument {
   id: string;
   name: string;
@@ -127,8 +130,12 @@ function FeedPage() {
   // Silent refresh (the tab comes back, the timer): the list that is on screen stays; fresher posts wait behind a «Новое: N» pill when the reader has
   // scrolled down or is touching the screen, and are applied at once only when the list is at its top (nothing jumps under the finger).
   const [held, setHeld] = useState<IdeaData[] | null>(null);
-  const shownRef = useRef<{ key: string; ids: string[] }>({ key: "", ids: [] });
+  const shownRef = useRef<{ key: string; ids: string[]; json: string }>({ key: "", ids: [], json: "" });
   const touching = useRef(false);
+  // Only the first cards are on the page; the next ones are added as the reader nears the end of what is there (a board of 50 cards costs ~50 sets of
+  // hooks and effects every time the tab is shown). Everything below the fold is a sentinel away.
+  const [shownCount, setShownCount] = useState(FIRST_CARDS);
+  const sentinel = useRef<HTMLDivElement | null>(null);
 
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -241,7 +248,10 @@ function FeedPage() {
     const key = params.toString();
     // the same query as the list on screen: refresh in place, no skeleton
     const silent = shownRef.current.key === key && shownRef.current.ids.length > 0;
-    if (!silent) setLoading(true);
+    if (!silent) {
+      setLoading(true);
+      setShownCount(FIRST_CARDS);
+    }
     let list: IdeaData[];
     try {
       const res = await fetch(`/api/ideas?${params}`);
@@ -251,13 +261,19 @@ function FeedPage() {
       if (silent) return; // offline / a hiccup: the list on screen is still the best there is
       throw e;
     }
+    const json = JSON.stringify(list);
+    if (silent && json === shownRef.current.json) {
+      setHeld(null); // nothing changed: the cards on screen stay exactly as they are (no re-render of 50 cards)
+      setLoading(false);
+      return;
+    }
     const main = document.querySelector("main");
     const atTop = (main?.scrollTop ?? 0) < 80 && !touching.current;
     const fresh = list.some((i) => !shownRef.current.ids.includes(i.id));
     if (silent && fresh && !atTop) {
       setHeld(list);
     } else {
-      shownRef.current = { key, ids: list.map((i) => i.id) };
+      shownRef.current = { key, ids: list.map((i) => i.id), json };
       setHeld(null);
       setIdeas(list);
     }
@@ -270,12 +286,27 @@ function FeedPage() {
   const applyHeld = useCallback(() => {
     setHeld((h) => {
       if (h) {
-        shownRef.current = { key: shownRef.current.key, ids: h.map((i) => i.id) };
+        shownRef.current = { key: shownRef.current.key, ids: h.map((i) => i.id), json: JSON.stringify(h) };
         setIdeas(h);
       }
       return null;
     });
   }, []);
+
+  // more cards when the reader gets near the end of the ones that are there
+  const total = ideas.length;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || total <= shownCount || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShownCount((n) => n + MORE_CARDS);
+      },
+      { root: document.querySelector("main"), rootMargin: "0px 0px 900px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [total, shownCount]);
 
   // the list is looked at: keep it fresh in the background; the held posts go in when the reader is back at the top
   useEffect(() => {
@@ -703,23 +734,25 @@ function FeedPage() {
         </div>
       ) : viewMode === "cards" ? (
         <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ideas.map((idea) => (
+          {ideas.slice(0, shownCount).map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact />
           ))}
         </div>
       ) : viewMode === "list" ? (
         <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
-          {ideas.map((idea) => (
+          {ideas.slice(0, shownCount).map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
           ))}
         </div>
       ) : (
         <div data-app-grid className="flex flex-col gap-4">
-          {ideas.map((idea) => (
+          {ideas.slice(0, shownCount).map((idea) => (
             <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} />
           ))}
         </div>
       )}
+
+      {ideas.length > shownCount && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
 
       {/* Pagination */}
       {!loading && ideas.length > 0 && (

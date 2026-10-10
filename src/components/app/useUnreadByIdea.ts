@@ -32,9 +32,14 @@ export function refreshUnread(force = false): Promise<void> {
       const r = await fetch("/api/notifications/unread-by-idea", { cache: "no-store" });
       if (r.ok) {
         const j = (await r.json()) as Partial<UnreadMap>;
-        state = { byIdea: j.byIdea ?? {}, byChannel: j.byChannel ?? {}, first: j.first ?? null, board: j.board ?? { n: 0, first: null } };
+        const next: UnreadMap = { byIdea: j.byIdea ?? {}, byChannel: j.byChannel ?? {}, first: j.first ?? null, board: j.board ?? { n: 0, first: null } };
+        // the same numbers again (a silent refresh when a screen comes back): nobody re-renders, with 50 cards on the board that is the difference
+        const changed = !loaded || JSON.stringify(next) !== JSON.stringify(state);
         loaded = true;
-        emit();
+        if (changed) {
+          state = next;
+          emit();
+        }
       }
     } catch {
       /* offline: the old numbers stay */

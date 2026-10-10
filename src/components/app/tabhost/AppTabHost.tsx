@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Suspense, createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, createContext, startTransition, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { hostTabForPath, isHostHref, maxMounted, prefetchOrder, touchTab, TRANSIENT_TABS, type HostScreenId } from "@/lib/app-tabhost";
 import { APP_TABS } from "@/lib/app-ui";
 import { apiReadsInFlight, subscribeApiReads } from "@/lib/offline/fetch-guard";
 import { useAppUi } from "../useAppUi";
 import { loadScreen, preloadScreens, savingData, screenFor, warmTerminalBars } from "./screens";
-import { clearPending, freshGeneration, hostNavigate, setHostOn, useFreshVersion, usePendingNav, useTabHostAllowed } from "./store";
+import { bumpFreshAll, clearPending, freshGeneration, hostNavigate, setHostOn, useFreshVersion, usePendingNav, useTabHostAllowed } from "./store";
 import { ScreenWarmCtx, startFirewall, warmConflict } from "./warm";
 import "./tabhost.css";
 
@@ -135,16 +136,26 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
   const activeRef = useRef(active);
   activeRef.current = active;
 
+  // Another account (sign-in after browsing as a guest, sign-out, a switch): what the kept screens hold belongs to the previous one. They are thrown away and mount again.
+  const { data: session, status } = useSession();
+  const uid = session?.user?.id ?? null;
+  const settledUid = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (status === "loading") return;
+    if (settledUid.current !== undefined && settledUid.current !== uid) bumpFreshAll();
+    settledUid.current = uid;
+  }, [status, uid]);
+
   // the screen being pre-mounted right now (invisible), if any
   const [warm, setWarm] = useState<HostScreenId | null>(null);
-  const warmRef = useRef<HostScreenId | null>(null);
-  warmRef.current = warm;
+  const warmRef = useRef<HostScreenId | null>(null); // set and cleared only by startWarm / endWarm (never from render)
   const stopFirewall = useRef<(() => void) | null>(null);
   const endWarm = () => {
     stopFirewall.current?.();
     stopFirewall.current = null;
     warmRef.current = null;
-    setWarm(null);
+    // same lane as the transition that started it: the later update wins, in order (an urgent update would be applied BEFORE the pending start)
+    startTransition(() => setWarm(null));
   };
 
   useEffect(() => {
@@ -198,6 +209,12 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
     if (!on) return;
     const stopPreload = preloadScreens(activeRef.current);
     let dead = false;
+    // a screen is not pre-mounted while the user is busy (a touch, a key in the last moments): the warm-up must never make a scroll or a tap stutter
+    let lastInput = 0;
+    const touched = () => (lastInput = Date.now());
+    document.addEventListener("touchstart", touched, { passive: true, capture: true });
+    document.addEventListener("pointerdown", touched, { passive: true, capture: true });
+    document.addEventListener("keydown", touched, { passive: true, capture: true });
     const run = async () => {
       await sleep(3000);
       if (document.readyState !== "complete") await new Promise<void>((r) => window.addEventListener("load", () => r(), { once: true }));
@@ -211,12 +228,17 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
           continue;
         }
         await idleSlot();
+        while (!dead && Date.now() - lastInput < 1500) await sleep(300);
         if (dead || document.hidden || warmConflict(activeRef.current, id)) continue;
-        // start: the screen mounts in a box that is not displayed, at the least recent end of the list
+        // start: the screen mounts in a box that is not displayed, at the least recent end of the list; as a transition, so rendering it yields to the user's input
         stopFirewall.current = startFirewall(id);
         warmRef.current = id;
-        setMounted((m) => (m.includes(id) ? m : [id, ...m]));
-        setWarm(id);
+        startTransition(() => {
+          setMounted((m) => (m.includes(id) ? m : [id, ...m]));
+          setWarm(id);
+        });
+        // it has to be on the page before its data is waited for
+        for (let i = 0; i < 50 && !dead && warmRef.current === id && !document.querySelector(`[data-tab-screen="${id}"][data-mode="warm"]`); i++) await sleep(100);
         // wait until its data has come (no /api read in flight for a moment), at most a few seconds; a tap anywhere else ends it earlier
         const t0 = Date.now();
         let quiet = 0;
@@ -234,6 +256,9 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
     void run();
     return () => {
       dead = true;
+      document.removeEventListener("touchstart", touched, { capture: true });
+      document.removeEventListener("pointerdown", touched, { capture: true });
+      document.removeEventListener("keydown", touched, { capture: true });
       stopPreload();
       stopFirewall.current?.();
       stopFirewall.current = null;

@@ -62,13 +62,33 @@ export function formatClock(utcMs: number, zone: string): string {
 }
 
 /** "Mon, 5 Oct" style heading for a YYYY-MM-DD date. */
+// A formatter is expensive to build (a month grid asks for ~35 headings on every render): one per locale + options, and the finished text per day
+const headingFmt = new Map<string, Intl.DateTimeFormat | null>();
+const headingText = new Map<string, string>();
 export function formatDayHeading(date: string, locale: string, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }): string {
-  const [y, m, d] = date.split("-").map(Number);
-  try {
-    return new Intl.DateTimeFormat(locale, { timeZone: "UTC", ...opts }).format(new Date(Date.UTC(y, m - 1, d, 12)));
-  } catch {
-    return date;
+  const fk = locale + "|" + JSON.stringify(opts);
+  const tk = fk + "|" + date;
+  const hit = headingText.get(tk);
+  if (hit !== undefined) return hit;
+  let f = headingFmt.get(fk);
+  if (f === undefined) {
+    try {
+      f = new Intl.DateTimeFormat(locale, { timeZone: "UTC", ...opts });
+    } catch {
+      f = null;
+    }
+    headingFmt.set(fk, f);
   }
+  const [y, m, d] = date.split("-").map(Number);
+  let out = date;
+  try {
+    if (f) out = f.format(new Date(Date.UTC(y, m - 1, d, 12)));
+  } catch {
+    out = date;
+  }
+  if (headingText.size > 800) headingText.clear();
+  headingText.set(tk, out);
+  return out;
 }
 
 export type RangePreset = "yesterday" | "today" | "tomorrow" | "week" | "d30" | "nextweek" | "custom";

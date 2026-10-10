@@ -54,6 +54,12 @@ function bumpFresh(tab: HostScreenId): void {
   freshVersion++;
   notify();
 }
+/** Every screen mounts again (the account changed: nothing a kept screen holds is the new user's). */
+export function bumpFreshAll(): void {
+  for (const id of ["feed", "terminal", "chat", "calendar", "channels", "authors", "me", "calculator"] as HostScreenId[]) freshGen[id] = (freshGen[id] ?? 0) + 1;
+  freshVersion++;
+  notify();
+}
 export function useFreshVersion(): number {
   return useSyncExternalStore(subscribe, () => freshVersion, () => 0);
 }
