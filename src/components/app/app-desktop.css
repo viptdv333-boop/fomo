@@ -21,8 +21,9 @@ html.app-ui.app-desktop {
   --app-gutter: 16px;
   --app-sheet-w: 560px;
 }
-/* a dock of three tabs (terminal.fomo.spot) does not need the whole column */
-html.app-ui.app-desktop:has(.app-tabbar[data-tabs="3"]) { --app-dock-w: min(560px, 92vw); }
+/* a dock of three or four tabs (terminal.fomo.spot) does not need the whole column */
+html.app-ui.app-desktop:has(.app-tabbar[data-tabs="3"]),
+html.app-ui.app-desktop:has(.app-tabbar[data-tabs="4"]) { --app-dock-w: min(560px, 92vw); }
 /* list screens use the wide column: the board, channels / authors (their cards go into columns below) */
 html.app-ui.app-desktop:has([data-app="feed-head"]),
 html.app-ui.app-desktop:has(.ach-list) { --app-col: min(1100px, 92vw); }

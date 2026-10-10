@@ -193,10 +193,10 @@ eq("jump: my own comments are never the target of an old notification", pickComm
 eq("jump: nothing to show", [pickCommentToShow(thread, {}), pickCommentToShow([], { wanted: "cm00000001", ids: ["cm00000001"], since: "2026-10-07T10:00:00.000Z" }), pickCommentToShow(thread, { since: "junk" })], [null, null, null]);
 
 /* ---------- dock carousel: unread numbers of the tabs scrolled out of sight ---------- */
-const boxes = ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"].map((id, i) => ({ id: id as AppTabId, left: i * 68, width: 68 }));
+const boxes = ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "settings", "me"].map((id, i) => ({ id: id as AppTabId, left: i * 68, width: 68 }));
 const dockCounts = { feed: 3, terminal: 2, channels: 5, me: 1 };
 eq("dock edge: scrolled to the middle (tabs 3..8 in view): Доска / Терминал are hidden on the left, профиль on the right", hiddenTabUnread(boxes, 136, 375, dockCounts), { l: 5, r: 1 });
-eq("dock edge: at the start the last tab (профиль) hangs off the right edge", hiddenTabUnread(boxes, 0, 375, dockCounts), { l: 0, r: 1 });
+eq("dock edge: at the start the half-visible tab (Каналы) and the last tab (профиль) hang off the right edge", hiddenTabUnread(boxes, 0, 375, dockCounts), { l: 0, r: 6 });
 eq("dock edge: everything visible / no unread", [hiddenTabUnread(boxes, 0, 800, dockCounts), hiddenTabUnread(boxes, 0, 375, {})], [{ l: 0, r: 0 }, { l: 0, r: 0 }]);
 
 if (fails) {

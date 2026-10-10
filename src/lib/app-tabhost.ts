@@ -9,8 +9,8 @@
 import { stripLocale } from "@/lib/i18n/locale-url";
 import { APP_TABS, type AppTabDef, type AppTabId } from "@/lib/app-ui";
 
-/** A screen the host can show: a dock tab, or the calculator (a screen pushed from the profile / the terminal that opens just as fast). */
-export type HostScreenId = AppTabId | "calculator";
+/** A screen the host can show: a dock tab. */
+export type HostScreenId = AppTabId;
 
 /** localStorage key of the kill switch: "0" = no tab host, plain route navigation (the behaviour before the host existed). */
 export const TABHOST_KEY = "fomo-tabhost";
@@ -27,7 +27,7 @@ export const HOST_ROOT: Partial<Record<HostScreenId, string>> = {
   calculator: "/calculator",
 };
 
-/** Screens released as soon as they are left (a chart engine, sockets, timers): never kept hidden. */
+/** Screens released as soon as they are left (a chart engine, sockets, timers; the calculator takes its inputs from the link): never kept hidden. */
 export const TRANSIENT_TABS: readonly HostScreenId[] = ["terminal", "calculator"];
 
 /** locale-less path without a trailing slash */
@@ -39,7 +39,6 @@ function cleanPath(pathname: string): string {
 /** The tab whose ROOT screen this path is (/feed, /chat ... exactly: pushed screens such as /ideas/<id> or /channels/<id> are no roots), or null. */
 export function hostTabForPath(pathname: string, tabs: readonly AppTabDef[] = APP_TABS): HostScreenId | null {
   const clean = cleanPath(pathname);
-  if (clean === HOST_ROOT.calculator) return "calculator";
   for (const t of tabs) if (HOST_ROOT[t.id] === clean) return t.id;
   return null;
 }
@@ -111,7 +110,6 @@ export function tabHostSwitch(search: string, stored: string | null): KillSwitch
 /** Chunks of the tab screens to fetch at idle, in the order the user is likely to need them (the screen already shown first). */
 export function prefetchOrder(active: HostScreenId | null, tabs: readonly AppTabDef[] = APP_TABS): HostScreenId[] {
   const ids: HostScreenId[] = tabs.map((t) => t.id).filter((id) => HOST_ROOT[id] && id !== active);
-  ids.push("calculator");
   const i = active ? tabs.findIndex((t) => t.id === active) : -1;
   if (i < 0) return ids;
   // neighbours first (a swipe goes there), then the rest in dock order

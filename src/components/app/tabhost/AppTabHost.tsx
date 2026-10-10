@@ -266,7 +266,7 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [on]);
 
-  const order: HostScreenId[] = [...tabs.map((tab) => tab.id as HostScreenId), "calculator"];
+  const order: HostScreenId[] = tabs.map((tab) => tab.id);
   return (
     <>
       {/* rendered in dock order, not in order of use: re-ordering keyed children would move their DOM nodes */}

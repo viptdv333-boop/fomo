@@ -119,7 +119,7 @@ type SpecState = { spec: FuturesSpec | null; stale: boolean; loading: boolean; e
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * «Калькулятор» of the app UI: the position-size / risk calculator of the site (/calculator) as a pushed screen of the profile (or of the terminal:
+ * «Калькулятор» of the app UI: the position-size / risk calculator of the site (/calculator) as a dock tab (after the terminal; pushed over the terminal from its card:
  * ?ticker=Si&entry=94.2&from=terminal). The math is calcPosition() of src/lib/futures-calc.ts, the very function the site page calls; contract data
  * (tick size, tick value, initial margin, price) comes from /api/futures/spec (MOEX ISS). Offline: the last answer per contract is kept in localStorage,
  * and the three contract numbers can be typed by hand. The inputs are remembered between visits.
@@ -275,7 +275,7 @@ export default function AppCalculator() {
     const fb = (window as unknown as { FomoBack?: () => boolean }).FomoBack;
     if (fb && fb()) return;
     const cur = (stripLocale(window.location.pathname).locale ?? loc) as Locale;
-    router.replace(localizedPath(cur, from === "terminal" ? "/terminal" : "/profile"));
+    router.replace(localizedPath(cur, from === "terminal" ? "/terminal" : "/feed"));
   };
 
   // ----- rows -----
@@ -358,10 +358,14 @@ export default function AppCalculator() {
   return (
     <div className="ac ap acalc">
       <div className="ac-nav">
-        <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>
-          <AppIcon name="chevL" size={22} stroke={1.8} />
-          <span>{from === "terminal" ? t("nav.terminal") : t("profile.profile")}</span>
-        </button>
+        {from === "terminal" ? (
+          <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>
+            <AppIcon name="chevL" size={22} stroke={1.8} />
+            <span>{t("nav.terminal")}</span>
+          </button>
+        ) : (
+          <span /> /* a dock tab of its own: no Back chevron (only the terminal's card pushes it over the terminal) */
+        )}
         <div className="ac-navtitle" />
         <div className="ap-navright">
           <button type="button" className="ap-navbtn" onClick={reset}>

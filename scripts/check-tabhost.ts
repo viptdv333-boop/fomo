@@ -13,11 +13,11 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 
 // --- tab roots
-eq("roots of the board site", ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile"].map((p) => hostTabForPath(p, MAIN_APP_TABS)), ["feed", "terminal", "chat", "calendar", "channels", "authors", "me"]);
+eq("roots of the board site", ["/feed", "/terminal", "/calculator", "/chat", "/calendar", "/channels", "/authors", "/profile"].map((p) => hostTabForPath(p, MAIN_APP_TABS)), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "me"]);
 eq("locale prefix, trailing slash, query and hash do not matter", ["/en/feed", "/zh/chat/", "/chat?room=x", "/profile?tab=notifications", "/authors#top"].map((p) => hostTabForPath(p, MAIN_APP_TABS)), ["feed", "chat", "chat", "me", "authors"]);
 eq("pushed screens are no roots", ["/ideas/5", "/channels/abc", "/authors/bob", "/profile/u1", "/feed/sber", "/chat/general", "/messages", "/rooms/7", "/subscriptions", "/", "/login", "/channels/create"].map((p) => hostTabForPath(p, MAIN_APP_TABS)), Array(12).fill(null));
-eq("the calculator is a host screen too (pushed, transient)", [hostTabForPath("/calculator", MAIN_APP_TABS), hostTabForPath("/en/calculator?ticker=SiZ6&from=terminal", MAIN_APP_TABS)], ["calculator", "calculator"]);
-eq("terminal site: only its own tabs (+ the calculator)", ["/terminal", "/profile", "/feed", "/chat", "/calendar", "/calculator"].map((p) => hostTabForPath(p, TERMINAL_APP_TABS)), ["terminal", "me", null, null, null, "calculator"]);
+eq("the calculator is a dock tab of the host (transient)", [hostTabForPath("/calculator", MAIN_APP_TABS), hostTabForPath("/en/calculator?ticker=SiZ6&from=terminal", MAIN_APP_TABS)], ["calculator", "calculator"]);
+eq("terminal site: only its own tabs (the calculator among them)", ["/terminal", "/profile", "/feed", "/chat", "/calendar", "/calculator"].map((p) => hostTabForPath(p, TERMINAL_APP_TABS)), ["terminal", "me", null, null, null, "calculator"]);
 eq("isHostHref: relative links only", ["/feed", "/en/chat?room=1", "https://x.com/feed", "//x.com/feed", "mailto:a@b.c", "", "/ideas/3"].map((h) => isHostHref(h, MAIN_APP_TABS)), [true, true, false, false, false, false, false]);
 
 // --- memory budget
@@ -61,11 +61,13 @@ eq("no query: the kept screen is shown as it was", ["feed", "channels", "authors
 eq("preview / switch flags do not count", needsFreshMount("feed", "?appui=1&tabhost=1"), false);
 eq("?instrumentId into the board: mount again with it", needsFreshMount("feed", "?instrumentId=7"), true);
 eq("the chat and the profile follow the URL: no remount", [needsFreshMount("chat", "?room=7"), needsFreshMount("me", "?tab=finance")], [false, false]);
+eq("the calculator is a dock tab of both docks", [MAIN_APP_TABS, TERMINAL_APP_TABS].map((tabs) => tabs.some((t) => t.id === "calculator")), [true, true]);
 eq("transient screens are fresh anyway", [needsFreshMount("terminal", "?symbol=SBER"), needsFreshMount("calculator", "?ticker=Si")], [false, false]);
 
 // --- idle preload order
-eq("neighbours first, then the dock order, calculator last", prefetchOrder("chat", MAIN_APP_TABS), ["calendar", "terminal", "feed", "channels", "authors", "me", "calculator"]);
-eq("no active screen: dock order", prefetchOrder(null, MAIN_APP_TABS), ["feed", "terminal", "chat", "calendar", "channels", "authors", "me", "calculator"]);
+eq("neighbours first, then the dock order", prefetchOrder("chat", MAIN_APP_TABS), ["calendar", "calculator", "feed", "terminal", "channels", "authors", "me"]);
+eq("the calculator's neighbours are the terminal and the chat", prefetchOrder("calculator", MAIN_APP_TABS).slice(0, 2), ["chat", "terminal"]);
+eq("no active screen: dock order", prefetchOrder(null, MAIN_APP_TABS), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "me"]);
 
 console.log(fails ? `\n${fails} FAILED` : "\nall ok");
 process.exit(fails ? 1 : 0);

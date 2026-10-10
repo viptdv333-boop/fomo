@@ -204,14 +204,13 @@ export async function runWarmup(ctx: WarmCtx, force = false): Promise<WarmResult
     for (const id of roomIds) await get(`/api/chat/messages?roomId=${encodeURIComponent(id)}`);
   }
 
-  // the page shells of the dock sections (and the calculator, pushed from the profile), then the pages of the subscribed channels and their newest posts:
+  // the page shells of the dock sections (the calculator is one of them), then the pages of the subscribed channels and their newest posts:
   // stored by the service worker, so they open offline, and prefetched for the router
   const hrefs: string[] = [];
   for (const tab of APP_TABS) {
     if (tab.id === "settings") continue;
     hrefs.push(appTabHref(ctx.locale as "ru" | "en" | "cn", tab));
   }
-  hrefs.push(localized(ctx.locale, "/calculator"));
   hrefs.push(...wantPages);
   for (const href of hrefs) {
     if (res.requests < MAX_REQUESTS && res.bytes < MAX_BYTES && !document.hidden && isOnline()) {

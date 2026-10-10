@@ -17,8 +17,9 @@ const LOADERS: Partial<Record<HostScreenId, Loader>> = {
   channels: () => import("@/app/(main)/channels/page"),
   authors: () => import("@/app/(main)/authors/page"),
   me: () => import("@/app/(main)/profile/page"),
-  // pushed from the profile and from the terminal: opens as fast as a tab (the code is fetched at idle); a transient screen, its inputs come from the link
-  calculator: () => import("@/app/(main)/calculator/page"),
+  // a dock tab, but transient (its inputs come from the link: ?ticker&entry&from from the terminal's card). The page loads its screen with next/dynamic, so that chunk
+  // is fetched together with the page: the first tap finds both in memory
+  calculator: () => Promise.all([import("@/components/app/calculator/AppCalculator"), import("@/app/(main)/calculator/page")]).then(([, page]) => page),
 };
 
 const lazies = new Map<HostScreenId, LazyExoticComponent<ComponentType>>();

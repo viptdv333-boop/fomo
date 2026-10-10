@@ -135,9 +135,10 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 
 // --- tabs: exactly five, in the owner's order
-eq("eight tabs in order (the dock carousel)", APP_TABS.map((t) => t.id), ["feed", "terminal", "chat", "calendar", "channels", "authors", "settings", "me"]);
-eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile?tab=notifications", "/profile"]);
-eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "appui.tab.settings", "profile.profile"]);
+eq("nine tabs in order (the dock carousel): the calculator right after the terminal, settings before the profile, the profile last", APP_TABS.map((t) => t.id), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "settings", "me"]);
+eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/calculator", "/chat", "/calendar", "/channels", "/authors", "/profile?tab=notifications", "/profile"]);
+eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.calculator", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "appui.tab.settings", "profile.profile"]);
+eq("terminal site dock: terminal, calculator, settings, profile (the profile last)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calculator", "settings", "me"]);
 
 // --- active tab
 const cases: [string, ReturnType<typeof activeAppTab>][] = [
@@ -145,6 +146,7 @@ const cases: [string, ReturnType<typeof activeAppTab>][] = [
   ["/terminal", "terminal"], ["/terminal/features", "terminal"], ["/en/terminal?symbol=SBER", "terminal"],
   ["/chat", "chat"], ["/chat/sber", "chat"], ["/messages", "chat"], ["/zh/messages", "chat"],
   ["/calendar", "calendar"], ["/en/calendar", "calendar"],
+  ["/calculator", "calculator"], ["/en/calculator", "calculator"], ["/zh/calculator?ticker=Si&entry=94.2&from=terminal", "calculator"], ["/calculatorx", null],
   ["/channels", "channels"], ["/channels/my-channel", "channels"], ["/en/channels", "channels"],
   ["/authors", "authors"], ["/profile", "me"], ["/payments", "me"], ["/help", null], ["/", null], ["", null],
   ["/feedback", null], ["/channelsx", null], ["/ideasx", null], ["/chatter", null],
@@ -165,8 +167,9 @@ eq("header shown /terminalx", appHeaderHidden("/terminalx"), false);
 
 // --- locale-aware links
 eq("href ru", appTabHref("ru", APP_TABS[0]), "/feed");
-eq("href en", appTabHref("en", APP_TABS[2]), "/en/chat");
-eq("href cn", appTabHref("cn", APP_TABS[4]), "/zh/channels");
+eq("href en", appTabHref("en", APP_TABS[3]), "/en/chat");
+eq("href en calculator", appTabHref("en", APP_TABS[2]), "/en/calculator");
+eq("href cn", appTabHref("cn", APP_TABS[5]), "/zh/channels");
 
 // --- badge
 eq("badge 0", badgeLabel(0), "");
@@ -267,19 +270,20 @@ eq("boot script has no backspace chars", APP_UI_BOOT_SCRIPT.includes("\b"), fals
 // --- desktop window: keyboard / wheel / drag of the dock
 eq("Ctrl+Right / Ctrl+Left: next / previous section", [dockKeyAction({ key: "ArrowRight", ctrlKey: true }), dockKeyAction({ key: "ArrowLeft", ctrlKey: true })], [{ kind: "step", dir: 1 }, { kind: "step", dir: -1 }]);
 eq("Cmd+Right works on a Mac", dockKeyAction({ key: "ArrowRight", metaKey: true }), { kind: "step", dir: 1 });
-eq("Ctrl+1 ... Ctrl+8 jump", [dockKeyAction({ key: "1", ctrlKey: true }), dockKeyAction({ key: "8", ctrlKey: true })], [{ kind: "jump", index: 0 }, { kind: "jump", index: 7 }]);
-eq("Ctrl+0 / Ctrl+9 are not ours (zoom reset, last tab of a browser)", [dockKeyAction({ key: "0", ctrlKey: true }), dockKeyAction({ key: "9", ctrlKey: true })], [null, null]);
+eq("Ctrl+1 ... Ctrl+9 jump", [dockKeyAction({ key: "1", ctrlKey: true }), dockKeyAction({ key: "9", ctrlKey: true })], [{ kind: "jump", index: 0 }, { kind: "jump", index: 8 }]);
+eq("Ctrl+0 is not ours (zoom reset)", dockKeyAction({ key: "0", ctrlKey: true }), null);
 eq("Alt+Left / Alt+Right stay Back / Forward", [dockKeyAction({ key: "ArrowLeft", altKey: true }), dockKeyAction({ key: "ArrowRight", altKey: true })], [null, null]);
 eq("plain arrows, Shift / Alt combinations and other keys are ignored", [dockKeyAction({ key: "ArrowRight" }), dockKeyAction({ key: "ArrowRight", ctrlKey: true, shiftKey: true }), dockKeyAction({ key: "ArrowRight", ctrlKey: true, altKey: true }), dockKeyAction({ key: "r", ctrlKey: true }), dockKeyAction({ key: "3" })], [null, null, null, null, null]);
 const STEP = (dir: -1 | 1) => ({ kind: "step", dir }) as const;
 eq("dock key: step from a tab", [dockKeyTarget(STEP(1), "/feed")?.id, dockKeyTarget(STEP(-1), "/terminal")?.id, dockKeyTarget(STEP(1), "/en/calendar")?.id], ["terminal", "feed", "channels"]);
 eq("dock key: a pushed screen belongs to its tab", [dockKeyTarget(STEP(1), "/chat/room1")?.id, dockKeyTarget(STEP(-1), "/profile")?.id], ["calendar", "settings"]);
-eq("dock key: the settings tab is part of the steps (Ctrl+7)", [dockKeyTarget(STEP(1), "/authors")?.id, dockKeyTarget({ kind: "jump", index: 6 }, "/feed")?.id], ["settings", "settings"]);
+eq("dock key: the settings tab is part of the steps (Ctrl+7)", [dockKeyTarget(STEP(1), "/authors")?.id, dockKeyTarget({ kind: "jump", index: 7 }, "/feed")?.id], ["settings", "settings"]);
+eq("dock key: the calculator sits between the terminal and the chat (steps, Ctrl+3)", [dockKeyTarget(STEP(1), "/terminal")?.id, dockKeyTarget(STEP(-1), "/chat")?.id, dockKeyTarget(STEP(1), "/en/calculator")?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/feed")?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/calculator")], ["calculator", "calculator", "chat", "calculator", null]);
 eq("dock key: no wrap at the ends", [dockKeyTarget(STEP(-1), "/feed"), dockKeyTarget(STEP(1), "/profile")], [null, null]);
 eq("dock key: a page of no tab has no neighbours", dockKeyTarget(STEP(1), "/help"), null);
-eq("dock key: jump to a tab, not to the open one", [dockKeyTarget({ kind: "jump", index: 4 }, "/feed")?.id, dockKeyTarget({ kind: "jump", index: 0 }, "/feed")], ["channels", null]);
+eq("dock key: jump to a tab, not to the open one", [dockKeyTarget({ kind: "jump", index: 5 }, "/feed")?.id, dockKeyTarget({ kind: "jump", index: 0 }, "/feed")], ["channels", null]);
 eq("dock key: jump past the dock does nothing", dockKeyTarget({ kind: "jump", index: 9 }, "/feed"), null);
-eq("dock key on the terminal site (3 tabs): steps and jumps", [dockKeyTarget(STEP(1), "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 3 }, "/terminal", TERMINAL_APP_TABS)], ["settings", "me", null]);
+eq("dock key on the terminal site (4 tabs): steps and jumps", [dockKeyTarget(STEP(1), "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 3 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 4 }, "/terminal", TERMINAL_APP_TABS)], ["calculator", "settings", "me", null]);
 eq("wheel: vertical turns sideways", [dockWheelDelta(0, 100), dockWheelDelta(0, -53), dockWheelDelta(5, 100)], [100, -53, 100]);
 eq("wheel: line / page modes are scaled", [dockWheelDelta(0, 3, 1), dockWheelDelta(0, 1, 2)], [72, 400]);
 eq("wheel: a sideways gesture is left to the browser", [dockWheelDelta(120, 10), dockWheelDelta(50, 50), dockWheelDelta(0, 0), dockWheelDelta(NaN, 4)], [null, null, null, null]);
@@ -601,8 +605,8 @@ eq("dock: a user's page lights «Авторы», the own profile stays «Про�
   eq("back: chat thread -> the list, a dialog -> the dialogs list", [parentHref("/chat", "?room=r1"), parentHref("/chat", "?seg=dms&dm=c1"), parentHref("/chat", "?with=u9"), parentHref("/chat", "?groups=1"), parentHref("/chat/btc", ""), parentHref("/rooms/g1", ""), parentHref("/rooms/join/tok", ""), parentHref("/messages", "?conversation=c1"), parentHref("/messages", "")], ["/chat", "/chat?seg=dms", "/chat?seg=dms", "/chat", "/chat", "/chat", "/chat", "/chat?seg=dms", null]);
   eq("back: profile sub-screens -> the profile list", [parentHref("/profile", "?tab=finance"), parentHref("/profile", "?tab=notifications&appui=1"), parentHref("/subscriptions", ""), parentHref("/payments", ""), parentHref("/profile", ""), parentHref("/profile", "?tab=zzz")], ["/profile", "/profile", "/profile", "/profile", null, null]);
   eq("back: section roots have no parent", [parentHref("/feed", ""), parentHref("/chat", ""), parentHref("/chat", "?seg=dms"), parentHref("/calendar", ""), parentHref("/channels", ""), parentHref("/authors", ""), parentHref("/terminal", ""), parentHref("/", ""), parentHref("/help", "")], [null, null, null, null, null, null, null, null, null]);
-  eq("back: the calculator -> the profile list, or the terminal when it was opened from there", [parentHref("/calculator", ""), parentHref("/en/calculator", ""), parentHref("/calculator", "?from=terminal"), parentHref("/calculator", "?appui=1")], ["/profile", "/profile", "/terminal", "/profile"]);
-  eq("back target: the calculator is a pushed screen (level up), also on the terminal site", [backTarget("/calculator", "", false), backTarget("/calculator", "?from=terminal", true)], [{ href: "/profile", level: "up" }, { href: "/terminal", level: "up" }]);
+  eq("back: the calculator is a dock tab (no parent), pushed over the terminal only with ?from=terminal", [parentHref("/calculator", ""), parentHref("/en/calculator", ""), parentHref("/calculator", "?from=terminal"), parentHref("/calculator", "?appui=1")], [null, null, "/terminal", null]);
+  eq("back target: the calculator is a root tab (home section), pushed over the terminal when it came from the card", [backTarget("/calculator", "", false), backTarget("/calculator", "", true), backTarget("/calculator", "?from=terminal", true)], [{ href: "/feed", level: "home" }, { href: "/terminal", level: "home" }, { href: "/terminal", level: "up" }]);
   eq("calculator has its own bar (no compact header)", ["/calculator", "/en/calculator", "/zh/calculator"].map(appHeaderHidden), [true, true, true]);
   eq("calculator header: lookalike paths keep the header", ["/calculatorx"].map(appHeaderHidden), [false]);
   eq("back: other pages", [parentHref("/terminal/features", ""), parentHref("/instruments/category/crypto", ""), parentHref("/instruments/btc", ""), parentHref("/instruments", "")], ["/terminal", "/instruments", "/instruments", null]);
@@ -661,8 +665,11 @@ console.log("\nall ok");
 eq("swipe: a clear sideways move counts", [isTabSwipe(-120, 10), isTabSwipe(60, -20), isTabSwipe(-56, 0)], [true, true, true]);
 eq("swipe: short / diagonal moves do not", [isTabSwipe(-40, 5), isTabSwipe(-100, 90), isTabSwipe(55, 0)], [false, false, false]);
 eq("swipe axis: sideways / vertical / undecided", [swipeAxis(14, 3), swipeAxis(4, -18), swipeAxis(5, 4), swipeAxis(-30, 28)], ["h", "v", null, "v"]);
-eq("swipe: left goes to the next tab, right to the previous", [swipeTargetTab("/feed", "", 1)?.id, swipeTargetTab("/terminal", "", -1)?.id, swipeTargetTab("/terminal", "", 1)?.id], ["terminal", "feed", "chat"]);
+eq("swipe: left goes to the next tab, right to the previous", [swipeTargetTab("/feed", "", 1)?.id, swipeTargetTab("/terminal", "", -1)?.id, swipeTargetTab("/terminal", "", 1)?.id], ["terminal", "feed", "calculator"]);
 eq("swipe: no wrap at the ends", [swipeTargetTab("/feed", "", -1), swipeTargetTab("/profile", "", 1)], [null, null]);
+eq("swipe: the calculator sits between the terminal and the chat", [swipeTargetTab("/terminal", "", 1)?.id, swipeTargetTab("/chat", "", -1)?.id, swipeTargetTab("/calculator", "", -1)?.id, swipeTargetTab("/en/calculator", "", 1)?.id], ["calculator", "calculator", "terminal", "chat"]);
+eq("swipe: the calculator with a query (?from=terminal) is a pushed screen: no swipe", [swipeTargetTab("/calculator", "?from=terminal", 1), swipeTargetTab("/calculator", "?from=terminal", -1)], [null, null]);
+eq("swipe on the terminal site: terminal <-> calculator, the settings tab is skipped, then the profile", [swipeTargetTab("/terminal", "", 1, TERMINAL_APP_TABS)?.id, swipeTargetTab("/calculator", "", 1, TERMINAL_APP_TABS)?.id, swipeTargetTab("/profile", "", -1, TERMINAL_APP_TABS)?.id, swipeTargetTab("/terminal", "", -1, TERMINAL_APP_TABS)], ["calculator", "me", "calculator", null]);
 eq("swipe: the settings tab is skipped", swipeTargetTab("/authors", "", 1)?.id, "me");
 eq("swipe: not from a pushed screen, a query screen or a deep page", [swipeTargetTab("/chat/room1", "", 1), swipeTargetTab("/profile", "?tab=finance", -1), swipeTargetTab("/ideas/123", "", 1)], [null, null, null]);
 eq("swipe: locale prefix is ignored", swipeTargetTab("/en/feed", "", 1)?.id, "terminal");

@@ -14,7 +14,7 @@ import { useTabBadges } from "./useTabBadges";
 import { applyFontStep, readFontStep } from "./fontStep";
 import { hostNavigate, useAppPathname } from "./tabhost/store";
 
-const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
+const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", calculator: "calc", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
 /** Hides the bar while a text field is focused: the Android WebView shrinks to the space above the keyboard and a fixed bar would ride on top of it. (Not in the desktop window: there is no soft keyboard.) */
 function useKeyboardClass() {

@@ -12,9 +12,11 @@ Only in the app UI (`html.app-ui`: Android app, Windows app, `?appui=1` preview)
 * Switching a tab = `history.pushState` in place (Next 15 follows it: `usePathname` / `useSearchParams` update, no server round trip) + showing the
   screen that is already there (`store.ts hostNavigate`). The dock, the swipe, the desktop keys, the Android Back handler (`goTo`), the logo and
   every `<a href>` to a tab root go through it.
+* `/calculator` is a dock tab (right after the terminal, on the terminal site too) but **transient** like the terminal: it is released when left and mounts fresh each
+  time, so its inputs come from the link (`?ticker=&entry=&from=terminal` of the terminal's card; with `?from=terminal` it is a pushed screen: no swipe, Back leads to the terminal).
 * Hidden screens are React `<Activity mode="hidden">`: DOM and state stay, **effects are cleaned up** (timers, sockets, listeners, the `html.app-*-on`
   classes) and run again on show, which is also the silent refresh on return. Scroll position is kept per tab (the scroller is `<main>`).
-* Anything that is not a tab root (an idea, a channel, an author, forms, `/calculator?...` is the exception below) stays an ordinary Next route; the kept
+* Anything that is not a tab root (an idea, a channel, an author, forms) stays an ordinary Next route; the kept
   screens wait hidden and come back instantly on Back (scroll kept).
 * **Pre-mounting** (`warm.ts`): 3 s after start, in idle slots, the other tabs are mounted one by one in a `display:none` box, load their data,
   and are put to sleep (after the data has arrived, at most 7 s each). While a screen warms, a firewall strips the `html.app-*-on` classes it sets and

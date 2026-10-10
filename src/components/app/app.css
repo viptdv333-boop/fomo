@@ -144,6 +144,8 @@ html.app-ui .app-tab-label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* «Калькулятор» is the longest label of the dock: a notch smaller so that it is not cut to «Калькулят…» in a tab of 18% of the width */
+html.app-ui .app-tab[data-tab="calculator"] .app-tab-label { font-size: 10px; letter-spacing: -0.15px; padding: 0; }
 html.app-ui .app-badge {
   position: absolute;
   top: -6px;

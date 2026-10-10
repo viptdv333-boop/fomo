@@ -2,7 +2,7 @@
 import { stripLocale, localizedPath, type Locale } from "@/lib/i18n/locale-url";
 import { isTerminalSite } from "@/lib/site-mode";
 
-export type AppTabId = "feed" | "terminal" | "chat" | "calendar" | "channels" | "authors" | "me" | "settings";
+export type AppTabId = "feed" | "terminal" | "calculator" | "chat" | "calendar" | "channels" | "authors" | "me" | "settings";
 
 export interface AppTabDef {
   id: AppTabId;
@@ -14,10 +14,12 @@ export interface AppTabDef {
   match: string[];
 }
 
-/** The dock of the design: eight tabs in this order, five visible at a time, the rest by swiping the bar sideways. */
+/** The dock of the design: nine tabs in this order, five and a half visible at a time, the rest by swiping the bar sideways. */
 export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "feed", href: "/feed", labelKey: "nav.feed", match: ["/feed", "/ideas"] },
   { id: "terminal", href: "/terminal", labelKey: "nav.terminal", match: ["/terminal"] },
+  /* the position-size / risk calculator: a dock tab of its own, right after the terminal (it takes ?ticker / ?entry / ?from=terminal from the terminal's card) */
+  { id: "calculator", href: "/calculator", labelKey: "nav.calculator", match: ["/calculator"] },
   { id: "chat", href: "/chat", labelKey: "nav.chat", match: ["/chat", "/messages", "/rooms"] },
   { id: "calendar", href: "/calendar", labelKey: "nav.calendar", match: ["/calendar"] },
   { id: "channels", href: "/channels", labelKey: "nav.channels", match: ["/channels"] },
@@ -28,12 +30,12 @@ export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "me", href: "/profile", labelKey: "profile.profile", match: ["/profile", "/payments", "/subscriptions"] },
 ];
 
-/** The dock of the terminal site (terminal.fomo.spot): three tabs. The calendar is not a tab there: it lives inside the terminal next to the watchlist. */
-export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "settings", "me"].includes(tab.id)).map((tab) =>
+/** The dock of the terminal site (terminal.fomo.spot): four tabs (the terminal, the calculator behind the login, settings, profile). The calendar is not a tab there: it lives inside the terminal next to the watchlist. */
+export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calculator", "settings", "me"].includes(tab.id)).map((tab) =>
   tab.id === "me" ? { ...tab, match: ["/profile"] } : tab
 );
 
-/** The tabs of THIS site: the eight of the board site, or the four of the terminal site (SITE_MODE=terminal). */
+/** The tabs of THIS site: the nine of the board site, or the four of the terminal site (SITE_MODE=terminal). */
 export const APP_TABS: readonly AppTabDef[] = isTerminalSite() ? TERMINAL_APP_TABS : MAIN_APP_TABS;
 
 function underPrefix(path: string, prefix: string): boolean {
@@ -66,7 +68,7 @@ function isProfileScreen(clean: string): boolean {
   return clean === "/profile" || clean === "/subscriptions";
 }
 
-/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen), the chat, the channels / authors screens, the calculator (its own bar, pushed from the profile / terminal) and the profile tab (the design's screens carry their own title / thread bar). */
+/** The compact header is hidden where the screen has its own top bar: the terminal (the chart takes the whole screen), the chat, the channels / authors screens, the calculator tab (its own bar) and the profile tab (the design's screens carry their own title / thread bar). */
 export function appHeaderHidden(pathname: string): boolean {
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path;
   // /rooms/<id> is a private group (a link from a notification) shown inside the chat screens; /rooms/join/<token> is the invitation page and keeps the header
@@ -96,10 +98,10 @@ export function swipeAxis(dx: number, dy: number): "h" | "v" | null {
  * The tab a sideways swipe leads to: dir -1 = swipe right (previous tab), +1 = swipe left (next tab). Only from the root screen of a tab
  * (no query, not a pushed screen) and never around the ends; the «Настройки» tab (a native screen / a pushed profile screen) is not a swipe target.
  */
-export function swipeTargetTab(pathname: string, search: string, dir: -1 | 1): AppTabDef | null {
+export function swipeTargetTab(pathname: string, search: string, dir: -1 | 1, tabs: readonly AppTabDef[] = APP_TABS): AppTabDef | null {
   if (search && search !== "?") return null;
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path.replace(/\/+$/, "") || "/";
-  const order = APP_TABS.filter((t) => t.id !== "settings");
+  const order = tabs.filter((t) => t.id !== "settings");
   const i = order.findIndex((t) => t.href.split("?")[0] === clean);
   if (i < 0) return null;
   return order[i + dir] ?? null;
@@ -168,14 +170,14 @@ export interface DockKeyEvent {
 }
 
 /**
- * Ctrl+← / Ctrl+→ (⌘ on a Mac): the previous / next section; Ctrl+1 … Ctrl+8: the n-th section of the dock (index 0 … 7). Anything else, and any
+ * Ctrl+← / Ctrl+→ (⌘ on a Mac): the previous / next section; Ctrl+1 … Ctrl+9: the n-th section of the dock (index 0 … 8). Anything else, and any
  * combination with Alt or Shift (Alt+← is Back, Ctrl+Shift+… belongs to the shell), is null.
  */
 export function dockKeyAction(e: DockKeyEvent): DockKeyAction | null {
   if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return null;
   if (e.key === "ArrowLeft") return { kind: "step", dir: -1 };
   if (e.key === "ArrowRight") return { kind: "step", dir: 1 };
-  if (/^[1-8]$/.test(e.key)) return { kind: "jump", index: Number(e.key) - 1 };
+  if (/^[1-9]$/.test(e.key)) return { kind: "jump", index: Number(e.key) - 1 };
   return null;
 }
 
