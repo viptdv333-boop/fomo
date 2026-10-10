@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { agoLabel } from "@/lib/app-ui";
 import { ideaSubLine } from "@/lib/app-profile";
-import { unreadLabel } from "@/lib/app-unread";
+import { likeLabel, unreadLabel } from "@/lib/app-unread";
+import { UnreadStripView } from "../AppUnreadStrip";
 import { useUnreadByIdea } from "../useUnreadByIdea";
 import { Sections, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
@@ -97,6 +98,17 @@ export default function MyIdeas() {
     void load();
   }
 
+  // the strip of this screen: what is unread under MY ideas (comments, new-post marks, likes); one tap opens the first of them
+  const mine = { n: 0, p: 0, l: 0, first: null as string | null, firstComment: null as string | null };
+  for (const i of ideas ?? []) {
+    const e = unread.byIdea[i.id];
+    if (!e) continue;
+    mine.n += e.c;
+    mine.p += e.p;
+    mine.l += e.l;
+    if (mine.first === null && e.c + e.p + e.l > 0) mine.first = i.id;
+  }
+
   const sections: SheetSection[] = [];
   if (ideas && ideas.length > 0) {
     sections.push({
@@ -107,6 +119,9 @@ export default function MyIdeas() {
         label: i.title,
         sub: ideaSubLine(i.voteScore ?? 0, agoLabel(i.createdAt, locale), i.moderationStatus === "archived" ? t("appprof.inArchive") : i.moderationStatus === "hidden" ? t("appprof.hiddenIdea") : null),
         badge: unreadLabel(unread.byIdea[i.id]) || undefined,
+        value: likeLabel(unread.byIdea[i.id]) ? `♥ ${likeLabel(unread.byIdea[i.id])}` : undefined,
+        valueColor: "var(--app-like)",
+        valueWeight: 700,
         onClick: () => open(`/ideas/${i.id}`),
         actions: [
           { label: t("appprof.edit"), onClick: () => open(`/ideas/${i.id}/edit`) },
@@ -125,7 +140,10 @@ export default function MyIdeas() {
       ) : ideas.length === 0 ? (
         <div className="ac-empty">{t("profile2.noIdeas")}</div>
       ) : (
-        <Sections sections={sections} />
+        <>
+          <UnreadStripView bucket={mine} scope="myideas" />
+          <Sections sections={sections} />
+        </>
       )}
     </ScreenFrame>
   );

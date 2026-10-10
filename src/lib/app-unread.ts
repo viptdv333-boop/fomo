@@ -4,6 +4,7 @@
 // No DB column: a comment notification keeps its target in Notification.link — `/ideas/<ideaId>` for the old ones,
 // `/ideas/<ideaId>?comment=<commentId>` for the ones created from now on (see ideaCommentLink). The idea → channel step comes from Idea.tariffId.
 import { badgeLabel } from "@/lib/app-ui";
+import { tabForNotifType } from "@/lib/app-badges";
 
 /** Notification types of a comment under an idea: on my idea, a reply to my comment, a comment under a post of a channel I follow. */
 export const IDEA_COMMENT_TYPES: readonly string[] = ["new_comment", "comment_reply", "channel_comment"];
@@ -47,53 +48,109 @@ export interface UnreadEntry {
   c: number;
   /** unread «new post» notifications (channel_post): 0 or 1 in practice */
   p: number;
+  /** unread like notifications (idea_like + comment_like), one per notification row (a row may name several people): the pink «♥ N», NOT part of the red comment count */
+  l: number;
+}
+/** What kind of unread item a notification is: a comment, a new post, a like. */
+export type UnreadKind = "c" | "p" | "l";
+/**
+ * Everything the dock counts for one tab, explained inside the section:
+ *   n comments + replies, p new posts, l likes, total = n + p + l (= the dock number of that tab),
+ *   first = the idea of the OLDEST unread item of any kind (the strip opens it), firstKind its kind,
+ *   firstComment = the comment named by that item's link (`?comment=`), null when the link names none.
+ */
+export interface UnreadBucket {
+  n: number;
+  p: number;
+  l: number;
+  total: number;
+  first: string | null;
+  firstKind: UnreadKind | null;
+  firstComment: string | null;
 }
 export interface UnreadMap {
   byIdea: Record<string, UnreadEntry>;
   byChannel: Record<string, UnreadEntry>;
-  /** the idea with the oldest unread comment (any idea): null = none */
+  /** the idea with the oldest unread comment (any idea): null = none (kept for older clients) */
   first: string | null;
-  /** unread comments under ordinary ideas (not posts of a channel): the board's «new comments» strip, `first` = the idea it opens */
-  board: { n: number; first: string | null };
+  /** «Доска» (ordinary ideas): comments / replies / likes. `n` and `first` keep their old names (n = comments only). total = the dock number of «Доска». */
+  board: UnreadBucket;
+  /** «Каналы» (posts of channels): new posts, comments, likes. total = the dock number of «Каналы». */
+  channels: UnreadBucket;
 }
 export interface UnreadRow {
   type: string;
   link: string | null;
 }
 
+export function emptyBucket(): UnreadBucket {
+  return { n: 0, p: 0, l: 0, total: 0, first: null, firstKind: null, firstComment: null };
+}
+export function emptyUnread(): UnreadMap {
+  return { byIdea: {}, byChannel: {}, first: null, board: emptyBucket(), channels: emptyBucket() };
+}
+
 /** Idea id -> channel (tariff) id or null for an ordinary idea; an idea that is not in the map no longer exists. */
 export type TariffByIdea = ReadonlyMap<string, string | null>;
 
 /**
- * Unread counts per idea and per channel from the unread notification rows (oldest first). Rows of a deleted idea (absent from
- * `tariffByIdea`) and rows whose link names no idea are dropped: they could never be opened and would keep a badge forever.
+ * The type the dock counts a notification of an idea under: a comment / reply under a post of a channel is `channel_comment`, a like of a
+ * channel post / of a comment under it is `channel_like` (both light «Каналы»); everything else keeps its own type. One rule for the dock
+ * (effectiveByType) and for the markers inside the sections (aggregateUnread), so the two cannot drift apart.
  */
-export function aggregateUnread(rows: readonly UnreadRow[], tariffByIdea: TariffByIdea): UnreadMap {
-  const byIdea: Record<string, UnreadEntry> = {};
-  const byChannel: Record<string, UnreadEntry> = {};
-  let first: string | null = null;
-  const board: { n: number; first: string | null } = { n: 0, first: null };
-  for (const r of rows) {
-    const isComment = IDEA_COMMENT_TYPES.includes(r.type);
-    const isPost = IDEA_POST_TYPES.includes(r.type);
-    if (!isComment && !isPost) continue;
-    const id = ideaIdFromLink(r.link);
-    if (!id || !tariffByIdea.has(id)) continue;
-    const key = isComment ? "c" : "p";
-    (byIdea[id] ??= { c: 0, p: 0 })[key]++;
-    const ch = tariffByIdea.get(id);
-    if (ch) (byChannel[ch] ??= { c: 0, p: 0 })[key]++;
-    if (isComment && first === null) first = id;
-    if (isComment && !ch) {
-      board.n++;
-      if (board.first === null) board.first = id;
-    }
+export function dockTypeOf(type: string, channelId: string | null | undefined): string {
+  if (channelId) {
+    if (type === "new_comment" || type === "comment_reply") return "channel_comment";
+    if (IDEA_LIKE_TYPES.includes(type)) return "channel_like";
   }
-  return { byIdea, byChannel, first, board };
+  return type;
+}
+
+function kindOf(type: string): UnreadKind | null {
+  if (IDEA_COMMENT_TYPES.includes(type)) return "c";
+  if (IDEA_POST_TYPES.includes(type)) return "p";
+  if (IDEA_LIKE_TYPES.includes(type)) return "l";
+  return null;
+}
+
+function addTo(b: UnreadBucket, kind: UnreadKind, ideaId: string, link: string | null) {
+  if (kind === "c") b.n++;
+  else if (kind === "p") b.p++;
+  else b.l++;
+  b.total++;
+  if (b.first === null) {
+    b.first = ideaId;
+    b.firstKind = kind;
+    b.firstComment = kind === "p" ? null : commentIdFromLink(link);
+  }
 }
 
 /**
- * The per-type counts of the dock (BADGE_TAB_BY_TYPE input) with the idea notifications corrected:
+ * Unread counts per idea and per channel from the unread notification rows (oldest first), and the two strips (board / channels) that explain
+ * the dock numbers of «Доска» and «Каналы». Rows of a deleted idea (absent from `tariffByIdea`) and rows whose link names no idea are dropped:
+ * they could never be opened and would keep a badge forever.
+ */
+export function aggregateUnread(rows: readonly UnreadRow[], tariffByIdea: TariffByIdea): UnreadMap {
+  const out = emptyUnread();
+  for (const r of rows) {
+    const kind = kindOf(r.type);
+    if (!kind) continue;
+    const id = ideaIdFromLink(r.link);
+    if (!id || !tariffByIdea.has(id)) continue;
+    (out.byIdea[id] ??= { c: 0, p: 0, l: 0 })[kind]++;
+    const ch = tariffByIdea.get(id);
+    if (ch) (out.byChannel[ch] ??= { c: 0, p: 0, l: 0 })[kind]++;
+    if (kind === "c" && out.first === null) out.first = id;
+    // the dock tab decides where the item is explained (same rule as effectiveByType)
+    const tab = tabForNotifType(dockTypeOf(r.type, ch));
+    if (tab === "feed") addTo(out.board, kind, id, r.link);
+    else if (tab === "channels") addTo(out.channels, kind, id, r.link);
+  }
+  return out;
+}
+
+/**
+ * The per-type counts of the dock (BADGE_TAB_BY_TYPE input) with the idea notifications corrected (see dockTypeOf):
  *  - a comment / reply under a post of a channel counts as `channel_comment` (the «Каналы» tab: that is where its post lives),
  *  - a like of a channel post / of a comment under it counts as `channel_like` (same tab); likes under ordinary ideas keep idea_like / comment_like (Доска),
  *  - notifications of a deleted idea are dropped,
@@ -107,21 +164,54 @@ export function effectiveByType(others: Record<string, number>, ideaRows: readon
     const id = ideaIdFromLink(r.link);
     if (id) {
       if (!tariffByIdea.has(id)) continue;
-      if ((type === "new_comment" || type === "comment_reply") && tariffByIdea.get(id)) type = "channel_comment";
-      else if (IDEA_LIKE_TYPES.includes(type) && tariffByIdea.get(id)) type = "channel_like";
+      type = dockTypeOf(type, tariffByIdea.get(id));
     }
     out[type] = (out[type] ?? 0) + 1;
   }
   return out;
 }
 
-/** The red number of an idea / channel: its comments (a new post alone shows as 1). "" = no badge. */
-export function unreadCount(e: UnreadEntry | undefined | null): number {
+/** The text of a strip: comments only / likes only / posts only / a mix («Новое: N»). null = nothing to show. */
+export type StripText = { key: "appui.newComments" | "appui.newLikes" | "appui.newPosts" | "appui.newAny"; n: number };
+export function stripText(b: Pick<UnreadBucket, "n" | "p" | "l"> | null | undefined): StripText | null {
+  if (!b) return null;
+  const n = Math.max(0, b.n || 0);
+  const p = Math.max(0, b.p || 0);
+  const l = Math.max(0, b.l || 0);
+  const total = n + p + l;
+  if (total <= 0) return null;
+  if (n === total) return { key: "appui.newComments", n: total };
+  if (l === total) return { key: "appui.newLikes", n: total };
+  if (p === total) return { key: "appui.newPosts", n: total };
+  return { key: "appui.newAny", n: total };
+}
+/** Where a strip leads: the oldest unread idea, on the comment its notification names (the idea page scrolls to it). null = nothing to open. */
+export function stripHref(b: Pick<UnreadBucket, "first" | "firstComment"> | null | undefined): string | null {
+  if (!b || !b.first) return null;
+  return `/ideas/${b.first}${b.firstComment ? `?comment=${b.firstComment}` : ""}`;
+}
+
+/** The red number of an idea / channel: its comments (a new post alone shows as 1). Likes are not in it (see likeLabel). */
+export function unreadCount(e: Pick<UnreadEntry, "c" | "p"> | undefined | null): number {
   if (!e) return 0;
   return Math.max(0, e.c) + Math.max(0, e.p);
 }
-export function unreadLabel(e: UnreadEntry | undefined | null): string {
+export function unreadLabel(e: Pick<UnreadEntry, "c" | "p"> | undefined | null): string {
   return badgeLabel(unreadCount(e));
+}
+/** The pink «♥ N» of an idea / channel: its unread like notifications. "" = none. */
+export function likeLabel(e: Partial<Pick<UnreadEntry, "l">> | undefined | null): string {
+  return badgeLabel(e && (e.l ?? 0) > 0 ? e.l : 0);
+}
+/** Anything unread on the idea / channel (comment, post or like). */
+export function hasUnread(e: Partial<UnreadEntry> | undefined | null): boolean {
+  return !!e && (e.c ?? 0) + (e.p ?? 0) + (e.l ?? 0) > 0;
+}
+/** The thin accent on the edge of a card (data-unread): "c" = comments / a new post (red), "l" = only likes (pink), undefined = nothing unread. */
+export function unreadAccent(e: Partial<UnreadEntry> | undefined | null): "c" | "l" | undefined {
+  if (!e) return undefined;
+  if ((e.c ?? 0) + (e.p ?? 0) > 0) return "c";
+  return (e.l ?? 0) > 0 ? "l" : undefined;
 }
 
 export interface ThreadComment {

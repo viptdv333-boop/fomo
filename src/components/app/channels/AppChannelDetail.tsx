@@ -34,7 +34,7 @@ import ChIcon from "./ChIcon";
 import { ChNav, shareOrCopy, useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useChannelList, useMySubs } from "./useChannelsData";
 import { useUnreadByIdea } from "../useUnreadByIdea";
-import { unreadLabel } from "@/lib/app-unread";
+import { likeLabel, unreadAccent, unreadLabel } from "@/lib/app-unread";
 
 interface PostItem {
   id: string;
@@ -424,6 +424,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                   role="link"
                   tabIndex={0}
                   className="ach-post"
+                  data-unread={canView ? unreadAccent(unread.byIdea[p.id]) : undefined}
                   data-pinned={p.isPinned ? "1" : undefined}
                   onClick={() => (canView ? nav.go(`/ideas/${p.id}`, channel.name) : subs.loggedIn ? setBuying(true) : needLogin())}
                   onKeyDown={(e) => {
@@ -439,6 +440,11 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                     {canView && unreadLabel(unread.byIdea[p.id]) && (
                       <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n: unreadLabel(unread.byIdea[p.id]) })}>
                         {unreadLabel(unread.byIdea[p.id])}
+                      </span>
+                    )}
+                    {canView && likeLabel(unread.byIdea[p.id]) && (
+                      <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: likeLabel(unread.byIdea[p.id]) })}>
+                        {"♥"} {likeLabel(unread.byIdea[p.id])}
                       </span>
                     )}
                   </div>

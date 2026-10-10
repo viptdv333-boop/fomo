@@ -42,7 +42,8 @@ import ChIcon from "./ChIcon";
 import { useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useAuthorList, useChannelList, useMySubs } from "./useChannelsData";
 import { useUnreadByIdea } from "../useUnreadByIdea";
-import { unreadLabel } from "@/lib/app-unread";
+import { likeLabel, unreadLabel, unreadAccent } from "@/lib/app-unread";
+import { UnreadStripView } from "../AppUnreadStrip";
 
 /** the list scroll survives a visit to a channel / an author (the page is a route, so it unmounts while the detail is open) */
 const savedScroll: Record<string, number> = {};
@@ -230,18 +231,29 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
 
   const unreadPill = (c: ChannelItem) => {
     const n = unreadLabel(unread.byChannel[c.id]);
-    return n ? (
-      <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n })}>
-        {n}
-      </span>
-    ) : null;
+    const lk = likeLabel(unread.byChannel[c.id]);
+    if (!n && !lk) return null;
+    return (
+      <>
+        {n && (
+          <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n })}>
+            {n}
+          </span>
+        )}
+        {lk && (
+          <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: lk })}>
+            {"♥"} {lk}
+          </span>
+        )}
+      </>
+    );
   };
 
   const channelCard = (c: ChannelItem) => {
     const st = statusFor(c);
     const tags = channelTags(c);
     return (
-      <div key={c.id} role="link" tabIndex={0} className="ach-card" onClick={() => openChannel(c)} onKeyDown={onEnter(() => openChannel(c))}>
+      <div key={c.id} role="link" tabIndex={0} className="ach-card" data-unread={unreadAccent(unread.byChannel[c.id])} onClick={() => openChannel(c)} onKeyDown={onEnter(() => openChannel(c))}>
         <div className="ach-ctop">
           <div className="ach-tile">
             {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : channelEmoji(c.id)}
@@ -286,7 +298,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
   const channelRow = (c: ChannelItem, last: boolean) => {
     const st = statusFor(c);
     return (
-      <div key={c.id} role="link" tabIndex={0} className="ach-arow" onClick={() => openChannel(c)} onKeyDown={onEnter(() => openChannel(c))}>
+      <div key={c.id} role="link" tabIndex={0} className="ach-arow" data-unread={unreadAccent(unread.byChannel[c.id])} onClick={() => openChannel(c)} onKeyDown={onEnter(() => openChannel(c))}>
         <div className="ach-avatar ach-avatar-sq">
           {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : <span className="ach-emoji">{channelEmoji(c.id)}</span>}
           {topBadge(topRanks.get(c.id))}
@@ -407,6 +419,9 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
           </button>
         ))}
       </div>
+
+      {/* everything the «Каналы» dock badge counts (new posts, comments, likes), one tap to the oldest unread post */}
+      {seg === "channels" && <UnreadStripView bucket={unread.channels} scope="channels" />}
 
       {seg === "channels" ? <div className="ach-intro">{t("appch.intro")}</div> : (
         <div className="ach-search">

@@ -3,15 +3,28 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
-import type { UnreadMap } from "@/lib/app-unread";
+import { emptyBucket, emptyUnread, type UnreadBucket, type UnreadEntry, type UnreadMap } from "@/lib/app-unread";
 
 /**
- * Unread comments / new posts per idea and per channel (GET /api/notifications/unread-by-idea) for the red counts on channel rows, post cards,
+ * Unread comments / new posts / likes per idea and per channel (plus the two strips: board, channels) (GET /api/notifications/unread-by-idea) for the red counts on channel rows, post cards,
  * board cards and «Мои идеи». One shared store: every card that asks for the numbers uses the same request. Refreshed on the socket's
  * new_notification, on `fomo:unread-changed` (an idea was opened and marked its notifications read), when the app comes back to the
  * foreground and every minute while a screen shows them.
  */
-const EMPTY: UnreadMap = { byIdea: {}, byChannel: {}, first: null, board: { n: 0, first: null } };
+const EMPTY: UnreadMap = emptyUnread();
+
+/** An older server answered {c, p} / {n, first} only: fill what is missing so the screens can rely on the whole shape. */
+function bucketOf(b: Partial<UnreadBucket> | undefined): UnreadBucket {
+  const n = b?.n ?? 0;
+  const p = b?.p ?? 0;
+  const l = b?.l ?? 0;
+  return { ...emptyBucket(), ...b, n, p, l, total: b?.total ?? n + p + l };
+}
+function entriesOf(m: Record<string, Partial<UnreadEntry>> | undefined): Record<string, UnreadEntry> {
+  const out: Record<string, UnreadEntry> = {};
+  for (const [k, e] of Object.entries(m ?? {})) out[k] = { c: e.c ?? 0, p: e.p ?? 0, l: e.l ?? 0 };
+  return out;
+}
 let state: UnreadMap = EMPTY;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -32,7 +45,7 @@ export function refreshUnread(force = false): Promise<void> {
       const r = await fetch("/api/notifications/unread-by-idea", { cache: "no-store" });
       if (r.ok) {
         const j = (await r.json()) as Partial<UnreadMap>;
-        const next: UnreadMap = { byIdea: j.byIdea ?? {}, byChannel: j.byChannel ?? {}, first: j.first ?? null, board: j.board ?? { n: 0, first: null } };
+        const next: UnreadMap = { byIdea: entriesOf(j.byIdea), byChannel: entriesOf(j.byChannel), first: j.first ?? null, board: bucketOf(j.board), channels: bucketOf(j.channels) };
         // the same numbers again (a silent refresh when a screen comes back): nobody re-renders, with 50 cards on the board that is the difference
         const changed = !loaded || JSON.stringify(next) !== JSON.stringify(state);
         loaded = true;

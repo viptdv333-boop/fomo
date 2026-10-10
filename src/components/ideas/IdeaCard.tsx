@@ -12,7 +12,8 @@ import { formatMessageTime } from "@/lib/format-message-time";
 import { agoLabel } from "@/lib/app-ui";
 import { useAppUi } from "@/components/app/useAppUi";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
-import { unreadLabel } from "@/lib/app-unread";
+import { likeLabel, unreadAccent, unreadLabel } from "@/lib/app-unread";
+import IdeaUnreadMarks from "@/components/app/IdeaUnreadMarks";
 import { useT } from "@/lib/i18n/client";
 import { sendOrQueue } from "@/lib/outbox/send";
 import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
@@ -89,9 +90,12 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const { t, locale } = useT();
   const { data: session } = useSession();
   const appUi = useAppUi();
-  // red count of unread comments under this idea (app UI board card only)
-  const unreadMap = useUnreadByIdea(appUi && !minimal && !compact);
+  // red count of unread comments + pink hearts of unread likes under this idea (app UI: the board card, the list and the grid view)
+  const unreadMap = useUnreadByIdea(appUi);
   const unreadBadge = unreadLabel(unreadMap.byIdea[idea.id]);
+  // pink «♥ N»: unread likes of this idea / of comments under it (they are in the dock badge but not in the red comment count)
+  const likeBadge = likeLabel(unreadMap.byIdea[idea.id]);
+  const unreadMark = unreadAccent(unreadMap.byIdea[idea.id]);
   const [likedLocal, setLiked] = useState(idea.userVote === 1);
   const [likeCountLocal, setLikeCount] = useState(idea.voteScore);
   // offline outbox: a like that is still waiting for the network is shown as given (survives a restart) with a clock on the count
@@ -178,6 +182,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     return (
       <div
         data-app-card="idea"
+        data-unread={unreadMark}
         className="app-idea select-none"
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
@@ -188,6 +193,11 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {unreadBadge && (
               <span className="app-ubadge" role="status" aria-label={t("appui.unread", { n: unreadBadge })}>
                 {unreadBadge}
+              </span>
+            )}
+            {likeBadge && (
+              <span className="app-ulike" role="status" aria-label={t("appui.likesUnread", { n: likeBadge })}>
+                {"♥"} {likeBadge}
               </span>
             )}
             {isNew && <NewBadge className="ml-2 align-middle" />}
@@ -220,6 +230,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   if (minimal) {
     return (
       <div
+        data-unread={appUi ? unreadMark : undefined}
         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition select-none"
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
@@ -235,6 +246,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         <Link href={`/ideas/${idea.id}`} className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm dark:text-gray-100 truncate">{idea.title}</span>
+            {appUi && <IdeaUnreadMarks entry={unreadMap.byIdea[idea.id]} />}
             {isNew && <NewBadge className="shrink-0" />}
             {isArchived && <ArchivedBadge className="shrink-0" />}
             {idea.isPaid && (
@@ -275,6 +287,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     return (
       <div
         data-app-card="compact"
+        data-unread={appUi ? unreadMark : undefined}
         className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-4 hover:shadow-md transition flex flex-col h-full select-none"
         onCopy={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
@@ -291,6 +304,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
           <StarRating rating={idea.author.rating} />
           <FomoMark className="shrink-0" />
+          {appUi && <IdeaUnreadMarks entry={unreadMap.byIdea[idea.id]} />}
           {isNew && <NewBadge />}
           {isArchived && <ArchivedBadge />}
           {idea.isPaid && (

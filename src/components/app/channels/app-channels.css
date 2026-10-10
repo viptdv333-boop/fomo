@@ -243,3 +243,6 @@ html.app-ui .ach-toast { position: fixed; left: 50%; bottom: calc(var(--app-bott
 /* unread count pill next to a channel name / in a post title (the shared .app-ubadge, no extra left margin: the flex gap spaces it) */
 html.app-ui .ach-cname .app-ubadge, html.app-ui .ach-aname .app-ubadge { margin-left: 0; }
 html.app-ui .ach-post-title .app-ubadge { margin-left: auto; }
+html.app-ui .ach-post-title .app-ulike { margin-left: auto; }
+html.app-ui .ach-post-title .app-ubadge + .app-ulike { margin-left: 6px; }
+html.app-ui .ach-cname .app-ulike, html.app-ui .ach-aname .app-ulike { margin-left: 0; }

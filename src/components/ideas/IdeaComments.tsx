@@ -90,7 +90,7 @@ export default function IdeaComments({ ideaId }: Props) {
   // Unread notifications of THIS idea (read before they are marked read): where to jump to. null = not known yet, "none" = nothing / guest.
   const uid = session?.user?.id;
   const sessionLoading = sessionStatus === "loading";
-  const [unread, setUnread] = useState<{ ids: string[]; since: string | null } | "none" | null>(null);
+  const [unread, setUnread] = useState<{ ids: string[]; since: string | null; likes: { idea: number; comment: number } } | "none" | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const jumped = useRef(false);
 
@@ -105,7 +105,7 @@ export default function IdeaComments({ ideaId }: Props) {
     let alive = true;
     fetch(`/api/notifications/unread-by-idea?ideaId=${encodeURIComponent(ideaId)}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => alive && setUnread(j && Array.isArray(j.ids) ? { ids: j.ids, since: j.since ?? null } : "none"))
+      .then((j) => alive && setUnread(j && Array.isArray(j.ids) ? { ids: j.ids, since: j.since ?? null, likes: { idea: Number(j.likes?.idea) || 0, comment: Number(j.likes?.comment) || 0 } } : "none"))
       .catch(() => alive && setUnread("none"));
     return () => {
       alive = false;
@@ -214,6 +214,10 @@ export default function IdeaComments({ ideaId }: Props) {
     }
     const info = unread === "none" ? null : unread;
     const target = pickCommentToShow(comments, { wanted, ids: info?.ids, since: info?.since, myId: uid });
+    // came for likes: say why (the like notification is read right below, so this is the only place it is explained)
+    if (info && (info.likes.idea > 0 || info.likes.comment > 0)) {
+      showToast([info.likes.idea > 0 ? t("appui.ideaLiked", { n: info.likes.idea }) : "", info.likes.comment > 0 ? t("appui.commentLiked", { n: info.likes.comment }) : ""].filter(Boolean).join(" · "));
+    }
     if (target) {
       // instant (a smooth scroll is cancelled by the layout shifts of the idea above while it is still drawing), repeated once when it settled
       const go = () => document.getElementById(`comment-${target}`)?.scrollIntoView({ block: "center" });
@@ -230,7 +234,7 @@ export default function IdeaComments({ ideaId }: Props) {
         .then((j) => j?.marked > 0 && window.dispatchEvent(new Event("fomo:unread-changed")))
         .catch(() => {});
     }
-  }, [loading, unread, comments, uid, ideaId]);
+  }, [loading, unread, comments, uid, ideaId, t]);
 
   // Cards link here with #comments; the page renders the comments after a
   // fetch, so the browser's own anchor scroll has nothing to land on yet.

@@ -9,6 +9,9 @@ import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 import DemoGate from "@/components/shared/DemoGate";
 import AppUnreadStrip from "@/components/app/AppUnreadStrip";
+import IdeaUnreadMarks, { ideaUnreadMarks } from "@/components/app/IdeaUnreadMarks";
+import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
+import { useAppUi } from "@/components/app/useAppUi";
 
 // the cards do not re-render when the board re-renders for a reason that does not touch them (a tab switch changes the URL: useSearchParams)
 const IdeaCard = memo(IdeaCardBase);
@@ -106,6 +109,22 @@ export default function FeedPageWrapper() {
       </DemoGate>
     </div>
   );
+}
+
+/** The «ТОП 1..3» card: a link to the idea carrying the thin accent of an unread one (app UI only; the red / pink marks come from TopIdeaMarks). */
+function TopIdeaLink({ idea, children, ...rest }: { idea: { id: string }; children: React.ReactNode } & Omit<React.ComponentProps<typeof Link>, "href">) {
+  const appUi = useAppUi();
+  const u = useUnreadByIdea(appUi);
+  return (
+    <Link href={`/ideas/${idea.id}`} data-unread={appUi ? ideaUnreadMarks(u.byIdea[idea.id]).accent : undefined} {...rest}>
+      {children}
+    </Link>
+  );
+}
+function TopIdeaMarks({ id }: { id: string }) {
+  const appUi = useAppUi();
+  const u = useUnreadByIdea(appUi);
+  return appUi ? <IdeaUnreadMarks entry={u.byIdea[id]} /> : null;
 }
 
 function FeedPage() {
@@ -662,7 +681,7 @@ function FeedPage() {
             const labels = [t("top.1"), t("top.2"), t("top.3")];
             const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
             return (
-              <Link key={idea.id} href={`/ideas/${idea.id}`}
+              <TopIdeaLink key={idea.id} idea={idea}
                 data-app-card="top" className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
                 onCopy={(e) => e.preventDefault()}
                 onContextMenu={(e) => e.preventDefault()}
@@ -670,6 +689,7 @@ function FeedPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
+                  <TopIdeaMarks id={idea.id} />
                   {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
@@ -677,7 +697,7 @@ function FeedPage() {
                   <span>{idea.author.displayName}</span>
                   <span>❤️ {idea.voteScore}</span>
                 </div>
-              </Link>
+              </TopIdeaLink>
             );
           })}
         </div>

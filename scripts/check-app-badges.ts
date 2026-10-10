@@ -12,6 +12,14 @@ import {
   ideaIdFromLink,
   pickCommentToShow,
   unreadLabel,
+  likeLabel,
+  hasUnread,
+  unreadAccent,
+  stripText,
+  stripHref,
+  emptyUnread,
+  dockTypeOf,
+  type UnreadRow,
 } from "../src/lib/app-unread";
 import { EVENT_FOR_TYPE } from "../src/lib/notification-events";
 import { MAIN_APP_TABS, type AppTabId } from "../src/lib/app-ui";
@@ -81,11 +89,12 @@ const rows = [
   { type: "payment", link: "/ideas/ideaA00001" }, // not a comment / post type
 ];
 const agg = aggregateUnread(rows, tariff);
-eq("aggregate: per idea (c = comments, p = new post)", agg.byIdea, { ideaA00001: { c: 2, p: 0 }, ideaB00001: { c: 1, p: 0 }, ideaC00001: { c: 1, p: 1 }, ideaD00001: { c: 0, p: 1 } });
-eq("aggregate: per channel via Idea.tariffId", agg.byChannel, { chanX00001: { c: 2, p: 1 }, chanY00001: { c: 0, p: 1 } });
-eq("aggregate: first idea with an unread comment; the board strip counts only ordinary ideas", [agg.first, agg.board], ["ideaA00001", { n: 2, first: "ideaA00001" }]);
-eq("aggregate: nothing", aggregateUnread([], tariff), { byIdea: {}, byChannel: {}, first: null, board: { n: 0, first: null } });
-eq("aggregate: channel comments alone leave the board strip empty", aggregateUnread([{ type: "channel_comment", link: "/ideas/ideaB00001" }], tariff).board, { n: 0, first: null });
+eq("aggregate: per idea (c = comments, p = new post, l = likes)", agg.byIdea, { ideaA00001: { c: 2, p: 0, l: 0 }, ideaB00001: { c: 1, p: 0, l: 0 }, ideaC00001: { c: 1, p: 1, l: 0 }, ideaD00001: { c: 0, p: 1, l: 0 } });
+eq("aggregate: per channel via Idea.tariffId", agg.byChannel, { chanX00001: { c: 2, p: 1, l: 0 }, chanY00001: { c: 0, p: 1, l: 0 } });
+eq("aggregate: first idea with an unread comment; the board strip counts only ordinary ideas", [agg.first, agg.board], ["ideaA00001", { n: 2, p: 0, l: 0, total: 2, first: "ideaA00001", firstKind: "c", firstComment: "cm00000001" }]);
+eq("aggregate: the channels strip = posts + comments under posts", agg.channels, { n: 2, p: 2, l: 0, total: 4, first: "ideaB00001", firstKind: "c", firstComment: "cm00000002" });
+eq("aggregate: nothing", aggregateUnread([], tariff), emptyUnread());
+eq("aggregate: channel comments alone leave the board strip empty", aggregateUnread([{ type: "channel_comment", link: "/ideas/ideaB00001" }], tariff).board, emptyUnread().board);
 eq("labels: comments + a new post, 99+ cap, none", [unreadLabel({ c: 3, p: 0 }), unreadLabel({ c: 0, p: 1 }), unreadLabel({ c: 2, p: 1 }), unreadLabel({ c: 120, p: 0 }), unreadLabel({ c: 0, p: 0 }), unreadLabel(undefined)], ["3", "1", "3", "99+", "", ""]);
 
 const eff = effectiveByType({ price_alert: 2 }, rows.filter((r) => IDEA_UNREAD_TYPES.includes(r.type)), tariff);
@@ -103,12 +112,53 @@ const likeRows = [
   { type: "idea_like", link: "/ideas/ideaGONE001?lk=1_ffffffff" },
 ];
 eq("likes: they are read on open and fetched with the idea rows", [IDEA_READ_TYPES.includes("idea_like"), IDEA_READ_TYPES.includes("comment_like"), IDEA_UNREAD_TYPES.includes("idea_like"), IDEA_UNREAD_TYPES.includes("comment_like")], [true, true, true, true]);
-eq("likes: NOT part of the red per-post / per-channel comment counter, the board strip or the jump", aggregateUnread(likeRows, tariff), { byIdea: {}, byChannel: {}, first: null, board: { n: 0, first: null } });
+const aggLikes = aggregateUnread(likeRows, tariff);
+eq("likes: per idea / per channel in their own counter l, NOT in the red comment count c, not in `first` (the jump to a comment)", [aggLikes.byIdea, aggLikes.byChannel, aggLikes.first], [{ ideaA00001: { c: 0, p: 0, l: 2 }, ideaB00001: { c: 0, p: 0, l: 1 }, ideaC00001: { c: 0, p: 0, l: 1 } }, { chanX00001: { c: 0, p: 0, l: 2 } }, null]);
+eq("likes: the red label ignores them, the pink one shows them", [unreadLabel(aggLikes.byIdea.ideaA00001), likeLabel(aggLikes.byIdea.ideaA00001), likeLabel(undefined), likeLabel({ l: 120 })], ["", "2", "", "99+"]);
+eq("likes: board strip = the two likes under the ordinary idea, opens it (an idea like names no comment)", aggLikes.board, { n: 0, p: 0, l: 2, total: 2, first: "ideaA00001", firstKind: "l", firstComment: null });
+eq("likes: channels strip = the two likes under channel posts; a like of a comment opens the comment", [aggLikes.channels, stripHref(aggregateUnread([likeRows[1]], tariff).board)], [{ n: 0, p: 0, l: 2, total: 2, first: "ideaB00001", firstKind: "l", firstComment: null }, "/ideas/ideaA00001?comment=cm00000001"]);
 const effLikes = effectiveByType({}, likeRows, tariff);
 eq("likes: under an ordinary idea idea_like / comment_like, under a channel post channel_like, deleted ideas dropped", effLikes, { idea_like: 1, comment_like: 1, channel_like: 2 });
 eq("likes: dock = Доска 2 (a like of the idea + of a comment), Каналы 2", tabBadgeCounts(effLikes), { feed: 2, channels: 2 });
-eq("likes: ids of the unread comments (jump target) ignore like rows", likeRows.filter((r) => IDEA_COMMENT_TYPES.includes(r.type)), []);
+eq("likes: ids of the unread comments (jump target by comment notifications) ignore like rows", likeRows.filter((r) => IDEA_COMMENT_TYPES.includes(r.type)), []);
 eq("likes: the link with lk= still names its idea and comment", [ideaIdFromLink(likeRows[1].link), commentIdFromLink(likeRows[1].link), ideaIdFromLink(likeRows[0].link), commentIdFromLink(likeRows[0].link)], ["ideaA00001", "cm00000001", "ideaA00001", null]);
+
+/* ---------- strips: text + target ---------- */
+eq("strip text: comments only / likes only / posts only / a mix / none", [
+  stripText({ n: 3, p: 0, l: 0 }), stripText({ n: 0, p: 0, l: 2 }), stripText({ n: 0, p: 4, l: 0 }), stripText({ n: 2, p: 0, l: 1 }), stripText({ n: 0, p: 1, l: 1 }), stripText({ n: 0, p: 0, l: 0 }), stripText(null),
+], [
+  { key: "appui.newComments", n: 3 }, { key: "appui.newLikes", n: 2 }, { key: "appui.newPosts", n: 4 }, { key: "appui.newAny", n: 3 }, { key: "appui.newAny", n: 2 }, null, null,
+]);
+eq("strip target: the oldest unread idea, on the comment its notification names", [stripHref(agg.board), stripHref(agg.channels), stripHref(emptyUnread().board), stripHref(null)], ["/ideas/ideaA00001?comment=cm00000001", "/ideas/ideaB00001?comment=cm00000002", null, null]);
+eq("strip target: the oldest of ALL kinds wins, not the oldest comment (a like older than a comment on another idea)", aggregateUnread([{ type: "comment_like", link: "/ideas/ideaA00001?comment=cm00000007&lk=1_aaaaaaaa" }, { type: "new_comment", link: "/ideas/ideaX00001" }], new Map<string, string | null>([["ideaA00001", null], ["ideaX00001", null]])).board.first, "ideaA00001");
+eq("cards: accent = red for comments / a post, pink for likes only, none when read", [unreadAccent({ c: 1, p: 0, l: 3 }), unreadAccent({ c: 0, p: 1, l: 0 }), unreadAccent({ c: 0, p: 0, l: 2 }), unreadAccent({ c: 0, p: 0, l: 0 }), unreadAccent(undefined), hasUnread({ l: 1 }), hasUnread({ c: 0, p: 0, l: 0 })], ["c", "c", "l", undefined, undefined, true, false]);
+
+/* ---------- the invariant: the dock number of a tab = what the strip of that tab explains ---------- */
+const mix: UnreadRow[] = [
+  { type: "new_comment", link: "/ideas/ideaA00001?comment=cm00000001" }, // Доска
+  { type: "comment_reply", link: "/ideas/ideaA00001" }, // Доска
+  { type: "idea_like", link: "/ideas/ideaA00001?lk=2_aaaaaaaa.bbbbbbbb" }, // Доска (one row, two people)
+  { type: "comment_like", link: "/ideas/ideaA00001?comment=cm00000001&lk=1_cccccccc" }, // Доска
+  { type: "new_comment", link: "/ideas/ideaB00001?comment=cm00000002" }, // a comment under my own channel post -> Каналы
+  { type: "comment_reply", link: "/ideas/ideaC00001" }, // Каналы
+  { type: "channel_comment", link: "/ideas/ideaC00001?comment=cm00000005" }, // Каналы
+  { type: "channel_post", link: "/ideas/ideaC00001" }, // Каналы
+  { type: "channel_post", link: "/ideas/ideaD00001" }, // Каналы
+  { type: "idea_like", link: "/ideas/ideaB00001?lk=1_dddddddd" }, // a like of a channel post: Каналы, NOT Доска
+  { type: "comment_like", link: "/ideas/ideaC00001?comment=cm00000005&lk=4_eeeeeeee" }, // Каналы
+  { type: "new_comment", link: "/ideas/ideaGONE001" }, // deleted idea: neither the dock nor a strip
+];
+const dockMix = tabBadgeCounts(effectiveByType({ price_alert: 3 }, mix, tariff));
+const aggMix = aggregateUnread(mix, tariff);
+eq("invariant: dock Доска = board strip total = comments + replies + likes of ordinary ideas", [dockMix.feed, aggMix.board.total, aggMix.board.n + aggMix.board.l + aggMix.board.p], [4, 4, 4]);
+eq("invariant: dock Каналы = channels strip total = posts + comments + likes of channel posts", [dockMix.channels, aggMix.channels.total, aggMix.channels.n + aggMix.channels.p + aggMix.channels.l], [7, 7, 7]);
+eq("invariant: no double count - a like of a channel post is in Каналы only, a like of an ordinary idea in Доска only", [aggMix.board.l, aggMix.channels.l, aggMix.board.p], [2, 2, 0]);
+eq("invariant: every idea item is explained by exactly one strip (both strips = the per-idea counters)", [aggMix.board.total + aggMix.channels.total, Object.values(aggMix.byIdea).reduce((s, e) => s + e.c + e.p + e.l, 0)], [11, 11]);
+eq("invariant: the per-channel counters add up to the channels strip", [Object.values(aggMix.byChannel).reduce((s, e) => s + e.c + e.p + e.l, 0), aggMix.channels.total], [7, 7]);
+eq("invariant: the dock and the strips use one type rule (dockTypeOf)", [dockTypeOf("new_comment", "chan"), dockTypeOf("comment_reply", "chan"), dockTypeOf("idea_like", "chan"), dockTypeOf("comment_like", "chan"), dockTypeOf("new_comment", null), dockTypeOf("idea_like", null), dockTypeOf("channel_post", "chan")], ["channel_comment", "channel_comment", "channel_like", "channel_like", "new_comment", "idea_like", "channel_post"]);
+eq("invariant: nothing unread -> empty strips and no dock number", [tabBadgeCounts(effectiveByType({}, [], tariff)), aggregateUnread([], tariff).board.total, aggregateUnread([], tariff).channels.total], [{}, 0, 0]);
+// a type added to BADGE_TAB_BY_TYPE for Доска / Каналы that no strip reads would bring the complaint back (a badge with nothing to find)
+eq("invariant: every type that lights Доска or Каналы is read by the strips", Object.entries(BADGE_TAB_BY_TYPE).filter(([t, tab]) => (tab === "feed" || tab === "channels") && t !== "channel_like" && !IDEA_UNREAD_TYPES.includes(t)), []);
 
 const thread = [
   { id: "cm00000001", createdAt: "2026-10-07T10:00:00.000Z", user: { id: "me" } },
