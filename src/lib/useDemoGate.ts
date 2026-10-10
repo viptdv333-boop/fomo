@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { useSession } from "next-auth/react";
+import { useScreenWarm } from "@/components/app/tabhost/warm";
 import {
   DEMO_STORAGE_KEY,
   addUsage,
@@ -189,8 +190,9 @@ export function useDemoGate(): { locked: boolean } {
     () => false,
   );
 
+  const warm = useScreenWarm(); // a screen that is only being pre-mounted is not watched by anybody: no demo time is spent on it
   useEffect(() => {
-    if (!guest) return;
+    if (!guest || warm) return;
     const st = store();
     st.refs++;
     st.counting = true;
@@ -203,7 +205,7 @@ export function useDemoGate(): { locked: boolean } {
         stop(st);
       }
     };
-  }, [guest]);
+  }, [guest, warm]);
 
   return { locked: guest && exhausted };
 }

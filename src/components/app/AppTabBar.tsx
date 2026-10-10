@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
@@ -12,6 +12,7 @@ import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppUi } from "./useAppUi";
 import { useTabBadges } from "./useTabBadges";
 import { applyFontStep, readFontStep } from "./fontStep";
+import { hostNavigate, useAppPathname } from "./tabhost/store";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
@@ -52,7 +53,7 @@ const SLIDE_KEY = "fomo-tab-slide";
  */
 function useSwipeTabs() {
   const router = useRouter();
-  const pathname = usePathname() || "/";
+  const pathname = useAppPathname();
   const { locale } = useT();
   const loc = locale as "ru" | "en" | "cn";
 
@@ -159,7 +160,8 @@ function useSwipeTabs() {
           m.style.opacity = "0.25";
           window.setTimeout(() => reset(false), 3500); // the screen waits faded until the new one arrives (the route effect clears it); this only guards a stalled load
         }
-        router.push(appTabHref(loc, target));
+        const href = appTabHref(loc, target);
+        if (!hostNavigate(href)) router.push(href);
       }
     };
     const end = () => {
@@ -188,7 +190,7 @@ function useSwipeTabs() {
  */
 function useDesktopNav(bar: React.RefObject<HTMLElement | null>) {
   const router = useRouter();
-  const pathname = usePathname() || "/";
+  const pathname = useAppPathname();
   const { locale } = useT();
   const loc = locale as "ru" | "en" | "cn";
 
@@ -271,7 +273,8 @@ function useDesktopNav(bar: React.RefObject<HTMLElement | null>) {
       const target = dockKeyTarget(action, pathname);
       if (!target) return;
       e.preventDefault();
-      router.push(appTabHref(loc, target));
+      const href = appTabHref(loc, target);
+      if (!hostNavigate(href)) router.push(href);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -280,7 +283,7 @@ function useDesktopNav(bar: React.RefObject<HTMLElement | null>) {
 
 function TabBar() {
   const { t, locale } = useT();
-  const pathname = usePathname() || "/";
+  const pathname = useAppPathname();
   const active = activeAppTab(pathname);
   const counts = useTabBadges(active); // red badges: Доска / Терминал / Болталка / Календарь / Каналы (src/lib/app-badges.ts)
   const { data: session } = useSession();
@@ -359,6 +362,8 @@ function TabBar() {
                 /* old app build */
               }
               if (on) document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+              // the tab host (tabhost/AppTabHost.tsx) shows a tab's screen in place: no server round trip, the screen that was open before is still mounted
+              if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && hostNavigate(appTabHref(locale as "ru" | "en" | "cn", tab))) e.preventDefault();
             }}
           >
             <span className="app-tab-ico">

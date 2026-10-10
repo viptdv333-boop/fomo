@@ -22,6 +22,21 @@ export function setPendingCounter(fn: () => number): void {
   pendingCount = fn;
 }
 
+// How many /api reads are on their way: the thin refresh line under the header and the tab host's warm-up (it waits until a pre-mounted screen has its data) read it.
+let inflight = 0;
+const inflightListeners = new Set<() => void>();
+function inflightChange(d: number): void {
+  inflight = Math.max(0, inflight + d);
+  inflightListeners.forEach((l) => l());
+}
+export function apiReadsInFlight(): number {
+  return inflight;
+}
+export function subscribeApiReads(cb: () => void): () => void {
+  inflightListeners.add(cb);
+  return () => void inflightListeners.delete(cb);
+}
+
 /** The real fetch (the outbox uses it: it must not be pre-blocked or toasted by the guard). */
 export function rawFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   return (nativeFetch ?? fetch)(input, init);
@@ -61,6 +76,7 @@ export function installFetchGuard(): void {
 
     const isWrite = d.method !== "GET" && d.method !== "HEAD";
     if (!isWrite) {
+      inflightChange(1);
       try {
         const res = await native(input, init);
         if (res.headers.get("x-fomo-offline")) markUnreachable();
@@ -69,6 +85,8 @@ export function installFetchGuard(): void {
       } catch (e) {
         if (e instanceof TypeError) void noteNetworkError();
         throw e;
+      } finally {
+        inflightChange(-1);
       }
     }
 

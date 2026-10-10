@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import IdeaCard from "@/components/ideas/IdeaCard";
+import IdeaCardBase from "@/components/ideas/IdeaCard";
 import NewBadge, { isRecentlyPublished } from "@/components/shared/NewBadge";
 import { useT } from "@/lib/i18n/client";
 import DemoGate from "@/components/shared/DemoGate";
 import AppUnreadStrip from "@/components/app/AppUnreadStrip";
+
+// the cards do not re-render when the board re-renders for a reason that does not touch them (a tab switch changes the URL: useSearchParams)
+const IdeaCard = memo(IdeaCardBase);
 
 interface Instrument {
   id: string;
@@ -121,6 +124,11 @@ function FeedPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
+  // Silent refresh (the tab comes back, the timer): the list that is on screen stays; fresher posts wait behind a «Новое: N» pill when the reader has
+  // scrolled down or is touching the screen, and are applied at once only when the list is at its top (nothing jumps under the finger).
+  const [held, setHeld] = useState<IdeaData[] | null>(null);
+  const shownRef = useRef<{ key: string; ids: string[] }>({ key: "", ids: [] });
+  const touching = useRef(false);
 
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -213,7 +221,6 @@ function FeedPage() {
       if (activeAuthorIds.length === 0) { setIdeas([]); setHasMore(false); setLoading(false); return; }
     }
 
-    setLoading(true);
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "50");
@@ -231,13 +238,71 @@ function FeedPage() {
     if (paidFilter === "paid") params.set("isPaid", "true");
     if (showArchived) params.set("status", "archived");
 
-    const res = await fetch(`/api/ideas?${params}`);
-    const data = await res.json();
-    const list = data.data || data.ideas || (Array.isArray(data) ? data : []);
-    setIdeas(list);
+    const key = params.toString();
+    // the same query as the list on screen: refresh in place, no skeleton
+    const silent = shownRef.current.key === key && shownRef.current.ids.length > 0;
+    if (!silent) setLoading(true);
+    let list: IdeaData[];
+    try {
+      const res = await fetch(`/api/ideas?${params}`);
+      const data = await res.json();
+      list = data.data || data.ideas || (Array.isArray(data) ? data : []);
+    } catch (e) {
+      if (silent) return; // offline / a hiccup: the list on screen is still the best there is
+      throw e;
+    }
+    const main = document.querySelector("main");
+    const atTop = (main?.scrollTop ?? 0) < 80 && !touching.current;
+    const fresh = list.some((i) => !shownRef.current.ids.includes(i.id));
+    if (silent && fresh && !atTop) {
+      setHeld(list);
+    } else {
+      shownRef.current = { key, ids: list.map((i) => i.id) };
+      setHeld(null);
+      setIdeas(list);
+    }
     setHasMore(list.length >= 50);
     setLoading(false);
   }
+  const loadRef = useRef(loadIdeas);
+  loadRef.current = loadIdeas;
+  const reloadIdeas = useCallback(() => void loadRef.current(), []);
+  const applyHeld = useCallback(() => {
+    setHeld((h) => {
+      if (h) {
+        shownRef.current = { key: shownRef.current.key, ids: h.map((i) => i.id) };
+        setIdeas(h);
+      }
+      return null;
+    });
+  }, []);
+
+  // the list is looked at: keep it fresh in the background; the held posts go in when the reader is back at the top
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (!document.hidden) void loadRef.current();
+    }, 60_000);
+    const main = document.querySelector("main");
+    const onScroll = () => {
+      if (main && main.scrollTop < 80 && !touching.current) applyHeld();
+    };
+    const down = () => (touching.current = true);
+    const up = () => {
+      touching.current = false;
+      onScroll();
+    };
+    main?.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("touchstart", down, { passive: true });
+    document.addEventListener("touchend", up, { passive: true });
+    document.addEventListener("touchcancel", up, { passive: true });
+    return () => {
+      clearInterval(iv);
+      main?.removeEventListener("scroll", onScroll);
+      document.removeEventListener("touchstart", down);
+      document.removeEventListener("touchend", up);
+      document.removeEventListener("touchcancel", up);
+    };
+  }, [applyHeld]);
 
   const pillClass = (active: boolean) =>
     `px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
@@ -587,6 +652,19 @@ function FeedPage() {
         </div>
       )}
 
+      {held && (
+        <button
+          type="button"
+          onClick={() => {
+            applyHeld();
+            document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="sticky top-2 z-20 mx-auto mb-3 block rounded-full bg-green-600 px-4 py-1.5 text-sm font-medium text-white shadow-lg"
+        >
+          {t("tabhost.newPosts", { n: held.filter((i) => !shownRef.current.ids.includes(i.id)).length })}
+        </button>
+      )}
+
       {/* Ideas */}
       {loading ? (
         <div className="space-y-4">
@@ -626,19 +704,19 @@ function FeedPage() {
       ) : viewMode === "cards" ? (
         <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} compact />
+            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact />
           ))}
         </div>
       ) : viewMode === "list" ? (
         <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
           {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} minimal />
+            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
           ))}
         </div>
       ) : (
         <div data-app-grid className="flex flex-col gap-4">
           {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={loadIdeas} />
+            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} />
           ))}
         </div>
       )}

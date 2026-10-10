@@ -1,0 +1,27 @@
+/* Thin refresh line of the tab host (AppTabHost.tsx RefreshLine): shown under the status bar while the screen on display is being refreshed from the
+   network. It never covers content and never blocks a tap. */
+.app-refresh-line {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 70;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background-image: linear-gradient(90deg, transparent, #16a34a, transparent);
+  background-repeat: no-repeat;
+  background-size: 35% 100%;
+}
+.app-refresh-line[data-on="1"] {
+  opacity: 1;
+  animation: app-refresh-slide 1.1s linear infinite;
+}
+@keyframes app-refresh-slide {
+  from { background-position: -40% 0; }
+  to { background-position: 140% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-refresh-line[data-on="1"] { animation: none; background-size: 100% 100%; }
+}

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { localizedPath, type Locale } from "@/lib/i18n/locale-url";
@@ -10,6 +9,7 @@ import { isTerminalSite } from "@/lib/site-mode";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import NotificationBell from "@/components/layout/NotificationBell";
 import { useAppUi } from "./useAppUi";
+import { hostNavigate, useAppPathname } from "./tabhost/store";
 
 // terminal.fomo.spot: the logo leads to the terminal
 const TERMINAL = isTerminalSite();
@@ -21,7 +21,14 @@ function Header() {
   // lives in the «Профиль» tab of the dock (components/app/profile).
   return (
     <header className="app-header" data-app-header>
-      <Link href={localizedPath(locale as Locale, TERMINAL ? "/terminal" : "/feed")} className="app-logo" aria-label={TERMINAL ? "FOMO Terminal" : "FOMO"}>
+      <Link
+        href={localizedPath(locale as Locale, TERMINAL ? "/terminal" : "/feed")}
+        className="app-logo"
+        aria-label={TERMINAL ? "FOMO Terminal" : "FOMO"}
+        onClick={(e) => {
+          if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && hostNavigate(localizedPath(locale as Locale, TERMINAL ? "/terminal" : "/feed"))) e.preventDefault();
+        }}
+      >
         <span className="app-logo-img">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" />
@@ -51,7 +58,7 @@ function HiddenBell() {
 /** Compact top header of the app UI (logo, theme, bell). Hidden where a screen has its own bar (terminal, chat, channels / authors, profile); renders nothing outside the app UI. */
 export default function AppHeader() {
   const on = useAppUi();
-  const pathname = usePathname() || "/";
+  const pathname = useAppPathname();
   if (!on) return null;
   if (appHeaderHidden(pathname)) return <HiddenBell />;
   return <Header />; // carries its own HiddenBell

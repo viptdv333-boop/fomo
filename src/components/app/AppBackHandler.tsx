@@ -7,6 +7,7 @@ import { stripLocale, type Locale } from "@/lib/i18n/locale-url";
 import { isTerminalSite } from "@/lib/site-mode";
 import { backHrefFor, backLayerCount, backTarget, closeTopBackLayer, nextEntryIndex, planBack, withEntryIndex, type BackAction } from "@/lib/app-back";
 import { useAppUi } from "./useAppUi";
+import { hostNavigate } from "./tabhost/store";
 
 /** Everything that can sit above a screen without registering itself (the site's dialogs, a lightbox, a menu backdrop). */
 const OVERLAY = '[role="dialog"], [aria-modal="true"], .ac-sheet-wrap, .fixed.inset-0';
@@ -116,7 +117,7 @@ function Handler() {
         /* unparsable: let the router decide */
       }
       if (samePage) window.history.replaceState({}, "", href);
-      else live.current.router.replace(href);
+      else if (!hostNavigate(href, "replace")) live.current.router.replace(href); // a tab root is shown in place by the tab host (no round trip)
     };
 
     const fn: FomoBackFn = () => {
