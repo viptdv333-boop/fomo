@@ -55,7 +55,7 @@
   // static files: cache-first
   // ---------------------------------------------------------------------------------------------------------------------------
 
-  var STATIC_PREFIXES = ["/_next/static/", "/icons/", "/icons-terminal/", "/images/", "/landing/"];
+  var STATIC_PREFIXES = ["/_next/static/", "/i18n/", "/icons/", "/icons-terminal/", "/images/", "/landing/"];
   var STATIC_FILES = ["/icon-192.png", "/icon-512.png", "/logo-fomo.png", "/logo-fomo-sm.webp", "/logo-bimi.svg", "/favicon.ico", "/offline.html"];
 
   /** "static" (build files, fixed images), "media" (user uploads), or null */
@@ -72,7 +72,7 @@
   /** Pages never stored: sign-in screens, the admin panel, payments, invitations, forms that only make sense online, downloads. */
   var PAGE_DENY = ["/login", "/register", "/forgot-password", "/reset-password", "/admin", "/payments", "/share-target", "/rooms/join", "/app", "/ideas/new", "/channels/create", "/channels/edit", "/design-preview", "/dev-notifications", "/api"];
   /** The roots of the dock sections: a client-side shell whose data comes from /api, so a copy up to a day old is a perfectly good shell. */
-  var TAB_ROOTS = ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile", "/messages", "/subscriptions", "/instruments", "/rooms"];
+  var TAB_ROOTS = ["/feed", "/terminal", "/chat", "/calendar", "/channels", "/authors", "/profile", "/messages", "/subscriptions", "/instruments", "/rooms", "/calculator"];
 
   /**
    * { cache, fresh, root } for a page path: `fresh` is how long a stored copy is served instantly (and refreshed in the background);

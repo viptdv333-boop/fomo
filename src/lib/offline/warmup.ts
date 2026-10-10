@@ -2,6 +2,7 @@
 // (public/sw.js) has them stored when the network is gone, and the next tab switch finds them in its cache. Bounded (requests, bytes, time),
 // at most every 10 minutes, nothing on a slow / data-saver connection, nothing when the offline mode is switched off, silent.
 import { APP_TABS, appTabHref } from "../app-ui";
+import { localizedPath } from "../i18n/locale-url";
 import { apiRange } from "../calendar/useCalendar";
 import { dayKey, rangeFor, addDays } from "../calendar/time";
 import { isOfflineModeEnabled, swControlled } from "./sw-bridge";
@@ -12,8 +13,10 @@ import { chunkUrlsFromHtml, chunkUrlsFromRuntime, runtimeUrl, storableResources 
 export const WARMUP_EVERY_MS = 10 * 60 * 1000;
 export const WARMUP_NOW_EVENT = "fomo-warmup-now";
 const LAST_KEY = "fomo-warm-at";
-const MAX_REQUESTS = 40;
-const MAX_BYTES = 6 * 1024 * 1024;
+// 40 requests / 6 MB before the tab host: every tab shell is a page of ~400 KB (the dictionary no longer travels inside it), and the subscribed
+// channels' pages and their newest posts (paid content the reader may open without a network) come on top: 60 / 10 MB
+const MAX_REQUESTS = 60;
+const MAX_BYTES = 10 * 1024 * 1024;
 /** build files (scripts, styles) are counted separately: they are content-hashed, so after the first round only the changed ones are fetched */
 const MAX_ASSET_REQUESTS = 140;
 const MAX_ASSET_BYTES = 14 * 1024 * 1024;
@@ -158,6 +161,7 @@ export async function runWarmup(ctx: WarmCtx, force = false): Promise<WarmResult
   }
 
   const answers: Record<string, unknown> = {};
+  const wantPages: string[] = [];
   // the service worker keeps the last session answer of the signed-in user: without it an offline start would look signed out
   if (ctx.uid) await get("/api/auth/session");
   for (const url of warmupUrls(ctx.uid, ctx.locale, zone, t0)) answers[url] = await get(url);
@@ -173,7 +177,18 @@ export async function runWarmup(ctx: WarmCtx, force = false): Promise<WarmResult
         if (channelIds.length >= 5) break;
       }
     }
-    for (const id of channelIds) await get(`/api/ideas?channelId=${encodeURIComponent(id)}&limit=50`);
+    const postIds: string[] = [];
+    for (const id of channelIds) {
+      const posts = await get(`/api/ideas?channelId=${encodeURIComponent(id)}&limit=50`);
+      const list = Array.isArray(posts) ? posts : Array.isArray((posts as { ideas?: unknown })?.ideas) ? (posts as { ideas: unknown[] }).ideas : Array.isArray((posts as { data?: unknown })?.data) ? (posts as { data: unknown[] }).data : [];
+      // the newest posts of each channel (full text for a subscriber): the post itself and its page, so it opens without a network
+      for (const p of list.slice(0, 2)) {
+        const pid = (p as { id?: string } | null)?.id;
+        if (pid && postIds.length < 6 && !postIds.includes(pid)) postIds.push(pid);
+      }
+    }
+    for (const pid of postIds) await get(`/api/ideas/${encodeURIComponent(pid)}`);
+    wantPages.push(...channelPages(subs, channelIds, ctx.locale), ...postIds.map((pid) => localized(ctx.locale, `/ideas/${pid}`)));
 
     // the last messages of the busiest threads. peek=1: the DM endpoint must not mark the conversation as read just because we looked ahead
     const convs = answers["/api/messages/conversations"];
@@ -189,11 +204,17 @@ export async function runWarmup(ctx: WarmCtx, force = false): Promise<WarmResult
     for (const id of roomIds) await get(`/api/chat/messages?roomId=${encodeURIComponent(id)}`);
   }
 
-  // the page shells of the dock sections: stored by the service worker, so the section opens offline, and prefetched for the router
+  // the page shells of the dock sections (and the calculator, pushed from the profile), then the pages of the subscribed channels and their newest posts:
+  // stored by the service worker, so they open offline, and prefetched for the router
+  const hrefs: string[] = [];
   for (const tab of APP_TABS) {
     if (tab.id === "settings") continue;
-    const href = appTabHref(ctx.locale as "ru" | "en" | "cn", tab);
-    if (res.requests < MAX_REQUESTS && !document.hidden && isOnline()) {
+    hrefs.push(appTabHref(ctx.locale as "ru" | "en" | "cn", tab));
+  }
+  hrefs.push(localized(ctx.locale, "/calculator"));
+  hrefs.push(...wantPages);
+  for (const href of hrefs) {
+    if (res.requests < MAX_REQUESTS && res.bytes < MAX_BYTES && !document.hidden && isOnline()) {
       await idle();
       res.requests++;
       try {
@@ -218,4 +239,21 @@ export async function runWarmup(ctx: WarmCtx, force = false): Promise<WarmResult
   res.requests += assetRequests;
   res.ms = Date.now() - t0;
   return res;
+}
+
+function localized(locale: string, path: string): string {
+  return localizedPath((locale === "en" || locale === "cn" ? locale : "ru") as "ru" | "en" | "cn", path);
+}
+
+/** Pages of the channels the user is subscribed to (the first few): /channels/<slug or id>. */
+export function channelPages(subs: unknown, ids: string[], locale: string): string[] {
+  const out: string[] = [];
+  if (!Array.isArray(subs)) return out;
+  for (const s of subs as { channel?: { id?: string; slug?: string | null } | null }[]) {
+    const c = s?.channel;
+    if (!c?.id || !ids.includes(c.id)) continue;
+    const href = localized(locale, `/channels/${encodeURIComponent(c.slug || c.id)}`);
+    if (!out.includes(href) && out.length < 3) out.push(href);
+  }
+  return out;
 }

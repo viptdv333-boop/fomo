@@ -2,7 +2,7 @@
    Pure logic only (the worker's fetch handling itself is covered by the browser demonstration in the task notes).
    Run: npx tsx scripts/check-sw-cache.ts   (exit code 1 on a failed assertion) */
 import { chunkUrlsFromHtml, chunkUrlsFromRuntime, runtimeUrl, storableResources } from "../src/lib/offline/assets";
-import { warmupBlocker, warmupUrls, WARMUP_EVERY_MS } from "../src/lib/offline/warmup";
+import { channelPages, warmupBlocker, warmupUrls, WARMUP_EVERY_MS } from "../src/lib/offline/warmup";
 
 export {}; // a module: the other check scripts declare the same top-level names, and `next build` type-checks them all together
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -122,6 +122,13 @@ const signed = warmupUrls("u1", "en", "Europe/Moscow", Date.UTC(2026, 9, 10, 12)
 eq("warm-up of a signed-in user: the feed's exact url first, own profile, DM list", [signed[0], signed.includes("/api/users/u1"), signed.includes("/api/messages/conversations"), signed.some((u) => /^\/api\/economic-calendar\?from=2026-10-09&to=2026-10-16&lang=en&limit=5000$/.test(u))], ["/api/ideas?limit=50&page=1", true, true, true]);
 eq("warm-up never touches live market data or money", signed.filter((u) => /klines|quote|orderbook|payments|upload|\/api\/auth\//.test(u)), []);
 eq("every warm-up url is a cacheable (allowlisted) read", signed.filter((u) => !R.apiPolicy(u.split("?")[0]).cache), []);
+
+// --- tab host additions: the calculator page, the dictionary script, the channels' pages
+eq("the calculator is a tab-root-like page (a day instant window)", R.pagePolicy("/calculator"), { cache: true, fresh: DAY, root: true });
+eq("the dictionary script is cache-first static", [R.assetKind("/i18n/ru-5b615a9c26.js"), R.assetKind("/i18n/en.js")], ["static", "static"]);
+eq("channel pages of the warm-up: subscribed channels only, slug first, at most 3", channelPages([{ channel: { id: "c1", slug: "gold" } }, { channel: { id: "c2", slug: null } }, { channel: { id: "c3", slug: "x" } }, { channel: { id: "c4", slug: "y" } }, { channel: { id: "c5", slug: "z" } }], ["c1", "c2", "c3", "c4"], "en"), ["/en/channels/gold", "/en/channels/c2", "/en/channels/x"]);
+eq("no subscriptions -> no channel pages", channelPages(null, [], "ru"), []);
+eq("klines / quotes stay out of the service worker's api cache (the chart keeps its own stored candles)", [R.apiPolicy("/api/klines").cache, R.apiPolicy("/api/quote").cache, R.apiPolicy("/api/quotes").cache], [false, false, false]);
 
 // --- misc
 eq("offline message follows the language", [R.offlineMessage("ru"), R.offlineMessage("en"), R.offlineMessage("cn"), R.offlineMessage("xx")], ["Нет сети", "No connection", "无网络", "Нет сети"]);
