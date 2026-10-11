@@ -6,6 +6,8 @@ import Link from "next/link";
 import { getSocket } from "@/lib/socket";
 import { useT } from "@/lib/i18n/client";
 import { onlyTerminalAlerts } from "@/lib/terminal-alert-defaults";
+import { isNativeUi, nativePushToken } from "@/lib/native-app";
+import { shouldChime } from "@/lib/notif-chime";
 
 interface Notification {
   id: string;
@@ -47,7 +49,8 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const prevUnreadRef = useRef<number>(0);
+  // -1 = nothing loaded yet: the first load only sets the baseline (shouldChime)
+  const prevUnreadRef = useRef<number>(-1);
   const knownIdsRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -57,12 +60,17 @@ export default function NotificationBell() {
       setNotifications(data.notifications);
       const newCount = data.unreadCount;
 
-      // Play sound if unread count increased. While the terminal is open it announces alerts and calendar reminders itself,
-      // with its own sound switch (Settings -> Notifications -> Terminal), so the bell stays quiet for those.
+      // Play sound if the unread count increased since the previous load (the first load of this bell is only the baseline, see notif-chime.ts).
+      // While the terminal is open it announces alerts and calendar reminders itself, with its own sound switch
+      // (Settings -> Notifications -> Terminal), so the bell stays quiet for those.
       if (newCount > prevUnreadRef.current && prevUnreadRef.current >= 0) {
         const fresh = (data.notifications as Notification[]).filter((n) => !n.isRead && !knownIdsRef.current.has(n.id));
         const byTerminal = (window as unknown as { __fomoTerminalSound?: boolean }).__fomoTerminalSound === true && onlyTerminalAlerts(fresh);
-        if (!byTerminal) playNotificationSound();
+        let nativePush = false;
+        try {
+          nativePush = Boolean(nativePushToken());
+        } catch {}
+        if (!byTerminal && shouldChime({ prev: prevUnreadRef.current, next: newCount, fresh, appUi: isNativeUi(), nativePush })) playNotificationSound();
       }
       for (const n of data.notifications as Notification[]) knownIdsRef.current.add(n.id);
       prevUnreadRef.current = newCount;

@@ -4,7 +4,7 @@
 // own router state catches up), and the in-place navigation between tab roots. Everything here is client only.
 import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { hostTabForPath, needsFreshMount, tabHostSwitch, TABHOST_KEY, type HostScreenId } from "@/lib/app-tabhost";
+import { hostTabForPath, needsFreshMount, pendingVerdict, tabHostSwitch, TABHOST_KEY, type HostScreenId } from "@/lib/app-tabhost";
 
 let hostOn = false;
 let pending: { path: string; tab: HostScreenId } | null = null;
@@ -21,8 +21,9 @@ export function hostIsOn(): boolean {
   return hostOn;
 }
 
-/** The tab asked for by hostNavigate() whose URL the router has not reported yet (null otherwise). */
+/** The tab asked for by hostNavigate() whose URL the router has not reported yet (null otherwise). Only while the address bar still is that URL. */
 export function pendingNav(): { path: string; tab: HostScreenId } | null {
+  if (pending && typeof window !== "undefined" && window.location.pathname !== pending.path) return null; // Back / another screen moved the address on
   return pending;
 }
 export function clearPending(): void {
@@ -32,11 +33,29 @@ export function clearPending(): void {
   pending = null;
   notify();
 }
+/**
+ * Next's pathname changed (AppTabHost effect): see pendingVerdict. A pending tab is dropped only when Next has caught up with it or the address
+ * has moved elsewhere, never just because time passed or an older URL was reported first.
+ */
+export function settlePending(real: string): void {
+  if (!pending) return;
+  const v = pendingVerdict(pending, real, typeof window !== "undefined" ? window.location.pathname : pending.path);
+  if (v === "done" || v === "stale") clearPending();
+}
 function setPending(p: { path: string; tab: HostScreenId }): void {
   if (pendingTimer) clearTimeout(pendingTimer);
   pending = p;
-  pendingTimer = setTimeout(clearPending, 2000); // never stuck: the real pathname takes over
+  pendingTimer = setTimeout(recheckPending, 3000); // housekeeping only: the address bar decides, not the clock
   notify();
+}
+function recheckPending(): void {
+  pendingTimer = null;
+  if (!pending) return;
+  if (typeof window !== "undefined" && window.location.pathname === pending.path) {
+    pendingTimer = setTimeout(recheckPending, 3000); // still the address the user asked for: the screen stays
+    return;
+  }
+  clearPending();
 }
 const subscribe = (cb: () => void) => {
   subs.add(cb);
@@ -94,14 +113,14 @@ export function hostNavigate(href: string, mode: "push" | "replace" = "push"): b
   const cur = window.location.pathname + window.location.search + window.location.hash;
   if (next === cur) return true;
   if (needsFreshMount(tab, u.search)) bumpFresh(tab);
-  setPending({ path: u.pathname, tab });
+  // the address first, then the override: pendingNav() only honours a pending tab while the address bar is that URL
   try {
     if (mode === "push") window.history.pushState({}, "", next);
     else window.history.replaceState({}, "", next);
   } catch {
-    clearPending();
     return false;
   }
+  setPending({ path: u.pathname, tab });
   return true;
 }
 

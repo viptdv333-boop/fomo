@@ -18,7 +18,7 @@ function Header() {
   const { locale } = useT();
 
   // the design's header: the logo and the theme switch (no bell and no counter: the unread counts are the red badges of the dock, see AppTabBar). The profile (photo, menu, settings, text size, update, downloads, sign out)
-  // lives in the «Профиль» tab of the dock (components/app/profile).
+  // lives in the «Профиль» tab of the dock (components/app/profile). The hidden bell is NOT in here (see AppHeader): it must outlive the header.
   return (
     <header className="app-header" data-app-header>
       <Link
@@ -40,12 +40,11 @@ function Header() {
           <ThemeToggle />
         </div>
       </div>
-      <HiddenBell />
     </header>
   );
 }
 
-/** The bell is never shown in the app UI, but it keeps running everywhere (sound, socket, push) exactly as it did in the site header. */
+/** The bell is never shown in the app UI, but it keeps running everywhere (socket, badge polling, the chime) as it did in the site header. */
 function HiddenBell() {
   const { data: session } = useSession();
   return session ? (
@@ -55,11 +54,20 @@ function HiddenBell() {
   ) : null;
 }
 
-/** Compact top header of the app UI (logo, theme, bell). Hidden where a screen has its own bar (terminal, chat, channels / authors, profile); renders nothing outside the app UI. */
+/**
+ * Compact top header of the app UI (logo, theme). Hidden where a screen has its own bar (terminal, chat, channels / authors, profile); renders nothing outside the app UI.
+ * The hidden bell is a SIBLING of the header, always at the same place in the tree: when it lived inside the header, every switch between a tab with a header
+ * (Доска, Календарь) and one without (Терминал, Болталка, Каналы, Профиль) unmounted and mounted it again, and a fresh bell chimes for the unread rows it finds
+ * (src/components/layout/NotificationBell.tsx) — a sound at every other tap of the dock, with no new event behind it.
+ */
 export default function AppHeader() {
   const on = useAppUi();
   const pathname = useAppPathname();
   if (!on) return null;
-  if (appHeaderHidden(pathname)) return <HiddenBell />;
-  return <Header />; // carries its own HiddenBell
+  return (
+    <>
+      {appHeaderHidden(pathname) ? null : <Header />}
+      <HiddenBell />
+    </>
+  );
 }

@@ -137,3 +137,21 @@ export function needsFreshMount(tab: HostScreenId, search: string): boolean {
   }
   return false;
 }
+
+/**
+ * What to do with the tab the host was told to show «at once» (store.ts `pending`, set by hostNavigate together with history.pushState) when Next's own
+ * pathname (`real`) changes. The address bar (`here`, window.location.pathname) is the truth: pushState changes it synchronously, Next follows later,
+ * and under load (a screen being pre-mounted, a heavy screen mounting) it can follow LATE or report an older URL first.
+ *  - "none": nothing pending
+ *  - "done": Next reports the tab that was asked for: the override has done its job
+ *  - "stale": the address is no longer the one asked for (Back, a pushed screen, another tap): drop it
+ *  - "keep": the address still is the one asked for but Next has not caught up (or reported an older tab): the screen stays where the user tapped.
+ * Dropping it on a timer or on ANY change of `real` (what the host did before) flipped the screen back to the previous tab — «I tapped an icon and it
+ * went to Доска» — and then forward again when Next finally arrived.
+ */
+export function pendingVerdict(pending: { path: string; tab: HostScreenId } | null, real: string, here: string): "none" | "done" | "stale" | "keep" {
+  if (!pending) return "none";
+  if (hostTabForPath(real) === pending.tab && cleanPath(real) === cleanPath(pending.path)) return "done";
+  if (here !== pending.path) return "stale";
+  return "keep";
+}

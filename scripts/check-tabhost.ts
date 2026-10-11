@@ -1,6 +1,6 @@
 /* The app UI's tab host (keep-alive of the dock screens): which paths are tab roots, the LRU of mounted screens, the kill switch, links that need a fresh mount.
    Run: npx tsx scripts/check-tabhost.ts   (exit code 1 on a failed assertion) */
-import { PARAMS_REACTIVE, TRANSIENT_TABS, hostTabForPath, isHostHref, maxMounted, needsFreshMount, prefetchOrder, tabHostSwitch, touchTab } from "../src/lib/app-tabhost";
+import { PARAMS_REACTIVE, TRANSIENT_TABS, hostTabForPath, isHostHref, maxMounted, needsFreshMount, pendingVerdict, prefetchOrder, tabHostSwitch, touchTab } from "../src/lib/app-tabhost";
 import { MAIN_APP_TABS, TERMINAL_APP_TABS } from "../src/lib/app-ui";
 
 export {}; // a module: the other check scripts declare the same top-level names
@@ -68,6 +68,17 @@ eq("transient screens are fresh anyway", [needsFreshMount("terminal", "?symbol=S
 eq("neighbours first, then the dock order", prefetchOrder("chat", MAIN_APP_TABS), ["calendar", "calculator", "feed", "terminal", "channels", "authors", "me"]);
 eq("the calculator's neighbours are the terminal and the chat", prefetchOrder("calculator", MAIN_APP_TABS).slice(0, 2), ["chat", "terminal"]);
 eq("no active screen: dock order", prefetchOrder(null, MAIN_APP_TABS), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "me"]);
+
+// --- the tab asked for «at once» (pending) vs Next's own pathname
+{
+  const p = { path: "/terminal", tab: "terminal" as const };
+  eq("nothing pending", pendingVerdict(null, "/feed", "/feed"), "none");
+  eq("Next reports the tab that was asked for: done", pendingVerdict(p, "/terminal", "/terminal"), "done");
+  eq("an older URL arrives late (the previous tab) while the address is still the new one: the screen stays", pendingVerdict(p, "/feed", "/terminal"), "keep");
+  eq("the address moved on (Back, another screen): the override is stale", [pendingVerdict(p, "/ideas/5", "/ideas/5"), pendingVerdict(p, "/feed", "/feed")], ["stale", "stale"]);
+  eq("locale prefix and a trailing slash do not hide the match", pendingVerdict({ path: "/en/chat", tab: "chat" }, "/en/chat/", "/en/chat"), "done");
+  eq("a tap on A then B quickly: Next reports A first, B is pending and the address is B: keep, then done", [pendingVerdict({ path: "/chat", tab: "chat" }, "/calendar", "/chat"), pendingVerdict({ path: "/chat", tab: "chat" }, "/chat", "/chat")], ["keep", "done"]);
+}
 
 console.log(fails ? `\n${fails} FAILED` : "\nall ok");
 process.exit(fails ? 1 : 0);

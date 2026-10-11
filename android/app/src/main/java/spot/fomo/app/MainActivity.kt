@@ -364,7 +364,9 @@ class MainActivity : AppCompatActivity() {
             }
             intent.hasExtra(Notifications.EXTRA_LINK) -> {
                 val path = UrlPolicy.sameOriginPath(intent.getStringExtra(Notifications.EXTRA_LINK))
-                loadUrl(if (path != null) base.trimEnd('/') + path else base)
+                // A tap on a notification WITHOUT a link (the server sends link = "" then) only brings the app to the front. It used to load the
+                // start page, which is the Доска: the open screen was thrown away and replaced by the feed.
+                if (path != null) loadUrl(base.trimEnd('/') + path) else if (initial) loadUrl(base)
             }
             else -> if (initial) loadUrl(base)
         }

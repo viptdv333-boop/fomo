@@ -10,7 +10,7 @@ import { APP_TABS } from "@/lib/app-ui";
 import { apiReadsInFlight, subscribeApiReads } from "@/lib/offline/fetch-guard";
 import { useAppUi } from "../useAppUi";
 import { loadScreen, preloadScreens, savingData, screenFor, warmTerminalBars } from "./screens";
-import { bumpFreshAll, clearPending, freshGeneration, hostNavigate, setHostOn, useFreshVersion, usePendingNav, useTabHostAllowed } from "./store";
+import { bumpFreshAll, freshGeneration, hostNavigate, setHostOn, settlePending, useFreshVersion, usePendingNav, useTabHostAllowed } from "./store";
 import { ScreenWarmCtx, startFirewall, warmConflict } from "./warm";
 import "./tabhost.css";
 
@@ -163,9 +163,10 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
     return () => setHostOn(false);
   }, [on]);
 
-  // Next has caught up with the tab that was asked for (or went elsewhere): stop overriding its pathname
+  // Next has caught up with the tab that was asked for, or the address moved elsewhere: stop overriding its pathname. NOT on any change of `real`: an older URL
+  // reported late (under load, while a screen is pre-mounting) must not send the screen back to the previous tab (app-tabhost.ts pendingVerdict).
   useEffect(() => {
-    clearPending();
+    settlePending(real);
   }, [real]);
 
   // each tab keeps its own scroll position (the scroller is <main>, shared by all screens)
@@ -197,6 +198,8 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+      // the dock decides for itself (its onClick): «Настройки» opens the native screen in the app and must NOT also switch the web view to the profile
+      if (a.closest("[data-app-tabbar]")) return;
       const href = a.getAttribute("href") || "";
       if (isHostHref(href) && hostNavigate(href)) e.preventDefault();
     };
