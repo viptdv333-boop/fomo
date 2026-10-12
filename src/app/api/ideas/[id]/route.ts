@@ -228,7 +228,7 @@ export async function PATCH(
   const droppedUploads = () => {
     if (parsed.data.attachments === undefined) return;
     const keep = new Set(parsed.data.attachments.map((a) => a.url));
-    void removeIdeaUploads(ideaUploadUrls(idea.attachments).filter((u) => !keep.has(u)));
+    void removeIdeaUploads(ideaUploadUrls(idea.attachments, idea.authorId).filter((u) => !keep.has(u)));
   };
 
   const data: Record<string, unknown> = {};
@@ -315,7 +315,7 @@ export async function DELETE(
 
   await prisma.idea.delete({ where: { id } });
   // the post is gone: its photos / videos go with it (a 500 MB video must not stay on the disk)
-  void removeIdeaUploads(ideaUploadUrls(idea.attachments));
+  void removeIdeaUploads(ideaUploadUrls(idea.attachments, idea.authorId));
 
   return NextResponse.json({ message: "Idea deleted" });
 }
