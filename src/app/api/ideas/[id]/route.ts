@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
+import { ideaUploadUrls, removeIdeaUploads } from "@/lib/upload-cleanup";
 
 const ideaPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -188,7 +189,7 @@ export async function PATCH(
 
   const idea = await prisma.idea.findUnique({
     where: { id },
-    select: { id: true, authorId: true, moderationStatus: true },
+    select: { id: true, authorId: true, moderationStatus: true, attachments: true },
   });
 
   if (!idea) {
@@ -223,6 +224,12 @@ export async function PATCH(
   ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const droppedUploads = () => {
+    if (parsed.data.attachments === undefined) return;
+    const keep = new Set(parsed.data.attachments.map((a) => a.url));
+    void removeIdeaUploads(ideaUploadUrls(idea.attachments).filter((u) => !keep.has(u)));
+  };
 
   const data: Record<string, unknown> = {};
   if (parsed.data.title !== undefined) data.title = parsed.data.title;
@@ -259,6 +266,7 @@ export async function PATCH(
       });
     });
 
+    droppedUploads();
     return NextResponse.json(updated);
   }
 
@@ -272,6 +280,7 @@ export async function PATCH(
     select: { id: true },
   });
 
+  droppedUploads();
   return NextResponse.json(updated);
 }
 
@@ -290,7 +299,7 @@ export async function DELETE(
 
   const idea = await prisma.idea.findUnique({
     where: { id },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, attachments: true },
   });
 
   if (!idea) {
@@ -305,6 +314,8 @@ export async function DELETE(
   }
 
   await prisma.idea.delete({ where: { id } });
+  // the post is gone: its photos / videos go with it (a 500 MB video must not stay on the disk)
+  void removeIdeaUploads(ideaUploadUrls(idea.attachments));
 
   return NextResponse.json({ message: "Idea deleted" });
 }
