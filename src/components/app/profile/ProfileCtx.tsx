@@ -55,6 +55,8 @@ export interface ProfCtx {
   back: () => void;
   /** open another page of the site (a normal navigation) */
   open: (path: string) => void;
+  /** open a link of a notification (a path of the site, any locale prefix already dropped): a tab root is shown in place by the tab host, the rest is a normal navigation */
+  openLink: (path: string) => void;
   flash: (m: string) => void;
 }
 

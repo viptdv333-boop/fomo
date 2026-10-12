@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/client";
 import { onlyTerminalAlerts } from "@/lib/terminal-alert-defaults";
 import { isNativeUi, nativePushToken } from "@/lib/native-app";
 import { shouldChime } from "@/lib/notif-chime";
+import { notifEmoji } from "@/lib/notif-icon";
 
 interface Notification {
   id: string;
@@ -145,26 +146,7 @@ export default function NotificationBell() {
     });
   }
 
-  function getIcon(type: string) {
-    switch (type) {
-      case "new_message": return "💬";
-      case "chat_mention": return "📢";
-      case "chat_room_message": return "🔔";
-      case "new_follower": return "👤";
-      case "new_idea": return "💡";
-      case "channel_post": return "📢";
-      case "channel_comment": return "💬";
-      case "new_comment": return "🗨️";
-      case "comment_reply": return "↩️";
-      case "idea_like": return "👍";
-      case "comment_like": return "❤️";
-      case "payment": return "💰";
-      case "price_alert": return "⏰";
-      case "line_alert": return "📈";
-      case "calendar_reminder": return "📅";
-      default: return "🔔";
-    }
-  }
+  const getIcon = notifEmoji;
 
   return (
     <div ref={ref} className="relative">

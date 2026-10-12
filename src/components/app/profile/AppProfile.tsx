@@ -7,6 +7,8 @@ import { useT } from "@/lib/i18n/client";
 import { isTerminalSite } from "@/lib/site-mode";
 import { localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
 import { parseProfileScreen, profileHref, type ProfileScreen } from "@/lib/app-profile";
+import { isHostHref } from "@/lib/app-tabhost";
+import { hostNavigate } from "../tabhost/store";
 import { ProfContext, type MeData, type ProfCtx, type SessionUserLite } from "./ProfileCtx";
 import { Loading } from "./parts";
 import ProfileHome from "./ProfileHome";
@@ -17,6 +19,7 @@ import SecurityScreen from "./SecurityScreen";
 import SubsScreen from "./SubsScreen";
 import FinanceScreen from "./FinanceScreen";
 import NotifScreen from "./NotifScreen";
+import NotifInbox from "./NotifInbox";
 import AppSettings from "./AppSettings";
 import "../chat/app-chat.css";
 import "./app-profile.css";
@@ -117,6 +120,16 @@ export default function AppProfile() {
     [router, loc, screen],
   );
 
+  const openLink = useCallback(
+    (path: string) => {
+      const href = localizedPath(loc, path);
+      // the root of a dock tab (/chat?room=…, /calendar, /terminal …) is shown in place by the tab host, as a tap on the dock does
+      if (isHostHref(href) && hostNavigate(href)) return;
+      router.push(href);
+    },
+    [router, loc],
+  );
+
   // a new screen starts at its top; the list gets its scroll position back
   useLayoutEffect(() => {
     if (screen !== "home") {
@@ -130,8 +143,8 @@ export default function AppProfile() {
   }, [screen]);
 
   const ctx: ProfCtx = useMemo(
-    () => ({ t, locale: loc, user, me, reloadMe, refreshSession: async () => void (await update()), screen, go, back, open, flash }),
-    [t, loc, user, me, reloadMe, update, screen, go, back, open, flash],
+    () => ({ t, locale: loc, user, me, reloadMe, refreshSession: async () => void (await update()), screen, go, back, open, openLink, flash }),
+    [t, loc, user, me, reloadMe, update, screen, go, back, open, openLink, flash],
   );
 
   let body;
@@ -162,6 +175,9 @@ export default function AppProfile() {
       break;
     case "notifications":
       body = <NotifScreen />;
+      break;
+    case "inbox":
+      body = <NotifInbox />;
       break;
     case "app":
       body = <AppSettings />;

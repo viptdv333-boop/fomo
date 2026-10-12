@@ -2,8 +2,8 @@
 import { badgeLabel, type AppTabId } from "@/lib/app-ui";
 
 /**
- * Notification.type -> dock tab. Every type that is not listed lights no tab (new_follower, new_idea, payment / subscription*, room_join,
- * report, broadcast, system ... : the owner's own money / subscriber events of a paid channel stay tab-less on purpose).
+ * Notification.type -> dock tab. A type that is not listed lights the PROFILE tab (`me`, see tabForNotifType): the app UI has no bell, the
+ * «Уведомления» list lives inside the Профиль tab, so every event that points at no other section is announced there.
  *   feed      Доска:    comments on my ideas, replies to my comments, likes of my ideas / comments (idea_like, comment_like)
  *   terminal  Терминал: price alerts, line alerts
  *   calendar  Календарь: reminders of the events the user subscribed to
@@ -11,6 +11,8 @@ import { badgeLabel, type AppTabId } from "@/lib/app-ui";
  *                       endpoint also reports comments / replies under a post of a channel as channel_comment, and the likes of a channel
  *                       post / of a comment under it as channel_like (virtual type, never stored), see effectiveByType)
  *   chat      Болталка: DMs, @mentions, replies/quotes of my messages, messages of rooms with the bell on
+ *   me        Профиль:  new followers, new ideas of the authors I follow, joins to my private group, payments / subscriptions (mine and the
+ *                       ones of my paid channels), reports, announcements, system and security messages, and any type added later
  */
 export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
   new_comment: "feed",
@@ -27,6 +29,20 @@ export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
   chat_mention: "chat",
   chat_reply: "chat",
   chat_room_message: "chat",
+  // the types below have no section of their own: the Профиль tab lights up and its «Уведомления» list explains (src/components/app/profile/NotifInbox.tsx)
+  new_follower: "me",
+  new_idea: "me",
+  room_join: "me",
+  subscription: "me",
+  subscription_extended: "me",
+  subscription_removed: "me",
+  subscription_expiring: "me",
+  payment: "me",
+  report: "me",
+  broadcast: "me",
+  email_broadcast: "me",
+  system: "me",
+  security: "me",
 };
 
 /**
@@ -47,9 +63,18 @@ export const BADGE_TYPES: readonly string[] = Object.keys(BADGE_TAB_BY_TYPE);
  */
 export const CHAT_BADGE_COVERED_TYPES: readonly string[] = ["new_message", "chat_room_message"];
 
-/** Tab of a notification type, null when it lights none. */
+/** A notification type as the server writes it (snake_case); anything else is junk and lights nothing. */
+const TYPE_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
+/**
+ * Tab of a notification type. The listed ones go to their section, any other well-formed type (a type added later, one nobody mapped yet) goes to the
+ * Профиль tab: the list there shows it, a notification must never ring without leaving a trace. Junk (not a string, empty, an object key such as
+ * "constructor") lights nothing.
+ */
 export function tabForNotifType(type: unknown): AppTabId | null {
-  return typeof type === "string" && Object.prototype.hasOwnProperty.call(BADGE_TAB_BY_TYPE, type) ? BADGE_TAB_BY_TYPE[type] : null;
+  if (typeof type !== "string" || !TYPE_RE.test(type)) return null;
+  if (Object.prototype.hasOwnProperty.call(BADGE_TAB_BY_TYPE, type)) return BADGE_TAB_BY_TYPE[type];
+  return Object.prototype.hasOwnProperty.call(Object.prototype, type) ? null : "me";
 }
 
 /** Notification types of a tab (for the bulk "read" of a tab). */

@@ -10,7 +10,8 @@ import type { AppTabId } from "@/lib/app-ui";
 /**
  * Unread numbers of the dock's red badges per tab. Notification counts come from /api/notifications/unread-by-type (polled, refreshed on
  * the socket's new_notification, on room reads and on `fomo:unread-changed`); the chat tab also folds in the chat badge (max, see
- * tabBadgeCounts). `activeTab`: the tab whose screen is open; for the tabs in AUTO_CLEAR_TABS (Терминал, Календарь, Болталка) its
+ * tabBadgeCounts). The Профиль tab (`me`) carries the types that have no section of their own (new_follower, payment, system ...); it is NOT cleared by
+ * being open: its notifications are read in the «Уведомления» list (profile/NotifInbox.tsx), which announces `fomo:unread-changed`. `activeTab`: the tab whose screen is open; for the tabs in AUTO_CLEAR_TABS (Терминал, Календарь, Болталка) its
  * notifications are marked read after a short moment on it. Доска and Каналы are NOT cleared that way: their badges count items (a comment,
  * a post) and the notification is read when that idea is opened (PATCH /api/notifications {ideaId}, IdeaComments), otherwise the badge
  * vanished 1.5 s after the app opened and the user never found out which comment it was about.

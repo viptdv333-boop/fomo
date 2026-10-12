@@ -1,0 +1,67 @@
+/*
+ * App-only «Уведомления» list of the Профиль tab (NotifInbox.tsx): days, rows, skeleton, empty / error states.
+ * Same surfaces as the profile lists (.ac-secbox card, --app-* tokens); texts follow the app's font step (--app-fz), every tap target is >= 44px.
+ * Everything hangs on html.app-ui (doubled: the shared button reset `html.app-ui .ac :where(button)` has the same weight and loads later), so the ordinary
+ * site and the PWA never see it.
+ */
+
+html.app-ui.app-ui .ni { padding-bottom: 36px; }
+
+/* the line under the bar: how many are unread + «Прочитать все» */
+html.app-ui.app-ui .ni-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 16px 10px; min-height: 44px; }
+html.app-ui.app-ui .ni-count { font-size: calc(14px * var(--app-fz, 1)); color: var(--app-tx2); min-width: 0; overflow-wrap: anywhere; }
+html.app-ui.app-ui .ni-count[data-on="1"] { color: var(--app-tx); font-weight: 600; }
+html.app-ui.app-ui .ni-btn { min-height: 44px; padding: 0 12px; margin-right: -12px; font-size: calc(15px * var(--app-fz, 1)); font-weight: 600; color: var(--app-green-tx); background: transparent; cursor: pointer; flex: none; border-radius: 10px; }
+html.app-ui.app-ui .ni-btn:active:not(:disabled) { background: var(--app-press); }
+html.app-ui.app-ui .ni-btn:disabled { color: var(--app-tx3); cursor: default; }
+html.app-ui.app-ui .ni-offline { margin: 0 16px 12px; padding: 9px 12px; border-radius: 10px; background: var(--app-card2); color: var(--app-tx2); font-size: calc(13px * var(--app-fz, 1)); line-height: 1.35; }
+
+/* a day */
+html.app-ui.app-ui .ni-day { margin: 0 16px 18px; display: flex; flex-direction: column; gap: 7px; }
+html.app-ui.app-ui .ni-dayt { margin: 0; padding: 0 16px; font-size: 13px; font-weight: 400; color: var(--app-tx2); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* a row (the whole row is the button) */
+html.app-ui.app-ui .ni-row { position: relative; display: flex; align-items: flex-start; gap: 12px; width: 100%; box-sizing: border-box; min-height: 56px; padding: 11px 14px 11px 14px; text-align: left; background: transparent; color: var(--app-tx); cursor: pointer; border-bottom: 0.5px solid var(--app-line); }
+html.app-ui.app-ui .ac-secbox > .ni-row:last-child { border-bottom: none; }
+html.app-ui.app-ui .ni-row:active { background: var(--app-press); }
+/* unread: tinted surface + a bar on the left edge + the dot at the right (the same accent the dock badge has) */
+html.app-ui.app-ui .ni-row[data-new="1"] { background-color: color-mix(in srgb, var(--app-green) calc(var(--app-unread-mix) * 0.55), var(--app-card)); }
+html.app-ui.app-ui .ni-row[data-new="1"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--app-green); }
+html.app-ui.app-ui .ni-row[data-new="1"]:active { background-color: color-mix(in srgb, var(--app-green) var(--app-unread-mix), var(--app-card)); }
+html.app-ui.app-ui .ni-tile { width: 36px; height: 36px; border-radius: 50%; background: var(--app-card2); display: flex; align-items: center; justify-content: center; flex: none; font-size: 18px; line-height: 1; }
+html.app-ui.app-ui .ni-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+html.app-ui.app-ui .ni-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+html.app-ui.app-ui .ni-title { min-width: 0; font-size: calc(15px * var(--app-fz, 1)); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+html.app-ui.app-ui .ni-row[data-new="1"] .ni-title { font-weight: 700; }
+html.app-ui.app-ui .ni-time { flex: none; font-size: calc(12px * var(--app-fz, 1)); color: var(--app-tx3); white-space: nowrap; }
+html.app-ui.app-ui .ni-text { font-size: calc(14px * var(--app-fz, 1)); color: var(--app-tx2); line-height: 1.38; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+html.app-ui.app-ui .ni-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--app-green); flex: none; align-self: center; }
+
+/* «Показать ещё» / the end of the list */
+html.app-ui.app-ui .ni-more { display: block; width: calc(100% - 32px); margin: 2px 16px 8px; min-height: 48px; border-radius: 12px; background: var(--app-card); border: var(--app-gb); color: var(--app-green-tx); font-size: calc(15px * var(--app-fz, 1)); font-weight: 600; cursor: pointer; }
+html.app-ui.app-ui .ni-more:active:not(:disabled) { background: var(--app-press); }
+html.app-ui.app-ui .ni-more:disabled { color: var(--app-tx3); cursor: default; }
+html.app-ui.app-ui .ni-more[data-err="1"] { color: var(--app-red); }
+html.app-ui.app-ui .ni-end { text-align: center; padding: 6px 16px; font-size: 13px; color: var(--app-tx3); }
+
+/* empty / error */
+html.app-ui.app-ui .ni-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 44px 32px 24px; text-align: center; }
+html.app-ui.app-ui .ni-state-ico { width: 64px; height: 64px; border-radius: 50%; background: var(--app-card2); color: var(--app-tx3); display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+html.app-ui.app-ui .ni-state-t { font-size: calc(17px * var(--app-fz, 1)); font-weight: 600; }
+html.app-ui.app-ui .ni-state-s { font-size: calc(14px * var(--app-fz, 1)); color: var(--app-tx2); line-height: 1.45; max-width: 300px; }
+html.app-ui.app-ui .ni-state .ni-btn { margin-right: 0; margin-top: 4px; }
+
+/* skeleton while the first page loads (nothing kept on the device yet) */
+html.app-ui.app-ui .ni-skel { margin: 4px 16px 0; background: var(--app-card); border: var(--app-gb); border-radius: 12px; overflow: hidden; }
+html.app-ui.app-ui .ni-sk-row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 0.5px solid var(--app-line); }
+html.app-ui.app-ui .ni-skel > :last-child { border-bottom: none; }
+html.app-ui.app-ui .ni-sk-tile { width: 36px; height: 36px; border-radius: 50%; flex: none; }
+html.app-ui.app-ui .ni-sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+html.app-ui.app-ui .ni-sk-l1 { height: 12px; width: 68%; border-radius: 6px; }
+html.app-ui.app-ui .ni-sk-l2 { height: 10px; width: 92%; border-radius: 5px; }
+html.app-ui.app-ui .ni-sk-tile, html.app-ui.app-ui .ni-sk-l1, html.app-ui.app-ui .ni-sk-l2 { background: var(--app-card2); animation: niPulse 1.2s ease-in-out infinite; }
+html.app-ui.app-ui .ni-sk-row:nth-child(2n) .ni-sk-l1 { width: 52%; }
+@keyframes niPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) {
+  html.app-ui.app-ui .ni-sk-tile, html.app-ui.app-ui .ni-sk-l1, html.app-ui.app-ui .ni-sk-l2 { animation: none; }
+}

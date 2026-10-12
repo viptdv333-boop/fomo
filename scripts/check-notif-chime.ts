@@ -26,10 +26,12 @@ eq("website: any growth chimes (the list is on screen)", shouldChime({ prev: 0, 
 eq("website: growth with no fresh row in the first page still chimes", shouldChime({ prev: 10, next: 11, fresh: [], appUi: false, nativePush: false }), true);
 
 // --- app UI: only what a dock badge shows
-eq("app: a row that lights no tab does not chime (nothing to find)", ["new_follower", "payment", "system", "new_idea", "room_join", "broadcast"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: false })), Array(6).fill(false));
+eq("app: junk without a tab does not chime (nothing to find)", ["", "constructor", "__proto__", "Not A Type"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: false })), Array(4).fill(false));
+eq("app: the types without a section of their own light the Профиль tab and chime like the others (no push token)", ["new_follower", "payment", "system", "new_idea", "room_join", "broadcast", "subscription", "security", "a_type_added_later"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: false })), Array(9).fill(true));
+eq("app + push token: the Профиль-tab types are rung by the push banner too, the page stays quiet", ["new_follower", "payment", "system", "new_idea"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: true })), Array(4).fill(false));
 eq("app: rows of a dock tab chime (no push token)", ["new_comment", "idea_like", "price_alert", "calendar_reminder", "channel_post", "chat_mention"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: false })), Array(6).fill(true));
 eq("app: no fresh row at all = nothing to point at", shouldChime({ prev: 2, next: 3, fresh: [], appUi: true, nativePush: false }), false);
-eq("app: a mix chimes when ONE row has a tab", shouldChime({ prev: 2, next: 4, fresh: [row("system"), row("new_comment")], appUi: true, nativePush: false }), true);
+eq("app: a mix chimes when ONE row has a tab", shouldChime({ prev: 2, next: 4, fresh: [row("constructor"), row("new_comment")], appUi: true, nativePush: false }), true);
 
 // --- app UI with a push token: the system banner rings for everything except the chat
 eq("app + push token: comments / likes / alerts / reminders / posts are rung by the push banner, the page stays quiet", ["new_comment", "idea_like", "price_alert", "calendar_reminder", "channel_post"].map((t) => shouldChime({ prev: 2, next: 3, fresh: [row(t)], appUi: true, nativePush: true })), Array(5).fill(false));
@@ -48,6 +50,15 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
   const inHeader = header.slice(header.indexOf("function Header()"), header.indexOf("function HiddenBell()"));
   eq("app header: the hidden bell is not inside the header (a tab switch must not remount it)", inHeader.includes("<HiddenBell"), false);
   eq("app header: the bell is a sibling at a fixed place", /\{appHeaderHidden\(pathname\) \? null : <Header \/>\}\s*<HiddenBell \/>/.test(header), true);
+}
+{
+  // the Профиль entry: a pushed screen of the profile list, the dock badge of the tab is not cleared by opening the tab
+  const home = read("src/components/app/profile/ProfileHome.tsx");
+  eq("profile: the list has the «Уведомления» row that opens the inbox screen", home.includes('go("inbox")') && home.includes("useInboxUnread("), true);
+  const inbox = read("src/components/app/profile/useNotifInbox.ts");
+  eq("inbox: it never reads a whole tab at once (rows are sent by id, «Прочитать все» is the one explicit bulk)", !inbox.includes("tab:") && inbox.includes("markAllRead: true"), true);
+  const badges = read("src/lib/app-badges.ts");
+  eq("badges: the Профиль tab is not in AUTO_CLEAR_TABS", /AUTO_CLEAR_TABS: readonly AppTabId\[\] = \[[^\]]*\]/.exec(badges)?.[0].includes('"me"'), false);
 }
 {
   const host = read("src/components/app/tabhost/AppTabHost.tsx");

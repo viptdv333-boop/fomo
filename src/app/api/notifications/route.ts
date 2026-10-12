@@ -4,33 +4,74 @@ import { prisma } from "@/lib/prisma";
 import { typesForTab } from "@/lib/app-badges";
 import { markChannelRead, markIdeaRead } from "@/lib/unread-ideas";
 import { isTerminalSite } from "@/lib/site-mode";
+import { rateLimit } from "@/lib/rate-limit";
+import { INBOX_HIDDEN_TYPES, clampLimit, decodeCursor, encodeCursor } from "@/lib/notif-inbox";
 
-// GET: list user notifications
+// The bell polls this route every 30 s, so only the app's «Уведомления» list (inbox=1 / cursor / countOnly) and the writes are rate limited.
+const READ_RATE = { limit: 240, windowMs: 60_000 };
+const WRITE_RATE = { limit: 120, windowMs: 60_000 };
+/// ids of one PATCH: a page of the list is 50 rows
+const MAX_IDS = 200;
+
+// GET: list user notifications, newest first.
+//   ?limit=<1..50>             page size (default 20)
+//   ?unreadOnly=true           only unread rows
+//   ?inbox=1                   the app's «Уведомления» list: leaves out the chat types the chat badge owns (INBOX_HIDDEN_TYPES), and so does `unreadCount`
+//   ?cursor=<createdAt-ms>.<id> the next page: rows older than the last row of the previous one (keyset, stable while new rows arrive); `nextCursor` is
+//                              null on the last page, `hasMore` says the same
+//   ?countOnly=1               just { unreadCount } (the number on the Профиль row)
+// Without inbox / cursor / countOnly the answer is what the bell has always got: { notifications, unreadCount }.
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { searchParams } = new URL(request.url);
   const unreadOnly = searchParams.get("unreadOnly") === "true";
-  const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
+  const countOnly = searchParams.get("countOnly") === "1";
+  const rawCursor = searchParams.get("cursor");
+  const cursor = decodeCursor(rawCursor);
+  const inbox = searchParams.get("inbox") === "1";
+  const limit = clampLimit(searchParams.get("limit"));
 
-  const where: Record<string, unknown> = { userId: session.user.id };
+  if (rawCursor && !cursor) return NextResponse.json({ error: "Bad cursor" }, { status: 400 });
+
+  if (inbox || countOnly || cursor) {
+    const rl = await rateLimit(`notifications-read:${userId}`, READ_RATE.limit, READ_RATE.windowMs);
+    if (!rl.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } });
+  }
+
+  const scope: Record<string, unknown> = { userId };
+  if (inbox || countOnly) scope.type = { notIn: [...INBOX_HIDDEN_TYPES] };
+  const unreadWhere = { ...scope, isRead: false };
+
+  if (countOnly) {
+    const unreadCount = await prisma.notification.count({ where: unreadWhere });
+    return NextResponse.json({ unreadCount }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  const where: Record<string, unknown> = { ...scope };
   if (unreadOnly) where.isRead = false;
+  if (cursor) where.OR = [{ createdAt: { lt: cursor.at } }, { createdAt: cursor.at, id: { lt: cursor.id } }];
 
-  const [notifications, unreadCount] = await Promise.all([
+  // one extra row tells whether there is a next page
+  const [rows, unreadCount] = await Promise.all([
     prisma.notification.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     }),
-    prisma.notification.count({
-      where: { userId: session.user.id, isRead: false },
-    }),
+    // only the first page reports the unread count (later pages do not change it)
+    cursor ? Promise.resolve(undefined) : prisma.notification.count({ where: unreadWhere }),
   ]);
+  const hasMore = rows.length > limit;
+  const notifications = hasMore ? rows.slice(0, limit) : rows;
+  const last = notifications[notifications.length - 1];
+  const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
 
-  return NextResponse.json({ notifications, unreadCount });
+  return NextResponse.json({ notifications, unreadCount, hasMore, nextCursor }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // PATCH: mark notifications as read
@@ -40,7 +81,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const wr = await rateLimit(`notifications-write:${session.user.id}`, WRITE_RATE.limit, WRITE_RATE.windowMs);
+  if (!wr.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(wr.retryAfterSec) } });
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   const { ids, markAllRead, tab, ideaId, channelId } = body as {
     ids?: string[];
     markAllRead?: boolean;
@@ -68,9 +113,10 @@ export async function PATCH(request: NextRequest) {
       where: { userId: session.user.id, isRead: false, type: { in: typesForTab(tab) } },
       data: { isRead: true },
     });
-  } else if (ids && ids.length > 0) {
+  } else if (Array.isArray(ids) && ids.length > 0) {
+    const clean = ids.filter((i): i is string => typeof i === "string" && i.length > 0 && i.length <= 64).slice(0, MAX_IDS);
     await prisma.notification.updateMany({
-      where: { id: { in: ids }, userId: session.user.id },
+      where: { id: { in: clean }, userId: session.user.id },
       data: { isRead: true },
     });
   }

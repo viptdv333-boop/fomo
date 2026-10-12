@@ -34,10 +34,11 @@ function eq(name: string, got: unknown, want: unknown) {
   console.log(`${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : `\n     got  ${JSON.stringify(got)}\n     want ${JSON.stringify(want)}`}`);
 }
 
-// every notification type the server creates (EVENT_FOR_TYPE lists them all) is either mapped or deliberately has no tab
-const NO_TAB = ["new_follower", "new_idea", "room_join", "subscription_extended", "subscription_removed", "subscription", "payment", "subscription_expiring", "report", "broadcast", "email_broadcast", "system", "security"];
-eq("inventory: every known type is mapped or listed as tab-less", Object.keys(EVENT_FOR_TYPE).filter((t) => !(t in BADGE_TAB_BY_TYPE) && !NO_TAB.includes(t)), []);
-eq("inventory: no type is both", NO_TAB.filter((t) => t in BADGE_TAB_BY_TYPE), []);
+// every notification type the server creates (EVENT_FOR_TYPE lists them all) is mapped: the ones without a section of their own to the Профиль tab ("me")
+const PROFILE_TYPES = ["new_follower", "new_idea", "room_join", "subscription_extended", "subscription_removed", "subscription", "payment", "subscription_expiring", "report", "broadcast", "email_broadcast", "system", "security"];
+eq("inventory: every known type is mapped (a new type must be placed on purpose)", Object.keys(EVENT_FOR_TYPE).filter((t) => !(t in BADGE_TAB_BY_TYPE)), []);
+eq("inventory: the types without a section of their own all light the Профиль tab", PROFILE_TYPES.map(tabForNotifType), PROFILE_TYPES.map(() => "me"));
+eq("inventory: nothing else lights the Профиль tab by the map", Object.keys(BADGE_TAB_BY_TYPE).filter((t) => BADGE_TAB_BY_TYPE[t] === "me").sort(), [...PROFILE_TYPES].sort());
 eq("every mapped tab exists in the dock", [...new Set(Object.values(BADGE_TAB_BY_TYPE))].filter((id) => !MAIN_APP_TABS.some((t) => t.id === id)), []);
 
 eq("Доска: comments on my ideas, replies to my comments", [tabForNotifType("new_comment"), tabForNotifType("comment_reply")], ["feed", "feed"]);
@@ -45,12 +46,16 @@ eq("Терминал: price and line alerts", [tabForNotifType("price_alert"), t
 eq("Календарь: reminders", tabForNotifType("calendar_reminder"), "calendar");
 eq("Каналы: channel posts and comments under channel posts", [tabForNotifType("channel_post"), tabForNotifType("channel_comment")], ["channels", "channels"]);
 eq("Болталка: DMs, mentions, replies, room messages", ["new_message", "chat_mention", "chat_reply", "chat_room_message"].map(tabForNotifType), ["chat", "chat", "chat", "chat"]);
-eq("everything else lights nothing (incl. prototype keys / junk)", ["new_follower", "new_idea", "payment", "subscription", "subscription_extended", "system", "constructor", "toString", "", null, 5].map(tabForNotifType), [null, null, null, null, null, null, null, null, null, null, null]);
-eq("typesForTab", [typesForTab("feed"), typesForTab("terminal"), typesForTab("channels"), typesForTab("me"), typesForTab(undefined)], [["new_comment", "comment_reply", "idea_like", "comment_like"], ["price_alert", "line_alert"], ["channel_like", "channel_post", "channel_comment"], [], []]);
-eq("auto-clear on opening a tab only where the badge does not count items (Доска / Каналы keep theirs until the idea is opened)", [...AUTO_CLEAR_TABS], ["terminal", "calendar", "chat"]);
+eq("Профиль: followers, new ideas of followed authors, payments / subscriptions, system, joins", ["new_follower", "new_idea", "payment", "subscription", "subscription_extended", "system", "room_join"].map(tabForNotifType), Array(7).fill("me"));
+eq("Профиль: a type nobody mapped yet (added later) lands there too, so no event is without a trace", ["some_future_type", "x1"].map(tabForNotifType), ["me", "me"]);
+eq("junk lights nothing (object keys, not a type string, empty, wrong shape)", ["constructor", "toString", "__proto__", "hasOwnProperty", "", "Not A Type", " payment", "payment ", null, undefined, 5, {}].map(tabForNotifType), Array(12).fill(null));
+eq("typesForTab", [typesForTab("feed"), typesForTab("terminal"), typesForTab("channels"), typesForTab("me").sort(), typesForTab(undefined)], [["new_comment", "comment_reply", "idea_like", "comment_like"], ["price_alert", "line_alert"], ["channel_like", "channel_post", "channel_comment"], [...PROFILE_TYPES].sort(), []]);
+eq("auto-clear on opening a tab only where the badge does not count items (Доска / Каналы keep theirs until the idea is opened; Профиль until the list shows the rows)", [...AUTO_CLEAR_TABS], ["terminal", "calendar", "chat"]);
 eq("BADGE_TYPES = the mapped keys", BADGE_TYPES.length, Object.keys(BADGE_TAB_BY_TYPE).length);
 
-eq("counts: sums per tab", tabBadgeCounts({ new_comment: 2, comment_reply: 1, price_alert: 3, line_alert: 1, calendar_reminder: 4, channel_post: 5, payment: 9, new_follower: 7 }), { feed: 3, terminal: 4, calendar: 4, channels: 5 });
+eq("counts: sums per tab, payment / follower / system rows on the Профиль tab", tabBadgeCounts({ new_comment: 2, comment_reply: 1, price_alert: 3, line_alert: 1, calendar_reminder: 4, channel_post: 5, payment: 9, new_follower: 7, system: 1 }), { feed: 3, terminal: 4, calendar: 4, channels: 5, me: 17 });
+eq("counts: the Профиль badge label (99+ cap)", [tabBadgeLabel({ me: 3 }, "me"), tabBadgeLabel({ me: 150 }, "me"), tabBadgeLabel({}, "me")], ["3", "99+", ""]);
+eq("counts: the chat-covered DM rows still add nothing anywhere", tabBadgeCounts({ new_message: 4, chat_room_message: 2 }, 0), {});
 eq("counts: empty / junk", [tabBadgeCounts(null), tabBadgeCounts({}), tabBadgeCounts({ new_comment: "x", price_alert: -2, line_alert: NaN })], [{}, {}, {}]);
 eq("chat: the chat badge alone", tabBadgeCounts({}, 7), { chat: 7 });
 eq("chat: DM / room notifications are NOT counted on top of the chat badge", tabBadgeCounts({ new_message: 3, chat_room_message: 4 }, 5), { chat: 5 });

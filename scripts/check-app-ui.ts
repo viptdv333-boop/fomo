@@ -578,9 +578,10 @@ eq("dock: a user's page lights «Авторы», the own profile stays «Про�
   eq("screens: urls (locale, tab, the ?appui preview flag rides along)", [profileHref("ru", "home"), profileHref("ru", "finance"), profileHref("en", "edit"), profileHref("cn", "notifications", { appui: "1" }), profileHref("ru", "home", { appui: "1" }), profileHref("ru", "subs", { appui: "" })], ["/profile", "/profile?tab=finance", "/en/profile?tab=profile", "/zh/profile?tab=notifications&appui=1", "/profile?appui=1", "/profile?tab=subs"]);
   eq(
     "screens: url -> screen round-trips for every screen",
-    (["edit", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"] as const).map((sc) => parseProfileScreen("/profile", new URLSearchParams(profileHref("ru", sc).split("?")[1]).get("tab"))),
-    ["edit", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"],
+    (["edit", "finance", "subs", "ideas", "rooms", "notifications", "inbox", "security", "app"] as const).map((sc) => parseProfileScreen("/profile", new URLSearchParams(profileHref("ru", sc).split("?")[1]).get("tab"))),
+    ["edit", "finance", "subs", "ideas", "rooms", "notifications", "inbox", "security", "app"],
   );
+  eq("screens: the «Уведомления» list is /profile?tab=inbox (the settings stay ?tab=notifications); Back from it is the profile list", [profileHref("ru", "inbox"), profileHref("en", "inbox", { appui: "1" }), parentHref("/profile", "?tab=inbox"), parentHref("/en/profile", "?tab=inbox&appui=1")], ["/profile?tab=inbox", "/en/profile?tab=inbox&appui=1", "/profile", "/profile"]);
   eq("hero: third line joins the non-empty parts with a dot", [heroLine(["Фьючерсы, сырьё", "Москва", "8 лет"]), heroLine(["", null, "Москва"]), heroLine([undefined, "  ", ""]), heroLine([" Трейдер ", "Казань"])], ["Фьючерсы, сырьё · Москва · 8 лет", "Москва", "", "Трейдер · Казань"]);
   eq("hero: rating tile and avatar initial", [ratingLabel(6.4), ratingLabel("7.84"), ratingLabel(null), ratingLabel("abc"), avatarInitial("михаил"), avatarInitial("  "), avatarInitial(null)], ["★ 6.4", "★ 7.8", "★ 0.0", "★ 0.0", "М", "?", "?"]);
   eq("specializations: labels in the form's order, unknown dropped", [profileSpecLabels(["algotrader", "trader", "x"], (k) => k.replace("profile2.spec", "")), profileSpecLabels(null, (k) => k), SPECIALIZATIONS.map((s) => s.value)], [["Trader", "Algotrader"], [], ["trader", "analyst", "investor", "scalper", "algotrader"]]);

@@ -3,7 +3,7 @@
 import { localizedPath, type Locale } from "@/lib/i18n/locale-url";
 
 /** The screens of the Профиль tab: the home list and the screens pushed from it. */
-export type ProfileScreen = "home" | "edit" | "finance" | "subs" | "ideas" | "rooms" | "notifications" | "security" | "app";
+export type ProfileScreen = "home" | "edit" | "finance" | "subs" | "ideas" | "rooms" | "notifications" | "inbox" | "security" | "app";
 
 /** `?tab=` values of /profile (the old page's tabs keep opening the same thing) -> screen. «profile» was the old default tab: the edit form. */
 const TAB_TO_SCREEN: Record<string, ProfileScreen> = {
@@ -13,6 +13,7 @@ const TAB_TO_SCREEN: Record<string, ProfileScreen> = {
   ideas: "ideas",
   rooms: "rooms",
   notifications: "notifications",
+  inbox: "inbox",
   security: "security",
   app: "app",
 };
@@ -23,6 +24,7 @@ const SCREEN_TO_TAB: Record<Exclude<ProfileScreen, "home">, string> = {
   ideas: "ideas",
   rooms: "rooms",
   notifications: "notifications",
+  inbox: "inbox",
   security: "security",
   app: "app",
 };

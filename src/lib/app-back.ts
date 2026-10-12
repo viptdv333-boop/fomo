@@ -36,7 +36,7 @@ function qs(search: string): URLSearchParams {
 }
 
 /** Screens of the profile tab that are pushed from its list (parseProfileScreen without the import cycle): ?tab=<known>. */
-const PROFILE_TABS = ["profile", "finance", "subs", "ideas", "rooms", "notifications", "security", "app"];
+const PROFILE_TABS = ["profile", "finance", "subs", "ideas", "rooms", "notifications", "inbox", "security", "app"];
 
 /**
  * The screen one level up from this one, or null when the screen is a ROOT (a section's list, the board, an unknown / legal page).

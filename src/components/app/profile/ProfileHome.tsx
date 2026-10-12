@@ -13,6 +13,7 @@ import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import AppIcon from "../AppIcon";
 import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
+import { useInboxUnread } from "./useNotifInbox";
 import { PickerSheet } from "./parts";
 
 // terminal.fomo.spot: the board site's sections (authors, calculator, ideas, finance, rooms ...) do not exist there
@@ -60,6 +61,7 @@ export default function ProfileHome() {
   const [native, setNative] = useState(false);
   useEffect(() => setNative(canOpenNativeSettings()), []);
   const { rooms, pending } = useCabinetCounters(user?.id);
+  const inboxUnread = useInboxUnread(user?.id);
   const version = useVersionLabel();
   const isAdmin = user?.role === "ADMIN" || user?.role === "OWNER";
 
@@ -91,6 +93,21 @@ export default function ProfileHome() {
   const themeLabel = theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight");
 
   const sections: SheetSection[] = [];
+  // «Уведомления» first: the app has no bell, this list is where every event that rang (or lit a dock tab) can be found (NotifInbox.tsx)
+  sections.push({
+    key: "inbox",
+    rows: [
+      {
+        key: "inbox",
+        label: t("appprof.inbox.title"),
+        sub: t("appprof.inbox.rowSub"),
+        icon: ico("bell"),
+        badge: inboxUnread > 0 ? (inboxUnread > 99 ? "99+" : inboxUnread) : undefined,
+        chev: true,
+        onClick: () => go("inbox"),
+      },
+    ],
+  });
   // the risk calculator is a pushed screen (src/components/app/calculator): Android Back returns to this list
   const calcRow: SheetRow = { key: "calc", label: t("nav.calculator"), icon: ico("calc"), sub: t("appprof.calcSub"), chev: true, onClick: () => open("/calculator") };
   // terminal site: no sections of the board site; the calendar is a segment of the terminal screen, the calculator is a tool, and one quiet row invites to fomo.spot
