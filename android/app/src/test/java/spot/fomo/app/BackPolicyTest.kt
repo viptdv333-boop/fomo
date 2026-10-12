@@ -46,4 +46,17 @@ class BackPolicyTest {
         assertEquals(false, BackPolicy.mayAskPage("https://evil.example/feed", offlineShown = false, webViewGone = false, baseUrl = base))
         assertEquals(false, BackPolicy.mayAskPage(null, offlineShown = false, webViewGone = false, baseUrl = base))
     }
+
+    @Test
+    fun aFullScreenVideoIsClosedBeforeAnythingElse() {
+        assertEquals(BackPolicy.Step.EXIT_VIDEO, BackPolicy.step(videoFullscreen = true, offlineShown = false, mayAskPage = true))
+        assertEquals(BackPolicy.Step.EXIT_VIDEO, BackPolicy.step(videoFullscreen = true, offlineShown = true, mayAskPage = false))
+    }
+
+    @Test
+    fun otherwiseTheOldOrderHolds() {
+        assertEquals(BackPolicy.Step.OFFLINE, BackPolicy.step(videoFullscreen = false, offlineShown = true, mayAskPage = false))
+        assertEquals(BackPolicy.Step.ASK_PAGE, BackPolicy.step(videoFullscreen = false, offlineShown = false, mayAskPage = true))
+        assertEquals(BackPolicy.Step.HISTORY, BackPolicy.step(videoFullscreen = false, offlineShown = false, mayAskPage = false))
+    }
 }

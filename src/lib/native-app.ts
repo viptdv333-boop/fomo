@@ -275,6 +275,8 @@ export interface NativeFeatures {
   immersive: boolean;
   /** FomoApp.saveFile / saveFileBegin exist: blob / data downloads (chart CSV, screenshot) go to the phone's Downloads. */
   saveFile: boolean;
+  /** WebChromeClient.onShowCustomView exists (app 1.0.3+): requestFullscreen on a <video> shows it full screen, rotates and hides the bars. */
+  videoFullscreen: boolean;
 }
 
 /** Tolerant parser of FomoApp.appFeatures(): null for anything that is not a JSON object; missing fields become false / "". */
@@ -301,6 +303,7 @@ export function parseAppFeatures(raw: unknown): NativeFeatures | null {
     updateCheck: d.updateCheck === true,
     immersive: d.immersive === true,
     saveFile: d.saveFile === true,
+    videoFullscreen: d.videoFullscreen === true,
   };
 }
 
@@ -339,6 +342,12 @@ export function canSetNativeImmersive(): boolean {
   if (!b || typeof b.setImmersive !== "function") return false;
   const f = nativeAppFeatures();
   return f ? f.immersive : false;
+}
+
+/** True only inside an app build whose WebView can show a <video> full screen (onShowCustomView). False in a browser / PWA / old app. */
+export function canNativeVideoFullscreen(): boolean {
+  const f = nativeAppFeatures();
+  return !!f && f.videoFullscreen;
 }
 
 /** Hides (true) or shows (false) the system bars of the app; false when this app build has no such method. Never throws. */

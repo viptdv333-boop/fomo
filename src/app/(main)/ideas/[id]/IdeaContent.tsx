@@ -18,6 +18,7 @@ import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
 import { applyPendingVote, pendingVoteOf } from "@/lib/outbox/votes";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
+import VideoPlayer from "@/components/shared/VideoPlayer";
 
 interface IdeaDetail {
   id: string;
@@ -273,7 +274,7 @@ export default function IdeaContent() {
               <div className={`mt-4 grid gap-3 ${(idea.attachments as any[]).length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                 {(idea.attachments as any[]).map((att: any, i: number) =>
                   att.url.endsWith(".mp4") || att.url.endsWith(".webm") ? (
-                    <video key={i} src={att.url} controls playsInline preload="metadata" className="rounded-lg w-full bg-black max-h-[80vh]" />
+                    <VideoPlayer key={i} src={att.url} wrapClassName="w-full" className="rounded-lg w-full bg-black max-h-[80vh]" />
                   ) : (
                     <ImageLightbox key={i} src={att.url} alt={att.name} className="rounded-lg w-full" />
                   )

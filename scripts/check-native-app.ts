@@ -3,6 +3,7 @@
 import {
   canOpenNativeSettings,
   canSetNativeImmersive,
+  canNativeVideoFullscreen,
   setNativeImmersive,
   nativeAppFeatures,
   openNativeSettings,
@@ -92,8 +93,8 @@ async function main() {
   eq("live share event", shares, ["pending", "live"]);
 
   // --- native settings / app features (feature detection must never throw and must be false outside the app)
-  const full = JSON.stringify({ schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true, saveFile: true });
-  eq("features parsed", parseAppFeatures(full), { schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true, saveFile: true });
+  const full = JSON.stringify({ schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true, saveFile: true, videoFullscreen: true });
+  eq("features parsed", parseAppFeatures(full), { schema: 1, versionName: "1.0.0", versionCode: 1, settings: true, appLock: true, lockEnabled: false, notificationChannels: true, updateCheck: true, immersive: true, saveFile: true, videoFullscreen: true });
   eq("features: junk -> null", [parseAppFeatures(""), parseAppFeatures("nope"), parseAppFeatures("[1]"), parseAppFeatures("null"), parseAppFeatures(5), parseAppFeatures(undefined)], [null, null, null, null, null, null]);
   eq("features: too long -> null", parseAppFeatures("{" + " ".repeat(5000) + "}"), null);
   eq("features: missing / wrong-typed fields are false", parseAppFeatures('{"settings":"yes","appLock":1}')?.settings, false);
@@ -122,6 +123,15 @@ async function main() {
   eq("flag without method -> not used", canSetNativeImmersive(), false);
   win.FomoApp = { setImmersive: (on: boolean) => { calls.push(on); }, appFeatures: () => full };
   eq("new app -> on and off reach the bridge, strictly boolean", [canSetNativeImmersive(), setNativeImmersive(true), setNativeImmersive(false), calls], [true, true, true, [true, false]]);
+  // --- native video fullscreen (WebChromeClient.onShowCustomView): only a build that reports it
+  win.FomoApp = {};
+  eq("no features -> no native video fullscreen", canNativeVideoFullscreen(), false);
+  win.FomoApp = { appFeatures: () => '{"immersive":true}' };
+  eq("old build (flag missing) -> overlay path", canNativeVideoFullscreen(), false);
+  win.FomoApp = { appFeatures: () => full };
+  eq("new build -> native video fullscreen", canNativeVideoFullscreen(), true);
+  win.FomoApp = { appFeatures: () => { throw new Error("boom"); } };
+  eq("throwing features -> false", canNativeVideoFullscreen(), false);
   win.FomoApp = { setImmersive: () => { throw new Error("boom"); }, appFeatures: () => full };
   eq("throwing setImmersive -> false", setNativeImmersive(true), false);
   delete win.FomoApp;

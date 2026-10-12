@@ -38,4 +38,27 @@ object BackPolicy {
     /** The page may be asked only while a page of our own site is shown (never an error page or a foreign one). */
     fun mayAskPage(url: String?, offlineShown: Boolean, webViewGone: Boolean, baseUrl: String = BuildConfig.BASE_URL): Boolean =
         !offlineShown && !webViewGone && UrlPolicy.isTrusted(url, baseUrl)
+
+    /** What the Back button does first, in priority order (MainActivity.setupBack). */
+    enum class Step {
+        /** a <video> is shown full screen (WebChromeClient.onShowCustomView): leave it, nothing else */
+        EXIT_VIDEO,
+
+        /** the offline page is shown: hide it and go back / finish */
+        OFFLINE,
+
+        /** ask the page (window.FomoBack) */
+        ASK_PAGE,
+
+        /** the WebView history */
+        HISTORY,
+    }
+
+    /** The full-screen video always goes first: Back must never close a screen or minimise the app while a video covers it. */
+    fun step(videoFullscreen: Boolean, offlineShown: Boolean, mayAskPage: Boolean): Step = when {
+        videoFullscreen -> Step.EXIT_VIDEO
+        offlineShown -> Step.OFFLINE
+        mayAskPage -> Step.ASK_PAGE
+        else -> Step.HISTORY
+    }
 }

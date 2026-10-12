@@ -78,8 +78,9 @@ class FomoBridge(private val activity: MainActivity) {
     /**
      * What this build of the app can do, so the site can show entries only for what exists:
      * `{"schema":1,"versionName":"1.0.0","versionCode":1,"settings":true,"appLock":true,"lockEnabled":false,
-     * "notificationChannels":true,"updateCheck":true,"immersive":true,"saveFile":true}`. `appLock` = the device can ask for a biometric / PIN;
-     * `immersive` = [setImmersive] exists (full-screen chart); `saveFile` = [saveFile] / [saveFileBegin] exist (downloads of blob:/data: files).
+     * "notificationChannels":true,"updateCheck":true,"immersive":true,"saveFile":true,"videoFullscreen":true}`. `appLock` = the device can ask for a biometric / PIN;
+     * `immersive` = [setImmersive] exists (full-screen chart); `saveFile` = [saveFile] / [saveFileBegin] exist (downloads of blob:/data: files);
+     * `videoFullscreen` = the WebView shows a <video> full screen (onShowCustomView, [VideoFullscreen]): the page's ⛶ button then calls requestFullscreen on it.
      */
     @JavascriptInterface
     fun appFeatures(): String {
@@ -95,6 +96,7 @@ class FomoBridge(private val activity: MainActivity) {
             .put("updateCheck", true)
             .put("immersive", true)
             .put("saveFile", true)
+            .put("videoFullscreen", true)
             .toString()
     }
 

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode 
 import { useT } from "@/lib/i18n/client";
 import { FONT_DEFAULT, bgCss, clockLabel, firstUnreadId, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
+import VideoPlayer from "@/components/shared/VideoPlayer";
 import { removeItem, retryItem } from "@/lib/outbox/outbox";
 
 /** A message of either kind (болталка room or personal conversation) in the shape the bubbles draw. */
@@ -173,7 +174,7 @@ function FileBlock({ file, fallback }: { file: NonNullable<ViewMsg["file"]>; fal
         <img className="ac-media" src={file.url} alt={file.name || "image"} />
       </a>
     );
-  if (file.type === "video") return <video className="ac-media" src={file.url} controls data-noopen />;
+  if (file.type === "video") return <VideoPlayer className="ac-media" src={file.url} />;
   return (
     <a className="ac-file" href={file.url} target="_blank" rel="noopener noreferrer">
       {"\u{1F4CE}"} {file.name || fallback}

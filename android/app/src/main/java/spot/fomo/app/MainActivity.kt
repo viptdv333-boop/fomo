@@ -93,6 +93,9 @@ class MainActivity : AppCompatActivity() {
     private var immersive = false
     private var immersiveResetPending = false
 
+    /** A <video> shown full screen through WebChromeClient.onShowCustomView (the standard fullscreen button). */
+    private val videoFs = VideoFullscreen(this) { immersive }
+
     // App lock (see AppLock / LockController). While locked, deep links and shares wait here until the owner unlocks.
     private lateinit var authenticator: Authenticator
     private lateinit var lock: LockController
@@ -173,6 +176,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        videoFs.hide() // a full-screen video does not outlive the screen: bars and orientation back
         if (!webViewGone) webView.onPause()
         CookieManager.getInstance().flush() // keeps the session across app restarts
         SecureWindow.update(this, pausing = true) // the recents thumbnail is taken as the app leaves
@@ -197,6 +201,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        videoFs.hide()
         resetImmersive(notifyPage = false)
         lock.onDestroy()
         PushBridge.onToken = null
@@ -284,13 +289,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupBack() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                when {
-                    offlineShown -> {
+                when (BackPolicy.step(videoFs.isShown, offlineShown, BackPolicy.mayAskPage(currentUrl, offlineShown, webViewGone))) {
+                    BackPolicy.Step.EXIT_VIDEO -> videoFs.hide()
+                    BackPolicy.Step.OFFLINE -> {
                         hideOffline()
                         if (webView.canGoBack()) webView.goBack() else finish()
                     }
-                    BackPolicy.mayAskPage(currentUrl, offlineShown, webViewGone) -> askPageBack()
-                    else -> historyBack()
+                    BackPolicy.Step.ASK_PAGE -> askPageBack()
+                    BackPolicy.Step.HISTORY -> historyBack()
                 }
             }
         })
@@ -779,6 +785,17 @@ class MainActivity : AppCompatActivity() {
             filePathCallback: ValueCallback<Array<Uri>>,
             fileChooserParams: WebChromeClient.FileChooserParams,
         ): Boolean = fileChooser.show(filePathCallback, fileChooserParams)
+
+        // The standard fullscreen button of <video controls> / video.requestFullscreen(): the video view goes over the whole window.
+        override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+            videoFs.show(view, callback, AppLock.isLocked)
+        }
+
+        override fun onHideCustomView() {
+            videoFs.hide()
+        }
+
+        override fun getDefaultVideoPoster(): Bitmap = videoFs.poster()
 
         override fun onPermissionRequest(request: PermissionRequest) = onWebPermissionRequest(request)
 

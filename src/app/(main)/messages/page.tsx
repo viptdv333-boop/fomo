@@ -18,6 +18,7 @@ import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
 import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
+import VideoPlayer from "@/components/shared/VideoPlayer";
 
 
 
@@ -577,7 +578,7 @@ function MessagesPage() {
     }
     if (msg.fileType === "video") {
       return (
-        <video src={msg.fileUrl} controls className="max-w-[280px] max-h-[200px] rounded-lg mt-1" />
+        <VideoPlayer src={msg.fileUrl} className="max-w-[280px] max-h-[200px] rounded-lg mt-1" />
       );
     }
     // Document

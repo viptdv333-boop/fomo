@@ -52,6 +52,7 @@ const dict: SectionDict = {
     "common.landing.ideas": "Идей",
     "common.landing.instruments": "Инструментов",
     "common.landing.terms": "Условия использования",
+    "common.video.fullscreen": "На весь экран",
   },
   en: {
     "common.error.title": "Something went wrong",
@@ -104,6 +105,7 @@ const dict: SectionDict = {
     "common.landing.ideas": "Ideas",
     "common.landing.instruments": "Instruments",
     "common.landing.terms": "Terms of Use",
+    "common.video.fullscreen": "Fullscreen",
   },
   cn: {
     "common.error.title": "出错了",
@@ -156,6 +158,7 @@ const dict: SectionDict = {
     "common.landing.ideas": "想法",
     "common.landing.instruments": "交易品种",
     "common.landing.terms": "使用条款",
+    "common.video.fullscreen": "全屏",
   },
 };
 

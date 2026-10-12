@@ -16,6 +16,7 @@ import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
 import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
+import VideoPlayer from "@/components/shared/VideoPlayer";
 
 interface Message {
   id: string;
@@ -276,7 +277,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                 )}
                 {msg.text && <p className="text-sm text-gray-700 dark:text-gray-300 break-words"><Linkify text={msg.text} /></p>}
                 {msg.fileUrl && msg.fileType === "video" && (
-                  <video src={msg.fileUrl} controls className="mt-1 max-w-full sm:max-w-[320px] max-h-[240px] rounded-lg" />
+                  <VideoPlayer src={msg.fileUrl} className="mt-1 max-w-full sm:max-w-[320px] max-h-[240px] rounded-lg" />
                 )}
                 {msg.fileUrl && msg.fileType === "image" && (
                   <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">

@@ -22,6 +22,7 @@ import {
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
+import { resumeTime, videoFullscreenPlan, videoResumeFrom } from "../src/lib/video-fullscreen";
 import {
   BACK_INDEX_KEY,
   backHome,
@@ -490,6 +491,15 @@ eq("fs: new app hides the system bars", fullscreenPlan({ native: true, nativeImm
 eq("fs: old app has only the CSS layer", fullscreenPlan({ native: true, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: false });
 eq("fs: browser / PWA uses the Fullscreen API", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: true }), { immersive: false, api: true });
 eq("fs: browser without the API has only the CSS layer", fullscreenPlan({ native: false, nativeImmersive: false, apiAvailable: false }), { immersive: false, api: false });
+// --- the shared video player (src/components/shared/VideoPlayer.tsx): fullscreen path and the overlay's resume state
+eq("video fs: app build with the capability -> the native Fullscreen API", videoFullscreenPlan({ native: true, nativeVideoFs: true, apiAvailable: false }), "api");
+eq("video fs: old app build -> the in-page overlay even if the WebView claims the API", videoFullscreenPlan({ native: true, nativeVideoFs: false, apiAvailable: true }), "overlay");
+eq("video fs: browser / desktop app with the API -> api", videoFullscreenPlan({ native: false, nativeVideoFs: false, apiAvailable: true }), "api");
+eq("video fs: browser without the API -> overlay", videoFullscreenPlan({ native: false, nativeVideoFs: false, apiAvailable: false }), "overlay");
+eq("video resume: a playing clip keeps time, rate, volume", videoResumeFrom({ currentTime: 12.5, paused: false, ended: false, playbackRate: 1.5, volume: 0.4, muted: false }), { time: 12.5, playing: true, rate: 1.5, volume: 0.4, muted: false });
+eq("video resume: paused / ended do not resume playing", [videoResumeFrom({ currentTime: 3, paused: true }).playing, videoResumeFrom({ currentTime: 3, paused: false, ended: true }).playing], [false, false]);
+eq("video resume: junk -> a safe start", [videoResumeFrom(null), videoResumeFrom({ currentTime: NaN, playbackRate: 99, volume: -2, muted: "x" })], [{ time: 0, playing: false, rate: 1, volume: 1, muted: false }, { time: 0, playing: false, rate: 4, volume: 0, muted: false }]);
+eq("video resume: seek stays inside the clip", [resumeTime(10, 60), resumeTime(100, 60), resumeTime(-5, 60), resumeTime(7, NaN), resumeTime(7, 0)], [10, 59.95, 0, 7, 7]);
 
 {
 // --- «Каналы» / «Авторы» screens (src/lib/app-channels.ts)
