@@ -270,10 +270,10 @@ export default function IdeaContent() {
           <>
             <div className="border-t dark:border-gray-700 pt-6 whitespace-pre-wrap dark:text-gray-100"><Linkify text={idea.content} /></div>
             {idea.attachments && (idea.attachments as any[]).length > 0 && (
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className={`mt-4 grid gap-3 ${(idea.attachments as any[]).length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                 {(idea.attachments as any[]).map((att: any, i: number) =>
                   att.url.endsWith(".mp4") || att.url.endsWith(".webm") ? (
-                    <video key={i} src={att.url} controls className="rounded-lg w-full" />
+                    <video key={i} src={att.url} controls playsInline preload="metadata" className="rounded-lg w-full bg-black max-h-[80vh]" />
                   ) : (
                     <ImageLightbox key={i} src={att.url} alt={att.name} className="rounded-lg w-full" />
                   )
