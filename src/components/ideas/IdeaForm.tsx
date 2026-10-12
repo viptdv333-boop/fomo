@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmojiPicker from "@/components/ui/EmojiPicker";
 import { useT } from "@/lib/i18n/client";
+import { SMALL_MB, UploadFail, fetchUploadLimitMb, uploadVideoStream } from "@/lib/large-upload-client";
 
 interface Instrument {
   id: string;
@@ -67,6 +68,11 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
     initialData?.attachments || []
   );
   const [uploading, setUploading] = useState(false);
+  // Video over 10 MB goes through the streaming upload (channel owners and staff, up to maxMb); the progress bar belongs to it.
+  const [maxMb, setMaxMb] = useState(SMALL_MB);
+  const [videoProgress, setVideoProgress] = useState<{ name: string; pct: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const cancelUploadRef = useRef<(() => void) | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -204,24 +210,87 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
     setSelectedChips((prev) => prev.filter((c) => c.id !== id));
   }
 
+  useEffect(() => {
+    let alive = true;
+    fetchUploadLimitMb().then((mb) => alive && setMaxMb(mb));
+    return () => {
+      alive = false;
+      cancelUploadRef.current?.();
+    };
+  }, []);
+
+  function uploadErrorText(err: unknown, name: string, limitMb: number): string {
+    const kind = err instanceof UploadFail ? err.kind : "generic";
+    const mb = (err instanceof UploadFail && err.maxMb) || limitMb;
+    switch (kind) {
+      case "too_large": return t("idea.upload.errTooLarge", { name, mb });
+      case "network": return t("idea.upload.errNetwork", { name });
+      case "busy": return t("idea.upload.errBusy");
+      case "rate": return t("idea.upload.errRate");
+      case "type": return t("idea.upload.errType", { name });
+      case "space": return t("idea.upload.errSpace");
+      case "cancelled": return t("idea.upload.cancelled");
+      default: return t("idea.upload.errGeneric", { name });
+    }
+  }
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    const picked = Array.from(files);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setUploading(true);
+    setUploadError(null);
     const newAttachments: Attachment[] = [];
-    for (const file of Array.from(files)) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("type", "ideas");
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (res.ok) {
-        const data = await res.json();
-        newAttachments.push({ url: data.url, name: data.name });
+    const errors: string[] = [];
+    let limitMb = SMALL_MB;
+    for (const file of picked) {
+      const isBigVideo = file.type.startsWith("video/") && file.size > SMALL_MB * 1024 * 1024;
+      if (isBigVideo) {
+        // the rule lives on the server (channel owners / staff): ask it now, the answer decides which path the file takes
+        limitMb = await fetchUploadLimitMb();
+        setMaxMb(limitMb);
+        if (file.size > limitMb * 1024 * 1024) {
+          errors.push(t("idea.upload.errTooLarge", { name: file.name, mb: limitMb }));
+          continue;
+        }
+        const job = uploadVideoStream(file, (pct) => setVideoProgress({ name: file.name, pct }));
+        cancelUploadRef.current = job.cancel;
+        setVideoProgress({ name: file.name, pct: 0 });
+        try {
+          const data = await job.promise;
+          newAttachments.push({ url: data.url, name: data.name });
+        } catch (err) {
+          errors.push(uploadErrorText(err, file.name, limitMb));
+          if (err instanceof UploadFail && err.kind === "cancelled") break;
+        } finally {
+          cancelUploadRef.current = null;
+          setVideoProgress(null);
+        }
+        continue;
+      }
+      if (file.size > SMALL_MB * 1024 * 1024) {
+        errors.push(t("idea.upload.errTooLarge", { name: file.name, mb: SMALL_MB }));
+        continue;
+      }
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("type", "ideas");
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          newAttachments.push({ url: data.url, name: data.name });
+        } else {
+          errors.push(t("idea.upload.errGeneric", { name: file.name }));
+        }
+      } catch {
+        errors.push(t("idea.upload.errNetwork", { name: file.name }));
       }
     }
-    setAttachments((prev) => [...prev, ...newAttachments]);
+    if (newAttachments.length > 0) setAttachments((prev) => [...prev, ...newAttachments]);
+    setUploadError(errors.length > 0 ? errors.join("\n") : null);
     setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removeAttachment(index: number) {
@@ -579,7 +648,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
               {attachments.map((att, i) => (
                 <div key={i} className="relative group rounded-lg overflow-hidden border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                   {isVideo(att.url) ? (
-                    <video src={att.url} className="w-full h-24 object-cover" muted />
+                    <video src={att.url} className="w-full h-24 object-cover" muted preload="metadata" />
                   ) : (
                     <img src={att.url} alt={att.name} className="w-full h-24 object-cover" />
                   )}
@@ -604,6 +673,26 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
           >
             {uploading ? "..." : t("idea.addFiles")}
           </button>
+          {videoProgress && (
+            <div className="mt-2" role="status" aria-live="polite">
+              <div className="flex items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-300 mb-1">
+                <span className="truncate">{videoProgress.name} — {t("idea.upload.progress", { pct: videoProgress.pct })}</span>
+                <button
+                  type="button"
+                  onClick={() => cancelUploadRef.current?.()}
+                  className="shrink-0 px-2 py-0.5 border border-red-300 text-red-600 dark:border-red-800 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-950 transition"
+                >
+                  {t("idea.upload.cancel")}
+                </button>
+              </div>
+              <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <div className="h-full bg-green-500 transition-[width] duration-200" style={{ width: `${videoProgress.pct}%` }} />
+              </div>
+            </div>
+          )}
+          {uploadError && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-2 whitespace-pre-line" role="alert">{uploadError}</p>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -612,7 +701,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
             onChange={handleFileUpload}
             className="hidden"
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t("idea.fileFormats")}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t(maxMb > SMALL_MB ? "idea.fileFormats" : "idea.fileFormatsBase")}</p>
         </div>
 
         {!isChannelPost && <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">

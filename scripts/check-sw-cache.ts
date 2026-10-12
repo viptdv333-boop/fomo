@@ -58,7 +58,7 @@ const allowed = [
 eq("allowlisted reads are cacheable", allowed.filter((p) => !R.apiPolicy(p).cache), []);
 const denied = [
   "/api/auth/session", "/api/auth/csrf", "/api/auth/signout", "/api/csrf", "/api/session",
-  "/api/payments", "/api/payments/p1", "/api/yukassa/create", "/api/payment-methods", "/api/upload", "/api/upload/favicon", "/api/push/subscribe", "/api/push/beacon",
+  "/api/payments", "/api/payments/p1", "/api/yukassa/create", "/api/payment-methods", "/api/upload", "/api/upload/favicon", "/api/upload/stream", "/api/push/subscribe", "/api/push/beacon",
   "/api/admin/users", "/api/bot/ideas", "/api/version", "/api/socketio",
   "/api/klines", "/api/quote", "/api/quotes", "/api/orderbook", "/api/orderflow", "/api/market-search", "/api/futures/spec", "/api/contracts", "/api/algopack/x", "/api/sandbox/orders", "/api/terminal/alerts", "/api/fmp-stats", "/api/crypto-stats",
   "/api/users/u1/finances", "/api/users/u1/payment-links", "/api/users/u1/tariffs/t1/subscribers", "/api/users/online", "/api/users/dm-enabled",

@@ -3,6 +3,7 @@ import { URL } from "url";
 import next from "next";
 import { initSocket } from "./server/socket";
 import { createReadStream, statSync, existsSync } from "fs";
+import { pipeline } from "stream";
 import path from "path";
 import { routeAllowed, siteMode } from "./src/lib/site-mode";
 
@@ -85,12 +86,13 @@ function serveUploads(req: IncomingMessage, res: ServerResponse): boolean {
         "Content-Range": `bytes ${start}-${end}/${stat.size}`,
         "Content-Length": end - start + 1,
       });
-      createReadStream(filePath, { start, end }).pipe(res);
+      // pipeline (not .pipe) closes the file when the browser drops the request: a player seeking in a big video aborts ranges all the time
+      pipeline(createReadStream(filePath, { start, end }), res, () => {});
       return true;
     }
 
     res.writeHead(200, { ...baseHeaders, "Content-Length": stat.size });
-    createReadStream(filePath).pipe(res);
+    pipeline(createReadStream(filePath), res, () => {});
     return true;
   } catch (err) {
     console.error(`[uploads] Error serving ${filePath}:`, err);
@@ -127,6 +129,10 @@ app.prepare().then(() => {
     if (closedApi(req, res)) return;
     handler(req, res);
   });
+
+  // Node cuts a request that has not arrived completely within 5 minutes by default; a 500 MB video upload (/api/upload/stream) on a slow link
+  // takes longer. Raised to 2 hours; a stalled sender is cut by the route itself (idle timeout), header slowloris by headersTimeout.
+  httpServer.requestTimeout = 2 * 60 * 60 * 1000;
 
   initSocket(httpServer);
 

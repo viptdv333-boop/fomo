@@ -65,9 +65,9 @@ async function main() {
     core.kindOf("POST", "/api/messages/conversations/c1/messages"),
   ], ["idea_vote", "comment_reaction", "idea_comment", "room_message", "dm_message"]);
   eq("NOT queueable: payments, subscribing, publishing, uploads, account, edits, GET", [
-    core.kindOf("POST", "/api/payments"), core.kindOf("POST", "/api/yukassa/create"), core.kindOf("POST", "/api/subscriptions"), core.kindOf("POST", "/api/ideas"), core.kindOf("POST", "/api/upload"),
+    core.kindOf("POST", "/api/payments"), core.kindOf("POST", "/api/yukassa/create"), core.kindOf("POST", "/api/subscriptions"), core.kindOf("POST", "/api/ideas"), core.kindOf("POST", "/api/upload"), core.kindOf("PUT", "/api/upload/stream"), core.kindOf("POST", "/api/upload/stream"),
     core.kindOf("POST", "/api/auth/change-password"), core.kindOf("PATCH", "/api/chat/messages/m1"), core.kindOf("DELETE", "/api/ideas/abc/comments"), core.kindOf("GET", "/api/chat/messages"), core.kindOf("POST", "/api/users/u1/follow"),
-  ], ["", "", "", "", "", "", "", "", "", ""]);
+  ], ["", "", "", "", "", "", "", "", "", "", "", ""]);
 
   // --- backoff
   eq("backoff doubles from 2 s and caps at 5 min", [1, 2, 3, 4, 8, 9, 20].map((n) => core.backoffMs(n, 0.5)), [2000, 4000, 8000, 16000, 256000, 300000, 300000]);
