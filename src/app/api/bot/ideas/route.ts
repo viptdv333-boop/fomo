@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { toPlainText } from "@/lib/notify-text";
-import { createBotIdea, SETUP_BATCH_SECONDS, SETUP_BATCH_VERSION } from "@/lib/bot-setup-batch";
+import { createBotIdea, SETUP_BATCH_SECONDS, SETUP_BATCH_VERSION, SETUP_SCOPE_VERSION } from "@/lib/bot-setup-batch";
 
 // Публикация от внешних торговых терминалов (Босс, 13.07.2026): сервер-к-серверу,
 // без браузерной NextAuth-сессии, автор зафиксирован (bot-auth.ts) — эндпоинт
@@ -42,8 +42,11 @@ const createBotIdeaSchema = z.object({
   channelId: z.string().min(1).optional(),
   // 08.10.2026: явная метка сетапа; по заголовкам и тегу базового актива не угадываем.
   setupTicker: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9_.\-]+$/).transform(s => s.toUpperCase()).optional(),
+  setupScope: z.string().min(1).max(96).regex(/^[A-Za-z0-9_.\-]+$/).optional(),
 }).refine(data => !data.setupTicker || !!data.channelId, {
   message: "A setup requires a closed channel", path: ["channelId"],
+}).refine(data => !data.setupScope || !!data.setupTicker, {
+  message: "A scope requires a setup", path: ["setupScope"],
 });
 
 // 08.10.2026: терминал проверяет протокол ДО отправки — старый API молча отбросил бы метку.
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
   if (!checkBotToken(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ setupBatches: { version: SETUP_BATCH_VERSION, windowSeconds: SETUP_BATCH_SECONDS } },
+  return NextResponse.json({ setupBatches: { version: SETUP_BATCH_VERSION, windowSeconds: SETUP_BATCH_SECONDS, scopeVersion: SETUP_SCOPE_VERSION } },
     { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { title, preview, content, instrumentSlugs, channelId, setupTicker } = parsed.data;
+  const { title, preview, content, instrumentSlugs, channelId, setupTicker, setupScope } = parsed.data;
 
   let tariffId: string | null = null;
   if (channelId) {
@@ -118,7 +121,7 @@ export async function POST(request: NextRequest) {
       instruments: {
         create: instruments.map((i) => ({ instrumentId: i.id })),
       },
-  }, setupTicker);
+  }, setupTicker, setupScope);
 
   if (tariffId) {
     // Подписчики канала САМИ включили пересылку в свой бот — им уходит ПОЛНЫЙ текст сетапа

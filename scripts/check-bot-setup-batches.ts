@@ -101,6 +101,25 @@ async function main() {
   assert.equal(+parallel[0].setupBatch!.startedAt, +parallel[1].setupBatch!.startedAt);
   assert.equal(+batchStart(null, now), +now);
   await assert.rejects(createBotIdea(db, { ...data, tariffId: null }, "NGV6"), /closed channel/);
+  // 12.10.2026: один канал и тикер, два счёта и два горизонта, старый клиент.
+  rows = [];
+  const scoped = (scope: string) => createBotIdea(db, data, "BRX6", scope);
+  await scoped("accountA.swing");
+  await scoped("accountB.intraday");
+  await scoped("accountA.intraday");
+  await publish("BRX6");
+  now = new Date(+now + 901000);
+  const split = await Promise.all([scoped("accountA.swing"), scoped("accountB.intraday")]);
+  assert.deepEqual(split.map(r => r.setupBatch!.archivedCount), [1, 1]);
+  assert.deepEqual(rows.map(r => r.moderationStatus),
+    ["archived", "archived", "published", "published", "published", "published"]);
+  assert.equal(split[0].setupBatch!.ticker, "BRX6");
+  assert.equal(split[0].setupBatch!.scope, "accountA.swing");
+  await publish("BRX6");
+  assert.equal(rows[4].moderationStatus, "published", "старый клиент не удаляет свинг");
+  assert.equal(rows[5].moderationStatus, "published", "старый клиент не удаляет интрадей");
+  const again = await scoped("accountA.swing");
+  assert.equal(again.setupBatch!.archivedCount, 0, "внутри 15 минут сетапы складываются");
   console.log("OK: fixed window, exact boundary, ticker/channel/author isolation, rollback, concurrent batch, no public setup");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
