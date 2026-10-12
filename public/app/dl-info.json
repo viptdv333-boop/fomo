@@ -1,7 +1,7 @@
 {
     "android":  {
-                    "version":  "1.0.2",
-                    "versionCode":  3,
+                    "version":  "1.0.3",
+                    "versionCode":  4,
                     "size":  1614320
                 },
     "windows":  {
@@ -10,14 +10,14 @@
                 },
     "terminal":  {
                      "android":  {
-                                     "version":  "1.0.2",
-                                     "versionCode":  3,
-                                     "size":  1635404
+                                     "version":  "1.0.3",
+                                     "versionCode":  4,
+                                     "size":  1635408
                                  },
                      "windows":  {
                                      "version":  "1.0.0",
                                      "size":  94330061
                                  }
                  },
-    "updated":  "2026-10-08T16:00:14Z"
+    "updated":  "2026-10-12T06:48:58Z"
 }
