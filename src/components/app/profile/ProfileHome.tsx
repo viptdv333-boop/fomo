@@ -11,6 +11,7 @@ import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { avatarInitial, countValue, heroLine, pendingSalesCount, ratingLabel, specLabels } from "@/lib/app-profile";
 import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import AppIcon from "../AppIcon";
+import { LanguageSheet, useLanguageName } from "../LanguagePicker";
 import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { useInboxUnread } from "./useNotifInbox";
@@ -58,12 +59,16 @@ export default function ProfileHome() {
   const { t, user, me, go, open, flash } = useProf();
   const { theme, toggleTheme } = useTheme();
   const [themeSheet, setThemeSheet] = useState(false);
+  const [langSheet, setLangSheet] = useState(false);
+  const langName = useLanguageName();
   const [native, setNative] = useState(false);
   useEffect(() => setNative(canOpenNativeSettings()), []);
   const { rooms, pending } = useCabinetCounters(user?.id);
   const inboxUnread = useInboxUnread(user?.id);
   const version = useVersionLabel();
   const isAdmin = user?.role === "ADMIN" || user?.role === "OWNER";
+
+  const langRow: SheetRow = { key: "lang", label: t("appprof.language"), icon: ico("globe"), value: langName, chev: true, onClick: () => setLangSheet(true) };
 
   if (!user) {
     return (
@@ -82,6 +87,9 @@ export default function ProfileHome() {
             <AppIcon name="chevR" size={18} />
           </button>
         )}
+        {/* a guest has no «Настройки приложения», but the language is not a thing to hide behind a sign-in */}
+        <Sections sections={[{ key: "guestapp", rows: [langRow] }]} />
+        {langSheet && <LanguageSheet to={TERMINAL ? "/terminal" : "/feed"} onClose={() => setLangSheet(false)} />}
       </div>
     );
   }
@@ -165,6 +173,7 @@ export default function ProfileHome() {
     footer: t("appprof.appFoot"),
     rows: [
       { key: "theme", label: t("appprof.theme"), icon: ico(theme === "dark" ? "moon" : "sun"), value: themeLabel, chev: true, onClick: () => setThemeSheet(true) },
+      langRow,
       ...(native ? [{ key: "native", label: t("app.settings"), icon: ico("sliders"), chev: true, onClick: () => void openNativeSettings() }] : []),
       { key: "allapp", label: t("appprof.allAppSettings"), icon: ico("phone"), chev: true, onClick: () => go("app") },
     ],
@@ -255,6 +264,7 @@ export default function ProfileHome() {
           onClose={() => setThemeSheet(false)}
         />
       )}
+      {langSheet && <LanguageSheet onClose={() => setLangSheet(false)} />}
     </div>
   );
 }

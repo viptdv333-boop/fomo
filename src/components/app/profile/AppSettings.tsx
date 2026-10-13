@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "@/lib/theme";
 import { forceUpdate } from "@/lib/force-update";
-import { switchLocale } from "@/lib/i18n/client";
 import { APP_FONT_STEPS, type AppFontStep } from "@/lib/app-ui";
 import { canOpenNativeSettings, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
 import { clearSavedData, isOfflineModeEnabled, setOfflineModeEnabled, swStats } from "@/lib/offline/sw-bridge";
@@ -14,24 +13,18 @@ import { DownloadAppsRow } from "@/components/shared/DownloadApps";
 import AppIcon from "../AppIcon";
 import { Sections, type SheetSection } from "../chat/AppSheet";
 import { applyFontStep, readFontStep } from "../fontStep";
+import { LanguageSheet, useLanguageName } from "../LanguagePicker";
 import { useProf } from "./ProfileCtx";
 import { PickerSheet, ScreenFrame } from "./parts";
 
 const TERMINAL = isTerminalSite();
 const ico = (name: Parameters<typeof AppIcon>[0]["name"]) => <AppIcon name={name} size={18} stroke={1.8} />;
 
-const FALLBACK_LANGS = [
-  { code: "ru", name: "Русский" },
-  { code: "en", name: "English" },
-  { code: "cn", name: "中文" },
-];
-
 /** «Приложение» (the design's `app`): what is stored on this device: look, language, push of this device, version, update, legal links. */
 export default function AppSettings() {
-  const { t, locale, go, open } = useProf();
+  const { t, go, open } = useProf();
   const { theme, toggleTheme } = useTheme();
   const [fz, setFz] = useState<AppFontStep>("m");
-  const [langs, setLangs] = useState(FALLBACK_LANGS);
   const [sheet, setSheet] = useState<"theme" | "fz" | "lang" | null>(null);
   const [native, setNative] = useState(false);
   const [version, setVersion] = useState("");
@@ -55,10 +48,6 @@ export default function AppSettings() {
     setFz(readFontStep());
     setNative(canOpenNativeSettings());
     setVersion(nativeAppFeatures()?.versionName || process.env.NEXT_PUBLIC_BUILD_ID || "");
-    fetch("/api/languages")
-      .then((r) => r.json())
-      .then((d) => Array.isArray(d) && d.length > 1 && setLangs(d.map((l: { code: string; name: string }) => ({ code: l.code, name: l.name }))))
-      .catch(() => {});
     if (isPushSupported()) {
       setPushOk(true);
       void getExistingPushSubscription().then((sub) => setPush(Boolean(sub)));
@@ -84,7 +73,7 @@ export default function AppSettings() {
 
   const fzLabel: Record<AppFontStep, string> = { s: t("appui.fontS"), m: t("appui.fontM"), l: t("appui.fontL"), xl: t("appui.fontXl") };
   const themeLabel = theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight");
-  const langName = langs.find((l) => l.code === locale)?.name || locale;
+  const langName = useLanguageName();
 
   async function togglePush() {
     setPushErr("");
@@ -181,7 +170,7 @@ export default function AppSettings() {
           onClose={() => setSheet(null)}
         />
       )}
-      {sheet === "lang" && <PickerSheet title={t("appprof.language")} value={locale} options={langs.map((l) => ({ key: l.code, label: l.name }))} onPick={(k) => (k !== locale ? switchLocale(k) : undefined)} onClose={() => setSheet(null)} />}
+      {sheet === "lang" && <LanguageSheet onClose={() => setSheet(null)} />}
     </ScreenFrame>
   );
 }

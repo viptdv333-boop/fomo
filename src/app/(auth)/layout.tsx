@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { isTerminalSite } from "@/lib/site-mode";
 import { getT } from "@/lib/i18n/server";
+import AuthLangSwitch from "@/components/auth/AuthLangSwitch";
 
 // Sign-in / sign-up screens carry no search value. noindex rather than a
 // robots.txt block so Google can actually read the directive and drop the URLs
@@ -20,7 +21,10 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-3 sm:px-4">
-      <div className="w-full max-w-sm sm:max-w-md">{children}</div>
+      <div className="w-full max-w-sm sm:max-w-md">
+        <AuthLangSwitch />
+        {children}
+      </div>
     </div>
   );
 }

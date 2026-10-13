@@ -15,6 +15,7 @@ const dir = path.join(__dirname, "..", "src", "components", "app", "profile");
 const files = fs.readdirSync(dir).filter((f) => /\.tsx?$/.test(f));
 const extra = [
   path.join(__dirname, "..", "src", "components", "shared", "DownloadApps.tsx"),
+  path.join(__dirname, "..", "src", "components", "app", "LanguagePicker.tsx"),
 ];
 
 // 1) dictionary keys: t("key") / t(`key`) with a literal key
@@ -36,7 +37,9 @@ const missingDyn = dyn.filter((k) => ["ru", "en", "cn"].some((loc) => !DICTIONAR
 ok("dynamic keys exist in ru / en / cn", missingDyn.length === 0, missingDyn.join(", "));
 
 // 2) nothing of the old profile is dropped: every request of the old tabs is still made by some screen
-const all = files.map((f) => fs.readFileSync(path.join(dir, f), "utf8")).join("\n");
+// the «Язык» sheet is shared by the home list, the guest list, the app settings and the sign-in screens: it lives next to the profile folder
+const langPicker = fs.readFileSync(path.join(__dirname, "..", "src", "components", "app", "LanguagePicker.tsx"), "utf8");
+const all = files.map((f) => fs.readFileSync(path.join(dir, f), "utf8")).concat(langPicker).join("\n");
 const mustHave: [string, RegExp][] = [
   ["profile: load + save", /\/api\/users\/\$\{uid\}`[\s\S]*method: "PATCH"/],
   ["profile: avatar upload (type avatars)", /"type", "avatars"/],

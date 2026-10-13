@@ -7,7 +7,7 @@ import { isLocale, localizedPath, stripLocale } from "./locale-url";
  * Changes the site language: cookie, the user's saved locale (notifications,
  * push and Telegram are written in it), and the /en · /zh URL of the page.
  */
-export function switchLocale(code: string) {
+export function switchLocale(code: string, to?: string) {
   if (!isLocale(code)) return;
   document.cookie = `NEXT_LOCALE=${code};path=/;max-age=31536000;samesite=lax`;
   fetch("/api/me/locale", {
@@ -16,6 +16,8 @@ export function switchLocale(code: string) {
     body: JSON.stringify({ locale: code }),
     keepalive: true,
   }).catch(() => {});
+  // `to`: a page (without the locale prefix) to land on instead of the current one: a guest on a page behind the sign-in (the app's guest «Профиль» tab)
+  if (to) return window.location.assign(localizedPath(code, to));
   const { path } = stripLocale(window.location.pathname);
   window.location.assign(localizedPath(code, path) + window.location.search + window.location.hash);
 }
