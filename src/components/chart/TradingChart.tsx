@@ -45,6 +45,7 @@ import { aggregateCandles, formatInterval, intervalPlan, isValidInterval } from 
 import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
+import { gateQuote, isIntraday, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, type LiveMemo } from "@/lib/chart/live-bar";
 import { candleKey, clockLabel, freshness, peekBars, readBars, writeBars, type BarsResult } from "@/lib/chart/candle-cache";
 import { useOnline } from "@/lib/offline/useOnline";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
@@ -237,31 +238,6 @@ interface CompareState {
   failed?: boolean;
 }
 
-/** Start of the bar containing `nowWall` (ms on the exchange's wall clock, read with UTC getters). */
-function bucketStartWall(nowWall: number, interval: string): number {
-  if (interval === "W") {
-    const d = new Date(nowWall);
-    d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    d.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1));
-    return d.getTime();
-  }
-  if (interval === "M") {
-    const d = new Date(nowWall);
-    d.setUTCDate(1);
-    d.setUTCHours(0, 0, 0, 0);
-    return d.getTime();
-  }
-  if (interval === "Y") {
-    const d = new Date(nowWall);
-    d.setUTCMonth(0, 1);
-    d.setUTCHours(0, 0, 0, 0);
-    return d.getTime();
-  }
-  const ms = intervalToMs(interval);
-  return Math.floor(nowWall / ms) * ms;
-}
-
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
 export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead }: Props) {
@@ -277,6 +253,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const genRef = useRef(0);
   /** "source|ticker|interval" of the bars that are on the chart now ("" until the first load): the live updates wait for it. */
   const dataKeyRef = useRef("");
+  /** the last quote drawn into the newest bar (the server's refresh of that bar keeps its price) */
+  const liveMemoRef = useRef<LiveMemo | null>(null);
+  /** the live poll of the current chart: called when new bars were put on the chart, so the newest bar gets the live price at once */
+  const livePokeRef = useRef<((key: string) => void) | null>(null);
+  /** failed live loads in a row for the chart key (the pause before the next try grows) */
+  const retryRef = useRef(0);
+  const retryKeyRef = useRef("");
   const loadingHistory = useRef(false);
 
   const [drawings] = useState(() => new DrawingsController());
@@ -299,6 +282,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [reloadTick, setReloadTick] = useState(0);
   /** MOEX bars up to the 15-minute delay of the public ISS (no online feed for this requester) */
   const [candlesDelayed, setCandlesDelayed] = useState(false);
+  /** the live quote itself is the public delayed one (any interval, daily bars included) */
+  const [quoteDelayedMark, setQuoteDelayedMark] = useState(false);
   /** when the bars on the chart were stored, while they are the stored ones (a live answer replaces them and clears this): drives the «Данные на HH:MM» badge */
   const [storedAt, setStoredAt] = useState<number | null>(null);
   const online = useOnline();
@@ -628,6 +613,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     setEmpty(false);
     setEmptyWhy(null);
     const label = formatInterval(iv, t);
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    if (retryKeyRef.current !== `${source}|${ticker}|${iv}`) {
+      retryKeyRef.current = `${source}|${ticker}|${iv}`;
+      retryRef.current = 0;
+    }
 
     (async () => {
       // the picture goes up from the stored bars (if any), the live answer replaces it as soon as it is here; the live feed waits for the live bars
@@ -657,7 +647,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         locale: LOCALES[locale] ?? "ru-RU",
       });
       engine.setData(candles);
-      if (stored === null) dataKeyRef.current = `${source}|${ticker}|${iv}`;
+      // the live quote is merged into these bars from now on, stored ones too: a stored picture must not sit on an old last price
+      dataKeyRef.current = `${source}|${ticker}|${iv}`;
+      liveMemoRef.current = null;
       refreshInd();
       setEmpty(candles.length === 0);
       setEmptyWhy(candles.length === 0 && source === "fmp" ? err ?? null : null);
@@ -665,10 +657,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       setLoading(false);
       setTransformBox(engine.getTransformBox());
       setDataVersion((v) => v + 1);
+      // the newest bar gets the live price right away (not at the next poll): a stored or a cached answer is minutes behind
+      livePokeRef.current?.(`${source}|${ticker}|${iv}`);
       };
-      const hit = await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
+      // a reload of the picture that is already on the chart (a retry, the day changed on an aggregated interval) does not paint stored bars over it
+      const reload = dataKeyRef.current === `${source}|${ticker}|${iv}`;
+      const hit = reload ? null : await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
       if (cancelled) return;
-      if (hit) apply(hit.res, hit.savedAt);
+      // the chart gets its own copy of the series: the live quote appends / replaces bars in it, the stored answer must stay what the server said
+      if (hit) apply({ ...hit.res, candles: hit.res.candles.slice() }, hit.savedAt);
       let fresh: BarsResult | null = null;
       try {
         fresh = await fetchBars(source, ticker, iv, 600);
@@ -677,10 +674,18 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       }
       if (cancelled) return;
       if (fresh && (fresh.candles.length > 0 || !hit)) {
+        void writeBars(source, ticker, iv, 600, { ...fresh, candles: fresh.candles.slice() });
         apply(fresh, null);
-        void writeBars(source, ticker, iv, 600, fresh);
-      } else if (!hit) {
+        retryRef.current = 0;
+      } else if (!hit && !reload) {
         apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: undefined }, null);
+      }
+      // the live answer did not come (a hiccup, a timeout, an empty answer) while old bars are on the chart: try again, the picture must not stay stale for good
+      if ((!fresh || fresh.candles.length === 0) && (hit || reload) && !cancelled) {
+        const delay = retryDelayMs(retryRef.current++);
+        retryTimer = setTimeout(() => {
+          if (!cancelled && (typeof navigator === "undefined" || navigator.onLine !== false)) setReloadTick((x) => x + 1);
+        }, delay);
       }
     })();
 
@@ -703,20 +708,25 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       engine.onNeedHistory = null;
     };
   }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer, reloadTick]);
 
   const badQuoteRef = useRef(0);
-  /* live price: quotes for the forming bar, real bars from the API now and then */
+  /* live price: quotes for the forming bar of EVERY interval, real bars from the API now and then */
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
     const iv = prefs.interval;
-    const intraday = iv !== "D" && iv !== "W" && iv !== "M" && iv !== "Y";
+    const intraday = isIntraday(iv);
+    const pollMs = intraday ? 4000 : 12000;
     const dataKey = `${source}|${ticker}|${iv}`;
     let stopped = false;
     let quoteBusy = false;
     let barsBusy = false;
+    let lastReloadAt = 0;
+    badQuoteRef.current = 0;
+    setQuoteDelayedMark(false);
 
     const pollQuote = async () => {
       const engine = engineRef.current;
@@ -732,36 +742,39 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         const q = await r.json();
         const price: unknown = q?.price;
         if (typeof price !== "number" || !Number.isFinite(price) || price <= 0 || stopped || dataKeyRef.current !== dataKey) return;
-        q.price = price;
+        // the public ISS quote is 15 minutes behind: say so on every interval, not only where the bars themselves are known to be late
+        setQuoteDelayedMark(source === "moex" && q?.delayed === true && quoteDelayed(q?.lagSec));
         // the newest bar as it is NOW: the bar refresh or the previous quote may have replaced it while this request was on its way
-        const candles = engine.getCandles();
-        const last = candles[candles.length - 1];
+        const engineCandles = engine.getCandles();
+        const last = engineCandles[engineCandles.length - 1];
         if (!last) return;
         // A single bad print (a quote far from the previous close) must not stretch the forming bar with a huge wick:
         // a jump of more than 3% is only accepted when the next quote confirms it.
-        const jump = Math.abs(q.price - last.c) / (last.c || q.price);
-        if (jump > 0.03) {
-          if (!(badQuoteRef.current && Math.abs(q.price - badQuoteRef.current) / badQuoteRef.current < 0.01)) {
-            badQuoteRef.current = q.price;
-            return;
-          }
-        }
-        badQuoteRef.current = 0;
+        const gate = gateQuote(price, last.c, badQuoteRef.current);
+        badQuoteRef.current = gate.pending;
+        if (!gate.accept) return;
         const { tzMs, offsetMs: off } = shiftRef.current;
-        const nowWall = Date.now() + (source === "moex" ? MSK_MS : 0) + (source === "forex" && !intraday && new Date().getUTCDay() === 0 ? DAY_MS : 0);
-        const plan = intervalPlan(iv, source);
-        let bucketT: number;
-        if (plan.ratio > 1) {
-          // aggregated bars are anchored to each day's first candle: continue from the last bar, and let the bar refresh fetch real ones after gaps
-          const nowChart = Date.now() + off;
-          bucketT = last.t + Math.floor((nowChart - last.t) / plan.ms) * plan.ms;
-          if (bucketT - last.t > plan.ms * 2) bucketT = last.t;
-        } else bucketT = bucketStartWall(nowWall, iv) - tzMs;
-        if (bucketT > last.t) {
-          engine.upsertCandle({ t: bucketT, o: q.price, h: q.price, l: q.price, c: q.price, v: 0 });
-        } else {
-          engine.upsertCandle({ ...last, c: q.price, h: Math.max(last.h, q.price), l: Math.min(last.l, q.price) });
+        const now = Date.now();
+        // a MOEX quote belongs to the bar of its last trade (the delayed feed: the delayed bar); the others are live
+        const at = source === "moex" ? quoteMoment(Date.parse(q?.tradeTime ?? q?.time), now) : now;
+        const target = liveTarget({ interval: iv, source, now: at, tzMs, offsetMs: off, last });
+        if (target.kind === "reload") {
+          // an aggregated interval and a new day: the bars are anchored to the first candle of the day, which only the server knows. Load them again
+          // (yesterday's last bar must not take today's price)
+          if (now - lastReloadAt > 20_000) {
+            lastReloadAt = now;
+            setReloadTick((x) => x + 1);
+          }
+          return;
         }
+        // the quote is older than the newest bar (a delayed quote next to a bar that already knows better): nothing to add
+        if (target.t < last.t) return;
+        // the public delayed quote is never fresher than the delayed bars of the same feed: it may open a bar the bars do not have yet (the hour that
+        // is not in the answer), but must not be written over a bar the answer already has
+        if (q?.delayed === true && target.t === last.t) return;
+        const bar = mergeQuote(last, target.t, price);
+        engine.upsertCandle(bar);
+        liveMemoRef.current = remember(liveMemoRef.current, bar, price, now);
         refreshInd();
       } catch {
       } finally {
@@ -777,8 +790,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         const { candles, delayed } = await fetchBars(source, ticker, iv, 3);
         if (stopped || dataKeyRef.current !== dataKey) return;
         if (delayed !== undefined) setCandlesDelayed(delayedNow(source, delayed, engine.getCandles().at(-1)?.t, shiftRef.current.offsetMs, iv));
-        // the last few bars: the newest one is replaced, the one that closed a moment ago gets its final numbers
-        for (const c of candles) engine.upsertCandle(c);
+        const plan = intervalPlan(iv, source);
+        const now = Date.now();
+        // the last few bars: the newest one is replaced, the one that closed a moment ago gets its final numbers; the newest keeps the live price
+        // a moment (the server's bar may be older than the quote on the chart)
+        for (const c of candles) {
+          const cur = engine.getCandles();
+          const last = cur[cur.length - 1];
+          // aggregated intervals: a few base candles are anchored to the middle of the day, only bars on the chart's own grid are the same bars
+          if (last && plan.ratio > 1 && !onChartGrid(c.t, last.t, plan.ms)) continue;
+          engine.upsertCandle(keepLive(c, liveMemoRef.current, now, pollMs * 2.5));
+        }
         refreshInd();
       } catch {
       } finally {
@@ -786,14 +808,18 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       }
     };
 
-    const q = setInterval(pollQuote, intraday ? 4000 : 12000);
+    const q = setInterval(pollQuote, pollMs);
     const b = setInterval(refreshBars, 60_000);
-    const first = setTimeout(pollQuote, 1500);
+    const first = setTimeout(pollQuote, 300);
+    livePokeRef.current = (key) => {
+      if (key === dataKey) void pollQuote();
+    };
     return () => {
       stopped = true;
       clearInterval(q);
       clearInterval(b);
       clearTimeout(first);
+      livePokeRef.current = null;
     };
   }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
 
@@ -1424,8 +1450,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const onAppStateRef = useRef(onAppState);
   onAppStateRef.current = onAppState;
   useEffect(() => {
-    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed });
-  }, [prefs.interval, candlesDelayed]);
+    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark });
+  }, [prefs.interval, candlesDelayed, quoteDelayedMark]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
@@ -1501,7 +1527,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 {t(online ? "chart.staleAt" : "chart.offlineAt", { time: clockLabel(storedAt) })}
               </div>
             )}
-            {candlesDelayed && !loading && !empty && !appPage && (
+            {(candlesDelayed || quoteDelayedMark) && !loading && !empty && !appPage && (
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>
                 {t("ap.delayed")}
               </div>

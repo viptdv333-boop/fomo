@@ -126,6 +126,10 @@ export interface IssQuote {
   change: number;
   changePercent: number;
   time: string;
+  /** when the last trade the feed knows of happened (ISO); absent for an index / when ISS does not say */
+  tradeTime?: string;
+  /** the feed's clock minus the last trade, seconds: ~900 on the free delayed feed during a session */
+  lagSec?: number;
 }
 
 const qCache = new Map<string, { at: number; q: IssQuote | null }>();
@@ -174,6 +178,7 @@ export async function issQuote(sec: MoexSecurity): Promise<IssQuote | null> {
           change,
           changePercent: base > 0 ? (change / base) * 100 : 0,
           time: sysTime(md.SYSTIME),
+          ...tradeLag(md.SYSTIME, md.TIME, num(md.LAST) > 0),
         };
       }
     }
@@ -191,6 +196,21 @@ function rowOf(block: { columns?: string[]; data?: unknown[][] } | undefined): R
   const row = block?.data?.[0];
   if (row) cols.forEach((c, i) => (out[c] = row[i]));
   return out;
+}
+
+/**
+ * The last trade of a quote: ISS TIME "16:54:54" (Moscow, the day of SYSTIME; a later time of day means the previous day) against SYSTIME, the feed's clock.
+ * Nothing when there was no trade (LAST empty) or the fields are not in the usual shape.
+ */
+export function tradeLag(systime: unknown, time: unknown, traded: boolean): { tradeTime?: string; lagSec?: number } {
+  if (!traded || typeof systime !== "string" || typeof time !== "string") return {};
+  const m = /^(\d{4}-\d\d-\d\d) \d\d:\d\d:\d\d$/.exec(systime);
+  if (!m || !/^\d\d:\d\d:\d\d$/.test(time)) return {};
+  const sys = Date.parse(systime.replace(" ", "T") + "+03:00");
+  let trade = Date.parse(`${m[1]}T${time}+03:00`);
+  if (!Number.isFinite(sys) || !Number.isFinite(trade)) return {};
+  if (trade > sys + 60_000) trade -= 86_400_000;
+  return { tradeTime: new Date(trade).toISOString(), lagSec: Math.max(0, Math.round((sys - trade) / 1000)) };
 }
 
 /** ISS SYSTIME "2026-10-03 12:41:23" is Moscow wall clock */

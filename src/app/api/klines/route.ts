@@ -532,7 +532,9 @@ export async function GET(request: NextRequest) {
           guestRealtimeFlag()
           ? { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=3" }
           : { "Cache-Control": "private, no-store" }
-        : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" };
+        : // the newest bar of an intraday answer moves every few seconds: a minute-old copy of M1 next to a fresher M15 is the «different prices on
+          // different timeframes» (the chart's live quote only fixes the last price); day / week / month bars may be held a minute
+          { "Cache-Control": toMs !== undefined || /^[DWMY]$/.test(interval) ? "public, s-maxage=60, stale-while-revalidate=30" : "public, s-maxage=10, stale-while-revalidate=10" };
   // the answer of a MOEX request differs by who asks (real-time tail / online gateway / delayed): a shared cache must key it by the session cookie
   if (source === "moex") headers["Vary"] = "Cookie";
   // diagnostics: which feed provided the last minutes of a MOEX chart

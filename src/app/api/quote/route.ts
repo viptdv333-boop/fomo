@@ -117,6 +117,11 @@ interface Quote {
   changePercent: number;
   time: string;
   ticker: string;
+  /** the public ISS feed (15 minutes behind): the quote is not real time */
+  delayed?: boolean;
+  /** when the last trade happened (ISO) and how far the feed's clock is ahead of it, seconds (ISS only) */
+  tradeTime?: string;
+  lagSec?: number;
 }
 
 async function tinkoffRequest(endpoint: string, body: object): Promise<any> {
@@ -207,7 +212,7 @@ async function fetchIssFallback(ticker: string): Promise<Quote | null> {
   const sec = await resolveMoex(ticker);
   if (!sec) return null;
   const q = await issQuote(sec);
-  return q ? { ...q, ticker: sec.secid } : null;
+  return q ? { ...q, ticker: sec.secid, delayed: true } : null;
 }
 
 async function fetchBybitQuote(ticker: string): Promise<Quote | null> {
