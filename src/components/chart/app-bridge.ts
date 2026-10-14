@@ -17,4 +17,6 @@ export interface AppChartState {
   interval: string;
   /** MOEX bars up to the 15-minute delay of the public ISS */
   delayed: boolean;
+  /** the chart's own side panel is on screen showing its watchlist (wide window, panel open, «Список» tab): the page does not repeat the list below */
+  sideWatch?: boolean;
 }

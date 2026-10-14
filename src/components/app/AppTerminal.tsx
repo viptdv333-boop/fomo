@@ -160,6 +160,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     } catch {}
     setZone(saved || localZone());
   }, []);
+  // the calendar segment stays (a ?panel=calendar deep link opens it here); only the repeated watchlist goes
+  const hideWatch = !!chart?.sideWatch && seg === "watch";
   const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
@@ -425,7 +427,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </Link>
         )}
 
-        {TERMINAL_SITE ? (
+        {/* the chart's own side panel already shows the watchlist (wide window): no second list under the chart; narrow window or panel hidden: this one */}
+        {!hideWatch && (TERMINAL_SITE ? (
           <div className="app-term-seg" role="tablist">
             <button type="button" role="tab" aria-selected={seg === "watch"} data-on={seg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
               {t("appui.term.watch")}
@@ -436,13 +439,13 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </div>
         ) : (
           <div className="app-term-wtitle">{t("appui.term.watch")}</div>
-        )}
+        ))}
         {TERMINAL_SITE && seg === "cal" && (
           <div className="tv3 app-term-cal" data-app-calendar>
             <CalendarPanel zone={zone} visible />
           </div>
         )}
-        <div className="app-term-watch" hidden={TERMINAL_SITE && seg === "cal"}>
+        {!hideWatch && <div className="app-term-watch" hidden={TERMINAL_SITE && seg === "cal"}>
           {watchlist.items.length === 0 ? (
             <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
           ) : (
@@ -469,7 +472,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               );
             })
           )}
-        </div>
+        </div>}
 
         {TERMINAL_SITE && (
           <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-term-ideas app-term-comm" data-fomo-community>

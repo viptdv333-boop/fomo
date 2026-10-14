@@ -1449,9 +1449,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }
   const onAppStateRef = useRef(onAppState);
   onAppStateRef.current = onAppState;
+  const sideWatch = !!appPage && prefsLoaded && isDesktop && prefs.panelOpen && prefs.panelTab === "watchlist";
   useEffect(() => {
-    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark });
-  }, [prefs.interval, candlesDelayed, quoteDelayedMark]);
+    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark, sideWatch });
+  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
