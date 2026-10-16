@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
-import { grantSubscription } from "@/lib/subscriptions";
+import { extendSubscription } from "@/lib/subscriptions";
+import { getYukassaPayment } from "@/lib/yukassa";
 import { tFor } from "@/lib/i18n/server";
 import { loadPaidChannel } from "@/lib/subscription-welcome-server";
 import { subscriptionNotice, welcomeDmText } from "@/lib/subscription-welcome";
@@ -60,35 +61,51 @@ async function handlePaymentSucceeded(payment: any) {
     return;
   }
 
-  // Mark as confirmed
-  await prisma.paymentRequest.update({
-    where: { id: paymentRequestId },
-    data: { status: "CONFIRMED" },
-  });
+  // Подписка на канал берётся из ЗАПИСИ запроса, а не из metadata уведомления.
+  const tariffId = paymentRequest.tariffId || null;
+  const tariff = tariffId ? await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } }) : null;
 
-  // Create or update subscription
-  const tariffId = payment.metadata?.tariffId || paymentRequest.tariffId;
-  let durationDays = 30;
-
-  if (tariffId) {
-    const tariff = await prisma.subscriptionTariff.findUnique({
-      where: { id: tariffId },
-    });
-    if (tariff) {
-      durationDays = tariff.durationDays;
+  // The notification itself is not authenticated, so it is never trusted on its own: the payment is fetched from YooKassa
+  // with the channel's own credentials and must be a paid one for THIS request (same id, same amount).
+  if (!tariff?.yukassaShopId || !tariff.yukassaSecret) {
+    console.error("[yukassa/webhook] No YooKassa credentials for the request's tariff, cannot verify:", paymentRequestId);
+    return;
+  }
+  try {
+    const real = await getYukassaPayment(tariff.yukassaShopId, tariff.yukassaSecret, payment.id);
+    const paid = real.status === "succeeded" && real.paid !== false;
+    const sameAmount = Math.abs(Number(real.amount?.value) - Number(paymentRequest.amount)) < 0.005;
+    const sameRequest = real.metadata?.paymentRequestId === paymentRequestId;
+    const sameId = !paymentRequest.receiptUrl?.startsWith("yukassa:") || paymentRequest.receiptUrl === `yukassa:${payment.id}`;
+    if (!paid || !sameAmount || !sameRequest || !sameId) {
+      console.error("[yukassa/webhook] Payment check failed, ignored:", paymentRequestId, { paid, sameAmount, sameRequest, sameId });
+      return;
     }
+  } catch (e) {
+    // Could not reach YooKassa: let it retry the notification later instead of dropping a real payment.
+    console.error("[yukassa/webhook] Payment check unavailable:", e);
+    throw e;
   }
 
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() + durationDays);
+  // Claim the request exactly once: of two parallel notifications only one gets count 1 (redelivery-safe).
+  const claimed = await prisma.paymentRequest.updateMany({
+    where: { id: paymentRequestId, status: "PENDING" },
+    data: { status: "CONFIRMED" },
+  });
+  if (claimed.count !== 1) {
+    console.log("[yukassa/webhook] PaymentRequest already processed:", paymentRequestId);
+    return;
+  }
 
-  // Подписка на канал (13.09.2026): своя запись на каждый канал автора.
-  await grantSubscription({
+  const durationDays = tariff ? tariff.durationDays : 30;
+
+  // Подписка на канал (13.09.2026): своя запись на каждый канал автора. Платёж при активной подписке ПРОДЛЕВАЕТ
+  // срок от текущей даты окончания (продление заранее); истёкшая / отменённая начинается заново от «сейчас».
+  const { renewed, endDate } = await extendSubscription({
     subscriberId: paymentRequest.buyerId,
     authorId: paymentRequest.sellerId,
-    tariffId: tariffId || null,
+    tariffId,
     monthlyPrice: paymentRequest.amount,
-    endDate,
     durationDays,
   });
 
@@ -136,7 +153,7 @@ async function handlePaymentSucceeded(payment: any) {
     data: {
       conversationId,
       senderId: paymentRequest.sellerId,
-      text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.yukassaWelcome"),
+      text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.yukassaWelcome", renewed),
     },
   });
 
@@ -148,6 +165,7 @@ async function handlePaymentSucceeded(payment: any) {
       sellerName: seller?.displayName,
       days: durationDays,
       amount: Number(paymentRequest.amount),
+      renewed,
     }),
   });
 

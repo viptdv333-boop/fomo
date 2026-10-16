@@ -10,6 +10,7 @@ import ShareButtons from "@/components/shared/ShareButtons";
 import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
+import { canOfferRenewal, formatValidUntil } from "@/lib/subscription-renew";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelDetail from "@/components/app/channels/AppChannelDetail";
 import { safeDecode } from "@/lib/app-channels";
@@ -80,7 +81,8 @@ function ChannelSite() {
   const [telegramVerified, setTelegramVerified] = useState(false);
   const [telegramBusy, setTelegramBusy] = useState(false);
   // The viewer's own subscription to this channel (for their Telegram toggle).
-  const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; telegramNotify: boolean } | null>(null);
+  const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; telegramNotify: boolean; endDate: string | null } | null>(null);
+  const [showRenewModal, setShowRenewModal] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [candQuery, setCandQuery] = useState("");
   const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
@@ -326,7 +328,7 @@ function ChannelSite() {
                 (!s.tariffId || s.tariffId === channel.id)
             );
             setIsSubscribed(Boolean(mine));
-            setMySub(mine ? { id: mine.id, tariffId: mine.tariffId ?? null, telegramNotify: Boolean(mine.telegramNotify) } : null);
+            setMySub(mine ? { id: mine.id, tariffId: mine.tariffId ?? null, telegramNotify: Boolean(mine.telegramNotify), endDate: mine.endDate ?? null } : null);
           }
         })
         .catch(() => {});
@@ -344,6 +346,12 @@ function ChannelSite() {
   }, [channel, session]);
 
   const canView = isOwner || isSubscribed;
+  // Own subscription to THIS channel (not the old author-wide one), a real term, a payable tariff -> «Продлить подписку».
+  const canRenew =
+    !!channel &&
+    !!mySub?.tariffId &&
+    mySub.tariffId === channel.id &&
+    canOfferRenewal({ endDate: mySub.endDate, price: Number(channel.price), durationDays: channel.durationDays });
 
   const handleBuyFromLock = useCallback(() => {
     setShowBuyModal(true);
@@ -445,7 +453,23 @@ function ChannelSite() {
           {isSubscribed && (
             <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg text-sm font-medium">
               {t("channel2.youSubscribed")}
+              {mySub?.endDate && (
+                <span className="ml-2 font-normal" data-testid="valid-until">
+                  · {t("channel2.activeUntil", { date: formatValidUntil(mySub.endDate, locale) })}
+                </span>
+              )}
             </span>
+          )}
+          {/* Продление заранее: у активного подписчика платёж добавляет срок к текущему (как первая оплата - те же способы). */}
+          {isSubscribed && !isOwner && canRenew && (
+            <button
+              onClick={() => setShowRenewModal(true)}
+              title={t("channel2.renewHint")}
+              data-testid="renew-btn"
+              className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+            >
+              {t("channel2.renew")}
+            </button>
           )}
           {isSubscribed && mySub?.tariffId && (
             <div className="flex items-center gap-2">
@@ -680,7 +704,19 @@ function ChannelSite() {
         <BuySubscriptionModal
           authorId={channel.author.id}
           authorName={channel.author.displayName}
+          preselectedTariffId={channel.id}
           onClose={() => setShowBuyModal(false)}
+        />
+      )}
+
+      {/* Renewal in advance: the same payment window, pinned to this channel's tariff */}
+      {showRenewModal && mySub?.endDate && (
+        <BuySubscriptionModal
+          authorId={channel.author.id}
+          authorName={channel.author.displayName}
+          preselectedTariffId={channel.id}
+          renewUntil={mySub.endDate}
+          onClose={() => setShowRenewModal(false)}
         />
       )}
 

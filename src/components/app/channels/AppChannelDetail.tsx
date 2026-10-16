@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { agoLabel } from "@/lib/app-ui";
+import { canOfferRenewal, formatValidUntil } from "@/lib/subscription-renew";
 import {
   SHARE_BASE,
   authorPath,
@@ -129,6 +130,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const [myTg, setMyTg] = useState<boolean | null>(null);
   const [busyPost, setBusyPost] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [renewing, setRenewing] = useState(false);
   const [sheet, setSheet] = useState<null | "more" | "owner" | "report" | "members">(null);
 
   const isOwner = !!channel && !!subs.myId && subs.myId === channel.author.id;
@@ -136,6 +138,10 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const subscribed = !!endDate;
   const pending = !!channel && subs.pending.has(channel.id) && !subscribed;
   const canView = isOwner || subscribed;
+  // Renewal in advance: an active term of THIS channel (not the old author-wide one) on a payable, non-lifetime tariff.
+  const ownEnd = channel && !isOwner ? subs.index.paidByChannel.get(channel.id) || "" : "";
+  const renewPending = !!channel && subs.pending.has(channel.id) && subscribed;
+  const canRenew = !!channel && !!ownEnd && !renewPending && canOfferRenewal({ endDate: ownEnd, price: channel.price, durationDays: channel.durationDays });
   const mySub = channel ? subs.index.subByChannel.get(channel.id) : undefined;
 
   // a post of this channel with something new (a comment, a reply, a like) that is not among the loaded ones goes on top as a highlighted post
@@ -368,7 +374,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
             {t("appch.activeBanner", { date: endDateLabel(endDate, locale) || "—" })}
           </div>
         )}
-        {pending && (
+        {(pending || renewPending) && (
           <div className="ach-banner" data-tone="wait">
             <ChIcon name="clock" size={18} />
             {t("appch.pendingBanner")}
@@ -393,6 +399,16 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
           <button type="button" className="ach-cta" onClick={onCta}>
             {ctaLabel}
           </button>
+        )}
+        {canRenew && (
+          <>
+            <button type="button" className="ach-cta" data-testid="renew-btn" onClick={() => setRenewing(true)}>
+              {t("appch.renewFor")} {priceLabel(channel.price, locale)}
+            </button>
+            <div className="ach-note" data-testid="renew-note">
+              {t("appch.renewUntil", { date: formatValidUntil(ownEnd, locale) })}. {t("appch.renewHint")}
+            </div>
+          </>
         )}
         <div className="ach-note">{t("appch.note")}</div>
 
@@ -487,6 +503,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
       {sheet === "report" && <AppReportSheet target={{ type: "channel", id: channel.id }} onClose={() => setSheet(null)} flash={flash} />}
       {sheet === "members" && <AppMembersSheet channel={channel} onClose={() => setSheet(null)} onChanged={() => void list.reload()} flash={flash} />}
       {buying && <AppBuySheet channel={channel} onClose={() => setBuying(false)} onDone={() => void subs.reload()} flash={flash} />}
+      {renewing && ownEnd && <AppBuySheet channel={channel} renewUntil={ownEnd} onClose={() => setRenewing(false)} onDone={() => void subs.reload()} flash={flash} />}
       {toast}
     </div>
   );

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { receiptDmText } from "@/lib/i18n/receipt-dm";
 import { hasLinkRef, validatePaymentLink, type PublicPayLink } from "@/lib/payment-link";
-import { priceAndPeriod, priceLabel, receiptProblem, type ChannelItem } from "@/lib/app-channels";
+import { endDateLabel, priceAndPeriod, priceLabel, receiptProblem, type ChannelItem } from "@/lib/app-channels";
 import AppIcon from "../AppIcon";
 import AppSheet from "../chat/AppSheet";
 import "../chat/app-chat.css";
@@ -28,7 +28,7 @@ type Method = { id: string; kind: "card" | "sbp" | "yukassa" | "link"; label: st
  * subscription: the author's own methods (card, QR / СБП, «Оплата по ссылке») are confirmed by hand after the receipt, ЮKassa pays online.
  * The requests are the same as the site's payment window makes (POST /api/payments, PATCH the receipt, a message with the receipt to the author).
  */
-export default function AppBuySheet({ channel, onClose, onDone, flash }: { channel: ChannelItem; onClose: () => void; onDone: () => void; flash: (m: string) => void }) {
+export default function AppBuySheet({ channel, onClose, onDone, flash, renewUntil }: { channel: ChannelItem; onClose: () => void; onDone: () => void; flash: (m: string) => void; renewUntil?: string }) {
   const { t, locale } = useT();
   const [tariff, setTariff] = useState<TariffInfo | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -170,12 +170,12 @@ export default function AppBuySheet({ channel, onClose, onDone, flash }: { chann
   if (step === 1) {
     return (
       <AppSheet
-        title={t("appch.buy.title")}
+        title={renewUntil ? t("appch.buy.renewTitle") : t("appch.buy.title")}
         onClose={onClose}
         left={{ label: t("common.cancel"), onClick: onClose }}
         right={null}
         doneLabel={t("appui.chat.done")}
-        intro={`${title}`}
+        intro={renewUntil ? `${title} · ${t("appch.renewUntil", { date: endDateLabel(renewUntil, locale) })}` : `${title}`}
         sections={
           loaded && methods.length
             ? [
@@ -204,7 +204,7 @@ export default function AppBuySheet({ channel, onClose, onDone, flash }: { chann
             <AppIcon name="check" size={32} stroke={2} />
           </div>
           <div className="ach-done-title">{t("pay.requestSent")}</div>
-          <div className="ach-done-text">{t("appch.buy.doneManual")}</div>
+          <div className="ach-done-text">{t(renewUntil ? "appch.buy.doneRenew" : "appch.buy.doneManual")}</div>
           <button type="button" className="ach-cta ach-done-btn" onClick={onClose}>
             {t("appui.chat.done")}
           </button>
@@ -218,7 +218,7 @@ export default function AppBuySheet({ channel, onClose, onDone, flash }: { chann
   const canPay = !busy && (yk || !!file);
   const checked = method?.link ? validatePaymentLink(method.link.url) : null;
   return (
-    <AppSheet title={t("appch.buy.title")} onClose={onClose} left={{ label: t("common.back"), onClick: () => setStep(1) }} right={null} doneLabel={t("appui.chat.done")}>
+    <AppSheet title={renewUntil ? t("appch.buy.renewTitle") : t("appch.buy.title")} onClose={onClose} left={{ label: t("common.back"), onClick: () => setStep(1) }} right={null} doneLabel={t("appui.chat.done")}>
       <div className="ach-pay">
         <div className="ach-pay-head">
           <div className="ach-pay-amount">{amount}</div>

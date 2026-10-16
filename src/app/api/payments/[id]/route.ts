@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
-import { grantSubscription } from "@/lib/subscriptions";
+import { extendSubscription } from "@/lib/subscriptions";
 import { loadPaidChannel } from "@/lib/subscription-welcome-server";
 import { subscriptionNotice, welcomeDmText } from "@/lib/subscription-welcome";
 import { tFor } from "@/lib/i18n/server";
@@ -61,10 +61,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Already processed" }, { status: 400 });
     }
 
-    const updated = await prisma.paymentRequest.update({
-      where: { id },
+    // Claim the request exactly once (a double click / two tabs must not grant or extend twice).
+    const claimed = await prisma.paymentRequest.updateMany({
+      where: { id, status: "PENDING" },
       data: { status: "CONFIRMED" },
     });
+    if (claimed.count !== 1) {
+      return NextResponse.json({ error: "Already processed" }, { status: 400 });
+    }
+    const updated = await prisma.paymentRequest.findUniqueOrThrow({ where: { id } });
 
     // Grant access: create purchase or subscription
     if (paymentRequest.ideaId) {
@@ -104,16 +109,13 @@ export async function PATCH(
         }
       }
 
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + durationDays);
-
-      // Подписка на канал (13.09.2026): своя запись на каждый канал автора.
-      await grantSubscription({
+      // Подписка на канал (13.09.2026): своя запись на каждый канал автора. Подтверждённый платёж при активной
+      // подписке ПРОДЛЕВАЕТ срок от текущей даты окончания (продление заранее), истёкшая / отменённая — заново от «сейчас».
+      const { renewed, endDate } = await extendSubscription({
         subscriberId: paymentRequest.buyerId,
         authorId: paymentRequest.sellerId,
         tariffId,
         monthlyPrice: paymentRequest.amount,
-        endDate,
         durationDays,
       });
 
@@ -162,7 +164,7 @@ export async function PATCH(
         data: {
           conversationId,
           senderId: paymentRequest.sellerId,
-          text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.subscriptionWelcome"),
+          text: welcomeDmText(tFor(buyerLocale?.locale), paidChannel, endDate, durationDays, "notif.dm.subscriptionWelcome", renewed),
         },
       });
 
@@ -170,7 +172,7 @@ export async function PATCH(
       await createNotification({
         userId: paymentRequest.buyerId,
         type: "subscription",
-        ...subscriptionNotice(paidChannel, endDate, { sellerName: seller?.displayName, days: durationDays }),
+        ...subscriptionNotice(paidChannel, endDate, { sellerName: seller?.displayName, days: durationDays, renewed }),
       });
     }
 

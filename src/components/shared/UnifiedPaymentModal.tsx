@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { receiptDmText } from "@/lib/i18n/receipt-dm";
 import { hasLinkRef, validatePaymentLink, type PublicPayLink } from "@/lib/payment-link";
+import { formatValidUntil } from "@/lib/subscription-renew";
 
 // ===== Universal payment types =====
 export type PaymentPurpose =
   | { type: "donation"; authorId: string; authorName: string; donationCard?: string | null; donationQrUrl?: string | null }
   | { type: "idea"; ideaId: string; ideaTitle: string; price: number; authorId: string; authorName: string }
-  | { type: "subscription"; tariff: TariffOption; authorId: string; authorName: string }
+  // renewUntil: ISO end date of the viewer's running subscription -> «Продление» mode (same tariff, same methods; the paid period is added to it)
+  | { type: "subscription"; tariff: TariffOption; authorId: string; authorName: string; renewUntil?: string }
   | { type: "course"; courseId: string; courseTitle: string; price: number; authorId: string; authorName: string };
 
 export interface TariffOption {
@@ -36,7 +38,7 @@ type Step = "method" | "pay" | "success";
 
 export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: UnifiedPaymentModalProps) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Steps
@@ -107,7 +109,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
     switch (purpose.type) {
       case "donation": return t("pay.titleDonation", { name: purpose.authorName });
       case "idea": return t("pay.titleIdea");
-      case "subscription": return t("pay.titleSubscription", { name: purpose.authorName });
+      case "subscription": return purpose.renewUntil ? t("pay.titleRenew", { name: purpose.authorName }) : t("pay.titleSubscription", { name: purpose.authorName });
       case "course": return t("pay.titleCourse");
     }
   })();
@@ -352,7 +354,9 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {purpose.type === "donation"
                   ? t("pay.successDonation")
-                  : t("pay.successPayment")}
+                  : purpose.type === "subscription" && purpose.renewUntil
+                    ? t("pay.successRenew")
+                    : t("pay.successPayment")}
               </p>
               <button
                 onClick={() => { onClose(); onSuccess?.(); router.refresh(); }}
@@ -370,7 +374,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
 
               {/* Tariff selector for subscriptions */}
-              {purpose.type === "subscription" && tariffs.length > 1 && (
+              {purpose.type === "subscription" && !purpose.renewUntil && tariffs.length > 1 && (
                 <div className="space-y-2 mb-4">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("pay.chooseTariff")}</p>
                   {tariffs.map((tf) => (
@@ -645,7 +649,7 @@ function ProductInfo({
   selectedTariff: TariffOption | null;
   amount: number;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
       <div className="flex items-start justify-between">
@@ -661,6 +665,11 @@ function ProductInfo({
           )}
           {purpose.type === "subscription" && selectedTariff && (
             <p className="text-xs text-gray-400 mt-0.5">{t("pay.termDays", { days: selectedTariff.durationDays })}</p>
+          )}
+          {purpose.type === "subscription" && purpose.renewUntil && (
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1" data-testid="renew-note">
+              {t("pay.renewNote", { date: formatValidUntil(purpose.renewUntil, locale) })}
+            </p>
           )}
         </div>
         {amount > 0 && (

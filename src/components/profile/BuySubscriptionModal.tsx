@@ -9,6 +9,8 @@ interface BuySubscriptionModalProps {
   authorName: string;
   onClose: () => void;
   preselectedTariffId?: string;
+  /** ISO end date of the viewer's running subscription: the modal renews THIS tariff and the paid period is added to it. */
+  renewUntil?: string;
 }
 
 export default function BuySubscriptionModal({
@@ -16,6 +18,7 @@ export default function BuySubscriptionModal({
   authorName,
   onClose,
   preselectedTariffId,
+  renewUntil,
 }: BuySubscriptionModalProps) {
   const { t } = useT();
   const [tariff, setTariff] = useState<TariffOption | null>(null);
@@ -26,8 +29,9 @@ export default function BuySubscriptionModal({
       .then((r) => r.json())
       .then((data: TariffOption[]) => {
         if (data.length > 0) {
+          // renewal: exactly the viewer's channel, never "the first one" (that would charge for another channel)
           const match = preselectedTariffId
-            ? data.find((t) => t.id === preselectedTariffId) || data[0]
+            ? data.find((t) => t.id === preselectedTariffId) || (renewUntil ? null : data[0])
             : data[0];
           setTariff(match);
         }
@@ -63,6 +67,7 @@ export default function BuySubscriptionModal({
         tariff,
         authorId,
         authorName,
+        ...(renewUntil ? { renewUntil } : {}),
       }}
       onClose={onClose}
     />

@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createYukassaPayment } from "@/lib/yukassa";
 import { findActiveSubscription } from "@/lib/subscriptions";
+import { isLifetimeEnd, tooFarAhead } from "@/lib/subscription-renew";
+import { rateLimit } from "@/lib/rate-limit";
 import { randomUUID } from "crypto";
 import { getT } from "@/lib/i18n/server";
 
@@ -19,6 +21,10 @@ export async function POST(req: NextRequest) {
 
   const userId = session.user.id!;
   const { t } = await getT();
+  const payLimit = await rateLimit(`pay:${userId}`, 30, 10 * 60 * 1000);
+  if (!payLimit.allowed) {
+    return NextResponse.json({ error: t("api.tooManyPayments") }, { status: 429 });
+  }
   const body = await req.json();
   const { tariffId, sellerId } = body;
 
@@ -47,10 +53,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: t("api.yukassaNotConfigured") }, { status: 400 });
   }
 
-  // Check existing active subscription — на ЭТОТ канал (13.09.2026)
+  // Продление заранее: активная подписка на ЭТОТ канал платёж не блокирует — webhook продлит срок от текущей
+  // даты окончания. Закрыто только для «бессрочной» и для оплаты слишком далеко вперёд.
   const existing = await findActiveSubscription(userId, sellerId, tariff.id);
   if (existing) {
-    return NextResponse.json({ error: t("api.subscriptionActive") }, { status: 400 });
+    if (isLifetimeEnd(existing.endDate)) {
+      return NextResponse.json({ error: t("api.subscriptionActive") }, { status: 400 });
+    }
+    if (tooFarAhead(existing, tariff.durationDays)) {
+      return NextResponse.json({ error: t("api.subscriptionTooFar") }, { status: 400 });
+    }
   }
 
   // Create a PaymentRequest record for tracking

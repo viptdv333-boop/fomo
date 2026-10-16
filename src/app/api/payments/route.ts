@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { findActiveSubscription } from "@/lib/subscriptions";
+import { isLifetimeEnd, tooFarAhead } from "@/lib/subscription-renew";
+import { rateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/i18n/server";
 
 export async function POST(req: NextRequest) {
@@ -14,6 +16,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const userId = session.user.id!;
   const { t } = await getT();
+
+  // Payment requests create notifications for the author - cap how many one account can open.
+  const payLimit = await rateLimit(`pay:${userId}`, 30, 10 * 60 * 1000);
+  if (!payLimit.allowed) {
+    return NextResponse.json({ error: t("notif.err.tooManyPayments") }, { status: 429 });
+  }
 
   // Purchase a single idea via bank transfer
   if (body.ideaId && body.type !== "subscription") {
@@ -93,10 +101,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: t("notif.err.selfSubscribe") }, { status: 400 });
     }
 
-    // Check existing active subscription — на ЭТОТ канал (13.09.2026)
+    // Продление заранее: у активного подписчика платёж ПРОДЛЕВАЕТ срок от текущей даты окончания
+    // (extendSubscription), поэтому активная подписка больше не запрещает платёж. Закрыто только для
+    // «бессрочной» (нечего продлевать) и для оплаты слишком далеко вперёд. Плательщик — всегда сессия,
+    // канал и цена — из тарифа в БД, даты с клиента не принимаются.
+    if (body.sellerId && body.sellerId !== tariff.authorId) {
+      return NextResponse.json({ error: t("notif.err.badRequest") }, { status: 400 });
+    }
     const existing = await findActiveSubscription(userId, tariff.authorId, tariff.id);
     if (existing) {
-      return NextResponse.json({ error: t("notif.err.subscriptionActive") }, { status: 400 });
+      if (isLifetimeEnd(existing.endDate)) {
+        return NextResponse.json({ error: t("notif.err.subscriptionActive") }, { status: 400 });
+      }
+      if (tooFarAhead(existing, tariff.durationDays)) {
+        return NextResponse.json({ error: t("notif.err.subscriptionTooFar") }, { status: 400 });
+      }
     }
 
     // Check existing pending payment request

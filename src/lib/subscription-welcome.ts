@@ -44,8 +44,14 @@ export function welcomeDmText(
   ch: PaidChannelInfo | null,
   endDate: Date,
   durationDays: number,
-  legacyKey: "notif.dm.subscriptionWelcome" | "notif.dm.yukassaWelcome"
+  legacyKey: "notif.dm.subscriptionWelcome" | "notif.dm.yukassaWelcome",
+  /** The payment extended a running subscription («Подписка продлена до …») instead of starting one. */
+  renewed = false
 ): string {
+  if (renewed) {
+    if (!ch) return t("notif.dm.subscriptionRenewed", { date: formatAccessEnd(endDate) });
+    return t("notif.dm.channelRenewed", { channel: ch.name, date: formatAccessEnd(endDate), url: channelPublicUrl(ch) });
+  }
   if (!ch) return t(legacyKey, { days: durationDays });
   return t(ch.hasChat ? "notif.dm.channelWelcomeChat" : "notif.dm.channelWelcome", {
     channel: ch.name,
@@ -58,9 +64,27 @@ export function welcomeDmText(
 export function subscriptionNotice(
   ch: PaidChannelInfo | null,
   endDate: Date,
-  opts: { sellerName?: string | null; days: number; amount?: number }
+  opts: { sellerName?: string | null; days: number; amount?: number; renewed?: boolean }
 ): { title: NotifText; body: NotifText; link: string } {
   const nameVar = opts.sellerName || { key: "notif.fallback.author" };
+  if (opts.renewed) {
+    const date = formatAccessEnd(endDate);
+    if (!ch) {
+      return {
+        title: { key: "notif.subscription.renewed.title", vars: { name: nameVar } },
+        body: { key: "notif.subscription.renewed.body", vars: { date } },
+        link: "/messages",
+      };
+    }
+    return {
+      title: { key: "notif.subscription.channelRenewed.title", vars: { channel: ch.name } },
+      body:
+        opts.amount != null
+          ? { key: "notif.subscription.channelYukassaDone.body", vars: { amount: opts.amount, date } }
+          : { key: "notif.subscription.channelDone.body", vars: { date } },
+      link: channelLink(ch),
+    };
+  }
   if (!ch) {
     return {
       title: { key: "notif.subscription.done.title", vars: { name: nameVar } },
