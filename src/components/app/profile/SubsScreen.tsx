@@ -80,7 +80,8 @@ export default function SubsScreen() {
     setPeople({ channel: ch, list: null });
     const res = await fetch(`/api/users/${uid}/tariffs/${ch.id}/subscribers`).catch(() => null);
     const data = res && res.ok ? await res.json().catch(() => []) : [];
-    setPeople({ channel: ch, list: Array.isArray(data) ? data : [] });
+    // the lapsed ones are managed in the channel page's «Участники» panel (Истекшие); here only current members
+    setPeople({ channel: ch, list: Array.isArray(data) ? data.filter((s: ChannelSubscriber) => s.isActive) : [] });
   }
 
   async function toggleTelegram(sub: SubItem) {

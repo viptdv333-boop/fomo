@@ -20,6 +20,7 @@ export function notifEmoji(type: string): string {
     case "subscription_extended": return "🔄";
     case "subscription_removed": return "🚫";
     case "subscription_expiring": return "⏳";
+    case "subscription_expired": return "⌛";
     case "room_join": return "👥";
     case "price_alert": return "⏰";
     case "line_alert": return "📈";

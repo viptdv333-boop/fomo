@@ -181,7 +181,7 @@ const dict: SectionDict = {
     "ns.ev.new_comment_in_subscribed_channel": "Обсуждение в платных каналах",
     "ns.ev.new_comment_in_subscribed_channel.d": "Комментарии других подписчиков под постами канала",
     "ns.ev.subscription_changes": "Изменения подписки",
-    "ns.ev.subscription_changes.d": "Продление, добавление или отмена подписки автором",
+    "ns.ev.subscription_changes.d": "Продление, добавление или отмена подписки автором, а также окончание срока",
     "ns.ev.subscription_expiring": "Подписка скоро закончится",
     "ns.ev.subscription_expiring.d": "Напоминание за несколько дней до конца срока",
     "ns.ev.payment_events": "Платежи и покупки",
@@ -215,6 +215,8 @@ const dict: SectionDict = {
     "ns.notif.chatReply.title": "{name} ответил на ваше сообщение в «{room}»",
     "ns.notif.subExpiring.title": "Подписка на «{channel}» заканчивается через {days} дн.",
     "ns.notif.subExpiring.body": "Продлите подписку, чтобы не потерять доступ к платным публикациям.",
+    "ns.notif.subExpired.title": "Подписка на канал «{channel}» закончилась",
+    "ns.notif.subExpired.body": "Доступ к платным публикациям закрыт. Нажмите, чтобы продлить или оформить подписку заново.",
 
     // API errors (request locale)
     "ns.err.invalid": "Некорректный запрос",
@@ -413,7 +415,7 @@ const dict: SectionDict = {
     "ns.ev.new_comment_in_subscribed_channel": "Discussion in paid channels",
     "ns.ev.new_comment_in_subscribed_channel.d": "Other subscribers' comments under channel posts",
     "ns.ev.subscription_changes": "Subscription changes",
-    "ns.ev.subscription_changes.d": "An author extended, added or cancelled your subscription",
+    "ns.ev.subscription_changes.d": "An author extended, added or cancelled your subscription, or the term ended",
     "ns.ev.subscription_expiring": "Subscription ending soon",
     "ns.ev.subscription_expiring.d": "A reminder a few days before the term ends",
     "ns.ev.payment_events": "Payments and purchases",
@@ -446,6 +448,8 @@ const dict: SectionDict = {
     "ns.notif.chatReply.title": "{name} replied to your message in “{room}”",
     "ns.notif.subExpiring.title": "Your “{channel}” subscription ends in {days} d.",
     "ns.notif.subExpiring.body": "Renew to keep access to the paid posts.",
+    "ns.notif.subExpired.title": "Your “{channel}” subscription has ended",
+    "ns.notif.subExpired.body": "Access to the paid posts is closed. Tap to renew or subscribe again.",
 
     "ns.err.invalid": "Invalid request",
     "ns.err.rate": "Too many attempts. Try again later.",
@@ -642,7 +646,7 @@ const dict: SectionDict = {
     "ns.ev.new_comment_in_subscribed_channel": "付费频道的讨论",
     "ns.ev.new_comment_in_subscribed_channel.d": "其他订阅者在频道帖子下的评论",
     "ns.ev.subscription_changes": "订阅变更",
-    "ns.ev.subscription_changes.d": "作者延长、添加或取消了您的订阅",
+    "ns.ev.subscription_changes.d": "作者延长、添加或取消了您的订阅，或订阅期限已结束",
     "ns.ev.subscription_expiring": "订阅即将到期",
     "ns.ev.subscription_expiring.d": "到期前几天的提醒",
     "ns.ev.payment_events": "付款与购买",
@@ -675,6 +679,8 @@ const dict: SectionDict = {
     "ns.notif.chatReply.title": "{name} 回复了您在“{room}”中的消息",
     "ns.notif.subExpiring.title": "您对“{channel}”的订阅将在 {days} 天后到期",
     "ns.notif.subExpiring.body": "请续订以保持对付费内容的访问。",
+    "ns.notif.subExpired.title": "您对“{channel}”的订阅已到期",
+    "ns.notif.subExpired.body": "付费内容的访问已关闭。点击续订或重新订阅。",
 
     "ns.err.invalid": "请求无效",
     "ns.err.rate": "尝试次数过多，请稍后再试。",

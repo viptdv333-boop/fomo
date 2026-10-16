@@ -137,7 +137,7 @@ function BrowserSubscriptionsPage() {
       setSubscribersLoading(channelId);
       const res = await fetch(`/api/users/${user.id}/tariffs/${channelId}/subscribers`);
       const data = await res.json().catch(() => []);
-      setChannelSubscribers((prev) => ({ ...prev, [channelId]: Array.isArray(data) ? data : [] }));
+      setChannelSubscribers((prev) => ({ ...prev, [channelId]: Array.isArray(data) ? data.filter((s) => s.isActive) : [] }));
       setSubscribersLoading(null);
     }
   }

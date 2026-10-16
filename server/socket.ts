@@ -5,6 +5,7 @@ import { priceStreamer } from "./price-streamer";
 import { startAlertScheduler } from "./alert-scheduler";
 import { startSubscriptionExpiryNotices } from "./subscription-expiry";
 import { startSubscriptionSweep } from "./subscription-sweep";
+import { startSubscriptionExpireSweep } from "./subscription-expire-sweep";
 import { startCalendarReminders } from "./calendar-reminders";
 import { canAccessRoom, channelPathForRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
@@ -232,6 +233,10 @@ export function initSocket(httpServer: HTTPServer) {
   // Paid-channel rooms: a socket that joined before its subscription ended is removed from the room
   // (and told: "room_access_revoked") within a couple of minutes. SUBSCRIPTION_SWEEP=0 switches it off.
   startSubscriptionSweep(io, prisma);
+
+  // Finished subscriptions: "active" + past endDate -> "expired" (+ one notice), expired for > EXPIRED_KEEP_DAYS (14) -> deleted,
+  // so the channel owner's member list drops people whose term is over. SUBSCRIPTION_EXPIRE_SWEEP=0 switches it off.
+  startSubscriptionExpireSweep();
 
   // Calendar reminders («колокольчик» on an event): sends "calendar_reminder" notifications when their time comes
   // (CalendarReminder rows; idle without any). CALENDAR_REMINDERS=0 switches it off.

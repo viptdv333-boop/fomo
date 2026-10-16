@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications";
 import { grantSubscription } from "@/lib/subscriptions";
 import { getT } from "@/lib/i18n/server";
+import { isAdmin } from "@/lib/roles";
+import { isActiveTerm } from "@/lib/subscription-renew";
 
 export async function GET(
   _request: NextRequest,
@@ -128,7 +130,8 @@ export async function POST(
     targets.map((s) => {
       const stillActive = s.status === "active" && s.endDate > now;
       const base = stillActive ? s.endDate : now;
-      return prisma.subscription.update({
+      // updateMany: a row the expiry sweep deleted a moment ago is skipped instead of failing the whole request
+      return prisma.subscription.updateMany({
         where: { id: s.id },
         data: { status: "active", endDate: new Date(base.getTime() + days * DAY) },
       });
@@ -150,10 +153,12 @@ export async function POST(
   return NextResponse.json({ ok: true, updated: targets.length, days });
 }
 
-// DELETE — owner removes a subscriber from the channel: the subscription is
-// cancelled and its term cut to now, which closes access to paid ideas and
-// (via canAccessRoom) the channel chat immediately. No money is returned —
-// refunds are handled outside the platform.
+// DELETE — owner (or an admin) removes a subscriber from the channel.
+//  - an ACTIVE subscription is cancelled and its term cut to now, which closes access to paid ideas and (via
+//    canAccessRoom) the channel chat immediately. No money is returned — refunds are handled outside the platform.
+//  - an expired / cancelled row (status "expired" set by server/subscription-expire-sweep.ts, or a lapsed one) is deleted
+//    for good: it only sits in the owner's «Истекшие» section. Payments live in PaymentRequest, so income is unaffected.
+//  - { allExpired: true } clears the whole «Истекшие» section of this channel at once.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; tariffId: string }> }
@@ -162,30 +167,45 @@ export async function DELETE(
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, tariffId } = await params;
-  if (session.user.id !== id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session.user.id !== id && !isAdmin(session.user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
   if (!tariff || tariff.authorId !== id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { subscriptionId } = await request.json().catch(() => ({}));
+  const body = await request.json().catch(() => ({}));
+  const now = new Date();
+
+  if (body?.allExpired === true) {
+    const res = await prisma.subscription.deleteMany({
+      where: { tariffId, OR: [{ status: { not: "active" } }, { endDate: { lte: now } }] },
+    });
+    return NextResponse.json({ ok: true, deleted: res.count });
+  }
+
+  const subscriptionId = body?.subscriptionId;
   if (typeof subscriptionId !== "string") {
     return NextResponse.json({ error: "subscriptionId required" }, { status: 400 });
   }
 
   const sub = await prisma.subscription.findFirst({
     where: { id: subscriptionId, tariffId },
-    select: { id: true, subscriberId: true },
+    select: { id: true, subscriberId: true, status: true, endDate: true },
   });
   if (!sub) {
     const { t } = await getT();
     return NextResponse.json({ error: t("notif.err.subscriberNotFound") }, { status: 404 });
   }
 
+  if (!isActiveTerm(sub, now)) {
+    await prisma.subscription.deleteMany({ where: { id: sub.id } });
+    return NextResponse.json({ ok: true, deleted: 1 });
+  }
+
   await prisma.subscription.update({
     where: { id: sub.id },
-    data: { status: "cancelled", endDate: new Date(), telegramNotify: false },
+    data: { status: "cancelled", endDate: now, telegramNotify: false },
   });
 
   await createNotification({

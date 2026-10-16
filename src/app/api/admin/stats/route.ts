@@ -32,12 +32,17 @@ export async function GET() {
     prisma.idea.count(),
     prisma.idea.count({ where: { createdAt: { gte: oneWeekAgo } } }),
     prisma.purchase.aggregate({ _sum: { amount: true } }),
-    prisma.subscription.aggregate({ _sum: { monthlyPrice: true } }),
+    // Confirmed subscription payments (not Subscription.monthlyPrice: those rows are renewed in place and
+    // removed once they have been expired for a while, so the sum of them is not an income figure).
+    prisma.paymentRequest.aggregate({
+      where: { status: "CONFIRMED", subscriptionType: { in: ["monthly", "tariff"] } },
+      _sum: { amount: true },
+    }),
   ]);
 
   const totalRevenue =
     Number(purchaseRevenue._sum.amount ?? 0) +
-    Number(subscriptionRevenue._sum.monthlyPrice ?? 0);
+    Number(subscriptionRevenue._sum.amount ?? 0);
 
   return NextResponse.json({
     totalUsers,

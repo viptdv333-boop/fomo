@@ -142,6 +142,7 @@ export const EVENT_FOR_TYPE: Record<string, EventId> = {
   subscription: "payment_events",
   payment: "payment_events",
   subscription_expiring: "subscription_expiring",
+  subscription_expired: "subscription_changes",
   price_alert: "price_alert",
   line_alert: "line_alert",
   calendar_reminder: "calendar_reminder",

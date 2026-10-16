@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { getT } from "@/lib/i18n/server";
 import { validateTariffMethods } from "@/lib/payment-link-server";
+import { activeSubWhere } from "@/lib/subscription-expire";
 
 // GET: list author's tariffs
 export async function GET(
@@ -15,7 +16,7 @@ export async function GET(
   const tariffs = await prisma.subscriptionTariff.findMany({
     where: { authorId: id, isActive: true },
     orderBy: { price: "asc" },
-    include: { _count: { select: { subscriptions: true } } },
+    include: { _count: { select: { subscriptions: { where: activeSubWhere() } } } },
   });
 
   // Hide sensitive YuKassa credentials from public API

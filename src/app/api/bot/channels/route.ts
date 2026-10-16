@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
+import { activeSubWhere } from "@/lib/subscription-expire";
 
 // Каналы автора бота — для настройки публикации в терминале (13.09.2026):
 // терминал показывает этот список, Босс привязывает к каналу тикеры прогнозов и
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       isActive: true,
       price: true,
       durationDays: true,
-      _count: { select: { subscriptions: true } },
+      _count: { select: { subscriptions: { where: activeSubWhere() } } },
     },
     orderBy: { createdAt: "asc" },
   });

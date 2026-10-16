@@ -37,6 +37,7 @@ export const BADGE_TAB_BY_TYPE: Readonly<Record<string, AppTabId>> = {
   subscription_extended: "me",
   subscription_removed: "me",
   subscription_expiring: "me",
+  subscription_expired: "me",
   payment: "me",
   report: "me",
   broadcast: "me",

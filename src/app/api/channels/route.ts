@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { activeSubWhere } from "@/lib/subscription-expire";
 
 export async function GET() {
   try {
@@ -16,7 +17,8 @@ export async function GET() {
         },
         _count: {
           select: {
-            subscriptions: true,
+            // only members whose subscription is active and not past its end date (expired rows wait for the sweep)
+            subscriptions: { where: activeSubWhere() },
             ideas: { where: { moderationStatus: "published" } },
           },
         },

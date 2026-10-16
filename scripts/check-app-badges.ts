@@ -35,7 +35,7 @@ function eq(name: string, got: unknown, want: unknown) {
 }
 
 // every notification type the server creates (EVENT_FOR_TYPE lists them all) is mapped: the ones without a section of their own to the Профиль tab ("me")
-const PROFILE_TYPES = ["new_follower", "new_idea", "room_join", "subscription_extended", "subscription_removed", "subscription", "payment", "subscription_expiring", "report", "broadcast", "email_broadcast", "system", "security"];
+const PROFILE_TYPES = ["new_follower", "new_idea", "room_join", "subscription_extended", "subscription_removed", "subscription", "payment", "subscription_expiring", "subscription_expired", "report", "broadcast", "email_broadcast", "system", "security"];
 eq("inventory: every known type is mapped (a new type must be placed on purpose)", Object.keys(EVENT_FOR_TYPE).filter((t) => !(t in BADGE_TAB_BY_TYPE)), []);
 eq("inventory: the types without a section of their own all light the Профиль tab", PROFILE_TYPES.map(tabForNotifType), PROFILE_TYPES.map(() => "me"));
 eq("inventory: nothing else lights the Профиль tab by the map", Object.keys(BADGE_TAB_BY_TYPE).filter((t) => BADGE_TAB_BY_TYPE[t] === "me").sort(), [...PROFILE_TYPES].sort());

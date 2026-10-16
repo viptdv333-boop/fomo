@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { initials } from "@/lib/app-chat";
 import { daysLeft, endDateLabel, validGrantDays, type ChannelItem } from "@/lib/app-channels";
+import { DEFAULT_KEEP_DAYS, splitMembers } from "@/lib/subscription-expire";
 import AppSheet from "../chat/AppSheet";
 import "../chat/app-chat.css";
 import "./app-channels.css";
@@ -39,6 +40,7 @@ export default function AppMembersSheet({ channel, onClose, onChanged, flash }: 
   const [q, setQ] = useState("");
   const [cands, setCands] = useState<Candidate[] | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [showExpired, setShowExpired] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -106,8 +108,15 @@ export default function AppMembersSheet({ channel, onClose, onChanged, flash }: 
     }
   }
   async function remove(m: Member) {
-    if (!window.confirm(t("channel2.removeSubConfirm", { name: m.displayName }))) return;
+    if (!window.confirm(t(m.isActive ? "channel2.removeSubConfirm" : "channel2.removeExpiredConfirm", { name: m.displayName }))) return;
     if (await send("DELETE", { subscriptionId: m.id }, "channel2.removeSubFailed")) {
+      await load();
+      onChanged();
+    }
+  }
+  async function clearExpired(count: number) {
+    if (count === 0 || !window.confirm(t("channel2.clearExpiredConfirm", { count }))) return;
+    if (await send("DELETE", { allExpired: true }, "channel2.clearExpiredFailed")) {
       await load();
       onChanged();
     }
@@ -123,6 +132,36 @@ export default function AppMembersSheet({ channel, onClose, onChanged, flash }: 
       onChanged();
     }
   }
+
+  const { active: activeMembers, expired: expiredMembers } = splitMembers(members ?? []);
+
+  const renderMember = (m: Member) => (
+    <div key={m.id} className="ach-mem-row">
+      {ava(m.displayName, m.avatarUrl)}
+      <div className="ach-mem-body">
+        <div className="ach-mem-txt">
+          <div className="ach-mem-name">{m.displayName}</div>
+          {m.isActive ? (
+            <div className="ach-mem-sub">
+              {t("subs.subscriberUntil")} {endDateLabel(m.endDate, locale)} {t("channel2.daysLeft", { days: daysLeft(m.endDate) })}
+            </div>
+          ) : (
+            <div className="ach-mem-sub" data-tone="off">
+              {t("subs.subscriberInactive")}
+            </div>
+          )}
+        </div>
+        <div className="ach-mem-actions">
+          <button type="button" disabled={busy} onClick={() => void grant(m.id)} title={t("channel2.addDaysToSubTitle", { days: days || 0 })}>
+            {t("channel2.plusDays", { days: days || 0 })}
+          </button>
+          <button type="button" data-tone="danger" disabled={busy} onClick={() => void remove(m)}>
+            {t("common.delete")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const ava = (name: string, src: string | null) => <div className="ach-mem-ava">{src ? <img src={src} alt="" /> : initials(name || "?")}</div>;
 
@@ -180,37 +219,33 @@ export default function AppMembersSheet({ channel, onClose, onChanged, flash }: 
           ) : members.length === 0 ? (
             <div className="ach-sheetnote">{t("subs.noChannelSubscribers")}</div>
           ) : (
-            <div className="ach-mem-box">
-              {members.map((m) => (
-                <div key={m.id} className="ach-mem-row">
-                  {ava(m.displayName, m.avatarUrl)}
-                  <div className="ach-mem-body">
-                    <div className="ach-mem-txt">
-                      <div className="ach-mem-name">{m.displayName}</div>
-                      {m.isActive ? (
-                        <div className="ach-mem-sub">
-                          {t("subs.subscriberUntil")} {endDateLabel(m.endDate, locale)} {t("channel2.daysLeft", { days: daysLeft(m.endDate) })}
-                        </div>
-                      ) : (
-                        <div className="ach-mem-sub" data-tone="off">
-                          {t("subs.subscriberInactive")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="ach-mem-actions">
-                      <button type="button" disabled={busy} onClick={() => void grant(m.id)} title={t("channel2.addDaysToSubTitle", { days: days || 0 })}>
-                        {t("channel2.plusDays", { days: days || 0 })}
+            <>
+              {activeMembers.length === 0 ? (
+                <div className="ach-sheetnote">{t("subs.noChannelSubscribers")}</div>
+              ) : (
+                <div className="ach-mem-box">{activeMembers.map(renderMember)}</div>
+              )}
+              {expiredMembers.length > 0 && (
+                <>
+                  <div className="ach-mem-expired-head">
+                    <button type="button" onClick={() => setShowExpired((v) => !v)} aria-expanded={showExpired}>
+                      {showExpired ? "▾" : "▸"} {t("channel2.expiredSection", { count: expiredMembers.length })}
+                    </button>
+                    {showExpired && (
+                      <button type="button" data-tone="danger" disabled={busy} onClick={() => void clearExpired(expiredMembers.length)}>
+                        {t("channel2.clearExpired")}
                       </button>
-                      {m.isActive && (
-                        <button type="button" data-tone="danger" disabled={busy} onClick={() => void remove(m)}>
-                          {t("common.delete")}
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                  {showExpired && (
+                    <>
+                      <div className="ach-sheetnote">{t("channel2.expiredHint", { days: DEFAULT_KEEP_DAYS })}</div>
+                      <div className="ach-mem-box">{expiredMembers.map(renderMember)}</div>
+                    </>
+                  )}
+                </>
+              )}
+            </>
           )}
           <button type="button" className="ach-cta ach-mem-add" data-tone="soft" style={{ width: "calc(100% - 32px)" }} onClick={() => setAdding(true)}>
             {t("channel2.addMember")}

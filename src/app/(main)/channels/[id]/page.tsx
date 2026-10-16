@@ -11,6 +11,7 @@ import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
 import { formatMessageTime } from "@/lib/format-message-time";
 import { canOfferRenewal, formatValidUntil } from "@/lib/subscription-renew";
+import { DEFAULT_KEEP_DAYS, splitMembers } from "@/lib/subscription-expire";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelDetail from "@/components/app/channels/AppChannelDetail";
 import { safeDecode } from "@/lib/app-channels";
@@ -88,6 +89,7 @@ function ChannelSite() {
   const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
   const [candLoading, setCandLoading] = useState(false);
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const [showExpired, setShowExpired] = useState(false);
 
   // Site users the owner can add for free (debounced search while the picker is open).
   useEffect(() => {
@@ -223,9 +225,9 @@ function ChannelSite() {
     }
   }
 
-  async function removeSubscriber(subscriptionId: string, name: string) {
+  async function removeSubscriber(subscriptionId: string, name: string, expired = false) {
     if (!channel) return;
-    if (!confirm(t("channel2.removeSubConfirm", { name }))) return;
+    if (!confirm(t(expired ? "channel2.removeExpiredConfirm" : "channel2.removeSubConfirm", { name }))) return;
     setExtending(true);
     try {
       const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
@@ -236,6 +238,29 @@ function ChannelSite() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         alert(data.error || t("channel2.removeSubFailed"));
+        return;
+      }
+      await openSubscribers();
+    } finally {
+      setExtending(false);
+    }
+  }
+
+  // «Очистить истекшие»: deletes every member whose term is over (they have no access already).
+  async function clearExpired() {
+    if (!channel) return;
+    const count = subscribers.filter((s) => !s.isActive).length;
+    if (count === 0 || !confirm(t("channel2.clearExpiredConfirm", { count }))) return;
+    setExtending(true);
+    try {
+      const res = await fetch(`/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allExpired: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || t("channel2.clearExpiredFailed"));
         return;
       }
       await openSubscribers();
@@ -381,6 +406,51 @@ function ChannelSite() {
       </div>
     );
   }
+
+  const { active: activeSubs, expired: expiredSubs } = splitMembers(subscribers);
+
+  const renderSub = (s: SubscriberData) => (
+  <Link
+    key={s.id}
+    href={`/profile/${s.subscriberId}`}
+    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+  >
+    <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-sm overflow-hidden shrink-0">
+      {s.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={s.avatarUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        s.displayName[0]
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{s.displayName}</div>
+      {s.isActive ? (
+        <div className="text-xs text-gray-400">
+          {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString(locale === "en" ? "en-US" : locale === "cn" ? "zh-CN" : "ru-RU")} {t("channel2.daysLeft", { days: daysLeft(s.endDate) })}
+        </div>
+      ) : (
+        <div className="text-xs text-red-400">{t("subs.subscriberInactive")}</div>
+      )}
+    </div>
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); grantDays(s.id); }}
+      disabled={extending}
+      title={t("channel2.addDaysToSubTitle", { days: addDays || 0 })}
+      className="shrink-0 px-2 py-1 text-xs rounded-lg border border-green-600 text-green-600 hover:bg-green-600 hover:text-white transition disabled:opacity-50"
+    >
+      {t("channel2.plusDays", { days: addDays || 0 })}
+    </button>
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeSubscriber(s.id, s.displayName, !s.isActive); }}
+      disabled={extending}
+      title={t("channel2.removeFromChannel")}
+      className="shrink-0 px-2 py-1 text-xs rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
+    >
+      {t("common.delete")}
+    </button>
+  </Link>
+  );
 
   return (
     <div className="max-w-6xl w-full mx-auto">
@@ -823,50 +893,43 @@ function ChannelSite() {
               ) : subscribers.length === 0 ? (
                 <div className="text-sm text-gray-400 text-center py-8">{t("subs.noChannelSubscribers")}</div>
               ) : (
-                subscribers.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/profile/${s.subscriberId}`}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-sm overflow-hidden shrink-0">
-                      {s.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.avatarUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        s.displayName[0]
+                <>
+                  {activeSubs.length === 0 ? (
+                    <div className="text-sm text-gray-400 text-center py-4">{t("subs.noChannelSubscribers")}</div>
+                  ) : (
+                    activeSubs.map(renderSub)
+                  )}
+                  {expiredSubs.length > 0 && (
+                    <div className="mt-2 border-t dark:border-gray-800 pt-2">
+                      <div className="flex items-center gap-2 px-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowExpired((v) => !v)}
+                          aria-expanded={showExpired}
+                          className="flex-1 text-left text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 py-1"
+                        >
+                          {showExpired ? "▾" : "▸"} {t("channel2.expiredSection", { count: expiredSubs.length })}
+                        </button>
+                        {showExpired && (
+                          <button
+                            type="button"
+                            onClick={clearExpired}
+                            disabled={extending}
+                            className="shrink-0 px-2 py-1 text-xs rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
+                          >
+                            {t("channel2.clearExpired")}
+                          </button>
+                        )}
+                      </div>
+                      {showExpired && (
+                        <>
+                          <p className="text-xs text-gray-400 px-2 pb-1">{t("channel2.expiredHint", { days: DEFAULT_KEEP_DAYS })}</p>
+                          {expiredSubs.map(renderSub)}
+                        </>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{s.displayName}</div>
-                      {s.isActive ? (
-                        <div className="text-xs text-gray-400">
-                          {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString(locale === "en" ? "en-US" : locale === "cn" ? "zh-CN" : "ru-RU")} {t("channel2.daysLeft", { days: daysLeft(s.endDate) })}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-red-400">{t("subs.subscriberInactive")}</div>
-                      )}
-                    </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); grantDays(s.id); }}
-                      disabled={extending}
-                      title={t("channel2.addDaysToSubTitle", { days: addDays || 0 })}
-                      className="shrink-0 px-2 py-1 text-xs rounded-lg border border-green-600 text-green-600 hover:bg-green-600 hover:text-white transition disabled:opacity-50"
-                    >
-                      {t("channel2.plusDays", { days: addDays || 0 })}
-                    </button>
-                    {s.isActive && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeSubscriber(s.id, s.displayName); }}
-                        disabled={extending}
-                        title={t("channel2.removeFromChannel")}
-                        className="shrink-0 px-2 py-1 text-xs rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
-                      >
-                        {t("common.delete")}
-                      </button>
-                    )}
-                  </Link>
-                ))
+                  )}
+                </>
               )}
             </div>
             )}

@@ -86,7 +86,7 @@ export function autoReadIds(rows: readonly InboxRow[], done: ReadonlySet<string>
 /** Types that have a plain-words name in the dictionaries (appprof.nt.<type>); the title of a row falls back to it when the row has none. */
 export const KNOWN_TYPES: readonly string[] = [
   "new_comment", "comment_reply", "idea_like", "comment_like", "channel_like", "channel_post", "channel_comment", "new_follower", "new_idea", "room_join",
-  "subscription", "subscription_extended", "subscription_removed", "subscription_expiring", "payment", "price_alert", "line_alert", "calendar_reminder",
+  "subscription", "subscription_extended", "subscription_removed", "subscription_expiring", "subscription_expired", "payment", "price_alert", "line_alert", "calendar_reminder",
   "new_message", "chat_mention", "chat_reply", "chat_room_message", "report", "broadcast", "email_broadcast", "system", "security",
 ];
 

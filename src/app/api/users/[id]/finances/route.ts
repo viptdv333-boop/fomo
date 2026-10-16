@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
+import { activeSubWhere } from "@/lib/subscription-expire";
 
 export async function GET(
   _request: NextRequest,
@@ -57,7 +58,7 @@ export async function GET(
       name: true,
       price: true,
       durationDays: true,
-      _count: { select: { subscriptions: true } },
+      _count: { select: { subscriptions: { where: activeSubWhere() } } },
     },
   });
 
