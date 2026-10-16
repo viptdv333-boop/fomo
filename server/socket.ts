@@ -4,8 +4,9 @@ import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
 import { startAlertScheduler } from "./alert-scheduler";
 import { startSubscriptionExpiryNotices } from "./subscription-expiry";
+import { startSubscriptionSweep } from "./subscription-sweep";
 import { startCalendarReminders } from "./calendar-reminders";
-import { canAccessRoom } from "../src/lib/channel-access";
+import { canAccessRoom, channelPathForRoom } from "../src/lib/channel-access";
 import { translate } from "../src/lib/i18n/dictionaries";
 import { dispatchNotification } from "../src/lib/notify-dispatch";
 import { toPlainText } from "../src/lib/notify-text";
@@ -128,6 +129,20 @@ export function initSocket(httpServer: HTTPServer) {
 
       const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
       if (!room) return;
+      // Same gate as POST /api/chat/messages on EVERY send (not only on join_room): a closed/archived room,
+      // a private room without membership, a paid channel whose subscription ended — nothing is stored or broadcast.
+      if (room.isClosed || room.isArchived) return;
+      if (room.ownerId) {
+        const membership = await prisma.chatRoomMember.findUnique({
+          where: { roomId_userId: { roomId, userId: socket.data.userId } },
+        });
+        if (!membership) return;
+      }
+      if (!(await canAccessRoom(prisma, roomId, socket.data.userId))) {
+        socket.leave(roomId);
+        socket.emit("room_access_revoked", { roomId, path: await channelPathForRoom(prisma, roomId).catch(() => null) });
+        return;
+      }
 
       const message = await prisma.chatMessage.create({
         data: {
@@ -213,6 +228,10 @@ export function initSocket(httpServer: HTTPServer) {
 
   // "Subscription ending soon" reminders (opt-in: SUBSCRIPTION_EXPIRY_NOTICE=1).
   startSubscriptionExpiryNotices();
+
+  // Paid-channel rooms: a socket that joined before its subscription ended is removed from the room
+  // (and told: "room_access_revoked") within a couple of minutes. SUBSCRIPTION_SWEEP=0 switches it off.
+  startSubscriptionSweep(io, prisma);
 
   // Calendar reminders («колокольчик» on an event): sends "calendar_reminder" notifications when their time comes
   // (CalendarReminder rows; idle without any). CALENDAR_REMINDERS=0 switches it off.

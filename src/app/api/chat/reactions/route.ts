@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { recalculateRating } from "@/lib/rating";
+import { canAccessRoom } from "@/lib/channel-access";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -19,6 +20,10 @@ export async function POST(req: NextRequest) {
   const message = await prisma.chatMessage.findUnique({ where: { id: messageId } });
   if (!message) {
     return NextResponse.json({ error: "Message not found" }, { status: 404 });
+  }
+  // A reaction is a write into the room: a paid channel's chat is closed to a lapsed subscriber (and to everyone who is not one).
+  if (!(await canAccessRoom(prisma, message.roomId, userId))) {
+    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
   }
 
   // reactions is stored as { "emoji": ["userId1", "userId2"] }

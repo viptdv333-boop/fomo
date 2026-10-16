@@ -163,7 +163,8 @@ export async function GET(
     acceptDonations: idea.acceptDonations,
     channel: idea.tariff ? { id: idea.tariff.id, name: idea.tariff.name } : null,
     viewCount: idea.viewCount,
-    attachments: idea.attachments,
+    // A locked paid post must not hand out its files (images / documents) either.
+    attachments: locked ? [] : idea.attachments,
     createdAt: idea.createdAt,
     updatedAt: idea.updatedAt,
     moderationStatus: idea.moderationStatus,

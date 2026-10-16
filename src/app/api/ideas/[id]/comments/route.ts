@@ -6,6 +6,32 @@ import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { ideaCommentLink } from "@/lib/app-unread";
 import { claimClientRequest } from "@/lib/client-request";
 
+// Who may read / write the thread of a paid post (a channel post or a paid idea): the author, staff, a buyer, or a
+// subscriber of that channel / author whose term has not ended. Used by GET and POST, so a lapsed subscriber can
+// neither read nor add comments.
+async function canUsePaidIdeaThread(
+  idea: { authorId: string; tariffId: string | null },
+  ideaId: string,
+  userId: string | undefined,
+  role: string | undefined
+): Promise<boolean> {
+  if (!userId) return false;
+  if (idea.authorId === userId || role === "ADMIN" || role === "OWNER") return true;
+  const [purchase, subscription] = await Promise.all([
+    prisma.purchase.findUnique({ where: { userId_ideaId: { userId, ideaId } } }),
+    prisma.subscription.findFirst({
+      where: {
+        subscriberId: userId,
+        authorId: idea.authorId,
+        status: "active",
+        endDate: { gt: new Date() },
+        ...(idea.tariffId ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] } : {}),
+      },
+    }),
+  ]);
+  return !!(purchase || subscription);
+}
+
 // GET — list comments for an idea
 export async function GET(
   request: NextRequest,
@@ -19,25 +45,9 @@ export async function GET(
   if (!idea) return NextResponse.json([]);
   if (idea.isPaid) {
     const session = await auth();
-    const userId = session?.user?.id;
-    const role = (session?.user as { role?: string } | undefined)?.role;
-    let allowed = !!userId && (idea.authorId === userId || role === "ADMIN" || role === "OWNER");
-    if (!allowed && userId) {
-      const [purchase, subscription] = await Promise.all([
-        prisma.purchase.findUnique({ where: { userId_ideaId: { userId, ideaId } } }),
-        prisma.subscription.findFirst({
-          where: {
-            subscriberId: userId,
-            authorId: idea.authorId,
-            status: "active",
-            endDate: { gt: new Date() },
-            ...(idea.tariffId ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] } : {}),
-          },
-        }),
-      ]);
-      allowed = !!(purchase || subscription);
+    if (!(await canUsePaidIdeaThread(idea, ideaId, session?.user?.id, (session?.user as { role?: string } | undefined)?.role))) {
+      return NextResponse.json([]);
     }
-    if (!allowed) return NextResponse.json([]);
   }
 
   const comments = await prisma.ideaComment.findMany({
@@ -78,6 +88,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid fileUrl" }, { status: 400 });
   }
 
+  const target = await prisma.idea.findUnique({ where: { id: ideaId }, select: { isPaid: true, authorId: true, tariffId: true } });
+  if (!target) return NextResponse.json({ error: "Idea not found" }, { status: 404 });
+  if (target.isPaid && !(await canUsePaidIdeaThread(target, ideaId, session.user.id, (session.user as { role?: string }).role))) {
+    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
+  }
+
   // Offline outbox: the same clientId again (a lost reply, a retry) is answered with the first result, nothing is created or notified twice.
   const claim = await claimClientRequest(session.user.id, clientId, "idea_comment");
   if (claim.kind === "duplicate") return NextResponse.json({ duplicate: true, id: claim.resourceId });
@@ -110,11 +126,15 @@ export async function POST(
   const preview = comment.text.length > 80 ? comment.text.slice(0, 80) + "…" : comment.text;
   const authorName = comment.user.displayName;
   // Full comment text for e-mail / Telegram (the bell keeps the 80-char preview). Comments are
-  // public (GET above lists them for anyone), so every recipient may read them.
+  // readable by whoever may open the thread (paid posts: GET above is gated), and every recipient here is such a person.
   const commentText = toPlainText(comment.text);
   const full = commentText
     ? { fullText: commentText, author: authorName, images: imageUrlsFromAttachments(comment.fileUrl ? [{ url: comment.fileUrl, name: comment.fileUrl }] : []) }
     : undefined;
+  const parentMayRead = async (uid: string) => {
+    const u = await prisma.user.findUnique({ where: { id: uid }, select: { role: true } });
+    return canUsePaidIdeaThread(target, ideaId, uid, u?.role).catch(() => false);
+  };
   const notified = new Set<string>([session.user.id]);
   // The idea page scrolls to this comment (and the unread markers of the app find it): /ideas/<id>?comment=<commentId>
   const link = ideaCommentLink(ideaId, comment.id);
@@ -148,7 +168,8 @@ export async function POST(
         title: { key: "notif.commentReply.title", vars: { name: authorName } },
         body: preview,
         link,
-        full,
+        // In a paid thread the full text goes only to someone who may still read it (the quoted author may have lapsed).
+        full: !target.isPaid || (await parentMayRead(parent.userId)) ? full : undefined,
       });
     }
   }

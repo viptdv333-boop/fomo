@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createNotification, notifyRoomSubscribers } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
-import { canAccessRoom } from "@/lib/channel-access";
+import { canAccessRoom, channelPathForRoom } from "@/lib/channel-access";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { getT } from "@/lib/i18n/server";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!(await canAccessRoom(prisma, roomId, session.user.id!))) {
-    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
+    return NextResponse.json({ error: "Access denied", needSubscription: true, path: await channelPathForRoom(prisma, roomId) }, { status: 403 });
   }
 
   const messages = await prisma.chatMessage.findMany({
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     if (!membership) return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
   if (!(await canAccessRoom(prisma, room.id, session.user.id!))) {
-    return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
+    return NextResponse.json({ error: "Access denied", needSubscription: true, path: await channelPathForRoom(prisma, room.id) }, { status: 403 });
   }
 
   // Offline outbox: the same clientId again (a lost reply, a retry) is answered with the first result, nothing is created or notified twice.

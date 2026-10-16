@@ -53,6 +53,8 @@ const dict: SectionDict = {
     "chat2.replyFor": "Ответ для",
     "chat2.roomArchived": "Чат в архиве",
     "chat2.roomClosed": "Чат закрыт",
+    "chat2.accessEnded": "Подписка закончилась — чат канала закрыт.",
+    "chat2.accessRenew": "Продлить подписку",
 
     // DMs
     "chat2.deletedShort": "Удалённый",
@@ -134,6 +136,8 @@ const dict: SectionDict = {
     "chat2.replyFor": "Reply to",
     "chat2.roomArchived": "Chat is archived",
     "chat2.roomClosed": "Chat is closed",
+    "chat2.accessEnded": "Your subscription has ended — the channel chat is closed.",
+    "chat2.accessRenew": "Renew subscription",
 
     // DMs
     "chat2.deletedShort": "Deleted",
@@ -215,6 +219,8 @@ const dict: SectionDict = {
     "chat2.replyFor": "回复",
     "chat2.roomArchived": "聊天室已归档",
     "chat2.roomClosed": "聊天室已关闭",
+    "chat2.accessEnded": "订阅已到期，频道聊天已关闭。",
+    "chat2.accessRenew": "续订",
 
     // DMs
     "chat2.deletedShort": "已删除",

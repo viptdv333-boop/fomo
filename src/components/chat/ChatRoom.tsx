@@ -259,6 +259,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
+  // The paid-channel subscription ended while the chat was open (socket "room_access_revoked") or the history came back 403 needSubscription:
+  // the composer is replaced by a notice with a way to the channel page (renewal). path = that page, when the server knew it.
+  const [accessEnded, setAccessEnded] = useState<{ path: string | null } | null>(null);
   // offline outbox: my unsent messages of this room, drawn after the server's list (see src/lib/outbox)
   const outboxTarget = `room:${roomId}`;
   const serverIds = useMemo(() => new Set(messages.map((m) => m.id)), [messages]);
@@ -323,11 +326,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setMessages(data);
+        else if (data?.needSubscription) setAccessEnded({ path: typeof data.path === "string" ? data.path : null });
       })
       .catch(() => {});
   }, [roomId]);
 
   useEffect(() => {
+    setAccessEnded(null);
     loadMessages();
     setReplyTo(null);
     if (session?.user) markRoomRead();
@@ -353,10 +358,17 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
     });
 
+    // The server's sweep took this socket out of the room: the paid subscription is over. Stop here, don't keep a stale thread live.
+    const onRevoked = (e: { roomId?: string; path?: string | null }) => {
+      if (e?.roomId === roomId) setAccessEnded({ path: e.path ?? null });
+    };
+    socket.on("room_access_revoked", onRevoked);
+
     return () => {
       socket.emit("leave_room", roomId);
       socket.off("new_message");
       socket.off("message_updated");
+      socket.off("room_access_revoked", onRevoked);
     };
   }, [roomId, session?.user?.id]);
 
@@ -749,6 +761,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       roomName,
       isClosed,
       isArchived,
+      accessEnded: accessEnded ? { onRenew: () => (onBack ? onBack() : accessEnded.path ? router.push(accessEnded.path) : router.back()) } : null,
       participants: t(participantCount === 1 ? "chat2.participantsOne" : participantCount < 5 ? "chat2.participantsFew" : "chat2.participantsMany", { count: participantCount }),
       notifEnabled: notifEnabled,
       onToggleBell: toggleNotification,
@@ -1243,7 +1256,16 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         )}
 
         {/* ── INPUT AREA ── */}
-        {isClosed || isArchived ? (
+        {accessEnded ? (
+          <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 text-center text-sm text-gray-500">
+            {t("chat2.accessEnded")}
+            {accessEnded.path && (
+              <button type="button" onClick={() => router.push(accessEnded.path!)} className="ml-2 font-medium text-green-600 hover:underline">
+                {t("chat2.accessRenew")}
+              </button>
+            )}
+          </div>
+        ) : isClosed || isArchived ? (
           <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 text-center text-sm text-gray-500">
             {isArchived ? t("chat2.roomArchived") : t("chat2.roomClosed")}
           </div>

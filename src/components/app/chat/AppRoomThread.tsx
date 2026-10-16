@@ -54,6 +54,8 @@ export interface RoomThreadApi {
   roomName: string;
   isClosed?: boolean;
   isArchived?: boolean;
+  /** a paid-channel chat whose subscription ended: the composer is replaced by a notice and a way back to the channel (renewal) */
+  accessEnded?: { onRenew: () => void } | null;
   participants: string;
   notifEnabled: boolean;
   onToggleBell: () => void;
@@ -135,7 +137,7 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
   const pinned = useMemo(() => pinnedLine(api.messages, t("chat2.file")), [api.messages, t]);
   const unreadFromId = useUnreadAnchor(view, api.readAt);
   const sel = selected ? api.messages.find((m) => m.id === selected) || null : null;
-  const closed = api.isClosed || api.isArchived;
+  const closed = api.isClosed || api.isArchived || !!api.accessEnded;
 
   const actionsFor = (m: RoomMsg): MsgAction[] => {
     const own = m.user.id === api.myId;
@@ -235,7 +237,14 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
       />
 
       {closed ? (
-        <div className="ac-closed">{api.isArchived ? t("chat2.roomArchived") : t("chat2.roomClosed")}</div>
+        <div className="ac-closed">
+          {api.accessEnded ? t("chat2.accessEnded") : api.isArchived ? t("chat2.roomArchived") : t("chat2.roomClosed")}
+          {api.accessEnded && (
+            <button type="button" onClick={api.accessEnded.onRenew} style={{ marginLeft: 8, font: "inherit", fontWeight: 600, color: "inherit", background: "none", border: 0, textDecoration: "underline" }}>
+              {t("chat2.accessRenew")}
+            </button>
+          )}
+        </div>
       ) : (
         <form className="ac-composer" onSubmit={api.onSend}>
           {api.pending && (
