@@ -117,6 +117,15 @@ export function prefetchOrder(active: HostScreenId | null, tabs: readonly AppTab
   return [...near, ...ids.filter((x) => !near.includes(x))];
 }
 
+/**
+ * The pre-mounting of the other tabs (warm-up) runs only while a tab root is on display (`active` is not null). A pushed screen (an idea, a channel,
+ * a private group /rooms/<id>, a thread opened from a notification) shares html classes and sockets with the kept screens of its family: the warm-up
+ * underneath it used to strip / clear what the pushed screen needs (the chat thread lost its layout, the dock came back over the composer).
+ */
+export function warmAllowed(active: HostScreenId | null): boolean {
+  return active !== null;
+}
+
 /** Screens that follow the URL while they are mounted (they read ?room= / ?tab= reactively). The others read their query once, when they mount. */
 export const PARAMS_REACTIVE: readonly HostScreenId[] = ["chat", "me"];
 

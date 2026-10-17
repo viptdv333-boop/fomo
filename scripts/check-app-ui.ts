@@ -71,7 +71,7 @@ import {
   withDaySeparators,
   type AssetItem,
 } from "../src/lib/app-chat";
-import { APP_UI_BOOT_SCRIPT, appDesktopQuery, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
+import { APP_UI_BOOT_SCRIPT, appDesktopQuery, appUiClassMissing, appUiQuery, resolveAppUi, type AppUiInput } from "../src/lib/native-app";
 import {
   avatarInitial,
   countValue,
@@ -664,6 +664,15 @@ eq("dock: a user's page lights «Авторы», the own profile stays «Про�
   eq("layers: a failing close handler does not break Back", closeTopBackLayer("sheet"), true);
   throwing();
   resetBackLayers();
+}
+
+// --- self-heal: the Android app's <html> must carry app-ui (AppUiGuard)
+{
+  const APP_UA = "Mozilla/5.0 (Linux; Android 13) Chrome/130 Mobile Safari/537.36 FomoApp/1.0.3 Android";
+  eq("app-ui class missing in the Android app (UA marker): heal", appUiClassMissing(false, APP_UA, false), true);
+  eq("app-ui class missing in the Android app (bridge only): heal", appUiClassMissing(false, "Mozilla/5.0 Chrome/130", true), true);
+  eq("class present: nothing to do", appUiClassMissing(true, APP_UA, true), false);
+  eq("ordinary browser / PWA / desktop shell: never forced", [appUiClassMissing(false, "Mozilla/5.0 Chrome/130", false), appUiClassMissing(false, "Mozilla/5.0 FomoDesktop/1.0 Windows", false)], [false, false]);
 }
 
 if (fails) {

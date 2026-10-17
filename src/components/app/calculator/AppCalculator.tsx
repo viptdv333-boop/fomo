@@ -31,6 +31,7 @@ import AppIcon from "../AppIcon";
 import AppSheet, { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import "../chat/app-chat.css";
 import "../profile/app-profile.css";
+import { holdHtmlClass } from "@/lib/html-class";
 import "./app-calc.css";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -155,7 +156,7 @@ export default function AppCalculator() {
 
   // page chrome: edge to edge; the visit's ?ticker / ?entry are consumed (a reload then shows the remembered inputs), ?from stays for Back
   useEffect(() => {
-    document.documentElement.classList.add("app-calc-on");
+    const release = holdHtmlClass(["app-calc-on"]);
     document.querySelector("main")?.scrollTo({ top: 0 });
     if (start.q.ticker || start.q.entry) {
       try {
@@ -164,7 +165,7 @@ export default function AppCalculator() {
         /* the address stays as it is */
       }
     }
-    return () => document.documentElement.classList.remove("app-calc-on");
+    return release;
   }, [start.q.ticker, start.q.entry, from]);
 
   useEffect(() => {

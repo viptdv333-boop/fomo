@@ -441,6 +441,15 @@ export const APP_UI_BOOT_SCRIPT =
   "var a=/\\bFomoApp\\//.test(u)||!!(window.FomoApp&&typeof window.FomoApp==='object'),s=/\\bFomoDesktop\\//.test(u);" +
   "if(a||(s&&q!=='0')||(q!=='0'&&f==='1')||q==='1'){d.classList.add('app-ui');if(!a&&(s||w==='1'||(w!=='0'&&g==='1')))d.classList.add('app-desktop')}}catch(e){}";
 
+/**
+ * The Android app is the one place where `html.app-ui` can never legitimately be absent (the UA marker / the bridge decide, no query or stored flag can switch it
+ * off). True when this page IS the Android app and its <html> lost the class (the boot script did not run, a restored document, a script that reset the class
+ * list): the page then has the ordinary site's layout around the app's screens until a refresh. AppUiGuard puts the class back.
+ */
+export function appUiClassMissing(hasClass: boolean, userAgent: string, hasBridge: boolean): boolean {
+  return !hasClass && (hasBridge || /\bFomoApp\//.test(userAgent || ""));
+}
+
 /** True when the app UI is on: the class the boot script set, or the same decision made right now. Always false on the server. */
 export function isNativeUi(): boolean {
   if (typeof window === "undefined" || typeof document === "undefined") return false;

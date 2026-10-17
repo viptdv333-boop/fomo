@@ -1,6 +1,7 @@
 /* The app UI's tab host (keep-alive of the dock screens): which paths are tab roots, the LRU of mounted screens, the kill switch, links that need a fresh mount.
    Run: npx tsx scripts/check-tabhost.ts   (exit code 1 on a failed assertion) */
-import { PARAMS_REACTIVE, TRANSIENT_TABS, hostTabForPath, isHostHref, maxMounted, needsFreshMount, pendingVerdict, prefetchOrder, tabHostSwitch, touchTab } from "../src/lib/app-tabhost";
+import { PARAMS_REACTIVE, TRANSIENT_TABS, hostTabForPath, isHostHref, maxMounted, needsFreshMount, pendingVerdict, prefetchOrder, tabHostSwitch, touchTab, warmAllowed } from "../src/lib/app-tabhost";
+import { holdHtmlClass, resetHtmlClasses, type ClassTarget } from "../src/lib/html-class";
 import { MAIN_APP_TABS, TERMINAL_APP_TABS } from "../src/lib/app-ui";
 
 export {}; // a module: the other check scripts declare the same top-level names
@@ -78,6 +79,31 @@ eq("no active screen: dock order", prefetchOrder(null, MAIN_APP_TABS), ["feed", 
   eq("the address moved on (Back, another screen): the override is stale", [pendingVerdict(p, "/ideas/5", "/ideas/5"), pendingVerdict(p, "/feed", "/feed")], ["stale", "stale"]);
   eq("locale prefix and a trailing slash do not hide the match", pendingVerdict({ path: "/en/chat", tab: "chat" }, "/en/chat/", "/en/chat"), "done");
   eq("a tap on A then B quickly: Next reports A first, B is pending and the address is B: keep, then done", [pendingVerdict({ path: "/chat", tab: "chat" }, "/calendar", "/chat"), pendingVerdict({ path: "/chat", tab: "chat" }, "/chat", "/chat")], ["keep", "done"]);
+}
+
+// --- the warm-up never runs under a pushed screen (an idea / a channel / a private group opened from a notification)
+eq("warm-up only while a tab root is on display", [warmAllowed(null), warmAllowed("feed"), warmAllowed("chat")], [false, true, true]);
+
+// --- html classes of the screens are held, not set / removed (a second screen of the family going to sleep must not take them)
+{
+  const set = new Set<string>();
+  const root: ClassTarget = { classList: { add: (...c: string[]) => c.forEach((x) => set.add(x)), remove: (...c: string[]) => c.forEach((x) => set.delete(x)), contains: (c: string) => set.has(c) } };
+  resetHtmlClasses();
+  const real = holdHtmlClass(["app-chat-on", "app-thread-on"], root); // /rooms/<id> opened from a push
+  const warm = holdHtmlClass(["app-chat-on"], root); // the chat tab pre-mounted underneath (second holder)
+  warm(); // it goes to sleep
+  eq("the real screen keeps its classes when the second holder lets go", [...set].sort(), ["app-chat-on", "app-thread-on"]);
+  warm();
+  eq("releasing twice does not steal the other holder's count", set.has("app-chat-on"), true);
+  real();
+  eq("the last holder removes them", [...set], []);
+  const a = holdHtmlClass(["app-ch-on"], root);
+  const b = holdHtmlClass(["app-ch-on"], root);
+  a();
+  eq("channels list and channel page share one class", set.has("app-ch-on"), true);
+  b();
+  eq("and it is gone after both", set.has("app-ch-on"), false);
+  eq("holding nothing is fine", (() => { holdHtmlClass([], root)(); return [...set]; })(), []);
 }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall ok");

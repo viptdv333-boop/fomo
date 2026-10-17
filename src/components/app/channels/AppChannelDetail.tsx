@@ -38,6 +38,7 @@ import { useUnreadByIdea } from "../useUnreadByIdea";
 import { unreadAccent, unreadLabel, unreadOffList } from "@/lib/app-unread";
 import { UnreadChip } from "../IdeaUnreadMarks";
 import { useUnreadIdeaCards } from "../useUnreadIdeaCards";
+import { holdHtmlClass } from "@/lib/html-class";
 
 interface PostItem {
   id: string;
@@ -62,9 +63,9 @@ function ChannelChat({ channel, onBack }: { channel: ChannelItem; onBack: () => 
     const root = document.documentElement;
     const had = root.classList.contains("app-ch-on");
     root.classList.remove("app-ch-on");
-    root.classList.add("app-chat-on", "app-thread-on");
+    const release = holdHtmlClass(["app-chat-on", "app-thread-on"]);
     return () => {
-      root.classList.remove("app-chat-on", "app-thread-on");
+      release();
       if (had) root.classList.add("app-ch-on");
     };
   }, []);

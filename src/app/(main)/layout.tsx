@@ -10,6 +10,7 @@ import { getHiddenPages } from "@/lib/hidden-pages";
 import AppHeader from "@/components/app/AppHeader";
 import AppTabBar from "@/components/app/AppTabBar";
 import AppBackHandler from "@/components/app/AppBackHandler";
+import AppUiGuard from "@/components/app/AppUiGuard";
 import AppTabHost from "@/components/app/tabhost/AppTabHost";
 import OfflineBanner from "@/components/offline/OfflineBanner";
 import OfflineIdentity from "@/components/offline/OfflineIdentity";
@@ -38,6 +39,7 @@ export default async function MainLayout({
       <OfflineIdentity />
       <AppTabBar />
       <AppBackHandler />
+      <AppUiGuard />
     </SessionProvider>
   );
 }

@@ -31,11 +31,19 @@ export function warmConflict(active: HostScreenId | null, warming: HostScreenId)
   return !!a && !!w && a.some((c) => w.includes(c));
 }
 
+let firewalls = 0;
+/** True while a screen is being pre-mounted (the firewall is up): its html classes are stripped on purpose, <main>.scrollTo does nothing. */
+export function warmFirewallActive(): boolean {
+  return firewalls > 0;
+}
+
 /**
  * While `tab` is warming: any of its family's html classes that was not there before is removed the moment it appears (a MutationObserver callback is a
  * microtask: it runs before the next paint), and <main>.scrollTo is a no-op. The returned function undoes both.
  */
 export function startFirewall(tab: HostScreenId): () => void {
+  firewalls++;
+  let undone = false;
   const root = document.documentElement;
   const mine = FAMILY_CLASSES[tab] ?? [];
   const had = new Set(mine.filter((c) => root.classList.contains(c)));
@@ -48,6 +56,10 @@ export function startFirewall(tab: HostScreenId): () => void {
   const hadOwn = main ? Object.prototype.hasOwnProperty.call(main, "scrollTo") : false;
   if (main) main.scrollTo = () => {};
   return () => {
+    if (!undone) {
+      undone = true;
+      firewalls = Math.max(0, firewalls - 1);
+    }
     mo.disconnect();
     strip();
     if (main && !hadOwn) delete (main as { scrollTo?: unknown }).scrollTo;

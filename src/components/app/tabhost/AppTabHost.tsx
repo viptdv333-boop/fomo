@@ -5,7 +5,7 @@ import { Suspense, createContext, startTransition, useContext, useEffect, useLay
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
-import { hostTabForPath, isHostHref, maxMounted, prefetchOrder, touchTab, TRANSIENT_TABS, type HostScreenId } from "@/lib/app-tabhost";
+import { hostTabForPath, isHostHref, maxMounted, prefetchOrder, touchTab, TRANSIENT_TABS, warmAllowed, type HostScreenId } from "@/lib/app-tabhost";
 import { APP_TABS } from "@/lib/app-ui";
 import { apiReadsInFlight, subscribeApiReads } from "@/lib/offline/fetch-guard";
 import { useAppUi } from "../useAppUi";
@@ -218,11 +218,19 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
     document.addEventListener("touchstart", touched, { passive: true, capture: true });
     document.addEventListener("pointerdown", touched, { passive: true, capture: true });
     document.addEventListener("keydown", touched, { passive: true, capture: true });
+    // Nothing is pre-mounted while a PUSHED screen is on display (an idea, a channel, a private group opened from a notification: active is null): the
+    // warming screens run the same effects as the real ones (the chat's and the channels' html classes, their sockets) and a page opened by a push is
+    // the FIRST page of the document, so the warm-up used to start right under it and took its layout away a few seconds later. It waits for a tab root.
+    const tabRootShown = async () => {
+      while (!dead && !warmAllowed(activeRef.current)) await sleep(800);
+      return !dead;
+    };
     const run = async () => {
       await sleep(3000);
       if (document.readyState !== "complete") await new Promise<void>((r) => window.addEventListener("load", () => r(), { once: true }));
+      if (!(await tabRootShown())) return;
       for (const id of prefetchOrder(activeRef.current)) {
-        if (dead || savingData()) return;
+        if (!(await tabRootShown()) || savingData()) return;
         if (TRANSIENT_TABS.includes(id) || listRef.current.includes(id) || warmConflict(activeRef.current, id)) continue;
         if (listRef.current.filter((t) => !TRANSIENT_TABS.includes(t)).length >= memoryBudget()) return;
         try {
@@ -232,7 +240,7 @@ export default function AppTabHost({ children }: { children: ReactNode }) {
         }
         await idleSlot();
         while (!dead && Date.now() - lastInput < 1500) await sleep(300);
-        if (dead || document.hidden || warmConflict(activeRef.current, id)) continue;
+        if (dead || document.hidden || !warmAllowed(activeRef.current) || warmConflict(activeRef.current, id)) continue;
         // start: the screen mounts in a box that is not displayed, at the least recent end of the list; as a transition, so rendering it yields to the user's input
         stopFirewall.current = startFirewall(id);
         warmRef.current = id;

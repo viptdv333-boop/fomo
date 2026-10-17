@@ -19,6 +19,7 @@ import type { RoomInfo as RoomSheetInfo } from "./AppRoomThread";
 import { ThreadBar } from "./AppThreadParts";
 import { useAppDms, useAppRooms } from "./useAppChatData";
 import { DESKTOP_WIDE_PX, useAppDesktop, useMinWidth } from "../useAppUi";
+import { holdHtmlClass } from "@/lib/html-class";
 import "./app-chat.css";
 
 const CATS_KEY = "fomo-app-chat-cats";
@@ -147,15 +148,9 @@ export default function AppChat() {
   useEffect(() => setOpenCats(readCats()), []);
 
   // page chrome: the page is edge to edge, a thread hides the dock (as in the design)
-  useEffect(() => {
-    document.documentElement.classList.add("app-chat-on");
-    return () => document.documentElement.classList.remove("app-chat-on");
-  }, []);
-  useEffect(() => {
-    document.documentElement.classList.toggle("app-thread-on", inThread || split);
-    document.documentElement.classList.toggle("app-split-on", split);
-    return () => document.documentElement.classList.remove("app-thread-on", "app-split-on");
-  }, [inThread, split]);
+  // (held, not set / removed: a second chat screen going to sleep must not take the classes of the one on display, see lib/html-class.ts)
+  useEffect(() => holdHtmlClass(["app-chat-on"]), []);
+  useEffect(() => holdHtmlClass([...(inThread || split ? ["app-thread-on"] : []), ...(split ? ["app-split-on"] : [])]), [inThread, split]);
 
   const base = useMemo(() => localizedPath(stripLocale(pathname).locale ?? (locale as Locale), "/chat"), [pathname, locale]);
   const urlFor = useCallback(

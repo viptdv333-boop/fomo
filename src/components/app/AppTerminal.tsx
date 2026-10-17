@@ -35,6 +35,7 @@ import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/
 import { raisesKeyboard } from "@/lib/app-ui";
 import AppIcon from "./AppIcon";
 import { useBackLayer } from "./useBackLayer";
+import { holdHtmlClass } from "@/lib/html-class";
 import "./fullscreen.css";
 
 // MultiChart wraps the chart(s); here it is one chart whose toolbar / bottom bar / phone nav are replaced by the page's own (appPage)
@@ -135,11 +136,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const watchlist = useWatchlist();
 
   // the page owns the edge-to-edge layout of <main> while it is shown
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    root.classList.add("app-term-on");
-    return () => root.classList.remove("app-term-on");
-  }, []);
+  useLayoutEffect(() => holdHtmlClass(["app-term-on"]), []);
 
   const inList = !!selected && watchlist.items.some((i) => qKey(i) === qKey(selected));
   const instruments = useMemo(() => (selected && !inList ? [...watchlist.items, selected] : watchlist.items), [watchlist.items, selected, inList]);

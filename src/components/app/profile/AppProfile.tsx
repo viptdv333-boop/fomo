@@ -22,6 +22,7 @@ import NotifScreen from "./NotifScreen";
 import NotifInbox from "./NotifInbox";
 import AppSettings from "./AppSettings";
 import "../chat/app-chat.css";
+import { holdHtmlClass } from "@/lib/html-class";
 import "./app-profile.css";
 
 // terminal.fomo.spot: no board, channels or payments
@@ -88,10 +89,7 @@ export default function AppProfile() {
   useEffect(() => () => void (toastTimer.current && clearTimeout(toastTimer.current)), []);
 
   // page chrome: the page is edge to edge, the screens bring their own paddings
-  useEffect(() => {
-    document.documentElement.classList.add("app-prof-on");
-    return () => document.documentElement.classList.remove("app-prof-on");
-  }, []);
+  useEffect(() => holdHtmlClass(["app-prof-on"]), []);
 
   const main = () => document.querySelector("main");
   const keep = useMemo(() => {

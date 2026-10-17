@@ -4,14 +4,12 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
+import { holdHtmlClass } from "@/lib/html-class";
 import AppIcon from "../AppIcon";
 
 /** Page chrome of the channel / author screens: the page is edge to edge (the screens bring their own paddings), as for the chat. */
 export function useChannelsChrome() {
-  useEffect(() => {
-    document.documentElement.classList.add("app-ch-on");
-    return () => document.documentElement.classList.remove("app-ch-on");
-  }, []);
+  useEffect(() => holdHtmlClass(["app-ch-on"]), []);
 }
 
 /** A small toast like the chat's. */
