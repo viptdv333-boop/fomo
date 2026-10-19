@@ -402,6 +402,12 @@ export class ChartEngine {
     this.invalidate();
   }
 
+  /** Live seconds: the series starts empty, the first trade opens its first bar; after that this is upsertCandle. */
+  seedCandle(c: Candle) {
+    if (this.candles.length === 0) this.setData([c]);
+    else this.upsertCandle(c);
+  }
+
   resetView() {
     this.zoomAnchor = null;
     this.inertiaV = 0;
@@ -2091,7 +2097,7 @@ export class ChartEngine {
     if (ch.timeLabel) {
       const t = this.indexToTime(hv.index);
       const intraday = this.opts.intervalMs < 86_400_000;
-      const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday);
+      const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday, this.opts.intervalMs < 60_000);
       ctx.save();
       ctx.font = `600 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
       const w = ctx.measureText(text).width + 16;
@@ -2180,7 +2186,7 @@ export class ChartEngine {
     ctx.restore();
     if (ch.timeLabel) {
       const intraday = this.opts.intervalMs < 86_400_000;
-      const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday);
+      const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday, this.opts.intervalMs < 60_000);
       ctx.save();
       ctx.font = `600 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
       const w = ctx.measureText(text).width + 16;

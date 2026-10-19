@@ -1,8 +1,9 @@
 // Pure helpers of the app-only Terminal screen (src/components/app/AppTerminal.tsx). No React, no DOM: scripts/check-app-ui.ts runs them.
 import { localizedPath, type Locale } from "@/lib/i18n/locale-url";
+import { DEFAULT_FAVORITE_INTERVALS } from "@/lib/chart/timeframes";
 
-/** The timeframe chips of the design («1м 5м 15м 30м 1ч 4ч Д Н М») as the chart's interval ids. */
-export const APP_TERM_TFS: readonly string[] = ["1", "5", "15", "30", "60", "240", "D", "W", "M"];
+/** The timeframe chips until the user pins their own («1м 5м 15м 1ч 4ч Д»): the chart's default favourites. All the others are behind the «▾» picker. */
+export const APP_TERM_TFS: readonly string[] = DEFAULT_FAVORITE_INTERVALS;
 
 /** The range row of the design («1Д 5Д 1М 3М 6М YTD 1Г 5Л Все»), in the chart's range ids. */
 export const APP_TERM_RANGES = ["1d", "5d", "1m", "3m", "6m", "ytd", "1y", "5y", "all"] as const;

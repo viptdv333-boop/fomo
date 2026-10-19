@@ -77,6 +77,15 @@ export function tickWeight(t: number, prevT: number | null, shiftMs: number): nu
   if (d.getUTCDate() !== p.getUTCDate()) return 50;
   const h = d.getUTCHours();
   const m = d.getUTCMinutes();
+  // second bars: the minute did not change since the previous bar, so the second tells how round the moment is (below every minute weight)
+  if (h === p.getUTCHours() && m === p.getUTCMinutes()) {
+    const s = d.getUTCSeconds();
+    if (s % 30 === 0) return 9;
+    if (s % 15 === 0) return 8;
+    if (s % 10 === 0) return 7;
+    if (s % 5 === 0) return 6;
+    return 5;
+  }
   if (h !== p.getUTCHours()) {
     if (h % 12 === 0) return 45;
     if (h % 6 === 0) return 40;
@@ -107,17 +116,21 @@ export function formatTickLabel(t: number, weight: number, shiftMs: number, loca
   if (weight >= 60) return dtf(locale, { month: "short" }).format(d).replace(/\.$/, "");
   if (weight >= 50) return String(d.getUTCDate());
   const p = (n: number) => String(n).padStart(2, "0");
+  if (weight < 10) return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
   return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }
 
-export function formatCrosshairTime(t: number, shiftMs: number, locale: string, intraday: boolean): string {
+export function formatCrosshairTime(t: number, shiftMs: number, locale: string, intraday: boolean, seconds = false): string {
   const d = new Date(t + shiftMs);
   const base: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short", year: "2-digit" };
   if (intraday) Object.assign(base, { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (intraday && seconds) Object.assign(base, { second: "2-digit" });
   return dtf(locale, base).format(d);
 }
 
 export function intervalToMs(interval: string): number {
+  // seconds: "15s"
+  if (/^\d+s$/.test(interval)) return Number(interval.slice(0, -1)) * 1000;
   switch (interval) {
     case "1": return 60_000;
     case "5": return 5 * 60_000;

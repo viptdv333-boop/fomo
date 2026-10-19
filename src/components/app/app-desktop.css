@@ -161,6 +161,9 @@ html.app-ui.app-desktop .app-term-first {
 }
 html.app-ui.app-desktop .app-term-tfs { grid-column: 1 / -1; padding: 6px 12px; gap: 4px; }
 html.app-ui.app-desktop .app-term-chip { flex: 0 0 auto; min-width: 52px; padding: 0 10px; cursor: pointer; }
+/* the «▾» sits right after the chips, not at the far edge of the window */
+html.app-ui.app-desktop .app-term-tfscroll { flex: 0 1 auto; }
+html.app-ui.app-desktop .app-term-tfmore { min-width: 36px; padding: 0; }
 html.app-ui.app-desktop .app-term-slot { grid-column: 1 / -1; min-height: 0; }
 html.app-ui.app-desktop .app-term-ranges { grid-column: 1; grid-row: 3; justify-content: flex-start; gap: 4px; padding: 6px 12px; }
 html.app-ui.app-desktop .app-term-range { cursor: pointer; padding: 4px 10px; }

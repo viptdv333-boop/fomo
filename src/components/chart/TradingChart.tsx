@@ -41,7 +41,8 @@ import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegen
 import { useChartSettings } from "@/components/chart/useChartSettings";
 import { DESIGN_PATHS, DrawIcon, panelTabIcon, ui } from "@/components/chart/icons";
 import { CS_ICONS } from "@/components/chart/icons-cs";
-import { aggregateCandles, formatInterval, intervalPlan, isValidInterval } from "@/lib/chart/intervals";
+import { aggregateCandles, formatInterval, intervalPlan, isSecondsInterval, isValidInterval, secondsIntervalMs, secondsSupported, usableInterval } from "@/lib/chart/intervals";
+import { BybitTradeStream, foldTrades, type StreamState } from "@/lib/chart/seconds-feed";
 import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
@@ -202,6 +203,8 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
 async function fetchBars(source: string, ticker: string, interval: string, limit: number, to?: number) {
   const plan = intervalPlan(interval, source);
+  // second bars have no history: nothing to ask the server for, they are built live from the trade stream (seconds-feed.ts)
+  if (plan.live) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined, err: undefined as ProviderError | undefined };
   if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
   const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
   return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err };
@@ -216,6 +219,7 @@ export async function warmLastSymbolBars(): Promise<void> {
     const last = JSON.parse(localStorage.getItem("fomo-terminal-last-v1") || "null") as { source?: unknown; dataTicker?: unknown } | null;
     if (!last || typeof last.source !== "string" || typeof last.dataTicker !== "string") return;
     const iv = loadPrefs().interval;
+    if (isSecondsInterval(iv)) return;
     await readBars(candleKey(last.source, last.dataTicker, iv, 600));
     const fresh = await fetchBars(last.source, last.dataTicker, iv, 600);
     if (fresh.candles.length > 0) await writeBars(last.source, last.dataTicker, iv, 600, fresh);
@@ -287,6 +291,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   /** when the bars on the chart were stored, while they are the stored ones (a live answer replaces them and clears this): drives the «Данные на HH:MM» badge */
   const [storedAt, setStoredAt] = useState<number | null>(null);
   const online = useOnline();
+  /** live seconds: the state of the trade stream (null on every other interval) */
+  const [secState, setSecState] = useState<StreamState | null>(null);
+  /** live seconds: the first trade has opened a bar */
+  const [secBars, setSecBars] = useState(false);
   /** spot FX: provider / volume kind of the bars on the chart (drives the "no exchange volume" badge) */
   const [fxInfo, setFxInfo] = useState<FxInfo | null>(null);
   const [autoScale, setAutoScale] = useState(true);
@@ -660,6 +668,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       // the newest bar gets the live price right away (not at the next poll): a stored or a cached answer is minutes behind
       livePokeRef.current?.(`${source}|${ticker}|${iv}`);
       };
+      // seconds: no history anywhere (no stored bars, no server): the series starts empty and the trade stream below fills it from now on
+      if (isSecondsInterval(iv)) {
+        apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: undefined }, null);
+        setEmpty(false);
+        return;
+      }
       // a reload of the picture that is already on the chart (a retry, the day changed on an aggregated interval) does not paint stored bars over it
       const reload = dataKeyRef.current === `${source}|${ticker}|${iv}`;
       const hit = reload ? null : await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
@@ -718,6 +732,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
     const iv = prefs.interval;
+    if (isSecondsInterval(iv)) return; // seconds are driven by the trade stream, not by the quote poll
     const intraday = isIntraday(iv);
     const pollMs = intraday ? 4000 : 12000;
     const dataKey = `${source}|${ticker}|${iv}`;
@@ -823,11 +838,77 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     };
   }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
 
+  /* seconds (1s ... 30s) exist only for instruments with a trade stream; on any other symbol the chart goes back to one minute */
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    const usable = usableInterval(prefs.interval, source);
+    if (usable !== prefs.interval) update({ interval: usable });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefsLoaded, source, prefs.interval]);
+
+  /* live second candles: the public trade stream of the exchange folded into N-second bars, from the moment the chart is open (no history exists) */
+  useEffect(() => {
+    const iv = prefs.interval;
+    setSecState(null);
+    setSecBars(false);
+    if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || !secondsSupported(source)) return;
+    const periodMs = secondsIntervalMs(iv);
+    const dataKey = `${source}|${ticker}|${iv}`;
+    let lastRefresh = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refreshSoon = () => {
+      // the indicators follow the newest bar a few times a second, not on every trade
+      const wait = 250 - (Date.now() - lastRefresh);
+      if (wait <= 0) {
+        lastRefresh = Date.now();
+        refreshInd();
+      } else if (!timer) {
+        timer = setTimeout(() => {
+          timer = undefined;
+          lastRefresh = Date.now();
+          refreshInd();
+        }, wait);
+      }
+    };
+    const stream = new BybitTradeStream(
+      ticker,
+      (trades) => {
+        const engine = engineRef.current;
+        // the chart still shows another symbol / interval until its (empty) series is set: trades wait for it
+        if (!engine || dataKeyRef.current !== dataKey) return;
+        const cs = engine.getCandles();
+        const bars = foldTrades(cs[cs.length - 1], trades, periodMs);
+        if (bars.length === 0) return;
+        for (const b of bars) engine.seedCandle(b);
+        if (cs.length === 0) {
+          setEmpty(false);
+          setSecBars(true);
+          setDataVersion((v) => v + 1);
+        }
+        refreshSoon();
+      },
+      setSecState,
+    );
+    stream.start();
+    return () => {
+      stream.stop();
+      clearTimeout(timer);
+      setSecState(null);
+    };
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd]);
+
   /* order flow (footprint, volume profile, VWAP / CVD from trades): fetches the trades of what the chart shows */
   const flowClientRef = useRef<OrderFlowClient | null>(null);
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !engineReady || !prefsLoaded || source === "none") return;
+    // the server keeps trades per minute: a bar shorter than that cannot be split, the flow numbers stay the candle approximation
+    if (isSecondsInterval(prefs.interval)) {
+      engine.flow.reset();
+      engine.flow.avail = "none";
+      engine.flow.emit();
+      return;
+    }
     const client = new OrderFlowClient({
       engine,
       source,
@@ -1445,14 +1526,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       openSettings: () => openSettings(),
       toggleDrawTools: () => setToolsOpen((v) => !v),
       openWatchlist: () => onTab("watchlist"),
+      setFavIntervals: (list) => csApi.update((x) => ({ ...x, ui: { ...x.ui, favIntervals: list } })),
     };
   }
   const onAppStateRef = useRef(onAppState);
   onAppStateRef.current = onAppState;
   const sideWatch = !!appPage && prefsLoaded && isDesktop && prefs.panelOpen && prefs.panelTab === "watchlist";
   useEffect(() => {
-    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark, sideWatch });
-  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch]);
+    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source });
+  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
@@ -1527,6 +1609,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               <div className={`absolute ${appPage ? "top-1.5" : "top-7"} left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500`} data-stored-bars>
                 {t(online ? "chart.staleAt" : "chart.offlineAt", { time: clockLabel(storedAt) })}
               </div>
+            )}
+            {isSecondsInterval(prefs.interval) && secondsSupported(source) && !loading && (
+              <>
+                <div className={`absolute ${appPage ? "bottom-8" : "top-7"} left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)] whitespace-nowrap`} data-seconds-note>
+                  {t("chart.sec.note")}
+                  {secState === "error" ? ` · ${t("chart.sec.offline")}` : secState === "connecting" ? ` · ${t("chart.sec.connecting")}` : ""}
+                </div>
+                {!secBars && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t("chart.sec.wait")}</div>
+                )}
+              </>
             )}
             {(candlesDelayed || quoteDelayedMark) && !loading && !empty && !appPage && (
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>

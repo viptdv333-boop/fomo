@@ -63,6 +63,18 @@ eq("45m: the day changed (the first bar of today is not known here): reload, do 
 eq("2h: aggregated too", moex("120", bar(wall("2026-10-13T14:00:00"), 1, 1, 1, 1)), { kind: "bar", t: wall("2026-10-13T16:00:00") });
 eq("45m: a clock a little behind the newest bar keeps it", moex("45", bar(first + 10 * A, 1, 1, 1, 1)), { kind: "bar", t: first + 10 * A });
 
+// --- the full set of timeframes (src/lib/chart/timeframes.ts): which bar a quote opens on every one of them
+eq("MOEX M10 is a native ISS interval: the 10-minute bucket of the Moscow clock", moex("10", bar(wall("2026-10-13T17:00:00"), 1, 1, 1, 1)), { kind: "bar", t: wall("2026-10-13T17:10:00") });
+eq("MOEX M3 (built from M1, anchored to the first bar of the day, 10:00 + 143 x 3 min = 17:09)", moex("3", bar(first + 143 * 3 * 60_000, 1, 1, 1, 1)), { kind: "bar", t: first + 143 * 3 * 60_000 });
+eq("MOEX M3: the next step", moex("3", bar(first + 142 * 3 * 60_000, 1, 1, 1, 1)), { kind: "bar", t: first + 143 * 3 * 60_000 });
+eq("MOEX M20 (built from M10): 17:00 until 17:20", moex("20", bar(wall("2026-10-13T16:40:00"), 1, 1, 1, 1)), { kind: "bar", t: wall("2026-10-13T17:00:00") });
+eq("MOEX 3h / 8h / 12h are aggregated: a new day asks for a reload", [moex("180", bar(wall("2026-10-12T18:00:00"), 1, 1, 1, 1)), moex("480", bar(wall("2026-10-12T18:00:00"), 1, 1, 1, 1)), moex("720", bar(wall("2026-10-12T18:00:00"), 1, 1, 1, 1))], [{ kind: "reload" }, { kind: "reload" }, { kind: "reload" }]);
+eq("Bybit M3 is native: UTC grid, 14:09 at 14:10:30", btc("3", bar(1, 1, 1, 1, 1), NOW), { kind: "bar", t: utc("2026-10-13T14:09:00") });
+eq("Bybit M30 / H2 / H6 / H12 are native: the UTC grid", [btc("30", bar(1, 1, 1, 1, 1), NOW), btc("120", bar(1, 1, 1, 1, 1), NOW), btc("360", bar(1, 1, 1, 1, 1), NOW), btc("720", bar(1, 1, 1, 1, 1), NOW)], [{ kind: "bar", t: utc("2026-10-13T14:00:00") }, { kind: "bar", t: utc("2026-10-13T14:00:00") }, { kind: "bar", t: utc("2026-10-13T12:00:00") }, { kind: "bar", t: utc("2026-10-13T12:00:00") }]);
+eq("Bybit H8 (built from H4, anchored to 00:00 UTC): the 08:00 bar until 16:00", btc("480", bar(utc("2026-10-13T08:00:00"), 1, 1, 1, 1), NOW), { kind: "bar", t: utc("2026-10-13T08:00:00") });
+eq("Bybit H8: after 16:00 the next bar", btc("480", bar(utc("2026-10-13T08:00:00"), 1, 1, 1, 1), utc("2026-10-13T16:00:01")), { kind: "bar", t: utc("2026-10-13T16:00:00") });
+eq("seconds: the bucket of the second grid (live bars use it for their own rollover)", [bucketStartWall(NOW, "15s"), bucketStartWall(NOW + 7_000, "15s"), bucketStartWall(NOW + 7_000, "5s"), bucketStartWall(NOW + 7_000, "1s"), bucketStartWall(NOW + 17_000, "30s")], [NOW, NOW, NOW + 5_000, NOW + 7_000, NOW]);
+
 // --- merging the quote
 const b0 = bar(wall("2026-10-13T17:10:00"), 100, 101, 99, 100.5, 7);
 eq("same bar: close, high and low follow the price", [mergeQuote(b0, b0.t, 102), mergeQuote(b0, b0.t, 98.5)], [{ ...b0, c: 102, h: 102 }, { ...b0, c: 98.5, l: 98.5 }]);

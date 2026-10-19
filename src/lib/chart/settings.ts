@@ -12,7 +12,7 @@ import {
   type StatusLineOptions,
   type TransformParams,
 } from "./types";
-import { DEFAULT_FAVORITE_INTERVALS } from "./intervals";
+import { DEFAULT_FAVORITE_INTERVALS, isValidInterval } from "./timeframes";
 import { DEFAULT_FOOTPRINT, sanitizeFootprint, type FootprintSettings } from "./orderflow/types";
 
 /* User-facing chart settings (the gear dialog). Saved locally and on the account (userdata 'chart_settings' / 'default'),
@@ -351,6 +351,8 @@ export function normalizeSettings(saved: unknown): ChartSettings {
   if (!["classic", "tvdark", "tvlight"].includes(s.preset)) s.preset = "classic";
   if (isObj(saved) && typeof saved.precision === "number") s.precision = Math.max(0, Math.min(10, Math.round(saved.precision)));
   s.footprint = sanitizeFootprint(isObj(saved) ? saved.footprint : undefined);
+  // pinned timeframes from an old / foreign copy: only real interval ids, each once
+  s.ui = { ...s.ui, favIntervals: [...new Set(s.ui.favIntervals.filter((x): x is string => typeof x === "string" && isValidInterval(x)))] };
   return s;
 }
 

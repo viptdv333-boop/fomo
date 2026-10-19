@@ -16,6 +16,7 @@ import { useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/Rig
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
+import AppTimeframes from "./AppTimeframes";
 import { exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
 import {
   APP_TERM_RANGES,
@@ -334,13 +335,13 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
 
         {/* the first screen: sticky symbol bar above; timeframes, chart, range row and tool row fill the whole screen above the dock; the rest is below the fold */}
         <div className="app-term-first">
-        <div className="app-term-tfs" role="group" aria-label={t("appui.term.timeframe")}>
-          {APP_TERM_TFS.map((id) => (
-            <button key={id} type="button" className="app-term-chip" data-on={chart?.interval === id ? "1" : undefined} onClick={() => h.current?.setInterval(id)}>
-              {formatInterval(id, t)}
-            </button>
-          ))}
-        </div>
+        <AppTimeframes
+          interval={chart?.interval ?? APP_TERM_TFS[0]}
+          favs={chart?.favIntervals ?? (APP_TERM_TFS as string[])}
+          source={chart?.source ?? selected?.source ?? ""}
+          onPick={(id) => h.current?.setInterval(id)}
+          onFavs={(list) => h.current?.setFavIntervals(list)}
+        />
 
         {/* the slot keeps the page's height while the chart block is a fixed full-screen layer */}
         <div className="app-term-slot">

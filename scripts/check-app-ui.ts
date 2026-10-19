@@ -292,7 +292,7 @@ eq("drag: a click is not a drag", [isDockDrag(0), isDockDrag(DOCK_DRAG_PX - 1), 
 eq("drag scroll follows the mouse and is clamped", [dockDragScroll(100, 300, 250, 400), dockDragScroll(100, 300, 400, 400), dockDragScroll(380, 300, 100, 400), dockDragScroll(10, 300, 900, 0)], [150, 0, 400, 0]);
 
 // --- Terminal screen helpers
-eq("terminal chips are the design's nine timeframes", APP_TERM_TFS, ["1", "5", "15", "30", "60", "240", "D", "W", "M"]);
+eq("terminal chips start as the favourites: 1м 5м 15м 1ч 4ч Д (the rest is behind the picker)", APP_TERM_TFS, ["1", "5", "15", "60", "240", "D"]);
 eq("every chip is a valid chart interval", APP_TERM_TFS.every(isValidInterval), true);
 eq("terminal ranges", APP_TERM_RANGES, ["1d", "5d", "1m", "3m", "6m", "ytd", "1y", "5y", "all"]);
 eq("pct up (en)", pctLabel(1.236, "en"), "+1.24%");

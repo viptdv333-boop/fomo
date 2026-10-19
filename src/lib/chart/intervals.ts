@@ -1,15 +1,14 @@
 import type { Candle } from "./types";
 
-/* Intervals of the terminal. An interval id is one of "D" | "W" | "M" | "Y" or a number of minutes ("1", "45", "120").
-   The klines API serves only some of them natively; the others are aggregated on the client from a finer one. */
+/* Intervals of the terminal (the table and the per-source rules live in timeframes.ts). An interval id is "D" | "W" | "M" | "Y", a number of minutes
+   ("1", "45", "120") or a number of seconds ("15s"). The klines API serves only some of them natively; the others are aggregated on the client from a
+   finer one; seconds are built live from the trade stream. */
 
+export { MENU_INTERVALS, SECOND_INTERVALS, DEFAULT_FAVORITE_INTERVALS, isValidInterval, intervalOrder, isSecondsInterval, secondsIntervalMs, secondsSupported, pickerIntervals, usableInterval, type IntervalPlan } from "./timeframes";
+import { isSecondsInterval, timeframePlan, timeframeLabel, type IntervalPlan } from "./timeframes";
+
+/** What the klines API serves natively for every source but MOEX / Bybit (see timeframes.ts for the per-source sets). */
 export const NATIVE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M", "Y"];
-
-/** Ids offered in the interval menu, in display order. */
-export const MENU_INTERVALS = ["1", "2", "3", "5", "10", "15", "30", "45", "60", "120", "180", "240", "D", "W", "M", "Y"];
-
-/** Favourites shown as buttons in the toolbar until the user picks their own. */
-export const DEFAULT_FAVORITE_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M", "Y"];
 
 const STD_KEYS: Record<string, string> = {
   "1": "inst.period.1m",
@@ -23,22 +22,16 @@ const STD_KEYS: Record<string, string> = {
   Y: "inst.period.Y",
 };
 
-export function isValidInterval(id: string): boolean {
-  if (id === "D" || id === "W" || id === "M" || id === "Y") return true;
-  if (!/^\d+$/.test(id)) return false;
-  const m = Number(id);
-  return m >= 1 && m <= 1440 * 3;
-}
-
 /** i18n key for a standard interval, or null for custom ones. */
 export function standardIntervalKey(id: string): string | null {
   return STD_KEYS[id] ?? null;
 }
 
-/** "45м" / "2ч" style label; `t` translates keys. */
+/** "45м" / "2ч" / "15с" style label; `t` translates keys. */
 export function formatInterval(id: string, t: (key: string) => string): string {
   const std = STD_KEYS[id];
   if (std) return t(std);
+  if (isSecondsInterval(id)) return `${id.slice(0, -1)}${t("cs.unit.s")}`;
   const m = Number(id);
   if (!isFinite(m) || m <= 0) return id;
   if (m >= 1440 && m % 1440 === 0) return `${m / 1440}${t("cs.unit.d")}`;
@@ -46,32 +39,12 @@ export function formatInterval(id: string, t: (key: string) => string): string {
   return `${m}${t("cs.unit.m")}`;
 }
 
-/** Sorted by length so the menu and favourites read naturally. */
-export function intervalOrder(id: string): number {
-  if (id === "D") return 1440;
-  if (id === "W") return 1440 * 7;
-  if (id === "M") return 1440 * 30;
-  if (id === "Y") return 1440 * 365;
-  return Number(id) || 0;
-}
+/** The label from the timeframe table (no translator needed): the same text formatInterval gives with the dictionary of that locale. */
+export const intervalLabel = timeframeLabel;
 
-export interface IntervalPlan {
-  /** Interval requested from /api/klines. */
-  base: string;
-  /** Source candles per bar; 1 = no aggregation. */
-  ratio: number;
-  /** Length of a bar in ms (only meaningful when ratio > 1). */
-  ms: number;
-}
-
+/** How the bars of an interval are obtained for a source: native, merged from a finer one, or (seconds) built live. */
 export function intervalPlan(id: string, source: string): IntervalPlan {
-  if (NATIVE_INTERVALS.includes(id) || (id === "10" && source === "moex")) return { base: id, ratio: 1, ms: 0 };
-  const m = Number(id);
-  if (!isFinite(m) || m <= 0) return { base: "D", ratio: 1, ms: 0 };
-  for (const b of [240, 60, 15, 5]) {
-    if (m > b && m % b === 0) return { base: String(b), ratio: m / b, ms: m * 60_000 };
-  }
-  return { base: "1", ratio: m, ms: m * 60_000 };
+  return timeframePlan(id, source);
 }
 
 const DAY = 86_400_000;

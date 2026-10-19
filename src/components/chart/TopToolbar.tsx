@@ -195,7 +195,7 @@ export default function TopToolbar(p: Props) {
       {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={btn} />}
 
       {p.favIntervals && p.onFavIntervals ? (
-        <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} />
+        <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} />
       ) : (
         <div className="flex items-center shrink-0 rounded-[11px] bg-[var(--tv3-fill2)] p-0.5">
           {INTERVALS.map((i) => (

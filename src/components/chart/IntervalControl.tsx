@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
 import { CS_ICONS } from "./icons-cs";
-import { MENU_INTERVALS, formatInterval, intervalOrder, isValidInterval } from "@/lib/chart/intervals";
+import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, secondsSupported } from "@/lib/chart/intervals";
 
 interface Props {
   interval: string;
@@ -13,24 +13,30 @@ interface Props {
   onFavorites: (list: string[]) => void;
   btn: string;
   btnOn: string;
+  /** data source of the chart: second timeframes are offered only where a trade stream exists */
+  source?: string;
 }
 
-function group(id: string): "m" | "h" | "d" {
+function group(id: string): "s" | "m" | "h" | "d" {
+  if (isSecondsInterval(id)) return "s";
   if (id === "D" || id === "W" || id === "M" || id === "Y") return "d";
   return Number(id) >= 60 ? "h" : "m";
 }
 
 /** Favourite intervals as buttons plus a dropdown with every interval, stars and a custom interval form. */
-export default function IntervalControl({ interval, onInterval, favorites, onFavorites }: Props) {
+export default function IntervalControl({ interval, onInterval, favorites, onFavorites, source = "" }: Props) {
   const { t } = useT();
   const [num, setNum] = useState("");
   const [unit, setUnit] = useState<"m" | "h">("m");
 
-  const favs = [...new Set(favorites.filter(isValidInterval))].sort((a, b) => intervalOrder(a) - intervalOrder(b));
-  const shown = favs.includes(interval) ? favs : [...favs, interval];
-  const all = [...new Set([...MENU_INTERVALS, ...favs])].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  const secOk = secondsSupported(source);
+  // every pinned interval (also the seconds pinned on another symbol), and the ones this symbol can show
+  const pinned = [...new Set(favorites.filter(isValidInterval))].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  const favs = pinned.filter((id) => secOk || !isSecondsInterval(id));
+  const shown = favs.includes(interval) ? favs : [...favs, interval].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  const all = [...new Set([...pickerIntervals(source), ...favs])].sort((a, b) => intervalOrder(a) - intervalOrder(b));
 
-  const toggleFav = (id: string) => onFavorites(favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id]);
+  const toggleFav = (id: string) => onFavorites(pinned.includes(id) ? pinned.filter((x) => x !== id) : [...pinned, id]);
 
   const addCustom = (close: () => void) => {
     const n = Math.floor(Number(num));
@@ -39,13 +45,14 @@ export default function IntervalControl({ interval, onInterval, favorites, onFav
     // whole days are the D interval
     const id = minutes === 1440 ? "D" : String(minutes);
     if (!isValidInterval(id)) return;
-    if (!favs.includes(id)) onFavorites([...favs, id]);
+    if (!pinned.includes(id)) onFavorites([...pinned, id]);
     onInterval(id);
     setNum("");
     close();
   };
 
-  const sections: { id: "m" | "h" | "d"; key: string }[] = [
+  const sections: { id: "s" | "m" | "h" | "d"; key: string }[] = [
+    { id: "s", key: "cs.iv.seconds" },
     { id: "m", key: "cs.iv.minutes" },
     { id: "h", key: "cs.iv.hours" },
     { id: "d", key: "cs.iv.days" },

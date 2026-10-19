@@ -11,6 +11,7 @@ import { guestRealtimeFlag } from "@/lib/guest-delay";
 import { getForexCandles, type ForexCandlesResult } from "@/lib/forex";
 import { getFmpFuturesCandles, type FmpCandlesResult } from "@/lib/fmp-futures";
 import { aggregateYearly } from "@/lib/kline-aggregate";
+import { isSecondsInterval, serverIntervals } from "@/lib/chart/timeframes";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -139,7 +140,7 @@ async function fetchIssRecent(
 ): Promise<any[][]> {
   const rows: any[][] = [];
   let start = 0;
-  for (let page = 0; page < 6; page++) {
+  for (let page = 0; page < 8; page++) {
     const params = new URLSearchParams({
       interval: String(moexInterval),
       from,
@@ -331,7 +332,9 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   // A refresh-sized request needs only the newest native rows: (limit + 1) bars of the requested interval, plus one more bucket of
   // slack so the oldest (possibly partial) synthesized bar falls outside the trimmed result.
   // (a scroll-back page ending in the past keeps the regular window: ISS `till` is date-granular, so the newest rows could all be later)
-  const small = limit <= SMALL_LIMIT && toMs === undefined;
+  // The live edge of a refresh-sized request, and of every request in a native intraday interval (1, 10, 60): the newest rows first. ISS returns the oldest
+  // rows first from `from`, and the page cap (30 x 500) ran out before it reached «now» for a long window of 1-minute rows (a 3-minute chart = 1800 of them).
+  const small = toMs === undefined && (limit <= SMALL_LIMIT || (!synth && (moexInterval === 1 || moexInterval === 10 || moexInterval === 60)));
   const ratio = synth ? synth.bucketMs / (MOEX_INTERVALS[fetchInterval] * 60_000) : 1;
   const needRows = synth ? (limit + 2) * ratio : limit + 2;
   const smallFrom = small ? smallFromDate(needRows, moexInterval, toMs) : from;
@@ -406,13 +409,11 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
 }
 
 async function fetchBybitCandles(ticker: string, interval: string, limit: number, toMs?: number) {
-  const BYBIT_INTERVALS: Record<string, string> = {
-    "1": "1", "5": "5", "15": "15", "60": "60", "240": "240", "D": "D", "W": "W", "M": "M",
-  };
   // spot unless the ticker carries a category (BTCUSDT.P linear perpetual, BTC-26DEC25 dated future, ...: see bybit-symbol.ts)
   const bb = parseBybitTicker(ticker);
   try {
-    const bybitInterval = BYBIT_INTERVALS[interval] || "D";
+    // the interval was checked against the Bybit set in GET (1 3 5 15 30 60 120 240 360 720 D W M): Bybit's own names are the ids
+    const bybitInterval = interval;
     const PAGE = 200; // Bybit max per request
     const pages = Math.ceil(Math.min(limit, 1000) / PAGE);
     let allCandles: any[] = [];
@@ -455,12 +456,21 @@ export async function GET(request: NextRequest) {
   const source = searchParams.get("source") || "";
   const ticker = searchParams.get("ticker") || "";
   const interval = searchParams.get("interval") || "D";
-  const limit = parseInt(searchParams.get("limit") || "300");
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "300") || 300, 1), 5000);
   const toParam = searchParams.get("to");
   const toMs = toParam ? parseInt(toParam) : undefined;
 
   if (!ticker || !source) {
     return NextResponse.json({ error: "source and ticker required" }, { status: 400 });
+  }
+  // second candles have no history anywhere: the chart builds them live in the browser (seconds-feed.ts), never from this API
+  if (isSecondsInterval(interval)) {
+    return NextResponse.json({ error: "seconds-unsupported", detail: "no upstream serves second candles" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  // what the source serves itself (timeframes.ts): the chart asks for these and merges the rest on the client. Anything else used to fall back
+  // to daily bars silently.
+  if (!serverIntervals(source).includes(interval)) {
+    return NextResponse.json({ error: "unsupported-interval", interval, supported: serverIntervals(source) }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
 
   let candles: any[] = [];

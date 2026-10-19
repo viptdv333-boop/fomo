@@ -413,9 +413,42 @@ html.app-ui .app-term-ico { width: 36px; height: 36px; display: flex; align-item
 html.app-ui .app-term-star { color: var(--app-tx2); }
 html.app-ui .app-term-star[data-on="1"] { color: #eab308; }
 /* timeframe chips */
+/* the row scrolls sideways when the pinned timeframes do not fit (a phone with many pins) */
 html.app-ui .app-term-tfs { display: flex; gap: 4px; padding: 8px 12px; }
-html.app-ui .app-term-chip { flex: 1; height: 30px; min-width: 0; padding: 0; box-sizing: border-box; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--app-card2); color: var(--app-tx2); }
+html.app-ui .app-term-tfscroll { flex: 1; min-width: 0; display: flex; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+html.app-ui .app-term-tfscroll::-webkit-scrollbar { display: none; }
+html.app-ui .app-term-chip { flex: 1 0 auto; height: 30px; min-width: 40px; padding: 0 9px; box-sizing: border-box; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--app-card2); color: var(--app-tx2); }
 html.app-ui .app-term-chip[data-on="1"] { background: var(--app-inv); color: var(--app-inv-tx); }
+html.app-ui .app-term-tfmore { flex: 0 0 auto; min-width: 36px; padding: 0; }
+/* the timeframe picker (portal to <body>): a bottom sheet on a phone, a popover under the «▾» button in a wide window */
+@keyframes appTfUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes appTfFade { from { opacity: 0; } to { opacity: 1; } }
+html.app-ui .app-tf-wrap { position: fixed; inset: 0; z-index: 70; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: normal; }
+html.app-ui .app-tf-wrap button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+html.app-ui .app-tf-back { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); animation: appTfFade 0.2s; }
+html.app-ui .app-tf-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78dvh; display: flex; flex-direction: column; background: var(--app-sheet); color: var(--app-tx); border-radius: 16px 16px 0 0; overflow: hidden; padding-bottom: env(safe-area-inset-bottom, 0px); animation: appTfUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.app-ui .app-tf-grip { flex: none; display: flex; justify-content: center; padding-top: 6px; }
+html.app-ui .app-tf-grip div { width: 36px; height: 5px; border-radius: 3px; background: var(--app-tx3); opacity: 0.6; }
+html.app-ui .app-tf-bar { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 6px; }
+html.app-ui .app-tf-title { font-size: 17px; font-weight: 700; }
+html.app-ui .app-tf-done { font-size: 15px; font-weight: 600; color: var(--app-green-tx); padding: 6px 0 6px 12px; }
+html.app-ui .app-tf-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px 12px; }
+html.app-ui .app-tf-hint { font-size: 12px; color: var(--app-tx2); padding: 0 0 4px; }
+html.app-ui .app-tf-gt { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--app-tx2); padding: 12px 0 4px; }
+html.app-ui .app-tf-note { font-size: 12px; color: var(--app-tx2); padding-bottom: 4px; }
+html.app-ui .app-tf-row { display: flex; align-items: center; min-height: 44px; border-bottom: 0.5px solid var(--app-line); }
+html.app-ui .app-tf-row:last-child { border-bottom: 0; }
+html.app-ui .app-tf-pick { flex: 1; align-self: stretch; display: flex; align-items: center; font-size: 16px; font-weight: 600; }
+html.app-ui .app-tf-row[data-cur="1"] .app-tf-pick { color: var(--app-green-tx); }
+html.app-ui .app-tf-star { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--app-tx3); flex: none; }
+html.app-ui .app-tf-star[data-on="1"] { color: #eab308; }
+html.app-ui .app-tf-type { margin: 0 16px 6px; height: 34px; padding: 0 10px; border-radius: 9px; border: 0.5px solid var(--app-line); background: var(--app-card2); color: var(--app-tx); font: inherit; font-size: 14px; outline: none; }
+html.app-ui .app-tf-type:focus { border-color: var(--app-green); }
+html.app-ui .app-tf-typed { font-size: 13px; color: var(--app-tx2); padding-bottom: 4px; }
+html.app-ui .app-tf-typed[data-ok="1"] { color: var(--app-green-tx); font-weight: 600; }
+html.app-ui .app-tf-wrap[data-wide="1"] .app-tf-back { background: transparent; animation: none; }
+html.app-ui .app-tf-wrap[data-wide="1"] .app-tf-sheet { right: auto; bottom: auto; width: 300px; border-radius: 12px; border: 0.5px solid var(--app-line); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28); animation: appTfFade 0.12s; padding-bottom: 0; }
+html.app-ui .app-tf-wrap[data-wide="1"] .app-tf-row:hover { background: var(--app-press); }
 /* chart block: a fixed-height box; the chart (touch-action none on its own canvas) takes the gestures that start on it, the page scrolls from everywhere else */
 html.app-ui .app-term-chart { position: relative; border-top: 0.5px solid var(--app-line); overflow: hidden; display: flex; flex-direction: column; }
 html.app-ui .app-term-chartbody { position: relative; flex: 1; min-height: 0; }
