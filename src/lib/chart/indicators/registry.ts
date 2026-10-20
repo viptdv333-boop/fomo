@@ -7,6 +7,7 @@ import { ELLIOTT_DEFS } from "./elliott-defs";
 import { SWINGS_DEFS } from "./swings-defs";
 import { PATTERN_DEFS } from "./patterns-def";
 import { ALGOPACK_DEFS } from "./algopack-defs";
+import { LIQUIDITY_DEFS } from "./liquidity-defs";
 import { formatPrice, inferPrecision } from "../format";
 import type { OrderFlowStore } from "../orderflow/store";
 import type { AlgoNeed, AlgoStore } from "../algopack/store";
@@ -15,7 +16,7 @@ import type { AlgoNeed, AlgoStore } from "../algopack/store";
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
 
 export type Params = Record<string, ParamValue>;
-export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "patterns" | "other";
+export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "patterns" | "liquidity" | "other";
 export type PlotShape = "line" | "step" | "area" | "histogram" | "columns" | "circles";
 export type LineStyleName = "solid" | "dashed" | "dotted";
 export type NumFmt = "price" | "osc" | "vol";
@@ -1072,6 +1073,7 @@ defs.push(...ORDERFLOW_DEFS);
 defs.push(...ELLIOTT_DEFS);
 defs.push(...SWINGS_DEFS);
 defs.push(...PATTERN_DEFS);
+defs.push(...LIQUIDITY_DEFS);
 defs.push(...ALGOPACK_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 
@@ -1088,7 +1090,7 @@ export function getIndicatorDef(id: string): IndicatorDef | undefined {
   return byId.get(id) ?? (dynamicResolver ? dynamicResolver(id) : undefined);
 }
 
-export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns", "other"];
+export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns", "liquidity", "other"];
 
 export function defaultParams(def: IndicatorDef): Params {
   const out: Params = {};
