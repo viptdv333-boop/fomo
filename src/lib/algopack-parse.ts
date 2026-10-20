@@ -8,7 +8,7 @@
  * see lib/chart/algopack/store.ts.
  */
 
-import { tableRows } from "./algopack";
+import { tableRows } from "./algopack-table";
 
 export const MIN = 60_000;
 export const DAY = 86_400_000;

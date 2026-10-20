@@ -5,8 +5,8 @@
    200 text/html), which is why src/lib/calendar/moex.ts derives non-trading days from isdayoff.ru today.
    The key is read from the environment (ALGOPACK_KEY) or an env file, never printed; neither are responses beyond a few sample rows.
 
-   Run on the server (where the key is configured):
-     cd /opt/fomo && NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt npx tsx scripts/check-algopack-calendar.ts --env /opt/fomo/.env
+   Run on the server (where the key is configured; the Russian root CA of apim.moex.com comes from ALGOPACK_CA_FILE in the env file, docs/algopack-tls.md):
+     cd /opt/fomo && npx tsx scripts/check-algopack-calendar.ts --env /opt/fomo/.env
    Options: --from 2026-10-01 --till 2026-12-31 (window, default today .. +90 days)   --raw (print the first 1500 characters of every body)
    Exit code: 0 something useful answered, 1 every route failed, 2 no key (no network call is made).
 
@@ -74,7 +74,7 @@ function blocksOf(data: unknown): Probe["blocks"] {
 async function main() {
   if (!algopackEnabled()) {
     console.log("ALGOPACK_KEY is not set in the environment: nothing to test (no network call was made).");
-    console.log("Run it on the server: NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt npx tsx scripts/check-algopack-calendar.ts --env /opt/fomo/.env");
+    console.log("Run it on the server: npx tsx scripts/check-algopack-calendar.ts --env /opt/fomo/.env");
     process.exit(2);
   }
   console.log(`ALGOPACK calendar probe  gateway=${algopackBase()}  window ${from}..${till}  (key present, not shown)\n`);

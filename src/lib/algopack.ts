@@ -19,6 +19,8 @@
  * No Next / DB imports (used by tsx check scripts too).
  */
 
+import { tableRows } from "./algopack-table";
+
 export const DEFAULT_BASE = "https://apim.moex.com/iss";
 export const PUBLIC_ISS = "https://iss.moex.com/iss";
 
@@ -175,6 +177,20 @@ export function familyOf(url: string): string {
 
 /* ── the request ── */
 
+/**
+ * The ONLY way this codebase talks to the ALGOPACK gateway (apGet -> doFetch, scripts/probe-algopack.ts). Requests to https://apim.moex.com
+ * trust Node's default roots + the CA file from ALGOPACK_CA_FILE (the Russian root; see algopack-tls.ts / docs/algopack-tls.md); every other
+ * URL, a local http mock (ALGOPACK_BASE=http://localhost...) and the unconfigured case use the plain global fetch (verification always on).
+ */
+export async function apFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (/^https:\/\/apim\.moex\.com(:443)?\//i.test(url) && (process.env.ALGOPACK_CA_FILE ?? "").trim()) {
+    const viaCa = await (await import("./algopack-tls")).gatewayFetch(url, init);
+    if (viaCa) return viaCa;
+  }
+  return fetch(url, init);
+}
+
+
 function failRes(reason: string, status = 0): ApResult {
   return { ok: false, status, data: null, reason };
 }
@@ -195,7 +211,7 @@ async function doFetch(url: string, family: string, opts: ApOptions): Promise<Ap
   const now = Date.now();
   try {
     const res = await slot(() =>
-      fetch(url, {
+      apFetch(url, {
         headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
         cache: "no-store",
         signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT),
@@ -336,27 +352,4 @@ export async function apRows(
   return { ok: true, rows, reason, truncated: true };
 }
 
-/** ISS block {columns, data} -> row objects with lower-case keys. Block by name, else "data", else the first block that has columns. */
-export function tableRows(payload: any, block?: string): Record<string, any>[] {
-  if (!payload || typeof payload !== "object") return [];
-  let b: any = block ? payload[block] : undefined;
-  if (!b || !Array.isArray(b.columns)) b = payload.data && Array.isArray(payload.data.columns) ? payload.data : undefined;
-  if (!b) {
-    for (const v of Object.values(payload)) {
-      if (v && typeof v === "object" && Array.isArray((v as any).columns) && Array.isArray((v as any).data)) {
-        b = v;
-        break;
-      }
-    }
-  }
-  if (!b || !Array.isArray(b.columns) || !Array.isArray(b.data)) return [];
-  const cols: string[] = b.columns.map((c: unknown) => String(c).toLowerCase());
-  const out: Record<string, any>[] = [];
-  for (const r of b.data) {
-    if (!Array.isArray(r)) continue;
-    const o: Record<string, any> = {};
-    for (let i = 0; i < cols.length; i++) o[cols[i]] = r[i];
-    out.push(o);
-  }
-  return out;
-}
+export { tableRows };

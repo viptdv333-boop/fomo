@@ -4,9 +4,8 @@
 # Run on the server:  cd /opt/fomo && git pull -q && bash scripts/deploy-swap.sh
 # (docs: the long one-liner of the same steps was cut off by the serial console, hence the file)
 
-# apim.moex.com (ALGOPACK) is signed by the Russian root CA, which Node does not know: without the system bundle every ALGOPACK call fails
-# with SELF_SIGNED_CERT_IN_CHAIN (the order book / ALGOPACK tabs say "temporarily unavailable"). pm2 keeps this env for the restarted apps.
-export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+# NOTE: no NODE_EXTRA_CA_CERTS here on purpose (it would widen TLS trust for every outbound request). The ALGOPACK gateway (apim.moex.com) is
+# signed by the Russian root CA; the app trusts it for that host only, through ALGOPACK_CA_FILE in .env (docs/algopack-tls.md).
 
 deploy() {
   local dir="$1" app="$2" old="$3" pull="$4"
