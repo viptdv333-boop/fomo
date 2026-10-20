@@ -25,6 +25,9 @@ import {
 import { transformBars } from "./transforms";
 import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
+import { barCountdownMs, countdownUnits, formatCountdown } from "./bar-clock";
+import { drawBell, stackTags, tagCaption, type TagBlock } from "./axis-tags";
+import { maByType } from "./indicators/math";
 import { OrderFlowStore } from "./orderflow/store";
 import { AlgoStore } from "./algopack/store";
 import { DEFAULT_FOOTPRINT } from "./orderflow/types";
@@ -49,6 +52,21 @@ interface Pane {
   top: number;
   height: number;
   ready: boolean;
+}
+
+/** One tag of the price scale before it is stacked and painted. `y` is inside its pane. */
+interface EngineTag {
+  id: string;
+  pane: Pane;
+  y: number;
+  prio: number;
+  text: string;
+  bg: string;
+  fg: string;
+  caption?: string;
+  /** the row below the price (countdown) */
+  extra?: string;
+  icon?: "bell";
 }
 
 type Region = "plot" | "priceAxis" | "timeAxis" | "separator" | "none";
@@ -234,6 +252,7 @@ export class ChartEngine {
     this.resize();
     this.flow.subscribe(() => this.invalidate());
     this.algo.subscribe(() => this.invalidate());
+    this.syncCountdown();
   }
 
   /** Called after every repaint of the base layer (pan, zoom, new data); returns an unsubscribe function. */
@@ -1261,13 +1280,11 @@ export class ChartEngine {
     }
 
     this.drawLastPrice();
-    if (!transformed) this.drawSeriesAxisLabels(ctx);
-    this.drawCompareLabels(ctx);
 
     ctx.restore();
 
     // keep the axis wide enough for the widest label
-    const need = Math.max(52, Math.ceil(maxLabelW + 18));
+    const need = Math.max(this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
     if (Math.abs(need - this.axisW) > 6) {
       this.axisW = need;
       this.dirtyBase = true;
@@ -1374,6 +1391,52 @@ export class ChartEngine {
         ctx.fillRect(left / dpr, (Math.round(sc.paneHeight * dpr) - h) / dpr, bwD / dpr, h / dpr);
       }
     }
+    // moving average of the volume over the bars, in the scale of the bars
+    const vm = this.opts.volumeMa;
+    if (vm && vm.on) {
+      const ma = this.volumeMaData();
+      if (ma) {
+        ctx.save();
+        ctx.strokeStyle = vm.color;
+        ctx.lineWidth = vm.width;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        let open = false;
+        for (let i = Math.max(0, from - 1); i <= Math.min(c.length - 1, to + 1); i++) {
+          const v = ma[i];
+          if (!isFinite(v)) {
+            open = false;
+            continue;
+          }
+          const y = sc.paneHeight - (Math.min(v, maxV) / maxV) * band;
+          if (open) ctx.lineTo(sc.x(i), y);
+          else ctx.moveTo(sc.x(i), y);
+          open = true;
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  private volMaCache: { bars: Candle[]; n: number; t0: number; tN: number; vN: number; length: number; type: string; data: ArrayLike<number> } | null = null;
+
+  /** The volume moving average of the displayed bars (cached until the bars or the settings change), null when it is off or there are no bars. */
+  private volumeMaData(): ArrayLike<number> | null {
+    const vm = this.opts.volumeMa;
+    const bars = this.bars;
+    const n = bars.length;
+    if (!vm || !vm.on || n === 0) return null;
+    const length = Math.max(1, Math.min(500, Math.round(vm.length) || 20));
+    const k = this.volMaCache;
+    const last = bars[n - 1];
+    if (k && k.bars === bars && k.n === n && k.t0 === bars[0].t && k.tN === last.t && k.vN === last.v && k.length === length && k.type === vm.type) return k.data;
+    const vol = new Float64Array(n);
+    for (let i = 0; i < n; i++) vol[i] = bars[i].v;
+    const data = maByType(vm.type, vol, length);
+    this.volMaCache = { bars, n, t0: bars[0].t, tN: last.t, vN: last.v, length, type: vm.type, data };
+    return data;
   }
 
   private bodyWidthDevice(): number {
@@ -1797,9 +1860,10 @@ export class ChartEngine {
   }
 
   /** Price-scale flags of the compared symbols (last value, at the line's height). */
-  private drawCompareLabels(ctx: CanvasRenderingContext2D) {
+  private compareTags(out: EngineTag[]) {
     const main = this.panes[0];
     const { to } = this.visibleRange();
+    const caps = this.opts.showTagCaptions;
     for (const e of this.compares) {
       if (!e.visible || e.candles.length === 0) continue;
       let idx = Math.min(e.aligned.length - 1, to);
@@ -1819,7 +1883,7 @@ export class ChartEngine {
       if (y < 0 || y > main.height) continue;
       const last = e.candles[e.candles.length - 1].c;
       const dec = Math.min(6, Math.max(2, (String(last).split(".")[1] || "").length));
-      this.axisLabel(ctx, formatPrice(last, dec, this.opts.locale), y, e.color, "#fff", main);
+      out.push({ id: `cmp:${e.id}`, pane: main, y, prio: 3, text: formatPrice(last, dec, this.opts.locale), bg: e.color, fg: "#fff", caption: caps ? e.label : undefined });
     }
   }
 
@@ -1909,10 +1973,6 @@ export class ChartEngine {
       if (loI >= 0 && loI !== hiI) put(loI, lo, this.opts.invertScale);
     }
     ctx.restore();
-    if (this.opts.showPrevCloseLine && pcY >= 0 && pcY <= main.height) {
-      const pc = this.prevCloseValue();
-      if (pc !== null) this.axisLabel(ctx, this.fmtAxis(main, pc), pcY, th.labelBg, th.labelText, main);
-    }
   }
 
   private drawLastPrice() {
@@ -1939,35 +1999,192 @@ export class ChartEngine {
       ctx.stroke();
       ctx.restore();
     }
-    if (this.opts.showLastPriceLabel) {
-      this.axisLabel(ctx, this.fmtAxis(main, price), y, color, "#fff");
-      if (this.opts.showSymbolLabel) {
-        const h = Math.max(20, this.opts.scaleFontSize + 8);
-        this.axisLabel(ctx, this.opts.scaleSymbol || this.opts.symbolLabel, y - h - 1, this.opts.theme.labelBg, this.opts.theme.labelText, main);
-      }
-    }
   }
 
-  private drawSeriesAxisLabels(ctx: CanvasRenderingContext2D) {
+  /** Time left to the close of the forming bar, "" when there is nothing to count down to. */
+  private countdownText(): string {
     const n = this.candles.length;
-    if (n === 0) return;
-    for (const pane of this.panes) {
-      if (pane.height <= 0) continue;
-      const seen: number[] = [];
-      for (const s of pane.series) {
-        const labels = s.axisLabels?.(this.candles, n - 1);
-        if (!labels) continue;
-        for (const l of labels) {
-          if (!isFinite(l.price)) continue;
-          let y = pane.top + this.paneY(pane, l.price);
-          if (y < pane.top || y > pane.top + pane.height) continue;
-          // nudge a label down when it would sit on top of one already placed
-          for (let guard = 0; guard < 6 && seen.some((sy) => Math.abs(sy - y) < 17); guard++) y += 18;
-          seen.push(y);
-          this.axisLabel(ctx, l.text, y, l.color, l.textColor ?? "#fff", pane);
+    if (n === 0) return "";
+    const left = barCountdownMs(this.candles[n - 1].t, this.opts.intervalMs, Date.now() + this.opts.clockOffsetMs, this.flow.wallShiftMs);
+    return left === null ? "" : formatCountdown(left, countdownUnits(this.opts.locale));
+  }
+
+  /**
+   * Every tag of the price scale for this frame, with what it is: the last price (+ countdown), the previous close, alert levels of the layers, compared
+   * symbols and the flags of the indicators. They are stacked and painted by drawAxisTags (overlay layer: the countdown ticks every second).
+   */
+  private collectAxisTags(): EngineTag[] {
+    const out: EngineTag[] = [];
+    const n = this.candles.length;
+    if (n === 0 || this.panes[0].height <= 0) return out;
+    const main = this.panes[0];
+    const th = this.opts.theme;
+    const loc = this.opts.locale;
+    const caps = this.opts.showTagCaptions;
+
+    // last price: the symbol above it (or "Price"), the countdown to the bar close below it
+    const price = this.lastPriceValue();
+    if (price !== null) {
+      const y = this.paneY(main, price);
+      if (y >= 0 && y <= main.height) {
+        const last = this.candles[n - 1];
+        const prev = n > 1 ? this.candles[n - 2] : last;
+        const color = this.candleColors(last.c >= prev.c).body;
+        const cd = this.opts.showCountdown ? this.countdownText() : "";
+        if (this.opts.showLastPriceLabel) {
+          const named = caps || this.opts.showSymbolLabel;
+          const name = this.opts.scaleSymbol || this.opts.symbolLabel;
+          out.push({
+            id: "last",
+            pane: main,
+            y,
+            prio: 0,
+            text: this.fmtAxis(main, price),
+            bg: color,
+            fg: "#fff",
+            caption: named ? name || tagCaption("price", loc) : undefined,
+            extra: cd || undefined,
+          });
+        } else if (cd) {
+          out.push({ id: "last", pane: main, y, prio: 0, text: cd, bg: th.labelBg, fg: th.labelText });
         }
       }
     }
+
+    // previous close
+    if (this.opts.showPrevCloseLine) {
+      const pc = this.prevCloseValue();
+      if (pc !== null) {
+        const y = this.paneY(main, pc);
+        if (y >= 0 && y <= main.height) {
+          out.push({ id: "prev", pane: main, y, prio: 1, text: this.fmtAxis(main, pc), bg: th.labelBg, fg: th.labelText, caption: caps ? tagCaption("prevClose", loc) : undefined });
+        }
+      }
+    }
+
+    // levels of the layers (alerts)
+    this.layers.forEach((layer, li) => {
+      const tags = layer.axisTags?.(this);
+      if (!tags) return;
+      tags.forEach((t, ti) => {
+        if (!isFinite(t.price)) return;
+        const y = this.paneY(main, t.price);
+        if (!isFinite(y) || y < 0 || y > main.height) return;
+        out.push({
+          id: `layer:${li}:${ti}`,
+          pane: main,
+          y,
+          prio: 2,
+          text: this.fmtAxis(main, t.price),
+          bg: t.color,
+          fg: t.textColor ?? "#1f2937",
+          caption: caps ? tagCaption(t.kind, loc) : undefined,
+          icon: t.icon,
+        });
+      });
+    });
+
+    this.compareTags(out);
+
+    // flags of the indicators, on the pane of each
+    if (!this.transformed()) {
+      this.panes.forEach((pane, pi) => {
+        if (pane.height <= 0) return;
+        let k = 0;
+        for (const s of pane.series) {
+          const labels = s.axisLabels?.(this.candles, n - 1);
+          if (!labels) continue;
+          for (const l of labels) {
+            if (!isFinite(l.price)) continue;
+            const y = this.paneY(pane, l.price);
+            if (y < 0 || y > pane.height) continue;
+            out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", caption: caps ? l.caption : undefined });
+            k++;
+          }
+        }
+      });
+    }
+    return out;
+  }
+
+  private drawAxisTags(ctx: CanvasRenderingContext2D) {
+    const tags = this.collectAxisTags();
+    if (tags.length === 0) return;
+    const fs = this.opts.scaleFontSize;
+    const bodyH = Math.max(20, fs + 8);
+    const capFs = Math.max(9, fs - 2);
+    const capH = capFs + 4;
+    const extraH = Math.max(16, fs + 4);
+    const x0 = this.axisEdge() + 1;
+    const w = this.axisW - 2;
+    const ff = this.opts.fontFamily;
+    ctx.save();
+    ctx.font = `600 ${capFs}px ${ff}`;
+    // a caption is shrunk (down to 8 px) before it is cut with an ellipsis
+    const fitCaption = (text: string, maxW: number): { text: string; size: number } => {
+      for (let size = capFs; size >= 8; size--) {
+        ctx.font = `600 ${size}px ${ff}`;
+        if (ctx.measureText(text).width <= maxW) return { text, size };
+      }
+      let t = text;
+      while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+      return { text: t + "…", size: 8 };
+    };
+    for (const pane of new Set(tags.map((t) => t.pane))) {
+      const mine = tags.filter((t) => t.pane === pane);
+      const blocks: TagBlock[] = mine.map((t) => ({
+        id: t.id,
+        prio: t.prio,
+        y: pane.top + t.y,
+        bodyH,
+        capH: t.caption ? capH : 0,
+        extraH: t.extra ? extraH : 0,
+        lo: pane.top,
+        hi: pane.top + pane.height,
+      }));
+      const placed = stackTags(blocks);
+      for (const t of mine) {
+        const pl = placed.get(t.id);
+        if (!pl) continue;
+        const hasCap = pl.caption && !!t.caption;
+        const top = pl.top;
+        const height = (hasCap ? capH : 0) + bodyH + (t.extra ? extraH : 0);
+        ctx.save();
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(x0, top, w, height, 5);
+        else ctx.rect(x0, top, w, height);
+        ctx.fillStyle = t.bg;
+        ctx.fill();
+        ctx.clip();
+        // the rows around the price are a shade darker: they say what the tag is, the middle one is the price
+        ctx.fillStyle = "rgba(0,0,0,0.2)";
+        if (hasCap) ctx.fillRect(x0, top, w, capH);
+        if (t.extra) ctx.fillRect(x0, pl.bodyTop + bodyH, w, extraH);
+        ctx.restore();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = t.fg;
+        if (hasCap) {
+          const c = fitCaption(t.caption!, w - 6);
+          ctx.font = `600 ${c.size}px ${ff}`;
+          ctx.fillText(c.text, x0 + w / 2, top + capH / 2 + 0.5);
+        }
+        ctx.font = `600 ${fs}px ${ff}`;
+        const cy = pl.bodyTop + bodyH / 2 + 0.5;
+        if (t.icon === "bell") {
+          const tw = ctx.measureText(t.text).width;
+          const start = x0 + Math.max(2, (w - (tw + 13)) / 2);
+          drawBell(ctx, start + 4.5, cy - 0.5, t.fg);
+          ctx.textAlign = "left";
+          ctx.fillText(t.text, start + 13, cy);
+        } else ctx.fillText(t.text, x0 + w / 2, cy);
+        if (t.extra) {
+          ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
+          ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
+        }
+      }
+    }
+    ctx.restore();
   }
 
   private axisLabel(ctx: CanvasRenderingContext2D, text: string, y: number, bg: string, fg: string, pane?: Pane) {
@@ -2004,34 +2221,6 @@ export class ChartEngine {
     ctx.restore();
   }
 
-  private drawCountdown(ctx: CanvasRenderingContext2D) {
-    if (!this.opts.showCountdown) return;
-    const n = this.candles.length;
-    const price = this.lastPriceValue();
-    if (n === 0 || price === null) return;
-    const main = this.panes[0];
-    const y = this.paneY(main, price);
-    if (y < 0 || y > main.height) return;
-    const last = this.candles[n - 1];
-    let end = last.t + this.opts.intervalMs;
-    if (this.opts.intervalMs >= 360 * 86_400_000) {
-      const d = new Date(last.t);
-      end = Date.UTC(d.getUTCFullYear() + 1, 0, 1); // yearly bars: the next January
-    } else if (this.opts.intervalMs >= 28 * 86_400_000) {
-      const d = new Date(last.t);
-      end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
-    }
-    const rem = end - (Date.now() + this.opts.clockOffsetMs);
-    if (rem <= 0) return;
-    const secs = Math.floor(rem / 1000);
-    const hh = Math.floor(secs / 3600);
-    const p = (v: number) => String(v).padStart(2, "0");
-    const text = `${p(hh)}:${p(Math.floor((secs % 3600) / 60))}:${p(secs % 60)}`;
-    const h = Math.max(20, this.opts.scaleFontSize + 8);
-    const th = this.opts.theme;
-    this.axisLabel(ctx, text, y + h, th.labelBg, th.labelText, main);
-  }
-
   private drawOverPlot(ctx: CanvasRenderingContext2D) {
     const th = this.opts.theme;
     const n = this.bars.length;
@@ -2063,7 +2252,7 @@ export class ChartEngine {
 
     // legends
     for (const pane of this.panes) this.drawLegend(ctx, pane, index, pane.id === "main" && !hv);
-    this.drawCountdown(ctx);
+    this.drawAxisTags(ctx);
 
     if (!hv || hv.x < 0 || hv.x > plotW || hv.y < 0 || hv.y > plotH) {
       if (this.externalT !== null) this.drawExternalCrosshair(ctx);
@@ -2278,6 +2467,23 @@ export class ChartEngine {
           ctx.font = `600 13px ${this.opts.fontFamily}`;
           ctx.fillText(formatVolume(c.v, this.opts.locale), x, cy);
           x += ctx.measureText(formatVolume(c.v, this.opts.locale)).width;
+          // the average of the volume (same colour as its line)
+          const vm = this.opts.volumeMa;
+          const ma = vm && vm.on ? this.volumeMaData() : null;
+          const mv = ma ? ma[index] : NaN;
+          if (ma && isFinite(mv)) {
+            x += 9;
+            ctx.fillStyle = th.textMuted;
+            ctx.font = `13px ${this.opts.fontFamily}`;
+            const lab = `MA ${Math.round(vm.length)}`;
+            ctx.fillText(lab, x, cy);
+            x += ctx.measureText(lab).width + 4;
+            ctx.fillStyle = vm.color;
+            ctx.font = `600 13px ${this.opts.fontFamily}`;
+            const val = formatVolume(mv, this.opts.locale);
+            ctx.fillText(val, x, cy);
+            x += ctx.measureText(val).width;
+          }
         }
         chipRight = Math.max(chipRight, x);
         cy += 15;

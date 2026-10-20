@@ -78,6 +78,7 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
         <Item checked={sc.prevCloseLine} onClick={() => { setScale("prevCloseLine", !sc.prevCloseLine); onClose(); }}>{t("cs.lbl.prevClose")}</Item>
         <Item checked={sc.countdown} onClick={() => { setScale("countdown", !sc.countdown); onClose(); }}>{t("cs.lbl.countdown")}</Item>
         <Item checked={sc.highLow} onClick={() => { setScale("highLow", !sc.highLow); onClose(); }}>{t("cs.lbl.highLow")}</Item>
+        <Item checked={sc.tagCaptions} onClick={() => { setScale("tagCaptions", !sc.tagCaptions); onClose(); }}>{t("cs.lbl.captions")}</Item>
         <Sep />
         <Item onClick={() => { setScale("side", sc.side === "right" ? "left" : "right"); onClose(); }}>
           {sc.side === "right" ? t("cs.moveLeft") : t("cs.moveRight")}

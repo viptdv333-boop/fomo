@@ -1,6 +1,7 @@
 import type { AxisLabel, Candle, ChartTheme, LegendItem, Series, SeriesContext } from "../types";
 import type { IndicatorStyle } from "../contracts";
 import { formatPrice, formatVolume } from "../format";
+import { indicatorCaption } from "../axis-tags";
 import { computeIndicator } from "./registry";
 import type { IndEnv, IndicatorDef, IndResult, LevelSpec, LineStyleName, NumFmt, Params, PlotShape, PlotSpec } from "./registry";
 import { applyStyle, solidColor, tfGroupOf } from "./style";
@@ -357,24 +358,32 @@ export class IndicatorSeries implements Series {
     if (index < 0) index = 0;
     if (index > n - 1) index = n - 1;
     const out: AxisLabel[] = [];
+    // what a flag says: the indicator ("RSI 14"); with several flags the line's own name ("BB Upper")
+    let title = "";
+    try {
+      title = this.title();
+    } catch {
+      /* a title bug must not break the chart */
+    }
+    const flagged = r.plots.filter((q) => !q.hidden && !q.volBand && (q.flag ?? (shapeOf(q) !== "histogram" && shapeOf(q) !== "columns"))).length;
     for (const p of r.plots) {
       if (p.hidden) continue;
       const flag = p.flag ?? (shapeOf(p) !== "histogram" && shapeOf(p) !== "columns" && !p.volBand);
       if (!flag || p.volBand) continue;
       const v = this.plotValue(p, index);
       if (!finite(v)) continue;
-      out.push({ price: v, text: this.fmt(v, this.plotFmt(p)), color: solidColor(this.plotColorAt(p, index)) });
+      out.push({ price: v, text: this.fmt(v, this.plotFmt(p)), color: solidColor(this.plotColorAt(p, index)), caption: indicatorCaption(title, flagged > 1 ? p.key : undefined) });
     }
     if (r.levels) {
       for (const l of r.levels) {
         if (l.hidden || !l.flag || !finite(l.value)) continue;
-        out.push({ price: l.value, text: this.fmt(l.value, this.def.fmt), color: solidColor(l.color) });
+        out.push({ price: l.value, text: this.fmt(l.value, this.def.fmt), color: solidColor(l.color), caption: l.label ? indicatorCaption(title, l.label) : indicatorCaption(title) });
       }
     }
     if (this.def.axisFlags) {
       try {
         for (const f of this.def.axisFlags(r, this.params)) {
-          if (finite(f.price)) out.push({ price: f.price, text: f.text ?? this.fmt(f.price, this.def.fmt), color: solidColor(f.color) });
+          if (finite(f.price)) out.push({ price: f.price, text: f.text ?? this.fmt(f.price, this.def.fmt), color: solidColor(f.color), caption: f.caption ?? indicatorCaption(title) });
         }
       } catch {
         /* a flag bug must not break the chart */

@@ -156,6 +156,8 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
   const setStatus = (k: keyof typeof stat, v: boolean) => set((x) => ({ ...x, status: { ...x.status, [k]: v } }));
   const sc = s.scale;
   const setScale = <K extends keyof typeof sc>(k: K, v: (typeof sc)[K]) => set((x) => ({ ...x, scale: { ...x.scale, [k]: v } }));
+  const vm = s.volumeMa;
+  const setVolMa = <K extends keyof typeof vm>(k: K, v: (typeof vm)[K]) => set((x) => ({ ...x, volumeMa: { ...x.volumeMa, [k]: v } }));
   const cs = s.candle;
   const setCandle = <K extends keyof typeof cs>(k: K, v: (typeof cs)[K]) => set((x) => ({ ...x, candle: { ...x.candle, [k]: v } }));
   const ch = s.crosshair;
@@ -212,7 +214,25 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Row label={t("cs.baselineLevel")}>
         <Num value={Math.round(s.baselinePercent)} min={5} max={95} onChange={(v) => set((x) => ({ ...x, baselinePercent: v }))} suffix="%" />
       </Row>
+
+      <Section>{t("cs.sec.volume")}</Section>
       <Check checked={toggles.showVolume} onChange={(v) => onToggle("showVolume", v)} label={t("chart.volume")} />
+      <Check checked={vm.on} onChange={(v) => setVolMa("on", v)} label={t("cs.vol.ma")}>
+        {sw(vm.color, (c) => setVolMa("color", c))}
+      </Check>
+      {vm.on && (
+        <>
+          <Row label={t("cs.vol.maLength")}>
+            <Num value={vm.length} min={1} max={500} onChange={(v) => setVolMa("length", Math.round(v))} />
+          </Row>
+          <Row label={t("cs.vol.maType")}>
+            <Sel value={vm.type} options={[{ id: "sma", label: "SMA" }, { id: "ema", label: "EMA" }, { id: "wma", label: "WMA" }]} onChange={(v) => setVolMa("type", v)} width={90} />
+          </Row>
+          <Row label={t("cs.vol.maWidth")}>
+            <Sel value={vm.width} options={[1, 1.4, 2, 3].map((n) => ({ id: n, label: `${n} px` }))} onChange={(v) => setVolMa("width", Number(v))} width={90} />
+          </Row>
+        </>
+      )}
 
       <Section>{t("cs.sec.time")}</Section>
       <Row label={t("cs.timezone")}>
@@ -254,6 +274,7 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Check checked={sc.prevCloseLine} onChange={(v) => setScale("prevCloseLine", v)} label={t("cs.lbl.prevClose")} />
       <Check checked={sc.countdown} onChange={(v) => setScale("countdown", v)} label={t("cs.lbl.countdown")} />
       <Check checked={sc.highLow} onChange={(v) => setScale("highLow", v)} label={t("cs.lbl.highLow")} />
+      <Check checked={sc.tagCaptions} onChange={(v) => setScale("tagCaptions", v)} label={t("cs.lbl.captions")} />
 
       <Section>{t("cs.sec.sizes")}</Section>
       <Row label={t("cs.fontSize")}>

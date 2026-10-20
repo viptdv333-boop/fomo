@@ -657,6 +657,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       setOffsetMs(offsetMs);
       engine.setOptions({
         symbolLabel: name || ticker,
+        scaleSymbol: ticker,
         intervalLabel: label,
         intervalMs: intervalToMs(iv),
         timeShiftMs: displayShiftMs,

@@ -850,11 +850,11 @@ export const vproDef: IndicatorDef = {
     const view = stateOf(res)?.view;
     if (!view) return [];
     const c = readVpCfg(p);
-    const out: { price: number; color: string }[] = [];
+    const out: { price: number; color: string; caption?: string }[] = [];
     for (const L of c.levels) {
       if (!L.show || !L.flag) continue;
       const price = levelValue(view.levels, L.key);
-      if (isFinite(price)) out.push({ price, color: L.color });
+      if (isFinite(price)) out.push({ price, color: L.color, caption: levelName(L.key) });
     }
     return out;
   },

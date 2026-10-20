@@ -1,7 +1,6 @@
 import type { ChartEngine } from "./engine";
-import type { OverlayLayer, PointerInfo } from "./types";
+import type { LayerAxisTag, OverlayLayer, PointerInfo } from "./types";
 import { alertLevel, type LineSpec } from "../alerts/evaluate";
-import { formatPrice } from "./format";
 
 const MAIN = "main";
 const COLOR = "#f59e0b";
@@ -15,8 +14,8 @@ export interface AlertMark {
 }
 
 /**
- * Active alerts of the current symbol: dashed price lines with a bell flag at the right edge (fixed level),
- * and for line alerts a dot plus flag at the line's level right now.
+ * Active alerts of the current symbol: dashed price lines (fixed level), and for line alerts a dot at the line's level right now.
+ * The bell tag with the level sits on the price scale (axisTags: the engine writes «Alert» above it and keeps it off the other tags).
  * Also remembers the price under the pointer for the Alt+A shortcut.
  */
 export class AlertsLayer implements OverlayLayer {
@@ -65,12 +64,22 @@ export class AlertsLayer implements OverlayLayer {
     return false;
   }
 
+  axisTags(engine: ChartEngine): LayerAxisTag[] {
+    if (engine !== this.engine || this.marks.length === 0) return [];
+    const now = Date.now();
+    const out: LayerAxisTag[] = [];
+    for (const m of this.marks) {
+      const lv = alertLevel({ kind: m.kind, price: m.price, line: m.line }, now);
+      if (lv.state !== "ok" || !Number.isFinite(lv.level)) continue;
+      out.push({ price: lv.level, kind: "alert", color: COLOR, textColor: "#1f2937", icon: "bell" });
+    }
+    return out;
+  }
+
   draw(ctx: CanvasRenderingContext2D, engine: ChartEngine): void {
     if (engine !== this.engine || this.marks.length === 0) return;
     const rect = engine.getPaneRect(MAIN);
     if (!rect) return;
-    const precision = engine.getPrecision();
-    const locale = engine.opts.locale;
     const theme = engine.getTheme();
     const now = Date.now();
 
@@ -110,48 +119,7 @@ export class AlertsLayer implements OverlayLayer {
           ctx.stroke();
         }
       }
-
-      // flag: bell + level, hugging the price axis
-      const text = formatPrice(lv.level, precision, locale);
-      const tw = ctx.measureText(text).width;
-      const w = tw + 24;
-      const h = 16;
-      const x0 = rect.width - w - 4;
-      ctx.beginPath();
-      rrect(ctx, x0, y - h / 2, w, h, 3);
-      ctx.fillStyle = COLOR;
-      ctx.fill();
-      drawBell(ctx, x0 + 10, y, "#1f2937");
-      ctx.fillStyle = "#1f2937";
-      ctx.textAlign = "left";
-      ctx.fillText(text, x0 + 19, y + 0.5);
     }
     ctx.restore();
   }
-}
-
-/** A tiny bell (about 9 px) centred on (cx, cy). */
-function drawBell(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string) {
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(cx - 4, cy + 2.5);
-  ctx.quadraticCurveTo(cx - 3.5, cy + 1, cx - 3.2, cy - 1);
-  ctx.arc(cx, cy - 1, 3.2, Math.PI, 0);
-  ctx.quadraticCurveTo(cx + 3.5, cy + 1, cx + 4, cy + 2.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy + 3.6, 1.2, 0, Math.PI);
-  ctx.fill();
-  ctx.restore();
-}
-
-function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }

@@ -11,6 +11,7 @@ import {
   type ScaleMode,
   type StatusLineOptions,
   type TransformParams,
+  type VolumeMaOptions,
 } from "./types";
 import { DEFAULT_FAVORITE_INTERVALS, isValidInterval } from "./timeframes";
 import { DEFAULT_FOOTPRINT, sanitizeFootprint, type FootprintSettings } from "./orderflow/types";
@@ -47,6 +48,8 @@ export interface ScaleSettings {
   prevCloseLine: boolean;
   countdown: boolean;
   highLow: boolean;
+  /** A small caption above each tag of the price scale (what it is). */
+  tagCaptions: boolean;
   fontSize: number;
   marginTop: number;
   marginBottom: number;
@@ -78,9 +81,14 @@ export interface ChartSettings {
   transform: TransformParams;
   /** Footprint chart type: display mode, imbalances, colours. */
   footprint: FootprintSettings;
+  /** Moving average over the volume bars: on / off, period, type, colour, width. */
+  volumeMa: VolumeMaOptions;
   /** Not touched by presets / reset. */
   ui: { favIntervals: string[] };
 }
+
+/** MA(20) of the volume in a visible but quiet orange, on by default. */
+export const DEFAULT_VOLUME_MA: VolumeMaOptions = { on: true, length: 20, type: "sma", color: "#ff9800", width: 1.4 };
 
 export const DEFAULT_SETTINGS: ChartSettings = {
   v: 1,
@@ -103,8 +111,9 @@ export const DEFAULT_SETTINGS: ChartSettings = {
     lastPriceLabel: true,
     priceLine: true,
     prevCloseLine: false,
-    countdown: false,
+    countdown: true,
     highLow: false,
+    tagCaptions: true,
     fontSize: 12,
     marginTop: 8,
     marginBottom: 8,
@@ -118,6 +127,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   baselinePercent: 50,
   transform: DEFAULT_TRANSFORM,
   footprint: DEFAULT_FOOTPRINT,
+  volumeMa: DEFAULT_VOLUME_MA,
   ui: { favIntervals: DEFAULT_FAVORITE_INTERVALS },
 };
 
@@ -270,6 +280,8 @@ export function settingsToEngine(s: ChartSettings, siteDark: boolean): Partial<E
     showPrevCloseLine: s.scale.prevCloseLine,
     showCountdown: s.scale.countdown,
     showHighLow: s.scale.highLow,
+    showTagCaptions: s.scale.tagCaptions,
+    volumeMa: s.volumeMa,
     scaleFontSize: s.scale.fontSize,
     marginTop: s.scale.marginTop,
     marginBottom: s.scale.marginBottom,
@@ -346,11 +358,26 @@ function mergeInto<T>(def: T, saved: unknown): T {
   return saved as T;
 }
 
+/** A volume MA from an old / foreign copy: period 1..500 whole, a known type, a colour string, width 0.5..4. */
+export function sanitizeVolumeMa(v: VolumeMaOptions): VolumeMaOptions {
+  const d = DEFAULT_VOLUME_MA;
+  const len = Math.round(Number(v.length));
+  const w = Number(v.width);
+  return {
+    on: v.on !== false,
+    length: Number.isFinite(len) ? Math.max(1, Math.min(500, len)) : d.length,
+    type: v.type === "ema" || v.type === "wma" ? v.type : "sma",
+    color: typeof v.color === "string" && v.color.trim() ? v.color : d.color,
+    width: Number.isFinite(w) ? Math.max(0.5, Math.min(4, w)) : d.width,
+  };
+}
+
 export function normalizeSettings(saved: unknown): ChartSettings {
   const s = mergeInto(DEFAULT_SETTINGS, saved);
   if (!["classic", "tvdark", "tvlight"].includes(s.preset)) s.preset = "classic";
   if (isObj(saved) && typeof saved.precision === "number") s.precision = Math.max(0, Math.min(10, Math.round(saved.precision)));
   s.footprint = sanitizeFootprint(isObj(saved) ? saved.footprint : undefined);
+  s.volumeMa = sanitizeVolumeMa(s.volumeMa);
   // pinned timeframes from an old / foreign copy: only real interval ids, each once
   s.ui = { ...s.ui, favIntervals: [...new Set(s.ui.favIntervals.filter((x): x is string => typeof x === "string" && isValidInterval(x)))] };
   return s;

@@ -209,6 +209,10 @@ export interface EngineOptions {
   showPrevCloseLine: boolean;
   showCountdown: boolean;
   showHighLow: boolean;
+  /** Small caption above each tag of the price scale saying what it is (symbol, previous close, alert, indicator ...). */
+  showTagCaptions: boolean;
+  /** Moving average line on the volume bars. */
+  volumeMa: VolumeMaOptions;
   /** Axis font size, px. */
   scaleFontSize: number;
   /** Space above / below the price range, % of the pane height. */
@@ -259,8 +263,10 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   showLastPriceLabel: true,
   showPriceLine: true,
   showPrevCloseLine: false,
-  showCountdown: false,
+  showCountdown: true,
   showHighLow: false,
+  showTagCaptions: true,
+  volumeMa: { on: true, length: 20, type: "sma", color: "#ff9800", width: 1.4 },
   scaleFontSize: 12,
   marginTop: 8,
   marginBottom: 8,
@@ -307,6 +313,28 @@ export interface AxisLabel {
   text: string;
   color: string;
   textColor?: string;
+  /** What the flag is ("RSI 14", "BB Upper", "POC"), written small above it. */
+  caption?: string;
+}
+
+/** A tag a layer puts on the main price scale (an alert level ...); the engine formats the price, writes the caption and stacks it with the others. */
+export interface LayerAxisTag {
+  price: number;
+  /** Built-in caption: what kind of level it is. */
+  kind: "alert";
+  color: string;
+  textColor?: string;
+  /** "bell" is drawn in front of the price. */
+  icon?: "bell";
+}
+
+/** Volume moving average drawn over the volume bars of the main pane. */
+export interface VolumeMaOptions {
+  on: boolean;
+  length: number;
+  type: "sma" | "ema" | "wma";
+  color: string;
+  width: number;
 }
 
 export type PointerRegion = "plot" | "priceAxis" | "timeAxis" | "separator" | "none";
@@ -331,6 +359,8 @@ export interface PointerInfo {
 export interface OverlayLayer {
   /** Drawn inside the plot area, above candles and below the crosshair. */
   draw?(ctx: CanvasRenderingContext2D, engine: import("./engine").ChartEngine): void;
+  /** Tags for the main price scale (stacked with the others, drawn above the plot). */
+  axisTags?(engine: import("./engine").ChartEngine): LayerAxisTag[];
   pointerDown?(p: PointerInfo): boolean;
   /** While captured: the drag. Otherwise: hover; returning true means the layer handles hover and the crosshair is hidden. */
   pointerMove?(p: PointerInfo): boolean;

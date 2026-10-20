@@ -152,7 +152,7 @@ export interface IndicatorDef {
   /** Price levels worth an alert (data only), e.g. invalidation and next target of an Elliott count. */
   alertLevels?(res: IndResult): number[];
   /** Flags on the price axis for values that are not plots (e.g. the levels of a volume profile). `text` defaults to the formatted price. */
-  axisFlags?(res: IndResult, p: Params): { price: number; color: string; text?: string }[];
+  axisFlags?(res: IndResult, p: Params): { price: number; color: string; text?: string; caption?: string }[];
   /** Settings dialog: param key -> i18n key of the section heading it belongs to (Inputs and Style tabs). */
   paramGroup?: Record<string, string>;
   /** Extra coloured text items for the legend (e.g. summaries of detected patterns); `locale` is the chart's locale. */
