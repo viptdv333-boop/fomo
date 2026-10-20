@@ -1636,7 +1636,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }
   const onAppStateRef = useRef(onAppState);
   onAppStateRef.current = onAppState;
-  const sideWatch = !!appPage && prefsLoaded && isDesktop && prefs.panelOpen && prefs.panelTab === "watchlist";
+  // wide window: the watchlist lives in the chart's side panel ONLY (owner: never repeated under the chart, whichever tab or state the panel is in)
+  const sideWatch = !!appPage && prefsLoaded && isDesktop;
   useEffect(() => {
     onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source });
   }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source]);

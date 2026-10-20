@@ -19,7 +19,7 @@ export interface AppChartState {
   interval: string;
   /** MOEX bars up to the 15-minute delay of the public ISS */
   delayed: boolean;
-  /** the chart's own side panel is on screen showing its watchlist (wide window, panel open, «Список» tab): the page does not repeat the list below */
+  /** wide window: the chart has its own side panel with the watchlist, so the page never repeats the list below the chart (phones keep the lower list) */
   sideWatch?: boolean;
   /** the pinned timeframes (chart settings, `ui.favIntervals`) */
   favIntervals: string[];
