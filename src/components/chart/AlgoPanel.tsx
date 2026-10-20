@@ -7,8 +7,8 @@ import { hi2Band } from "@/lib/algopack-parse";
 import type { TerminalInstrument } from "@/lib/terminal-data";
 
 /* ALGOPACK tab of the right panel: the instrument's Mega Alerts (type, direction, price) and the latest HI2 market
-   concentration. MOEX ALGOPACK Promo data — the server serves them to entitled requesters only (admins unless
-   ALGOPACK_PUBLIC=1); everyone else sees a note. Times are the exchange's Moscow wall clock. */
+   concentration. MOEX ALGOPACK Promo data — the server serves them to signed-in users (admins only with
+   ALGOPACK_PUBLIC=0); everyone else sees a note. Times are the exchange's Moscow wall clock. */
 
 interface Alert {
   w: number;
@@ -23,7 +23,7 @@ interface Hi2 {
   metrics: string[];
   rows: [number, number, number][];
 }
-type St = "loading" | "ok" | "denied" | "unsupported" | "error";
+type St = "loading" | "ok" | "denied" | "unavailable" | "unsupported" | "error";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const hhmm = (w: number) => {
@@ -56,7 +56,8 @@ async function getJson(url: string): Promise<{ status: number; j: any } | null> 
 
 function stateOf(r: { status: number; j: any } | null): St {
   if (!r) return "error";
-  if (r.status === 403 || r.status === 404) return "denied";
+  if (r.status === 404) return "unavailable";
+  if (r.status === 403) return "denied";
   if (r.j?.ok) return "ok";
   if (/unsupported|unknown-instrument|eq-fo-only|bad-ticker/.test(String(r.j?.reason ?? ""))) return "unsupported";
   return "error";
@@ -87,7 +88,7 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
         const st = stateOf(r);
         setAlertsSt(st);
         if (st === "ok") setAlerts(Array.isArray(r!.j.alerts) ? r!.j.alerts.slice().reverse() : []);
-        else delay = st === "denied" || st === "unsupported" ? 120_000 : 60_000;
+        else delay = st === "denied" || st === "unavailable" || st === "unsupported" ? 120_000 : 60_000;
       }
       timer = setTimeout(tick, delay);
     };
@@ -113,7 +114,7 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
         const st = stateOf(r);
         setHi2St(st);
         if (st === "ok") setHi2({ metrics: r!.j.metrics ?? [], rows: r!.j.rows ?? [] });
-        else delay = st === "denied" || st === "unsupported" ? 10 * 60_000 : 2 * 60_000;
+        else delay = st === "denied" || st === "unavailable" || st === "unsupported" ? 10 * 60_000 : 2 * 60_000;
       }
       timer = setTimeout(tick, delay);
     };
@@ -125,6 +126,7 @@ export default function AlgoPanel({ inst, visible }: { inst: TerminalInstrument;
   }, [visible, isMoex, ticker]);
 
   if (!isMoex) return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.moexOnly")}</div>;
+  if (alertsSt === "unavailable" || hi2St === "unavailable") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="algo-note">{t("ap.panel.unavailable")}</div>;
   if (alertsSt === "denied" || hi2St === "denied") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]" data-testid="algo-note">{t(sessionStatus === "unauthenticated" ? "dg.guestOnly" : "ap.panel.denied")}</div>;
   if (alertsSt === "unsupported" && hi2St === "unsupported") return <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-[var(--tv3-muted)]">{t("ap.panel.unsupported")}</div>;
 

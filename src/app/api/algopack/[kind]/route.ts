@@ -8,7 +8,7 @@ import { clampFrom, loadAlerts, loadFutoi, loadHi2, loadSuperCandles, locate } f
      GET /api/algopack/supercandles?ticker=SBER&from=..&sets=ts,os,ob   tradestats / orderstats / obstats per 5-min bar
      GET /api/algopack/alerts?ticker=SBER&from=..                  Mega Alerts of the instrument
      GET /api/algopack/hi2?ticker=SBER&from=..                     HI2 concentration, daily
-   Times are `w`: Moscow wall clock read as UTC ms (see lib/algopack-parse.ts). ACCESS: admins only (or ALGOPACK_PUBLIC=1),
+   Times are `w`: Moscow wall clock read as UTC ms (see lib/algopack-parse.ts). ACCESS: signed-in users (admins only with ALGOPACK_PUBLIC=0),
    enforced here; the answers are private. Without the key every data route answers 404 and nothing leaves the server. */
 
 export const dynamic = "force-dynamic";

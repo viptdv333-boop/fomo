@@ -118,6 +118,8 @@ const adm = algopackPolicy({ role: "ADMIN" }, { enabled: true, publicFlag: false
 eq("admin stays allowed", guestGateAlgopack(adm, true, false), adm);
 const none = algopackPolicy(null, { enabled: true, publicFlag: false });
 eq("anonymous without ALGOPACK_PUBLIC stays denied", guestGateAlgopack(none, false, true).allowed, false);
+eq("default (no env): a guest is still denied by the gate", guestGateAlgopack(algopackPolicy(null, { enabled: true }), false, false).allowed, false);
+eq("default (no env): a signed-in user is allowed", guestGateAlgopack(algopackPolicy({ role: "USER" }, { enabled: true }), true, false).allowed, true);
 
 if (fails > 0) {
   console.log(`\n${fails} FAILED`);

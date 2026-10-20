@@ -6,7 +6,7 @@ import { resolveMoex } from "@/lib/moex-resolve";
 /* Live order book (depth ladder) of a MOEX instrument from ALGOPACK (online order books, Promo).
    GET /api/orderbook?secid=SBER   (a share, an exact futures contract, a generic futures ticker -> front contract, a currency pair)
    -> { ok, secid, board, ts, upd?, bids: [[price, qty], ...], asks: [[price, qty], ...] }  at most 50 levels a side.
-   ACCESS: admins only (or ALGOPACK_PUBLIC=1) — checked here, on the server. Everyone else gets 403 and never any data.
+   ACCESS: signed-in users (admins only with ALGOPACK_PUBLIC=0) — checked here, on the server. Everyone else gets 403/404 and never any data.
    Cached ~2 s upstream and rate limited per IP; the answer is private (never stored by a shared cache). */
 
 export const dynamic = "force-dynamic";

@@ -8,7 +8,7 @@ import type { TerminalInstrument } from "@/lib/terminal-data";
 
 /* «Стакан»: live depth ladder of a MOEX instrument (MOEX ALGOPACK online order books, Promo). Best N levels per side with
    volume bars, spread, mid price, imbalance; a click on a price copies it. Refreshed every 2.5 s while the panel is on screen.
-   The server (/api/orderbook) serves it to entitled requesters only (admins unless ALGOPACK_PUBLIC=1); everyone else gets a note. */
+   The server (/api/orderbook) serves it to signed-in users (admins only with ALGOPACK_PUBLIC=0); everyone else gets a note. */
 
 const POLL_MS = 2500;
 const LEVEL_CHOICES = [5, 10, 15, 20];
@@ -20,7 +20,7 @@ interface BookData {
   ts: number;
   upd?: string;
 }
-type Status = "loading" | "ok" | "empty" | "denied" | "unsupported" | "error";
+type Status = "loading" | "ok" | "empty" | "denied" | "unavailable" | "unsupported" | "error";
 
 function fmtQty(v: number): string {
   const a = Math.abs(v);
@@ -87,7 +87,8 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
         const res = await fetch(`/api/orderbook?secid=${encodeURIComponent(ticker)}`, { cache: "no-store" });
         if (stopped) return;
         if (res.status === 403 || res.status === 404) {
-          setStatus("denied");
+          // 404 = no ALGOPACK key on the server (the data is switched off), 403 = this account is not served
+          setStatus(res.status === 404 ? "unavailable" : "denied");
           // entitlement does not change within a session often: look again rarely
           delay = 60_000;
         } else if (res.status === 429) {
@@ -152,7 +153,9 @@ export default function OrderBookPanel({ inst, visible }: { inst: TerminalInstru
     ? t("ap.ob.moexOnly")
     : status === "denied"
       ? t(sessionStatus === "unauthenticated" ? "dg.guestOnly" : "ap.ob.denied")
-      : status === "unsupported"
+      : status === "unavailable"
+        ? t("ap.ob.unavailable")
+        : status === "unsupported"
         ? t("ap.ob.unsupported")
         : status === "error"
           ? t("ap.ob.error")

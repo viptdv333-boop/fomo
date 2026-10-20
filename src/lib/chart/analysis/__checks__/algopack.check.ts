@@ -239,7 +239,12 @@ async function main() {
   eq(algopackPolicy(admin).allowed, false, "env default: no key -> denied");
   process.env.ALGOPACK_KEY = KEY;
   eq(algopackPolicy(admin).allowed, true, "env default: key + admin -> allowed");
-  eq(algopackPolicy(user).allowed, false, "env default: key + user -> denied");
+  eq(algopackPolicy(user).allowed, true, "env default: key + signed-in user -> allowed (the tabs are a normal feature)");
+  for (const off of ["0", "false", "off", "admin", " 0 "]) {
+    process.env.ALGOPACK_PUBLIC = off;
+    eq(algopackPolicy(user).allowed, false, `kill switch ALGOPACK_PUBLIC=${JSON.stringify(off)}: user -> denied`);
+    eq(algopackPolicy(admin).allowed, true, `kill switch ALGOPACK_PUBLIC=${JSON.stringify(off)}: admin stays allowed`);
+  }
   process.env.ALGOPACK_PUBLIC = "1";
   eq(algopackPolicy(user).allowed, true, "env default: ALGOPACK_PUBLIC=1 -> allowed");
   delete process.env.ALGOPACK_PUBLIC;

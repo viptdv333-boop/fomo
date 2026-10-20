@@ -11,6 +11,9 @@ import { isTerminalSite } from "@/lib/site-mode";
 import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { localZone } from "@/lib/chart/settings";
 import CalendarPanel from "@/components/chart/calendar/CalendarPanel";
+import OrderBookPanel from "@/components/chart/OrderBookPanel";
+import AlgoPanel from "@/components/chart/AlgoPanel";
+import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { useFomoIdeas } from "@/components/chart/FomoPanel";
 import { useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
@@ -145,7 +148,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const quote = selected ? quotes[qKey(selected)] : undefined;
 
   // terminal site: «Список наблюдения | Календарь» (the calendar was a page of its own; ?panel=calendar opens it, see closedRouteRedirect)
-  const [seg, setSeg] = useState<"watch" | "cal">("watch");
+  const [seg, setSeg] = useState<"watch" | "cal" | "ob" | "algo">("watch");
   const [zone, setZone] = useState("UTC");
   useEffect(() => {
     if (!TERMINAL_SITE) return;
@@ -159,9 +162,14 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     setZone(saved || localZone());
   }, []);
   // the calendar segment stays (a ?panel=calendar deep link opens it here); only the repeated watchlist goes
-  const hideWatch = !!chart?.sideWatch && seg === "watch";
   // wide window: nothing but the chart and its own side panel (the calculator has its dock tab, the watchlist is in the panel): no link rows under the chart
   const wide = !!chart?.sideWatch;
+  // «Стакан» / «ALGOPACK» segments (narrow window; on a wide one they are tabs of the chart's side panel): only when the server serves
+  // ALGOPACK data to this user and the open symbol is a MOEX one, so the segment never opens onto a «нет доступа» note
+  const algoAllowed = useAlgopackAllowed();
+  const algoSegs = algoAllowed === true && !wide && selected?.source === "moex";
+  const effSeg: "watch" | "cal" | "ob" | "algo" = (seg === "ob" || seg === "algo") && !algoSegs ? "watch" : seg === "cal" && !TERMINAL_SITE ? "watch" : seg;
+  const hideWatch = wide && effSeg === "watch";
   const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
@@ -428,24 +436,46 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         )}
 
         {/* the chart's own side panel already shows the watchlist (wide window): no second list under the chart; narrow window or panel hidden: this one */}
-        {!hideWatch && (TERMINAL_SITE ? (
-          <div className="app-term-seg" role="tablist">
-            <button type="button" role="tab" aria-selected={seg === "watch"} data-on={seg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
-              {t("appui.term.watch")}
+        {!hideWatch && (TERMINAL_SITE || algoSegs ? (
+          <div className="app-term-seg" role="tablist" data-n={1 + (TERMINAL_SITE ? 1 : 0) + (algoSegs ? 2 : 0)}>
+            <button type="button" role="tab" aria-selected={effSeg === "watch"} data-on={effSeg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
+              {algoSegs ? t("mnav.watchlist") : t("appui.term.watch")}
             </button>
-            <button type="button" role="tab" aria-selected={seg === "cal"} data-on={seg === "cal" ? "1" : undefined} onClick={() => setSeg("cal")}>
-              {t("nav.calendar")}
-            </button>
+            {TERMINAL_SITE && (
+              <button type="button" role="tab" aria-selected={effSeg === "cal"} data-on={effSeg === "cal" ? "1" : undefined} onClick={() => setSeg("cal")}>
+                {t("nav.calendar")}
+              </button>
+            )}
+            {algoSegs && (
+              <>
+                <button type="button" role="tab" aria-selected={effSeg === "ob"} data-on={effSeg === "ob" ? "1" : undefined} data-seg-ob onClick={() => setSeg("ob")}>
+                  {t("shell.tab.orderbook")}
+                </button>
+                <button type="button" role="tab" aria-selected={effSeg === "algo"} data-on={effSeg === "algo" ? "1" : undefined} data-seg-algo onClick={() => setSeg("algo")}>
+                  {t("ap.seg.algo")}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="app-term-wtitle">{t("appui.term.watch")}</div>
         ))}
-        {TERMINAL_SITE && seg === "cal" && (
+        {TERMINAL_SITE && effSeg === "cal" && (
           <div className="tv3 app-term-cal" data-app-calendar>
             <CalendarPanel zone={zone} visible />
           </div>
         )}
-        {!hideWatch && <div className="app-term-watch" hidden={TERMINAL_SITE && seg === "cal"}>
+        {algoSegs && selected && effSeg === "ob" && (
+          <div className="tv3 app-term-cal" data-app-orderbook>
+            <OrderBookPanel inst={selected} visible />
+          </div>
+        )}
+        {algoSegs && selected && effSeg === "algo" && (
+          <div className="tv3 app-term-cal" data-app-algopack>
+            <AlgoPanel inst={selected} visible />
+          </div>
+        )}
+        {!hideWatch && <div className="app-term-watch" hidden={effSeg !== "watch"}>
           {watchlist.items.length === 0 ? (
             <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
           ) : (

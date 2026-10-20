@@ -9,6 +9,7 @@ const rows: [string, string, string, string][] = [
 
   /* right panel tabs */
   ["shell.tab.orderbook", "Стакан", "Order book", "订单簿"],
+  ["ap.seg.algo", "ALGOPACK", "ALGOPACK", "ALGOPACK"],
   ["shell.tab.algo", "ALGOPACK: алерты и концентрация", "ALGOPACK: alerts & concentration", "ALGOPACK: 预警与集中度"],
 
   /* order book panel */
@@ -27,10 +28,11 @@ const rows: [string, string, string, string][] = [
   ["ap.ob.copyFail", "Не удалось скопировать", "Could not copy", "无法复制"],
   ["ap.ob.copy", "Нажмите на цену, чтобы скопировать", "Click a price to copy it", "点击价格即可复制"],
   ["ap.ob.loading", "Загрузка стакана…", "Loading the order book…", "正在加载订单簿…"],
-  ["ap.ob.empty", "Стакан пуст (биржа закрыта?)", "The book is empty (market closed?)", "订单簿为空 (休市?)"],
-  ["ap.ob.denied", "Стакан доступен только администраторам (подписка MOEX ALGOPACK Promo)", "The order book is available to admins only (MOEX ALGOPACK Promo subscription)", "订单簿仅对管理员开放 (MOEX ALGOPACK Promo 订阅)"],
+  ["ap.ob.empty", "Стакан пуст (торги закрыты?)", "The book is empty (market closed?)", "订单簿为空 (休市?)"],
+  ["ap.ob.denied", "Стакан недоступен для этой учётной записи", "The order book is not available for this account", "此账户无法使用订单簿"],
+  ["ap.ob.unavailable", "Стакан сейчас не подключён", "The order book is not connected right now", "订单簿当前未接入"],
   ["ap.ob.unsupported", "Для этого инструмента стакана нет", "No order book for this instrument", "该品种没有订单簿"],
-  ["ap.ob.error", "Не удалось получить стакан", "Could not load the order book", "无法获取订单簿"],
+  ["ap.ob.error", "Стакан временно недоступен, попробуем ещё раз", "The order book is temporarily unavailable, retrying", "订单簿暂时不可用，稍后重试"],
   ["ap.ob.moexOnly", "Стакан есть только у инструментов Мосбиржи", "The order book is available for MOEX instruments only", "仅支持莫斯科交易所品种的订单簿"],
 
   /* ALGOPACK panel */
@@ -39,10 +41,11 @@ const rows: [string, string, string, string][] = [
   ["ap.panel.hi2", "Концентрация HI2", "HI2 concentration", "HI2 集中度"],
   ["ap.panel.hi2Empty", "Нет данных HI2", "No HI2 data", "没有 HI2 数据"],
   ["ap.panel.loading", "Загрузка…", "Loading…", "加载中…"],
-  ["ap.panel.denied", "Данные ALGOPACK доступны только администраторам (подписка Promo)", "ALGOPACK data are available to admins only (Promo subscription)", "ALGOPACK 数据仅对管理员开放 (Promo 订阅)"],
+  ["ap.panel.denied", "Данные ALGOPACK недоступны для этой учётной записи", "ALGOPACK data are not available for this account", "此账户无法使用 ALGOPACK 数据"],
+  ["ap.panel.unavailable", "Данные ALGOPACK сейчас не подключены", "ALGOPACK data are not connected right now", "ALGOPACK 数据当前未接入"],
   ["ap.panel.unsupported", "Для этого инструмента данных ALGOPACK нет", "No ALGOPACK data for this instrument", "该品种没有 ALGOPACK 数据"],
   ["ap.panel.moexOnly", "ALGOPACK есть только у инструментов Мосбиржи", "ALGOPACK covers MOEX instruments only", "ALGOPACK 仅覆盖莫斯科交易所品种"],
-  ["ap.panel.error", "Не удалось загрузить данные", "Could not load the data", "无法加载数据"],
+  ["ap.panel.error", "Данные временно недоступны, попробуем ещё раз", "Data are temporarily unavailable, retrying", "数据暂时不可用，稍后重试"],
   ["ap.panel.ref", "Исторически после похожих алертов, изменение цены: через 5 мин {m5}%, 15 мин {m15}%, 1 час {h1}%", "Historically after similar alerts, price change: 5 min {m5}%, 15 min {m15}%, 1 h {h1}%", "历史上类似预警之后的价格变化: 5分钟 {m5}%, 15分钟 {m15}%, 1小时 {h1}%"],
   ["ap.panel.value", "значение", "value", "数值"],
   ["ap.panel.threshold", "порог", "threshold", "阈值"],
@@ -55,7 +58,7 @@ const rows: [string, string, string, string][] = [
 
   /* notes painted into the panes of the indicators */
   ["ap.note.loading", "ALGOPACK: загрузка…", "ALGOPACK: loading…", "ALGOPACK: 加载中…"],
-  ["ap.note.denied", "ALGOPACK: нет доступа (данные Promo — только администраторам)", "ALGOPACK: no access (Promo data are for admins only)", "ALGOPACK: 无权限 (Promo 数据仅限管理员)"],
+  ["ap.note.denied", "ALGOPACK: нет доступа для этой учётной записи", "ALGOPACK: no access for this account", "ALGOPACK: 此账户无权限"],
   ["ap.note.none", "ALGOPACK: нет данных по инструменту за период", "ALGOPACK: no data for this instrument / period", "ALGOPACK: 该品种/时段没有数据"],
   ["ap.note.unsupported", "ALGOPACK: для этого инструмента недоступно", "ALGOPACK: not available for this instrument", "ALGOPACK: 该品种不可用"],
   ["ap.note.error", "ALGOPACK: не удалось загрузить данные", "ALGOPACK: could not load the data", "ALGOPACK: 无法加载数据"],

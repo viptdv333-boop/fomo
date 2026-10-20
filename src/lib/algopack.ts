@@ -6,8 +6,8 @@
  * `Authorization` header and is never logged, returned, cached or written into a URL / error message. Every `reason`
  * string returned by this module is built from fixed words and status codes only.
  *
- * LICENSING: this module knows nothing about users. The caller MUST have checked `algopack-access.ts` (admin only unless
- * ALGOPACK_PUBLIC=1) before it hands anything from here to a client. The in-memory caches below are keyed by the upstream
+ * LICENSING: this module knows nothing about users. The caller MUST have checked `algopack-access.ts` (signed-in users; admins only
+ * with ALGOPACK_PUBLIC=0) before it hands anything from here to a client. The in-memory caches below are keyed by the upstream
  * URL and are reachable only through privileged code paths, so delayed (public) and online (privileged) data never mix.
  *
  * Fails soft: `apGet` never throws, it returns `{ ok: false, data: null, reason }`. No key -> `reason: "no-key"` and no
@@ -49,10 +49,14 @@ export function algopackEnabled(): boolean {
   return typeof k === "string" && k.trim().length > 0;
 }
 
-/** ALGOPACK_PUBLIC=1: the owner allows the data for every visitor (own licensing decision). */
+/**
+ * Who gets the ALGOPACK data (order book, ALGOPACK tab, FUTOI / SuperCandles / Mega Alerts / HI2, online candles): every SIGNED-IN user by
+ * default (the owner's decision; visitors without a session never get it, see guest-delay.ts). Kill switch: ALGOPACK_PUBLIC=0 (or
+ * false / off / admin) puts it back to site admins only; no ALGOPACK_KEY switches the whole thing off. ALGOPACK_PUBLIC=1 is the same as unset.
+ */
 export function algopackPublicFlag(): boolean {
-  const v = process.env.ALGOPACK_PUBLIC;
-  return v === "1" || v === "true";
+  const v = (process.env.ALGOPACK_PUBLIC ?? "").trim().toLowerCase();
+  return !(v === "0" || v === "false" || v === "off" || v === "admin");
 }
 
 /**

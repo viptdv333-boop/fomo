@@ -12,6 +12,8 @@ import { fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
 import ObjectTree from "./ObjectTree";
 import OrderBookPanel from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
+import { effectiveTab, filterTabs } from "@/lib/algopack-tabs";
+import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { AlertsPanelView, OwnAlertsPanel } from "./AlertsPanel";
 import type { AlertsApi } from "./useAlerts";
 import type { DrawingsController } from "@/lib/chart/drawings/controller";
@@ -67,7 +69,7 @@ const ALL_TABS: { id: PanelTab; key: string; titleKey?: string }[] = [
 ];
 // terminal.fomo.spot has no board of its own: its «Идеи» tab is «Идеи FOMO» (the ideas of fomo.spot for the open symbol, FomoPanel.tsx)
 const TERMINAL_SITE = isTerminalSite();
-const TABS = TERMINAL_SITE ? ALL_TABS.map((x) => (x.id === "ideas" ? { ...x, titleKey: "termsite.ideas.title" } : x)) : ALL_TABS;
+const SITE_TABS = TERMINAL_SITE ? ALL_TABS.map((x) => (x.id === "ideas" ? { ...x, titleKey: "termsite.ideas.title" } : x)) : ALL_TABS;
 
 /* ───────────── batch quotes ───────────── */
 
@@ -747,9 +749,13 @@ interface Props {
   appPage?: boolean;
 }
 
-export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone, alertsApi, onOpenAlerts, appPage }: Props) {
+export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, onTab, onCollapse, onCloseMobile, selected, onSelect, drawings, indicators, calendarZone, alertsApi, onOpenAlerts, appPage }: Props) {
   const { t } = useT();
   const cat = categoryOf(selected);
+  // «Стакан» and «ALGOPACK» are there only when the server serves ALGOPACK data to this requester (no key / kill switch / guest: no tab)
+  const algoAllowed = useAlgopackAllowed();
+  const TABS = useMemo(() => filterTabs(SITE_TABS, algoAllowed), [algoAllowed]);
+  const tab = effectiveTab<PanelTab>(tabProp, algoAllowed, "watchlist");
 
   const watchlist = useWatchlist();
   // the selected symbol may not be in the list; its quote is still needed for the info card
@@ -759,7 +765,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab, onTab, onCo
   }, [watchlist.items, selected]);
   const quotes = useBatchQuotes(instruments, visible && instruments.length > 0);
   const quote = quotes[qKey(selected)];
-  const cur = TABS.find((x) => x.id === tab) ?? TABS[0];
+  const cur = SITE_TABS.find((x) => x.id === tab) ?? SITE_TABS[0];
   const createAlert = () => onOpenAlerts?.();
 
   return (

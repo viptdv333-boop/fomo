@@ -64,9 +64,10 @@ async function main() {
 
   /* policy sanity (pure) */
   const admin = algopackPolicy({ role: "ADMIN" });
-  const anon = algopackPolicy(null);
-  if (admin.allowed && !anon.allowed === !(process.env.ALGOPACK_PUBLIC === "1" || process.env.ALGOPACK_PUBLIC === "true")) line("PASS", "access policy", `admin: allowed, anonymous: ${anon.allowed ? "allowed (ALGOPACK_PUBLIC=1)" : "denied"}`);
-  else line("FAIL", "access policy", `admin=${admin.allowed} anonymous=${anon.allowed}`);
+  const user = algopackPolicy({ role: "USER" });
+  const killed = ["0", "false", "off", "admin"].includes((process.env.ALGOPACK_PUBLIC ?? "").trim().toLowerCase());
+  if (admin.allowed && user.allowed === !killed) line("PASS", "access policy", `admin: allowed, signed-in user: ${user.allowed ? "allowed (default)" : "denied (ALGOPACK_PUBLIC kill switch)"}`);
+  else line("FAIL", "access policy", `admin=${admin.allowed} user=${user.allowed}`);
 
   const shareId = arg("secid", "SBER");
   const futId = arg("fut", "MIX");
