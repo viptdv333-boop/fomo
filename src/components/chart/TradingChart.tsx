@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useSession } from "next-auth/react";
 import { ChartEngine } from "@/lib/chart/engine";
 import { DARK_THEME, LIGHT_THEME, type Candle, type ChartType } from "@/lib/chart/types";
 import { formatPrice, intervalToMs } from "@/lib/chart/format";
@@ -43,10 +44,13 @@ import { DESIGN_PATHS, DrawIcon, panelTabIcon, ui } from "@/components/chart/ico
 import { CS_ICONS } from "@/components/chart/icons-cs";
 import { aggregateCandles, formatInterval, intervalPlan, isSecondsInterval, isValidInterval, secondsIntervalMs, secondsSupported, usableInterval } from "@/lib/chart/intervals";
 import { BybitTradeStream, foldTrades, type StreamState } from "@/lib/chart/seconds-feed";
+import { MoexSecondsFeed, useMoexSeconds } from "@/lib/chart/moex-seconds-client";
+import { SecondsAgg, type SecReason } from "@/lib/moex-seconds";
+import { setMoexSeconds } from "@/lib/chart/timeframes";
 import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
-import { gateQuote, isIntraday, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, type LiveMemo } from "@/lib/chart/live-bar";
+import { gateQuote, isIntraday, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, secondsBasis, type LiveMemo } from "@/lib/chart/live-bar";
 import { candleKey, clockLabel, freshness, peekBars, readBars, writeBars, type BarsResult } from "@/lib/chart/candle-cache";
 import { useOnline } from "@/lib/offline/useOnline";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
@@ -295,6 +299,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [secState, setSecState] = useState<StreamState | null>(null);
   /** live seconds: the first trade has opened a bar */
   const [secBars, setSecBars] = useState(false);
+  /** MOEX seconds: what to tell instead of / next to the bars (i18n key): loading, no trades in the last hour, the server's refusal */
+  const [secMsg, setSecMsg] = useState<string | null>(null);
+  /** MOEX seconds exist for this viewer (the server's answer; null = not known yet) */
+  const moexSec = useMoexSeconds(source);
+  const { data: authSession, status: sessionStatus } = useSession();
+  const sessionUserId = (authSession?.user as { id?: string } | undefined)?.id;
   /** spot FX: provider / volume kind of the bars on the chart (drives the "no exchange volume" badge) */
   const [fxInfo, setFxInfo] = useState<FxInfo | null>(null);
   const [autoScale, setAutoScale] = useState(true);
@@ -844,14 +854,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const usable = usableInterval(prefs.interval, source);
     if (usable !== prefs.interval) update({ interval: usable });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefsLoaded, source, prefs.interval]);
+  }, [prefsLoaded, source, prefs.interval, moexSec]);
 
   /* live second candles: the public trade stream of the exchange folded into N-second bars, from the moment the chart is open (no history exists) */
   useEffect(() => {
     const iv = prefs.interval;
     setSecState(null);
     setSecBars(false);
-    if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || !secondsSupported(source)) return;
+    if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || source !== "bybit") return;
     const periodMs = secondsIntervalMs(iv);
     const dataKey = `${source}|${ticker}|${iv}`;
     let lastRefresh = 0;
@@ -896,6 +906,101 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       setSecState(null);
     };
   }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd]);
+
+  /* live second candles of MOEX shares and futures: the last hour of 1-second bars comes from the server (T-Invest trades, folded there),
+     then the socket keeps adding; the chart's N-second bars are merged from them here. No bar for a second without trades. */
+  useEffect(() => {
+    if (source !== "moex") return;
+    const iv = prefs.interval;
+    setSecState(null);
+    setSecBars(false);
+    setSecMsg(null);
+    if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || moexSec !== true) return;
+    if (sessionStatus !== "authenticated" || !sessionUserId) return;
+    const periodMs = secondsIntervalMs(iv);
+    const dataKey = `${source}|${ticker}|${iv}`;
+    const agg = new SecondsAgg(periodMs, secondsBasis(source).offsetMs);
+    let stopped = false;
+    let lastRefresh = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let waitTimer: ReturnType<typeof setTimeout> | undefined;
+    setSecMsg("chart.sec.loadingMoex");
+    const refreshSoon = () => {
+      const wait = 250 - (Date.now() - lastRefresh);
+      if (wait <= 0) {
+        lastRefresh = Date.now();
+        refreshInd();
+      } else if (!timer) {
+        timer = setTimeout(() => {
+          timer = undefined;
+          lastRefresh = Date.now();
+          refreshInd();
+        }, wait);
+      }
+    };
+    /** the chart still shows the previous symbol / interval until its (empty) series is set by the data effect: wait for it */
+    const whenReady = (fn: (engine: ChartEngine) => void, tries = 0) => {
+      if (stopped) return;
+      const engine = engineRef.current;
+      if (engine && dataKeyRef.current === dataKey) return fn(engine);
+      if (tries < 40) waitTimer = setTimeout(() => whenReady(fn, tries + 1), 150);
+    };
+    const feed = new MoexSecondsFeed(ticker, sessionUserId, {
+      onSnapshot: (snap) =>
+        whenReady((engine) => {
+          agg.setSince(snap.since);
+          const bars = agg.apply(snap.bars);
+          const cs = engine.getCandles();
+          if (cs.length === 0) {
+            if (bars.length > 0) engine.setData(bars);
+          } else {
+            // a re-subscription after a reconnect: only the recent bars can have changed, the view stays where the person left it
+            const from = cs[cs.length - 1].t - 20 * periodMs;
+            for (const b of bars) if (b.t >= from) engine.seedCandle(b);
+          }
+          setSecMsg(bars.length > 0 || engine.getCandles().length > 0 ? null : "chart.sec.none");
+          if (bars.length > 0) {
+            setEmpty(false);
+            setSecBars(true);
+            setDataVersion((v) => v + 1);
+          }
+          refreshInd();
+        }),
+      onBars: (wire) =>
+        whenReady((engine) => {
+          const bars = agg.apply(wire);
+          if (bars.length === 0) return;
+          const hadBars = engine.getCandles().length > 0;
+          for (const b of bars) engine.seedCandle(b);
+          if (!hadBars) {
+            setEmpty(false);
+            setSecBars(true);
+            setSecMsg(null);
+            setDataVersion((v) => v + 1);
+          }
+          refreshSoon();
+        }),
+      onState: setSecState,
+      onRefused: (reason: SecReason) => {
+        if (stopped) return;
+        // switched off / not for this viewer: the group goes away and the chart returns to one minute
+        if (reason === "off" || reason === "guest") {
+          setMoexSeconds(false);
+          return;
+        }
+        setSecMsg(`chart.sec.r.${reason}`);
+      },
+    });
+    feed.start();
+    return () => {
+      stopped = true;
+      feed.stop();
+      clearTimeout(timer);
+      clearTimeout(waitTimer);
+      setSecState(null);
+      setSecMsg(null);
+    };
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
 
   /* order flow (footprint, volume profile, VWAP / CVD from trades): fetches the trades of what the chart shows */
   const flowClientRef = useRef<OrderFlowClient | null>(null);
@@ -1613,11 +1718,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             {isSecondsInterval(prefs.interval) && secondsSupported(source) && !loading && (
               <>
                 <div className={`absolute ${appPage ? "bottom-8" : "top-7"} left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)] whitespace-nowrap`} data-seconds-note>
-                  {t("chart.sec.note")}
+                  {t(source === "moex" ? "chart.sec.noteMoex" : "chart.sec.note")}
                   {secState === "error" ? ` · ${t("chart.sec.offline")}` : secState === "connecting" ? ` · ${t("chart.sec.connecting")}` : ""}
+                  {secBars && secMsg ? ` · ${t(secMsg)}` : ""}
                 </div>
                 {!secBars && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t("chart.sec.wait")}</div>
+                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-[var(--tv3-muted)] pointer-events-none" data-seconds-wait>
+                    {t(secMsg ?? "chart.sec.wait")}
+                  </div>
                 )}
               </>
             )}

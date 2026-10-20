@@ -13,7 +13,11 @@ import {
   parseTypedInterval,
   pickerIntervals,
   secondsIntervalMs,
+  secondsPending,
   secondsSupported,
+  getMoexSeconds,
+  setMoexSeconds,
+  subscribeMoexSeconds,
   serverIntervals,
   timeframeById,
   timeframeLabel,
@@ -113,9 +117,26 @@ eq("every default favourite is in the table", DEFAULT_FAVORITE_INTERVALS.every((
 
 // --- seconds: only where a trade stream exists, never from the API
 eq("seconds plan is live", timeframePlan("15s", "bybit"), { base: "15s", ratio: 1, ms: 0, live: true });
-eq("seconds are offered for Bybit only", [secondsSupported("bybit"), secondsSupported("moex"), secondsSupported("fmp"), secondsSupported("forex")], [true, false, false, false]);
-eq("picker list: Bybit starts with seconds, MOEX does not have them", [pickerIntervals("bybit").slice(0, 6), pickerIntervals("moex").some(isSecondsInterval), pickerIntervals("moex").length], [["1s", "5s", "10s", "15s", "30s", "1"], false, MENU_INTERVALS.length]);
-eq("a seconds chart on a symbol without a stream falls back to 1m", [usableInterval("15s", "moex"), usableInterval("15s", "bybit"), usableInterval("45", "moex")], ["1", "15s", "45"]);
+// MOEX seconds depend on the server's answer (/api/moex-seconds): null = not asked yet, false = off / no token / guest, true = served
+eq("MOEX flag starts unknown", getMoexSeconds(), null);
+eq("seconds are offered for Bybit only until the server says MOEX has them", [secondsSupported("bybit"), secondsSupported("moex"), secondsSupported("fmp"), secondsSupported("forex")], [true, false, false, false]);
+eq("picker list: Bybit starts with seconds, MOEX does not have them (yet)", [pickerIntervals("bybit").slice(0, 6), pickerIntervals("moex").some(isSecondsInterval), pickerIntervals("moex").length], [["1s", "5s", "10s", "15s", "30s", "1"], false, MENU_INTERVALS.length]);
+eq("a saved seconds timeframe survives the moment the MOEX answer is unknown, and goes back to 1m once the server says no", [usableInterval("15s", "moex"), secondsPending("moex"), secondsPending("bybit")], ["15s", true, false]);
+{
+  let ticks = 0;
+  const off = subscribeMoexSeconds(() => ticks++);
+  setMoexSeconds(false);
+  eq("server says no: seconds fall back to 1m on MOEX, Bybit unchanged", [usableInterval("15s", "moex"), usableInterval("15s", "bybit"), usableInterval("45", "moex"), secondsSupported("moex"), secondsPending("moex")], ["1", "15s", "45", false, false]);
+  setMoexSeconds(true);
+  eq("server says yes: MOEX (and only MOEX besides Bybit) has the seconds group", [secondsSupported("moex"), secondsSupported("fmp"), secondsSupported("forex"), usableInterval("15s", "moex")], [true, false, false, "15s"]);
+  eq("picker list for MOEX starts with the seconds, like Bybit", [pickerIntervals("moex").slice(0, 6), pickerIntervals("moex").length], [["1s", "5s", "10s", "15s", "30s", "1"], MENU_INTERVALS.length + SECOND_INTERVALS.length]);
+  eq("typed 30s / 15с are accepted on MOEX, not on FMP", [parseTypedInterval("30s", "moex"), parseTypedInterval("15с", "moex"), parseTypedInterval("30s", "fmp")], ["30s", "15s", null]);
+  eq("subscribers were told about each change", ticks, 2);
+  setMoexSeconds(true);
+  eq("the same answer again does not notify", ticks, 2);
+  off();
+  setMoexSeconds(null);
+}
 eq("seconds helpers", [isSecondsInterval("15s"), isSecondsInterval("15"), secondsIntervalMs("30s"), secondsIntervalMs("30"), intervalToMs("15s")], [true, false, 30_000, 0, 15_000]);
 
 // --- the merge: bars start with the session (the first candle of each day), volume and extremes are kept

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
 import { CS_ICONS } from "./icons-cs";
+import { useMoexSeconds } from "@/lib/chart/moex-seconds-client";
 import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, secondsSupported } from "@/lib/chart/intervals";
 
 interface Props {
@@ -26,6 +27,7 @@ function group(id: string): "s" | "m" | "h" | "d" {
 /** Favourite intervals as buttons plus a dropdown with every interval, stars and a custom interval form. */
 export default function IntervalControl({ interval, onInterval, favorites, onFavorites, source = "" }: Props) {
   const { t } = useT();
+  useMoexSeconds(source); // MOEX: the «Секунды» group appears when the server says the feed is there
   const [num, setNum] = useState("");
   const [unit, setUnit] = useState<"m" | "h">("m");
 

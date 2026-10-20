@@ -11,6 +11,20 @@ import { intervalPlan } from "./intervals";
 export const MSK_MS = 3 * 3_600_000;
 export const DAY_MS = 86_400_000;
 
+/**
+ * Time basis of a second-candle chart. Seconds have no server candles to read the server's zone from, so the basis is fixed: chart time = real UTC ms
+ * + offsetMs, with the MOEX wall clock (Moscow, +3 h all year) for MOEX and no server-zone term (tzMs 0); the labels then read the exchange clock.
+ * The same numbers the minute charts end up with (their offset is MSK_MS - tzMs).
+ */
+export function secondsBasis(source: string): { tzMs: number; offsetMs: number } {
+  return { tzMs: 0, offsetMs: source === "moex" ? MSK_MS : 0 };
+}
+
+/** Start (chart time) of the N-second bar a trade at real UTC `utcMs` belongs to: buckets follow the exchange clock, a multiple of N since midnight. */
+export function secondsBucket(utcMs: number, periodMs: number, source: string): number {
+  return Math.floor((utcMs + secondsBasis(source).offsetMs) / periodMs) * periodMs;
+}
+
 /** a quote further than this from the newest close must be confirmed by the next one before it is drawn (one bad print must not stretch a bar) */
 export const JUMP_FRACTION = 0.03;
 

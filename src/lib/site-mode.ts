@@ -185,6 +185,7 @@ const TERMINAL_API_PREFIX = [
   "contracts",
   "orderbook",
   "orderflow",
+  "moex-seconds", // second candles of MOEX instruments: availability (the feed itself is on the socket)
   "algopack",
   "futures", // the risk calculator's contract specs (live MOEX ISS, no database): /api/futures/spec
   "news",

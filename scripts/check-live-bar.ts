@@ -1,7 +1,7 @@
 /* The live (forming) bar of the terminal chart (src/lib/chart/live-bar.ts): which bar a quote belongs to on every interval, rollover at the period boundary
    (MOEX clock, aggregated intervals), the quote kept over a refreshed bar, the retry pause, the «delayed» mark, the ISS trade lag.
    Run: npx tsx scripts/check-live-bar.ts   (exit code 1 on a failed assertion) */
-import { DAY_MS, MSK_MS, bucketStartWall, gateQuote, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, type LiveMemo } from "../src/lib/chart/live-bar";
+import { DAY_MS, MSK_MS, bucketStartWall, gateQuote, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, secondsBasis, secondsBucket, type LiveMemo } from "../src/lib/chart/live-bar";
 import { tradeLag } from "../src/lib/moex-resolve";
 import type { Candle } from "../src/lib/chart/types";
 
@@ -36,6 +36,14 @@ eq("Y: January 1st", moex("Y", bar(wall("2026-01-01T00:00:00"), 1, 1, 1, 1)), { 
 // --- the server's zone is not UTC (tzMs +3 h): candle times are wall - 3 h, the bucket follows
 eq("server zone +3: D bucket is the wall midnight in the server basis", moex("D", bar(1, 1, 1, 1, 1), NOW, MSK_MS), { kind: "bar", t: wall("2026-10-13T00:00:00") - MSK_MS });
 eq("server zone +3: M5", moex("5", bar(1, 1, 1, 1, 1), NOW, MSK_MS), { kind: "bar", t: wall("2026-10-13T17:10:00") - MSK_MS });
+
+// --- second candles: the chart basis is fixed (no server candles to read a zone from) and buckets follow the exchange clock
+eq("seconds basis: MOEX is the Moscow wall clock, others UTC, no server-zone term", [secondsBasis("moex"), secondsBasis("bybit")], [{ tzMs: 0, offsetMs: MSK_MS }, { tzMs: 0, offsetMs: 0 }]);
+eq("the minute charts end up with the same MOEX offset (MSK_MS - tzMs, tzMs 0)", secondsBasis("moex").offsetMs, MSK_MS - 0);
+eq("a trade at 14:10:37.9 UTC = 17:10:37 Moscow: the 15s bar starts 17:10:30 wall", secondsBucket(utc("2026-10-13T14:10:37") + 900, 15_000, "moex"), wall("2026-10-13T17:10:30"));
+eq("30s bucket at the minute edge", [secondsBucket(utc("2026-10-13T14:10:29") + 999, 30_000, "moex"), secondsBucket(utc("2026-10-13T14:10:30"), 30_000, "moex")], [wall("2026-10-13T17:10:00"), wall("2026-10-13T17:10:30")]);
+eq("Bybit seconds are on the UTC grid", secondsBucket(utc("2026-10-13T14:10:37"), 10_000, "bybit"), utc("2026-10-13T14:10:30"));
+eq("the trade across Moscow midnight (21:00 UTC) opens the new day's bar", secondsBucket(utc("2026-10-12T21:00:01"), 5_000, "moex"), wall("2026-10-13T00:00:00"));
 
 // --- the Moscow day starts at 21:00 UTC: 23:30 UTC on the 12th is already the 13th in Moscow
 eq("D rolls over at Moscow midnight", moex("D", bar(wall("2026-10-12T00:00:00"), 1, 1, 1, 1), utc("2026-10-12T21:00:05")), { kind: "bar", t: wall("2026-10-13T00:00:00") });

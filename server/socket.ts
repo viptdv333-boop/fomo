@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { PrismaClient } from "@prisma/client";
 import { priceStreamer } from "./price-streamer";
+import { moexSeconds } from "./moex-trades";
 import { startAlertScheduler } from "./alert-scheduler";
 import { startSubscriptionExpiryNotices } from "./subscription-expiry";
 import { startSubscriptionSweep } from "./subscription-sweep";
@@ -41,6 +42,7 @@ export function initSocket(httpServer: HTTPServer) {
 
   // Store globally
   globalForIO.io = io;
+  moexSeconds.attach(io);
 
   io.use(async (socket, next) => {
     const userId = socket.handshake.auth.userId;
@@ -91,6 +93,28 @@ export function initSocket(httpServer: HTTPServer) {
         subscribedTickers.delete(ticker);
       }
       priceStreamer.unsubscribe(socket.id, tickers);
+    });
+
+    // MOEX second candles (T-Invest tape of trades, server/moex-trades.ts). Signed-in users only (the socket handshake already requires an
+    // APPROVED user: real-time MOEX data is not served to guests). One ack with the last hour of 1-second bars, then "seconds_bars" updates
+    // to the instrument's room. At most 10 subscribe calls per 10 seconds per socket.
+    let secCalls: number[] = [];
+    socket.on("seconds_subscribe", async (payload: { ticker?: unknown } | undefined, ack?: (r: unknown) => void) => {
+      if (typeof ack !== "function") return;
+      const now = Date.now();
+      secCalls = secCalls.filter((t) => now - t < 10_000);
+      if (secCalls.length >= 10) return ack({ ok: false, reason: "limit" });
+      secCalls.push(now);
+      try {
+        ack(await moexSeconds.subscribe(socket, payload?.ticker));
+      } catch (e) {
+        console.warn("[moex-seconds] subscribe failed:", (e as Error)?.name ?? "error");
+        ack({ ok: false, reason: "error" });
+      }
+    });
+
+    socket.on("seconds_unsubscribe", (payload: { key?: unknown } | undefined) => {
+      moexSeconds.unsubscribe(socket, payload?.key);
     });
 
     socket.on("join_room", async (roomId: string) => {
@@ -205,6 +229,7 @@ export function initSocket(httpServer: HTTPServer) {
 
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.data.displayName}`);
+      moexSeconds.dropSocket(socket.id);
       // Cleanup price subscriptions
       if (subscribedTickers.size > 0) {
         priceStreamer.unsubscribe(socket.id, [...subscribedTickers]);

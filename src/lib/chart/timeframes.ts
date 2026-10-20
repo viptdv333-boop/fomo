@@ -11,8 +11,10 @@
                           the evening session starts its own bar at 19:00 / 19:05);
                   Bybit   epoch UTC, the day is 00:00 UTC, which is also the grid Bybit uses for its own 2h / 4h / 6h / 12h bars;
                   FMP / FX  as the data layer delivers (UTC epoch, the first bar of the UTC day).
-     live       seconds: no upstream has second history, the bars are built in the browser from the live trade stream, from the moment the chart
-                is opened (crypto only: Bybit publicTrade). Never faked from minute bars. */
+     live       seconds: no upstream serves second candles, they are folded from trades and never faked from minute bars:
+                  Bybit   in the browser from the public trade stream, from the moment the chart is opened (no history);
+                  MOEX    the T-Invest tape of trades, folded on the server (server/moex-trades.ts): the last hour as history, then live over the
+                          socket. Offered only when the server says so (`setMoexSeconds`, from /api/moex-seconds: token present, MOEX_SECONDS not 0, signed in). */
 
 export type TfGroup = "s" | "m" | "h" | "d";
 export type TfLocale = "ru" | "en" | "cn";
@@ -143,9 +145,33 @@ export function isNativeInterval(id: string, source: string): boolean {
   return (NATIVE[source] ?? COMMON_NATIVE).includes(id);
 }
 
-/** Seconds are built live from a trade stream: only where there is one (Bybit spot / perpetual / inverse). */
+/* MOEX seconds exist only when the server can serve them (a T-Invest token, the kill switch MOEX_SECONDS off, a signed-in viewer):
+   the client asks /api/moex-seconds once and tells the answer here. null = not asked yet (nothing is offered, but a saved seconds
+   timeframe is not thrown away either). A plain module-level flag, like a feature switch: useMoexSeconds() (moex-seconds-client.ts) re-renders on a change. */
+let moexSecondsFlag: boolean | null = null;
+const moexSecondsListeners = new Set<() => void>();
+
+export function setMoexSeconds(on: boolean | null): void {
+  if (on === moexSecondsFlag) return;
+  moexSecondsFlag = on;
+  for (const fn of [...moexSecondsListeners]) fn();
+}
+export const getMoexSeconds = (): boolean | null => moexSecondsFlag;
+export function subscribeMoexSeconds(fn: () => void): () => void {
+  moexSecondsListeners.add(fn);
+  return () => {
+    moexSecondsListeners.delete(fn);
+  };
+}
+
+/** Seconds are folded from trades: Bybit spot / perpetual / inverse always, MOEX shares and futures when the server serves them. */
 export function secondsSupported(source: string): boolean {
-  return source === "bybit";
+  return source === "bybit" || (source === "moex" && moexSecondsFlag === true);
+}
+
+/** MOEX: the server has not been asked yet, so nobody knows whether seconds exist (a saved seconds timeframe must survive that moment). */
+export function secondsPending(source: string): boolean {
+  return source === "moex" && moexSecondsFlag === null;
 }
 
 export interface IntervalPlan {
@@ -184,7 +210,7 @@ export function pickerIntervals(source: string): string[] {
 
 /** The interval to use for a source: seconds fall back to 1 minute where they cannot be built. */
 export function usableInterval(id: string, source: string): string {
-  return isSecondsInterval(id) && !secondsSupported(source) ? "1" : id;
+  return isSecondsInterval(id) && !secondsSupported(source) && !secondsPending(source) ? "1" : id;
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n/client";
+import { useMoexSeconds } from "@/lib/chart/moex-seconds-client";
 import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, secondsSupported } from "@/lib/chart/intervals";
 import { parseTypedInterval, timeframeById, type TfGroup } from "@/lib/chart/timeframes";
 import AppIcon from "./AppIcon";
@@ -37,6 +38,7 @@ interface Props {
  */
 export default function AppTimeframes({ interval, favs, source, onPick, onFavs }: Props) {
   const { t } = useT();
+  useMoexSeconds(source); // MOEX: the «Секунды» group appears when the server says the feed is there
   const [open, setOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement | null>(null);
   const moreRef = useRef<HTMLButtonElement | null>(null);

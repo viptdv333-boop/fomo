@@ -1,5 +1,6 @@
-/* Live second candles (1s ... 30s). No upstream serves second history (Bybit REST has none, ISS and T-Invest have none), so these bars exist only from the
-   moment a chart is opened: the browser subscribes to the exchange's public trade stream and folds the trades into N-second bars. Nothing is invented
+/* Live second candles (1s ... 30s) of Bybit. Bybit REST has no second history, so these bars exist only from the moment a chart is opened: the browser
+   subscribes to the exchange's public trade stream and folds the trades into N-second bars. (MOEX seconds are different: T-Invest serves the last hour of
+   trades, the server folds them: src/lib/moex-seconds.ts, server/moex-trades.ts, chart/moex-seconds-client.ts.) Nothing is invented
    for the time before: the series starts empty and the first trade opens its first bar. A second without a trade has no bar (like TradingView).
 
    `foldTrades` is pure (scripts/check-timeframes.ts); `BybitTradeStream` is the WebSocket around it (browser only, never throws). */
