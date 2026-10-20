@@ -467,7 +467,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         )}
         {algoSegs && selected && effSeg === "ob" && (
           <div className="tv3 app-term-cal" data-app-orderbook>
-            <OrderBookPanel inst={selected} visible />
+            <OrderBookPanel inst={selected} visible last={quote?.price} dayChange={quote?.change} />
           </div>
         )}
         {algoSegs && selected && effSeg === "algo" && (

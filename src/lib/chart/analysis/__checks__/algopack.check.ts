@@ -34,7 +34,7 @@ import {
   wallMs,
 } from "../../../algopack-parse";
 import { algopackPolicy } from "../../../algopack-policy";
-import { buildLadder } from "../../../orderbook-math";
+import { autoLevels, buildLadder, fmtQtyCompact } from "../../../orderbook-math";
 import { clampFrom, dsMarket } from "../../../algopack-data";
 import { getIssJson, labelTail, type Feed } from "../../../algopack-feed";
 import type { TailResult } from "../../../tinkoff-candles";
@@ -210,6 +210,8 @@ async function main() {
   eq(lad.bids[4].cum, lad.sumBid, "cumulative volume ends at the sum");
   const empty = buildLadder([], [], 5);
   eq([empty.mid, empty.imbalance, empty.spread], [null, null, null], "empty book");
+  eq([autoLevels(0, 24, 46), autoLevels(600, 24, 46), autoLevels(46 + 2 * 24, 24, 46), autoLevels(20, 24, 46), autoLevels(5000, 24, 46)], [10, 11, 1, 1, 50], "auto levels fill the height (fallback 10 unmeasured, 1..50)");
+  eq([fmtQtyCompact(12), fmtQtyCompact(1234), fmtQtyCompact(12345, true), fmtQtyCompact(3400000, true), fmtQtyCompact(1.5e9), fmtQtyCompact(0.5, true)], ["12", "1 234", "12,3K", "3,4M", "1.5B", "0,5"], "compact sizes");
   eq(parseBook({ orderbook: { columns: ["BUYSELL", "PRICE", "QUANTITY"], data: [["B", 0, 5], ["S", 10, -1], ["B", 9, 3]] } }).bids.length, 1, "zero price / negative qty rows dropped");
 
   section("markets and dates");

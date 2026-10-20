@@ -398,8 +398,8 @@ html.app-ui { --app-gb: 1px solid #e9e9ec; }
 html.app-ui.dark { --app-gb: 1px solid #1d1d1d; }
 /* the design runs on the system font with line-height normal (the site's body line-height of 1.5 would inflate every label) */
 html.app-ui .app-term { display: flex; flex-direction: column; background: var(--app-bg); color: var(--app-tx); line-height: normal; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-/* not inside the chart block: its own buttons (full-screen toolbar, bottom bar, dialogs) keep their Tailwind padding / background (unlayered CSS beats the utilities layer) */
-html.app-ui .app-term :where(button:not(.app-term-chart button)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+/* not inside the chart block (nor the order book, which styles its own buttons): its own buttons (full-screen toolbar, bottom bar, dialogs) keep their Tailwind padding / background (unlayered CSS beats the utilities layer) */
+html.app-ui .app-term :where(button:not(.app-term-chart button):not([data-app-orderbook] button)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
 html.app-ui .app-term [data-tone="up"] { color: #22c55e; }
 html.app-ui .app-term [data-tone="down"] { color: #ef4444; }
 /* sticky symbol bar */
@@ -477,6 +477,7 @@ html.app-ui .app-term-seg button[data-on="1"] { background: var(--app-inv); colo
 html.app-ui .app-term-seg button { min-width: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.app-ui .app-term-seg[data-n="4"] button { font-size: 12px; }
 html.app-ui .app-term-seg[data-n="3"] button { font-size: 12.5px; }
+html.app-ui .app-term-cal[data-app-orderbook] { min-height: 360px; }
 html.app-ui .app-term-cal { margin: 0 12px 16px; height: min(72dvh, 640px); border-radius: 14px; overflow: hidden; border: var(--app-gb); display: flex; flex-direction: column; background: var(--tv3-card); }
 html.app-ui .app-term-watch[hidden] { display: none; }
 /* watchlist */

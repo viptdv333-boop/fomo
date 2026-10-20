@@ -10,7 +10,7 @@ import InstIcon from "./InstIcon";
 import InstrumentSearchDialog from "./InstrumentSearchDialog";
 import { fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
 import ObjectTree from "./ObjectTree";
-import OrderBookPanel from "./OrderBookPanel";
+import OrderBookPanel, { OB_DEFAULT_W } from "./OrderBookPanel";
 import AlgoPanel from "./AlgoPanel";
 import { effectiveTab, filterTabs } from "@/lib/algopack-tabs";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
@@ -52,6 +52,13 @@ export interface Quote {
 }
 
 const COLLAPSED_KEY = "fomo-terminal-watch-collapsed";
+/* the side panel's width (desktop): dragged by its left edge, kept per device */
+const WIDTH_KEY = "fomo-terminal-panel-w";
+const PANEL_MIN_W = 280;
+const PANEL_MAX_W = 560;
+const RAIL_W = 66; // icon rail next to the panel
+const CHART_MIN_W = 360; // what the chart keeps
+const clampPanelW = (w: number, vw: number) => Math.round(Math.max(PANEL_MIN_W, Math.min(PANEL_MAX_W, w, vw - RAIL_W - 24 - CHART_MIN_W)));
 const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 /* ───────────── small pieces ───────────── */
@@ -766,6 +773,56 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
   const quotes = useBatchQuotes(instruments, visible && instruments.length > 0);
   const quote = quotes[qKey(selected)];
   const cur = SITE_TABS.find((x) => x.id === tab) ?? SITE_TABS[0];
+
+  /* resizable width (md+): the left edge is a drag handle, the width is kept per device; the order book also widens it with a button */
+  const [panelW, setPanelW] = useState(OB_DEFAULT_W);
+  const [vw, setVw] = useState(1600);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ x: number; w: number } | null>(null);
+  useEffect(() => {
+    try {
+      const v = Number(localStorage.getItem(WIDTH_KEY));
+      if (v >= PANEL_MIN_W) setPanelW(Math.min(PANEL_MAX_W, v));
+    } catch {}
+    const onResize = () => setVw(window.innerWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const widthPx = clampPanelW(panelW, vw);
+  const setWidth = (w: number, save = true) => {
+    const c = clampPanelW(w, window.innerWidth);
+    setPanelW(c);
+    if (save) {
+      try {
+        localStorage.setItem(WIDTH_KEY, String(c));
+      } catch {}
+    }
+  };
+  const onGripDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, w: widthPx };
+    setDragging(true);
+  };
+  const onGripMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (d) setWidth(d.w + (d.x - e.clientX), false);
+  };
+  const onGripUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    setDragging(false);
+    setWidth(d.w + (d.x - e.clientX));
+  };
+  const onGripKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") setWidth(widthPx + 20);
+    else if (e.key === "ArrowRight") setWidth(widthPx - 20);
+    else if (e.key === "Home" || e.key === "Enter") setWidth(OB_DEFAULT_W);
+    else return;
+    e.preventDefault();
+  };
   const createAlert = () => onOpenAlerts?.();
 
   return (
@@ -775,7 +832,32 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
         className={`${mobileOpen ? "flex" : "hidden"} md:flex ${appPage ? "fixed z-[61] h-[78dvh]" : "absolute z-50 h-[78%]"} md:static inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto right-0 md:z-auto shrink-0 md:h-full w-full md:w-auto md:gap-2 rounded-t-2xl md:rounded-none bg-[var(--tv3-card)] md:bg-transparent text-[var(--tv3-text)] shadow-2xl md:shadow-none pb-[env(safe-area-inset-bottom)] md:pb-0`}
       >
         {/* content */}
-        <div className={`w-full md:w-[340px] flex-col min-h-0 min-w-0 flex md:rounded-2xl md:bg-[var(--tv3-card)] ${open ? "md:flex" : "md:hidden"}`}>
+        <div
+          className={`relative w-full md:w-[var(--rp-w)] flex-col min-h-0 min-w-0 flex md:rounded-2xl md:bg-[var(--tv3-card)] ${open ? "md:flex" : "md:hidden"}`}
+          style={{ "--rp-w": `${widthPx}px` } as React.CSSProperties}
+          data-testid="right-panel"
+        >
+          {/* drag the left edge to resize (double click / Home: back to the default width) */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t("ap.ob.resize")}
+            aria-valuemin={PANEL_MIN_W}
+            aria-valuemax={PANEL_MAX_W}
+            aria-valuenow={widthPx}
+            tabIndex={0}
+            title={t("ap.ob.resize")}
+            onPointerDown={onGripDown}
+            onPointerMove={onGripMove}
+            onPointerUp={onGripUp}
+            onPointerCancel={onGripUp}
+            onDoubleClick={() => setWidth(OB_DEFAULT_W)}
+            onKeyDown={onGripKey}
+            className="hidden md:block absolute -left-2 top-0 bottom-0 z-20 w-3 cursor-col-resize touch-none group outline-none"
+            data-testid="rp-grip"
+          >
+            <span className={`absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors ${dragging ? "bg-[var(--tv3-accent)]" : "bg-transparent group-hover:bg-[var(--tv3-fill2)] group-focus-visible:bg-[var(--tv3-accent)]"}`} />
+          </div>
           <button type="button" onClick={onCloseMobile} aria-label={t("shell.close")} className="md:hidden shrink-0 flex justify-center pt-2 pb-1 cursor-pointer">
             <span className="h-1 w-10 rounded-full bg-[var(--tv3-fill2)]" />
           </button>
@@ -846,7 +928,9 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
                   {alertsApi ? <AlertsPanelView api={alertsApi} symbol={selected} onCreate={createAlert} /> : <OwnAlertsPanel symbol={selected} onCreate={createAlert} />}
                 </div>
               )}
-              {tab === "orderbook" && <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} />}
+              {tab === "orderbook" && (
+                <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} last={quote?.price} dayChange={quote?.change} panelWidth={widthPx} onPanelWidth={(w) => setWidth(w)} />
+              )}
               {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
               {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}
               {tab !== "calendar" && <div className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5 pb-2.5 pt-2 text-[11px] text-[var(--tv3-muted)]">{t("p3.footer")}</div>}

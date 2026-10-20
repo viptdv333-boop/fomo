@@ -69,3 +69,24 @@ export function priceDecimals(prices: number[]): number {
   }
   return d;
 }
+
+/** Levels per side that fill a ladder of this pixel height: (height - spread row) / 2 / row height, at least 1 (0 height = not measured yet -> fallback). */
+export function autoLevels(height: number, rowH: number, spreadH: number, fallback = 10): number {
+  if (!(height > 0) || !(rowH > 0)) return fallback;
+  return Math.max(1, Math.min(50, Math.floor((height - spreadH) / 2 / rowH)));
+}
+
+/** Compact lot count: 1 234 · 12,3K · 3,4M · 1,2B (decimal comma for ru/cn-free locales that use it). */
+export function fmtQtyCompact(v: number, comma = false): string {
+  const a = Math.abs(v);
+  const f = (x: number, d: number, suf: string) => {
+    const s = String(+x.toFixed(d));
+    return (comma ? s.replace(".", ",") : s) + suf;
+  };
+  if (a >= 1e9) return f(v / 1e9, 1, "B");
+  if (a >= 1e6) return f(v / 1e6, 1, "M");
+  if (a >= 1e4) return f(v / 1e3, 1, "K");
+  const r = Math.round(v * 100) / 100;
+  if (Number.isInteger(r)) return a >= 1000 ? String(r).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") : String(r);
+  return comma ? String(r).replace(".", ",") : String(r);
+}

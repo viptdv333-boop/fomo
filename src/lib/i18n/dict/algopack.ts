@@ -34,6 +34,14 @@ const rows: [string, string, string, string][] = [
   ["ap.ob.unsupported", "Для этого инструмента стакана нет", "No order book for this instrument", "该品种没有订单簿"],
   ["ap.ob.error", "Стакан временно недоступен, попробуем ещё раз", "The order book is temporarily unavailable, retrying", "订单簿暂时不可用，稍后重试"],
   ["ap.ob.moexOnly", "Стакан есть только у инструментов Мосбиржи", "The order book is available for MOEX instruments only", "仅支持莫斯科交易所品种的订单簿"],
+  ["ap.ob.auto", "Авто", "Auto", "自动"],
+  ["ap.ob.barVol", "Объём", "Volume", "单档量"],
+  ["ap.ob.barCum", "Накопл.", "Cumul.", "累计"],
+  ["ap.ob.bars", "Шкала полос", "Bar scale", "条形比例"],
+  ["ap.ob.last", "Последняя сделка", "Last trade", "最新成交"],
+  ["ap.ob.expand", "Развернуть", "Expand", "展开"],
+  ["ap.ob.shrink", "Свернуть", "Shrink", "收起"],
+  ["ap.ob.resize", "Потяните, чтобы изменить ширину панели", "Drag to resize the panel", "拖动调整面板宽度"],
 
   /* ALGOPACK panel */
   ["ap.panel.alerts", "Mega Alerts", "Mega Alerts", "Mega Alerts"],
