@@ -160,6 +160,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   }, []);
   // the calendar segment stays (a ?panel=calendar deep link opens it here); only the repeated watchlist goes
   const hideWatch = !!chart?.sideWatch && seg === "watch";
+  // wide window: nothing but the chart and its own side panel (the calculator has its dock tab, the watchlist is in the panel): no link rows under the chart
+  const wide = !!chart?.sideWatch;
   const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
@@ -391,7 +393,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         </div>
         </div>
 
-        {!TERMINAL_SITE && selected && (
+        {!wide && !TERMINAL_SITE && selected && (
           <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">
             <AppIcon name="bulb" size={18} stroke={1.8} />
             <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
@@ -400,7 +402,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </Link>
         )}
 
-        {TERMINAL_SITE && selected && fomoIdeas?.ok && (
+        {!wide && TERMINAL_SITE && selected && fomoIdeas?.ok && (
           <a href={fomoIdeas.boardUrl} target="_blank" rel="noopener" className="app-term-ideas" data-fomo-ideas>
             <AppIcon name="bulb" size={18} stroke={1.8} />
             <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
@@ -409,7 +411,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </a>
         )}
 
-        {selected && calcTickerFor(selected.source, selected.dataTicker) && (
+        {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
           <Link
             href={calculatorHref(locale as Locale, { ticker: calcTickerFor(selected.source, selected.dataTicker), entry: quote && Number.isFinite(quote.price) ? quote.price : null, from: "terminal" })}
             prefetch={false}
