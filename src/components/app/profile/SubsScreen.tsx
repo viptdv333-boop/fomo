@@ -70,7 +70,7 @@ export default function SubsScreen() {
     setSubs(Array.isArray(s) ? s : []);
     setChannels(Array.isArray(c) ? c : []);
     setFollowers(Array.isArray(f) ? f : []);
-    setTgVerified(Boolean(tg?.verified));
+    setTgVerified(Boolean(tg?.canForward ?? tg?.verified));
   }, [uid]);
   useEffect(() => {
     void load();
@@ -97,6 +97,8 @@ export default function SubsScreen() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) window.alert(data.error || t("feed2.settingChangeFailed"));
       else setSubs((prev) => (prev ? prev.map((s) => (s.id === sub.id ? { ...s, telegramNotify: enabled } : s)) : prev));
+    } catch {
+      window.alert(t("feed2.settingChangeFailed"));
     } finally {
       setBusy(null);
     }

@@ -97,7 +97,7 @@ function BrowserSubscriptionsPage() {
       setSubs(Array.isArray(subsData) ? subsData : []);
       setChannels(Array.isArray(channelsData) ? channelsData : []);
       setFollowers(Array.isArray(followersData) ? followersData : []);
-      setTelegramVerified(Boolean(telegramData?.verified));
+      setTelegramVerified(Boolean(telegramData?.canForward ?? telegramData?.verified));
       setLoading(false);
     });
   }, [user?.id]);
@@ -116,12 +116,14 @@ function BrowserSubscriptionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         alert(data.error || t("feed2.settingChangeFailed"));
         return;
       }
       setSubs((prev) => prev.map((s) => (s.id === sub.id ? { ...s, telegramNotify: enabled } : s)));
+    } catch {
+      alert(t("feed2.settingChangeFailed"));
     } finally {
       setTelegramBusyId(null);
     }

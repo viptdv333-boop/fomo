@@ -5,6 +5,7 @@ import { escapeTelegramHtml, tgCall } from "@/lib/tg-transport";
 import { isEnabled, type EventId } from "@/lib/notification-events";
 import { sendTelegramBundle } from "@/lib/notify-channels/telegram";
 import type { ChannelMessage } from "@/lib/notify-channels/types";
+import { resolveTelegramTargets, scrubToken, type TgTarget } from "@/lib/telegram-target";
 
 // Transport (relay / proxy / escaping) lives in tg-transport.ts so the site-bot
 // notification channel can share it without pulling next/headers.
@@ -71,13 +72,15 @@ export async function sendTelegramMessage(
   botToken: string,
   chatId: string,
   text: string,
-  locale?: string
+  locale?: string,
+  /// false: send as plain text (no parse_mode) — for a text that had to be cut and so can no longer be valid HTML.
+  html = true
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const data = await call(botToken, "sendMessage", {
       chat_id: chatId,
       text,
-      parse_mode: "HTML",
+      ...(html ? { parse_mode: "HTML" } : {}),
       disable_web_page_preview: true,
     });
     if (!data.ok) return { ok: false, error: data.description || tFor(locale)("notif.err.tgRejected") };
@@ -104,10 +107,42 @@ export interface RichChannelPost {
   images?: string[];
 }
 
-async function deliverToUser(userId: string, text: NotifText, locale: string | undefined, rich?: RichChannelPost): Promise<void> {
-  const acc = await prisma.telegramAccount.findUnique({ where: { userId } });
-  if (!acc?.chatId) return;
+/// Telegram refuses a message over 4096 characters — and a teaser carries user text (chat message, preview). Values are
+/// capped before escaping; if the result is still too long it goes out as cut plain text rather than not at all.
+export const TG_TEXT_LIMIT = 4000;
+export function renderTeaser(text: NotifText, locale: string | undefined): { text: string; html: boolean } {
+  const toPlain = (h: string) => h.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  const cutPlain = (h: string) => ({ text: toPlain(h).slice(0, TG_TEXT_LIMIT - 1) + "…", html: false });
+  // A plain string is already escaped by the caller (cannot be cut safely): only its length is checked.
+  if (typeof text === "string") return text.length <= TG_TEXT_LIMIT ? { text, html: true } : cutPlain(text);
+  const cap = (max: number) => (s: string) => escapeTelegramHtml(s.length > max ? s.slice(0, max - 1) + "…" : s);
+  const html = renderNotifText(text, locale, cap(1200));
+  if (html.length <= TG_TEXT_LIMIT) return { text: html, html: true };
+  const small = renderNotifText(text, locale, cap(300));
+  return small.length <= TG_TEXT_LIMIT ? { text: small, html: true } : cutPlain(html);
+}
 
+/// A failed forward must be visible: one line in the log (no token, no message text) and the reason on the row the
+/// recipient sees in their settings (TelegramAccount.lastError / NotificationChannel.lastError).
+async function recordForwardFailure(userId: string, target: TgTarget, error: string): Promise<void> {
+  const msg = scrubToken(error, target.botToken).slice(0, 300);
+  console.warn(`[tg] channel forward to user ${userId} via ${target.source} failed: ${msg}`);
+  if (target.source === "account") {
+    await prisma.telegramAccount.update({ where: { userId }, data: { lastError: msg } }).catch(() => {});
+  } else {
+    await prisma.notificationChannel.update({ where: { userId_channel: { userId, channel: "telegram" } }, data: { lastError: msg } }).catch(() => {});
+  }
+}
+
+async function recordForwardOk(userId: string, target: TgTarget): Promise<void> {
+  if (target.source === "account") {
+    await prisma.telegramAccount.updateMany({ where: { userId, lastError: { not: null } }, data: { lastError: null } }).catch(() => {});
+  } else {
+    await prisma.notificationChannel.updateMany({ where: { userId, channel: "telegram", lastError: { not: null } }, data: { lastError: null } }).catch(() => {});
+  }
+}
+
+async function deliverToUser(userId: string, target: TgTarget, text: NotifText, locale: string | undefined, rich?: RichChannelPost): Promise<void> {
   if (rich) {
     // Full text: several messages (<= 4096 each) + the first picture, via the shared builder.
     const msg: ChannelMessage = {
@@ -118,12 +153,9 @@ async function deliverToUser(userId: string, text: NotifText, locale: string | u
       author: rich.author,
       images: rich.images,
     };
-    const r = await sendTelegramBundle(acc.botToken, acc.chatId, msg).catch((e) => ({ ok: false as const, description: e instanceof Error ? e.message : String(e) }));
-    if (r.ok) {
-      if (acc.lastError) await prisma.telegramAccount.update({ where: { userId }, data: { lastError: null } }).catch(() => {});
-    } else {
-      await prisma.telegramAccount.update({ where: { userId }, data: { lastError: r.description || tFor(locale)("notif.err.tgRejected") } }).catch(() => {});
-    }
+    const r = await sendTelegramBundle(target.botToken, target.chatId, msg).catch((e) => ({ ok: false as const, description: e instanceof Error ? e.message : String(e) }));
+    if (r.ok) await recordForwardOk(userId, target);
+    else await recordForwardFailure(userId, target, r.description || tFor(locale)("notif.err.tgRejected"));
     return;
   }
 
@@ -131,18 +163,13 @@ async function deliverToUser(userId: string, text: NotifText, locale: string | u
   // value is HTML-escaped here, so callers pass raw user content in vars and
   // the <b> markup in the dictionary template survives. A plain string is
   // sent as-is — the caller has already escaped it.
-  const rendered = renderNotifText(text, locale, escapeTelegramHtml);
-  const result = await sendTelegramMessage(acc.botToken, acc.chatId, rendered, locale);
-  if (result.ok) {
-    if (acc.lastError) {
-      await prisma.telegramAccount.update({ where: { userId }, data: { lastError: null } }).catch(() => {});
-    }
-  } else {
-    // Bot blocked/deleted by the user, or token revoked — record it so the
-    // profile UI can surface "reconnect your bot" instead of silently
-    // never delivering again.
-    await prisma.telegramAccount.update({ where: { userId }, data: { lastError: result.error || "Unknown error" } }).catch(() => {});
-  }
+  const fit = renderTeaser(text, locale);
+  const result = await sendTelegramMessage(target.botToken, target.chatId, fit.text, locale, fit.html);
+  if (result.ok) await recordForwardOk(userId, target);
+  // Bot blocked/deleted by the user, or token revoked — record it so the
+  // profile UI can surface "reconnect your bot" instead of silently
+  // never delivering again.
+  else await recordForwardFailure(userId, target, result.error || "Unknown error");
 }
 
 /// `text`: a plain string (already HTML-escaped by the caller) or
@@ -159,6 +186,19 @@ export async function notifyChannelTelegramSubscribers(
   tariffId: string,
   text: NotifText,
   opts: { dedupeEvent?: EventId; rich?: RichChannelPost } = {}
+): Promise<void> {
+  // The callers fire this after the post is saved and used to swallow everything with .catch(() => {}): log instead.
+  try {
+    await forwardToChannelSubscribers(tariffId, text, opts);
+  } catch (e) {
+    console.warn(`[tg] channel forward for tariff ${tariffId} failed:`, e instanceof Error ? e.message : e);
+  }
+}
+
+async function forwardToChannelSubscribers(
+  tariffId: string,
+  text: NotifText,
+  opts: { dedupeEvent?: EventId; rich?: RichChannelPost }
 ): Promise<void> {
   const tariff = await prisma.subscriptionTariff.findUnique({
     where: { id: tariffId },
@@ -179,24 +219,32 @@ export async function notifyChannelTelegramSubscribers(
   if (tariff.authorTelegramNotify) recipientIds.push(tariff.authorId);
 
   let recipients = [...new Set(recipientIds)];
+  const targets = await resolveTelegramTargets(prisma, recipients).catch((e) => {
+    console.warn("[tg] channel forward: target lookup failed:", e instanceof Error ? e.message : e);
+    return new Map<string, TgTarget>();
+  });
+  // Nothing to send to: a subscriber with the switch on but no working bot (never connected, bot removed, channel off).
+  recipients = recipients.filter((id) => targets.has(id));
+
   if (opts.dedupeEvent && recipients.length > 0) {
     const event = opts.dedupeEvent;
-    const [legacy, channels, prefs] = await Promise.all([
-      prisma.telegramAccount.findMany({ where: { userId: { in: recipients } }, select: { userId: true, botToken: true, chatId: true } }),
+    const [channels, prefs] = await Promise.all([
       prisma.notificationChannel.findMany({
-        where: { userId: { in: recipients }, channel: "telegram", verified: true, enabled: true, secret: { not: null } },
+        where: { userId: { in: recipients }, channel: "telegram", verified: true, enabled: true, address: { not: null } },
         select: { userId: true, address: true, secret: true },
       }),
       prisma.notificationPref.findMany({ where: { userId: { in: recipients }, event, channel: "telegram" }, select: { userId: true, event: true, channel: true, enabled: true } }),
-    ]).catch(() => [[], [], []] as [never[], never[], never[]]);
-    const acc = new Map(legacy.map((a) => [a.userId, a]));
+    ]).catch(() => [[], []] as [never[], never[]]);
     const prefByUser = new Map(prefs.map((p) => [p.userId, { [`${p.event}:${p.channel}`]: p.enabled }]));
     const covered = new Set(
       channels
         .filter((c) => {
-          const a = acc.get(c.userId);
           // The author is not a dispatcher recipient of their own post.
-          return a && c.userId !== tariff.authorId && a.botToken === c.secret && a.chatId === c.address && isEnabled(event, "telegram", prefByUser.get(c.userId));
+          if (c.userId === tariff.authorId || !isEnabled(event, "telegram", prefByUser.get(c.userId))) return false;
+          const t = targets.get(c.userId);
+          // Connected only through Notification settings: the dispatcher's message IS this one. With an old account as
+          // well, it is covered only when both point at the same bot and chat (else two different bots get one each).
+          return !t || t.source === "channel" || (t.botToken === c.secret && t.chatId === c.address);
         })
         .map((c) => c.userId)
     );
@@ -214,5 +262,5 @@ export async function notifyChannelTelegramSubscribers(
     for (const u of users) locales.set(u.id, u.locale);
   }
 
-  await Promise.all(recipients.map((userId) => deliverToUser(userId, text, locales.get(userId), opts.rich)));
+  await Promise.all(recipients.map((userId) => deliverToUser(userId, targets.get(userId)!, text, locales.get(userId), opts.rich).catch((e) => console.warn(`[tg] channel forward to user ${userId} crashed: ${scrubToken(e instanceof Error ? e.message : String(e), targets.get(userId)!.botToken)}`))));
 }

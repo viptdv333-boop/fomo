@@ -16,10 +16,11 @@ export function useChannelsChrome() {
 export function useFlash() {
   const [msg, setMsg] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flash = useCallback((m: string) => {
+  /// `ms`: how long it stays (an error needs longer than «link copied»).
+  const flash = useCallback((m: string, ms = 2000) => {
     setMsg(m);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setMsg(""), 2000);
+    timer.current = setTimeout(() => setMsg(""), ms);
   }, []);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   const node = msg ? (

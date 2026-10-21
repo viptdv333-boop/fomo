@@ -125,7 +125,8 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const others = useMemo(() => (channel ? (list.items ?? []).filter((c) => c.author.id === channel.author.id && c.id !== channel.id) : []), [list.items, channel]);
 
   const [posts, setPosts] = useState<PostItem[] | null>(null);
-  const [tgVerified, setTgVerified] = useState(false);
+  // can the user receive Telegram at all (the old bot account OR the bot from Notification settings); null = not known yet
+  const [tgReady, setTgReady] = useState<boolean | null>(null);
   const [tgBusy, setTgBusy] = useState(false);
   const [authorTg, setAuthorTg] = useState<boolean | null>(null);
   const [myTg, setMyTg] = useState<boolean | null>(null);
@@ -174,8 +175,8 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   useEffect(() => {
     if (!subs.loggedIn) return;
     fetch("/api/telegram/account")
-      .then((r) => r.json())
-      .then((d) => setTgVerified(Boolean(d?.verified)))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setTgReady(Boolean(d.canForward ?? d.verified)))
       .catch(() => {});
   }, [subs.loggedIn]);
 
@@ -194,34 +195,34 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const shareUrl = channel ? `${SHARE_BASE}${channelPath(channel)}` : "";
   const doShare = () => channel && void shareOrCopy(shareUrl, t("channel2.shareText", { name: channel.name }), () => flash(t("appch.linkCopied")));
 
-  async function toggleAuthorTelegram() {
-    if (!channel) return;
-    const cur = authorTg ?? !!channel.authorTelegramNotify;
-    if (!tgVerified && !cur) return flash(t("channel2.connectTelegramFirst"));
+  // The switch moves at once and goes back with a visible reason when the server refuses (it used to stay put in silence).
+  async function patchTelegram(url: string, prev: boolean, apply: (v: boolean) => void) {
+    if (tgBusy) return;
+    if (tgReady === false && !prev) return void flash(t("appch.tgNeedBot"), 4000);
     setTgBusy(true);
+    apply(!prev);
     try {
-      const r = await fetch(`/api/channels/${channel.id}/telegram`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !cur }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) flash(j.error || t("channel2.settingFailed"));
-      else setAuthorTg(!cur);
+      const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !prev }) });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        apply(prev);
+        if (r.status === 400 && !prev) setTgReady(false);
+        flash(typeof j.error === "string" && j.error ? j.error : t("channel2.settingFailed"), 4000);
+      }
+    } catch {
+      apply(prev);
+      flash(t("channel2.settingFailed"), 4000);
     } finally {
       setTgBusy(false);
     }
   }
-  async function toggleMyTelegram() {
-    if (!mySub) return;
-    const cur = myTg ?? mySub.telegramNotify;
-    if (!tgVerified && !cur) return flash(t("channel2.connectTelegramFirst"));
-    setTgBusy(true);
-    try {
-      const r = await fetch(`/api/subscriptions/${mySub.id}/telegram`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !cur }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) flash(j.error || t("channel2.settingFailed"));
-      else setMyTg(!cur);
-    } finally {
-      setTgBusy(false);
-    }
-  }
+  const toggleAuthorTelegram = () => {
+    if (channel) void patchTelegram(`/api/channels/${channel.id}/telegram`, authorTg ?? !!channel.authorTelegramNotify, setAuthorTg);
+  };
+  const toggleMyTelegram = () => {
+    if (mySub) void patchTelegram(`/api/subscriptions/${mySub.id}/telegram`, myTg ?? mySub.telegramNotify, setMyTg);
+  };
+  const connectBot = { label: t("appch.tgNeedBotBtn"), tone: "primary" as const, onClick: () => nav.go("/profile?tab=notifications") };
   async function togglePin(p: PostItem) {
     setBusyPost(p.id);
     const next = !p.isPinned;
@@ -298,7 +299,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   if (subscribed && mySub) {
     rows.push({
       key: "tg",
-      rows: [{ key: "tg", label: t("appch.tgReceive"), sub: tgVerified ? t("channel2.tgMyTitle") : t("appch.tgConnect"), icon: <AppIcon name="send" size={17} stroke={1.8} />, toggle: myTgOn, onClick: tgBusy ? undefined : () => (!tgVerified && !myTgOn ? nav.go("/profile?tab=notifications") : void toggleMyTelegram()) }],
+      rows: [{ key: "tg", label: t("appch.tgReceive"), sub: tgReady === false && !myTgOn ? <span style={{ color: "var(--app-red)" }}>{t("appch.tgNeedBot")}</span> : t("channel2.tgMyTitle"), actions: tgReady === false && !myTgOn ? [connectBot] : undefined, icon: <AppIcon name="send" size={17} stroke={1.8} />, toggle: myTgOn, disabled: tgBusy, onClick: toggleMyTelegram }],
     });
   }
   if (others.length) {
@@ -336,7 +337,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
     },
     {
       key: "o2",
-      rows: [{ key: "tg", label: "Telegram", sub: tgVerified ? t("channel2.tgOwnerTitle") : t("channel2.connectBotFirst"), icon: <AppIcon name="send" size={17} stroke={1.8} />, toggle: tgOn, onClick: tgBusy ? undefined : () => (!tgVerified && !tgOn ? nav.go("/profile?tab=notifications") : void toggleAuthorTelegram()) }],
+      rows: [{ key: "tg", label: "Telegram", sub: tgReady === false && !tgOn ? <span style={{ color: "var(--app-red)" }}>{t("appch.tgNeedBot")}</span> : t("channel2.tgOwnerTitle"), actions: tgReady === false && !tgOn ? [connectBot] : undefined, icon: <AppIcon name="send" size={17} stroke={1.8} />, toggle: tgOn, disabled: tgBusy, onClick: toggleAuthorTelegram }],
     },
   ];
 

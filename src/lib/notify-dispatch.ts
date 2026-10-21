@@ -130,6 +130,8 @@ export function nextChannelState(
 }
 
 async function recordResult(row: ChannelRow, result: SendResult) {
+  // A Telegram send that fails used to leave a trace only in the settings card: one log line (adapter errors carry no token).
+  if (!result.ok && row.channel === "telegram") console.warn(`[notify] telegram send to user ${row.userId} failed${result.permanent ? " (permanent)" : ""}: ${(result.error || "send failed").slice(0, 200)}`);
   const next = nextChannelState(row, result);
   if (!next) return;
   try {

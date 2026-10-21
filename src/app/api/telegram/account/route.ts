@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyBotToken } from "@/lib/telegram";
+import { hasTelegramTarget } from "@/lib/telegram-target";
 
 export async function GET() {
   const session = await auth();
@@ -15,6 +16,8 @@ export async function GET() {
   return NextResponse.json({
     connected: Boolean(account),
     verified: Boolean(account?.chatId),
+    // The «Получать в Telegram» switches need ANY working bot: this old account or the one from Notification settings.
+    canForward: await hasTelegramTarget(prisma, session.user.id),
     botUsername: account?.botUsername ?? null,
     lastError: account?.lastError ?? null,
   });
@@ -53,7 +56,9 @@ export async function DELETE() {
 
   await prisma.telegramAccount.delete({ where: { userId: session.user.id } }).catch(() => {});
   // A bot that no longer exists can't receive forwarded messages — turn off
-  // every subscription's toggle so it doesn't just silently stop working.
+  // every subscription's toggle so it doesn't just silently stop working
+  // (unless the bot from Notification settings still carries them).
+  if (await hasTelegramTarget(prisma, session.user.id)) return NextResponse.json({ ok: true });
   await prisma.subscription.updateMany({
     where: { subscriberId: session.user.id, telegramNotify: true },
     data: { telegramNotify: false },

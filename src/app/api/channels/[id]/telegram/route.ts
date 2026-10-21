@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
+import { hasTelegramTarget } from "@/lib/telegram-target";
 
 // PATCH — channel owner toggles forwarding of their own channel's setups/chat
 // messages to their own Telegram bot. Separate from Subscription.telegramNotify
@@ -25,8 +26,8 @@ export async function PATCH(
   }
 
   if (enabled) {
-    const account = await prisma.telegramAccount.findUnique({ where: { userId: session.user.id } });
-    if (!account?.chatId) {
+    // The old TelegramAccount OR the bot connected in «Настройки уведомлений → Telegram» (see telegram-target.ts).
+    if (!(await hasTelegramTarget(prisma, session.user.id))) {
       return NextResponse.json({ error: (await getT()).t("api.telegramBotRequired") }, { status: 400 });
     }
   }

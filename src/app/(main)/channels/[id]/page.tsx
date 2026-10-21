@@ -162,12 +162,14 @@ function ChannelSite() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         alert(data.error || t("channel2.settingFailed"));
         return;
       }
       setChannel((prev) => (prev ? { ...prev, authorTelegramNotify: enabled } : prev));
+    } catch {
+      alert(t("channel2.settingFailed"));
     } finally {
       setTelegramBusy(false);
     }
@@ -193,6 +195,8 @@ function ChannelSite() {
         return;
       }
       setMySub({ ...mySub, telegramNotify: enabled });
+    } catch {
+      alert(t("channel2.settingFailed"));
     } finally {
       setTelegramBusy(false);
     }
@@ -335,7 +339,7 @@ function ChannelSite() {
     if (session?.user?.id) {
       fetch("/api/telegram/account")
         .then((r) => r.json())
-        .then((data) => setTelegramVerified(Boolean(data?.verified)))
+        .then((data) => setTelegramVerified(Boolean(data?.canForward ?? data?.verified)))
         .catch(() => {});
     }
 
