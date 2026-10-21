@@ -1,8 +1,9 @@
 /**
  * Live probe of the ALGOPACK gateway with the server's own key (never prints the key): which reason does the order book
  * answer with from THIS machine? Run on the server:  cd /opt/fomo && npx tsx scripts/probe-algopack.ts [SECID]
- * TLS: the gateway is signed by the Russian root CA; set ALGOPACK_CA_FILE in .env (docs/algopack-tls.md). The raw request below goes through
- * the same apFetch as the app, so it tests the real path; a failure prints the TLS error class (e.g. TypeError/SELF_SIGNED_CERT_IN_CHAIN).
+ * TLS: the gateway and T-Invest are signed by the Russian root CA; set ALGOPACK_CA_FILE (or RU_ROOT_CA_FILE) in .env (docs/algopack-tls.md). The raw
+ * requests below go through the same helper as the app (apFetch / ruCaFetch), so they test the real path; a failure prints the TLS error class
+ * (e.g. TypeError/SELF_SIGNED_CERT_IN_CHAIN). The T-Invest probe prints status + error class only, never the token.
  */
 import { existsSync } from "fs";
 
@@ -10,11 +11,24 @@ if (existsSync(".env") && typeof (process as any).loadEnvFile === "function") (p
 
 async function main() {
   const { algopackEnabled, algopackPublicFlag, apFetch } = await import("../src/lib/algopack");
-  const { gatewayExtraCa, tlsErrorClass } = await import("../src/lib/algopack-tls");
+  const { gatewayExtraCa, ruCaFetch, ruCaFilePath, tlsErrorClass } = await import("../src/lib/algopack-tls");
   const { loadBook } = await import("../src/lib/algopack-data");
   const { resolveMoex } = await import("../src/lib/moex-resolve");
   const secid = process.argv[2] || "SBER";
-  console.log("enabled(key present):", algopackEnabled(), "| public flag:", algopackPublicFlag(), "| ALGOPACK_CA_FILE:", process.env.ALGOPACK_CA_FILE ? (gatewayExtraCa() ? "loaded" : "set but unusable (see warning)") : "not set");
+  console.log("enabled(key present):", algopackEnabled(), "| public flag:", algopackPublicFlag(), "| CA file (ALGOPACK_CA_FILE / RU_ROOT_CA_FILE):", ruCaFilePath() ? (gatewayExtraCa() ? "loaded" : "set but unusable (see warning)") : "not set");
+  // T-Invest through the same scoped trust: status + error class only (never the token)
+  try {
+    const tres = await ruCaFetch("https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.MarketDataService/GetLastPrices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TINKOFF_TOKEN || ""}` },
+      body: JSON.stringify({ instrumentId: ["BBG004730N88"] }),
+      signal: AbortSignal.timeout(8000),
+    });
+    await tres.arrayBuffer();
+    console.log("T-Invest GetLastPrices:", tres.status, "(token set:", Boolean(process.env.TINKOFF_TOKEN) + ")", tres.status === 401 || tres.status === 403 ? "- TLS ok, token rejected/missing" : "");
+  } catch (e) {
+    console.log("T-Invest GetLastPrices error class:", tlsErrorClass(e));
+  }
   const sec = await resolveMoex(secid);
   console.log("resolved:", sec ? `${sec.secid} ${sec.engine}/${sec.market}/${sec.board}` : "null");
   if (!sec) return;
@@ -30,7 +44,7 @@ async function main() {
   } catch (e) {
     const er = e as Error & { cause?: { code?: string; message?: string } };
     console.log("raw fetch error class:", tlsErrorClass(e), "|", er.message, "|", er.cause?.code, er.cause?.message);
-    if (/CERT|TLS|SSL|issuer|self.signed/i.test(`${er.cause?.code} ${er.cause?.message}`)) console.log("hint: TLS trust failed; set ALGOPACK_CA_FILE to the Russian root CA PEM (docs/algopack-tls.md)");
+    if (/CERT|TLS|SSL|issuer|self.signed/i.test(`${er.cause?.code} ${er.cause?.message}`)) console.log("hint: TLS trust failed; set ALGOPACK_CA_FILE (or RU_ROOT_CA_FILE) to the Russian root CA PEM (docs/algopack-tls.md)");
   }
   console.log("key length:", key.length, "has whitespace inside:", key.split(/\s/).length > 1);
   const r = await loadBook(sec);

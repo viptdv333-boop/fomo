@@ -18,6 +18,7 @@
  */
 
 import { cleanCandle } from "./chart/candles";
+import { ruCaFetch } from "./algopack-tls";
 import type { MoexSecurity } from "./moex-resolve";
 
 export interface CandleRow {
@@ -191,7 +192,7 @@ async function call(endpoint: string, body: object): Promise<{ status: number; d
   if (!token || Date.now() < S.backoffUntil) return null;
   try {
     const res = await slot(() =>
-      fetch(`${API}.${endpoint}`, {
+      ruCaFetch(`${API}.${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),

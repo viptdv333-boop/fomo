@@ -4,8 +4,8 @@
 # Run on the server:  cd /opt/fomo && git pull -q && bash scripts/deploy-swap.sh
 # (docs: the long one-liner of the same steps was cut off by the serial console, hence the file)
 
-# NOTE: no NODE_EXTRA_CA_CERTS here on purpose (it would widen TLS trust for every outbound request). The ALGOPACK gateway (apim.moex.com) is
-# signed by the Russian root CA; the app trusts it for that host only, through ALGOPACK_CA_FILE in .env (docs/algopack-tls.md).
+# NOTE: no NODE_EXTRA_CA_CERTS here on purpose (it would widen TLS trust for every outbound request). The ALGOPACK gateway (apim.moex.com) and T-Invest are
+# signed by the Russian root CA; the app trusts it for those hosts only, through ALGOPACK_CA_FILE (or RU_ROOT_CA_FILE) in .env (docs/algopack-tls.md).
 
 deploy() {
   local dir="$1" app="$2" old="$3" pull="$4"

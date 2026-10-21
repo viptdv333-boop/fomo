@@ -4,6 +4,8 @@
  * Uses the same token.
  */
 
+import { ruCaFetch } from "./algopack-tls";
+
 const SANDBOX_URL =
   "https://sandbox-invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
 const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
@@ -20,7 +22,7 @@ export function toQuotation(value: number): { units: string; nano: number } {
 }
 
 async function sandboxRequest(endpoint: string, body: object): Promise<any> {
-  const res = await fetch(`${SANDBOX_URL}.${endpoint}`, {
+  const res = await ruCaFetch(`${SANDBOX_URL}.${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -40,7 +42,7 @@ const PROD_URL =
   "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
 
 async function prodRequest(endpoint: string, body: object): Promise<any> {
-  const res = await fetch(`${PROD_URL}.${endpoint}`, {
+  const res = await ruCaFetch(`${PROD_URL}.${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

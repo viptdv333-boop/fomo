@@ -178,14 +178,14 @@ export function familyOf(url: string): string {
 /* ── the request ── */
 
 /**
- * The ONLY way this codebase talks to the ALGOPACK gateway (apGet -> doFetch, scripts/probe-algopack.ts). Requests to https://apim.moex.com
- * trust Node's default roots + the CA file from ALGOPACK_CA_FILE (the Russian root; see algopack-tls.ts / docs/algopack-tls.md); every other
- * URL, a local http mock (ALGOPACK_BASE=http://localhost...) and the unconfigured case use the plain global fetch (verification always on).
+ * The ONLY way this codebase talks to the ALGOPACK gateway (apGet -> doFetch, scripts/probe-algopack.ts). Alias of ruCaFetch (algopack-tls.ts):
+ * requests to https://apim.moex.com (and the T-Invest hosts) trust Node's default roots + the CA file from ALGOPACK_CA_FILE / RU_ROOT_CA_FILE
+ * (the Russian root; docs/algopack-tls.md); every other URL, a local http mock (ALGOPACK_BASE=http://localhost...) and the unconfigured case use
+ * the plain global fetch (verification always on).
  */
 export async function apFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  if (/^https:\/\/apim\.moex\.com(:443)?\//i.test(url) && (process.env.ALGOPACK_CA_FILE ?? "").trim()) {
-    const viaCa = await (await import("./algopack-tls")).gatewayFetch(url, init);
-    if (viaCa) return viaCa;
+  if ((process.env.ALGOPACK_CA_FILE || process.env.RU_ROOT_CA_FILE || "").trim() && /^https:\/\//i.test(url)) {
+    return (await import("./algopack-tls")).ruCaFetch(url, init);
   }
   return fetch(url, init);
 }

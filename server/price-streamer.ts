@@ -5,6 +5,7 @@
  */
 
 import { Server as SocketIOServer } from "socket.io";
+import { ruCaFetch } from "../src/lib/algopack-tls";
 
 const PROD_URL = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
 const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
@@ -105,7 +106,7 @@ export class PriceStreamer {
       // Batch request — up to 100 instruments per call
       for (let i = 0; i < instrumentIds.length; i += 100) {
         const batch = instrumentIds.slice(i, i + 100);
-        const res = await fetch(`${PROD_URL}.MarketDataService/GetLastPrices`, {
+        const res = await ruCaFetch(`${PROD_URL}.MarketDataService/GetLastPrices`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -21,6 +21,7 @@
 
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import WebSocket from "ws";
+import { ruCaFetch, ruCaWsOptions } from "../src/lib/algopack-tls";
 import { resolveMoex } from "../src/lib/moex-resolve";
 import {
   SecondBook,
@@ -366,7 +367,7 @@ class MoexSeconds {
     if (Date.now() < this.blockedUntil) return null;
     try {
       const res = await this.slot(() =>
-        fetch(`${REST}.${endpoint}`, {
+        ruCaFetch(`${REST}.${endpoint}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
           body: JSON.stringify(body),
@@ -490,7 +491,7 @@ class MoexSeconds {
     this.setState("connecting");
     let ws: WebSocket;
     try {
-      ws = new WebSocket(WS_URL, ["json"], { headers: { Authorization: `Bearer ${tk}` }, handshakeTimeout: 15_000 });
+      ws = new WebSocket(WS_URL, ["json"], { headers: { Authorization: `Bearer ${tk}` }, handshakeTimeout: 15_000, ...ruCaWsOptions(WS_URL) });
     } catch {
       this.streamLost(0, "open failed");
       return;

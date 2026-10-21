@@ -1,4 +1,5 @@
 import { eventId } from "./normalize";
+import { ruCaFetch } from "../algopack-tls";
 import type { CalEvent } from "./types";
 
 /*
@@ -812,7 +813,7 @@ function startRefresh(now: number) {
     try {
       await loadRows(); // another instance may have refreshed the table meanwhile
       if (Date.now() - st.refreshedAt < REFRESH_MS) return;
-      const rep = await refreshCorporate({ token: corpToken(), fetchImpl: fetchOverride ?? ((...a) => fetch(...a)), store: getStore(), ...tuning });
+      const rep = await refreshCorporate({ token: corpToken(), fetchImpl: fetchOverride ?? ((...a) => ruCaFetch(...a)), store: getStore(), ...tuning });
       st.last = rep;
       await loadRows();
     } catch {

@@ -1,16 +1,29 @@
-# ALGOPACK: TLS trust for apim.moex.com
+# Russian root CA: scoped TLS trust (ALGOPACK gateway + T-Invest)
 
-The ALGOPACK gateway `https://apim.moex.com` is signed by the **Russian Trusted Root CA** (Минцифры). Node's bundled CA list does not
-contain it, so without a fix every ALGOPACK call fails with `SELF_SIGNED_CERT_IN_CHAIN` (the order book and the ALGOPACK tabs then say
-"temporarily unavailable").
+These hosts are signed by the **Russian Trusted Root CA** (Минцифры). Node's bundled CA list does not contain it, so without a fix every call
+fails with `SELF_SIGNED_CERT_IN_CHAIN` (order book / ALGOPACK tabs "temporarily unavailable"; quotes fall back to the delayed ISS feed, no
+T-Invest candle tail, no order flow, no seconds trades):
 
-We do **not** use `NODE_EXTRA_CA_CERTS`: it widens trust for *all* outbound requests of the process (Bybit, YooKassa, T-Invest, mail ...).
-Instead `src/lib/algopack-tls.ts` gives requests to `apim.moex.com` (and only to it) a dedicated undici `Agent` whose CA list is Node's
-default roots plus the PEM named by **`ALGOPACK_CA_FILE`**. All other hosts, and a local mock (`ALGOPACK_BASE=http://localhost...`), keep the
-default trust. Verification is never disabled. If the file is missing or not a certificate, one warning is logged
-(`[algopack] ALGOPACK_CA_FILE ignored (...)`, no secrets) and the default trust is used.
+| host | used for | needs the root |
+|---|---|---|
+| `apim.moex.com` | ALGOPACK gateway | yes |
+| `invest-public-api.tinkoff.ru` (https 443 and `wss://.../ws/...`) | T-Invest REST + MarketDataStream | yes |
+| `sandbox-invest-public-api.tinkoff.ru` | T-Invest sandbox (demo trading) | yes (same operator; listed so the sandbox keeps working) |
+| `iss.moex.com`, `www.moex.com`, Bybit, YooKassa, FMP, mail ... | everything else | no, default trust |
 
-All gateway calls go through `apFetch` (exported from `src/lib/algopack.ts`); `scripts/probe-algopack.ts` uses it too.
+We do **not** use `NODE_EXTRA_CA_CERTS`: it widens trust for *all* outbound requests of the process. Instead `src/lib/algopack-tls.ts` gives
+requests to exactly the hosts above (https for `fetch`, wss for the `ws` client, port 443, exact host match, no sub/look-alike domains) the CA list
+Node's default roots + the PEM named by **`ALGOPACK_CA_FILE`** (alias **`RU_ROOT_CA_FILE`**, same meaning; `ALGOPACK_CA_FILE` wins when both are
+set). All other hosts and local mocks keep the default trust. Verification is never disabled. If the file is missing or not a certificate, one
+warning is logged (`[ru-ca] ... ignored (...)`, no secrets) and the default trust is used.
+
+* `fetch`: `ruCaFetch(url, init)` (`apFetch` in `src/lib/algopack.ts` is an alias). Used by `/api/quote`, `/api/quotes` (`src/lib/quotes.ts`),
+  `src/lib/tinkoff-candles.ts`, `src/lib/tinkoff-sandbox.ts`, `src/lib/orderflow/tinkoff.ts`, `src/lib/calendar/corporate.ts`,
+  `server/price-streamer.ts`, `server/moex-trades.ts` (REST) and every ALGOPACK call.
+* `ws`: `new WebSocket(url, protocols, { ..., ...ruCaWsOptions(url) })` in `server/moex-trades.ts` (`{ ca }` for an allowed wss host, `{}` otherwise).
+* To add a host: put it in `RU_CA_HOSTS` only after a failed verification is proven on the server, and extend `scripts/check-algopack-tls.ts`.
+
+`scripts/probe-algopack.ts` checks the ALGOPACK gateway and T-Invest `GetLastPrices` (status / error class only, never a token).
 
 ## Server setup (once per server; the Russian root is already in the OS store, `curl` trusts it)
 
@@ -33,7 +46,7 @@ If the certificate is not in the bundle but was installed by hand, look in `/usr
 (`grep -l 'Russian Trusted' /usr/local/share/ca-certificates/* 2>/dev/null`) and `cp` that file instead.
 
 ```bash
-# 3. point both instances at it (the terminal instance can share the file)
+# 3. point both instances at it (the terminal instance can share the file; RU_ROOT_CA_FILE is an accepted alias)
 echo 'ALGOPACK_CA_FILE=/opt/fomo/certs/russian-root-ca.pem' >> /opt/fomo/.env
 echo 'ALGOPACK_CA_FILE=/opt/fomo/certs/russian-root-ca.pem' >> /opt/fomo-terminal/.env
 chmod 644 /opt/fomo/certs/russian-root-ca.pem        # a public certificate, not a secret
@@ -42,7 +55,7 @@ chmod 644 /opt/fomo/certs/russian-root-ca.pem        # a public certificate, not
 cd /opt/fomo && git pull -q && bash scripts/deploy-swap.sh     # or just: pm2 restart <app> --update-env, with the variable unset
 
 # 5. verify
-cd /opt/fomo && npx tsx scripts/probe-algopack.ts SBER          # "raw fetch: 200 ..." and "ALGOPACK_CA_FILE: loaded"
+cd /opt/fomo && npx tsx scripts/probe-algopack.ts SBER          # "raw fetch: 200 ...", "T-Invest GetLastPrices: 200 ..." and "CA file ...: loaded"
 for p in $(pm2 pid fomo) $(pm2 pid fomo-terminal); do tr '\0' '\n' < /proc/$p/environ | grep -c '^NODE_EXTRA_CA_CERTS=' ; done   # expect 0 0
 ```
 
@@ -56,5 +69,6 @@ The file is read once per process; after changing it restart the app.
 
 ## Checks
 
-`npx tsx scripts/check-algopack-tls.ts` (offline; uses `openssl` to make a throw-away CA and a local HTTPS server): the extra CA is accepted
-only through the dedicated agent, the default trust still rejects the same server, other hosts never get the CA, bad / missing files fall back.
+`npx tsx scripts/check-algopack-tls.ts` (offline; uses `openssl` to make a throw-away CA and a local HTTPS/WSS server): the extra CA is accepted
+only through the dedicated agent / the ws `ca` option, the default trust still rejects the same server, only the listed hosts (exact, https/wss, 443)
+get the CA, look-alike hosts and local mocks never do, bad / missing files fall back.

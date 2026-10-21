@@ -1,4 +1,5 @@
 import { MinuteBook } from "./book";
+import { ruCaFetch } from "../algopack-tls";
 
 /* Real-time MOEX trades from the Tinkoff Invest API (MarketDataService/GetLastTrades: the last hour, with the trade direction).
    The free MOEX ISS trade list is ~15 minutes late, so this fills the newest minutes. Needs TINKOFF_TOKEN (the same token
@@ -15,7 +16,7 @@ export function tinkoffEnabled(): boolean {
 
 async function call(endpoint: string, body: object): Promise<any | null> {
   try {
-    const res = await fetch(`${BASE}.${endpoint}`, {
+    const res = await ruCaFetch(`${BASE}.${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify(body),

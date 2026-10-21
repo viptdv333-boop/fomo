@@ -5,6 +5,7 @@ import { parseBybitTicker, type BybitCategory } from "./bybit-symbol";
 import { fmpSymbol } from "@/lib/fmp-alias";
 import { fmpRequest } from "@/lib/fmp-gate";
 import { getForexQuotes } from "@/lib/forex";
+import { ruCaFetch } from "@/lib/algopack-tls";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -51,7 +52,7 @@ function parseQuotation(q?: { units?: string; nano?: number }): number {
 
 async function tinkoff(endpoint: string, body: object): Promise<any> {
   try {
-    const res = await fetch(`${TINKOFF_URL}.${endpoint}`, {
+    const res = await ruCaFetch(`${TINKOFF_URL}.${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${TINKOFF_TOKEN}` },
       body: JSON.stringify(body),

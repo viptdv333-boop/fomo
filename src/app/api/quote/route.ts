@@ -7,6 +7,7 @@ import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { getViewer } from "@/lib/algopack-access";
 import { getForexQuote } from "@/lib/forex";
 import { fmpRequest, type FmpFailure } from "@/lib/fmp-gate";
+import { ruCaFetch } from "@/lib/algopack-tls";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -125,7 +126,7 @@ interface Quote {
 }
 
 async function tinkoffRequest(endpoint: string, body: object): Promise<any> {
-  const res = await fetch(`${TINKOFF_URL}.${endpoint}`, {
+  const res = await ruCaFetch(`${TINKOFF_URL}.${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
