@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { linkRef, paymentLinkHost } from "@/lib/payment-link";
+import { parseTariffInput, tariffErrorKey, tariffNameKey, type TariffError } from "@/lib/tariff-validation";
 
 interface TariffData {
   id: string;
@@ -73,6 +74,14 @@ export default function EditChannelPage() {
   const [mainTariffId, setMainTariffId] = useState<string | null>(null);
   const [channelSlug, setChannelSlug] = useState("");
   const [slugError, setSlugError] = useState("");
+  // Specific reason for one tariff row, shown next to the offending field (field = null: under the row)
+  const [tariffErr, setTariffErr] = useState<{ idx: number; field: string | null; msg: string } | null>(null);
+  const fieldErr = (idx: number, ...fields: string[]) =>
+    tariffErr && tariffErr.idx === idx && tariffErr.field !== null && fields.includes(tariffErr.field) ? tariffErr.msg : "";
+  const showTariffErr = (idx: number, field: string | null, msg: string) => {
+    setTariffErr({ idx, field, msg });
+    setTimeout(() => document.querySelector("[data-tariff-err]")?.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -136,7 +145,8 @@ export default function EditChannelPage() {
   function addTariff() {
     setTariffs([...tariffs, {
       id: null, name: "", price: "", durationDays: "30",
-      paymentMethods: ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "",
+      // With saved methods the author picks one explicitly (a pre-ticked "card" with an empty number saved a tariff nobody could pay)
+      paymentMethods: savedPaymentMethods.length > 0 ? [] : ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "",
       isActive: true, description: "",
     }]);
   }
@@ -161,62 +171,70 @@ export default function EditChannelPage() {
   async function handleSave() {
     setError("");
     setSlugError("");
+    setTariffErr(null);
     if (!channelName.trim()) { setError(t("channel2.errNameRequired")); return; }
     if (channelSlug && (channelSlug.length < 7 || channelSlug.length > 33)) {
       setSlugError(t("channel2.errSlugLength"));
       return;
     }
+    const bodyOf = (tr: (typeof tariffs)[number]) => ({
+      name: `${channelName.trim()}: ${tr.name.trim() || "Базовый"}`,
+      description: channelDescription.trim() || null,
+      price: parseFloat(tr.price) || 0,
+      durationDays: parseInt(tr.durationDays),
+      paymentMethods: tr.paymentMethods,
+      cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || null : null,
+      sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
+      yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
+      yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
+      avatarUrl: avatarUrl || null,
+      instrumentIds: selectedTags.map((tag) => tag.id),
+      isActive: tr.isActive,
+    });
+    const errText = (e: TariffError) => t(tariffErrorKey(e.code), e.vars);
+
+    // Same rules as the server (src/lib/tariff-validation.ts): the reason appears next to the field before anything is sent
+    const seenNames = new Set<string>();
+    for (let i = 0; i < tariffs.length; i++) {
+      const body = bodyOf(tariffs[i]);
+      const r = parseTariffInput(body, "create");
+      if (!r.ok) { showTariffErr(i, r.error.field, errText(r.error)); return; }
+      const key = tariffNameKey(body.name);
+      if (seenNames.has(key)) { showTariffErr(i, "name", errText({ field: "name", code: "nameTaken" })); return; }
+      seenNames.add(key);
+    }
+
     setSaving(true);
 
     try {
-      // Delete removed tariffs
-      const currentIds = tariffs.filter((tr) => tr.id).map((tr) => tr.id);
-      // We don't track deleted here — user removes via removeTariff
-
       // Update/create each tariff
-      for (const tr of tariffs) {
-        const fullName = `${channelName.trim()}: ${tr.name.trim() || "Базовый"}`;
+      for (let i = 0; i < tariffs.length; i++) {
+        const tr = tariffs[i];
         const body = {
-          name: fullName,
-          description: channelDescription.trim() || null,
-          price: parseFloat(tr.price) || 0,
-          durationDays: parseInt(tr.durationDays) || 30,
-          paymentMethods: tr.paymentMethods,
-          cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || null : null,
-          sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
-          yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
-          yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
-          avatarUrl: avatarUrl || null,
-          instrumentIds: selectedTags.map((tag) => tag.id),
-          isActive: tr.isActive,
+          ...bodyOf(tr),
           ...(tr.id === mainTariffId ? { slug: channelSlug.trim() || null } : {}),
         };
 
-        if (tr.id) {
-          // Update existing
-          const res = await fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          if (!res.ok) {
-            const data = await res.json().catch(() => null);
-            if (tr.id === mainTariffId && data?.error) {
-              setSlugError(data.error);
-            } else {
-              setError(data?.error || t("channel2.errUpdateTariff"));
-            }
-            setSaving(false);
-            return;
-          }
-        } else {
-          // Create new
-          const res = await fetch(`/api/users/${user?.id}/tariffs`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          if (!res.ok) { setError(t("channel2.errCreateTariff")); setSaving(false); return; }
+        const res = await fetch(tr.id ? `/api/users/${user?.id}/tariffs/${tr.id}` : `/api/users/${user?.id}/tariffs`, {
+          method: tr.id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          // The API answers with a localized reason and the field it belongs to
+          const data = await res.json().catch(() => null);
+          const fallback = t(tr.id ? "channel2.errUpdateTariff" : "channel2.errCreateTariff");
+          if (data?.field === "slug") setSlugError(data.error || fallback);
+          else if (data?.field !== undefined && data?.error) showTariffErr(i, data.field, data.error);
+          else if (tr.id === mainTariffId && data?.error) setSlugError(data.error);
+          else showTariffErr(i, null, data?.error || fallback);
+          setSaving(false);
+          return;
+        }
+        if (!tr.id) {
+          // Remember the created row, so a retry after a later failure doesn't create it twice
+          const created = await res.json().catch(() => null);
+          if (created?.id) setTariffs((prev) => prev.map((x, j) => (j === i ? { ...x, id: created.id } : x)));
         }
       }
 
@@ -416,6 +434,7 @@ export default function EditChannelPage() {
                   <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.name")}</label>
                   <input type="text" value={tr.name} onChange={(e) => updateTariff(idx, "name", e.target.value)}
                     placeholder="Base" className={`mt-1 ${inputCls}`} />
+                  {fieldErr(idx, "name") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(idx, "name")}</p>}
                 </div>
 
                 <div className="flex gap-3">
@@ -423,11 +442,13 @@ export default function EditChannelPage() {
                     <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.price_rub")}</label>
                     <input type="number" value={tr.price} onChange={(e) => updateTariff(idx, "price", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
+                    {fieldErr(idx, "price") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(idx, "price")}</p>}
                   </div>
                   <div className="flex-1">
                     <label className="text-xs text-gray-500 dark:text-gray-400">{t("channels.duration")}</label>
                     <input type="number" value={tr.durationDays} onChange={(e) => updateTariff(idx, "durationDays", e.target.value)}
                       className={`mt-1 ${inputCls}`} />
+                    {fieldErr(idx, "durationDays") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(idx, "durationDays")}</p>}
                   </div>
                 </div>
 
@@ -486,10 +507,17 @@ export default function EditChannelPage() {
                   )}
                 </div>
 
+                {fieldErr(idx, "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret") && (
+                  <p data-tariff-err className="text-xs text-red-500">{fieldErr(idx, "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret")}</p>
+                )}
+
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={tr.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">{t("channels.active")}</span>
                 </label>
+                {tariffErr && tariffErr.idx === idx && (tariffErr.field === null || !["name", "price", "durationDays", "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret"].includes(tariffErr.field)) && (
+                  <p data-tariff-err className="text-xs text-red-500">{tariffErr.msg}</p>
+                )}
               </div>
             ))}
           </div>

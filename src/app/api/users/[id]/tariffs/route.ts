@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod/v4";
 import { getT } from "@/lib/i18n/server";
 import { validateTariffMethods } from "@/lib/payment-link-server";
 import { activeSubWhere } from "@/lib/subscription-expire";
+import { parseTariffInput, tariffNameKey } from "@/lib/tariff-validation";
+import { tariffFail, logTariffError } from "@/lib/tariff-api";
 
 // GET: list author's tariffs
 export async function GET(
@@ -41,25 +42,7 @@ export async function GET(
   return NextResponse.json(safeTariffs);
 }
 
-// POST: create a new tariff (author only, rating >= 5)
-const createTariffSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  price: z.number().positive(),
-  durationDays: z.number().int().min(1).max(365),
-  // "link:<paymentMethodId>" = author's "payment by link" method (see lib/payment-link.ts)
-  paymentMethods: z
-    .array(z.union([z.enum(["card", "yukassa", "sbp"]), z.string().regex(/^link(:[A-Za-z0-9_-]{1,64})?$/)]))
-    .max(20)
-    .optional(),
-  cardNumber: z.string().max(30).optional(),
-  sbpQrUrl: z.string().max(500).nullable().optional(),
-  yukassaShopId: z.string().max(50).optional(),
-  yukassaSecret: z.string().max(200).optional(),
-  avatarUrl: z.string().optional().nullable(),
-  instrumentIds: z.array(z.string()).optional(),
-});
-
+// POST: create a new tariff (author only, rating >= 5). Every 4xx carries a localized error + field (see tariff-api.ts).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -75,6 +58,8 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const { t } = await getT();
+
   // Check rating
   const user = await prisma.user.findUnique({
     where: { id },
@@ -86,48 +71,51 @@ export async function POST(
   }
 
   if (Number(user.rating) < 5) {
-    return NextResponse.json(
-      { error: (await getT()).t("api.tariffRatingTooLow") },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: t("api.tariffRatingTooLow") }, { status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return tariffFail({ field: null, code: "invalidData" }, t);
   }
 
-  const parsed = createTariffSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.issues },
-      { status: 400 }
-    );
+  const parsed = parseTariffInput(body, "create");
+  if (!parsed.ok) return tariffFail(parsed.error, t);
+  const d = parsed.data;
+
+  const methodsError = await validateTariffMethods(id, d.paymentMethods);
+  if (methodsError) return tariffFail({ field: "paymentMethods", code: methodsError }, t);
+
+  try {
+    // Names are unique per author (case/space-insensitive): two "Неделя" tariffs are indistinguishable for the buyer.
+    const mine = await prisma.subscriptionTariff.findMany({ where: { authorId: id }, select: { name: true } });
+    const key = tariffNameKey(d.name);
+    if (mine.some((x) => tariffNameKey(x.name) === key)) {
+      return tariffFail({ field: "name", code: "nameTaken" }, t, 409);
+    }
+
+    const tariff = await prisma.subscriptionTariff.create({
+      data: {
+        authorId: id,
+        name: d.name,
+        description: d.description,
+        price: d.price,
+        durationDays: d.durationDays,
+        isActive: d.isActive,
+        paymentMethods: d.paymentMethods,
+        cardNumber: d.cardNumber,
+        sbpQrUrl: d.sbpQrUrl,
+        yukassaShopId: d.yukassaShopId,
+        yukassaSecret: d.yukassaSecret,
+        avatarUrl: d.avatarUrl,
+        instrumentIds: d.instrumentIds,
+      },
+    });
+    return NextResponse.json(tariff, { status: 201 });
+  } catch (e) {
+    logTariffError("create", e);
+    return tariffFail({ field: null, code: "saveFailed" }, t, 500);
   }
-
-  if (parsed.data.paymentMethods) {
-    const methodsError = await validateTariffMethods(id, parsed.data.paymentMethods);
-    if (methodsError) return NextResponse.json({ error: methodsError }, { status: 400 });
-  }
-
-  const tariff = await prisma.subscriptionTariff.create({
-    data: {
-      authorId: id,
-      name: parsed.data.name,
-      description: parsed.data.description,
-      price: parsed.data.price,
-      durationDays: parsed.data.durationDays,
-      paymentMethods: parsed.data.paymentMethods || ["card"],
-      cardNumber: parsed.data.cardNumber,
-      sbpQrUrl: parsed.data.sbpQrUrl,
-      yukassaShopId: parsed.data.yukassaShopId,
-      yukassaSecret: parsed.data.yukassaSecret,
-      avatarUrl: parsed.data.avatarUrl || null,
-      instrumentIds: parsed.data.instrumentIds || [],
-    },
-  });
-
-  return NextResponse.json(tariff, { status: 201 });
 }

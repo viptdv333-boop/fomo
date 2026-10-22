@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { linkRef, paymentLinkHost } from "@/lib/payment-link";
+import { parseTariffInput, tariffErrorKey, tariffNameKey, type TariffError } from "@/lib/tariff-validation";
 
 interface SavedPaymentMethod {
   id: string;
@@ -23,6 +24,7 @@ interface TariffRow {
   paymentMethodId: string; // ID of saved payment method
   paymentMethods: string[];
   cardNumber: string;
+  sbpQrUrl: string;
   yukassaShopId: string;
   yukassaSecret: string;
 }
@@ -40,7 +42,7 @@ export default function CreateChannelPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [tariffs, setTariffs] = useState<TariffRow[]>([
-    { name: "Базовый", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" },
+    { name: "Базовый", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "" },
   ]);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
 
@@ -49,6 +51,17 @@ export default function CreateChannelPage() {
   }, []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Specific reason for one tariff row, shown next to the offending field (field = null: under the row)
+  const [tariffErr, setTariffErr] = useState<{ idx: number; field: string | null; msg: string } | null>(null);
+  // Tariffs already created by this form (a retry after a later failure must not create them twice)
+  const createdRef = useRef<Set<string>>(new Set());
+  const ROW_FIELDS = ["name", "price", "durationDays", "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret"];
+  const fieldErr = (idx: number, ...fields: string[]) =>
+    tariffErr && tariffErr.idx === idx && tariffErr.field !== null && fields.includes(tariffErr.field) ? tariffErr.msg : "";
+  const showTariffErr = (idx: number, field: string | null, msg: string) => {
+    setTariffErr({ idx, field, msg });
+    setTimeout(() => document.querySelector("[data-tariff-err]")?.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+  };
 
   // Instrument tags (hashtags)
   const [selectedTags, setSelectedTags] = useState<{ id: string; name: string; ticker: string | null; slug: string }[]>([]);
@@ -59,7 +72,7 @@ export default function CreateChannelPage() {
   const [tagExpanded, setTagExpanded] = useState<Set<string>>(new Set());
 
   function addTariff() {
-    setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", yukassaShopId: "", yukassaSecret: "" }]);
+    setTariffs([...tariffs, { name: "", price: "", durationDays: "30", paymentMethodId: "", paymentMethods: ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "" }]);
   }
 
   function removeTariff(index: number) {
@@ -90,55 +103,74 @@ export default function CreateChannelPage() {
 
   async function handleCreate() {
     setError("");
+    setTariffErr(null);
     if (!channelName.trim()) {
       setError(t("channel2.errNameRequired"));
       return;
     }
 
-    const validTariffs = tariffs.filter((tr) => tr.name.trim() && tr.price);
+    const validTariffs = tariffs.map((tr, idx) => ({ tr, idx })).filter(({ tr }) => tr.name.trim() && tr.price);
     if (validTariffs.length === 0) {
       setError(t("channel2.errNeedTariff"));
       return;
     }
 
-    for (const tr of validTariffs) {
-      const p = parseFloat(tr.price);
-      if (isNaN(p) || p <= 0) {
-        setError(t("channel2.errBadPrice", { name: tr.name }));
-        return;
-      }
+    const bodyOf = (tr: TariffRow) => ({
+      name: `${channelName}: ${tr.name}`.trim(),
+      description: description.trim() || null,
+      price: parseFloat(tr.price),
+      durationDays: parseInt(tr.durationDays),
+      paymentMethods: tr.paymentMethods,
+      cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || null : null,
+      sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
+      yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
+      yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
+      avatarUrl: avatarUrl || null,
+      instrumentIds: selectedTags.map((tag) => tag.id),
+    });
+    const errText = (e: TariffError) => t(tariffErrorKey(e.code), e.vars);
+
+    // Same rules as the server (src/lib/tariff-validation.ts): the reason appears next to the field before anything is sent
+    const seen = new Set<string>();
+    for (const { tr, idx } of validTariffs) {
       if (!tr.paymentMethodId && savedPaymentMethods.length > 0) {
-        setError(t("channel2.errPickPayment", { name: tr.name }));
+        showTariffErr(idx, "paymentMethods", errText({ field: "paymentMethods", code: "methodsRequired" }));
         return;
       }
+      const body = bodyOf(tr);
+      const r = parseTariffInput(body, "create");
+      if (!r.ok) { showTariffErr(idx, r.error.field, errText(r.error)); return; }
+      const key = tariffNameKey(body.name);
+      if (seen.has(key)) { showTariffErr(idx, "name", errText({ field: "name", code: "nameTaken" })); return; }
+      seen.add(key);
     }
 
     setSaving(true);
 
     let allOk = true;
-    for (const tr of validTariffs) {
-      const res = await fetch(`/api/users/${user?.id}/tariffs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `${channelName}: ${tr.name}`.trim(),
-          description: description.trim() || undefined,
-          price: parseFloat(tr.price),
-          durationDays: parseInt(tr.durationDays) || 30,
-          paymentMethods: tr.paymentMethods,
-          cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() : undefined,
-          yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() : undefined,
-          yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() : undefined,
-          avatarUrl: avatarUrl || undefined,
-          instrumentIds: selectedTags.map((tag) => tag.id),
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || t("channel2.errCreateTariff"));
-        allOk = false;
-        break;
+    try {
+      for (const { tr, idx } of validTariffs) {
+        const body = bodyOf(tr);
+        if (createdRef.current.has(tariffNameKey(body.name))) continue;
+        const res = await fetch(`/api/users/${user?.id}/tariffs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          // The API answers with a localized reason and the field it belongs to
+          const data = await res.json().catch(() => null);
+          if (data?.field !== undefined && data?.error) showTariffErr(idx, data.field, data.error);
+          else if (data?.error) setError(data.error);
+          else setError(t("channel2.errCreateTariff"));
+          allOk = false;
+          break;
+        }
+        createdRef.current.add(tariffNameKey(body.name));
       }
+    } catch {
+      setError(t("channel2.errNetwork"));
+      allOk = false;
     }
 
     setSaving(false);
@@ -384,6 +416,7 @@ export default function CreateChannelPage() {
                     className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                     placeholder="Base / Premium / VIP"
                   />
+                  {fieldErr(i, "name") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(i, "name")}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -396,6 +429,7 @@ export default function CreateChannelPage() {
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                       placeholder="500"
                     />
+                    {fieldErr(i, "price") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(i, "price")}</p>}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t("channels.duration")}</label>
@@ -406,6 +440,7 @@ export default function CreateChannelPage() {
                       className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg text-sm dark:bg-gray-900 dark:text-gray-100"
                       placeholder="30"
                     />
+                    {fieldErr(i, "durationDays") && <p data-tariff-err className="text-xs text-red-500 mt-1">{fieldErr(i, "durationDays")}</p>}
                   </div>
                 </div>
 
@@ -427,6 +462,7 @@ export default function CreateChannelPage() {
                               updateTariff(i, "paymentMethodId", m.id);
                               updateTariff(i, "paymentMethods", [m.type === "link" ? linkRef(m.id) : m.type]);
                               if (m.type === "card") updateTariff(i, "cardNumber", m.details?.cardNumber || "");
+                              if (m.type === "sbp") updateTariff(i, "sbpQrUrl", m.details?.qrImageUrl || "");
                               if (m.type === "yukassa") {
                                 updateTariff(i, "yukassaShopId", m.details?.yukassaShopId || "");
                                 updateTariff(i, "yukassaSecret", m.details?.yukassaSecret || "");
@@ -449,7 +485,13 @@ export default function CreateChannelPage() {
                       })}
                     </div>
                   )}
+                  {fieldErr(i, "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret") && (
+                    <p data-tariff-err className="text-xs text-red-500 mt-2">{fieldErr(i, "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret")}</p>
+                  )}
                 </div>
+                {tariffErr && tariffErr.idx === i && (tariffErr.field === null || !ROW_FIELDS.includes(tariffErr.field)) && (
+                  <p data-tariff-err className="text-xs text-red-500">{tariffErr.msg}</p>
+                )}
               </div>
             ))}
           </div>
