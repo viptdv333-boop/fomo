@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { familyOfTariff, planLabelOf } from "@/lib/tariff-plans";
 
 export async function GET() {
   const session = await auth();
@@ -23,7 +24,11 @@ export async function GET() {
       // tariffId null) as their own entities — needs the tariff's own name
       // and picture, not just the author's.
       tariff: {
-        select: { id: true, name: true, avatarUrl: true, slug: true },
+        select: {
+          id: true, name: true, avatarUrl: true, slug: true, parentId: true, planName: true, archivedAt: true,
+          // A subscription may sit on a PLAN of the channel: the channel itself is the plan's parent (tariff-plans.ts)
+          parent: { select: { id: true, name: true, avatarUrl: true, slug: true, archivedAt: true } },
+        },
       },
     },
     orderBy: { endDate: "asc" },
@@ -42,14 +47,31 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  // One entry per CHANNEL: legacy duplicates (a row per plan) collapse to the one that ends last (it is the sorted-asc tail),
+  // closed channels disappear.
+  const channelOf = (s: (typeof paidSubs)[number]) => (s.tariff ? s.tariff.parent ?? s.tariff : null);
+  const lastByChannel = new Map<string, string>();
+  for (const s of paidSubs) {
+    const ch = channelOf(s);
+    if (ch) lastByChannel.set(ch.id, s.id);
+  }
+  const visibleSubs = paidSubs.filter((s) => {
+    const ch = channelOf(s);
+    if (!ch) return true;
+    return !ch.archivedAt && lastByChannel.get(ch.id) === s.id;
+  });
+
   // Combine: paid subs keep their format, follows get mapped to a similar shape
   const result = [
-    ...paidSubs.map((s) => ({
+    ...visibleSubs.map((s) => ({
       id: s.id,
       type: "paid" as const,
-      // канал подписки (13.09.2026); null — старая подписка на автора целиком
-      tariffId: s.tariffId,
-      channel: s.tariff ? { id: s.tariff.id, name: s.tariff.name, avatarUrl: s.tariff.avatarUrl, slug: s.tariff.slug } : null,
+      // канал подписки (13.09.2026, у плана — его канал); null — старая подписка на автора целиком
+      tariffId: channelOf(s)?.id ?? s.tariffId,
+      // the plan actually paid (22.10.2026): its row id and name
+      planId: s.tariffId,
+      planName: s.tariff ? planLabelOf(s.tariff) : null,
+      channel: channelOf(s) ? { id: channelOf(s)!.id, name: channelOf(s)!.name, avatarUrl: channelOf(s)!.avatarUrl, slug: channelOf(s)!.slug } : null,
       telegramNotify: s.telegramNotify,
       monthlyPrice: s.monthlyPrice,
       startDate: s.startDate,
@@ -99,6 +121,14 @@ export async function DELETE(request: Request) {
     where: { id },
     data: { status: "cancelled", endDate: new Date() },
   });
+  // Old data may hold a second row for another plan of the same channel: leaving the channel cancels them all.
+  if (subscription.tariffId) {
+    const family = await familyOfTariff(prisma, subscription.tariffId);
+    await prisma.subscription.updateMany({
+      where: { subscriberId: subscription.subscriberId, authorId: subscription.authorId, tariffId: { in: family }, status: "active" },
+      data: { status: "cancelled", endDate: new Date(), telegramNotify: false },
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

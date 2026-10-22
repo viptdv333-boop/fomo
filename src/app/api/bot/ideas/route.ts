@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { channelRootId } from "@/lib/tariff-plans";
 import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
@@ -81,11 +82,13 @@ export async function POST(request: NextRequest) {
 
   let tariffId: string | null = null;
   if (channelId) {
+    // A plan id leads to its channel: posts belong to the channel (tariff-plans.ts).
+    const rootId = (await channelRootId(prisma, channelId)) ?? channelId;
     const tariff = await prisma.subscriptionTariff.findUnique({
-      where: { id: channelId },
-      select: { id: true, authorId: true, isActive: true },
+      where: { id: rootId },
+      select: { id: true, authorId: true, isActive: true, archivedAt: true },
     });
-    if (!tariff || tariff.authorId !== BOT_AUTHOR_ID) {
+    if (!tariff || tariff.authorId !== BOT_AUTHOR_ID || tariff.archivedAt) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
     }
     if (!tariff.isActive) {

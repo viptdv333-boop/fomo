@@ -6,6 +6,8 @@ import AppIcon from "../AppIcon";
 import AppSheet, { Sections, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { Loading, ScreenFrame } from "./parts";
+import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
+import { planSummary } from "@/lib/tariff-plans";
 
 interface SubItem {
   id: string;
@@ -24,6 +26,10 @@ interface ChannelItem {
   durationDays?: number;
   avatarUrl?: string | null;
   subscriberCount?: number;
+  /** null = a channel; plan rows (parentId) are folded into their channel */
+  parentId?: string | null;
+  isActive?: boolean;
+  plans?: { id: string; label: string | null; price: number; durationDays: number }[];
 }
 interface FollowerItem {
   id: string;
@@ -38,6 +44,7 @@ interface ChannelSubscriber {
   avatarUrl: string | null;
   isActive: boolean;
   endDate: string;
+  planName?: string | null;
 }
 
 const tile = (name: string, src?: string | null) => (
@@ -62,13 +69,14 @@ export default function SubsScreen() {
   const [tgVerified, setTgVerified] = useState(false);
   const [people, setPeople] = useState<{ channel: ChannelItem; list: ChannelSubscriber[] | null } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ChannelItem | null>(null);
 
   const load = useCallback(async () => {
     if (!uid) return;
     const j = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    const [s, c, f, tg] = await Promise.all([j("/api/subscriptions"), j(`/api/users/${uid}/tariffs`), j(`/api/users/${uid}/followers`), j("/api/telegram/account")]);
+    const [s, c, f, tg] = await Promise.all([j("/api/subscriptions"), j(`/api/users/${uid}/tariffs?scope=manage`), j(`/api/users/${uid}/followers`), j("/api/telegram/account")]);
     setSubs(Array.isArray(s) ? s : []);
-    setChannels(Array.isArray(c) ? c : []);
+    setChannels(Array.isArray(c) ? c.filter((x: ChannelItem) => !x.parentId) : []);
     setFollowers(Array.isArray(f) ? f : []);
     setTgVerified(Boolean(tg?.canForward ?? tg?.verified));
   }, [uid]);
@@ -123,6 +131,14 @@ export default function SubsScreen() {
   const channelSubs = subs.filter((s) => s.type === "paid");
   const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(dateLocale) : "");
 
+  // «Неделя 1000 ₽ · Месяц 3000 ₽ · и ещё 2»: the plans of a channel on one line (first 3)
+  const planLineText = (ch: ChannelItem) => {
+    const list = ch.plans && ch.plans.length > 0 ? ch.plans : [{ id: ch.id, label: null, price: Number(ch.price), durationDays: ch.durationDays || 30 }];
+    const { shown, more } = planSummary(list.map((p) => ({ ...p, isRoot: false, isActive: true })), 3);
+    const one = (p: (typeof list)[number]) => (p.label ? `${p.label} ${p.price} ₽` : t("feed2.pricePerDays", { price: p.price, days: p.durationDays }));
+    return shown.map(one).join(" · ") + (more > 0 ? ` ${t("channel2.plansMore", { count: more })}` : "");
+  };
+
   const sections: SheetSection[] = [];
   sections.push({
     key: "mine",
@@ -132,13 +148,14 @@ export default function SubsScreen() {
       ...channels.map((ch) => ({
         key: ch.id,
         label: ch.name,
-        sub: [t("feed2.pricePerDays", { price: Number(ch.price), days: ch.durationDays || 30 }), typeof ch.subscriberCount === "number" ? t("pay.subscribersCount", { count: ch.subscriberCount }) : ""].filter(Boolean).join(" · "),
+        sub: [planLineText(ch), typeof ch.subscriberCount === "number" ? t("pay.subscribersCount", { count: ch.subscriberCount }) : "", ch.isActive === false ? t("channel2.hiddenBadge") : ""].filter(Boolean).join(" · "),
         icon: tile(ch.name, ch.avatarUrl),
         chev: true,
         onClick: () => open(`/channels/${ch.id}`),
         actions: [
           { label: t("subs.channelSubscribers"), onClick: () => void showPeople(ch) },
           { label: t("subs.settings"), onClick: () => open(`/channels/edit/${ch.id}`) },
+          { label: t("chdel.button"), tone: "danger" as const, onClick: () => setDeleting(ch) },
         ],
       })),
       {
@@ -221,7 +238,7 @@ export default function SubsScreen() {
                     : people.list.map((s) => ({
                         key: s.id,
                         label: s.displayName,
-                        sub: s.isActive ? `${t("subs.subscriberUntil")} ${date(s.endDate)}` : t("subs.subscriberInactive"),
+                        sub: [s.isActive ? `${t("subs.subscriberUntil")} ${date(s.endDate)}` : t("subs.subscriberInactive"), s.planName].filter(Boolean).join(" · "),
                         icon: tile(s.displayName, s.avatarUrl),
                         chev: true,
                         onClick: () => {
@@ -231,6 +248,19 @@ export default function SubsScreen() {
                       })),
             },
           ]}
+        />
+      )}
+      {deleting && uid && (
+        <DeleteChannelDialog
+          authorId={uid}
+          channelId={deleting.id}
+          channelName={deleting.name}
+          subscribers={deleting.subscriberCount}
+          onClose={() => setDeleting(null)}
+          onDone={() => {
+            setDeleting(null);
+            void load();
+          }}
         />
       )}
     </ScreenFrame>

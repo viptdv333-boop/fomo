@@ -38,13 +38,14 @@ const match = (row: Row, where: Row = {}): boolean =>
   });
 const fakePrisma: any = {
   subscriptionTariff: {
-    findUnique: async ({ where, select }: any) => {
+    findUnique: async ({ where }: any) => {
       const t = db.tariffs.find((r) => r.id === where.id);
-      if (!t) return null;
-      return { authorId: t.authorId, authorTelegramNotify: t.authorTelegramNotify, subscriptions: db.subs.filter((s) => s.tariffId === t.id && match(s, select.subscriptions.where)).map((s) => ({ subscriberId: s.subscriberId })) };
+      return t ? { id: t.id, parentId: t.parentId ?? null, authorId: t.authorId, authorTelegramNotify: t.authorTelegramNotify } : null;
     },
+    findMany: async ({ where }: any) => db.tariffs.filter((r) => (r.parentId ?? null) === where.parentId).map((r) => ({ id: r.id })),
   },
   subscription: {
+    findMany: async ({ where, select }: any) => db.subs.filter((s) => match(s, where)).map((s) => (select ? { subscriberId: s.subscriberId } : s)),
     findFirst: async ({ where }: any) => db.subs.filter((s) => match(s, where)).sort((a, b) => +b.endDate - +a.endDate)[0] ?? null,
     updateMany: async ({ where, data }: any) => {
       const rows = db.subs.filter((s) => match(s, where) && (where.endDate === undefined || +s.endDate === +where.endDate));
@@ -142,6 +143,20 @@ async function main() {
   await notifyChannelTelegramSubscribers("t1", text, { rich: rich("Setup", "Body") });
   eq("3. only the active subscriber of THIS channel with the switch on and a bot", sentTo(), ["600"]);
   eq("3. nothing is logged as a failure for the skipped ones", warns.length, 0);
+
+  /* ---- 3b. a subscriber on a PLAN of the channel gets the channel's posts (tariff-plans.ts) ---- */
+  reset();
+  db.tariffs.push({ id: "t1p", parentId: "t1", authorId: "owner", authorTelegramNotify: false });
+  db.subs = [sub("u1", { tariffId: "t1p" }), sub("u2", { tariffId: "t2" })];
+  db.channels = [ownBot("u1", "1:T", "700"), ownBot("u2", "2:T", "701")];
+  await notifyChannelTelegramSubscribers("t1", text, { rich: rich("Setup", "Body") });
+  eq("3b. subscriber of a plan of t1 gets the post, a subscriber of another channel does not", sentTo(), ["700"]);
+  reset();
+  db.tariffs.push({ id: "t1p", parentId: "t1", authorId: "owner", authorTelegramNotify: false });
+  db.subs = [sub("u1", { tariffId: "t1p" })];
+  db.channels = [ownBot("u1", "1:T", "700")];
+  await notifyChannelTelegramSubscribers("t1p", text, { rich: rich("Setup", "Body") });
+  eq("3b. a post addressed by a PLAN id reaches the same channel's subscribers", sentTo(), ["700"]);
 
   /* ---- 4. a disabled / unverified bot connection is not a target ---- */
   reset();

@@ -25,6 +25,8 @@ export interface ChannelItem {
   price: number;
   durationDays: number;
   subscribersCount: number;
+  /** Plans on sale (tariff-plans.ts), sorted by period then price; price / durationDays above = the default (cheapest) plan. */
+  plans?: { id: string; label: string | null; price: number; durationDays: number; isRoot: boolean }[];
   ideasCount?: number;
   avatarUrl?: string | null;
   author: ChannelAuthor;
@@ -51,7 +53,11 @@ export interface AuthorItem {
 export interface SubscriptionEntry {
   id: string;
   type: "paid" | "free";
+  /** The channel (for a subscription on a plan: the plan's channel). */
   tariffId?: string | null;
+  /** The plan actually paid (row id) and its name. */
+  planId?: string | null;
+  planName?: string | null;
   endDate?: string | null;
   telegramNotify?: boolean;
   author: { id: string };
@@ -215,7 +221,7 @@ export interface SubIndex {
   paidAuthorIds: Set<string>;
   follows: Set<string>;
   /** id of the subscription row per channel (telegram toggle) */
-  subByChannel: Map<string, { id: string; telegramNotify: boolean }>;
+  subByChannel: Map<string, { id: string; telegramNotify: boolean; planId?: string | null }>;
 }
 
 export function buildSubIndex(entries: unknown): SubIndex {
@@ -232,7 +238,7 @@ export function buildSubIndex(entries: unknown): SubIndex {
       if (e.tariffId) {
         const prev = idx.paidByChannel.get(e.tariffId);
         if (!prev || new Date(end).getTime() > new Date(prev).getTime()) idx.paidByChannel.set(e.tariffId, end);
-        idx.subByChannel.set(e.tariffId, { id: e.id, telegramNotify: !!e.telegramNotify });
+        idx.subByChannel.set(e.tariffId, { id: e.id, telegramNotify: !!e.telegramNotify, planId: e.planId ?? null });
       } else {
         idx.paidByAuthor.set(e.author.id, end);
       }
@@ -251,8 +257,9 @@ export function pendingChannelIds(payments: unknown): Set<string> {
   const out = new Set<string>();
   if (!Array.isArray(payments)) return out;
   for (const p of payments) {
-    const r = p as { status?: string; tariffId?: string | null };
-    if (r && r.status === "PENDING" && r.tariffId) out.add(r.tariffId);
+    // channelId: the channel of the plan that was paid (the API adds it); older answers only have tariffId
+    const r = p as { status?: string; tariffId?: string | null; channelId?: string | null };
+    if (r && r.status === "PENDING" && (r.channelId || r.tariffId)) out.add((r.channelId || r.tariffId) as string);
   }
   return out;
 }

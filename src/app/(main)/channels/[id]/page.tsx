@@ -24,6 +24,8 @@ interface ChannelData {
   price: number;
   durationDays: number;
   subscribersCount: number;
+  /** Plans on sale (tariff-plans.ts), sorted by period then price. */
+  plans?: { id: string; label: string | null; price: number; durationDays: number; isRoot: boolean }[];
   avatarUrl?: string | null;
   author: {
     id: string;
@@ -56,6 +58,8 @@ interface SubscriberData {
   fomoId: string | null;
   isActive: boolean;
   endDate: string;
+  /** The plan the member is on (tariff-plans.ts); null when the channel has one plan or the row is old. */
+  planName?: string | null;
 }
 
 function ChannelSite() {
@@ -82,7 +86,7 @@ function ChannelSite() {
   const [telegramVerified, setTelegramVerified] = useState(false);
   const [telegramBusy, setTelegramBusy] = useState(false);
   // The viewer's own subscription to this channel (for their Telegram toggle).
-  const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; telegramNotify: boolean; endDate: string | null } | null>(null);
+  const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; planId: string | null; telegramNotify: boolean; endDate: string | null } | null>(null);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [candQuery, setCandQuery] = useState("");
@@ -357,7 +361,7 @@ function ChannelSite() {
                 (!s.tariffId || s.tariffId === channel.id)
             );
             setIsSubscribed(Boolean(mine));
-            setMySub(mine ? { id: mine.id, tariffId: mine.tariffId ?? null, telegramNotify: Boolean(mine.telegramNotify), endDate: mine.endDate ?? null } : null);
+            setMySub(mine ? { id: mine.id, tariffId: mine.tariffId ?? null, planId: mine.planId ?? null, telegramNotify: Boolean(mine.telegramNotify), endDate: mine.endDate ?? null } : null);
           }
         })
         .catch(() => {});
@@ -428,7 +432,10 @@ function ChannelSite() {
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{s.displayName}</div>
+      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+        {s.displayName}
+        {s.planName && <span className="ml-1.5 text-[11px] font-normal text-gray-400">· {s.planName}</span>}
+      </div>
       {s.isActive ? (
         <div className="text-xs text-gray-400">
           {t("subs.subscriberUntil")} {new Date(s.endDate).toLocaleDateString(locale === "en" ? "en-US" : locale === "cn" ? "zh-CN" : "ru-RU")} {t("channel2.daysLeft", { days: daysLeft(s.endDate) })}
@@ -511,9 +518,18 @@ function ChannelSite() {
         )}
 
         <div className="mt-4 flex items-center gap-4 flex-wrap">
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-2">
-            <span className="text-lg font-bold text-green-600 dark:text-green-400">{channel.price} ₽</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{t("channel2.perDays", { days: channel.durationDays })}</span>
+          {/* One channel, several plans: every plan on sale with its price and period (the buyer picks one in the payment window) */}
+          <div className="flex flex-wrap gap-2" data-testid="plan-line">
+            {(channel.plans && channel.plans.length > 0
+              ? channel.plans
+              : [{ id: channel.id, label: null, price: channel.price, durationDays: channel.durationDays, isRoot: true }]
+            ).map((p) => (
+              <div key={p.id} className="bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-2">
+                {p.label && <span className="text-sm text-gray-600 dark:text-gray-300 mr-1.5">{p.label}</span>}
+                <span className="text-lg font-bold text-green-600 dark:text-green-400">{p.price} ₽</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{t("channel2.perDays", { days: p.durationDays })}</span>
+              </div>
+            ))}
           </div>
 
           {!isOwner && !isSubscribed && (
@@ -789,6 +805,7 @@ function ChannelSite() {
           authorId={channel.author.id}
           authorName={channel.author.displayName}
           preselectedTariffId={channel.id}
+          currentPlanId={mySub.planId}
           renewUntil={mySub.endDate}
           onClose={() => setShowRenewModal(false)}
         />

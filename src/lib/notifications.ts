@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { canAccessRoom } from "@/lib/channel-access";
+import { familyOfTariff } from "@/lib/tariff-plans";
 import { dispatchNotification } from "@/lib/notify-dispatch";
 import { isKeyed, renderNotifText, type NotifText, type NotifVar } from "@/lib/notif-render";
 import type { EventId } from "@/lib/notification-events";
@@ -157,9 +158,11 @@ export async function notifyChannelSubscribers(
   type = "channel_post",
   full?: NotifFull
 ) {
+  // A subscription to ANY plan of the channel counts (tariff-plans.ts); one notification per person.
+  const family = await familyOfTariff(prisma, tariffId);
   const subs = await prisma.subscription.findMany({
     where: {
-      tariffId,
+      tariffId: { in: family },
       status: "active",
       endDate: { gt: new Date() },
       subscriberId: { notIn: excludeUserIds },

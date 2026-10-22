@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { channelRootId } from "@/lib/tariff-plans";
 import { z } from "zod/v4";
 import { BOT_AUTHOR_ID, checkBotToken } from "@/lib/bot-auth";
 import { notifyChannelTelegramSubscribers, escapeTelegramHtml } from "@/lib/telegram";
@@ -25,11 +26,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
   }
 
+  const rootId = (await channelRootId(prisma, channelId)) ?? channelId;
   const tariff = await prisma.subscriptionTariff.findUnique({
-    where: { id: channelId },
-    select: { id: true, authorId: true, isActive: true, channelRoomId: true, name: true },
+    where: { id: rootId },
+    select: { id: true, authorId: true, isActive: true, channelRoomId: true, name: true, archivedAt: true },
   });
-  if (!tariff || tariff.authorId !== BOT_AUTHOR_ID) {
+  if (!tariff || tariff.authorId !== BOT_AUTHOR_ID || tariff.archivedAt) {
     return NextResponse.json({ error: "Channel not found" }, { status: 404 });
   }
   if (!tariff.isActive) {

@@ -6,6 +6,7 @@ import { grantSubscription } from "@/lib/subscriptions";
 import { getT } from "@/lib/i18n/server";
 import { isAdmin } from "@/lib/roles";
 import { isActiveTerm } from "@/lib/subscription-renew";
+import { rootIdOf, tariffFamily, planLabelOf } from "@/lib/tariff-plans";
 
 export async function GET(
   _request: NextRequest,
@@ -21,22 +22,36 @@ export async function GET(
   if (!tariff || tariff.authorId !== id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  // Names and links in notifications are the channel's (the plan's parent), whichever row the panel was opened on.
+  const channel = tariff.parentId ? (await prisma.subscriptionTariff.findUnique({ where: { id: tariff.parentId } })) ?? tariff : tariff;
 
+  // The panel of a channel lists the members of the whole family (the channel's own plan + all its plans), each with the plan
+  // they are on; a person who ended up with two rows (old data) is listed once, by the row that ends last.
+  const family = await tariffFamily(prisma, rootIdOf(tariff));
   const subscriptions = await prisma.subscription.findMany({
-    where: { tariffId },
+    where: { tariffId: { in: family } },
     include: {
       subscriber: {
         select: { id: true, displayName: true, avatarUrl: true, fomoId: true },
       },
+      tariff: { select: { name: true, parentId: true, planName: true } },
     },
     orderBy: { startDate: "desc" },
   });
+  const bestBySubscriber = new Map<string, (typeof subscriptions)[number]>();
+  for (const s of subscriptions) {
+    const prev = bestBySubscriber.get(s.subscriberId);
+    if (!prev || s.endDate > prev.endDate) bestBySubscriber.set(s.subscriberId, s);
+  }
+  const rows = subscriptions.filter((s) => bestBySubscriber.get(s.subscriberId)?.id === s.id);
 
   const now = new Date();
 
   return NextResponse.json(
-    subscriptions.map((s) => ({
+    rows.map((s) => ({
       id: s.id,
+      planId: s.tariffId,
+      planName: s.tariff ? planLabelOf(s.tariff) : null,
       subscriberId: s.subscriber.id,
       displayName: s.subscriber.displayName,
       avatarUrl: s.subscriber.avatarUrl,
@@ -69,7 +84,11 @@ export async function POST(
   if (!tariff || tariff.authorId !== id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  // Names and links in notifications are the channel's (the plan's parent), whichever row the panel was opened on.
+  const channel = tariff.parentId ? (await prisma.subscriptionTariff.findUnique({ where: { id: tariff.parentId } })) ?? tariff : tariff;
 
+  const rootId = rootIdOf(tariff);
+  const family = await tariffFamily(prisma, rootId);
   const body = await request.json().catch(() => ({}));
   const { t } = await getT();
   const days = Number(body?.days);
@@ -94,14 +113,15 @@ export async function POST(
       return NextResponse.json({ error: t("notif.err.userNotFound") }, { status: 404 });
     }
     const existing = await prisma.subscription.findFirst({
-      where: { subscriberId: user.id, authorId: id, tariffId },
+      where: { subscriberId: user.id, authorId: id, tariffId: { in: family } },
       orderBy: { endDate: "desc" },
     });
     const base = existing && existing.status === "active" && existing.endDate > now ? existing.endDate : now;
     await grantSubscription({
       subscriberId: user.id,
       authorId: id,
-      tariffId,
+      // a free grant joins the channel: an existing subscriber keeps their plan (grantSubscription re-uses the row), a new one gets the channel's own row
+      tariffId: existing?.tariffId ?? rootId,
       monthlyPrice: 0,
       endDate: new Date(base.getTime() + days * DAY),
       durationDays: days,
@@ -109,17 +129,17 @@ export async function POST(
     await createNotification({
       userId: user.id,
       type: "subscription_extended",
-      title: { key: "notif.subscription.added.title", vars: { channel: tariff.name, days } },
-      body: tariff.name,
-      link: `/channels/${tariff.slug || tariff.id}`,
+      title: { key: "notif.subscription.added.title", vars: { channel: channel.name, days } },
+      body: channel.name,
+      link: `/channels/${channel.slug || channel.id}`,
     }).catch(() => {});
     return NextResponse.json({ ok: true, added: user.id, days });
   }
 
   const targets = await prisma.subscription.findMany({
     where: subscriptionId
-      ? { id: subscriptionId, tariffId }
-      : { tariffId, status: "active", endDate: { gt: now } },
+      ? { id: subscriptionId, tariffId: { in: family } }
+      : { tariffId: { in: family }, status: "active", endDate: { gt: now } },
     select: { id: true, subscriberId: true, status: true, endDate: true },
   });
   if (targets.length === 0) {
@@ -144,8 +164,8 @@ export async function POST(
         userId: s.subscriberId,
         type: "subscription_extended",
         title: { key: "notif.subscription.extended.title", vars: { days } },
-        body: tariff.name,
-        link: `/channels/${tariff.slug || tariff.id}`,
+        body: channel.name,
+        link: `/channels/${channel.slug || channel.id}`,
       }).catch(() => {})
     )
   );
@@ -173,13 +193,16 @@ export async function DELETE(
   if (!tariff || tariff.authorId !== id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  // Names and links in notifications are the channel's (the plan's parent), whichever row the panel was opened on.
+  const channel = tariff.parentId ? (await prisma.subscriptionTariff.findUnique({ where: { id: tariff.parentId } })) ?? tariff : tariff;
 
+  const family = await tariffFamily(prisma, rootIdOf(tariff));
   const body = await request.json().catch(() => ({}));
   const now = new Date();
 
   if (body?.allExpired === true) {
     const res = await prisma.subscription.deleteMany({
-      where: { tariffId, OR: [{ status: { not: "active" } }, { endDate: { lte: now } }] },
+      where: { tariffId: { in: family }, OR: [{ status: { not: "active" } }, { endDate: { lte: now } }] },
     });
     return NextResponse.json({ ok: true, deleted: res.count });
   }
@@ -190,7 +213,7 @@ export async function DELETE(
   }
 
   const sub = await prisma.subscription.findFirst({
-    where: { id: subscriptionId, tariffId },
+    where: { id: subscriptionId, tariffId: { in: family } },
     select: { id: true, subscriberId: true, status: true, endDate: true },
   });
   if (!sub) {
@@ -212,8 +235,8 @@ export async function DELETE(
     userId: sub.subscriberId,
     type: "subscription_removed",
     title: { key: "notif.subscription.removed.title" },
-    body: tariff.name,
-    link: `/channels/${tariff.slug || tariff.id}`,
+    body: channel.name,
+    link: `/channels/${channel.slug || channel.id}`,
   }).catch(() => {});
 
   return NextResponse.json({ ok: true });

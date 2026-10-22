@@ -5,6 +5,7 @@ import { createNotification, notifyChannelSubscribers } from "@/lib/notification
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { ideaCommentLink } from "@/lib/app-unread";
 import { claimClientRequest } from "@/lib/client-request";
+import { familyOfTariff } from "@/lib/tariff-plans";
 
 // Who may read / write the thread of a paid post (a channel post or a paid idea): the author, staff, a buyer, or a
 // subscriber of that channel / author whose term has not ended. Used by GET and POST, so a lapsed subscriber can
@@ -25,7 +26,7 @@ async function canUsePaidIdeaThread(
         authorId: idea.authorId,
         status: "active",
         endDate: { gt: new Date() },
-        ...(idea.tariffId ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] } : {}),
+        ...(idea.tariffId ? { OR: [{ tariffId: { in: await familyOfTariff(prisma, idea.tariffId) } }, { tariffId: null }] } : {}),
       },
     }),
   ]);

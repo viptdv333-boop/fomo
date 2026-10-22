@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { tariffFamily, rootIdOf } from "./tariff-plans";
 
 // Paid-channel chat rooms (ChatRoom linked from SubscriptionTariff.channelRoomId)
 // used to be "open by id": only the /api/channels/[id]/chat lookup checked the
@@ -9,7 +10,7 @@ import type { PrismaClient } from "@prisma/client";
 export async function canAccessRoom(db: PrismaClient, roomId: string, userId: string): Promise<boolean> {
   const tariff = await db.subscriptionTariff.findUnique({
     where: { channelRoomId: roomId },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, parentId: true },
   });
   if (!tariff) return true; // not a channel room — other rules apply
 
@@ -18,13 +19,14 @@ export async function canAccessRoom(db: PrismaClient, roomId: string, userId: st
   const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
   if (user?.role === "ADMIN" || user?.role === "OWNER") return true;
 
-  // Same rule as paid ideas: this channel's subscription, or a legacy
+  // Same rule as paid ideas: a subscription to this channel (ANY of its plans, tariff-plans.ts), or a legacy
   // author-wide one (tariffId null), and only while the term hasn't ended.
+  const family = await tariffFamily(db, rootIdOf(tariff));
   const sub = await db.subscription.findFirst({
     where: {
       subscriberId: userId,
       authorId: tariff.authorId,
-      OR: [{ tariffId: tariff.id }, { tariffId: null }],
+      OR: [{ tariffId: { in: family } }, { tariffId: null }],
       status: "active",
       endDate: { gt: new Date() },
     },
@@ -39,7 +41,8 @@ export async function canAccessRoom(db: PrismaClient, roomId: string, userId: st
 // itself is the pure function below (same rule as canAccessRoom: the author, staff, or a subscription
 // to this channel / a legacy author-wide one that is "active" and not past endDate).
 
-export interface AccessTariff { id: string; authorId: string }
+/** `family` = the channel row plus all its plans (tariffFamily); omitted = just `id` (a channel without plans). */
+export interface AccessTariff { id: string; authorId: string; family?: string[] }
 export interface AccessSub { subscriberId: string; authorId: string; tariffId: string | null; status: string; endDate: Date }
 
 /** May `userId` be in the channel room of `tariff` right now? (pure) */
@@ -49,7 +52,7 @@ export function mayStayInChannelRoom(tariff: AccessTariff, userId: string, isSta
     (s) =>
       s.subscriberId === userId &&
       s.authorId === tariff.authorId &&
-      (s.tariffId === tariff.id || s.tariffId === null) &&
+      (s.tariffId === null || s.tariffId === tariff.id || (tariff.family?.includes(s.tariffId) ?? false)) &&
       s.status === "active" &&
       s.endDate.getTime() > now.getTime()
   );
@@ -68,11 +71,19 @@ export async function deniedChannelRoomUsers(
   const paths = new Map<string, string>();
   if (present.size === 0) return { denied, paths };
 
-  const tariffs = await db.subscriptionTariff.findMany({
-    where: { channelRoomId: { in: [...present.keys()] } },
-    select: { id: true, authorId: true, slug: true, channelRoomId: true },
+  // ONE query: the channels owning these rooms AND their plans (a subscription to any plan opens the room).
+  const rooms = [...present.keys()];
+  const rows = await db.subscriptionTariff.findMany({
+    where: { OR: [{ channelRoomId: { in: rooms } }, { parent: { channelRoomId: { in: rooms } } }] },
+    select: { id: true, authorId: true, slug: true, channelRoomId: true, parentId: true },
   });
+  const tariffs = rows.filter((r) => r.channelRoomId !== null && present.has(r.channelRoomId));
   if (tariffs.length === 0) return { denied, paths };
+  const planRows = rows.filter((r) => r.parentId !== null);
+  const familyOf = (t: { id: string; parentId: string | null }) => {
+    const root = rootIdOf(t);
+    return [root, ...planRows.filter((p) => p.parentId === root).map((p) => p.id)];
+  };
 
   const userIds = new Set<string>();
   for (const t of tariffs) for (const u of present.get(t.channelRoomId as string) ?? []) userIds.add(u);
@@ -95,7 +106,7 @@ export async function deniedChannelRoomUsers(
   for (const t of tariffs) {
     const roomId = t.channelRoomId as string;
     for (const userId of present.get(roomId) ?? []) {
-      if (mayStayInChannelRoom(t, userId, staffIds.has(userId), subs, now)) continue;
+      if (mayStayInChannelRoom({ id: t.id, authorId: t.authorId, family: familyOf(t) }, userId, staffIds.has(userId), subs, now)) continue;
       if (!denied.has(roomId)) denied.set(roomId, new Set());
       denied.get(roomId)!.add(userId);
       paths.set(roomId, `/channels/${t.slug || t.id}`);

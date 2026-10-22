@@ -23,6 +23,9 @@ export const TARIFF_METHODS_MAX = 20;
 
 export type TariffField =
   | "name"
+  | "planName"
+  | "parentId"
+  | "confirmName"
   | "description"
   | "price"
   | "durationDays"
@@ -49,6 +52,13 @@ export type TariffErrorCode =
   | "methodUnknown"
   | "methodLinkMissing"
   | "fieldTooLong"
+  | "parentNotFound"
+  | "parentNotOwned"
+  | "parentNotRoot"
+  | "parentArchived"
+  | "planLimit"
+  | "notAPlan"
+  | "confirmRequired"
   | "invalidData"
   | "saveFailed";
 
@@ -70,6 +80,8 @@ const LINK_METHOD = /^link(:[A-Za-z0-9_-]{1,64})?$/;
 
 export interface TariffData {
   name: string;
+  /** Название собственного плана канала («Месяц»); только у корня (канала), см. tariff-plans.ts. */
+  planName: string | null;
   description: string | null;
   price: number;
   durationDays: number;
@@ -174,6 +186,12 @@ export function parseTariffInput(body: unknown, mode: "create" | "patch"): Tarif
     if (!r.ok) return r;
     out.durationDays = r.data;
   }
+
+  if (has("planName")) {
+    const p = optString(b.planName, TARIFF_NAME_MAX);
+    if (p === undefined) return fail("planName", "nameTooLong", { max: TARIFF_NAME_MAX });
+    out.planName = p;
+  } else if (create) out.planName = null;
 
   if (has("description")) {
     const d = optString(b.description, TARIFF_DESCRIPTION_MAX);

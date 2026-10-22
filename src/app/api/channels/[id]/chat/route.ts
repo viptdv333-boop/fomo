@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { channelRootId, tariffFamily } from "@/lib/tariff-plans";
 
 // GET — get channel chat room (check access)
 export async function GET(
@@ -10,24 +11,23 @@ export async function GET(
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: tariffId } = await params;
+  const { id: givenId } = await params;
+  // The chat belongs to the channel (root row); the id of one of its plans leads to the same room.
+  const tariffId = (await channelRootId(prisma, givenId)) ?? givenId;
 
-  const tariff = await prisma.subscriptionTariff.findUnique({
-    where: { id: tariffId },
-    include: {
-      subscriptions: {
-        where: { subscriberId: session.user.id, status: "active", endDate: { gt: new Date() } },
-        take: 1,
-      },
-    },
-  });
+  const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
 
   if (!tariff) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
 
-  // Check access: author or active subscriber
+  // Check access: author, staff or an active subscriber of ANY plan of the channel
   const isAuthor = tariff.authorId === session.user.id;
-  const isSubscriber = tariff.subscriptions.length > 0;
+  const family = await tariffFamily(prisma, tariffId);
+  const isSubscriber = !!(await prisma.subscription.findFirst({
+    where: { subscriberId: session.user.id, tariffId: { in: family }, status: "active", endDate: { gt: new Date() } },
+    select: { id: true },
+  }));
   const isAdmin = (session.user as any).role === "ADMIN" || (session.user as any).role === "OWNER";
+  if (tariff.archivedAt && !isAuthor && !isAdmin) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
 
   if (!isAuthor && !isSubscriber && !isAdmin) {
     return NextResponse.json({ error: "Access denied", needSubscription: true }, { status: 403 });
@@ -66,7 +66,8 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: tariffId } = await params;
+  const { id: givenId } = await params;
+  const tariffId = (await channelRootId(prisma, givenId)) ?? givenId;
 
   const tariff = await prisma.subscriptionTariff.findUnique({ where: { id: tariffId } });
   if (!tariff || tariff.authorId !== session.user.id) {

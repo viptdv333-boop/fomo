@@ -8,6 +8,7 @@ import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { getT } from "@/lib/i18n/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { familyOfTariff, familiesFor } from "@/lib/tariff-plans";
 
 // ---------- GET: List ideas ----------
 
@@ -143,15 +144,19 @@ export async function GET(request: NextRequest) {
   if (channelId) {
     const tariff = await prisma.subscriptionTariff.findUnique({
       where: { id: channelId },
-      select: { authorId: true },
+      select: { authorId: true, archivedAt: true },
     });
-    if (!tariff) {
+    // A closed channel (archivedAt) keeps its posts hidden: only the author still sees them.
+    if (!tariff || (tariff.archivedAt && tariff.authorId !== session?.user?.id)) {
       return NextResponse.json({ data: [], page, limit, total: 0, totalPages: 0 });
     }
+    // Posts live on the channel row; a subscription may sit on any plan (tariff-plans.ts) — and a post written before the
+    // plans were merged into the channel may still point at a plan row.
+    const channelFamily = await familyOfTariff(prisma, channelId);
     where.AND = [
       {
         OR: [
-          { tariffId: channelId },
+          { tariffId: { in: channelFamily } },
           { authorId: tariff.authorId, isPaid: true, tariffId: null },
         ],
       },
@@ -210,10 +215,15 @@ export async function GET(request: NextRequest) {
       where: { subscriberId: userId, status: "active", endDate: { gt: new Date() } },
       select: { authorId: true, tariffId: true },
     });
+    const families = await familiesFor(prisma, channelIdeas.map((i) => i.tariffId));
     const readable = channelIdeas.filter(
       (i) =>
         i.author.id === userId ||
-        subs.some((s) => s.authorId === i.author.id && (s.tariffId === null || s.tariffId === i.tariffId))
+        subs.some(
+          (s) =>
+            s.authorId === i.author.id &&
+            (s.tariffId === null || s.tariffId === i.tariffId || (families.get(i.tariffId as string)?.has(s.tariffId) ?? false))
+        )
     );
     if (readable.length > 0) {
       const rows = await prisma.idea.findMany({
@@ -332,11 +342,15 @@ export async function POST(request: NextRequest) {
   // платных идей по рейтингу — его открывает подписка на канал.
   let tariffId: string | null = null;
   if (channelId) {
-    const tariff = await prisma.subscriptionTariff.findUnique({
+    const found = await prisma.subscriptionTariff.findUnique({
       where: { id: channelId },
-      select: { id: true, authorId: true },
+      select: { id: true, authorId: true, parentId: true, archivedAt: true },
     });
-    if (!tariff || tariff.authorId !== userId) {
+    // Posts always belong to the CHANNEL (the root row), also when the id of one of its plans is passed.
+    const tariff = found?.parentId
+      ? await prisma.subscriptionTariff.findUnique({ where: { id: found.parentId }, select: { id: true, authorId: true, parentId: true, archivedAt: true } })
+      : found;
+    if (!tariff || tariff.authorId !== userId || tariff.archivedAt) {
       const { t } = await getT();
       return NextResponse.json(
         { error: t("notif.err.channelNotOwned") },

@@ -71,6 +71,8 @@ const dict: SectionDict = {
     "notif.subscription.added.title": "Вас добавили в канал «{channel}» на {days} дн.",
     "notif.subscription.extended.title": "Автор продлил вашу подписку на {days} дн.",
     "notif.subscription.removed.title": "Автор закрыл вам доступ к каналу",
+    "notif.channelClosed.title": "Канал «{channel}» закрыт автором",
+    "notif.channelClosed.body": "Подписка завершена, доступ к постам и чату канала закрыт.",
 
     // Telegram (HTML)
     "notif.tg.newSetup": "🔔 Новый сетап: <b>{title}</b>\n{preview}\n\n{url}",
@@ -171,6 +173,8 @@ const dict: SectionDict = {
     "notif.subscription.added.title": "You were added to “{channel}” for {days} days",
     "notif.subscription.extended.title": "The author extended your subscription by {days} days",
     "notif.subscription.removed.title": "The author removed your access to the channel",
+    "notif.channelClosed.title": "The channel \"{channel}\" was closed by its author",
+    "notif.channelClosed.body": "Your subscription has ended; access to the channel's posts and chat is closed.",
 
     "notif.tg.newSetup": "🔔 New setup: <b>{title}</b>\n{preview}\n\n{url}",
     "notif.tg.newSetupHead": "🔔 New setup: {title}",
@@ -269,6 +273,8 @@ const dict: SectionDict = {
     "notif.subscription.added.title": "你已被加入频道「{channel}」，为期 {days} 天",
     "notif.subscription.extended.title": "作者将你的订阅延长了 {days} 天",
     "notif.subscription.removed.title": "作者已关闭你的频道访问权限",
+    "notif.channelClosed.title": "频道“{channel}”已被作者关闭",
+    "notif.channelClosed.body": "您的订阅已结束，频道的帖子和聊天已无法访问。",
 
     "notif.tg.newSetup": "🔔 新交易设置：<b>{title}</b>\n{preview}\n\n{url}",
     "notif.tg.newSetupHead": "🔔 新交易设置：{title}",

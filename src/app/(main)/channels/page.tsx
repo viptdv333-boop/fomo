@@ -8,6 +8,7 @@ import BuySubscriptionModal from "@/components/profile/BuySubscriptionModal";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
+import PlanLine, { type PlanLineItem } from "@/components/channels/PlanLine";
 
 interface Channel {
   id: string;
@@ -17,6 +18,8 @@ interface Channel {
   price: number;
   durationDays: number;
   subscribersCount: number;
+  /** Plans on sale (tariff-plans.ts), sorted by period then price. */
+  plans?: PlanLineItem[];
   avatarUrl?: string | null;
   author: {
     id: string;
@@ -318,7 +321,7 @@ function ChannelsSite() {
                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
                   <span>👥 {ch.subscribersCount}</span>
                   <StarRating rating={ch.author.rating} />
-                  {ch.price > 0 && <span className="text-green-600 font-medium">{ch.price} {t("channels.perMonth")}</span>}
+                  {ch.price > 0 && <PlanLine className="text-green-600 font-medium" plans={ch.plans} price={ch.price} durationDays={ch.durationDays} />}
                 </div>
               </Link>
             );
@@ -382,7 +385,7 @@ function ChannelsSite() {
                       <div className="text-xs text-gray-400 dark:text-gray-500">{ch.author.displayName}</div>
                     </div>
                     <span className="text-xs text-gray-400">👥 {ch.subscribersCount}</span>
-                    {ch.price > 0 && <span className="text-xs text-green-600 font-medium">{ch.price} ₽</span>}
+                    {ch.price > 0 && <PlanLine className="text-xs text-green-600 font-medium" plans={ch.plans} price={ch.price} durationDays={ch.durationDays} />}
                     {isSubscribed && <span className="text-xs text-green-500">✓</span>}
                   </Link>
                 );
@@ -428,7 +431,7 @@ function ChannelsSite() {
                     </div>
                     {ch.price > 0 && (
                       <span className="shrink-0 ml-3 px-3 py-1 rounded-full text-sm font-medium text-green-600 border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 whitespace-nowrap">
-                        {ch.price} {t("channels.perMonth")}
+                        <PlanLine plans={ch.plans} price={ch.price} durationDays={ch.durationDays} />
                       </span>
                     )}
                   </div>

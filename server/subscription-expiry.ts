@@ -21,11 +21,16 @@ async function tick() {
   const now = new Date();
   const subs = await prisma.subscription.findMany({
     where: { status: "active", endDate: { gt: now, lte: new Date(now.getTime() + EXPIRY_DAYS * DAY) }, tariffId: { not: null } },
-    select: { id: true, subscriberId: true, endDate: true, tariff: { select: { id: true, slug: true, name: true } } },
+    select: {
+      id: true, subscriberId: true, endDate: true,
+      // A subscription may sit on a PLAN of the channel: the reminder names and links the channel (the plan's parent).
+      tariff: { select: { id: true, slug: true, name: true, parent: { select: { id: true, slug: true, name: true } } } },
+    },
   });
   if (subs.length === 0) return;
 
-  const linkOf = (s: (typeof subs)[number]) => `/channels/${s.tariff?.slug || s.tariff?.id}`;
+  const channelOf = (s: (typeof subs)[number]) => s.tariff?.parent ?? s.tariff;
+  const linkOf = (s: (typeof subs)[number]) => `/channels/${channelOf(s)?.slug || channelOf(s)?.id}`;
   const already = await prisma.notification.findMany({
     where: {
       type: "subscription_expiring",
@@ -45,7 +50,7 @@ async function tick() {
     await dispatchNotification({
       recipients: [s.subscriberId],
       type: "subscription_expiring",
-      title: { key: "ns.notif.subExpiring.title", vars: { channel: s.tariff.name, days } },
+      title: { key: "ns.notif.subExpiring.title", vars: { channel: channelOf(s)!.name, days } },
       body: { key: "ns.notif.subExpiring.body" },
       link,
     });

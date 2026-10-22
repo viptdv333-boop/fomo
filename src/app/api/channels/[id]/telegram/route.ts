@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
 import { hasTelegramTarget } from "@/lib/telegram-target";
+import { channelRootId } from "@/lib/tariff-plans";
 
 // PATCH — channel owner toggles forwarding of their own channel's setups/chat
 // messages to their own Telegram bot. Separate from Subscription.telegramNotify
@@ -14,7 +15,9 @@ export async function PATCH(
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: tariffId } = await params;
+  const { id: givenId } = await params;
+  // The owner's switch lives on the channel row, also when the id of one of its plans is given.
+  const tariffId = (await channelRootId(prisma, givenId)) ?? givenId;
   const { enabled } = await request.json().catch(() => ({}));
   if (typeof enabled !== "boolean") {
     return NextResponse.json({ error: "enabled (boolean) required" }, { status: 400 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { familyOfTariff } from "@/lib/tariff-plans";
 
 // GET — owner picks a site user to add to the channel for free. Lists approved
 // users (optionally filtered by ?q= name / fomo id), leaving out the owner and
@@ -23,7 +24,7 @@ export async function GET(
   const q = (request.nextUrl.searchParams.get("q") || "").trim();
 
   const activeSubs = await prisma.subscription.findMany({
-    where: { tariffId, status: "active", endDate: { gt: new Date() } },
+    where: { tariffId: { in: await familyOfTariff(prisma, tariffId) }, status: "active", endDate: { gt: new Date() } },
     select: { subscriberId: true },
   });
   const excluded = [id, ...activeSubs.map((s) => s.subscriberId)];

@@ -6,6 +6,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useT } from "@/lib/i18n/client";
 import { useAppUi } from "@/components/app/useAppUi";
+import PlanLine, { type PlanLineItem } from "@/components/channels/PlanLine";
+import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
 
 // the app UI shows this page as the «Каналы и подписки» screen of its Профиль tab (loaded only inside the app)
 const AppProfile = dynamic(() => import("@/components/app/profile/AppProfile"), { ssr: false });
@@ -34,6 +36,10 @@ interface ChannelItem {
   durationDays?: number;
   avatarUrl?: string | null;
   subscriberCount?: number;
+  /** null = a channel; a plan row of a channel has parentId (hidden from this list) */
+  parentId?: string | null;
+  isActive?: boolean;
+  plans?: PlanLineItem[];
 }
 
 interface FollowerItem {
@@ -85,17 +91,20 @@ function BrowserSubscriptionsPage() {
   const [subscribersLoading, setSubscribersLoading] = useState<string | null>(null);
   const [telegramVerified, setTelegramVerified] = useState(false);
   const [telegramBusyId, setTelegramBusyId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ChannelItem | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
     Promise.all([
       fetch("/api/subscriptions").then((r) => r.json()),
-      fetch(`/api/users/${user.id}/tariffs`).then((r) => r.json()).catch(() => []),
+      // scope=manage: hidden channels too (so they can be shown again / deleted); plans are folded into their channel below
+      fetch(`/api/users/${user.id}/tariffs?scope=manage`).then((r) => r.json()).catch(() => []),
       fetch(`/api/users/${user.id}/followers`).then((r) => r.json()).catch(() => []),
       fetch("/api/telegram/account").then((r) => r.json()).catch(() => null),
     ]).then(([subsData, channelsData, followersData, telegramData]) => {
       setSubs(Array.isArray(subsData) ? subsData : []);
-      setChannels(Array.isArray(channelsData) ? channelsData : []);
+      // ONE card per channel: plan rows (parentId) are options of their channel, not channels
+      setChannels(Array.isArray(channelsData) ? channelsData.filter((c: ChannelItem) => !c.parentId) : []);
       setFollowers(Array.isArray(followersData) ? followersData : []);
       setTelegramVerified(Boolean(telegramData?.canForward ?? telegramData?.verified));
       setLoading(false);
@@ -221,21 +230,29 @@ function BrowserSubscriptionsPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">{ch.name}</div>
-                        <div className="text-sm text-green-600 font-semibold mt-0.5">
-                          {t("feed2.pricePerDays", { price: Number(ch.price), days: ch.durationDays || 30 })}
+                        <div className="font-medium dark:text-gray-100 group-hover:text-green-600 transition">
+                          {ch.name}
+                          {ch.isActive === false && <span className="ml-2 text-[11px] font-normal text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">{t("channel2.hiddenBadge")}</span>}
+                        </div>
+                        <div className="text-sm text-green-600 font-semibold mt-0.5" data-testid="channel-plans">
+                          <PlanLine plans={ch.plans} price={Number(ch.price)} durationDays={ch.durationDays || 30} />
                         </div>
                         {ch.description && (
                           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ch.description}</div>
                         )}
                       </div>
                     </Link>
-                    <Link
-                      href={`/channels/edit/${ch.id}`}
-                      className="text-sm text-green-600 dark:text-green-400 hover:underline shrink-0"
-                    >
-                      {t("subs.settings")}
-                    </Link>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Link
+                        href={`/channels/edit/${ch.id}`}
+                        className="text-sm text-green-600 dark:text-green-400 hover:underline"
+                      >
+                        {t("subs.settings")}
+                      </Link>
+                      <button type="button" onClick={() => setDeleting(ch)} data-testid="card-delete-channel" className="text-xs text-red-500 hover:text-red-700">
+                        {t("chdel.button")}
+                      </button>
+                    </div>
                   </div>
 
                   <button
@@ -425,6 +442,21 @@ function BrowserSubscriptionsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {deleting && user?.id && (
+        <DeleteChannelDialog
+          authorId={user.id}
+          channelId={deleting.id}
+          channelName={deleting.name}
+          subscribers={deleting.subscriberCount}
+          onClose={() => setDeleting(null)}
+          onDone={(r) => {
+            // deleted: the card goes away; hidden: it stays, marked
+            setChannels((prev) => (r === "deleted" ? prev.filter((c) => c.id !== deleting.id) : prev.map((c) => (c.id === deleting.id ? { ...c, isActive: false } : c))));
+            setDeleting(null);
+          }}
+        />
       )}
     </div>
   );

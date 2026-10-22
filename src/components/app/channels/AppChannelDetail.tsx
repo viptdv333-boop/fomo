@@ -39,6 +39,7 @@ import { unreadAccent, unreadLabel, unreadOffList } from "@/lib/app-unread";
 import { UnreadChip } from "../IdeaUnreadMarks";
 import { useUnreadIdeaCards } from "../useUnreadIdeaCards";
 import { holdHtmlClass } from "@/lib/html-class";
+import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
 
 interface PostItem {
   id: string;
@@ -134,6 +135,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const [buying, setBuying] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const [sheet, setSheet] = useState<null | "more" | "owner" | "report" | "members">(null);
+  const [deleting, setDeleting] = useState(false);
 
   const isOwner = !!channel && !!subs.myId && subs.myId === channel.author.id;
   const endDate = channel && !isOwner ? channelSubEnd(subs.index, channel) : "";
@@ -282,7 +284,9 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const myTgOn = myTg ?? mySub?.telegramNotify ?? false;
   const subsCount = subscribersLabel(channel.subscribersCount, locale);
 
-  const ctaLabel = isOwner ? t("channels.settings") : `${t("appch.buyFor")} ${priceLabel(channel.price, locale)}`;
+  // several plans: «from <the cheapest>»; the plan itself is picked in the purchase sheet
+  const planList = channel.plans && channel.plans.length > 0 ? channel.plans : [{ id: channel.id, label: null, price: channel.price, durationDays: channel.durationDays, isRoot: true }];
+  const ctaLabel = isOwner ? t("channels.settings") : planList.length > 1 ? t("appch.buyFrom", { price: priceLabel(Math.min(...planList.map((p) => p.price)), locale) }) : `${t("appch.buyFor")} ${priceLabel(channel.price, locale)}`;
   const onCta = () => {
     if (isOwner) return setSheet("owner");
     if (!subs.loggedIn) return needLogin();
@@ -336,6 +340,10 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
       ],
     },
     {
+      key: "o3",
+      rows: [{ key: "delete", label: t("chdel.button"), icon: <AppIcon name="trash" size={17} stroke={1.8} />, color: "var(--app-red)", onClick: () => (setSheet(null), setDeleting(true)) }],
+    },
+    {
       key: "o2",
       rows: [{ key: "tg", label: "Telegram", sub: tgReady === false && !tgOn ? <span style={{ color: "var(--app-red)" }}>{t("appch.tgNeedBot")}</span> : t("channel2.tgOwnerTitle"), actions: tgReady === false && !tgOn ? [connectBot] : undefined, icon: <AppIcon name="send" size={17} stroke={1.8} />, toggle: tgOn, disabled: tgBusy, onClick: toggleAuthorTelegram }],
     },
@@ -385,17 +393,19 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
         {isOwner && <div className="ach-banner">{t("channel2.yourChannel")}</div>}
 
         <div className="ach-caps">{t("channels.tariffs")}</div>
-        <div className="ach-tariffs">
-          <div className="ach-tariff">
-            <div className="ach-radio">
-              <div />
+        <div className="ach-tariffs" data-testid="plan-list" style={planList.length > 4 ? { maxHeight: 300, overflowY: "auto" } : undefined}>
+          {planList.map((p) => (
+            <div className="ach-tariff" key={p.id}>
+              <div className="ach-radio">
+                <div />
+              </div>
+              <div className="ach-tariff-txt">
+                <div className="ach-tariff-name">{p.label || periodName(p.durationDays, locale)}</div>
+                <div className="ach-tariff-days">{daysLabel(p.durationDays, locale)}</div>
+              </div>
+              <div className="ach-tariff-price">{priceLabel(p.price, locale)}</div>
             </div>
-            <div className="ach-tariff-txt">
-              <div className="ach-tariff-name">{periodName(channel.durationDays, locale)}</div>
-              <div className="ach-tariff-days">{daysLabel(channel.durationDays, locale)}</div>
-            </div>
-            <div className="ach-tariff-price">{priceLabel(channel.price, locale)}</div>
-          </div>
+          ))}
         </div>
         {(isOwner || !subscribed) && (
           <button type="button" className="ach-cta" onClick={onCta}>
@@ -405,7 +415,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
         {canRenew && (
           <>
             <button type="button" className="ach-cta" data-testid="renew-btn" onClick={() => setRenewing(true)}>
-              {t("appch.renewFor")} {priceLabel(channel.price, locale)}
+              {planList.length > 1 ? t("appch.renewBtn") : `${t("appch.renewFor")} ${priceLabel(channel.price, locale)}`}
             </button>
             <div className="ach-note" data-testid="renew-note">
               {t("appch.renewUntil", { date: formatValidUntil(ownEnd, locale) })}. {t("appch.renewHint")}
@@ -505,7 +515,20 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
       {sheet === "report" && <AppReportSheet target={{ type: "channel", id: channel.id }} onClose={() => setSheet(null)} flash={flash} />}
       {sheet === "members" && <AppMembersSheet channel={channel} onClose={() => setSheet(null)} onChanged={() => void list.reload()} flash={flash} />}
       {buying && <AppBuySheet channel={channel} onClose={() => setBuying(false)} onDone={() => void subs.reload()} flash={flash} />}
-      {renewing && ownEnd && <AppBuySheet channel={channel} renewUntil={ownEnd} onClose={() => setRenewing(false)} onDone={() => void subs.reload()} flash={flash} />}
+      {renewing && ownEnd && <AppBuySheet channel={channel} renewUntil={ownEnd} currentPlanId={mySub?.planId} onClose={() => setRenewing(false)} onDone={() => void subs.reload()} flash={flash} />}
+      {deleting && subs.myId && (
+        <DeleteChannelDialog
+          authorId={subs.myId}
+          channelId={channel.id}
+          channelName={channel.name}
+          onClose={() => setDeleting(false)}
+          onDone={() => {
+            setDeleting(false);
+            void list.reload();
+            nav.go("/channels");
+          }}
+        />
+      )}
       {toast}
     </div>
   );

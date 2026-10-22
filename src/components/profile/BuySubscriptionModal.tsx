@@ -3,14 +3,31 @@
 import { useEffect, useState } from "react";
 import UnifiedPaymentModal, { TariffOption } from "@/components/shared/UnifiedPaymentModal";
 import { useT } from "@/lib/i18n/client";
+import { defaultPlan, sortPlans, type PlanView } from "@/lib/tariff-plans";
 
 interface BuySubscriptionModalProps {
   authorId: string;
   authorName: string;
   onClose: () => void;
+  /** The channel (its id; the id of one of its plans works too). */
   preselectedTariffId?: string;
-  /** ISO end date of the viewer's running subscription: the modal renews THIS tariff and the paid period is added to it. */
+  /** ISO end date of the viewer's running subscription: the modal renews THIS channel and the paid period is added to it. */
   renewUntil?: string;
+  /** Renewal: the plan the viewer is on now - preselected (they may pick another plan; the term is added to the same subscription). */
+  currentPlanId?: string | null;
+}
+
+/** A channel of GET /api/users/[id]/tariffs: the channel row plus its plans on sale. */
+interface ChannelEntry {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  durationDays: number;
+  paymentMethods: string[];
+  cardNumber?: string | null;
+  sbpQrUrl?: string | null;
+  plans?: PlanView[];
 }
 
 export default function BuySubscriptionModal({
@@ -19,24 +36,50 @@ export default function BuySubscriptionModal({
   onClose,
   preselectedTariffId,
   renewUntil,
+  currentPlanId,
 }: BuySubscriptionModalProps) {
   const { t } = useT();
+  const [options, setOptions] = useState<TariffOption[]>([]);
   const [tariff, setTariff] = useState<TariffOption | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/users/${authorId}/tariffs`)
       .then((r) => r.json())
-      .then((data: TariffOption[]) => {
-        if (data.length > 0) {
-          // renewal: exactly the viewer's channel, never "the first one" (that would charge for another channel)
-          const match = preselectedTariffId
-            ? data.find((t) => t.id === preselectedTariffId) || (renewUntil ? null : data[0])
-            : data[0];
-          setTariff(match);
-        }
+      .then((data: ChannelEntry[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        // renewal: exactly the viewer's channel, never "the first one" (that would charge for another channel)
+        const channel = preselectedTariffId
+          ? data.find((c) => c.id === preselectedTariffId || c.plans?.some((p) => p.id === preselectedTariffId)) || (renewUntil ? null : data[0])
+          : data[0];
+        if (!channel) return;
+        // One option per plan on sale, sorted by period then price; a channel row without `plans` (old API answer) is a single plan.
+        const views: PlanView[] =
+          channel.plans && channel.plans.length > 0
+            ? channel.plans
+            : [{ id: channel.id, label: null, price: Number(channel.price), durationDays: channel.durationDays, isRoot: true, isActive: true }];
+        const opts: TariffOption[] = sortPlans(views).map((p) => ({
+          id: p.id,
+          name: p.label || channel.name,
+          planLabel: p.label,
+          channelName: channel.name,
+          description: null,
+          price: p.price,
+          durationDays: p.durationDays,
+          paymentMethods: p.paymentMethods ?? channel.paymentMethods ?? ["card"],
+          cardNumber: p.cardNumber ?? (p.isRoot ? channel.cardNumber : null),
+          sbpQrUrl: p.sbpQrUrl ?? (p.isRoot ? channel.sbpQrUrl : null),
+        }));
+        setOptions(opts);
+        setTariff(
+          opts.find((o) => o.id === currentPlanId) ||
+            opts.find((o) => o.id === defaultPlan(views)?.id) ||
+            opts[0] ||
+            null
+        );
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorId, preselectedTariffId]);
 
   if (loading) {
@@ -65,6 +108,7 @@ export default function BuySubscriptionModal({
       purpose={{
         type: "subscription",
         tariff,
+        plans: options,
         authorId,
         authorName,
         ...(renewUntil ? { renewUntil } : {}),

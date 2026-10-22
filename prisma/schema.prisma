@@ -694,13 +694,29 @@ model SubscriptionTariff {
   /// Владелец канала сам подключил пересылку своих же сетапов/сообщений в
   /// свой Telegram-бот (требует настроенного User.telegramAccount).
   authorTelegramNotify Boolean @default(false)
+  /// Тарифные планы канала (22.10.2026): строка с parentId = id канала — это ПЛАН
+  /// (вариант подписки: своя цена/срок/способы оплаты), а не отдельный канал. У
+  /// плана нет своего чата/slug/описания/аватара — всё содержимое (посты, чат,
+  /// доступ, рассылки) живёт на корневой строке (parentId = null), которой
+  /// принадлежат и все старые строки. Хелперы — src/lib/tariff-plans.ts.
+  parentId      String?
+  /// Название собственного (первого) плана корневой строки: «Месяц». У корня
+  /// `name` — имя канала («Торговые сигналы»); null = старая строка, где имя
+  /// плана зашито в name как «Канал: План» (см. splitTariffName).
+  planName      String?
+  /// Канал закрыт владельцем («Удалить канал»): строка не удаляется, чтобы посты
+  /// (Idea.tariffId) и чат остались закрытыми, а не стали публичными.
+  archivedAt    DateTime?
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
   channelRoom   ChatRoom?      @relation(fields: [channelRoomId], references: [id])
   ideas         Idea[]
+  parent        SubscriptionTariff?  @relation("TariffPlans", fields: [parentId], references: [id], onDelete: Cascade)
+  plans         SubscriptionTariff[] @relation("TariffPlans")
 
   @@index([authorId])
+  @@index([parentId])
 }
 
 model PaymentMethod {

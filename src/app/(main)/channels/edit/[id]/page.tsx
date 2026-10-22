@@ -8,11 +8,17 @@ import { useT } from "@/lib/i18n/client";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { linkRef, paymentLinkHost } from "@/lib/payment-link";
 import { parseTariffInput, tariffErrorKey, tariffNameKey, type TariffError } from "@/lib/tariff-validation";
+import { MAX_PLANS_PER_CHANNEL, planLabelOf, rootIdOf, splitTariffName } from "@/lib/tariff-plans";
+import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
 
 interface TariffData {
   id: string;
   slug: string | null;
   name: string;
+  /** null = a channel (root) row; otherwise this row is a PLAN of that channel (tariff-plans.ts) */
+  parentId: string | null;
+  /** Raw planName of a channel row (null on old rows where the plan name is the suffix after ":") */
+  planName: string | null;
   description: string | null;
   price: number;
   durationDays: number;
@@ -56,6 +62,8 @@ export default function EditChannelPage() {
   // All tariffs
   const [tariffs, setTariffs] = useState<{
     id: string | null; // null = new
+    /** the channel row itself acting as the first plan (Тариф 1); the others are plans (parentId = channel) */
+    isRoot: boolean;
     name: string;
     price: string;
     durationDays: string;
@@ -72,6 +80,7 @@ export default function EditChannelPage() {
   const [channelName, setChannelName] = useState("");
   const [channelDescription, setChannelDescription] = useState("");
   const [mainTariffId, setMainTariffId] = useState<string | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
   const [channelSlug, setChannelSlug] = useState("");
   const [slugError, setSlugError] = useState("");
   // Specific reason for one tariff row, shown next to the offending field (field = null: under the row)
@@ -86,32 +95,31 @@ export default function EditChannelPage() {
   useEffect(() => {
     if (!user?.id) return;
     fetch("/api/payment-methods").then((r) => r.json()).then(setSavedPaymentMethods).catch(() => {});
-    fetch(`/api/users/${user.id}/tariffs`)
+    // scope=manage: every row of the author - channels AND their plans, inactive ones too
+    fetch(`/api/users/${user.id}/tariffs?scope=manage`)
       .then((r) => r.json())
-      .then((all: TariffData[]) => {
-        if (all.length === 0) { setLoading(false); return; }
+      .then((rows: TariffData[]) => {
+        if (!Array.isArray(rows) || rows.length === 0) { setLoading(false); return; }
 
-        // Find the tariff we're editing to get channel info
-        const main = all.find((t) => t.id === editId) || all[0];
+        // The channel being edited = the row itself, or the channel of the plan whose id was opened.
+        // Only THIS channel's rows are loaded: its own plan first, then its plans (other channels stay untouched).
+        const given = rows.find((t) => t.id === editId) || rows.find((t) => !t.parentId) || rows[0];
+        const main = rows.find((t) => t.id === rootIdOf(given)) || given;
+        const all = [main, ...rows.filter((t) => t.parentId === main.id)];
         setMainTariffId(main.id);
         setChannelSlug(main.slug || "");
 
-        // Parse channel name from tariff name (format: "ChannelName: TariffName")
-        const colonIdx = main.name.indexOf(":");
-        if (colonIdx > 0) {
-          setChannelName(main.name.substring(0, colonIdx).trim());
-        } else {
-          setChannelName(main.name);
-        }
+        // Channel name: the clean name of a new-style row, or the part before ":" of an old "Channel: Plan" name
+        setChannelName(splitTariffName(main.name, main.planName).channel);
         setChannelDescription(main.description || "");
         setAvatarUrl(main.avatarUrl || "");
 
-        // Load all tariffs
+        // Load this channel's tariffs
         setTariffs(all.map((t) => {
-          const tColonIdx = t.name.indexOf(":");
-          const tariffName = tColonIdx > 0 ? t.name.substring(tColonIdx + 1).trim() : t.name;
+          const tariffName = t.id === main.id ? splitTariffName(main.name, main.planName).plan ?? "" : planLabelOf(t) ?? "";
           return {
             id: t.id,
+            isRoot: t.id === main.id,
             name: tariffName,
             price: String(t.price),
             durationDays: String(t.durationDays),
@@ -143,8 +151,13 @@ export default function EditChannelPage() {
   }, [user?.id, editId]);
 
   function addTariff() {
+    // technical limit only (the owner asked for «any number of plans»): the channel row itself + MAX_PLANS_PER_CHANNEL plans
+    if (tariffs.length >= MAX_PLANS_PER_CHANNEL + 1) {
+      setError(t("channel2.planLimit", { max: MAX_PLANS_PER_CHANNEL }));
+      return;
+    }
     setTariffs([...tariffs, {
-      id: null, name: "", price: "", durationDays: "30",
+      id: null, isRoot: false, name: "", price: "", durationDays: "30",
       // With saved methods the author picks one explicitly (a pre-ticked "card" with an empty number saved a tariff nobody could pay)
       paymentMethods: savedPaymentMethods.length > 0 ? [] : ["card"], cardNumber: "", sbpQrUrl: "", yukassaShopId: "", yukassaSecret: "",
       isActive: true, description: "",
@@ -177,9 +190,12 @@ export default function EditChannelPage() {
       setSlugError(t("channel2.errSlugLength"));
       return;
     }
+    // Tariff 1 is the channel row itself (name = channel name, planName = its tariff name, description / picture / hashtags live
+    // here); every other tariff is a PLAN of it (parentId, inherits those) - never a channel of its own.
     const bodyOf = (tr: (typeof tariffs)[number]) => ({
-      name: `${channelName.trim()}: ${tr.name.trim() || "Базовый"}`,
-      description: channelDescription.trim() || null,
+      name: tr.isRoot ? channelName.trim() : tr.name.trim() || "Базовый",
+      ...(tr.isRoot ? { planName: tr.name.trim() || "Базовый" } : {}),
+      ...(tr.isRoot ? { description: channelDescription.trim() || null, avatarUrl: avatarUrl || null, instrumentIds: selectedTags.map((tag) => tag.id) } : {}),
       price: parseFloat(tr.price) || 0,
       durationDays: parseInt(tr.durationDays),
       paymentMethods: tr.paymentMethods,
@@ -187,8 +203,6 @@ export default function EditChannelPage() {
       sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
       yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
       yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
-      avatarUrl: avatarUrl || null,
-      instrumentIds: selectedTags.map((tag) => tag.id),
       isActive: tr.isActive,
     });
     const errText = (e: TariffError) => t(tariffErrorKey(e.code), e.vars);
@@ -199,7 +213,8 @@ export default function EditChannelPage() {
       const body = bodyOf(tariffs[i]);
       const r = parseTariffInput(body, "create");
       if (!r.ok) { showTariffErr(i, r.error.field, errText(r.error)); return; }
-      const key = tariffNameKey(body.name);
+      // plan names are unique inside the channel (the channel's own plan included)
+      const key = tariffNameKey(tariffs[i].name.trim() || "Базовый");
       if (seenNames.has(key)) { showTariffErr(i, "name", errText({ field: "name", code: "nameTaken" })); return; }
       seenNames.add(key);
     }
@@ -207,12 +222,13 @@ export default function EditChannelPage() {
     setSaving(true);
 
     try {
-      // Update/create each tariff
+      // The channel row first (a new plan needs its id as parentId), then the plans
       for (let i = 0; i < tariffs.length; i++) {
         const tr = tariffs[i];
         const body = {
           ...bodyOf(tr),
-          ...(tr.id === mainTariffId ? { slug: channelSlug.trim() || null } : {}),
+          ...(tr.isRoot ? { slug: channelSlug.trim() || null } : {}),
+          ...(!tr.id ? { parentId: mainTariffId } : {}),
         };
 
         const res = await fetch(tr.id ? `/api/users/${user?.id}/tariffs/${tr.id}` : `/api/users/${user?.id}/tariffs`, {
@@ -226,7 +242,7 @@ export default function EditChannelPage() {
           const fallback = t(tr.id ? "channel2.errUpdateTariff" : "channel2.errCreateTariff");
           if (data?.field === "slug") setSlugError(data.error || fallback);
           else if (data?.field !== undefined && data?.error) showTariffErr(i, data.field, data.error);
-          else if (tr.id === mainTariffId && data?.error) setSlugError(data.error);
+          else if (tr.isRoot && data?.error) setSlugError(data.error);
           else showTariffErr(i, null, data?.error || fallback);
           setSaving(false);
           return;
@@ -245,12 +261,18 @@ export default function EditChannelPage() {
     setSaving(false);
   }
 
-  async function handleDeleteChannel() {
-    if (!confirm(t("channel2.deleteChannelConfirm"))) return;
-    for (const tr of tariffs) {
-      if (tr.id) await fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, { method: "DELETE" });
+  // Delete one PLAN (the channel itself is deleted with «Удалить канал»). Its subscribers stay until their term ends.
+  async function handleDeletePlan(idx: number) {
+    const tr = tariffs[idx];
+    if (!tr.id) { removeTariff(idx); return; }
+    if (!confirm(t("channel2.deletePlanConfirm"))) return;
+    const res = await fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      showTariffErr(idx, null, data?.error || t("channel2.errUpdateTariff"));
+      return;
     }
-    router.push("/subscriptions");
+    removeTariff(idx);
   }
 
   if (loading) return <div className="text-gray-400 py-12 text-center">...</div>;
@@ -416,17 +438,9 @@ export default function EditChannelPage() {
               <div key={tr.id || `new-${idx}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("channels.tariff")} {idx + 1}</span>
-                  {tariffs.length > 1 && (
-                    <button type="button" onClick={() => {
-                      if (tr.id) {
-                        if (confirm(t("channels.deleteTariffConfirm"))) {
-                          fetch(`/api/users/${user?.id}/tariffs/${tr.id}`, { method: "DELETE" });
-                          removeTariff(idx);
-                        }
-                      } else {
-                        removeTariff(idx);
-                      }
-                    }} className="text-xs text-red-500 hover:text-red-700">{t("common.delete")}</button>
+                  {/* the channel's own plan (Тариф 1) can't be removed - delete the whole channel instead */}
+                  {!tr.isRoot && (
+                    <button type="button" onClick={() => handleDeletePlan(idx)} data-testid="delete-plan" className="text-xs text-red-500 hover:text-red-700">{t("common.delete")}</button>
                   )}
                 </div>
 
@@ -513,7 +527,7 @@ export default function EditChannelPage() {
 
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={tr.isActive} onChange={(e) => updateTariff(idx, "isActive", e.target.checked)} className="rounded" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{t("channels.active")}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{tr.isRoot ? t("channel2.channelVisible") : t("channels.active")}</span>
                 </label>
                 {tariffErr && tariffErr.idx === idx && (tariffErr.field === null || !["name", "price", "durationDays", "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret"].includes(tariffErr.field)) && (
                   <p data-tariff-err className="text-xs text-red-500">{tariffErr.msg}</p>
@@ -535,11 +549,21 @@ export default function EditChannelPage() {
         </button>
 
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-          <button type="button" onClick={handleDeleteChannel} className="text-sm text-red-500 hover:text-red-700">
-            {t("channels.delete")}
+          <button type="button" onClick={() => setShowDelete(true)} data-testid="delete-channel"
+            className="w-full py-2.5 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+            {t("chdel.button")}
           </button>
         </div>
       </div>
+      {showDelete && mainTariffId && (
+        <DeleteChannelDialog
+          authorId={user?.id}
+          channelId={mainTariffId}
+          channelName={channelName}
+          onClose={() => setShowDelete(false)}
+          onDone={() => router.push("/subscriptions")}
+        />
+      )}
     </div>
   );
 }

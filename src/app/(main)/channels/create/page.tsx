@@ -55,6 +55,8 @@ export default function CreateChannelPage() {
   const [tariffErr, setTariffErr] = useState<{ idx: number; field: string | null; msg: string } | null>(null);
   // Tariffs already created by this form (a retry after a later failure must not create them twice)
   const createdRef = useRef<Set<string>>(new Set());
+  // The channel row created by this form (first tariff): the other tariffs are PLANS of it, not channels of their own
+  const rootRef = useRef<string | null>(null);
   const ROW_FIELDS = ["name", "price", "durationDays", "paymentMethods", "cardNumber", "sbpQrUrl", "yukassaShopId", "yukassaSecret"];
   const fieldErr = (idx: number, ...fields: string[]) =>
     tariffErr && tariffErr.idx === idx && tariffErr.field !== null && fields.includes(tariffErr.field) ? tariffErr.msg : "";
@@ -115,8 +117,10 @@ export default function CreateChannelPage() {
       return;
     }
 
-    const bodyOf = (tr: TariffRow) => ({
-      name: `${channelName}: ${tr.name}`.trim(),
+    // First tariff = the channel itself (name = channel name, planName = its tariff name); the rest are plans (parentId) of it
+    const bodyOf = (tr: TariffRow, isPlan = false) => ({
+      name: isPlan ? tr.name.trim() : channelName.trim(),
+      ...(isPlan ? {} : { planName: tr.name.trim() }),
       description: description.trim() || null,
       price: parseFloat(tr.price),
       durationDays: parseInt(tr.durationDays),
@@ -133,14 +137,15 @@ export default function CreateChannelPage() {
     // Same rules as the server (src/lib/tariff-validation.ts): the reason appears next to the field before anything is sent
     const seen = new Set<string>();
     for (const { tr, idx } of validTariffs) {
+      const isPlan = idx !== validTariffs[0].idx;
       if (!tr.paymentMethodId && savedPaymentMethods.length > 0) {
         showTariffErr(idx, "paymentMethods", errText({ field: "paymentMethods", code: "methodsRequired" }));
         return;
       }
-      const body = bodyOf(tr);
+      const body = bodyOf(tr, isPlan);
       const r = parseTariffInput(body, "create");
       if (!r.ok) { showTariffErr(idx, r.error.field, errText(r.error)); return; }
-      const key = tariffNameKey(body.name);
+      const key = tariffNameKey(tr.name);
       if (seen.has(key)) { showTariffErr(idx, "name", errText({ field: "name", code: "nameTaken" })); return; }
       seen.add(key);
     }
@@ -150,8 +155,9 @@ export default function CreateChannelPage() {
     let allOk = true;
     try {
       for (const { tr, idx } of validTariffs) {
-        const body = bodyOf(tr);
-        if (createdRef.current.has(tariffNameKey(body.name))) continue;
+        const isPlan = idx !== validTariffs[0].idx;
+        const body = { ...bodyOf(tr, isPlan), ...(isPlan ? { parentId: rootRef.current } : {}) };
+        if (createdRef.current.has(tariffNameKey(tr.name))) continue;
         const res = await fetch(`/api/users/${user?.id}/tariffs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -166,7 +172,8 @@ export default function CreateChannelPage() {
           allOk = false;
           break;
         }
-        createdRef.current.add(tariffNameKey(body.name));
+        if (!isPlan) rootRef.current = (await res.json().catch(() => null))?.id ?? null;
+        createdRef.current.add(tariffNameKey(tr.name));
       }
     } catch {
       setError(t("channel2.errNetwork"));

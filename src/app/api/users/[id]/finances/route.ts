@@ -42,20 +42,22 @@ export async function GET(
   });
 
   // Active subscribers count
-  const activeSubscribers = await prisma.subscription.count({
-    where: {
-      authorId: id,
-      status: "active",
-      endDate: { gt: new Date() },
-    },
-  });
+  // (one person on two plans of a channel - legacy data - counts once)
+  const activeSubscribers = (
+    await prisma.subscription.findMany({
+      where: { authorId: id, status: "active", endDate: { gt: new Date() } },
+      select: { subscriberId: true, tariff: { select: { id: true, parentId: true } } },
+    })
+  ).reduce((set, s) => set.add(`${s.subscriberId}|${s.tariff ? s.tariff.parentId ?? s.tariff.id : ""}`), new Set<string>()).size;
 
   // Active tariffs
   const tariffs = await prisma.subscriptionTariff.findMany({
-    where: { authorId: id, isActive: true },
+    where: { authorId: id, isActive: true, archivedAt: null },
     select: {
       id: true,
       name: true,
+      // a plan row is listed as «Channel: Plan» (tariff-plans.ts); each plan keeps its own subscriber count
+      parent: { select: { name: true } },
       price: true,
       durationDays: true,
       _count: { select: { subscriptions: { where: activeSubWhere() } } },
@@ -123,7 +125,7 @@ export async function GET(
     },
     tariffs: tariffs.map((t) => ({
       id: t.id,
-      name: t.name,
+      name: t.parent ? `${t.parent.name}: ${t.name}` : t.name,
       price: Number(t.price),
       durationDays: t.durationDays,
       subscriberCount: t._count.subscriptions,

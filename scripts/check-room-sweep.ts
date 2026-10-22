@@ -26,6 +26,8 @@ eq("term ends exactly now -> out (gt, not gte)", mayStayInChannelRoom(T, "u1", f
 eq("status not active -> out", mayStayInChannelRoom(T, "u1", false, [sub({ status: "cancelled" })], NOW), false);
 eq("subscription to another channel of the same author -> out", mayStayInChannelRoom(T, "u1", false, [sub({ tariffId: "t2" })], NOW), false);
 eq("legacy author-wide subscription (tariffId null) stays", mayStayInChannelRoom(T, "u1", false, [sub({ tariffId: null })], NOW), true);
+eq("subscription to a PLAN of this channel stays", mayStayInChannelRoom({ ...T, family: ["t1", "t1p"] }, "u1", false, [sub({ tariffId: "t1p" })], NOW), true);
+eq("plan of ANOTHER channel -> out", mayStayInChannelRoom({ ...T, family: ["t1", "t1p"] }, "u1", false, [sub({ tariffId: "t2p" })], NOW), false);
 eq("subscription to another author -> out", mayStayInChannelRoom(T, "u1", false, [sub({ authorId: "other" })], NOW), false);
 eq("someone else's subscription does not count", mayStayInChannelRoom(T, "u1", false, [sub({ subscriberId: "u2" })], NOW), false);
 eq("no subscriptions -> out", mayStayInChannelRoom(T, "u1", false, [], NOW), false);
@@ -56,13 +58,16 @@ eq(
 const queries = { tariff: 0, user: 0, sub: 0 };
 const fakeDb = {
   subscriptionTariff: {
-    findMany: async (a: { where: { channelRoomId: { in: string[] } } }) => {
+    findMany: async (a: { where: { OR: [{ channelRoomId: { in: string[] } }, unknown] } }) => {
       queries.tariff++;
       const all = [
-        { id: "t1", authorId: "author", slug: "alpha", channelRoomId: "roomA" },
-        { id: "t2", authorId: "author2", slug: null, channelRoomId: "roomB" },
+        { id: "t1", authorId: "author", slug: "alpha", channelRoomId: "roomA", parentId: null as string | null },
+        { id: "t2", authorId: "author2", slug: null, channelRoomId: "roomB", parentId: null },
+        // a plan of channel t1 (no room of its own): a subscription to it opens roomA
+        { id: "t1p", authorId: "author", slug: null, channelRoomId: null as unknown as string, parentId: "t1" },
       ];
-      return all.filter((t) => a.where.channelRoomId.in.includes(t.channelRoomId));
+      const rooms = a.where.OR[0].channelRoomId.in;
+      return all.filter((t) => (t.channelRoomId && rooms.includes(t.channelRoomId)) || (t.parentId && all.find((x) => x.id === t.parentId && rooms.includes(x.channelRoomId))));
     },
   },
   user: {
@@ -78,6 +83,7 @@ const fakeDb = {
         sub({ subscriberId: "live" }),
         sub({ subscriberId: "gone", endDate: past }),
         sub({ subscriberId: "legacy", tariffId: null }),
+        sub({ subscriberId: "onplan", tariffId: "t1p" }),
         sub({ subscriberId: "wrongch", authorId: "author2", tariffId: "t9" }),
       ];
       return rows.filter(
@@ -88,7 +94,7 @@ const fakeDb = {
 };
 (async () => {
   const present = new Map([
-    ["roomA", new Set(["live", "gone", "legacy", "adm", "author", "nobody"])],
+    ["roomA", new Set(["live", "gone", "legacy", "adm", "author", "nobody", "onplan"])],
     ["roomB", new Set(["wrongch", "author2"])],
     ["general", new Set(["gone"])], // not a channel room: never denied
   ]);

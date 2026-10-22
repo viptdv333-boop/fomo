@@ -6,6 +6,7 @@ import { isEnabled, type EventId } from "@/lib/notification-events";
 import { sendTelegramBundle } from "@/lib/notify-channels/telegram";
 import type { ChannelMessage } from "@/lib/notify-channels/types";
 import { resolveTelegramTargets, scrubToken, type TgTarget } from "@/lib/telegram-target";
+import { rootIdOf, tariffFamily } from "@/lib/tariff-plans";
 
 // Transport (relay / proxy / escaping) lives in tg-transport.ts so the site-bot
 // notification channel can share it without pulling next/headers.
@@ -200,20 +201,24 @@ async function forwardToChannelSubscribers(
   text: NotifText,
   opts: { dedupeEvent?: EventId; rich?: RichChannelPost }
 ): Promise<void> {
-  const tariff = await prisma.subscriptionTariff.findUnique({
+  // The channel row carries the owner's switch; subscribers of ANY plan of the channel get the post (tariff-plans.ts).
+  const found = await prisma.subscriptionTariff.findUnique({
     where: { id: tariffId },
-    select: {
-      authorId: true,
-      authorTelegramNotify: true,
-      subscriptions: {
-        where: { status: "active", endDate: { gt: new Date() }, telegramNotify: true },
-        select: { subscriberId: true },
-      },
-    },
+    select: { id: true, parentId: true, authorId: true, authorTelegramNotify: true },
   });
-  if (!tariff) return;
+  if (!found) return;
+  const rootId = rootIdOf(found);
+  const tariff =
+    rootId === found.id
+      ? found
+      : (await prisma.subscriptionTariff.findUnique({ where: { id: rootId }, select: { id: true, parentId: true, authorId: true, authorTelegramNotify: true } })) ?? found;
+  const family = await tariffFamily(prisma, rootId);
+  const subscriptions = await prisma.subscription.findMany({
+    where: { tariffId: { in: family }, status: "active", endDate: { gt: new Date() }, telegramNotify: true },
+    select: { subscriberId: true },
+  });
 
-  const recipientIds = tariff.subscriptions.map((s) => s.subscriberId);
+  const recipientIds = subscriptions.map((s) => s.subscriberId);
   // Владелец получает копию своих же сообщений отдельным флагом — он не
   // подписчик собственного канала, поэтому не попадает в список выше.
   if (tariff.authorTelegramNotify) recipientIds.push(tariff.authorId);

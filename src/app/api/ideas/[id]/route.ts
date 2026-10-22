@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
 import { ideaUploadUrls, removeIdeaUploads } from "@/lib/upload-cleanup";
+import { familyOfTariff } from "@/lib/tariff-plans";
 
 const ideaPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -127,7 +128,7 @@ export async function GET(
             status: "active",
             endDate: { gt: new Date() },
             ...(idea.tariffId
-              ? { OR: [{ tariffId: idea.tariffId }, { tariffId: null }] }
+              ? { OR: [{ tariffId: { in: await familyOfTariff(prisma, idea.tariffId) } }, { tariffId: null }] }
               : {}),
           },
         }),

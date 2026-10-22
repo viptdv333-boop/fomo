@@ -531,7 +531,7 @@ const idx = buildSubIndex([
 const chOf = (id: string, author: string) => ({ id, author: { id: author } });
 eq("subscriptions: own channel, longest end date wins", channelSubEnd(idx, chOf("c1", "a1")), "2026-12-04T00:00:00Z");
 eq("subscriptions: the old author-wide one covers every channel of the author", [channelSubEnd(idx, chOf("c9", "a2")), channelSubEnd(idx, chOf("c9", "a1")), channelSubEnd(idx, chOf("c9", "zz"))], ["2026-10-30T00:00:00Z", "", ""]);
-eq("subscriptions: telegram row of a channel", idx.subByChannel.get("c1"), { id: "s1b", telegramNotify: false });
+eq("subscriptions: telegram row of a channel", idx.subByChannel.get("c1"), { id: "s1b", telegramNotify: false, planId: null });
 eq("authors: followed (free) or paid", [isSubscribedToAuthor(idx, "a1"), isSubscribedToAuthor(idx, "a2"), isSubscribedToAuthor(idx, "a3"), isSubscribedToAuthor(idx, "a4")], [true, true, true, false]);
 eq("subscriptions: junk input", [buildSubIndex(null).follows.size, buildSubIndex("x").paidByChannel.size], [0, 0]);
 eq("pending payments are the PENDING ones of a channel", [...pendingChannelIds([{ status: "PENDING", tariffId: "c3" }, { status: "CONFIRMED", tariffId: "c4" }, { status: "PENDING", tariffId: null }, null])], ["c3"]);

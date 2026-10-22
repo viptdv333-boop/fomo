@@ -12,12 +12,17 @@ export type PaymentPurpose =
   | { type: "donation"; authorId: string; authorName: string; donationCard?: string | null; donationQrUrl?: string | null }
   | { type: "idea"; ideaId: string; ideaTitle: string; price: number; authorId: string; authorName: string }
   // renewUntil: ISO end date of the viewer's running subscription -> «Продление» mode (same tariff, same methods; the paid period is added to it)
-  | { type: "subscription"; tariff: TariffOption; authorId: string; authorName: string; renewUntil?: string }
+  // plans: every plan of the channel on sale (tariff-plans.ts) - the buyer picks one; `tariff` is the preselected one
+  | { type: "subscription"; tariff: TariffOption; plans?: TariffOption[]; authorId: string; authorName: string; renewUntil?: string }
   | { type: "course"; courseId: string; courseTitle: string; price: number; authorId: string; authorName: string };
 
 export interface TariffOption {
   id: string;
   name: string;
+  /** Plan name, null when the plan has none (then only the period and price are shown). */
+  planLabel?: string | null;
+  /** Name of the channel the plan belongs to (the title subscribers see). */
+  channelName?: string;
   description: string | null;
   price: number;
   durationDays: number;
@@ -45,12 +50,11 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   const [step, setStep] = useState<Step>("method");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
 
-  // Tariff selection (only for subscription)
-  const [tariffs, setTariffs] = useState<TariffOption[]>([]);
+  // Plan selection (only for subscription): the plans of THIS channel, sorted by period then price
+  const tariffs: TariffOption[] = purpose.type === "subscription" ? purpose.plans ?? [purpose.tariff] : [];
   const [selectedTariff, setSelectedTariff] = useState<TariffOption | null>(
     purpose.type === "subscription" ? purpose.tariff : null
   );
-  const [tariffsLoaded, setTariffsLoaded] = useState(purpose.type !== "subscription");
 
   // Card payment
   const [cardCopied, setCardCopied] = useState(false);
@@ -72,22 +76,6 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   // State
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  // Load tariffs for subscription
-  useState(() => {
-    if (purpose.type === "subscription") {
-      fetch(`/api/users/${purpose.authorId}/tariffs`)
-        .then((r) => r.json())
-        .then((data: TariffOption[]) => {
-          setTariffs(data);
-          if (data.length > 0) {
-            const match = data.find((t) => t.id === purpose.tariff.id) || data[0];
-            setSelectedTariff(match);
-          }
-        })
-        .finally(() => setTariffsLoaded(true));
-    }
-  });
 
   // Load the author's link methods (for a tariff: only those the tariff accepts)
   useEffect(() => {
@@ -317,7 +305,10 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           case "idea":
             return tRu("pay.dmIdea", { title: purpose.ideaTitle, price: purpose.price });
           case "subscription":
-            return tRu("pay.dmSubscription", { title: String(selectedTariff?.name), price: amount });
+            return tRu("pay.dmSubscription", {
+              title: selectedTariff?.channelName && selectedTariff.planLabel ? `${selectedTariff.channelName}: ${selectedTariff.planLabel}` : String(selectedTariff?.channelName ?? selectedTariff?.name),
+              price: amount,
+            });
           case "course":
             return tRu("pay.dmCourse", { title: purpose.courseTitle, price: purpose.price });
         }
@@ -374,9 +365,10 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
 
               {/* Tariff selector for subscriptions */}
-              {purpose.type === "subscription" && !purpose.renewUntil && tariffs.length > 1 && (
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("pay.chooseTariff")}</p>
+              {purpose.type === "subscription" && tariffs.length > 1 && (
+                <div className="space-y-2 mb-4" data-testid="plan-picker">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("pay.choosePlan")}</p>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
                   {tariffs.map((tf) => (
                     <label
                       key={tf.id}
@@ -394,13 +386,14 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                         className="sr-only"
                       />
                       <div className="flex justify-between">
-                        <span className="font-medium text-sm dark:text-gray-100">{tf.name}</span>
-                        <span className="text-sm font-semibold text-green-600">{Number(tf.price)} ₽</span>
+                        <span className="font-medium text-sm dark:text-gray-100">{tf.planLabel || t("pay.termDays", { days: tf.durationDays })}</span>
+                        <span className="text-sm font-semibold text-green-600 whitespace-nowrap ml-2">{Number(tf.price)} ₽</span>
                       </div>
                       {tf.description && <p className="text-xs text-gray-500 mt-0.5">{tf.description}</p>}
-                      <p className="text-xs text-gray-400 mt-0.5">{t("pay.termDays", { days: tf.durationDays })}</p>
+                      {tf.planLabel && <p className="text-xs text-gray-400 mt-0.5">{t("pay.termDays", { days: tf.durationDays })}</p>}
                     </label>
                   ))}
+                  </div>
                 </div>
               )}
 
@@ -657,7 +650,7 @@ function ProductInfo({
           <div className="font-medium text-sm dark:text-gray-100">
             {purpose.type === "donation" && t("pay.titleDonation", { name: purpose.authorName })}
             {purpose.type === "idea" && purpose.ideaTitle}
-            {purpose.type === "subscription" && (selectedTariff?.name || t("pay.subscription"))}
+            {purpose.type === "subscription" && (selectedTariff?.channelName || selectedTariff?.name || t("pay.subscription"))}
             {purpose.type === "course" && purpose.courseTitle}
           </div>
           {purpose.type === "subscription" && selectedTariff?.description && (

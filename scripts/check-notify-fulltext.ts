@@ -230,10 +230,15 @@ async function main() {
     user: { findMany: async (a: any) => users.filter((u) => a.where.id.in.includes(u.id)) },
     notification: { createManyAndReturn: async (a: any) => a.data.map((d: Row, i: number) => ({ id: `n${i}`, isRead: false, createdAt: new Date(), body: null, link: null, ...d })) },
     follow: { findMany: async (a: any) => follows.filter((f) => f.authorId === a.where.authorId) },
+    // plans of a channel (tariff-plans.ts): this fake has none, so every channel is its own family
+    subscriptionTariff: {
+      findUnique: async (a: any) => ({ id: a.where.id, parentId: null }),
+      findMany: async () => [],
+    },
     subscription: {
       findMany: async (a: any) =>
         subscriptions.filter(
-          (s) => s.status === "active" && s.endDate > new Date() && (!a.where.authorId || s.authorId === a.where.authorId) && (!a.where.tariffId || s.tariffId === a.where.tariffId) && (!a.where.subscriber || true) &&
+          (s) => s.status === "active" && s.endDate > new Date() && (!a.where.authorId || s.authorId === a.where.authorId) && (!a.where.tariffId || (a.where.tariffId.in ? a.where.tariffId.in.includes(s.tariffId) : s.tariffId === a.where.tariffId)) && (!a.where.subscriber || true) &&
             (!a.where.subscriberId?.in || a.where.subscriberId.in.includes(s.subscriberId)) && !(a.where.subscriberId?.notIn ?? []).includes(s.subscriberId)
         ),
     },

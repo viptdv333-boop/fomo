@@ -39,9 +39,11 @@ export async function POST(req: NextRequest) {
   // Get tariff with YuKassa credentials
   const tariff = await prisma.subscriptionTariff.findUnique({
     where: { id: tariffId },
+    include: { parent: { select: { name: true, isActive: true, archivedAt: true } } },
   });
 
-  if (!tariff || !tariff.isActive) {
+  // A plan of a channel is paid on its own row (own price and YuKassa shop); a closed channel sells nothing.
+  if (!tariff || !tariff.isActive || tariff.archivedAt || (tariff.parent && (!tariff.parent.isActive || tariff.parent.archivedAt))) {
     return NextResponse.json({ error: t("api.tariffNotFound") }, { status: 404 });
   }
 
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
       shopId: tariff.yukassaShopId,
       secretKey: tariff.yukassaSecret,
       amount: Number(tariff.price),
-      description: t("api.yukassaDescription", { tariff: tariff.name, author: seller?.displayName || t("api.authorFallback") }),
+      description: t("api.yukassaDescription", { tariff: tariff.parent ? `${tariff.parent.name}: ${tariff.name}` : tariff.name, author: seller?.displayName || t("api.authorFallback") }),
       returnUrl: `${process.env.NEXTAUTH_URL || "https://fomo.spot"}/subscriptions?payment=success`,
       metadata: {
         paymentRequestId: paymentRequest.id,

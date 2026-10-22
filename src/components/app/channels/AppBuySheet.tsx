@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { receiptDmText } from "@/lib/i18n/receipt-dm";
 import { hasLinkRef, validatePaymentLink, type PublicPayLink } from "@/lib/payment-link";
-import { endDateLabel, priceAndPeriod, priceLabel, receiptProblem, type ChannelItem } from "@/lib/app-channels";
+import { endDateLabel, periodName, priceAndPeriod, priceLabel, receiptProblem, type ChannelItem } from "@/lib/app-channels";
+import { defaultPlan, sortPlans } from "@/lib/tariff-plans";
 import AppIcon from "../AppIcon";
 import AppSheet from "../chat/AppSheet";
 import "../chat/app-chat.css";
@@ -13,6 +14,9 @@ import "./app-channels.css";
 interface TariffInfo {
   id: string;
   name: string;
+  /** Plan name («Неделя»); null - the sheet names the plan by its period */
+  label?: string | null;
+  isRoot?: boolean;
   description: string | null;
   price: number;
   durationDays: number;
@@ -28,9 +32,12 @@ type Method = { id: string; kind: "card" | "sbp" | "yukassa" | "link"; label: st
  * subscription: the author's own methods (card, QR / СБП, «Оплата по ссылке») are confirmed by hand after the receipt, ЮKassa pays online.
  * The requests are the same as the site's payment window makes (POST /api/payments, PATCH the receipt, a message with the receipt to the author).
  */
-export default function AppBuySheet({ channel, onClose, onDone, flash, renewUntil }: { channel: ChannelItem; onClose: () => void; onDone: () => void; flash: (m: string) => void; renewUntil?: string }) {
+export default function AppBuySheet({ channel, onClose, onDone, flash, renewUntil, currentPlanId }: { channel: ChannelItem; onClose: () => void; onDone: () => void; flash: (m: string) => void; renewUntil?: string; currentPlanId?: string | null }) {
   const { t, locale } = useT();
-  const [tariff, setTariff] = useState<TariffInfo | null>(null);
+  // the plans of THIS channel on sale (tariff-plans.ts), sorted by period then price; the buyer picks one, the payment goes to it
+  const [plans, setPlans] = useState<TariffInfo[]>([]);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const tariff = plans.find((p) => p.id === planId) ?? null;
   const [loaded, setLoaded] = useState(false);
   const [links, setLinks] = useState<PublicPayLink[]>([]);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -48,15 +55,19 @@ export default function AppBuySheet({ channel, onClose, onDone, flash, renewUnti
     void (async () => {
       try {
         const r = await fetch(`/api/users/${authorId}/tariffs`);
-        const all = r.ok ? ((await r.json()) as TariffInfo[]) : [];
-        const mine = Array.isArray(all) ? all.find((x) => x.id === channel.id) || null : null;
+        type Entry = TariffInfo & { plans?: { id: string; label: string | null; price: number; durationDays: number; isRoot: boolean; paymentMethods?: string[]; cardNumber?: string | null; sbpQrUrl?: string | null }[] };
+        const all = r.ok ? ((await r.json()) as Entry[]) : [];
+        const mine = Array.isArray(all) ? all.find((x) => x.id === channel.id || x.plans?.some((p) => p.id === channel.id)) || null : null;
         if (!alive) return;
-        setTariff(mine);
-        if (mine && hasLinkRef(mine.paymentMethods)) {
-          const lr = await fetch(`/api/users/${authorId}/payment-links?tariffId=${encodeURIComponent(mine.id)}`);
-          const d = lr.ok ? await lr.json() : [];
-          if (alive) setLinks(Array.isArray(d) ? d : []);
-        }
+        // one option per plan on sale (an old API answer without `plans` = the channel row as its only plan)
+        const opts: TariffInfo[] = !mine
+          ? []
+          : mine.plans && mine.plans.length > 0
+            ? sortPlans(mine.plans).map((p) => ({ id: p.id, name: mine.name, label: p.label, isRoot: p.isRoot, description: null, price: p.price, durationDays: p.durationDays, paymentMethods: p.paymentMethods ?? mine.paymentMethods, cardNumber: p.cardNumber ?? (p.isRoot ? mine.cardNumber : null), sbpQrUrl: p.sbpQrUrl ?? (p.isRoot ? mine.sbpQrUrl : null) }))
+            : [{ ...mine, label: null, isRoot: true }];
+        setPlans(opts);
+        const views = opts.map((o) => ({ id: o.id, price: Number(o.price), durationDays: o.durationDays, isRoot: !!o.isRoot }));
+        setPlanId((opts.find((o) => o.id === currentPlanId) ?? opts.find((o) => o.id === defaultPlan(views)?.id) ?? opts[0])?.id ?? null);
       } catch {
         /* the sheet says there is no way to pay */
       }
@@ -65,11 +76,26 @@ export default function AppBuySheet({ channel, onClose, onDone, flash, renewUnti
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorId, channel.id]);
+
+  // the author's link methods the SELECTED plan accepts
+  useEffect(() => {
+    let alive = true;
+    setLinks([]);
+    if (!tariff || !hasLinkRef(tariff.paymentMethods)) return;
+    void fetch(`/api/users/${authorId}/payment-links?tariffId=${encodeURIComponent(tariff.id)}`)
+      .then((lr) => (lr.ok ? lr.json() : []))
+      .then((d) => alive && setLinks(Array.isArray(d) ? d : []))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [authorId, tariff?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const price = tariff ? Number(tariff.price) : channel.price;
   const amount = priceLabel(price, locale);
-  const title = `${channel.name} · ${priceAndPeriod(price, tariff?.durationDays ?? channel.durationDays, locale)}`;
+  const title = `${channel.name}${tariff?.label ? ` · ${tariff.label}` : ""} · ${priceAndPeriod(price, tariff?.durationDays ?? channel.durationDays, locale)}`;
 
   const methods = useMemo<Method[]>(() => {
     if (!tariff) return [];
@@ -100,7 +126,7 @@ export default function AppBuySheet({ channel, onClose, onDone, flash, renewUnti
       if (!conv.ok) return;
       const c = await conv.json();
       // the message goes to the author, not the buyer: it stays in the site's base language
-      const text = receiptDmText("pay.dmSubscription", { title: String(tariff?.name ?? channel.name), price });
+      const text = receiptDmText("pay.dmSubscription", { title: tariff?.label ? `${channel.name}: ${tariff.label}` : String(tariff?.name ?? channel.name), price });
       const via = method?.link ? receiptDmText("pay.dmViaLink", { label: method.link.label, host: method.link.host }) : "";
       await fetch(`/api/messages/conversations/${c.id}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text + via, fileUrl: receiptUrl, fileName: receiptDmText("pay.receiptFileName"), fileType: "image" }) });
     } catch {
@@ -177,8 +203,17 @@ export default function AppBuySheet({ channel, onClose, onDone, flash, renewUnti
         doneLabel={t("appui.chat.done")}
         intro={renewUntil ? `${title} · ${t("appch.renewUntil", { date: endDateLabel(renewUntil, locale) })}` : `${title}`}
         sections={
-          loaded && methods.length
+          loaded && (methods.length || plans.length > 1)
             ? [
+                ...(plans.length > 1
+                  ? [
+                      {
+                        key: "plan",
+                        title: t("appch.buy.plan"),
+                        rows: plans.map((p) => ({ key: p.id, label: p.label || periodName(p.durationDays, locale), sub: priceAndPeriod(Number(p.price), p.durationDays, locale), check: planId === p.id, onClick: () => (setPlanId(p.id), setMethodId(null)) })),
+                      },
+                    ]
+                  : []),
                 {
                   key: "m",
                   title: t("appch.buy.method"),

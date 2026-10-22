@@ -90,10 +90,14 @@ export async function POST(req: NextRequest) {
   if (body.sellerId && body.subscriptionType === "tariff" && body.tariffId) {
     const tariff = await prisma.subscriptionTariff.findUnique({
       where: { id: body.tariffId },
-      include: { author: { select: { id: true, displayName: true, paymentCard: true, sbpQrUrl: true } } },
+      include: {
+        author: { select: { id: true, displayName: true, paymentCard: true, sbpQrUrl: true } },
+        parent: { select: { name: true, isActive: true, archivedAt: true } },
+      },
     });
 
-    if (!tariff || !tariff.isActive) {
+    // A plan is paid on its own row (own price / period / payment methods); a closed (archived) channel sells nothing.
+    if (!tariff || !tariff.isActive || tariff.archivedAt || (tariff.parent && (!tariff.parent.isActive || tariff.parent.archivedAt))) {
       return NextResponse.json({ error: t("notif.err.tariffNotFound") }, { status: 400 });
     }
 
@@ -151,7 +155,7 @@ export async function POST(req: NextRequest) {
       userId: tariff.authorId,
       type: "payment",
       title: { key: "notif.payment.subscriptionRequest.title", vars: { name: buyer?.displayName || { key: "notif.fallback.buyer" } } },
-      body: `${tariff.name} — ${Number(tariff.price)} ₽`,
+      body: `${tariff.parent ? `${tariff.parent.name}: ${tariff.name}` : tariff.name} — ${Number(tariff.price)} ₽`,
       link: `/profile?tab=finance`,
     });
 
@@ -242,5 +246,11 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(requests);
+  // A subscription payment may be for a PLAN of a channel (tariff-plans.ts): channelId is the channel it belongs to.
+  const planRows = await prisma.subscriptionTariff.findMany({
+    where: { id: { in: [...new Set(requests.map((r) => r.tariffId).filter((x): x is string => !!x))] } },
+    select: { id: true, parentId: true },
+  });
+  const channelOf = new Map(planRows.map((p) => [p.id, p.parentId ?? p.id]));
+  return NextResponse.json(requests.map((r) => (r.tariffId ? { ...r, channelId: channelOf.get(r.tariffId) ?? r.tariffId } : r)));
 }
