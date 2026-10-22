@@ -5,6 +5,7 @@ import type { IndicatorDef, LineStyleName, Params, PlotShape } from "./registry"
 import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
+import { parseRatio, resolveRatios } from "../pane-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
 import type { ScriptEvent } from "../scripts/store";
@@ -15,6 +16,8 @@ interface Item {
   series: IndicatorSeries;
   /** Pane the series is currently mounted in. */
   pane: string | null;
+  /** Share of the plot height of the own pane: `d` wide chart, `m` narrow (phone) chart. Undefined: never sized (the default look). */
+  ratio: { d?: number; m?: number };
 }
 
 const DEFAULT_PANE_RATIO = 0.18;
@@ -62,13 +65,20 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private snapshot: IndicatorInstance[] = [];
   /** Subscriptions to the user-script registry / worker results (only while attached to an engine). */
   private scriptOffs: (() => void)[] = [];
+  /** True while many items are built at once (restore / attach): the pane heights are resolved once at the end. */
+  private bulk = false;
 
   /* ───────────── engine binding ───────────── */
 
   attach(engine: ChartEngine): void {
     if (this.engine && this.engine !== engine) this.unmountAll();
     this.engine = engine;
+    engine.onPanesResized = (ratios) => this.onPanesResized(ratios);
+    engine.onCompactChange = () => this.relayout();
+    this.bulk = true;
     for (const it of this.items) this.mount(it);
+    this.bulk = false;
+    this.relayout();
     this.listenScripts();
     this.syncScripts({ type: "list" });
     this.refresh();
@@ -78,7 +88,48 @@ export class IndicatorsController implements IndicatorsControllerLike {
     for (const off of this.scriptOffs) off();
     this.scriptOffs = [];
     this.unmountAll();
+    if (this.engine) {
+      this.engine.onPanesResized = null;
+      this.engine.onCompactChange = null;
+    }
     this.engine = null;
+  }
+
+  /* ───────────── pane heights ───────────── */
+
+  private sizeKey(): "d" | "m" {
+    return this.engine?.isCompact() ? "m" : "d";
+  }
+
+  /** Puts every own pane at its stored share (a pane that was never sized is added the way a new one is: the others give it room in proportion). */
+  private relayout(): void {
+    const eng = this.engine;
+    if (!eng) return;
+    const own = this.items.filter((it) => it.pane && it.pane !== "main");
+    if (own.length === 0) return;
+    const kind = this.sizeKey();
+    const alt = kind === "m" ? "d" : "m";
+    const out = resolveRatios(own.map((it) => ({ saved: it.ratio[kind] ?? it.ratio[alt], weight: it.def.paneRatio ?? DEFAULT_PANE_RATIO })));
+    const map: Record<string, number> = {};
+    own.forEach((it, i) => {
+      it.ratio[kind] = out[i];
+      map[it.pane as string] = out[i];
+    });
+    eng.setPaneRatios(map);
+  }
+
+  /** The user dragged a divider: remember the heights (they are saved with the indicators). */
+  private onPanesResized(ratios: Record<string, number>): void {
+    const kind = this.sizeKey();
+    let any = false;
+    for (const it of this.items) {
+      const r = it.pane ? ratios[it.pane] : undefined;
+      if (typeof r === "number" && isFinite(r) && r > 0) {
+        it.ratio[kind] = r;
+        any = true;
+      }
+    }
+    if (any) this.emit();
   }
 
   /* ───────────── user scripts ───────────── */
@@ -153,6 +204,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
       if (!eng.hasPane(pid)) eng.addPane(pid, it.def.paneRatio ?? DEFAULT_PANE_RATIO);
       eng.addSeries(it.series, pid);
       it.pane = pid;
+      if (!this.bulk) this.relayout();
     } else {
       eng.addSeries(it.series, "main");
       it.pane = "main";
@@ -219,7 +271,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return uid;
   }
 
-  private create(id: string, params: Record<string, ParamValue> | undefined, visible: boolean, style?: IndicatorStyle): Item | null {
+  private create(id: string, params: Record<string, ParamValue> | undefined, visible: boolean, style?: IndicatorStyle, ratio?: { d?: number; m?: number }): Item | null {
     const def = getIndicatorDef(id);
     if (!def) return null;
     const merged: Params = sanitizeParams(def, { ...defaultParams(def), ...(params ?? {}) });
@@ -243,7 +295,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     series.externalLegend = this.externalLegend;
     const inst: IndicatorInstance = { uid, id, params: merged, visible };
     if (st) inst.style = st;
-    const item: Item = { inst, def, series, pane: null };
+    const item: Item = { inst, def, series, pane: null, ratio: { ...ratio } };
     this.items.push(item);
     if (eng) this.mount(item);
     return item;
@@ -409,8 +461,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
   serialize(): string {
     return JSON.stringify(
       this.items.map((it) => {
-        const o: { id: string; params: Params; visible: boolean; style?: IndicatorStyle } = { id: it.inst.id, params: it.inst.params, visible: it.inst.visible };
+        const o: { id: string; params: Params; visible: boolean; style?: IndicatorStyle; pr?: number; pm?: number } = { id: it.inst.id, params: it.inst.params, visible: it.inst.visible };
         if (it.inst.style) o.style = it.inst.style;
+        // height of the own pane (share of the plot height), wide and narrow chart separately
+        if (it.ratio.d !== undefined) o.pr = Math.round(it.ratio.d * 10000) / 10000;
+        if (it.ratio.m !== undefined) o.pm = Math.round(it.ratio.m * 10000) / 10000;
         return o;
       }),
     );
@@ -426,13 +481,16 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (!Array.isArray(arr)) return;
     for (const it of this.items) this.unmount(it);
     this.items = [];
+    this.bulk = true;
     for (const raw of arr) {
       if (!raw || typeof raw !== "object") continue;
-      const r = raw as { id?: unknown; params?: unknown; visible?: unknown; style?: unknown };
+      const r = raw as { id?: unknown; params?: unknown; visible?: unknown; style?: unknown; pr?: unknown; pm?: unknown };
       if (typeof r.id !== "string") continue;
       const params = r.params && typeof r.params === "object" ? (r.params as Record<string, ParamValue>) : undefined;
-      this.create(r.id, params, r.visible !== false, sanitizeStyle(r.style));
+      this.create(r.id, params, r.visible !== false, sanitizeStyle(r.style), { d: parseRatio(r.pr), m: parseRatio(r.pm) });
     }
+    this.bulk = false;
+    this.relayout();
     this.emit();
     this.engine?.requestRedraw();
   }

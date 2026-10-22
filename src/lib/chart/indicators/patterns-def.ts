@@ -43,8 +43,8 @@ const GROUP_KEY: Record<PatternGroup, string> = {
 
 /* ───────────── texts (canvas + legend; the React dictionary is not reachable from here) ───────────── */
 
-type Lang = "ru" | "en" | "zh";
-const langOf = (locale: string): Lang => (locale.startsWith("ru") ? "ru" : locale.startsWith("zh") ? "zh" : "en");
+export type Lang = "ru" | "en" | "zh";
+export const langOf = (locale: string): Lang => (locale.startsWith("ru") ? "ru" : locale.startsWith("zh") ? "zh" : "en");
 
 const NAMES: Record<PatternType, [string, string, string]> = {
   double_top: ["Двойная вершина", "Double top", "双顶"],
@@ -130,7 +130,7 @@ function optionsOf(p: Params, prevIds?: ReadonlySet<string>): PatternOptions {
 }
 
 /** Price decimals from the last closes (the compute step has no access to the chart's precision): the 90th percentile. */
-function precisionOf(cs: { c: number }[]): number {
+export function precisionOf(cs: { c: number }[]): number {
   const ds: number[] = [];
   for (let i = Math.max(0, cs.length - 80); i < cs.length; i++) {
     const v = cs[i].c;
@@ -146,14 +146,14 @@ function precisionOf(cs: { c: number }[]): number {
 
 /* ───────────── colours / helpers ───────────── */
 
-function rgba(hex: string, a: number): string {
+export function rgba(hex: string, a: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m) return hex;
   const v = parseInt(m[1], 16);
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
 }
 
-function isDark(bg: string): boolean {
+export function isDark(bg: string): boolean {
   const m = /^#([0-9a-f]{6})$/i.exec(bg);
   if (m) {
     const v = parseInt(m[1], 16);
@@ -164,7 +164,7 @@ function isDark(bg: string): boolean {
   return true;
 }
 
-interface Box {
+export interface Box {
   x: number;
   y: number;
   w: number;
@@ -173,7 +173,7 @@ interface Box {
 const hit = (a: Box, b: Box, pad = 2) => a.x < b.x + b.w + pad && a.x + a.w + pad > b.x && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y;
 
 /** Finds a free place for a box: tries the wanted y, then steps away in both directions. */
-function place(boxes: Box[], w: number, h: number, x: number, y: number, pane: { w: number; h: number }, prefer: -1 | 1): Box {
+export function place(boxes: Box[], w: number, h: number, x: number, y: number, pane: { w: number; h: number }, prefer: -1 | 1): Box {
   const clampBox = (bx: number, by: number): Box => ({ x: Math.max(3, Math.min(pane.w - w - 3, bx)), y: Math.max(3, Math.min(pane.h - h - 3, by)), w, h });
   let best = clampBox(x, y);
   for (let k = 0; k < 14; k++) {
@@ -192,7 +192,7 @@ function place(boxes: Box[], w: number, h: number, x: number, y: number, pane: {
   return best;
 }
 
-function pill(ctx: CanvasRenderingContext2D, b: Box, text: string, o: { bg: string; border: string; fg: string; font: string; dot?: string; strike?: boolean }) {
+export function pill(ctx: CanvasRenderingContext2D, b: Box, text: string, o: { bg: string; border: string; fg: string; font: string; dot?: string; strike?: boolean }) {
   ctx.save();
   ctx.fillStyle = o.bg;
   ctx.strokeStyle = o.border;

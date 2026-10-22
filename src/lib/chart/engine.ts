@@ -23,6 +23,7 @@ import {
   zoneOffsetMs,
 } from "./format";
 import { transformBars } from "./transforms";
+import { MIN_SUB_RATIO, dragRatio, isCompactWidth, layoutHeights } from "./pane-layout";
 import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
 import { barCountdownMs, countdownUnits, formatCountdown } from "./bar-clock";
@@ -78,7 +79,6 @@ const MAX_BS_FOOTPRINT = 320;
 const DEFAULT_BS = 8;
 const RIGHT_MARGIN_BARS = 8;
 const TIME_AXIS_H = 26;
-const MAX_SUB_RATIO = 0.6;
 
 /** A symbol drawn over the main one (Compare). */
 interface CompareEntry {
@@ -182,6 +182,11 @@ export class ChartEngine {
   onPriceAxisMenu: ((info: { clientX: number; clientY: number; paneId: string }) => void) | null = null;
   /** The baseline chart's base level was dragged (percent of the pane height from the bottom). */
   onBaselineChange: ((percent: number) => void) | null = null;
+  /** A divider between panes was dragged (called when the drag ends): share of the plot height of every indicator pane, by pane id. */
+  onPanesResized: ((ratios: Record<string, number>) => void) | null = null;
+  /** The chart became narrow (phone layout) or wide again: indicator panes keep separate heights for the two. */
+  onCompactChange: ((compact: boolean) => void) | null = null;
+  private compact = false;
   /** The crosshair moved to a chart time (null = it left the chart); used to link several charts. */
   onCrosshairMove: ((time: number | null) => void) | null = null;
   private lastCrossT: number | null = null;
@@ -535,6 +540,31 @@ export class ChartEngine {
     return this.panes.some((p) => p.id === id);
   }
 
+  /** Share of the plot height of every indicator pane (the main pane is not listed: it takes the rest). */
+  getPaneRatios(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const p of this.panes.slice(1)) out[p.id] = p.ratio;
+    return out;
+  }
+
+  /** Sets the shares of indicator panes by id (unknown ids are ignored). Used to restore a saved layout before the first paint. */
+  setPaneRatios(ratios: Record<string, number>) {
+    let changed = false;
+    for (const p of this.panes.slice(1)) {
+      const r = ratios[p.id];
+      if (typeof r === "number" && isFinite(r) && r > 0 && r !== p.ratio) {
+        p.ratio = r;
+        changed = true;
+      }
+    }
+    if (changed) this.invalidate();
+  }
+
+  /** True while the chart is narrow (phone layout). */
+  isCompact(): boolean {
+    return this.compact;
+  }
+
   /** Symbols drawn over the main one. `candles` are in chart time (same clock as the main candles). */
   addCompare(entry: { id: string; label: string; color: string; mode: "percent" | "own"; candles: Candle[] }) {
     this.compares = this.compares.filter((c) => c.id !== entry.id);
@@ -869,19 +899,16 @@ export class ChartEngine {
     // indicator panes cannot be drawn on bars that are built from the candles
     const hideSubs = this.transformed();
     const subs = hideSubs ? [] : this.panes.slice(1);
-    let subSum = subs.reduce((s, p) => s + p.ratio, 0);
-    const scale = subSum > MAX_SUB_RATIO ? MAX_SUB_RATIO / subSum : 1;
-    subSum = Math.min(subSum, MAX_SUB_RATIO);
-    const mainH = plotH * (1 - subSum);
-    let top = 0;
+    const lay = layoutHeights(plotH, subs.map((p) => p.ratio));
     this.panes[0].top = 0;
-    this.panes[0].height = mainH;
-    top = mainH;
-    for (const p of this.panes.slice(1)) {
+    this.panes[0].height = lay.main;
+    let top = lay.main;
+    this.panes.slice(1).forEach((p) => {
+      const k = subs.indexOf(p);
       p.top = top;
-      p.height = hideSubs ? 0 : plotH * p.ratio * scale;
+      p.height = k < 0 ? 0 : lay.subs[k];
       top += p.height;
-    }
+    });
   }
 
   /** Price a single-price chart type plots for a bar. */
@@ -1047,6 +1074,11 @@ export class ChartEngine {
     }
     this.bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const compact = W > 1 && isCompactWidth(W);
+    if (compact !== this.compact) {
+      this.compact = compact;
+      this.onCompactChange?.(compact);
+    }
     this.invalidate();
   }
 
@@ -2766,9 +2798,12 @@ export class ChartEngine {
       this.onBaselineChange?.(pct);
       this.invalidate();
     } else if (d.kind === "separator" && d.pane) {
-      const total = this.plotH();
-      const ratioDelta = -dy / total;
-      d.pane.ratio = Math.max(0.08, Math.min(0.5, d.pane.ratio + ratioDelta));
+      const subs = this.panes.slice(1);
+      const k = subs.indexOf(d.pane);
+      if (k >= 0) {
+        const next = dragRatio(subs.map((p) => p.ratio), k, -dy / this.plotH());
+        subs.forEach((p, i) => (p.ratio = Math.max(MIN_SUB_RATIO, next[i])));
+      }
       this.invalidate();
     }
     d.lastX = x;
@@ -2789,6 +2824,7 @@ export class ChartEngine {
     if (this.longPress) clearTimeout(this.longPress);
     if (this.pinch && this.pointers.size < 2) this.pinch = null;
     const d = this.drag;
+    if (d && d.kind === "separator" && d.moved) this.onPanesResized?.(this.getPaneRatios());
     if (d && d.kind === "pan" && d.moved && d.samples.length >= 2) {
       const a = d.samples[0];
       const b = d.samples[d.samples.length - 1];
