@@ -91,7 +91,7 @@ export async function GET() {
     })),
   ];
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { "Cache-Control": "private, no-cache, must-revalidate" } });
 }
 
 export async function DELETE(request: Request) {

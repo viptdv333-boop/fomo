@@ -9,6 +9,7 @@ import ShareButtons from "@/components/shared/ShareButtons";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
 import PlanLine, { type PlanLineItem } from "@/components/channels/PlanLine";
+import { useChannelsTick } from "@/lib/channels-invalidate";
 
 interface Channel {
   id: string;
@@ -106,15 +107,17 @@ function ChannelsSite() {
   const [instrumentFilter, setInstrumentFilter] = useState("");
   const [showInstrumentDropdown, setShowInstrumentDropdown] = useState(false);
 
+  // a change (own write, another window, the worker's copy differed from the server) or the app coming back re-reads the list: tick > 0 asks the network first
+  const tick = useChannelsTick();
   useEffect(() => {
-    fetch("/api/channels")
+    fetch("/api/channels", tick ? { cache: "no-store" } : undefined)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setChannels(data);
+        if (Array.isArray(data)) setChannels((cur) => (JSON.stringify(cur) === JSON.stringify(data) ? cur : data));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [tick]);
 
   function handleSort(field: typeof sortField) {
     if (sortField === field) setSortDir(sortDir === "desc" ? "asc" : "desc");

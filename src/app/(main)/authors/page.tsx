@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
+import { useChannelsTick } from "@/lib/channels-invalidate";
 
 interface Author {
   id: string;
@@ -58,13 +59,14 @@ function AuthorsSite() {
   const [ideasFilter, setIdeasFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
 
+  const tick = useChannelsTick();
   useEffect(() => {
-    fetch("/api/authors")
+    fetch("/api/authors", tick ? { cache: "no-store" } : undefined)
       .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setAuthors(data); })
+      .then((data) => { if (Array.isArray(data)) setAuthors((cur) => (JSON.stringify(cur) === JSON.stringify(data) ? cur : data)); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [tick]);
 
   function handleSort(field: SortField) {
     if (sortField === field) setSortDir(sortDir === "desc" ? "asc" : "desc");

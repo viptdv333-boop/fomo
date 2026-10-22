@@ -178,11 +178,73 @@
     [/^\/api\/news$/, 5 * MIN],
   ];
 
-  /** { cache, fresh } for a GET /api path, or { cache:false } */
-  function apiPolicy(pathname) {
-    if (API_DENY.test(pathname) || API_DENY_DEEP.test(pathname)) return { cache: false, fresh: 0 };
-    for (var i = 0; i < API_ALLOW.length; i++) if (API_ALLOW[i][0].test(pathname)) return { cache: true, fresh: API_ALLOW[i][1] };
-    return { cache: false, fresh: 0 };
+  /**
+   * { cache, fresh, live } for a GET /api path, or { cache:false }. `live` = the answer can change from elsewhere (an owner edits a channel, a script
+   * merges two of them): a stored copy that is served instantly is compared with the network's answer afterwards and the open screens are told when
+   * they differ (sw.js swr), and a request that says cache:"no-store" / "reload" skips the instant copy (network first, the copy only as the fallback).
+   */
+  function apiPolicy(pathname, search) {
+    if (API_DENY.test(pathname) || API_DENY_DEEP.test(pathname)) return { cache: false, fresh: 0, live: false };
+    for (var i = 0; i < API_ALLOW.length; i++) if (API_ALLOW[i][0].test(pathname)) return { cache: true, fresh: API_ALLOW[i][1], live: isLiveChannelApi(pathname, search) };
+    return { cache: false, fresh: 0, live: false };
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------
+  // the channels family: lists / pages that must follow a change made by the user (or by anybody else) at once
+  // ---------------------------------------------------------------------------------------------------------------------------
+
+  /** reads that show channels, plans (tariffs), subscriptions, authors and a channel's posts: compared with the network after every instant answer */
+  var LIVE_CHANNEL_API = [
+    /^\/api\/channels$/,
+    /^\/api\/authors$/,
+    /^\/api\/subscriptions$/,
+    /^\/api\/users\/[^/]+\/tariffs$/,
+    /^\/api\/users\/[^/]+$/,
+    /^\/api\/users\/by-fomo-id\/[^/]+$/,
+    /^\/api\/users\/[^/]+\/followers$/,
+  ];
+  function isLiveChannelApi(pathname, search) {
+    for (var i = 0; i < LIVE_CHANNEL_API.length; i++) if (LIVE_CHANNEL_API[i].test(pathname)) return true;
+    // the posts of one channel / one author (the board feed itself is not live)
+    return pathname === "/api/ideas" && /(^|[?&])(channelId|authorId)=/.test(search || "");
+  }
+
+  /** stored API answers dropped after a channel / plan / subscription / post changed (the whole family, any query) */
+  var CHANNEL_PURGE_API = [/^\/api\/channels(\/|$)/, /^\/api\/authors$/, /^\/api\/subscriptions(\/|$)/, /^\/api\/users\/[^/]+(\/(tariffs|followers))?$/, /^\/api\/users\/by-fomo-id\/[^/]+$/, /^\/api\/ideas(\/[^/]+)?$/];
+  /** stored pages with server rendered text about channels / authors / posts (the tab roots are shells without data: kept) */
+  var CHANNEL_PURGE_PAGES = ["/channels", "/authors", "/ideas", "/profile"];
+
+  /**
+   * Should this stored entry (its request URL: a real /api URL or one of our synthetic page / rsc keys) be dropped for `scope`?
+   * scope "channels" is the only one: channels, plans, subscriptions, authors and the posts of a channel.
+   */
+  function purgeMatch(href, scope) {
+    if (scope !== "channels") return false;
+    var path;
+    try {
+      path = new URL(href).pathname;
+    } catch (e) {
+      return false;
+    }
+    var rest = null;
+    if (path.indexOf(PAGE_PREFIX + "/") === 0) rest = path.slice(PAGE_PREFIX.length);
+    else if (path.indexOf(RSC_PREFIX + "/n/") === 0 || path.indexOf(RSC_PREFIX + "/p/") === 0) rest = path.slice(RSC_PREFIX.length + 2);
+    if (rest !== null) {
+      rest = rest.replace(/\|[^/]*$/, ""); // the rsc key carries a "|main" tail (the router state group)
+      var p = stripLocale(rest).path;
+      if (p.length > 1) p = p.replace(/\/+$/, "");
+      if (TAB_ROOTS.indexOf(p) >= 0) return false;
+      for (var j = 0; j < CHANNEL_PURGE_PAGES.length; j++) if (startsUnder(p, CHANNEL_PURGE_PAGES[j])) return true;
+      return false;
+    }
+    for (var i = 0; i < CHANNEL_PURGE_API.length; i++) if (CHANNEL_PURGE_API[i].test(path)) return true;
+    return false;
+  }
+
+  /** Does the request itself ask for the freshest answer (fetch(..., {cache:"no-store" | "reload" | "no-cache"}), a reload, Cache-Control: no-cache)? */
+  function wantsFresh(cacheMode, cacheControl, pragma) {
+    if (cacheMode === "no-store" || cacheMode === "reload" || cacheMode === "no-cache") return true;
+    return /(^|,\s*)(no-cache|no-store|max-age=0)/i.test(cacheControl || "") || /no-cache/i.test(pragma || "");
   }
 
   /** The next-auth session endpoint: network first, the last answer is kept only as the OFFLINE session of the signed-in user. */
@@ -274,6 +336,9 @@
     normalizedSearch: normalizedSearch,
     cacheKey: cacheKey,
     apiPolicy: apiPolicy,
+    isLiveChannelApi: isLiveChannelApi,
+    purgeMatch: purgeMatch,
+    wantsFresh: wantsFresh,
     isSessionPath: isSessionPath,
     isAuthChange: isAuthChange,
     isSignOut: isSignOut,

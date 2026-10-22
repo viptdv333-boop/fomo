@@ -71,7 +71,9 @@ export async function GET() {
         authorTelegramNotify: (t as any).authorTelegramNotify || false,
         instruments: ((t as any).instrumentIds || []).map((id: string) => instMap.get(id)).filter(Boolean),
         };
-      })
+      }),
+      // may be kept (the service worker shows it offline) but must be checked with the server every time: no heuristic freshness in a WebView / proxy
+      { headers: { "Cache-Control": "no-cache, must-revalidate" } }
     );
   } catch {
     // SubscriptionTariff table might not exist yet

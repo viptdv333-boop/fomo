@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/client";
 import { useAppUi } from "@/components/app/useAppUi";
 import PlanLine, { type PlanLineItem } from "@/components/channels/PlanLine";
 import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
+import { useChannelsTick } from "@/lib/channels-invalidate";
 
 // the app UI shows this page as the «Каналы и подписки» screen of its Профиль tab (loaded only inside the app)
 const AppProfile = dynamic(() => import("@/components/app/profile/AppProfile"), { ssr: false });
@@ -93,13 +94,15 @@ function BrowserSubscriptionsPage() {
   const [telegramBusyId, setTelegramBusyId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ChannelItem | null>(null);
 
+  const tick = useChannelsTick(!!user?.id);
   useEffect(() => {
     if (!user?.id) return;
+    const init: RequestInit | undefined = tick ? { cache: "no-store" } : undefined; // after a change / on return: the network first
     Promise.all([
-      fetch("/api/subscriptions").then((r) => r.json()),
+      fetch("/api/subscriptions", init).then((r) => r.json()),
       // scope=manage: hidden channels too (so they can be shown again / deleted); plans are folded into their channel below
-      fetch(`/api/users/${user.id}/tariffs?scope=manage`).then((r) => r.json()).catch(() => []),
-      fetch(`/api/users/${user.id}/followers`).then((r) => r.json()).catch(() => []),
+      fetch(`/api/users/${user.id}/tariffs?scope=manage`, init).then((r) => r.json()).catch(() => []),
+      fetch(`/api/users/${user.id}/followers`, init).then((r) => r.json()).catch(() => []),
       fetch("/api/telegram/account").then((r) => r.json()).catch(() => null),
     ]).then(([subsData, channelsData, followersData, telegramData]) => {
       setSubs(Array.isArray(subsData) ? subsData : []);
@@ -109,7 +112,7 @@ function BrowserSubscriptionsPage() {
       setTelegramVerified(Boolean(telegramData?.canForward ?? telegramData?.verified));
       setLoading(false);
     });
-  }, [user?.id]);
+  }, [user?.id, tick]);
 
   async function toggleTelegram(sub: SubItem) {
     if (!sub.tariffId) return;

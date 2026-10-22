@@ -15,6 +15,7 @@ import { DEFAULT_KEEP_DAYS, splitMembers } from "@/lib/subscription-expire";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelDetail from "@/components/app/channels/AppChannelDetail";
 import { safeDecode } from "@/lib/app-channels";
+import { useChannelsTick } from "@/lib/channels-invalidate";
 
 interface ChannelData {
   id: string;
@@ -315,14 +316,15 @@ function ChannelSite() {
     setPinningId(null);
   }, [t]);
 
-  // Load channel data
+  // Load channel data (read again, network first, after a change here or elsewhere / when the app comes back)
+  const tick = useChannelsTick();
   useEffect(() => {
-    fetch("/api/channels")
+    fetch("/api/channels", tick ? { cache: "no-store" } : undefined)
       .then((r) => r.json())
       .then((data: ChannelData[]) => {
         const found = data.find((ch) => ch.id === channelId || ch.slug === channelId);
         if (found) {
-          setChannel(found);
+          setChannel((cur) => (cur && JSON.stringify(cur) === JSON.stringify(found) ? cur : found));
           const others = data.filter(
             (ch) => ch.author.id === found.author.id && ch.id !== found.id
           );
@@ -331,7 +333,7 @@ function ChannelSite() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [channelId]);
+  }, [channelId, tick]);
 
   // Check subscription & load ideas when channel loaded
   useEffect(() => {
@@ -349,7 +351,7 @@ function ChannelSite() {
 
     // Check subscription
     if (session?.user?.id && !owner) {
-      fetch("/api/subscriptions")
+      fetch("/api/subscriptions", tick ? { cache: "no-store" } : undefined)
         .then((r) => r.json())
         .then((subs) => {
           if (Array.isArray(subs)) {
@@ -368,7 +370,7 @@ function ChannelSite() {
     }
 
     // Посты этого канала + старые платные идеи автора без канала (13.09.2026)
-    fetch(`/api/ideas?channelId=${channel.id}&limit=50`)
+    fetch(`/api/ideas?channelId=${channel.id}&limit=50`, tick ? { cache: "no-store" } : undefined)
       .then((r) => r.json())
       .then((data) => {
         const list = data.data || data.ideas || (Array.isArray(data) ? data : []);
@@ -376,7 +378,7 @@ function ChannelSite() {
       })
       .catch(() => {})
       .finally(() => setIdeasLoading(false));
-  }, [channel, session]);
+  }, [channel, session, tick]);
 
   const canView = isOwner || isSubscribed;
   // Own subscription to THIS channel (not the old author-wide one), a real term, a payable tariff -> «Продлить подписку».

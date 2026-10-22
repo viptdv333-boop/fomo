@@ -41,6 +41,8 @@ export async function GET() {
       createdAt: a.createdAt,
       ideasCount: a._count.ideas,
       subscribersCount: a._count.followersReceived,
-    }))
+    })),
+    // may be kept (the service worker shows it offline) but must be checked with the server every time: no heuristic freshness in a WebView / proxy
+    { headers: { "Cache-Control": "no-cache, must-revalidate" } }
   );
 }

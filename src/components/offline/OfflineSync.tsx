@@ -8,6 +8,7 @@ import { startOnlineWatch } from "@/lib/offline/online";
 import { isOfflineModeEnabled, swPost } from "@/lib/offline/sw-bridge";
 import { TOAST_EVENT } from "@/lib/offline/toast";
 import { stripLocale } from "@/lib/i18n/locale-url";
+import { dispatchChannelsChanged } from "@/lib/channels-invalidate";
 
 /** Build ids the service worker saw: the server runs another release than this bundle -> UpdateBanner re-checks at once. */
 export const BUILD_CHANGED_EVENT = "fomo-build-changed";
@@ -35,6 +36,9 @@ export default function OfflineSync() {
     swPost({ type: "fomo-config", enabled: isOfflineModeEnabled() });
     const onMsg = (e: MessageEvent) => {
       if (e.data && e.data.type === "fomo-build") window.dispatchEvent(new Event(BUILD_CHANGED_EVENT));
+      // another window changed a channel / plan / subscription, or the worker found that a list it answered from its copy is different on the server
+      else if (e.data && e.data.type === "fomo-channels-changed") dispatchChannelsChanged({ reason: "invalidate" });
+      else if (e.data && e.data.type === "fomo-data-updated") dispatchChannelsChanged({ reason: "sw", path: typeof e.data.path === "string" ? e.data.path : undefined });
     };
     navigator.serviceWorker.addEventListener("message", onMsg);
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);

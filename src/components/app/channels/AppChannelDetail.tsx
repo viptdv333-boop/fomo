@@ -34,6 +34,7 @@ import AppReportSheet from "./AppReportSheet";
 import ChIcon from "./ChIcon";
 import { ChNav, shareOrCopy, useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useChannelList, useMySubs } from "./useChannelsData";
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 import { useUnreadByIdea } from "../useUnreadByIdea";
 import { unreadAccent, unreadLabel, unreadOffList } from "@/lib/app-unread";
 import { UnreadChip } from "../IdeaUnreadMarks";
@@ -168,6 +169,8 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
       setPosts([]);
     }
   }, [channel]);
+  // a post was added / deleted / pinned elsewhere, the channel changed, the app is back: the feed is read again (silently, the posts on screen stay)
+  useChannelsChanged(() => void loadPosts(), !!channel);
   // the feed depends on who looks: reload when the subscription state is known / changes
   useEffect(() => {
     if (!subs.loaded && !subs.authLoading) return;

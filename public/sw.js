@@ -89,6 +89,20 @@ async function purgeUserData(outboxOpts) {
   if (outboxOpts) await purgeOutbox(outboxOpts);
 }
 
+/** Drops every stored API answer / page of a scope (R.purgeMatch). A response that started before is not stored after (generation). Returns how many went. */
+async function invalidateScope(scope) {
+  generation++;
+  let removed = 0;
+  for (const name of [R.CACHES.api, R.CACHES.pages]) {
+    try {
+      const cache = await caches.open(name);
+      for (const req of await cache.keys()) if (R.purgeMatch(req.url, scope) && (await cache.delete(req))) removed++;
+    } catch (e) {}
+  }
+  await saveState({ lastWrite: Date.now() });
+  return removed;
+}
+
 /** The signed-in user as the server / the page reports it. */
 async function applyIdentity(uid, extra) {
   const st = await getState();
@@ -135,6 +149,14 @@ self.addEventListener("message", (event) => {
       } else if (d.type === "fomo-wrote") {
         await saveState({ lastWrite: Date.now() });
         reply({ ok: true });
+      } else if (d.type === "fomo-invalidate") {
+        // a channel / plan / subscription / post changed: the stored lists and pages about them are dropped (not just «older than the last write»)
+        // and the OTHER open windows are told to read them again (the sender refreshes itself once this answer is back)
+        const removed = await invalidateScope(typeof d.scope === "string" ? d.scope : "channels");
+        const from = event.source && event.source.id;
+        const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        for (const c of list) if (c.id !== from) c.postMessage({ type: "fomo-channels-changed", reason: "invalidate" });
+        reply({ ok: true, removed });
       } else if (d.type === "fomo-stats") {
         const out = { caches: {}, usage: 0, quota: 0, state: await getState() };
         for (const name of R.USER_CACHES.concat([R.CACHES.static])) {
@@ -242,7 +264,20 @@ async function swr(event, req, key, pol, st, kind) {
   const cacheName = kind === "api" ? R.CACHES.api : R.CACHES.pages;
   const cache = await caches.open(cacheName);
   const hit = await lookup(cache, key, st);
-  const action = hit ? R.storedAction(hit.age, hit.writtenBeforeWrite ? 0 : pol.fresh, hit.mismatch) : "network";
+  // a LIVE read (channels, plans, subscriptions ...) whose request says cache:"no-store" / "reload" asks for the freshest answer: network first, the copy
+  // is only the fallback (no network / slower than the timeout). Before, the page's own `cache: "no-store"` was ignored here and a copy up to 2 minutes old answered.
+  const wantsFresh = !!pol.live && R.wantsFresh(req.cache, req.headers.get("cache-control"), req.headers.get("pragma"));
+  const base = hit ? R.storedAction(hit.age, hit.writtenBeforeWrite ? 0 : pol.fresh, hit.mismatch) : "network";
+  const action = wantsFresh && base === "stale" ? "network-first" : base;
+  // a live read answered from the copy: when the network's answer turns out to be different, every open window is told (see notifyIfChanged)
+  const served = pol.live && hit && action !== "network" ? hit.res.clone() : null;
+  const notifyIfChanged = async (r) => {
+    if (!served || !r.ok) return;
+    try {
+      const [was, now] = await Promise.all([served.text(), r.clone().text()]);
+      if (was !== now) await broadcast({ type: "fomo-data-updated", path: new URL(req.url).pathname });
+    } catch (e) {}
+  };
   const gen0 = generation;
   const type = kind === "api" ? "api" : "page";
 
@@ -266,7 +301,14 @@ async function swr(event, req, key, pol, st, kind) {
   };
 
   if (action === "stale") {
-    event.waitUntil(fetchAndStore().then((r) => r.arrayBuffer()).catch(() => {}));
+    event.waitUntil(
+      fetchAndStore()
+        .then(async (r) => {
+          await notifyIfChanged(r);
+          await r.arrayBuffer();
+        })
+        .catch(() => {})
+    );
     return withHeader(hit.res, "x-fomo-from-cache", "1");
   }
   if (action === "network-first") {
@@ -276,8 +318,15 @@ async function swr(event, req, key, pol, st, kind) {
       if (first.status >= 500 && hit) return withHeader(hit.res, "x-fomo-from-cache", "1");
       return first;
     }
-    // timeout or no network: the stored copy; a slow request goes on and refreshes it
-    event.waitUntil(net.then((r) => r.arrayBuffer()).catch(() => {}));
+    // timeout or no network: the stored copy; a slow request goes on and refreshes it (and tells the windows if it differs)
+    event.waitUntil(
+      net
+        .then(async (r) => {
+          await notifyIfChanged(r);
+          await r.arrayBuffer();
+        })
+        .catch(() => {})
+    );
     return withHeader(hit.res, "x-fomo-from-cache", "1");
   }
   try {
@@ -586,7 +635,7 @@ self.addEventListener("fetch", (event) => {
       event.waitUntil(onAuthChange(url.pathname));
       return;
     }
-    const pol = R.apiPolicy(url.pathname);
+    const pol = R.apiPolicy(url.pathname, url.search);
     if (pol.cache) event.respondWith(handleApi(event, url, pol));
     return;
   }

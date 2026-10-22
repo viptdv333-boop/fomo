@@ -8,6 +8,7 @@
 //  * asks before «Выйти», when unsent messages would be deleted by it
 import { markReachable, markUnreachable, noteNetworkError } from "./online";
 import { noteWrite } from "./sw-bridge";
+import { INVALIDATE_WAIT_MS, invalidateChannels, isChannelMutation } from "../channels-invalidate";
 import { showToast } from "./toast";
 
 const texts = { noNetwork: "Нет сети", signOutPending: "Есть неотправленные сообщения: {n}. При выходе они будут удалены. Выйти?" };
@@ -106,6 +107,11 @@ export function installFetchGuard(): void {
     try {
       const res = await native(input, init);
       if (res.ok && !quiet) noteWrite();
+      // a channel / plan / subscription / payment / post changed: the worker drops its stored lists about them and the mounted screens read again.
+      // Awaited (briefly) so the caller's own follow-up read cannot be answered from a copy that is already known to be old.
+      if (res.ok && isChannelMutation(d.method, d.path)) {
+        await Promise.race([invalidateChannels("write"), new Promise((r) => setTimeout(r, INVALIDATE_WAIT_MS + 200))]).catch(() => {});
+      }
       if (res.status < 500) markReachable();
       return res;
     } catch (e) {

@@ -8,6 +8,7 @@ import { useProf } from "./ProfileCtx";
 import { Loading, ScreenFrame } from "./parts";
 import DeleteChannelDialog from "@/components/channels/DeleteChannelDialog";
 import { planSummary } from "@/lib/tariff-plans";
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 
 interface SubItem {
   id: string;
@@ -71,9 +72,10 @@ export default function SubsScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ChannelItem | null>(null);
 
-  const load = useCallback(async () => {
+  // fresh = a re-read after a change / on return: the network first (the first paint may come from the worker's copy)
+  const load = useCallback(async (fresh = false) => {
     if (!uid) return;
-    const j = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const j = (u: string) => fetch(u, fresh ? { cache: "no-store" } : undefined).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const [s, c, f, tg] = await Promise.all([j("/api/subscriptions"), j(`/api/users/${uid}/tariffs?scope=manage`), j(`/api/users/${uid}/followers`), j("/api/telegram/account")]);
     setSubs(Array.isArray(s) ? s : []);
     setChannels(Array.isArray(c) ? c.filter((x: ChannelItem) => !x.parentId) : []);
@@ -83,6 +85,7 @@ export default function SubsScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+  useChannelsChanged(() => void load(true), !!uid);
 
   async function showPeople(ch: ChannelItem) {
     setPeople({ channel: ch, list: null });

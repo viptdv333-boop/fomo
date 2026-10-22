@@ -28,6 +28,7 @@ import AppReportSheet from "./AppReportSheet";
 import ChIcon from "./ChIcon";
 import { ChNav, shareOrCopy, useChNav, useChannelsChrome, useFlash } from "./chrome";
 import { useChannelList, useMySubs } from "./useChannelsData";
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 
 interface Profile {
   id: string;
@@ -133,6 +134,8 @@ export default function AppAuthorDetail({ idParam }: { idParam: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // the author's counters / posts changed elsewhere, or the app is back: the profile (and, through it, the posts) is read again
+  useChannelsChanged(() => void load());
 
   useEffect(() => {
     if (!profile) return;

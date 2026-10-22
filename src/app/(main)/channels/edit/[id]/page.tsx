@@ -96,7 +96,8 @@ export default function EditChannelPage() {
     if (!user?.id) return;
     fetch("/api/payment-methods").then((r) => r.json()).then(setSavedPaymentMethods).catch(() => {});
     // scope=manage: every row of the author - channels AND their plans, inactive ones too
-    fetch(`/api/users/${user.id}/tariffs?scope=manage`)
+    // no-store: the editor must start from the server's rows (a stored copy up to 5 minutes old would be saved over a merge / another edit)
+    fetch(`/api/users/${user.id}/tariffs?scope=manage`, { cache: "no-store" })
       .then((r) => r.json())
       .then((rows: TariffData[]) => {
         if (!Array.isArray(rows) || rows.length === 0) { setLoading(false); return; }
