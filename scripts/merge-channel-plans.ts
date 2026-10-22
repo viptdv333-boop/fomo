@@ -19,11 +19,13 @@ import { PrismaClient } from "@prisma/client";
 import { mergeChannelPlans } from "../src/lib/merge-channel-plans";
 
 function parseArgs(argv: string[]) {
-  const o = { rootId: "", planIds: [] as string[], rename: null as string | null, rootPlanName: null as string | null, planNames: {} as Record<string, string>, mergeDuplicates: false, apply: false };
+  const o = { rootByName: "", planByName: [] as string[], rootId: "", planIds: [] as string[], rename: null as string | null, rootPlanName: null as string | null, planNames: {} as Record<string, string>, mergeDuplicates: false, apply: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i] ?? "";
-    if (a === "--root") o.rootId = next();
+    if (a === "--root-by-name") o.rootByName = next();
+    else if (a === "--plan-by-name") o.planByName.push(next());
+    else if (a === "--root") o.rootId = next();
     else if (a === "--plan") o.planIds.push(next());
     else if (a === "--rename") o.rename = next();
     else if (a === "--root-plan-name") o.rootPlanName = next();
@@ -47,6 +49,24 @@ async function main() {
     /* .env is optional: DATABASE_URL may already be in the environment */
   }
   const o = parseArgs(process.argv.slice(2));
+  // ids are error-prone to copy by hand: channels can be named instead (exact name; must match exactly one channel)
+  if (o.rootByName || o.planByName.length) {
+    const pr = new PrismaClient();
+    try {
+      const find = async (name: string) => {
+        const rows = await pr.subscriptionTariff.findMany({ where: { name }, select: { id: true } });
+        if (rows.length !== 1) throw new Error(`канал «${name}»: найдено ${rows.length}, нужно ровно 1`);
+        return rows[0].id;
+      };
+      if (o.rootByName) o.rootId = await find(o.rootByName);
+      for (const n of o.planByName) o.planIds.push(await find(n));
+    } catch (e) {
+      console.error(e instanceof Error ? e.message : String(e));
+      process.exit(2);
+    } finally {
+      await pr.$disconnect();
+    }
+  }
   if (!o.rootId || o.planIds.length === 0) {
     console.error('нужно: --root <id> --plan <id> [--plan <id>...] [--rename "Имя"] [--apply]');
     process.exit(2);
