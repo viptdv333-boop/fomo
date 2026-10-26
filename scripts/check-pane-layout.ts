@@ -298,5 +298,36 @@ const savedRatios = (c: IndicatorsController): { id: string; pr?: number; pm?: n
   ok(r6.length === 2 && r6.every((x) => Math.abs(x - 0.07) < 0.021), "controller: move out and back keeps the height", fmt(r6));
 }
 
+/* ───────────── broken stored heights never collapse the price pane (regression: the chart went blank after a restored layout) ───────────── */
+{
+  const bad: unknown[] = [0, -0.2, NaN, Infinity, -Infinity, 7, 1, "0.3", null, undefined, {}, [], true];
+  for (const v of bad) {
+    const label = typeof v === "number" ? String(v) : (JSON.stringify(v) ?? "undefined");
+    const e = new StubEngine();
+    const c = new IndicatorsController();
+    // `pr` broken in both panes, `pm` broken in one and missing in the other
+    c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true, pr: v }, { id: "cvd", params: {}, visible: true, pr: v, pm: v }]));
+    c.attach(e as unknown as ChartEngine);
+    const rs = ratios(e);
+    ok(rs.length === 2 && rs.every((x) => Number.isFinite(x) && x >= MIN_SUB_RATIO && x <= MAX_ONE_RATIO) && sum(rs) <= MAX_SUB_TOTAL + 1e-9, `restore with heights ${label}: shares are valid`, fmt(rs));
+    for (const h of [0, 1, 10, 80, 300, 900]) {
+      const lay = layoutHeights(h, rs);
+      ok(Number.isFinite(lay.main) && lay.main >= 0 && lay.subs.every((x) => Number.isFinite(x) && x >= 0) && Math.abs(lay.main + sum(lay.subs) - h) < 1e-6, `heights ${label} at plot ${h}px: finite, add up`, JSON.stringify(lay));
+    }
+  }
+  // the price pane keeps its floor whatever the shares are
+  for (const h of [200, 300, 500, 900]) {
+    const lay = layoutHeights(h, [0.5, 0.5, 0.5, 0.5, 0.5]);
+    ok(lay.main >= Math.min(h * 0.35, MIN_MAIN_PX) - 1e-6 && lay.main > 0, `five fat panes at plot ${h}px: price pane stays usable`, JSON.stringify(lay));
+  }
+  // garbage straight into layoutHeights (the last line of defence) and a NaN plot height
+  const g = layoutHeights(500, [NaN, -1, 9, Infinity]);
+  ok(Number.isFinite(g.main) && g.main > 0 && g.subs.every(Number.isFinite), "layoutHeights: NaN / negative / huge shares", JSON.stringify(g));
+  const gn = layoutHeights(NaN, [0.2, 0.2]);
+  ok(gn.main === 0 && gn.subs.every((x) => x === 0), "layoutHeights: NaN plot height is 0, never NaN", JSON.stringify(gn));
+  const gi = layoutHeights(Infinity, []);
+  ok(gi.main === 0, "layoutHeights: infinite plot height with no panes is 0", JSON.stringify(gi));
+}
+
 console.log(`\n${passes} passed, ${fails} failed`);
 process.exit(fails ? 1 : 0);

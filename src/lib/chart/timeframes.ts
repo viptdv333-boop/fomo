@@ -109,6 +109,25 @@ export function intervalOrder(id: string): number {
   return (Number(id) || 0) * 60;
 }
 
+/**
+ * The timeframe row (chips + «▾»), the same rule for the app terminal and the site toolbar, whatever was stored:
+ *   pinned - the pinned ids (junk dropped, each once, short to long); nothing valid pinned -> the defaults (the row is never empty);
+ *   chips  - the pinned ones this source can show (seconds only where they exist; if that leaves nothing, the default chips);
+ *   shown  - the chips plus the current timeframe (it is always on the row), short to long.
+ * `interval` is the chart's current timeframe; an unusable one is replaced by `fallback`.
+ */
+export function tfRowIds(interval: unknown, favs: unknown, source: string, fallback = "D"): { current: string; pinned: string[]; chips: string[]; shown: string[] } {
+  const current = typeof interval === "string" && isValidInterval(interval) ? interval : fallback;
+  const secOk = secondsSupported(source);
+  const list = Array.isArray(favs) ? favs : [];
+  const asked = [...new Set(list.filter((x): x is string => typeof x === "string" && isValidInterval(x)))].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  const pinned = asked.length > 0 ? asked : DEFAULT_FAVORITE_INTERVALS.slice();
+  let chips = pinned.filter((id) => secOk || !isSecondsInterval(id));
+  if (chips.length === 0) chips = DEFAULT_FAVORITE_INTERVALS.filter((id) => secOk || !isSecondsInterval(id));
+  const shown = chips.includes(current) ? chips : [...chips, current].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  return { current, pinned, chips, shown };
+}
+
 /** Label of a timeframe in a locale: table ids from the table, custom minutes as "45м" / "2ч" / "1д". */
 export function timeframeLabel(id: string, locale: TfLocale): string {
   const tf = BY_ID.get(id);

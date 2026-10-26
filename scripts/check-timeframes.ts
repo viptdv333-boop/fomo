@@ -24,6 +24,7 @@ import {
   timeframePlan,
   usableInterval,
   intervalOrder,
+  tfRowIds,
   type TfLocale,
 } from "../src/lib/chart/timeframes";
 import { aggregateCandles, formatInterval, intervalPlan, NATIVE_INTERVALS } from "../src/lib/chart/intervals";
@@ -225,6 +226,16 @@ eq("seconds helpers", [isSecondsInterval("15s"), isSecondsInterval("15"), second
   eq("junk and duplicates are dropped, real ones (also seconds) stay", normalizeSettings({ ui: { favIntervals: ["15", "15", "x", 7, "2", "15s", "999999", "D"] } }).ui.favIntervals, ["15", "2", "15s", "D"]);
   eq("a copy without the field gets the defaults", normalizeSettings({}).ui.favIntervals, DEFAULT_FAVORITE_INTERVALS);
   eq("an empty list stays empty (the user unpinned everything)", normalizeSettings({ ui: { favIntervals: [] } }).ui.favIntervals, []);
+}
+
+// the timeframe row (chips + «▾») is never empty and always has the current timeframe, whatever was stored (scripts/check-prefs-sanitize.ts goes deeper)
+{
+  setMoexSeconds(false);
+  eq("row: nothing pinned -> the default chips", tfRowIds("1", [], "moex").shown, DEFAULT_FAVORITE_INTERVALS);
+  eq("row: junk pinned -> the default chips", tfRowIds("1", ["x", 7, null], "moex").shown, DEFAULT_FAVORITE_INTERVALS);
+  eq("row: the current timeframe is added in its place", tfRowIds("120", ["1", "D"], "moex").shown, ["1", "120", "D"]);
+  eq("row: seconds are not chips where there are none, the pins stay", [tfRowIds("1", ["15s", "1"], "moex").chips, tfRowIds("1", ["15s", "1"], "moex").pinned], [["1"], ["15s", "1"]]);
+  eq("row: seconds are chips on Bybit", tfRowIds("1", ["15s", "1"], "bybit").chips, ["15s", "1"]);
 }
 
 if (fails) {

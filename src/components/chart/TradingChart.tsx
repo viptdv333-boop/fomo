@@ -53,6 +53,7 @@ import { cleanCandles } from "@/lib/chart/candles";
 import { gateQuote, isIntraday, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, secondsBasis, type LiveMemo } from "@/lib/chart/live-bar";
 import { candleKey, clockLabel, freshness, peekBars, readBars, writeBars, type BarsResult } from "@/lib/chart/candle-cache";
 import { useOnline } from "@/lib/offline/useOnline";
+import { DEFAULT_PREFS, parsePrefs, sanitizePrefs, shownInterval, type Prefs } from "@/lib/chart/prefs";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
@@ -93,28 +94,6 @@ interface Props {
   appFullLead?: ReactNode;
 }
 
-interface Prefs {
-  interval: string;
-  chartType: ChartType;
-  showVolume: boolean;
-  showGrid: boolean;
-  showWatermark: boolean;
-  logScale: boolean;
-  panelOpen: boolean;
-  panelTab: PanelTab;
-}
-
-const DEFAULT_PREFS: Prefs = {
-  interval: "D",
-  chartType: "candles",
-  showVolume: true,
-  showGrid: true,
-  showWatermark: true,
-  logScale: false,
-  panelOpen: true,
-  panelTab: "watchlist",
-};
-
 const PREFS_KEY = "fomo-chart-prefs-v1";
 const INDICATORS_KEY = "fomo-chart-indicators";
 const drawingsKey = (source: string, ticker: string) => `fomo-chart-drawings:${source}:${ticker}`;
@@ -125,32 +104,13 @@ const DAY_MS = 86_400_000;
 function loadPrefs(key: string = PREFS_KEY, fallbackKey?: string): Prefs {
   try {
     const raw = localStorage.getItem(key) ?? (fallbackKey ? localStorage.getItem(fallbackKey) : null);
-    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    return parsePrefs(raw);
   } catch {}
   return DEFAULT_PREFS;
 }
 
 /** the ?panel= deep link is applied once per page load */
 let panelParamUsed = false;
-
-const PANEL_TABS: PanelTab[] = ["watchlist", "info", "ideas", "news", "calendar", "objects", "alerts", "orderbook", "algo"];
-
-/** Preferences from the account copy: every field checked, anything unknown falls back to the default (an old / foreign copy never breaks the chart). */
-function sanitizePrefs(raw: unknown): Prefs {
-  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
-  const D = DEFAULT_PREFS;
-  return {
-    interval: typeof o.interval === "string" && isValidInterval(o.interval) ? o.interval : D.interval,
-    chartType: CHART_TYPES.some((c) => c.id === o.chartType) ? (o.chartType as ChartType) : D.chartType,
-    showVolume: bool(o.showVolume, D.showVolume),
-    showGrid: bool(o.showGrid, D.showGrid),
-    showWatermark: bool(o.showWatermark, D.showWatermark),
-    logScale: bool(o.logScale, D.logScale),
-    panelOpen: bool(o.panelOpen, D.panelOpen),
-    panelTab: PANEL_TABS.includes(o.panelTab as PanelTab) ? (o.panelTab as PanelTab) : D.panelTab,
-  };
-}
 
 /** Drawings of a symbol that are saved without a chart showing it (a layout applied to another symbol). */
 function saveDrawingsFor(source: string, ticker: string, json: string) {
@@ -1640,7 +1600,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   // wide window: the watchlist lives in the chart's side panel ONLY (owner: never repeated under the chart, whichever tab or state the panel is in)
   const sideWatch = !!appPage && prefsLoaded && isDesktop;
   useEffect(() => {
-    onAppStateRef.current?.({ interval: prefs.interval, delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source });
+    // the timeframe the chart can really show for this source (a seconds one saved for a symbol without seconds reads as 1м at once)
+    onAppStateRef.current?.({ interval: shownInterval(prefs.interval, source), delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source });
   }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;

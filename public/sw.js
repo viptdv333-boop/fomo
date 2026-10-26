@@ -23,6 +23,9 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => !R.KEEP.includes(k)).map((k) => caches.delete(k)));
       await self.clients.claim();
+      // a new worker means a new release was deployed: learn the server's build at once, so a stored page of an older release is asked from the
+      // network first (storedAction: buildMismatch) and the open windows compare themselves with /api/version (they reload by themselves when idle)
+      await Promise.race([learnBuild(), timeout(5000)]);
     })()
   );
 });
@@ -209,6 +212,14 @@ async function trim(cacheName, max) {
     const keys = await cache.keys();
     const drop = R.trimPlan(keys.length, max);
     for (let i = 0; i < drop; i++) await cache.delete(keys[i]);
+  } catch (e) {}
+}
+
+/** Asks the server which release it runs (no-store, never fails the activation). */
+async function learnBuild() {
+  try {
+    const res = await fetch("/api/version", { cache: "no-store" });
+    if (res.ok) await noteBuild(res);
   } catch (e) {}
 }
 
@@ -421,6 +432,8 @@ async function handleRsc(event, url) {
   return res || Response.error(); // the router then falls back to a normal page load, which the page cache answers
 }
 
+let lastStaleNotice = 0;
+
 async function handleAsset(event, url, kind) {
   const req = event.request;
   const cacheName = kind === "media" ? R.CACHES.media : R.CACHES.static;
@@ -431,7 +444,13 @@ async function handleAsset(event, url, kind) {
   if (!st.enabled && kind === "media") return fetch(req);
   const gen0 = generation;
   const res = await fetch(req);
-  if (gen0 === generation && R.cacheableAnswer(kind, res.status, res.type, res.redirected, header(res, "cache-control"), "", header(res, "content-length"))) {
+  // a build file that is gone (or a page in its place): the page is of an older release than the server -> the open windows drop the stored shell and reload once
+  const buildFile = url.pathname.indexOf("/_next/static/") === 0;
+  if (buildFile && R.staleAssetAnswer(url.pathname, res.status, header(res, "content-type")) && Date.now() - lastStaleNotice > 10000) {
+    lastStaleNotice = Date.now();
+    event.waitUntil(broadcast({ type: "fomo-stale-assets", path: url.pathname }).catch(() => {}));
+  }
+  if (gen0 === generation && R.cacheableAnswer(kind, res.status, res.type, res.redirected, header(res, "cache-control"), buildFile ? header(res, "content-type") : "", header(res, "content-length"))) {
     const copy = res.clone();
     event.waitUntil(
       (async () => {

@@ -414,7 +414,7 @@ html.app-ui .app-term-star { color: var(--app-tx2); }
 html.app-ui .app-term-star[data-on="1"] { color: #eab308; }
 /* timeframe chips */
 /* the row scrolls sideways when the pinned timeframes do not fit (a phone with many pins) */
-html.app-ui .app-term-tfs { display: flex; gap: 4px; padding: 8px 12px; }
+html.app-ui .app-term-tfs { display: flex; gap: 4px; padding: 8px 12px; flex: none; min-height: 46px; box-sizing: border-box; }
 html.app-ui .app-term-tfscroll { flex: 1; min-width: 0; display: flex; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 html.app-ui .app-term-tfscroll::-webkit-scrollbar { display: none; }
 html.app-ui .app-term-chip { flex: 1 0 auto; height: 30px; min-width: 40px; padding: 0 9px; box-sizing: border-box; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--app-card2); color: var(--app-tx2); }
@@ -451,7 +451,7 @@ html.app-ui .app-tf-wrap[data-wide="1"] .app-tf-sheet { right: auto; bottom: aut
 html.app-ui .app-tf-wrap[data-wide="1"] .app-tf-row:hover { background: var(--app-press); }
 /* chart block: a fixed-height box; the chart (touch-action none on its own canvas) takes the gestures that start on it, the page scrolls from everywhere else */
 html.app-ui .app-term-chart { position: relative; border-top: 0.5px solid var(--app-line); overflow: hidden; display: flex; flex-direction: column; }
-html.app-ui .app-term-chartbody { position: relative; flex: 1; min-height: 0; }
+html.app-ui .app-term-chartbody { position: relative; flex: 1; min-height: 160px; }
 /* the design overlays this caption on the chart; the real chart prints its own legend (name, OHLC) in that corner, so it sits in a strip above */
 html.app-ui .app-term-cap { flex: none; min-height: 26px; padding: 6px 8px 0; box-sizing: border-box; display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--app-tx2); }
 html.app-ui .app-term-cap-t { font-weight: 600; color: var(--app-tx); }

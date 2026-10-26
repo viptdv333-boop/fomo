@@ -2,6 +2,7 @@
    Pure logic only (the worker's fetch handling itself is covered by the browser demonstration in the task notes).
    Run: npx tsx scripts/check-sw-cache.ts   (exit code 1 on a failed assertion) */
 import { chunkUrlsFromHtml, chunkUrlsFromRuntime, runtimeUrl, storableResources } from "../src/lib/offline/assets";
+import { RECOVER_GAP_MS, RESUME_AFTER_MS, autoUpdateDecision, buildMismatch, isBuildAssetUrl, isStaleBuildError, recoverDecision, shellEntryDrop } from "../src/lib/stale-build";
 import { channelPages, warmupBlocker, warmupUrls, WARMUP_EVERY_MS } from "../src/lib/offline/warmup";
 
 export {}; // a module: the other check scripts declare the same top-level names, and `next build` type-checks them all together
@@ -136,6 +137,61 @@ eq("live reads: channels, authors, subscriptions, a user's plans, a profile, one
 eq("not live: the board feed, categories, the denied", [R.apiPolicy("/api/ideas", "?limit=50&page=1").live, R.apiPolicy("/api/categories").live, R.apiPolicy("/api/payments").live], [false, false, false]);
 eq("channel lists keep an instant window (the copy is checked against the network afterwards)", [R.apiPolicy("/api/channels").fresh, R.apiPolicy("/api/subscriptions").fresh], [2 * MIN, 2 * MIN]);
 eq("a request for the freshest answer: no-store / reload / no-cache, Cache-Control, Pragma", [R.wantsFresh("no-store", "", ""), R.wantsFresh("reload", "", ""), R.wantsFresh("no-cache", "", ""), R.wantsFresh("default", "max-age=0", ""), R.wantsFresh("default", "no-cache", ""), R.wantsFresh("default", "", "no-cache"), R.wantsFresh("default", "", ""), R.wantsFresh("force-cache", "max-age=60", "")], [true, true, true, true, true, true, false, false]);
+
+// --- the update path: a page of an older release than the server heals itself (src/lib/stale-build.ts, public/sw.js)
+eq("cache version bumped: every v7 copy (a mix of two releases) is dropped once", [R.VERSION, Object.values(R.CACHES).every((n: any) => String(n).endsWith("-" + R.VERSION))], ["v8", true]);
+eq("a build file answered with a page is never stored cache-first", [R.cacheableAnswer("static", 200, "basic", false, "", "text/html; charset=utf-8", ""), R.cacheableAnswer("static", 200, "basic", false, "public, max-age=31536000, immutable", "application/javascript", "")], [false, true]);
+eq("a build file that is gone (404 / 410 / a page in its place) tells the windows; anything else does not", [R.staleAssetAnswer("/_next/static/chunks/a-1.js", 404, ""), R.staleAssetAnswer("/_next/static/chunks/a-1.js", 410, ""), R.staleAssetAnswer("/_next/static/chunks/a-1.js", 200, "text/html"), R.staleAssetAnswer("/_next/static/chunks/a-1.js", 200, "application/javascript"), R.staleAssetAnswer("/icons/a.png", 404, ""), R.staleAssetAnswer("/_next/static/chunks/a-1.js", 500, "")], [true, true, true, false, false, false]);
+eq("newer build: only a different, known id counts", [R.newerBuild("a1", "b2"), R.newerBuild("a1", "a1"), R.newerBuild("a1", ""), R.newerBuild("", "b2"), R.newerBuild("a1", null)], ["b2", "", "", "b2", ""]);
+eq("a stored page of another release is asked from the network first, a fresh one of this release is instant", [R.storedAction(1000, DAY, true), R.storedAction(1000, DAY, false), R.storedAction(null, DAY, false)], ["network-first", "stale", "network"]);
+
+eq("stale-build errors: chunk / dynamic import / server action", [
+  "ChunkLoadError: Loading chunk 123 failed.",
+  "Loading CSS chunk 9 failed",
+  "Failed to fetch dynamically imported module: https://x/_next/static/chunks/a.js",
+  "Importing a module script failed.",
+  "error loading dynamically imported module",
+  "Failed to find Server Action \"abc\". This request might be from an older or newer deployment.",
+].map((m) => isStaleBuildError({ message: m })), Array(6).fill(true));
+eq("not stale-build errors: a JSON parse of an error page, a plain TypeError, empty", [isStaleBuildError({ message: "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON" }), isStaleBuildError(new TypeError("x is undefined")), isStaleBuildError(null), isStaleBuildError(undefined), isStaleBuildError("")], [false, false, false, false, false]);
+eq("build file urls", [isBuildAssetUrl("/_next/static/chunks/a.js"), isBuildAssetUrl("https://fomo.spot/_next/static/css/a.css"), isBuildAssetUrl("/_next/image?url=a"), isBuildAssetUrl("/api/x"), isBuildAssetUrl(""), isBuildAssetUrl(null)], [true, true, false, false, false, false]);
+eq("build mismatch: only two known, different ids; dev never", [buildMismatch("a1", "b2"), buildMismatch("a1", "a1"), buildMismatch("dev", "b2"), buildMismatch("a1", "dev"), buildMismatch("", "b2"), buildMismatch("a1", "")], [true, false, false, false, false, false]);
+
+// loop guard: one recovery a minute, three a session, never offline
+const T0 = 1_000_000;
+const first = recoverDecision(null, T0, true);
+eq("recovery: first one goes", first, { go: true, next: { n: 1, at: T0 } });
+eq("recovery: a second one within a minute is refused (no reload loop)", recoverDecision(first.next, T0 + 10_000, true).go, false);
+const second = recoverDecision(first.next, T0 + RECOVER_GAP_MS + 1, true);
+eq("recovery: a minute later it may go again", second, { go: true, next: { n: 2, at: T0 + RECOVER_GAP_MS + 1 } });
+const third = recoverDecision(second.next, T0 + 3 * RECOVER_GAP_MS, true);
+eq("recovery: the third goes", third.go, true);
+eq("recovery: never more than three in a tab session", recoverDecision(third.next, T0 + 10 * RECOVER_GAP_MS, true).go, false);
+eq("recovery: offline never reloads (the offline copy must survive)", recoverDecision(null, T0, false).go, false);
+eq("recovery: a damaged stored state counts as none", [recoverDecision({ n: NaN, at: "x" } as any, T0, true).go, recoverDecision("junk" as any, T0, true).go], [true, true]);
+
+// when to reload by itself
+const ua = { mismatch: true, pageAgeMs: 3000, interacted: false, hiddenForMs: 0, editing: false };
+eq("same release: nothing to do", autoUpdateDecision({ ...ua, mismatch: false }), "none");
+eq("a page that has just opened, nothing touched: silent reload", autoUpdateDecision(ua), "now");
+eq("a page that has just opened but the person already tapped: card", autoUpdateDecision({ ...ua, interacted: true }), "banner");
+eq("an old page in use: card", autoUpdateDecision({ ...ua, pageAgeMs: 10 * 60_000, interacted: true }), "banner");
+eq("back from the background after a while: silent reload", autoUpdateDecision({ ...ua, pageAgeMs: 10 * 60_000, interacted: true, hiddenForMs: RESUME_AFTER_MS }), "now");
+eq("back after a few seconds only: card", autoUpdateDecision({ ...ua, pageAgeMs: 10 * 60_000, interacted: true, hiddenForMs: 5000 }), "banner");
+eq("typing in a field: never reload under the person's hands", [autoUpdateDecision({ ...ua, editing: true }), autoUpdateDecision({ ...ua, hiddenForMs: 60_000, editing: true })], ["banner", "banner"]);
+
+// what the shell purge removes: stored pages and build files only
+eq("shell purge: pages cache entirely, only /_next/ of the static cache, nothing of api / media / meta / share", [
+  shellEntryDrop("fomo-pages-v8", "/__fomo__/page/terminal"),
+  shellEntryDrop("fomo-static-v8", "/_next/static/chunks/a.js"),
+  shellEntryDrop("fomo-static-v8", "/offline.html"),
+  shellEntryDrop("fomo-static-v8", "/icons/a.png"),
+  shellEntryDrop("fomo-api-v8", "/api/ideas"),
+  shellEntryDrop("fomo-media-v8", "/uploads/a.png"),
+  shellEntryDrop("fomo-meta-v8", "/__fomo__/meta"),
+  shellEntryDrop("fomo-share", "/x"),
+], [true, true, false, false, false, false, false, false]);
+eq("shell purge hits no cache the user's data lives in", R.USER_CACHES.filter((n: string) => n !== R.CACHES.pages && shellEntryDrop(n, "/_next/x")), []);
 
 // --- misc
 eq("offline message follows the language", [R.offlineMessage("ru"), R.offlineMessage("en"), R.offlineMessage("cn"), R.offlineMessage("xx")], ["Нет сети", "No connection", "无网络", "Нет сети"]);

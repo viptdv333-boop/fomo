@@ -4,7 +4,7 @@ import type { Candle } from "./types";
    ("1", "45", "120") or a number of seconds ("15s"). The klines API serves only some of them natively; the others are aggregated on the client from a
    finer one; seconds are built live from the trade stream. */
 
-export { MENU_INTERVALS, SECOND_INTERVALS, DEFAULT_FAVORITE_INTERVALS, isValidInterval, intervalOrder, isSecondsInterval, secondsIntervalMs, secondsSupported, secondsPending, pickerIntervals, usableInterval, type IntervalPlan } from "./timeframes";
+export { MENU_INTERVALS, SECOND_INTERVALS, DEFAULT_FAVORITE_INTERVALS, isValidInterval, intervalOrder, isSecondsInterval, secondsIntervalMs, secondsSupported, secondsPending, pickerIntervals, usableInterval, tfRowIds, type IntervalPlan } from "./timeframes";
 import { isSecondsInterval, timeframePlan, timeframeLabel, type IntervalPlan } from "./timeframes";
 
 /** What the klines API serves natively for every source but MOEX / Bybit (see timeframes.ts for the per-source sets). */

@@ -9,7 +9,8 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.FomoSwRules = api;
 })(typeof self !== "undefined" ? self : this, function () {
-  var VERSION = "v7";
+  // v8: the stored pages / build files of v7 may be a mix of two releases (an old page shell with new chunks): every old cache is dropped once
+  var VERSION = "v8";
   var CACHES = {
     static: "fomo-static-" + VERSION,
     pages: "fomo-pages-" + VERSION,
@@ -283,10 +284,31 @@
     // Next's own default for dynamic rendering, so for pages only `private` user data is handled by the purge, not by this flag.
     if ((kind === "api" || kind === "media" || kind === "static") && /no-store/.test(cc)) return false;
     if (kind === "api" && !/json/i.test(contentType || "")) return false;
+    // a build file / image that answers with a page (a fallback of a proxy for a chunk that is gone) must never be stored cache-first
+    if (kind === "static" && /text\/html/i.test(contentType || "")) return false;
     if (kind === "page" && !/text\/html|x-component/i.test(contentType || "")) return false;
     var limit = MAX_BODY[kind] || MAX_BODY.api;
     if (length && Number(length) > limit) return false;
     return true;
+  }
+
+  /**
+   * A build file the page asked for is GONE on the server (404 / 410 for /_next/static/*, or a page where a script / stylesheet should be): the page
+   * is of an older release than the server. The worker tells the open windows, which drop the stored shell and reload once (src/lib/stale-build.ts).
+   */
+  function staleAssetAnswer(pathname, status, contentType) {
+    if ((pathname || "").indexOf("/_next/static/") !== 0) return false;
+    if (status === 404 || status === 410) return true;
+    return status === 200 && /text\/html/i.test(contentType || "");
+  }
+
+  /**
+   * The release the server reports (the X-Fomo-Build header, or the id of /api/version) against the newest one this worker has seen: "" when nothing
+   * changed or either is unknown, else the new id. A stored page of another release is then asked from the network first (storedAction).
+   */
+  function newerBuild(seen, reported) {
+    if (!reported || typeof reported !== "string") return "";
+    return reported === seen ? "" : reported;
   }
 
   /** The id inside a /api/auth/session answer: "" for a guest / an empty object / junk. */
@@ -344,6 +366,8 @@
     isSignOut: isSignOut,
     storedAction: storedAction,
     cacheableAnswer: cacheableAnswer,
+    staleAssetAnswer: staleAssetAnswer,
+    newerBuild: newerBuild,
     uidFromSession: uidFromSession,
     identityChange: identityChange,
     offlineMessage: offlineMessage,

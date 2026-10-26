@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n/client";
 import { useMoexSeconds } from "@/lib/chart/moex-seconds-client";
-import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, secondsSupported } from "@/lib/chart/intervals";
+import { formatInterval, intervalOrder, isSecondsInterval, pickerIntervals, secondsSupported, tfRowIds } from "@/lib/chart/intervals";
 import { parseTypedInterval, timeframeById, type TfGroup } from "@/lib/chart/timeframes";
 import AppIcon from "./AppIcon";
 import { useBackLayer } from "./useBackLayer";
@@ -43,11 +43,9 @@ export default function AppTimeframes({ interval, favs, source, onPick, onFavs }
   const rowRef = useRef<HTMLDivElement | null>(null);
   const moreRef = useRef<HTMLButtonElement | null>(null);
 
-  const secOk = secondsSupported(source);
-  const pinned = [...new Set(favs.filter(isValidInterval))].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  // whatever was stored: junk dropped, nothing pinned -> the defaults, the current timeframe is always on the row (see tfRowIds)
   // seconds pinned on another symbol stay pinned, but are not shown where they cannot be built
-  const chips = pinned.filter((id) => secOk || !isSecondsInterval(id));
-  const shown = chips.includes(interval) ? chips : [...chips, interval].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  const { current, pinned, shown } = tfRowIds(interval, favs, source);
 
   // keep the current chip in view when the row scrolls
   useEffect(() => {
@@ -55,14 +53,14 @@ export default function AppTimeframes({ interval, favs, source, onPick, onFavs }
     try {
       on?.scrollIntoView({ block: "nearest", inline: "nearest" });
     } catch {}
-  }, [interval]);
+  }, [current]);
 
   return (
     <div className="app-term-tfs" role="group" aria-label={t("appui.term.timeframe")}>
       {/* the chips scroll sideways, the «▾» stays in view */}
       <div className="app-term-tfscroll" ref={rowRef}>
         {shown.map((id) => (
-          <button key={id} type="button" className="app-term-chip" data-on={interval === id ? "1" : undefined} data-tf={id} onClick={() => onPick(id)}>
+          <button key={id} type="button" className="app-term-chip" data-on={current === id ? "1" : undefined} data-tf={id} onClick={() => onPick(id)}>
             {formatInterval(id, t)}
           </button>
         ))}
@@ -72,7 +70,7 @@ export default function AppTimeframes({ interval, favs, source, onPick, onFavs }
       </button>
       {open && (
         <TfPicker
-          interval={interval}
+          interval={current}
           pinned={pinned}
           source={source}
           anchor={moreRef.current}

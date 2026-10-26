@@ -20,6 +20,7 @@ import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridg
 import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
 import AppTimeframes from "./AppTimeframes";
+import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
 import { exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
 import {
   APP_TERM_RANGES,
@@ -295,6 +296,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     </button>
   );
   const body = selected ? (
+    <ChartErrorBoundary>
     <Chart
       ticker={selected.dataTicker}
       source={selected.source}
@@ -306,6 +308,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       appHandle={handle}
       onAppState={onAppState}
     />
+    </ChartErrorBoundary>
   ) : null;
 
   const tone = changeTone(quote?.changePercent);
@@ -345,13 +348,15 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
 
         {/* the first screen: sticky symbol bar above; timeframes, chart, range row and tool row fill the whole screen above the dock; the rest is below the fold */}
         <div className="app-term-first">
-        <AppTimeframes
-          interval={chart?.interval ?? APP_TERM_TFS[0]}
-          favs={chart?.favIntervals ?? (APP_TERM_TFS as string[])}
-          source={chart?.source ?? selected?.source ?? ""}
-          onPick={(id) => h.current?.setInterval(id)}
-          onFavs={(list) => h.current?.setFavIntervals(list)}
-        />
+        <ChartErrorBoundary compact>
+          <AppTimeframes
+            interval={chart?.interval ?? APP_TERM_TFS[0]}
+            favs={chart?.favIntervals ?? (APP_TERM_TFS as string[])}
+            source={chart?.source ?? selected?.source ?? ""}
+            onPick={(id) => h.current?.setInterval(id)}
+            onFavs={(list) => h.current?.setFavIntervals(list)}
+          />
+        </ChartErrorBoundary>
 
         {/* the slot keeps the page's height while the chart block is a fixed full-screen layer */}
         <div className="app-term-slot">

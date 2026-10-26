@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
 import { CS_ICONS } from "./icons-cs";
 import { useMoexSeconds } from "@/lib/chart/moex-seconds-client";
-import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, secondsSupported } from "@/lib/chart/intervals";
+import { formatInterval, intervalOrder, isSecondsInterval, isValidInterval, pickerIntervals, tfRowIds } from "@/lib/chart/intervals";
 
 interface Props {
   interval: string;
@@ -25,17 +25,15 @@ function group(id: string): "s" | "m" | "h" | "d" {
 }
 
 /** Favourite intervals as buttons plus a dropdown with every interval, stars and a custom interval form. */
-export default function IntervalControl({ interval, onInterval, favorites, onFavorites, source = "" }: Props) {
+export default function IntervalControl({ interval: intervalProp, onInterval, favorites, onFavorites, source = "" }: Props) {
   const { t } = useT();
   useMoexSeconds(source); // MOEX: the «Секунды» group appears when the server says the feed is there
   const [num, setNum] = useState("");
   const [unit, setUnit] = useState<"m" | "h">("m");
 
-  const secOk = secondsSupported(source);
-  // every pinned interval (also the seconds pinned on another symbol), and the ones this symbol can show
-  const pinned = [...new Set(favorites.filter(isValidInterval))].sort((a, b) => intervalOrder(a) - intervalOrder(b));
-  const favs = pinned.filter((id) => secOk || !isSecondsInterval(id));
-  const shown = favs.includes(interval) ? favs : [...favs, interval].sort((a, b) => intervalOrder(a) - intervalOrder(b));
+  // every pinned interval (also the seconds pinned on another symbol), and the ones this symbol can show; junk / nothing pinned -> the defaults, the
+  // current timeframe is always on the row (tfRowIds)
+  const { current: interval, pinned, chips: favs, shown } = tfRowIds(intervalProp, favorites, source);
   const all = [...new Set([...pickerIntervals(source), ...favs])].sort((a, b) => intervalOrder(a) - intervalOrder(b));
 
   const toggleFav = (id: string) => onFavorites(pinned.includes(id) ? pinned.filter((x) => x !== id) : [...pinned, id]);

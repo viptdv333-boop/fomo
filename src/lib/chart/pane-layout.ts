@@ -128,9 +128,10 @@ export function dragRatio(rs: readonly number[], idx: number, delta: number): nu
 
 /** Shares -> pixel heights of the plot: the panes never go under MIN_SUB_PX unless the chart is tiny, the price pane keeps its floor. */
 export function layoutHeights(plotH: number, rs: readonly number[]): { main: number; subs: number[] } {
-  const H = Math.max(0, plotH);
+  const H = fin(plotH) ? Math.max(0, plotH) : 0; // NaN / Infinity never reach the canvas
   if (rs.length === 0) return { main: H, subs: [] };
-  const capped = capTotal(rs);
+  // a broken share (NaN, negative, > 1: a stored value is checked on load, this is the last line) counts as the smallest one
+  const capped = capTotal(rs.map((r) => (fin(r) ? clampSub(r) : MIN_SUB_RATIO)));
   let hs = capped.map((r) => H * r);
   const budget = Math.max(H * 0.35, H - MIN_MAIN_PX);
   const raised = hs.map((h) => Math.max(h, Math.min(MIN_SUB_PX, budget / rs.length)));

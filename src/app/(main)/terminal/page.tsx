@@ -23,6 +23,7 @@ import { noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/char
 import { KIND_LAST } from "@/lib/chart/sync-logic";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppTerminal from "@/components/app/AppTerminal";
+import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -190,12 +191,14 @@ export default function TerminalPage() {
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
       <DemoGate kind="terminal" path="/terminal">
         {selected && (
-          <TradingChart
-            ticker={selected.dataTicker}
-            source={selected.source}
-            name={instName(selected, t)}
-            onSelectSymbol={onSelectSymbol}
-          />
+          <ChartErrorBoundary>
+            <TradingChart
+              ticker={selected.dataTicker}
+              source={selected.source}
+              name={instName(selected, t)}
+              onSelectSymbol={onSelectSymbol}
+            />
+          </ChartErrorBoundary>
         )}
       </DemoGate>
     </div>
