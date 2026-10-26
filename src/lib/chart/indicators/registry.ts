@@ -7,6 +7,7 @@ import { ELLIOTT_DEFS } from "./elliott-defs";
 import { SWINGS_DEFS } from "./swings-defs";
 import { PATTERN_DEFS } from "./patterns-def";
 import { WOLFE_DEFS } from "./wolfe-def";
+import { CANDLE_DEFS } from "./candles-def";
 import { ALGOPACK_DEFS } from "./algopack-defs";
 import { LIQUIDITY_DEFS } from "./liquidity-defs";
 import { formatPrice, inferPrecision } from "../format";
@@ -150,7 +151,7 @@ export interface IndicatorDef {
   /** Painter that runs after the plots (markers on top of the lines). */
   drawTop?(sc: SeriesContext, p: Params, res?: IndResult): void;
   /** Tooltip of the legend row (multi-line text), e.g. the list of Elliott counts with their confidence. */
-  legendTip?(res: IndResult, p: Params, locale: string): string | undefined;
+  legendTip?(res: IndResult, p: Params, locale: string, index?: number): string | undefined;
   /** Price levels worth an alert (data only), e.g. invalidation and next target of an Elliott count. */
   alertLevels?(res: IndResult): number[];
   /** Flags on the price axis for values that are not plots (e.g. the levels of a volume profile). `text` defaults to the formatted price. */
@@ -158,7 +159,7 @@ export interface IndicatorDef {
   /** Settings dialog: param key -> i18n key of the section heading it belongs to (Inputs and Style tabs). */
   paramGroup?: Record<string, string>;
   /** Extra coloured text items for the legend (e.g. summaries of detected patterns); `locale` is the chart's locale. */
-  legendItems?(res: IndResult, p: Params, locale: string): { text: string; color: string }[];
+  legendItems?(res: IndResult, p: Params, locale: string, index?: number): { text: string; color: string }[];
   /** User scripts: literal display name (instead of the `ind.<id>.name` dictionary key). */
   label?: string;
   /** User scripts: literal labels of the parameters (instead of `ind.p.<key>`). */
@@ -1075,6 +1076,7 @@ defs.push(...ELLIOTT_DEFS);
 defs.push(...SWINGS_DEFS);
 defs.push(...PATTERN_DEFS);
 defs.push(...WOLFE_DEFS);
+defs.push(...CANDLE_DEFS);
 defs.push(...LIQUIDITY_DEFS);
 defs.push(...ALGOPACK_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;

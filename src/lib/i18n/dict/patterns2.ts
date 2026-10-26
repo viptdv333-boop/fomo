@@ -1,4 +1,5 @@
 import type { SectionDict } from "./types";
+import { CANDLE_META } from "../../chart/analysis/candle-meta";
 
 // "Chart Patterns (auto)" indicator: catalog category, name, description, parameter labels and select options.
 // Rows are [key, ru, en, cn]; ru is the source language.
@@ -92,7 +93,70 @@ const rows: [string, string, string, string][] = [
   ["ind.p.wfColDown", "Цвет: медвежья", "Colour: bearish", "颜色: 看跌"],
   ["ind.p.wfColTarget", "Цвет: цель (EPA)", "Colour: target (EPA)", "颜色: 目标 (EPA)"],
   ["ind.p.wfColZone", "Цвет: зона точки 5", "Colour: point 5 zone", "颜色: 第5点区域"],
+  /* Candlestick patterns (classic) */
+  ["ind.candle_patterns.name", "Свечные паттерны (классика)", "Candlestick Patterns (classic)", "经典K线形态"],
+  [
+    "ind.candle_patterns.desc",
+    "Классические японские свечные паттерны по 1, 2, 3 и 5 свечам: доджи, молот, поглощение, харами, звёзды, солдаты и вороны и др. с трендом, фильтром по ATR и надёжностью",
+    "Classic Japanese candlestick patterns of 1, 2, 3 and 5 candles: doji, hammer, engulfing, harami, stars, soldiers and crows and more, with trend context, an ATR size filter and reliability",
+    "经典日本蜡烛图形态（1、2、3、5 根）：十字星、锤头、吞没、孕线、星线、红三兵与三只乌鸦等，含趋势背景、ATR 大小过滤与可靠度",
+  ],
+  ["ind.cp.g.main", "Основное", "Main", "基本"],
+  ["ind.cp.g.show", "Отображение", "Display", "显示"],
+  ["ind.cp.g.thr", "Пороги и условия", "Thresholds and conditions", "阈值与条件"],
+  ["ind.cp.g.1bull", "1 свеча - бычьи", "1 candle - bullish", "1 根 - 看涨"],
+  ["ind.cp.g.1bear", "1 свеча - медвежьи", "1 candle - bearish", "1 根 - 看跌"],
+  ["ind.cp.g.1flat", "1 свеча - нейтральные", "1 candle - neutral", "1 根 - 中性"],
+  ["ind.cp.g.2bull", "2 свечи - бычьи", "2 candles - bullish", "2 根 - 看涨"],
+  ["ind.cp.g.2bear", "2 свечи - медвежьи", "2 candles - bearish", "2 根 - 看跌"],
+  ["ind.cp.g.3bull", "3 свечи - бычьи", "3 candles - bullish", "3 根 - 看涨"],
+  ["ind.cp.g.3bear", "3 свечи - медвежьи", "3 candles - bearish", "3 根 - 看跌"],
+  ["ind.cp.g.5bull", "5 свечей - бычьи", "5 candles - bullish", "5 根 - 看涨"],
+  ["ind.cp.g.5bear", "5 свечей - медвежьи", "5 candles - bearish", "5 根 - 看跌"],
+  ["ind.cp.o.list", "По списку ниже", "By the list below", "按下方列表"],
+  ["ind.cp.o.main", "Основные (7)", "Main (7)", "主要 (7)"],
+  ["ind.cp.o.all", "Все (39)", "All (39)", "全部 (39)"],
+  ["ind.cp.o.gbody", "Тело за телом (24ч)", "Body beyond body (24h)", "实体越实体 (24小时)"],
+  ["ind.cp.o.gprice", "Реальный гэп (биржа)", "Real gap (exchange)", "真实缺口 (交易所)"],
+  ["ind.cp.o.slope", "Наклон за N баров", "Slope over N bars", "N 根斜率"],
+  ["ind.cp.o.sma", "Выше / ниже SMA(N)", "Above / below SMA(N)", "高于 / 低于 SMA(N)"],
+  ["ind.cp.o.lshort", "Короткие", "Short", "简称"],
+  ["ind.cp.o.lfull", "Полные названия", "Full names", "全称"],
+  ["ind.cp.o.lnone", "Только маркеры", "Markers only", "仅标记"],
+  ["ind.cp.o.sop", "Прозрачность", "Opacity", "透明度"],
+  ["ind.cp.o.snum", "Число у метки", "Number on the label", "标签旁数值"],
+  ["ind.cp.o.soff", "Не показывать", "Do not show", "不显示"],
+  ["ind.p.cpPreset", "Набор паттернов", "Pattern set", "形态集合"],
+  ["ind.p.cpForming", "Показывать формирующуюся свечу (бледно, может мигать)", "Show the forming bar (faded, may flicker)", "显示形成中的K线（淡色，可能闪烁）"],
+  ["ind.p.cpTrend", "Учитывать тренд перед паттерном", "Require the prior trend", "要求形态前的趋势"],
+  ["ind.p.cpGaps", "Гэпы", "Gaps", "缺口"],
+  ["ind.p.cpWindow", "Окно: последних баров (макс. отметок)", "Window: last bars (marker cap)", "窗口：最近 K 线数（标记上限）"],
+  ["ind.p.cpMinStrength", "Мин. надёжность, 0-100", "Min reliability, 0-100", "最低可靠度 0-100"],
+  ["ind.p.cpLabels", "Подписи", "Labels", "标签"],
+  ["ind.p.cpBrackets", "Рамка над свечами многосвечных паттернов", "Box over the candles of multi-candle patterns", "多根K线形态的外框"],
+  ["ind.p.cpStrength", "Показ надёжности", "Show reliability", "可靠度显示"],
+  ["ind.p.cpMinSize", "Мин. размер паттерна, ATR", "Min pattern size, ATR", "形态最小幅度 (ATR)"],
+  ["ind.p.cpAtrLen", "Период ATR", "ATR length", "ATR 周期"],
+  ["ind.p.cpLongBody", "Длинная свеча: тело от, ATR", "Long candle: body from, ATR", "长K线：实体不小于 (ATR)"],
+  ["ind.p.cpDojiBody", "Доджи: тело до, % диапазона", "Doji: body up to, % of range", "十字星：实体不超过 (% 振幅)"],
+  ["ind.p.cpSpinBody", "Волчок: тело до, % диапазона", "Spinning top: body up to, % of range", "纺锤线：实体不超过 (% 振幅)"],
+  ["ind.p.cpShadow", "Почти нет тени (молот, стрекоза): до, % диапазона", "Almost no shadow (hammer, dragonfly): up to, % of range", "几乎无影线（锤头、蜻蜓）：不超过 (% 振幅)"],
+  ["ind.p.cpHammer", "Молот: длинная тень не меньше N тел", "Hammer: long shadow at least N bodies", "锤头：长影线不少于 N 倍实体"],
+  ["ind.p.cpStar", "Звезда: тело до, % тела первой свечи", "Star: body up to, % of the first body", "星线：实体不超过首根实体的 %"],
+  ["ind.p.cpHarami", "Харами: тело до, % внешней свечи", "Harami: body up to, % of the outer body", "孕线：实体不超过外侧实体的 %"],
+  ["ind.p.cpTweezer", "Пинцет: допуск равенства экстремумов, ATR", "Tweezers: tolerance of equal extremes, ATR", "平头：极值相等容差 (ATR)"],
+  ["ind.p.cpEngulfFull", "Поглощение должно перекрывать и тени", "Engulfing must cover the shadows too", "吞没须同时包住影线"],
+  ["ind.p.cpTrendMode", "Как определять тренд", "How the trend is measured", "趋势判定方式"],
+  ["ind.p.cpTrendLen", "Тренд: баров (N)", "Trend: bars (N)", "趋势：K 线数 (N)"],
+  ["ind.p.cpTrendAtr", "Тренд: минимальный ход, ATR", "Trend: minimum move, ATR", "趋势：最小幅度 (ATR)"],
+  ["ind.p.cpOverlap", "Допустимое перекрытие тел при гэпе, % тела", "Allowed body overlap at a gap, % of the body", "缺口允许的实体重叠 (% 实体)"],
+  ["ind.p.cpColUp", "Цвет: бычьи", "Colour: bullish", "颜色: 看涨"],
+  ["ind.p.cpColDown", "Цвет: медвежьи", "Colour: bearish", "颜色: 看跌"],
+  ["ind.p.cpColFlat", "Цвет: нейтральные", "Colour: neutral", "颜色: 中性"],
 ];
+
+// checklist of the candlestick indicator: one row per pattern, taken from the catalogue
+for (const m of CANDLE_META) rows.push([`ind.p.cp_${m.id}`, m.name[0], m.name[1], m.name[2]]);
 
 const dict: SectionDict = { ru: {}, en: {}, cn: {} };
 for (const [key, ru, en, cn] of rows) {

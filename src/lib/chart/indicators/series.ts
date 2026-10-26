@@ -304,7 +304,7 @@ export class IndicatorSeries implements Series {
     }
     if (this.def.legendItems) {
       try {
-        for (const it of this.def.legendItems(r, this.params, this.locale)) items.push(it);
+        for (const it of this.def.legendItems(r, this.params, this.locale, index)) items.push(it);
       } catch {
         /* a legend bug must not break the chart */
       }
@@ -312,7 +312,7 @@ export class IndicatorSeries implements Series {
     let tip: string | undefined;
     if (this.def.legendTip) {
       try {
-        tip = this.def.legendTip(r, this.params, this.locale);
+        tip = this.def.legendTip(r, this.params, this.locale, index);
       } catch {
         /* ignore */
       }
