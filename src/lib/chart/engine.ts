@@ -1248,6 +1248,7 @@ export class ChartEngine {
     for (const pane of this.panes) {
       if (pane.height <= 0) continue;
       const sc = this.seriesContext(pane, from, to);
+      sc.labelBoxes = [];
       // horizontal grid + price labels are collected here and drawn on the axis afterwards
       const ticks = this.priceTicks(pane);
       if (this.opts.showGrid && this.opts.gridH) {
@@ -1272,7 +1273,10 @@ export class ChartEngine {
         this.drawPriceSeries(sc);
         this.drawCompares(sc);
       }
-      if (!transformed) for (const s of pane.series) s.draw(sc);
+      if (!transformed) {
+        for (const s of pane.series) s.draw(sc);
+        for (const s of pane.series) s.drawFront?.(sc);
+      }
       ctx.restore();
 
       // labels
@@ -2280,6 +2284,22 @@ export class ChartEngine {
       ctx.clip();
       for (const l of this.layers) l.draw?.(ctx, this);
       ctx.restore();
+    }
+
+    // highlight of the pattern under the crosshair (indicators that draw it on the overlay layer)
+    if (hv && hv.x >= 0 && hv.x <= plotW && hv.y >= 0 && hv.y <= plotH) {
+      const { from, to } = this.visibleRange();
+      for (const pane of this.panes) {
+        if (pane.height <= 0 || !pane.series.some((s) => s.drawHover)) continue;
+        const hsc = { ...this.seriesContext(pane, from, to), ctx };
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, pane.top, plotW, pane.height);
+        ctx.clip();
+        ctx.translate(0, pane.top);
+        for (const s of pane.series) s.drawHover?.(hsc, index);
+        ctx.restore();
+      }
     }
 
     // legends

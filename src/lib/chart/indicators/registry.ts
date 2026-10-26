@@ -148,6 +148,10 @@ export interface IndicatorDef {
   usesFlow?: boolean;
   /** ALGOPACK datasets the indicator reads (env.algo): fetched while it is on the chart, recomputed when they change. */
   algo?: AlgoNeed[];
+  /** Painter that runs after ALL the series of the pane (on top of the other indicators). */
+  drawFront?(sc: SeriesContext, p: Params, res?: IndResult): void;
+  /** Overlay-layer painter for the bar under the crosshair (`sc.ctx` is the overlay context). */
+  drawHover?(sc: SeriesContext, p: Params, res: IndResult | undefined, index: number): void;
   /** Painter that runs after the plots (markers on top of the lines). */
   drawTop?(sc: SeriesContext, p: Params, res?: IndResult): void;
   /** Tooltip of the legend row (multi-line text), e.g. the list of Elliott counts with their confidence. */

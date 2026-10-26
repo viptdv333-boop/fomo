@@ -169,6 +169,7 @@ function paintBoxes(sc: SeriesContext, boxes: Box[]): void {
         const r: Rect = { x: lx, y: ly - 6, w: tw, h: 12 };
         if (!placed.some((q) => overlap(q, r)) && ly > 5 && ly < H - 4) {
           placed.push(r);
+          sc.labelBoxes?.push(r);
           ctx.fillStyle = rgba(b.color, (b.dim ? 0.6 : 0.95));
           ctx.fillText(b.label, lx, ly + 0.5);
         }
@@ -529,6 +530,7 @@ function paintPools(sc: SeriesContext, p: Params, res?: IndResult): void {
         const r: Rect = { x: lx, y: ly - 6, w: tw, h: 12 };
         if (!labels.some((z) => overlap(z, r))) {
           labels.push(r);
+          sc.labelBoxes?.push(r);
           ctx.fillStyle = rgba(color, dead ? 0.7 : 1);
           ctx.textAlign = "left";
           ctx.fillText(text, lx, ly + 0.5);

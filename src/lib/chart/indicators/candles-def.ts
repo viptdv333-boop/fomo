@@ -5,9 +5,10 @@ import { DEFAULT_CANDLES, detectCandles, type CandleHit, type CandleOptions } fr
 import { isDark, langOf, rgba } from "./patterns-def";
 
 /* "Candlestick patterns (classic)": single, two, three and five candle patterns from OHLC only (analysis/candles.ts; the catalogue with names
-   and meanings in analysis/candle-meta.ts). A small marker (arrow below a bullish, above a bearish pattern, a dot for neutral ones) with an
-   optional short / full label, a thin box over the candles of a multi-candle pattern. The legend row follows the crosshair: the pattern on
-   the bar under it, its meaning and reliability in the tooltip of the row. This file is the parameter schema, the legend and the painter. */
+   and meanings in analysis/candle-meta.ts). Each pattern is a frame with a translucent fill over exactly its candles and a solid pill with its
+   name on the frame edge, joined to the frame by a short stem; everything is drawn in `drawFront`, after all the other indicators of the pane, and
+   the pills keep off each other and off the labels the other indicators have put there (sc.labelBoxes). The legend row follows the crosshair: the
+   pattern on the bar under it, its meaning and reliability in the tooltip of the row. This file is the parameter schema, the legend and the painter. */
 
 const N = (p: Params, k: string) => p[k] as number;
 const S = (p: Params, k: string) => p[k] as string;
@@ -111,26 +112,161 @@ function firstFrom(hits: CandleHit[], i: number): number {
   return a;
 }
 
-const colorOf = (bias: CandleBias, p: Params) => (bias === "bull" ? S(p, "cpColUp") : bias === "bear" ? S(p, "cpColDown") : S(p, "cpColFlat"));
+const DEFAULT_FLAT = "#8b93a7";
+/** Colour of a pattern: «one colour for all» overrides; the default neutral grey follows the theme (lighter on dark, darker on light) when `dark` is known. */
+function colorOf(bias: CandleBias, p: Params, dark?: boolean): string {
+  if (B(p, "cpUseAll")) return S(p, "cpColAll");
+  if (bias === "bull") return S(p, "cpColUp");
+  if (bias === "bear") return S(p, "cpColDown");
+  const c = S(p, "cpColFlat");
+  if (dark !== undefined && c.toLowerCase() === DEFAULT_FLAT) return dark ? "#a3abc0" : "#6b7385";
+  return c;
+}
+
+/** What the highlight style switches on. */
+function styleFlags(mode: string): { fill: boolean; frame: boolean; paint: boolean; marker: boolean } {
+  return { fill: mode === "box" || mode === "all", frame: mode === "box" || mode === "frame" || mode === "all", paint: mode === "paint" || mode === "all", marker: mode === "marker" };
+}
 
 /* ───────────── painter ───────────── */
 
-function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w + 2 && a.x + a.w + 2 > b.x && a.y < b.y + b.h + 2 && a.y + a.h > b.y - 2;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+const PILL_H = 20;
+const PILL_FONT = 12;
+const STEM = 9;
+
+function hexRgb(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const v = parseInt(m[1], 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+/** The colour a bit darker, so that white text on it reads (a pill is solid, not a tint). */
+function darker(hex: string, k: number): string {
+  const c = hexRgb(hex);
+  if (!c) return hex;
+  return `rgb(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)})`;
+}
+function luminance(c: [number, number, number]): number {
+  const f = (v: number) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+/** White text, or near-black on a light pill (`bg` is "#rrggbb" or "rgb(r,g,b)"). */
+export function pillTextColor(bg: string): string {
+  const m = /^rgb\((\d+),(\d+),(\d+)\)$/.exec(bg);
+  const c: [number, number, number] | null = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : hexRgb(bg);
+  if (!c) return "#ffffff";
+  const L = luminance(c);
+  // white is preferred (it is what a coloured pill usually carries) unless it would be hard to read
+  return 1.05 / (L + 0.05) >= 3.2 ? "#ffffff" : "#0b0e14";
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.arcTo(x + w, y, x + w, y + rr, rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+  ctx.lineTo(x + rr, y + h);
+  ctx.arcTo(x, y + h, x, y + h - rr, rr);
+  ctx.lineTo(x, y + rr);
+  ctx.arcTo(x, y, x + rr, y, rr);
+  ctx.closePath();
+}
+
+type PatternBox = Rect & { cx: number; hi: number; lo: number };
+
+/** The frame around exactly the candles of the pattern (high to low of those candles, padded). */
+export function patternBox(sc: SeriesContext, hit: CandleHit): PatternBox | null {
+  const half = sc.barSpacing / 2;
+  let hi = -Infinity;
+  let lo = Infinity;
+  for (let j = hit.start; j <= hit.i; j++) {
+    const c = sc.candles[j];
+    if (!c) continue;
+    if (c.h > hi) hi = c.h;
+    if (c.l < lo) lo = c.l;
+  }
+  if (!(hi >= lo)) return null;
+  const xa = sc.x(hit.start) - half - 2.5;
+  const xb = sc.x(hit.i) + half + 2.5;
+  const cx = (xa + xb) / 2;
+  const w = Math.max(14, xb - xa);
+  let y0 = sc.y(hi) - 3;
+  let y1 = sc.y(lo) + 3;
+  if (y1 - y0 < 12) {
+    const m = (y0 + y1) / 2;
+    y0 = m - 6;
+    y1 = m + 6;
+  }
+  if (![cx, w, y0, y1].every(Number.isFinite)) return null;
+  return { x: cx - w / 2, y: y0, w, h: y1 - y0, cx, hi, lo };
+}
+
+/** First free place for a pill: on its own side of the frame, then shifted along it, then further out, then on the other side. `taken` holds the labels already there. */
+export function placePill(w: number, cx: number, edge: number, dir: 1 | -1, pw: number, ph: number, taken: Rect[]): Rect | null {
+  const step = 24;
+  for (const side of [dir, -dir] as const) {
+    for (let level = 0; level < 4; level++) {
+      const y = side > 0 ? edge + STEM + level * (PILL_H + 4) : edge - STEM - PILL_H - level * (PILL_H + 4);
+      if (y < 2 || y + PILL_H > ph - 2) continue;
+      for (let k = 0; k < 11; k++) {
+        const dk = k === 0 ? 0 : k % 2 ? (k + 1) / 2 : -k / 2;
+        const x = clamp(cx - w / 2 + dk * step, 2, Math.max(2, pw - w - 2));
+        const r = { x, y, w, h: PILL_H };
+        if (!taken.some((t) => overlaps(t, r))) return r;
+      }
+    }
+  }
+  return null;
+}
+
+function labelText(hit: CandleHit, p: Params, locale: string): string {
+  const mode = S(p, "cpLabelMode");
+  let text = mode === "full" ? candleName(hit.id, locale) : mode === "short" ? candleShort(hit.id, locale) : "";
+  if (text && hit.others.length) text += ` +${hit.others.length}`;
+  if (S(p, "cpStrength") === "number") text = text ? `${text} · ${hit.strength}` : String(hit.strength);
+  return text;
+}
+
+/** Everything of the indicator is drawn here, after all the other series of the pane, so the highlighted candles stay readable over zones and waves. */
+function paintFront(sc: SeriesContext, p: Params, res?: IndResult): void {
   const ex = res?.extra as Extra | undefined;
   if (!ex || ex.hits.length === 0) return;
   const { ctx, candles } = sc;
   const locale = sc.options.locale;
-  const dark = isDark(sc.theme.bg);
-  const bw = sc.barSpacing;
   const pw = sc.paneWidth;
   const ph = sc.paneHeight;
-  const labels = S(p, "cpLabels");
-  const brackets = B(p, "cpBrackets");
+  const mode = S(p, "cpHighlight"); // box | frame | paint | all | marker
+  const fl = styleFlags(mode);
+  const dark = isDark(sc.theme.bg);
+  const fillA = N(p, "cpFillOpacity") / 100;
+  const borderW = N(p, "cpBorderWidth");
   const strengthMode = S(p, "cpStrength");
-  const sz = Math.max(3.5, Math.min(8, bw * 0.5));
-  const halo = dark ? "rgba(19,23,34,0.85)" : "rgba(255,255,255,0.9)";
-  const boxes: { x: number; y: number; w: number; h: number }[] = [];
-  const hitBox = (a: { x: number; y: number; w: number; h: number }) => boxes.some((b) => a.x < b.x + b.w + 1 && a.x + a.w + 1 > b.x && a.y < b.y + b.h && a.y + a.h > b.y);
+  const hits = ex.hits;
+  const to = Math.min(sc.to + 3, candles.length - 1);
+  const list: { hit: CandleHit; box: PatternBox }[] = [];
+  for (let k = firstFrom(hits, sc.from - 6); k < hits.length; k++) {
+    const hit = hits[k];
+    if (hit.i > to) break;
+    const box = patternBox(sc, hit);
+    if (!box || box.x > pw + 40 || box.x + box.w < -40) continue;
+    list.push({ hit, box });
+  }
+  if (list.length === 0) return;
 
   ctx.save();
   ctx.beginPath();
@@ -138,107 +274,156 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
   ctx.clip();
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.font = `600 10px ${sc.options.fontFamily}`;
-  ctx.textAlign = "center";
 
-  const hits = ex.hits;
-  const to = Math.min(sc.to + 2, candles.length - 1);
-  for (let k = firstFrom(hits, sc.from - 1); k < hits.length; k++) {
-    const hit = hits[k];
-    if (hit.i > to) break;
-    const cx = sc.x(hit.i);
-    if (cx < -20 || cx > pw + 20) continue;
-    const color = colorOf(hit.bias, p);
-    let alpha = strengthMode === "opacity" ? 0.5 + 0.5 * (hit.strength / 100) : 1;
-    if (hit.forming) alpha *= 0.6;
+  const alphaOf = (hit: CandleHit) => (strengthMode === "opacity" ? 0.72 + 0.28 * (hit.strength / 100) : 1) * (hit.forming ? 0.7 : 1);
 
-    // extremes of the candles of the pattern
-    let hi = -Infinity;
-    let lo = Infinity;
-    for (let j = hit.start; j <= hit.i; j++) {
-      const c = candles[j];
-      if (!c) continue;
-      if (c.h > hi) hi = c.h;
-      if (c.l < lo) lo = c.l;
-    }
-    if (!(hi >= lo)) continue;
-    const yHi = sc.y(hi);
-    const yLo = sc.y(lo);
-    ctx.globalAlpha = alpha;
-
-    // thin box over the candles of a multi-candle pattern
-    if (brackets && hit.i > hit.start) {
-      const x0 = sc.x(hit.start) - bw * 0.46;
-      const x1 = cx + bw * 0.46;
+  // 1. the formation first (fill, frame, tinted candles / the marker), so a neighbour's frame never covers a pill
+  const bodyW = Math.max(1, Math.floor(sc.barSpacing * 0.72));
+  for (const { hit, box } of list) {
+    const color = colorOf(hit.bias, p, dark);
+    ctx.globalAlpha = alphaOf(hit);
+    if (fl.marker) {
+      const sz = clamp(sc.barSpacing * 0.5, 4, 8);
       ctx.beginPath();
-      ctx.rect(x0, yHi - 2, x1 - x0, yLo - yHi + 4);
-      ctx.fillStyle = rgba(color, dark ? 0.07 : 0.05);
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = rgba(color, 0.65);
-      ctx.setLineDash(hit.forming ? [3, 3] : []);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // marker: ▲ under a bullish, ▼ over a bearish pattern, a dot over a neutral one
-    let ty: number; // tip of the marker, the label goes beyond its far end
-    let farY: number;
-    ctx.beginPath();
-    if (hit.bias === "bull") {
-      ty = yLo + 5;
-      farY = ty + sz * 1.15;
-      ctx.moveTo(cx, ty);
-      ctx.lineTo(cx - sz * 0.62, farY);
-      ctx.lineTo(cx + sz * 0.62, farY);
-      ctx.closePath();
-    } else if (hit.bias === "bear") {
-      ty = yHi - 5;
-      farY = ty - sz * 1.15;
-      ctx.moveTo(cx, ty);
-      ctx.lineTo(cx - sz * 0.62, farY);
-      ctx.lineTo(cx + sz * 0.62, farY);
-      ctx.closePath();
-    } else {
-      const r = Math.max(2.2, sz * 0.4);
-      ty = yHi - 5;
-      farY = ty - 2 * r;
-      ctx.arc(cx, ty - r, r, 0, Math.PI * 2);
-    }
-    if (hit.forming) {
-      ctx.lineWidth = 1.3;
-      ctx.strokeStyle = color;
-      ctx.stroke();
-    } else {
+      if (hit.bias === "flat") {
+        ctx.arc(box.cx, box.y - 4, Math.max(2.4, sz * 0.4), 0, Math.PI * 2);
+      } else {
+        const bull = hit.bias === "bull";
+        const ty = bull ? box.y + box.h + 1 : box.y - 1;
+        const dy = bull ? sz * 1.2 : -sz * 1.2;
+        ctx.moveTo(box.cx, ty);
+        ctx.lineTo(box.cx - sz * 0.65, ty + dy);
+        ctx.lineTo(box.cx + sz * 0.65, ty + dy);
+        ctx.closePath();
+      }
       ctx.fillStyle = color;
       ctx.fill();
+      continue;
     }
-    boxes.push({ x: cx - sz * 0.7, y: Math.min(ty, farY), w: sz * 1.4, h: Math.abs(farY - ty) });
-
-    // label
-    if (labels !== "none" || strengthMode === "number") {
-      let text = labels === "full" ? candleName(hit.id, locale) : labels === "short" ? candleShort(hit.id, locale) : "";
-      if (text && hit.others.length) text += ` +${hit.others.length}`;
-      if (strengthMode === "number") text = text ? `${text} ${hit.strength}` : String(hit.strength);
-      if (text) {
-        const tw = Math.ceil(ctx.measureText(text).width);
-        const below = hit.bias === "bull";
-        const y0 = below ? farY + 2 : farY - 2 - 11;
-        const box = { x: cx - tw / 2 - 1, y: y0, w: tw + 2, h: 11 };
-        if (!hitBox(box) && box.x > -2 && box.x + box.w < pw + 2 && y0 > 0 && y0 + 11 < ph) {
-          boxes.push(box);
-          ctx.textBaseline = "top";
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = halo;
-          ctx.strokeText(text, cx, y0);
-          ctx.fillStyle = color;
-          ctx.fillText(text, cx, y0);
-        }
+    if (fl.fill || fl.frame) {
+      roundRectPath(ctx, box.x, box.y, box.w, box.h, 3);
+      if (fl.fill) {
+        ctx.fillStyle = rgba(color, hit.forming ? fillA * 0.6 : fillA);
+        ctx.fill();
+      }
+      if (fl.frame) {
+        ctx.lineWidth = borderW;
+        ctx.strokeStyle = color;
+        ctx.setLineDash(hit.forming ? [4, 3] : []);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
-    ctx.globalAlpha = 1;
+    if (fl.paint) {
+      // every candle of the formation: the wick and the body in the pattern colour (the body tinted, so the original candle still shows through)
+      for (let j = hit.start; j <= hit.i; j++) {
+        const c = candles[j];
+        if (!c) continue;
+        const x = sc.x(j);
+        const yH = sc.y(c.h);
+        const yL = sc.y(c.l);
+        const yO = sc.y(c.o);
+        const yC = sc.y(c.c);
+        if (![x, yH, yL, yO, yC].every(Number.isFinite)) continue;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, yH);
+        ctx.lineTo(x, yL);
+        ctx.stroke();
+        const top = Math.min(yO, yC);
+        const h = Math.max(2, Math.abs(yC - yO));
+        ctx.fillStyle = rgba(color, 0.55);
+        ctx.fillRect(x - bodyW / 2, top, bodyW, h);
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - bodyW / 2, top, bodyW, h);
+      }
+    }
   }
+
+  // 2. pills with a stem to the frame, the newest first; they keep off each other and off the labels of the other indicators
+  if (S(p, "cpLabelMode") !== "none" || strengthMode === "number") {
+    ctx.font = `600 ${PILL_FONT}px ${sc.options.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const taken: Rect[] = (sc.labelBoxes ?? []).slice();
+    for (let k = list.length - 1; k >= 0; k--) {
+      const { hit, box } = list[k];
+      const text = labelText(hit, p, locale);
+      if (!text) continue;
+      const color = colorOf(hit.bias, p, dark);
+      const w = Math.ceil(ctx.measureText(text).width) + 18;
+      const bull = hit.bias === "bull";
+      const edge = bull ? box.y + box.h : box.y;
+      const rect = placePill(w, box.cx, fl.marker ? edge + (bull ? 7 : -7) : edge, bull ? 1 : -1, pw, ph, taken);
+      if (!rect) continue;
+      taken.push(rect);
+      sc.labelBoxes?.push(rect);
+      ctx.globalAlpha = alphaOf(hit);
+      const below = rect.y > edge;
+      if (!fl.marker) {
+        // stem from the pill to the frame, with a small arrow head on the frame edge
+        const py = below ? rect.y : rect.y + rect.h;
+        const sx = clamp(box.cx, rect.x + 9, rect.x + rect.w - 9);
+        const s = below ? 1 : -1;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = Math.max(1.5, Math.min(2.5, borderW));
+        ctx.beginPath();
+        ctx.moveTo(sx, py);
+        ctx.lineTo(box.cx, edge + s * 4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(box.cx, edge);
+        ctx.lineTo(box.cx - 4, edge + s * 6);
+        ctx.lineTo(box.cx + 4, edge + s * 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const bg = darker(color, 0.8);
+      roundRectPath(ctx, rect.x, rect.y, rect.w, rect.h, PILL_H / 2);
+      ctx.fillStyle = bg;
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = rgba(color, 0.95);
+      ctx.setLineDash(hit.forming ? [3, 2] : []);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = pillTextColor(bg);
+      ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2 + 0.5);
+    }
+  }
+  ctx.globalAlpha = 1;
   ctx.restore();
+}
+
+/** The pattern under the crosshair gets a stronger fill and a thicker frame (drawn on the overlay layer). */
+function paintHover(sc: SeriesContext, p: Params, res: IndResult | undefined, index: number): void {
+  const ex = res?.extra as Extra | undefined;
+  const fl = styleFlags(S(p, "cpHighlight"));
+  if (!ex || fl.marker) return;
+  let hit = hitAt(ex.hits, index);
+  if (!hit) {
+    const k0 = firstFrom(ex.hits, index);
+    for (let k = k0; k < ex.hits.length && k < k0 + 6; k++) {
+      const h = ex.hits[k];
+      if (h.start <= index && h.i >= index) {
+        hit = h;
+        break;
+      }
+    }
+  }
+  if (!hit) return;
+  const box = patternBox(sc, hit);
+  if (!box) return;
+  const { ctx } = sc;
+  const color = colorOf(hit.bias, p, isDark(sc.theme.bg));
+  roundRectPath(ctx, box.x, box.y, box.w, box.h, 3);
+  ctx.fillStyle = rgba(color, fl.fill ? Math.min(0.5, N(p, "cpFillOpacity") / 100 + 0.08) : 0.12);
+  ctx.fill();
+  ctx.lineWidth = N(p, "cpBorderWidth") + 0.75;
+  ctx.strokeStyle = color;
+  ctx.stroke();
 }
 
 /* ───────────── legend ───────────── */
@@ -292,9 +477,16 @@ const TREND_MODES: SelectOption[] = [
   { value: "sma", label: "ind.cp.o.sma" },
 ];
 const LABELS: SelectOption[] = [
-  { value: "short", label: "ind.cp.o.lshort" },
   { value: "full", label: "ind.cp.o.lfull" },
+  { value: "short", label: "ind.cp.o.lshort" },
   { value: "none", label: "ind.cp.o.lnone" },
+];
+const HIGHLIGHT: SelectOption[] = [
+  { value: "box", label: "ind.cp.o.hbox" },
+  { value: "frame", label: "ind.cp.o.hframe" },
+  { value: "paint", label: "ind.cp.o.hpaint" },
+  { value: "all", label: "ind.cp.o.hall" },
+  { value: "marker", label: "ind.cp.o.hmark" },
 ];
 const STRENGTH: SelectOption[] = [
   { value: "opacity", label: "ind.cp.o.sop" },
@@ -313,7 +505,7 @@ const G_THR = "ind.cp.g.thr";
 export const groupKeyOf = (bars: number, bias: CandleBias) => `ind.cp.g.${bars}${bias}`;
 
 const MAIN_KEYS = ["cpPreset", "cpForming", "cpTrend", "cpGaps", "cpWindow", "cpMinStrength"];
-const SHOW_KEYS = ["cpLabels", "cpBrackets", "cpStrength"];
+const SHOW_KEYS = ["cpHighlight", "cpFillOpacity", "cpBorderWidth", "cpUseAll", "cpLabelMode", "cpStrength"];
 const THR_KEYS = ["cpMinSize", "cpAtrLen", "cpLongBody", "cpDojiBody", "cpSpinBody", "cpShadow", "cpHammer", "cpStar", "cpHarami", "cpTweezer", "cpEngulfFull", "cpTrendMode", "cpTrendLen", "cpTrendAtr", "cpOverlap"];
 
 const paramGroup: Record<string, string> = {};
@@ -339,8 +531,12 @@ export const candlesDef: IndicatorDef = {
     sel("cpGaps", "body", GAPS),
     num("cpWindow", 500, 50, 20000, 50),
     num("cpMinStrength", 0, 0, 100, 5),
-    sel("cpLabels", "short", LABELS),
-    bool("cpBrackets", true),
+    // `cpLabelMode` replaces the old `cpLabels` (its default was "short"): the old key is no longer read, so saved charts move to the full-name pills
+    sel("cpHighlight", "all", HIGHLIGHT),
+    num("cpFillOpacity", 17, 0, 60, 1),
+    num("cpBorderWidth", 1.75, 0.5, 5, 0.25),
+    bool("cpUseAll", false),
+    sel("cpLabelMode", "full", LABELS),
     sel("cpStrength", "opacity", STRENGTH),
     ...CHECKLIST.map((m) => bool(`cp_${m.id}`, MAIN_SET.has(m.id))),
     num("cpMinSize", DEFAULT_CANDLES.minSize, 0, 5, 0.05),
@@ -361,9 +557,10 @@ export const candlesDef: IndicatorDef = {
     col("cpColUp", "#26a69a"),
     col("cpColDown", "#ef5350"),
     col("cpColFlat", "#8b93a7"),
+    col("cpColAll", "#2962ff"),
   ],
   paramGroup,
-  styleParams: ["cpColUp", "cpColDown", "cpColFlat"],
+  styleParams: ["cpColUp", "cpColDown", "cpColFlat", "cpColAll"],
   title: (p) => `Candles ${enabledIds(p).length}`,
   compute(cs, p) {
     if (cs.length < 3) return { plots: [], extra: { hits: [] } satisfies Extra };
@@ -375,8 +572,11 @@ export const candlesDef: IndicatorDef = {
     }
     return { plots: [], extra: { hits } satisfies Extra };
   },
-  drawExtra(sc, p, res) {
-    paint(sc, p, res);
+  drawFront(sc, p, res) {
+    paintFront(sc, p, res);
+  },
+  drawHover(sc, p, res, index) {
+    paintHover(sc, p, res, index);
   },
   legendItems(res, p, locale, index) {
     return legendRows(res, p, locale, index);

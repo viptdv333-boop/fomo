@@ -300,6 +300,8 @@ export interface SeriesContext {
   options: EngineOptions;
   /** Order flow of the chart (real trades where fetched, approximations elsewhere); see lib/chart/orderflow. */
   flow?: OrderFlowStore;
+  /** Rectangles of the text labels already put on this pane in this frame (pills, zone labels): a painter that runs later keeps its own labels off them. */
+  labelBoxes?: { x: number; y: number; w: number; h: number }[];
 }
 
 export interface LegendItem {
@@ -378,6 +380,10 @@ export interface Series {
   /** Price range this series needs for auto-scaling over bars [from, to], or null when it must not affect the scale. */
   range?(candles: Candle[], from: number, to: number): [number, number] | null;
   draw(sc: SeriesContext): void;
+  /** Runs after every series of the pane has drawn, so it lands on top of the other indicators (zones, waves, profiles). */
+  drawFront?(sc: SeriesContext): void;
+  /** Drawn on the overlay layer (above the chart, below the crosshair) for the bar under the crosshair; `sc.ctx` is the overlay context. */
+  drawHover?(sc: SeriesContext, index: number): void;
   /** Text shown in the pane legend for the bar under the crosshair (or the last bar). */
   legend?(candles: Candle[], index: number): LegendItem[];
 }

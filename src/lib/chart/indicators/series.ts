@@ -392,6 +392,36 @@ export class IndicatorSeries implements Series {
     return out;
   }
 
+  drawFront(sc: SeriesContext) {
+    if (!this.def.drawFront || !this.isShown()) return;
+    const candles = this.host.getCandles();
+    this.ensure(candles);
+    if (!this.res || candles.length === 0) return;
+    this.theme = sc.theme;
+    this.locale = sc.options.locale;
+    sc.ctx.save();
+    try {
+      this.def.drawFront(sc, this.params, this.res);
+    } catch {
+      /* a painter bug must not break the chart */
+    }
+    sc.ctx.restore();
+  }
+
+  drawHover(sc: SeriesContext, index: number) {
+    if (!this.def.drawHover || !this.isShown()) return;
+    const candles = this.host.getCandles();
+    this.ensure(candles);
+    if (!this.res || candles.length === 0) return;
+    sc.ctx.save();
+    try {
+      this.def.drawHover(sc, this.params, this.res, index);
+    } catch {
+      /* a painter bug must not break the chart */
+    }
+    sc.ctx.restore();
+  }
+
   draw(sc: SeriesContext) {
     if (!this.isShown()) return;
     const candles = this.host.getCandles();

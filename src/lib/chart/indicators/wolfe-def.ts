@@ -264,6 +264,7 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
     const h = 15;
     const b = place(boxes, w, h, Math.min(pw - w - 4, t.x + 8), t.y - h / 2, { w: pw, h: ph }, -1);
     boxes.push(b);
+    sc.labelBoxes?.push(b);
     pill(ctx, b, t.text, { bg: labelBg, border: rgba(t.col, 0.85), fg: t.col, font: smallFont });
   }
   const labFont = `600 11px ${fontFamily}`;
@@ -282,6 +283,7 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
     if (y < 3 || y + h > ph - 3) y = wantBelow ? j.y - h - 24 : j.y + 24;
     const b = place(boxes, w, h, j.x - w / 2, y, { w: pw, h: ph }, wantBelow ? 1 : -1);
     boxes.push(b);
+    sc.labelBoxes?.push(b);
     ctx.globalAlpha = isLive(pt) ? 1 : 0.8;
     pill(ctx, b, text, { bg: labelBg, border: rgba(j.col, 0.9), fg: labelFg, font: labFont, dot: isLive(pt) ? j.col : undefined });
     ctx.globalAlpha = 1;

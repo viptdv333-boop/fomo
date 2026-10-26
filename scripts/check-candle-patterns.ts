@@ -5,7 +5,7 @@
    noise), the checklist, the forming bar (hidden / shown faded), and "a closed bar never changes" (appending bars leaves the earlier hits as
    they were). Then the gap modes (24h body rule vs real price gap), engulfing with shadows, doji kinds, hammer vs hanging man, priority
    when several patterns end on one bar, the window cap, reliability, the SMA trend mode, speed on 20000 bars, the legend / tooltip text and
-   the painter on a recording canvas.
+   the painter (frame + fill, pill with the full name, collision avoidance, crosshair highlight) on a recording canvas.
    OFFLINE, pure. Run:  npx tsx scripts/check-candle-patterns.ts
    Exit code: 0 all passed, 1 at least one FAIL. */
 
@@ -13,7 +13,7 @@ import type { Candle, SeriesContext } from "../src/lib/chart/types";
 import { CANDLE_BY_ID, CANDLE_DISCLAIMER, CANDLE_IDS, CANDLE_META, MAIN_IDS, type CandleId } from "../src/lib/chart/analysis/candle-meta";
 import { DEFAULT_CANDLES, detectCandles, type CandleHit, type CandleOptions } from "../src/lib/chart/analysis/candles";
 import { INDICATOR_DEFS, computeIndicator, defaultParams, getIndicatorDef, sanitizeParams } from "../src/lib/chart/indicators/registry";
-import { candleName, enabledIds, groupKeyOf } from "../src/lib/chart/indicators/candles-def";
+import { candleName, enabledIds, groupKeyOf, patternBox, pillTextColor, placePill } from "../src/lib/chart/indicators/candles-def";
 import patterns2 from "../src/lib/i18n/dict/patterns2";
 
 let fails = 0;
@@ -462,7 +462,7 @@ const make = (r: Run, kind: Kind, o: { tail?: boolean; scale?: number } = {}): B
     ok(enabledIds({ ...params, cpPreset: "all" }).length === 39, "preset «All» -> 39 patterns");
     ok(JSON.stringify(enabledIds({ ...params, cpPreset: "main", cp_doji: false, cp_kicker_bull: true }).sort()) === JSON.stringify([...MAIN_IDS].sort()), "preset «Main» ignores the checklist");
     ok(JSON.stringify(enabledIds({ ...params, cp_doji: false, cp_kicker_bull: true }).sort()) === JSON.stringify([...MAIN_IDS.filter((x) => x !== "doji"), "kicker_bull"].sort()), "preset «list» follows the checklist");
-    ok(params.cpForming === false && params.cpTrend === true && params.cpGaps === "body" && params.cpWindow === 500 && params.cpLabels === "short", "defaults: confirmed bars only, trend on, 24h gap rule, window 500, short labels");
+    ok(params.cpForming === false && params.cpTrend === true && params.cpGaps === "body" && params.cpWindow === 500 && params.cpLabelMode === "full", "defaults: confirmed bars only, trend on, 24h gap rule, window 500, full-name labels");
     ok(def.title(params) === "Candles 7", "title", def.title(params));
 
     // compute: a known engulfing in the default set is found; one outside the default set is not until it is ticked
@@ -506,11 +506,32 @@ const make = (r: Run, kind: Kind, o: { tail?: boolean; scale?: number } = {}): B
     for (const q of ["蜡烛", "吞没", "锤头", "十字星"]) ok(matches(q, hayOf("cn")), `search finds «${q}»`);
     ok(!matches("свеч", `${patterns2.ru["ind.wolfe.name"]} ${patterns2.ru["ind.wolfe.desc"]} wolfe ${getIndicatorDef("wolfe")?.keywords ?? ""}`), "search «свеч» does not drag Wolfe waves in");
 
-    // painter on a recording canvas
+    // painter on a recording canvas (everything is drawn in drawFront, after the other indicators; the crosshair bar in drawHover)
+    ok(typeof def.drawFront === "function" && typeof def.drawHover === "function" && !def.drawExtra, "painter: drawFront + drawHover (on top of the other indicators), no drawExtra");
+    ok(params.cpLabelMode === "full" && params.cpHighlight === "all" && params.cpStrength === "opacity" && params.cpFillOpacity === 17 && params.cpBorderWidth === 1.75 && params.cpUseAll === false, "defaults: full-name pills, fill + frame + tinted candles, fill 17%, border 1.75 px, reliability as opacity");
+    ok(!("cpLabels" in params) && !("cpBrackets" in params), "the old short-label / bracket parameters are gone");
+    const legacy = sanitizeParams(def, { cpLabels: "short", cpBrackets: false, cp_doji: false } as never);
+    ok(legacy.cpLabelMode === "full" && legacy.cpHighlight === "all" && legacy.cp_doji === false && !("cpLabels" in legacy), "saved charts: the old default «short» moves to full-name pills, other saved settings stay");
+    ok(sanitizeParams(def, { cpLabelMode: "short" }).cpLabelMode === "short" && sanitizeParams(def, { cpLabelMode: "none" }).cpLabelMode === "none", "the new label mode keeps an explicit choice");
+
     const calls: Record<string, number> = {};
+    const texts: { text: string; x: number; y: number; font: string }[] = [];
+    const strokes: number[] = [];
+    const strokeColors: string[] = [];
     const ctxStub = new Proxy({} as Record<string, unknown>, {
       get(t, k: string) {
-        if (k === "measureText") return (s: string) => ({ width: s.length * 6 });
+        if (k === "measureText") return (s: string) => ({ width: s.length * 7 });
+        if (k === "fillText")
+          return (text: string, x: number, y: number) => {
+            texts.push({ text, x, y, font: String(t.font) });
+            calls.fillText = (calls.fillText ?? 0) + 1;
+          };
+        if (k === "stroke")
+          return () => {
+            strokes.push(Number(t.lineWidth));
+            strokeColors.push(String(t.strokeStyle));
+            calls.stroke = (calls.stroke ?? 0) + 1;
+          };
         if (k in t) return t[k];
         return (..._a: unknown[]) => {
           calls[k] = (calls[k] ?? 0) + 1;
@@ -521,7 +542,13 @@ const make = (r: Run, kind: Kind, o: { tail?: boolean; scale?: number } = {}): B
         return true;
       },
     });
-    const mkSc = (cs: Candle[], bw: number): SeriesContext => {
+    const reset = () => {
+      for (const k of Object.keys(calls)) delete calls[k];
+      texts.length = 0;
+      strokes.length = 0;
+      strokeColors.length = 0;
+    };
+    const mkSc = (cs: Candle[], bw: number, labelBoxes?: { x: number; y: number; w: number; h: number }[]): SeriesContext => {
       const lo = Math.min(...cs.map((c) => c.l));
       const hi = Math.max(...cs.map((c) => c.h));
       return {
@@ -537,26 +564,136 @@ const make = (r: Run, kind: Kind, o: { tail?: boolean; scale?: number } = {}): B
         paneHeight: 420,
         theme: { bg: "#ffffff" } as SeriesContext["theme"],
         options: { locale: "ru-RU", fontFamily: "sans-serif" } as SeriesContext["options"],
+        labelBoxes,
       } as SeriesContext;
     };
+    const rectOf = (t: { text: string; x: number; y: number }) => ({ x: t.x - (t.text.length * 7 + 18) / 2, y: t.y - 10.5, w: t.text.length * 7 + 18, h: 20 });
+    const hitRects = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
     const many = build("down", 100, [[100, 100.1, 97.9, 98], [100.4, 102.7, 100.3, 102.6]]);
     const allParams = { ...params, cpPreset: "all" };
     const r2 = computeIndicator(def, many.cs, allParams);
-    for (const k of Object.keys(calls)) delete calls[k];
-    def.drawExtra?.(mkSc(many.cs, 12), allParams, r2);
-    ok((calls.fill ?? 0) >= 1 && (calls.stroke ?? 0) >= 1, "painter: markers and the box are drawn", JSON.stringify(calls));
-    for (const k of Object.keys(calls)) delete calls[k];
-    def.drawExtra?.(mkSc(many.cs, 12), { ...allParams, cpLabels: "full", cpStrength: "number", cpBrackets: false }, r2);
-    ok((calls.fillText ?? 0) >= 1, "painter: labels are written (full names, reliability number)", JSON.stringify(calls));
-    for (const k of Object.keys(calls)) delete calls[k];
-    def.drawExtra?.(mkSc(many.cs, 12), { ...allParams, cpLabels: "none", cpStrength: "off" }, r2);
-    ok((calls.fillText ?? 0) === 0 && (calls.fill ?? 0) >= 1, "painter: «markers only» writes no text");
-    for (const k of Object.keys(calls)) delete calls[k];
-    def.drawExtra?.(mkSc(many.cs, 12), allParams, { plots: [] });
+    const nHits = (r2.extra as { hits: CandleHit[] }).hits.length;
+    ok(nHits > 5, "painter scenario: a dense run of patterns", String(nHits));
+
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), allParams, r2);
+    const fillBox = calls.fill ?? 0;
+    ok(fillBox >= nHits && (calls.arcTo ?? 0) > 0 && (calls.stroke ?? 0) >= nHits, "painter: a rounded frame with a fill and a border for every pattern", JSON.stringify(calls));
+    ok(texts.length > 0 && texts.every((t) => /^6\d\d \d+px|600 12px/.test(t.font) || t.font.startsWith("600 12px")), "painter: pill text is 12 px semi-bold", JSON.stringify(texts.slice(0, 1)));
+    ok(strokes.filter((w) => w === 1.75).length >= nHits, "painter: the frame border is 1.75 px");
+    const names = new Set(CANDLE_META.map((m) => m.name[0]));
+    ok(texts.every((t) => [...names].some((n) => t.text.startsWith(n))), "painter: default pills carry the full Russian names", JSON.stringify(texts.slice(0, 3)));
+    let clash = 0;
+    const rects = texts.map(rectOf);
+    for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) if (hitRects(rects[i], rects[j])) clash++;
+    ok(clash === 0 && texts.length >= 3, `painter: ${texts.length} pills in a dense run, none overlaps another`, `${clash} overlaps`);
+    ok(rects.every((r) => r.x >= 0 && r.y >= 0 && r.y + r.h <= 420), "painter: every pill stays inside the pane");
+
+    const spanSum = (r2.extra as { hits: CandleHit[] }).hits.reduce((a, h) => a + (h.i - h.start + 1), 0);
+    ok((calls.fillRect ?? 0) === spanSum && spanSum > nHits, `painter: every candle of every formation is tinted (${spanSum} candles for ${nHits} patterns, multi-candle ones fully)`, `${calls.fillRect}`);
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpHighlight: "frame" }, r2);
+    ok(fillBox - (calls.fill ?? 0) === nHits && (calls.fillRect ?? 0) === 0, "highlight «frame only»: no fills of the frames, no tinted candles", `${fillBox} vs ${calls.fill}`);
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpHighlight: "box" }, r2);
+    ok(fillBox - (calls.fill ?? 0) === 0 && (calls.fillRect ?? 0) === 0, "highlight «fill + frame»: frames with fills, candles left alone");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpHighlight: "paint", cpBorderWidth: 3 }, r2);
+    ok((calls.fillRect ?? 0) === spanSum && !strokes.includes(3) && fillBox - (calls.fill ?? 0) === nHits, "highlight «tinted candles»: only the candles are painted, no frames");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpBorderWidth: 3, cpFillOpacity: 0 }, r2);
+    ok(strokes.includes(3) && !strokes.includes(1.75), "border width is a parameter");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpUseAll: true, cpColAll: "#112233" }, r2);
+    ok(strokeColors.length > 0 && strokeColors.every((c) => c === "#112233" || c === "#0b0e14" || !c.startsWith("#") || c === "#112233"), "«one colour for all» overrides bullish / bearish / neutral colours", [...new Set(strokeColors)].join(","));
+    ok(strokeColors.filter((c) => c === "#112233").length >= nHits, "…every formation in that colour");
+    // neutral grey follows the theme
+    const dj = build("flat", 100, [[100, 100.8, 99.6, 100.05]]);
+    const rDj = computeIndicator(def, dj.cs, params);
+    ok((rDj.extra as { hits: CandleHit[] }).hits.some((h) => h.id === "doji"), "theme scenario: a doji");
+    const scDark = mkSc(dj.cs, 14);
+    scDark.theme = { bg: "#131722" } as SeriesContext["theme"];
+    reset();
+    def.drawFront?.(scDark, params, rDj);
+    ok(strokeColors.includes("#a3abc0"), "neutral grey: lighter on a dark chart");
+    reset();
+    def.drawFront?.(mkSc(dj.cs, 14), params, rDj);
+    ok(strokeColors.includes("#6b7385"), "neutral grey: darker on a light chart");
+    reset();
+    def.drawFront?.(mkSc(dj.cs, 14), { ...params, cpColFlat: "#ff00ff" }, rDj);
+    ok(strokeColors.includes("#ff00ff"), "a custom neutral colour is used as is");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpHighlight: "marker" }, r2);
+    ok((calls.arcTo ?? 0) === texts.length * 4 && (calls.fill ?? 0) >= nHits && texts.length > 0 && (calls.fillRect ?? 0) === 0, "highlight «marker only»: no frames, no tinted candles, a small marker per pattern, pills only for the labels");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpLabelMode: "none", cpStrength: "off" }, r2);
+    ok(texts.length === 0 && (calls.arcTo ?? 0) > 0, "label «none»: frames, no text");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpLabelMode: "short" }, r2);
+    ok(texts.length > 0 && texts.every((t) => [...CANDLE_META].some((m) => t.text.startsWith(m.short[0]))), "label «short»: the abbreviations, still in a pill");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), { ...allParams, cpStrength: "number" }, r2);
+    ok(texts.length > 0 && texts.every((t) => /· \d+/.test(t.text)), "reliability «number»: shown after the name");
+    reset();
+    def.drawFront?.(mkSc(many.cs, 12), allParams, { plots: [] });
     ok(Object.keys(calls).length === 0, "painter: no result -> draws nothing, no crash");
+
+    // one pattern: where is its box, where is the pill; a label of another indicator in the way moves the pill
+    const one = build("down", 100, [[100, 100.2, 98.8, 99], [98.9, 100.8, 98.7, 100.6]]);
+    const rOne = computeIndicator(def, one.cs, params);
+    const hitOne = (rOne.extra as { hits: CandleHit[] }).hits.find((h) => h.i === one.last) as CandleHit;
+    const scOne = mkSc(one.cs, 14);
+    const box = patternBox(scOne, hitOne);
+    ok(!!box && box.x <= scOne.x(hitOne.start) - 7 && box.x + box.w >= scOne.x(hitOne.i) + 7 && box.y <= scOne.y(Math.max(one.cs[hitOne.start].h, one.cs[hitOne.i].h)) && box.y + box.h >= scOne.y(Math.min(one.cs[hitOne.start].l, one.cs[hitOne.i].l)), "box: exactly the candles of the pattern, high to low, padded", JSON.stringify(box));
+    reset();
+    def.drawFront?.(scOne, params, rOne);
+    const free = texts.find((t) => t.text.startsWith("Бычье поглощение"));
+    ok(!!free && !!box && free.y - 10.5 >= box.y + box.h && Math.abs(free.x - box.cx) < 1, "bullish pill sits under the box, centred on it", JSON.stringify({ free, box }));
+    const bearOne = flip(one.cs);
+    const rBear = computeIndicator(def, bearOne, params);
+    const hitBear = (rBear.extra as { hits: CandleHit[] }).hits.find((h) => h.i === one.last) as CandleHit;
+    const scBear = mkSc(bearOne, 14);
+    const boxBear = patternBox(scBear, hitBear);
+    reset();
+    def.drawFront?.(scBear, params, rBear);
+    const freeBear = texts.find((t) => t.text.startsWith("Медвежье поглощение"));
+    ok(!!freeBear && !!boxBear && freeBear.y + 10.5 <= boxBear.y && Math.abs(freeBear.x - boxBear.cx) < 1, "bearish pill sits above the box, centred on it", JSON.stringify({ freeBear, boxBear }));
+    if (free) {
+      const blocker = rectOf(free);
+      const taken = [{ ...blocker }];
+      reset();
+      const scB = mkSc(one.cs, 14, taken);
+      def.drawFront?.(scB, params, rOne);
+      const moved = texts.find((t) => t.text.startsWith("Бычье поглощение"));
+      ok(!!moved && !hitRects(rectOf(moved), blocker), "pill keeps off a label of another indicator", JSON.stringify({ moved, blocker }));
+      ok(!!moved && (Math.abs(moved.y - free.y) > 1 || Math.abs(moved.x - free.x) > 1), "…by moving (sideways or further out)");
+      ok((scB.labelBoxes?.length ?? 0) === 2, "pill adds its own rectangle to the shared label list");
+      const pl = placePill(120, 200, 100, 1, 600, 420, [rectOf({ text: "x".repeat(15), x: 200, y: 119.5 })]);
+      ok(!!pl && pl.y >= 109, "placePill: a taken spot is skipped");
+      ok(placePill(120, 200, 100, 1, 600, 30, []) === null, "placePill: nowhere to put it -> null, never an overlap");
+    }
+
+    // crosshair bar: a stronger fill and a thicker frame on the overlay layer
+    reset();
+    def.drawHover?.(scOne, params, rOne, hitOne.i);
+    ok((calls.fill ?? 0) === 1 && strokes.includes(2.5), "hover: the pattern under the crosshair gets a stronger fill and a 2.5 px frame");
+    reset();
+    def.drawHover?.(scOne, params, rOne, hitOne.start);
+    ok((calls.fill ?? 0) === 1, "hover: also on the first candle of a multi-candle pattern");
+    reset();
+    def.drawHover?.(scOne, params, rOne, 3);
+    ok(Object.keys(calls).length === 0, "hover: a bar without a pattern -> nothing");
+    reset();
+    def.drawHover?.(scOne, { ...params, cpHighlight: "marker" }, rOne, hitOne.i);
+    ok(Object.keys(calls).length === 0, "hover: «marker only» draws no frame");
+
+    ok(pillTextColor("rgb(30,134,123)") === "#ffffff" && pillTextColor("#ffe082") === "#0b0e14", "pill text: white on a dark pill, near-black on a light one");
+
     let threw = false;
     try {
-      def.drawExtra?.(mkSc(many.cs, 1.5), { ...allParams, cpForming: true }, computeIndicator(def, many.cs, { ...allParams, cpForming: true }));
+      def.drawFront?.(mkSc(many.cs, 1.5), { ...allParams, cpForming: true }, computeIndicator(def, many.cs, { ...allParams, cpForming: true }));
+      def.drawHover?.(mkSc(many.cs, 1.5), allParams, r2, 5);
     } catch {
       threw = true;
     }
