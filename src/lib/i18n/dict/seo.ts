@@ -88,6 +88,7 @@ const dict: SectionDict = {
 
     // Dynamic pages (user content is inserted as-is)
     "seo.idea.notFound": "Идея не найдена",
+    "seo.idea.private": "Закрытый пост канала",
     "seo.author.notFound": "Автор не найден",
     "seo.author.title": "{name} — трейдер на FOMO",
     "seo.author.description":
@@ -171,6 +172,7 @@ const dict: SectionDict = {
     "seo.privacy.description": "How FOMO collects, uses and protects its users' personal data.",
 
     "seo.idea.notFound": "Idea not found",
+    "seo.idea.private": "Private channel post",
     "seo.author.notFound": "Author not found",
     "seo.author.title": "{name} — Trader on FOMO",
     "seo.author.description":
@@ -244,6 +246,7 @@ const dict: SectionDict = {
     "seo.privacy.description": "FOMO 如何收集、使用和保护用户的个人数据。",
 
     "seo.idea.notFound": "未找到该观点",
+    "seo.idea.private": "频道私密帖子",
     "seo.author.notFound": "未找到该作者",
     "seo.author.title": "{name} — FOMO 交易员",
     "seo.author.description": "{name}：在 FOMO 发布了 {count} 条交易观点，评分 {rating}。阅读其市场分析并关注作者。",

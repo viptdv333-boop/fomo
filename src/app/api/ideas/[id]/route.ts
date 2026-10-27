@@ -153,10 +153,13 @@ export async function GET(
     blurText = idea.content.slice(previewText.replace(/…$/, "").length, previewText.replace(/…$/, "").length + 400) || null;
   }
 
+  // A locked channel post gives away nothing about itself: no title, no preview, no tickers (the paywall shows the channel and the author).
+  const hideMeta = locked && !!idea.tariffId;
+
   return NextResponse.json({
     id: idea.id,
-    title: idea.title,
-    preview: idea.preview,
+    title: hideMeta ? "••••••••••" : idea.title,
+    preview: hideMeta ? "•••••••• •••••• ••••••••" : idea.preview,
     ...(includeContent && !locked ? { content: idea.content } : {}),
     ...(locked ? { locked: true, previewText, blurText } : {}),
     isPaid: idea.isPaid,
@@ -170,7 +173,7 @@ export async function GET(
     updatedAt: idea.updatedAt,
     moderationStatus: idea.moderationStatus,
     author: idea.author,
-    instruments: idea.instruments.map((ii) => ii.instrument),
+    instruments: hideMeta ? [] : idea.instruments.map((ii) => ii.instrument),
     voteScore,
     userVote,
   });

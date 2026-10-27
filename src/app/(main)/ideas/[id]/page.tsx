@@ -17,6 +17,7 @@ async function fetchIdea(id: string) {
         preview: true,
         isPaid: true,
         price: true,
+        tariffId: true,
         moderationStatus: true,
         createdAt: true,
         updatedAt: true,
@@ -52,6 +53,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!idea || idea.moderationStatus !== "published") {
     return {
       title: t("seo.idea.notFound"),
+      robots: { index: false, follow: false },
+    };
+  }
+  // A channel post is for the channel's subscribers: link previews (OG / Telegram / search) carry neither its title nor its preview.
+  if (idea.tariffId) {
+    return {
+      title: t("seo.idea.private"),
       robots: { index: false, follow: false },
     };
   }
@@ -99,7 +107,7 @@ export default async function IdeaPage({ params }: PageProps) {
   const { locale } = await getT();
 
   // JSON-LD Article schema — helps Yandex/Google display rich snippets
-  const jsonLd = idea && idea.moderationStatus === "published"
+  const jsonLd = idea && idea.moderationStatus === "published" && !idea.tariffId
     ? {
         "@context": "https://schema.org",
         "@type": "Article",

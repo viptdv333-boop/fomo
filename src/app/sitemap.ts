@@ -76,7 +76,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const [ideas, assets, authors] = await Promise.all([
       prisma.idea.findMany({
-        where: { moderationStatus: "published" },
+        // Channel posts (tariffId) are for the channel's subscribers: not even their title belongs in a search index.
+        where: { moderationStatus: "published", tariffId: null },
         select: { id: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 5000,

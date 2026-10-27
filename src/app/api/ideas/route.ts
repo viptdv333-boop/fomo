@@ -56,8 +56,33 @@ const ideaSelect = {
   },
 };
 
+/** Placeholders sent instead of the title / preview of a channel post the viewer may not read (the card shows them blurred, behind the lock). */
+const LOCKED_TITLE = "••••••••••";
+const LOCKED_PREVIEW = "•••••••• •••••• ••••••••";
+
+/**
+ * Which channel posts a viewer may read: everything for an admin, the viewer's own posts, posts of a channel they hold an active
+ * subscription to (any plan of it) and — as before — every channel of an author they hold an old author-wide subscription to.
+ */
+async function channelReadAccess(userId: string | undefined, role: string | undefined) {
+  const none = { all: false, tariffIds: new Set<string>(), authorIds: new Set<string>() };
+  if (!userId) return none;
+  if (role === "ADMIN" || role === "OWNER") return { ...none, all: true };
+  const subs = await prisma.subscription.findMany({
+    where: { subscriberId: userId, status: "active", endDate: { gt: new Date() } },
+    select: { authorId: true, tariffId: true },
+  });
+  const authorIds = new Set(subs.filter((s) => !s.tariffId).map((s) => s.authorId));
+  const families = await familiesFor(prisma, subs.map((s) => s.tariffId));
+  const tariffIds = new Set<string>();
+  for (const f of families.values()) for (const id of f) tariffIds.add(id);
+  return { all: false, tariffIds, authorIds };
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
+  const userId = session?.user?.id;
+  const access = await channelReadAccess(userId, (session?.user as { role?: string } | undefined)?.role);
   const { searchParams } = new URL(request.url);
 
   // Filters, sorting and pagination apply the same way whether or not the
@@ -164,6 +189,15 @@ export async function GET(request: NextRequest) {
   } else if (authorIds.length === 0 || excludeChannelPosts) {
     where.tariffId = null;
   }
+  // Everywhere except the channel's own page (where the post shows up as a locked card) a channel post the viewer may not read
+  // is not listed at all — not even its title: author profile, instrument pages, search, "my ideas" of someone else.
+  if (!channelId && !access.all) {
+    const open: Record<string, unknown>[] = [{ tariffId: null }];
+    if (userId) open.push({ authorId: userId });
+    if (access.tariffIds.size > 0) open.push({ tariffId: { in: [...access.tariffIds] } });
+    if (access.authorIds.size > 0) open.push({ authorId: { in: [...access.authorIds] } });
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: open }];
+  }
 
   // Paid/free filter
   const isPaidParam = searchParams.get("isPaid");
@@ -201,30 +235,22 @@ export async function GET(request: NextRequest) {
     prisma.idea.count({ where }),
   ]);
 
-  const userId = session?.user?.id;
-
   // Channel posts carry the trade details (entry / stop / take) in `content`,
   // which the card used to hide behind a click. Hand it to the list only for
   // viewers who can open the post — its author, or an active subscriber of
   // this channel (or a legacy author-wide subscription), same rule as
-  // /api/ideas/[id].
+  // /api/ideas/[id]. Everyone else gets a locked placeholder instead of the title / preview / tickers.
+  const canRead = (i: { tariffId: string | null; author: { id: string } }) =>
+    !i.tariffId ||
+    access.all ||
+    i.author.id === userId ||
+    access.tariffIds.has(i.tariffId) ||
+    access.authorIds.has(i.author.id);
+  const lockedIds = new Set(ideas.filter((i) => !canRead(i)).map((i) => i.id));
   const contentById = new Map<string, string>();
   const channelIdeas = ideas.filter((i) => i.tariffId);
   if (userId && channelIdeas.length > 0) {
-    const subs = await prisma.subscription.findMany({
-      where: { subscriberId: userId, status: "active", endDate: { gt: new Date() } },
-      select: { authorId: true, tariffId: true },
-    });
-    const families = await familiesFor(prisma, channelIdeas.map((i) => i.tariffId));
-    const readable = channelIdeas.filter(
-      (i) =>
-        i.author.id === userId ||
-        subs.some(
-          (s) =>
-            s.authorId === i.author.id &&
-            (s.tariffId === null || s.tariffId === i.tariffId || (families.get(i.tariffId as string)?.has(s.tariffId) ?? false))
-        )
-    );
+    const readable = channelIdeas.filter(canRead);
     if (readable.length > 0) {
       const rows = await prisma.idea.findMany({
         where: { id: { in: readable.map((i) => i.id) } },
@@ -238,8 +264,8 @@ export async function GET(request: NextRequest) {
     data: ideas.map((idea) => ({
       ...(contentById.has(idea.id) ? { content: contentById.get(idea.id) } : {}),
       id: idea.id,
-      title: idea.title,
-      preview: idea.preview,
+      title: lockedIds.has(idea.id) ? LOCKED_TITLE : idea.title,
+      preview: lockedIds.has(idea.id) ? LOCKED_PREVIEW : idea.preview,
       isPaid: idea.isPaid,
       price: idea.price,
       acceptDonations: idea.acceptDonations,
@@ -250,7 +276,7 @@ export async function GET(request: NextRequest) {
       moderationStatus: idea.moderationStatus,
       channelId: idea.tariffId,
       author: idea.author,
-      instruments: idea.instruments.map((ii) => ii.instrument),
+      instruments: lockedIds.has(idea.id) ? [] : idea.instruments.map((ii) => ii.instrument),
       voteScore: idea.votes.reduce((sum, v) => sum + v.value, 0),
       userVote: userId ? idea.votes.find((v) => v.userId === userId)?.value ?? null : null,
     })),
