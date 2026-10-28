@@ -163,6 +163,8 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: APP_UI_BOOT_SCRIPT }} />
         {/* the dictionary of the page's language: a static script cached for a year (and by the service worker) instead of ~280 KB inside every HTML document; must run before hydration, so no async / defer */}
         <script src={dictScriptUrl(locale)} />
+        {/* the Google tag sits in the server-rendered <head>: Search Console verifies fomo.spot by finding it there (see GoogleAnalytics.tsx) */}
+        {!TERMINAL && <GoogleAnalytics />}
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
@@ -174,7 +176,6 @@ export default async function RootLayout({
             <IosInstallModal />
             {/* the counters belong to fomo.spot: the terminal instance would write its visits (and Webvisor) into them */}
             {!TERMINAL && <YandexMetrika />}
-            {!TERMINAL && <GoogleAnalytics />}
             {children}
             <CookieBanner />
           </I18nProvider>

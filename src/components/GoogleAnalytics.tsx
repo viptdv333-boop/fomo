@@ -1,48 +1,28 @@
-"use client";
-
-import Script from "next/script";
-import { useEffect, useState } from "react";
+import { getLocale } from "@/lib/i18n/server";
 
 const MEASUREMENT_ID = "G-Q8S28FMD9K";
 
-// googletagmanager.com is blocked in mainland China: the loader hangs until it
-// times out and slows the page down, so skip GA there.
-function isChina() {
-  try {
-    const lang = (navigator.language || "").toLowerCase();
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    return lang.startsWith("zh") || /^Asia\/(Shanghai|Chongqing|Harbin|Urumqi|Macau|Hong_Kong)$/.test(tz);
-  } catch {
-    return false;
-  }
-}
-
 /**
- * No manual route tracker here, unlike YandexMetrika: GA4's enhanced
- * measurement already fires page_view on browser history changes, so App Router
- * navigations are counted. Adding an explicit page_view on top would double
- * every navigation.
+ * Rendered on the SERVER, as plain <script> tags in the <head> of the HTML document. It used to be a client component that switched
+ * itself on after hydration: the gtag snippet was then missing from the HTML Google fetches, and Search Console (which verified
+ * fomo.spot through this very snippet) dropped the site from the verified properties.
+ *
+ * Skipped for the Chinese version of the site: googletagmanager.com is blocked in mainland China, the loader hangs until it times out.
+ *
+ * No manual route tracker here, unlike YandexMetrika: GA4's enhanced measurement already fires page_view on browser history changes,
+ * so App Router navigations are counted. Adding an explicit page_view on top would double every navigation.
  */
-export default function GoogleAnalytics() {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => setEnabled(!isChina()), []);
-  if (!enabled) return null;
+export default async function GoogleAnalytics() {
+  if ((await getLocale()) === "cn") return null;
 
   return (
     <>
-      <Script
-        id="ga-loader"
-        strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`}
+      <script async src={`https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`} />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${MEASUREMENT_ID}');`,
+        }}
       />
-      <Script id="google-analytics" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${MEASUREMENT_ID}');
-        `}
-      </Script>
     </>
   );
 }
