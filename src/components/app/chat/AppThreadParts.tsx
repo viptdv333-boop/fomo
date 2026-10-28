@@ -89,6 +89,13 @@ export function Bubble({
           if (typeof window !== "undefined" && window.getSelection()?.toString()) return; // selecting text, not tapping
           onTap();
         }}
+        // Right mouse button (PC app / browser) opens the same sheet as a tap: reply, reactions, copy, …
+        onContextMenu={(e) => {
+          if (m.deleted || m.pending || editing || interactive(e.target)) return;
+          if (typeof window !== "undefined" && window.getSelection()?.toString()) return; // selected text keeps the native «Copy» menu
+          e.preventDefault();
+          onTap();
+        }}
       >
         {m.who &&
           (onAuthor && m.authorId ? (
