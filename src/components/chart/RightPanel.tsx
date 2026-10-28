@@ -932,9 +932,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
                 <OrderBookPanel inst={selected} visible={visible && tab === "orderbook"} last={quote?.price} dayChange={quote?.change} panelWidth={widthPx} onPanelWidth={(w) => setWidth(w)} />
               )}
               {tab === "algo" && <AlgoPanel inst={selected} visible={visible && tab === "algo"} />}
-              {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}
-              {tab !== "calendar" && <div className="shrink-0 border-t border-[var(--tv3-hair2)] px-3.5 pb-2.5 pt-2 text-[11px] text-[var(--tv3-muted)]">{t("p3.footer")}</div>}
-            </>
+              {tab === "calendar" && <CalendarPanel zone={calendarZone ?? "UTC"} visible={visible && tab === "calendar"} />}            </>
           )}
         </div>
 
