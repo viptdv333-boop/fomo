@@ -1209,6 +1209,22 @@ export class ChartEngine {
       ctx.restore();
     }
 
+    // brand mark «fomo.spot»: always on (also when the symbol watermark is off), drawn into the chart bitmap so it stays visible
+    // in a screenshot someone posts; faint enough not to disturb reading, noticeable enough to make people look the site up
+    if (plotW >= 260 && main.height >= 150) {
+      ctx.save();
+      const size = Math.max(14, Math.min(34, plotW / 22));
+      const symbolWm = this.opts.showWatermark && !!this.opts.symbolLabel;
+      const bigSize = Math.max(28, Math.min(84, plotW / 9));
+      ctx.globalAlpha = 0.17;
+      ctx.fillStyle = th.text;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `700 ${size}px ${ff}`;
+      ctx.fillText("fomo.spot", plotW / 2, main.height / 2 + (symbolWm ? bigSize * 1.2 : 0));
+      ctx.restore();
+    }
+
     // time ticks (shared by every pane)
     const timeTicks = this.computeTimeTicks(from, to);
 
