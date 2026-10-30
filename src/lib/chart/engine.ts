@@ -2164,32 +2164,22 @@ export class ChartEngine {
     if (tags.length === 0) return;
     const fs = this.opts.scaleFontSize;
     const bodyH = Math.max(20, fs + 8);
-    const capFs = Math.max(9, fs - 2);
-    const capH = capFs + 4;
+    const capFs = Math.max(10, fs - 1);
     const extraH = Math.max(16, fs + 4);
     const x0 = this.axisEdge() + 1;
     const w = this.axisW - 2;
     const ff = this.opts.fontFamily;
     ctx.save();
-    ctx.font = `600 ${capFs}px ${ff}`;
-    // a caption is shrunk (down to 8 px) before it is cut with an ellipsis
-    const fitCaption = (text: string, maxW: number): { text: string; size: number } => {
-      for (let size = capFs; size >= 8; size--) {
-        ctx.font = `600 ${size}px ${ff}`;
-        if (ctx.measureText(text).width <= maxW) return { text, size };
-      }
-      let t = text;
-      while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
-      return { text: t + "…", size: 8 };
-    };
     for (const pane of new Set(tags.map((t) => t.pane))) {
       const mine = tags.filter((t) => t.pane === pane);
+      // TradingView style: the price tag is one row on the scale; what it is (symbol, indicator, alert...) is a chip of the same colour
+      // to the LEFT of it, over the plot. So no caption row: tags only keep off each other by the height of the body (+ the countdown row).
       const blocks: TagBlock[] = mine.map((t) => ({
         id: t.id,
         prio: t.prio,
         y: pane.top + t.y,
         bodyH,
-        capH: t.caption ? capH : 0,
+        capH: 0,
         extraH: t.extra ? extraH : 0,
         lo: pane.top,
         hi: pane.top + pane.height,
@@ -2198,29 +2188,44 @@ export class ChartEngine {
       for (const t of mine) {
         const pl = placed.get(t.id);
         if (!pl) continue;
-        const hasCap = pl.caption && !!t.caption;
         const top = pl.top;
-        const height = (hasCap ? capH : 0) + bodyH + (t.extra ? extraH : 0);
+        const height = bodyH + (t.extra ? extraH : 0);
+        const rr = (x: number, y: number, ww: number, hh: number, r: number | number[]) => {
+          if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, ww, hh, r);
+          else ctx.rect(x, y, ww, hh);
+        };
+        // the name chip: its right edge touches the tag, its left edge is where the text ends (never farther than the plot allows)
+        if (t.caption) {
+          ctx.font = `600 ${capFs}px ${ff}`;
+          const maxW = Math.max(30, Math.min(x0 - 6, this.plotW() * 0.6));
+          let text = t.caption;
+          if (ctx.measureText(text).width + 12 > maxW) {
+            while (text.length > 1 && ctx.measureText(text + "…").width + 12 > maxW) text = text.slice(0, -1);
+            text += "…";
+          }
+          const chipW = Math.ceil(ctx.measureText(text).width) + 12;
+          ctx.beginPath();
+          rr(x0 - chipW, top, chipW + 6, bodyH, [5, 0, 0, 5]);
+          ctx.fillStyle = t.bg;
+          ctx.fill();
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = t.fg;
+          ctx.fillText(text, x0 - chipW + 6, top + bodyH / 2 + 0.5);
+        }
         ctx.save();
         ctx.beginPath();
-        if (typeof ctx.roundRect === "function") ctx.roundRect(x0, top, w, height, 5);
-        else ctx.rect(x0, top, w, height);
+        rr(x0, top, w, height, 5);
         ctx.fillStyle = t.bg;
         ctx.fill();
         ctx.clip();
-        // the rows around the price are a shade darker: they say what the tag is, the middle one is the price
+        // the row below the price (the countdown to the bar close) is a shade darker
         ctx.fillStyle = "rgba(0,0,0,0.2)";
-        if (hasCap) ctx.fillRect(x0, top, w, capH);
         if (t.extra) ctx.fillRect(x0, pl.bodyTop + bodyH, w, extraH);
         ctx.restore();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = t.fg;
-        if (hasCap) {
-          const c = fitCaption(t.caption!, w - 6);
-          ctx.font = `600 ${c.size}px ${ff}`;
-          ctx.fillText(c.text, x0 + w / 2, top + capH / 2 + 0.5);
-        }
         ctx.font = `600 ${fs}px ${ff}`;
         const cy = pl.bodyTop + bodyH / 2 + 0.5;
         if (t.icon === "bell") {
