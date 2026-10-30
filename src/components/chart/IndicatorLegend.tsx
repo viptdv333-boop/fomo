@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
@@ -45,7 +45,10 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const [editScript, setEditScript] = useState<string | null>(null);
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [tops, setTops] = useState<Record<string, number>>({});
+  /* where the «more» menu of a row of the (scrolling) main list opens: in the coordinates of mainRef, outside the clipping of the scroll box */
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
 
   useEffect(() => setCollapsed(readCollapsed()), []);
@@ -197,7 +200,73 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const btn =
     "tv3-press flex h-[21px] w-[21px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
 
-  const renderRow = (uid: string, ownPane = false) => {
+  const renderMenu = (uid: string, pos: string, style?: CSSProperties) => {
+    const info = controller.legendInfo(uid, index);
+    const inst = list.find((i) => i.uid === uid);
+    if (!info || !inst) return null;
+    const move = controller.canMove(uid);
+    const inOwn = info.pane !== "main";
+    return (
+      <div role="menu" className={`${pos} w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]`} style={style}>
+        <MenuItem
+          icon={IND_ICONS.gear(16)}
+          label={t("ind2.lg.settings")}
+          onClick={() => {
+            setMenuUid(null);
+            setSettingsUid(uid);
+          }}
+        />
+        <MenuItem
+          icon={IND_ICONS.copy(16)}
+          label={t("ind2.lg.clone")}
+          onClick={() => {
+            setMenuUid(null);
+            controller.clone(uid);
+          }}
+        />
+        {move && (
+          <MenuItem
+            icon={IND_ICONS.pane(16)}
+            label={inOwn ? t("ind2.lg.moveMain") : t("ind2.lg.moveOwn")}
+            onClick={() => {
+              setMenuUid(null);
+              controller.move(uid, inOwn ? "main" : "own");
+            }}
+          />
+        )}
+        {getIndicatorDef(inst.id)?.script && (
+          <MenuItem
+            icon={IND_ICONS.template(16)}
+            label={t("isc.editSource")}
+            onClick={() => {
+              setMenuUid(null);
+              setEditScript(inst.id);
+            }}
+          />
+        )}
+        <MenuItem
+          icon={info.visible ? IND_ICONS.eyeOff(16) : IND_ICONS.eye(16)}
+          label={info.visible ? t("ind.hide") : t("ind.show")}
+          onClick={() => {
+            setMenuUid(null);
+            controller.update(uid, { visible: !info.visible });
+          }}
+        />
+        <div className="my-1 h-px bg-[var(--tv3-hair)]" />
+        <MenuItem
+          icon={IND_ICONS.trash(16)}
+          label={t("ind.remove")}
+          danger
+          onClick={() => {
+            setMenuUid(null);
+            controller.remove(uid);
+          }}
+        />
+      </div>
+    );
+  };
+
+  const renderRow = (uid: string, ownPane = false, inScroll = false) => {
     const info = controller.legendInfo(uid, index);
     const inst = list.find((i) => i.uid === uid);
     if (!info || !inst) return null;
@@ -206,7 +275,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     const move = controller.canMove(uid);
     const inOwn = info.pane !== "main";
     return (
-      <div key={uid} className="relative pointer-events-auto">
+      <div key={uid} data-lg-row className="relative pointer-events-auto">
         <div
           className={`group inline-flex max-w-full flex-wrap items-center gap-x-1.5 rounded-lg px-2 py-[3px] text-[13px] leading-[18px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] ${dim ? "opacity-55" : ""}`}
           onClick={(e) => {
@@ -249,7 +318,14 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               title={t("ind2.lg.more")}
               aria-label={t("ind2.lg.more")}
               aria-expanded={menuUid === uid}
-              onClick={() => setMenuUid((m) => (m === uid ? null : uid))}
+              onClick={(e) => {
+                if (inScroll) {
+                  const wr = mainRef.current?.getBoundingClientRect();
+                  const rr = e.currentTarget.closest("[data-lg-row]")?.getBoundingClientRect();
+                  if (wr && rr) setMenuPos({ left: rr.left - wr.left, top: rr.bottom - wr.top + 4 });
+                }
+                setMenuUid((m) => (m === uid ? null : uid));
+              }}
             >
               {IND_ICONS.more(16)}
             </button>
@@ -258,76 +334,21 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             </button>
           </span>
         </div>
-        {menuUid === uid && (
-          <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]">
-            <MenuItem
-              icon={IND_ICONS.gear(16)}
-              label={t("ind2.lg.settings")}
-              onClick={() => {
-                setMenuUid(null);
-                setSettingsUid(uid);
-              }}
-            />
-            <MenuItem
-              icon={IND_ICONS.copy(16)}
-              label={t("ind2.lg.clone")}
-              onClick={() => {
-                setMenuUid(null);
-                controller.clone(uid);
-              }}
-            />
-            {move && (
-              <MenuItem
-                icon={IND_ICONS.pane(16)}
-                label={inOwn ? t("ind2.lg.moveMain") : t("ind2.lg.moveOwn")}
-                onClick={() => {
-                  setMenuUid(null);
-                  controller.move(uid, inOwn ? "main" : "own");
-                }}
-              />
-            )}
-            {getIndicatorDef(inst.id)?.script && (
-              <MenuItem
-                icon={IND_ICONS.template(16)}
-                label={t("isc.editSource")}
-                onClick={() => {
-                  setMenuUid(null);
-                  setEditScript(inst.id);
-                }}
-              />
-            )}
-            <MenuItem
-              icon={info.visible ? IND_ICONS.eyeOff(16) : IND_ICONS.eye(16)}
-              label={info.visible ? t("ind.hide") : t("ind.show")}
-              onClick={() => {
-                setMenuUid(null);
-                controller.update(uid, { visible: !info.visible });
-              }}
-            />
-            <div className="my-1 h-px bg-[var(--tv3-hair)]" />
-            <MenuItem
-              icon={IND_ICONS.trash(16)}
-              label={t("ind.remove")}
-              danger
-              onClick={() => {
-                setMenuUid(null);
-                controller.remove(uid);
-              }}
-            />
-          </div>
-        )}
+        {menuUid === uid && !inScroll && renderMenu(uid, "absolute left-0 top-full z-30 mt-1")}
       </div>
     );
   };
 
   const mainUids = groups.get("main") ?? [];
+  const subTops = Object.values(tops);
+  const subTop = subTops.length > 0 ? Math.min(...subTops) : undefined;
   const others = Array.from(groups.entries()).filter(([pid]) => pid !== "main");
 
   return (
     <>
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
         {mainUids.length > 0 && (
-          <div className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop }}>
+          <div ref={mainRef} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
             {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
             <div className="pointer-events-auto flex items-center">
               <button
@@ -344,7 +365,17 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 <span>{t("v3.indicators", { n: list.length })}</span>
               </button>
             </div>
-            {!collapsed && <div className="flex flex-col items-start rounded-xl bg-[var(--tv3-glass)] py-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]">{mainUids.map((u) => renderRow(u))}</div>}
+            {/* many indicators: the list scrolls inside the chart (it stops above the time scale / the first sub-pane) instead of running off the screen */}
+            {!collapsed && (
+              <div
+                className="pointer-events-auto flex min-h-0 max-w-full flex-col items-start overflow-y-auto overscroll-contain rounded-xl bg-[var(--tv3-glass)] py-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]"
+                style={{ maxHeight: subTop !== undefined ? Math.max(120, subTop - mainTop - 44) : undefined, scrollbarWidth: "thin" }}
+                onScroll={() => menuUid && setMenuUid(null)}
+              >
+                {mainUids.map((u) => renderRow(u, false, true))}
+              </div>
+            )}
+            {!collapsed && menuUid && menuPos && mainUids.includes(menuUid) && renderMenu(menuUid, "absolute z-30", { left: menuPos.left, top: menuPos.top })}
           </div>
         )}
         {others.map(([pid, uids]) =>
