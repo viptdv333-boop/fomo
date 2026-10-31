@@ -432,8 +432,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(timer);
     };
   }, [indicators]);
-  const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
+  const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && !appPage && !appFull && engineReady && !winBroken);
   const [winCount, setWinCount] = useState(0);
+  /** «Платина · 15м»: the asset (its display name) and the timeframe of the price chart, live. */
+  const mainTitle = `${instName(instrument, t)} · ${formatInterval(shownInterval(prefs.interval, source), t)}`;
   useEffect(() => {
     const read = () => setWinCount(indicators.windowCount());
     read();
@@ -1303,7 +1305,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const snapshotUrl = (): string | undefined => {
     const eng = engineRef.current;
     if (!eng) return undefined;
-    return indicators.windowsOn() ? composeWindows(eng, indicators.windowStack()) : eng.screenshot();
+    const stack = indicators.windowsOn() ? indicators.windowStack() : [];
+    return stack.length > 1 ? composeWindows(eng, stack) : eng.screenshot();
   };
 
   const screenshot = () => {
@@ -1771,13 +1774,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             id="main"
             controller={indicators}
             rect={winGeo.px.main ?? null}
+            hidden={!!winGeo.ws && !winGeo.px.main}
             size={winGeo.size}
-            z={winGeo.ws?.wins[0]?.z ?? 1}
+            z={winGeo.ws?.wins.find((w) => w.id === "main")?.z ?? 1}
             maximized={winGeo.maxId === "main"}
             minimized={winGeo.minIds.includes("main")}
             restRect={winGeo.full.main}
             onFocus={focusChart}
-            title={`${instrument.ticker} · ${formatInterval(shownInterval(prefs.interval, source), t)}`}
+            title={<span className="truncate">{mainTitle}</span>}
+            titleText={mainTitle}
+            onClose={() => indicators.closeWindow("main")}
+            closeTitle={t("win.closeMain")}
             actions={null}
           >
           <div className="group relative flex-1 min-h-0">

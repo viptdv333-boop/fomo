@@ -7,6 +7,7 @@
    Exit code: 0 all passed, 1 at least one FAIL. */
 
 import {
+  DEFAULT_WORKSPACE,
   MAIN_ID,
   MAX_CHARTS,
   MAX_DEPTH,
@@ -27,6 +28,7 @@ import {
   hasWindow,
   indIds,
   isActive,
+  isDefault,
   makeChart,
   makeIndicator,
   migrateTree,
@@ -96,7 +98,14 @@ function main() {
   ok(addWindow(a1!.ws, "w1")!.id === "w2" && addWindow(a1!.ws, "w5")!.id === "w5", "add: a free wanted id is used, a taken one is not");
 
   /* ───────────── close ───────────── */
-  ok(closeWindow(null, "w1") === null && closeWindow(a1!.ws, MAIN_ID) === a1!.ws && closeWindow(a1!.ws, "zz") === a1!.ws, "close: nothing to close / the chart cannot be closed / unknown id");
+  ok(closeWindow(null, "w1") === null && closeWindow(a1!.ws, "zz") === a1!.ws, "close: nothing to close / unknown id");
+  const noMain = closeWindow(a1!.ws, MAIN_ID)!;
+  ok(!hasWindow(noMain, MAIN_ID) && eq(extraIds(noMain), ["w1"]) && noMain.wins.length === 1 && noMain.wins[0].z === 1, "close: the price chart can be closed too (the others stay)");
+  const empty = closeWindow(null, MAIN_ID)!;
+  ok(!!empty && empty.wins.length === 0 && !isDefault(empty) && isDefault(null) && isDefault(DEFAULT_WORKSPACE), "close: everything closed is an empty workspace, not the default look");
+  ok(closeWindow(empty, MAIN_ID) === empty && closeWindow(empty, "w1") === empty, "close: nothing left to close");
+  const mSmall = setRect(a1!.ws, MAIN_ID, { x: 0, y: 0, w: 0.5, h: 0.5 })!;
+  ok(!isDefault(mSmall) && !isDefault(closeWindow(mSmall, "w1")) && isDefault(closeWindow(a1!.ws, "w1")), "default look: one price chart filling the area; a moved one is not the default");
   ok(closeWindow(a1!.ws, "w1") === null, "close the last window: back to the classic chart (null)");
   const c2 = closeWindow(a2!.ws, "w1");
   ok(!!c2 && eq(extraIds(c2), ["w2"]) && isActive(c2), "close one of two");
@@ -164,20 +173,28 @@ function main() {
     ["array", [1, 2]],
     ["no wins", {}],
     ["wins not an array", { wins: {} }],
-    ["wins of junk", { wins: [1, null, "x", [], {}] }],
-    ["only the chart", { wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1 }] }],
-    ["bad ids", { wins: [{ id: "W 1!", kind: "ind", x: 0, y: 0, w: 0.5, h: 0.5 }, { id: 5, kind: "ind" }] }],
-    ["unknown kind", { wins: [{ id: "w1", kind: "grid", x: 0, y: 0, w: 0.5, h: 0.5 }] }],
+    ["only the chart (the default look)", { wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1 }] }],
   ];
   for (const [label, v] of junk) ok(parseWorkspace(v) === null, `parse: ${label} -> null`, JSON.stringify(parseWorkspace(v)));
+  // a list with nothing valid in it is an EMPTY workspace (everything closed), not the default
+  for (const [label, v] of [
+    ["junk entries", { wins: [1, null, "x", [], {}] }],
+    ["bad ids", { wins: [{ id: "W 1!", kind: "ind", x: 0, y: 0, w: 0.5, h: 0.5 }, { id: 5, kind: "ind" }] }],
+    ["unknown kind", { wins: [{ id: "w1", kind: "grid", x: 0, y: 0, w: 0.5, h: 0.5 }] }],
+    ["an empty list", { wins: [] }],
+  ] as [string, unknown][]) {
+    const e = parseWorkspace(v);
+    ok(!!e && e.wins.length === 0, `parse: ${label} -> an empty workspace`, JSON.stringify(e));
+  }
+  ok(eq(parseWorkspace(JSON.parse(JSON.stringify(serializeWorkspace(empty)))), empty), "an empty workspace survives serialise -> parse");
   const p1 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0.2, y: 0.2, w: 0.4, h: 0.4, z: 3 }] });
-  ok(!!p1 && p1.wins[0].id === MAIN_ID && p1.wins[0].w === 1 && p1.wins.length === 2, "parse: a missing price chart is put back, filling the area");
+  ok(!!p1 && p1.wins.length === 1 && p1.wins[0].id === "w1" && !hasWindow(p1, MAIN_ID), "parse: no price chart in the list = it was closed");
   const p2 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0.2, y: 0.2, w: 0.4, h: 0.4 }, { id: "w1", kind: "ind", x: 0.5, y: 0.5, w: 0.4, h: 0.4 }, { id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1 }, { id: "main", kind: "chart", x: 0.4, y: 0.4, w: 0.1, h: 0.1 }] });
-  ok(!!p2 && p2.wins.length === 2 && p2.wins[1].x === 0.2 && p2.wins[0].w === 1, "parse: a repeated id is dropped (the first one wins)");
+  ok(!!p2 && p2.wins.length === 2 && p2.wins.find((w) => w.id === "w1")!.x === 0.2 && p2.wins.find((w) => w.id === MAIN_ID)!.w === 1, "parse: a repeated id is dropped (the first one wins)");
   const p3 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 9, y: -9, w: 7, h: 0, z: NaN }, { id: "w2", kind: "ind", x: "a", y: null, w: NaN, h: {}, z: "q" }] });
   ok(!!p3 && p3.wins.every((w) => frac(w) && [w.x, w.y, w.w, w.h, w.z].every(Number.isFinite) && w.w >= 0.05 && w.h >= 0.05), "parse: wild numbers are pulled inside, never NaN", JSON.stringify(p3));
   const p4 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: 50 }, { id: "w2", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: 50 }, { id: "w3", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: -4 }] });
-  ok(!!p4 && eq(p4.wins.map((w) => w.z).sort(), [1, 2, 3, 4]) && p4.wins.find((w) => w.id === "w3")!.z < p4.wins.find((w) => w.id === "w1")!.z, "parse: z-orders become 1..n and keep their order", JSON.stringify(p4?.wins.map((w) => [w.id, w.z])));
+  ok(!!p4 && eq(p4.wins.map((w) => w.z).sort(), [1, 2, 3]) && p4.wins.find((w) => w.id === "w3")!.z < p4.wins.find((w) => w.id === "w1")!.z, "parse: z-orders become 1..n and keep their order", JSON.stringify(p4?.wins.map((w) => [w.id, w.z])));
   const hugeList = { wins: Array.from({ length: 40 }, (_, i) => ({ id: `w${i + 1}`, kind: "ind", x: 0.1, y: 0.1, w: 0.3, h: 0.3, z: i })) };
   ok(extraIds(parseWorkspace(hugeList)).length === MAX_WINDOWS, "parse: more windows than allowed are cut");
   let proto: unknown = null;
@@ -259,6 +276,7 @@ function main() {
     }
     cs: unknown[] = [];
     calls = 0;
+    opts = { scaleSymbol: "SBER", symbolLabel: "Sberbank", intervalLabel: "2h" };
     addViewListener() {
       return () => {};
     }
@@ -286,7 +304,7 @@ function main() {
     c.attach(asEng(e));
     c.add("rsi");
     c.add("macd");
-    ok(c.getWorkspace() === null && !c.windowsOn() && saved(c).length === 2 && !JSON.stringify(saved(c)).includes('"ws"') && !JSON.stringify(saved(c)).includes('"w"'), "controller: no windows -> the saved list is exactly as before");
+    ok(isDefault(c.getWorkspace()) && !c.windowsOn() && saved(c).length === 2 && !JSON.stringify(saved(c)).includes('"ws"') && !JSON.stringify(saved(c)).includes('"w"'), "controller: no windows -> the saved list is exactly as before");
     ok(c.paneOf(c.list()[0].uid).startsWith("ind-"), "controller: own panes as before");
 
     // 2) windows are not available yet (narrow / not measured): the indicator stays in the stack even if it is assigned
@@ -352,10 +370,10 @@ function main() {
     // 8) close a window: its indicators return to the chart
     c2.closeWindow("w2");
     ok(!c2.windowIds().includes("w2") && c2.windowOf(u2) === undefined && e2.series.has(u2) && !win4.series.has(u2), "controller: closing a window sends its indicators back to the chart");
-    c2.closeWindow(MAIN_ID);
-    ok(c2.getWorkspace() !== null, "controller: the chart cannot be closed");
+    c2.closeWindow("zz");
+    ok(!isDefault(c2.getWorkspace()), "controller: an unknown window changes nothing");
     c2.resetWindows();
-    ok(c2.getWorkspace() === null && !c2.windowsOn() && saved(c2).length === 2 && !JSON.stringify(saved(c2)).includes('"w"'), "controller: reset layout -> exactly the old saved format");
+    ok(isDefault(c2.getWorkspace()) && saved(c2).length === 2 && !JSON.stringify(saved(c2)).includes('"w"'), "controller: reset layout -> exactly the old saved format");
 
     // 9) moving / resizing / raising: only the end of a drag is saved
     const e3 = new Stub();
@@ -464,10 +482,10 @@ function main() {
     // the sentinel is not an indicator and is skipped by code that knows only indicators
     const c = new IndicatorsController();
     c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { ws: goodWs }]));
-    ok(c.list().length === 1 && c.getWorkspace() !== null, "restore: the workspace entry is not an indicator");
+    ok(c.list().length === 1 && !isDefault(c.getWorkspace()), "restore: the workspace entry is not an indicator");
     // an older list (no workspace) replaces the layout of a live chart
     c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }]));
-    ok(c.getWorkspace() === null, "restore: a list without a workspace clears the windows (a template without windows)");
+    ok(isDefault(c.getWorkspace()), "restore: a list without a workspace clears the windows (a template without windows)");
     c.restore("not json");
     ok(c.list().length === 1, "restore: junk text changes nothing");
     // too many windows in the stored data
@@ -486,7 +504,7 @@ function main() {
     const migrated = JSON.parse(old.serialize()).find((x: { ws?: unknown }) => x.ws);
     ok(!!migrated && !JSON.stringify(JSON.parse(old.serialize())).includes('"lay"'), "restore: ... and is saved in the new form from now on");
     old.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { lay: "junk" }]));
-    ok(old.getWorkspace() === null && old.list().length === 1, "restore: a broken old layout is ignored");
+    ok(isDefault(old.getWorkspace()) && old.list().length === 1, "restore: a broken old layout is ignored");
   }
 
   /* ───────────── what a window is: chart / indicator, and which chart an indicator window follows ───────────── */
@@ -509,6 +527,20 @@ function main() {
     ok(!!over && makeChart(over.ws, "wzz", "moex", "SBER") === over.ws, "chart: the limit holds for a new window too");
     ok(!!over && makeIndicator(over.ws, "wzz") !== over.ws, "chart: ... but an indicator window can still be made");
     ok(eq(chartIds(c1!.ws), [MAIN_ID, "cabc12"]) && eq(chartIds(null), [MAIN_ID]), "chartIds: the price chart first, then the chart windows");
+
+    // the price chart was closed: «Chart» in a new window brings THAT window back, in the place of the new one
+    const closedMain = closeWindow(a1!.ws, MAIN_ID)!;
+    const nOnClosed = addWindow(closedMain, "w2")!;
+    const back = makeChart(nOnClosed.ws, "w2", "moex", "GAZP")!;
+    const bm = back.wins.find((w) => w.id === MAIN_ID)!;
+    const old = nOnClosed.ws.wins.find((w) => w.id === "w2")!;
+    ok(!hasWindow(back, "w2") && bm.kind === "chart" && bm.src === undefined && bm.x === old.x && bm.y === old.y && bm.w === old.w && bm.h === old.h && bm.z === old.z, "chart: with the price chart closed, 'Chart' reopens the price chart window where the new window was");
+    const nOnOpen = addWindow(a1!.ws, "w2")!;
+    const normal = makeChart(nOnOpen.ws, "w2", "moex", "GAZP")!;
+    ok(normal.wins.find((w) => w.id === "w2")!.kind === "chart" && normal.wins.find((w) => w.id === "w2")!.tk === "GAZP", "chart: with the price chart open it is a normal chart window");
+    ok(makeIndicator(nOnClosed.ws, "w2")!.wins.find((w) => w.id === "w2")!.kind === "ind" && !hasWindow(makeIndicator(nOnClosed.ws, "w2"), MAIN_ID), "indicator: choosing 'Indicator' does not bring the price chart back");
+    const emptyAdd = addWindow(empty)!;
+    ok(emptyAdd.id === "w1" && emptyAdd.ws.wins.length === 1 && emptyAdd.ws.wins[0].link === MAIN_ID, "a window can be added to an empty workspace (it follows the price chart, which is still there behind the toolbar)");
 
     // indicator windows and their link
     const i1 = makeIndicator(c1!.ws, "cabc12")!;
@@ -652,7 +684,56 @@ function main() {
     c.toggleMaximize("zz");
     ok(c.maximizedId() === null, "controller: an unknown window is not maximized");
     c.resetWindows();
-    ok(c.getWorkspace() === null && c.maximizedId() === null && c.getWinState().min === "", "controller: reset layout clears everything");
+    ok(isDefault(c.getWorkspace()) && c.maximizedId() === null && c.getWinState().min === "", "controller: reset layout clears everything");
+  }
+
+  /* ───────────── the price chart's window can be closed; titles ───────────── */
+  {
+    const e = new Stub();
+    const c = new IndicatorsController();
+    c.attach(asEng(e));
+    c.setWindowsAvailable(true);
+    ok(isDefault(c.getWorkspace()) && c.getWorkspace().wins.length === 1 && c.windowsOn(), "default: on a wide screen the price chart is one window filling the area, nothing stored");
+    ok(saved(c).length === 0, "default: nothing stored");
+    c.toggleMaximize(MAIN_ID);
+    c.toggleMinimize(MAIN_ID);
+    ok(c.getWinState().min === MAIN_ID && c.maximizedId() === null, "default: the price chart window can be collapsed");
+    c.toggleMinimize(MAIN_ID);
+    c.closeWindow(MAIN_ID);
+    ok(c.getWorkspace().wins.length === 0 && !isDefault(c.getWorkspace()), "closed: the price chart window is gone, the workspace is empty");
+    const closedJson = c.serialize();
+    ok(entry(c, 0).ws !== undefined && JSON.stringify(entry(c, 0).ws).includes('"wins":[]'), "closed: 'all closed' is stored (an empty list of windows)");
+    const c2 = new IndicatorsController();
+    c2.restore(closedJson);
+    ok(c2.getWorkspace().wins.length === 0 && c2.serialize() === closedJson, "closed: it survives save -> restore (a missing key means the default, an empty list means everything closed)");
+    c2.restore("[]");
+    ok(isDefault(c2.getWorkspace()), "closed: a list without the key is the default look again");
+    // the price chart's engine is still there for the indicator windows that follow it
+    const nid = c.addWindow();
+    ok(c.getWorkspace().wins.length === 1 && c.getWorkspace().wins[0].kind === "new" && c.chartEngine(MAIN_ID) === (e as unknown as ChartEngine), "closed: a window can still be added, the price chart (behind the toolbar) stays alive");
+    c.makeChart(nid, "moex", "SBER");
+    const back = c.getWorkspace();
+    ok(back.wins.length === 1 && back.wins[0].id === MAIN_ID && back.wins[0].kind === "chart", "closed: 'Chart' in a new window brings the price chart window back");
+    ok(c.windowCount() === 0, "closed: ... and no extra chart window is made");
+    c.makeIndicator(c.addWindow());
+    ok(c.windowIds().length === 1, "an indicator window next to it");
+
+    // titles
+    const rsi = c.add("rsi");
+    const wid = c.windowIds()[0];
+    const wEng = new Stub();
+    c.attachWindow(wid, asEng(wEng));
+    c.moveToWindow(rsi, wid);
+    const title = c.windowTitle(wid, "Indicators");
+    ok(title.startsWith("RSI") && title.endsWith(" · SBER"), "title: the indicator window is titled by its indicators and the asset of its chart", title);
+    c.moveToWindow(c.add("ema"), wid);
+    const two = c.windowTitle(wid, "Indicators");
+    ok(two.includes(", ") && two.includes("RSI") && two.includes("EMA") && two.endsWith(" · SBER"), "title: several indicators are listed", two);
+    c.moveToWindow(c.list().find((i) => i.id === "rsi")!.uid, null);
+    c.moveToWindow(c.list().find((i) => i.id === "ema")!.uid, null);
+    ok(c.windowTitle(wid, "Indicators") === "Indicators · SBER", "title: an empty indicator window says so (and names the asset)");
+    e.opts = { scaleSymbol: "PLT", symbolLabel: "Platinum", intervalLabel: "15m" };
+    ok(c.windowTitle(wid, "Indicators") === "Indicators · PLT", "title: it follows the instrument of its chart");
   }
 
   console.log(`\n${passes} passed, ${fails} failed`);

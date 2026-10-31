@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DESIGN_PATHS } from "./icons";
-import { MAIN_ID, MAX_CHARTS, MIN_AREA_H, MIN_AREA_W, chartCount, chartIds, dragRect, isActive, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
+import { DEFAULT_WORKSPACE, MAIN_ID, MAX_CHARTS, MIN_AREA_H, MIN_AREA_W, chartCount, chartIds, dragRect, hasWindow, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
 import type { DragMode, Rect, Workspace, WsWindow } from "@/lib/chart/windows-layout";
 import IndicatorLegend from "./IndicatorLegend";
 import { IND_ICONS } from "./icons";
@@ -15,9 +15,9 @@ import { IND_ICONS } from "./icons";
    their header and resized by their edges. The model is lib/chart/windows-layout.ts, the indicators of a window live in IndicatorsController, one
    shared time view and crosshair come from ChartEngine.follow. With nothing added (the default) nothing here changes the classic single chart. */
 
-const NO_STATE = { ws: null, rev: 0, max: null, min: "" };
+const NO_STATE = { ws: DEFAULT_WORKSPACE, rev: 0, max: null, min: "" };
 /** Height of a collapsed window: its title bar and the frame. */
-const BAR_PX = 30;
+const BAR_PX = 28;
 
 /** The workspace of the controller (and the engines of its charts) as React state (a new object after every change, so the snapshot is stable). */
 function useWorkspace(controller: IndicatorsController) {
@@ -26,7 +26,7 @@ function useWorkspace(controller: IndicatorsController) {
 }
 
 export interface WindowsGeo {
-  /** The workspace while it is on screen (windows exist and the area is wide enough), else null: the classic single chart. */
+  /** The workspace while it is on screen (the area is wide enough: always, even with one window), else null: the classic stack without windows. */
   ws: Workspace | null;
   /** Rectangle of every window in px of the area, by id (the price chart included). The maximized window has the whole area. */
   px: Record<string, Rect>;
@@ -68,7 +68,7 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
   }, [controller, available]);
   useEffect(() => () => controller.setWindowsAvailable(false), [controller]);
   /* Esc puts a maximized window back (not while a dialog is open: it closes that first) */
-  const maxNow = available && isActive(state.ws) ? state.max : null;
+  const maxNow = available ? state.max : null;
   useEffect(() => {
     if (!maxNow) return;
     const onKey = (e: KeyboardEvent) => {
@@ -79,7 +79,7 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
     return () => document.removeEventListener("keydown", onKey);
   }, [controller, maxNow]);
   return useMemo(() => {
-    const ws = available && isActive(state.ws) ? state.ws : null;
+    const ws = available ? state.ws : null;
     const px: Record<string, Rect> = {};
     if (ws) for (const w of ws.wins) px[w.id] = rectPx(w, size.w, size.h);
     const maxId = ws && state.max && ws.wins.some((w) => w.id === state.max) ? state.max : null;
@@ -142,6 +142,10 @@ interface FrameProps {
   minimized?: boolean;
   restRect?: Rect;
   title: ReactNode;
+  /** The whole title as text (tooltip: the title is cut with an ellipsis when it does not fit). */
+  titleText?: string;
+  /** The window is closed but its content stays alive (the price chart: the toolbar still drives it). */
+  hidden?: boolean;
   /** The buttons of this kind of window (the title bar always ends with: collapse, fill the area, close). */
   actions: ReactNode;
   /** Close button; none for the price chart. */
@@ -156,7 +160,7 @@ interface FrameProps {
  * The frame of a window. With `rect` null it is a plain wrapper that fills the area (children stay mounted when the workspace switches on or
  * off, the price chart's canvas never gets re-created).
  */
-export function WindowFrame({ id, controller, rect, size, z, maximized = false, minimized = false, restRect, title, actions, onClose, closeTitle, onFocus, children }: FrameProps) {
+export function WindowFrame({ id, controller, rect, size, z, maximized = false, minimized = false, restRect, title, titleText, hidden = false, actions, onClose, closeTitle, onFocus, children }: FrameProps) {
   const { t } = useT();
   const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
     if (e.button !== 0 || !rect || maximized) return;
@@ -195,13 +199,17 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
   };
 
   // one element tree in both modes (null placeholders keep the slots): the children - the price chart's canvas host - are never re-created
+  // one window that fills the whole area: no frame, only the slim title bar
+  const plain = !!rect && rect.x < 1 && rect.y < 1 && rect.w >= size.w - 1 && rect.h >= size.h - 1;
   const style: CSSProperties | undefined = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: 10 + (maximized ? 9999 : z) } : undefined;
   return (
     <div
       className={
-        rect
-          ? "absolute flex flex-col overflow-hidden rounded-lg border border-[var(--tv3-hair)] bg-[var(--tv3-card)] shadow-[0_6px_24px_rgba(0,0,0,.28)]"
-          : "relative flex flex-col flex-1 min-h-0"
+        hidden
+          ? "hidden"
+          : rect
+            ? `absolute flex flex-col overflow-hidden bg-[var(--tv3-card)] ${plain ? "" : "rounded-lg border border-[var(--tv3-hair)] shadow-[0_6px_24px_rgba(0,0,0,.28)]"}`
+            : "relative flex flex-col flex-1 min-h-0"
       }
       style={style}
       data-chart-window={rect ? id : undefined}
@@ -217,7 +225,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
     >
       {rect ? (
         <div
-          className={`flex h-[26px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
+          className={`flex h-[24px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
           onDoubleClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) controller.toggleMaximize(id);
           }}
@@ -226,7 +234,9 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
             startDrag(e, "move");
           }}
         >
-          <span className="flex min-w-0 items-center gap-2 truncate text-[11.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{title}</span>
+          <span className="flex min-w-0 items-center gap-2 text-[11.5px] font-semibold text-[var(--tv3-muted)]" title={titleText}>
+            {title}
+          </span>
           <span className="flex shrink-0 items-center gap-0.5">
             {actions}
             <button type="button" className={hbtn} title={minimized ? t("win.restore") : t("win.minimize")} aria-label={minimized ? t("win.restore") : t("win.minimize")} aria-pressed={minimized} onClick={() => controller.toggleMinimize(id)}>
@@ -306,27 +316,78 @@ const swapIcon = (
 );
 
 function Windows(props: Props) {
+  const { t } = useT();
   const { controller, geo } = props;
   const ws = geo.ws;
   if (!ws) return null;
-  const others = ws.wins.length > 2;
+  // the price chart is gone from the list: closed (the chooser can bring it back)
+  const mainClosed = !hasWindow(ws, MAIN_ID);
+  const others = ws.wins.length > 1 || mainClosed;
   return (
     <>
+      {ws.wins.length === 0 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <div className="text-base font-semibold text-[var(--tv3-text)]">{t("win.emptyWs")}</div>
+          <div className="max-w-[420px] text-sm text-[var(--tv3-muted)]">{t("win.emptyWsHint")}</div>
+          <button type="button" onClick={() => controller.addWindow()} className="tv3-press cursor-pointer rounded-xl bg-[var(--tv3-accent)] px-5 py-2.5 text-[15px] font-bold text-white hover:brightness-110">
+            {t("win.addWindow")}
+          </button>
+        </div>
+      )}
       {ws.wins
         .filter((w) => w.id !== MAIN_ID)
         .map((w) => {
           const rect = geo.px[w.id];
           if (!rect) return null;
-          const common = { rect, size: geo.size, controller, maximized: geo.maxId === w.id, minimized: geo.minIds.includes(w.id), restRect: geo.full[w.id] };
+          const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id, minimized: geo.minIds.includes(w.id), restRect: geo.full[w.id] };
           if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} />;
-          if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={chartCount(ws) < MAX_CHARTS} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
-          return <IndicatorWindow key={w.id} win={w} ws={ws} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} />;
+          if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={chartCount(ws) < MAX_CHARTS || mainClosed} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
+          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} />;
         })}
     </>
   );
 }
 
-type Common = { rect: Rect; size: { w: number; h: number }; controller: IndicatorsController; maximized: boolean; minimized: boolean; restRect: Rect };
+type Common = { rect: Rect; size: { w: number; h: number }; controller: IndicatorsController; ws: Workspace; maximized: boolean; minimized: boolean; restRect: Rect };
+
+/**
+ * Text that follows the charts: re-computed when a chart's instrument / timeframe changes or the indicators change (the title of a window,
+ * the link chip). Returns the fresh text at every render.
+ */
+function useLive(controller: IndicatorsController, ws: Workspace, compute: () => string): string {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  const ref = useRef(compute);
+  ref.current = compute;
+  const ids = chartIds(ws).join(",");
+  // an engine that appears later (a chart window being built) needs a new subscription
+  const present = ids.split(",").map((id) => (controller.chartEngine(id) ? "1" : "0")).join("");
+  useEffect(() => {
+    let last = ref.current();
+    const check = () => {
+      const now = ref.current();
+      if (now !== last) {
+        last = now;
+        tick();
+      }
+    };
+    const offs = ids
+      .split(",")
+      .map((id) => controller.chartEngine(id))
+      .filter((e): e is ChartEngine => !!e)
+      .map((e) => e.addViewListener(check));
+    offs.push(controller.subscribe(check));
+    check();
+    return () => offs.forEach((off) => off());
+  }, [controller, ids, present]);
+  return compute();
+}
+
+/** Title of a chart window: its asset and timeframe, «Платина · 15м» (the display name of the instrument, the ticker as a fallback). */
+function chartTitle(controller: IndicatorsController, ws: Workspace, id: string): string {
+  const e = controller.chartEngine(id);
+  const name = e ? e.opts.symbolLabel || e.opts.scaleSymbol : "";
+  return [name || ws.wins.find((w) => w.id === id)?.tk, e?.opts.intervalLabel].filter(Boolean).join(" · ");
+}
 
 /** Label of a chart for the link chip: «NG · 15м» (what that chart shows right now). */
 function chartLabel(controller: IndicatorsController, ws: Workspace, id: string): string {
@@ -339,28 +400,9 @@ function chartLabel(controller: IndicatorsController, ws: Workspace, id: string)
 function LinkChip({ win, ws, controller }: { win: WsWindow; ws: Workspace; controller: IndicatorsController }) {
   const { t } = useT();
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const [, tick] = useReducer((n: number) => n + 1, 0);
   const ids = chartIds(ws);
-  const key = ids.join(",");
   // the label follows the chart: another instrument / timeframe there changes the chip
-  useEffect(() => {
-    const labels = () => key.split(",").map((id) => chartLabel(controller, ws, id)).join("|");
-    let last = labels();
-    const offs = key
-      .split(",")
-      .map((id) => controller.chartEngine(id))
-      .filter((e): e is ChartEngine => !!e)
-      .map((e) =>
-        e.addViewListener(() => {
-          const now = labels();
-          if (now !== last) {
-            last = now;
-            tick();
-          }
-        }),
-      );
-    return () => offs.forEach((off) => off());
-  }, [controller, ws, key]);
+  useLive(controller, ws, () => ids.map((id) => chartLabel(controller, ws, id)).join("|"));
   const label = (id: string) => chartLabel(controller, ws, id) + (id === MAIN_ID ? ` (${t("win.mainSuffix")})` : "");
   return (
     <>
@@ -407,7 +449,7 @@ function LinkChip({ win, ws, controller }: { win: WsWindow; ws: Workspace; contr
 }
 
 /** A window nobody has decided about: two big choices. */
-function NewWindow({ win, rect, size, controller, maximized, minimized, restRect, canChart, hasOthers, onPickChart, onPickIndicator, onReset }: Common & { win: WsWindow; canChart: boolean; hasOthers: boolean; onPickChart: (id: string) => void; onPickIndicator: (id: string) => void; onReset: () => void }) {
+function NewWindow({ win, rect, size, controller, ws, maximized, minimized, restRect, canChart, hasOthers, onPickChart, onPickIndicator, onReset }: Common & { win: WsWindow; canChart: boolean; hasOthers: boolean; onPickChart: (id: string) => void; onPickIndicator: (id: string) => void; onReset: () => void }) {
   const { t } = useT();
   const big = "tv3-press flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-[var(--tv3-hair)] bg-[var(--tv3-fill)] px-3 py-4 text-center hover:border-[var(--tv3-accent)] hover:bg-[var(--tv3-accent-soft)] disabled:cursor-default disabled:opacity-40 disabled:hover:border-[var(--tv3-hair)] disabled:hover:bg-[var(--tv3-fill)]";
   return (
@@ -455,8 +497,9 @@ function NewWindow({ win, rect, size, controller, maximized, minimized, restRect
 }
 
 /** A window with a chart of its own: the same component as the panes of the multi-chart grid (own instrument picker, interval, indicators). */
-function ChartWindow({ win, rect, size, controller, maximized, minimized, restRect, renderChart, onFocus }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
+function ChartWindow({ win, rect, size, controller, ws, maximized, minimized, restRect, renderChart, onFocus }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
   const { t } = useT();
+  const title = useLive(controller, ws, () => chartTitle(controller, ws, win.id));
   return (
     <WindowFrame
       id={win.id}
@@ -467,7 +510,8 @@ function ChartWindow({ win, rect, size, controller, maximized, minimized, restRe
       maximized={maximized}
       minimized={minimized}
       restRect={restRect}
-      title={win.tk}
+      title={<span className="truncate">{title}</span>}
+      titleText={title}
       onFocus={onFocus}
       actions={
         <>
@@ -515,6 +559,7 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, minimized
   useEffect(() => controller.subscribe(tick), [controller]);
 
   const empty = !controller.usedWindows().has(id);
+  const titleText = useLive(controller, ws, () => controller.windowTitle(id, t("win.indTitleEmpty")));
   return (
     <WindowFrame
       id={id}
@@ -527,7 +572,7 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, minimized
       restRect={restRect}
       title={
         <>
-          <span className="shrink-0">{t("win.title", { n: controller.windowNumber(id) })}</span>
+          <span className="truncate">{titleText}</span>
           <LinkChip win={win} ws={ws} controller={controller} />
         </>
       }
@@ -541,6 +586,7 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, minimized
           </button>
         </>
       }
+      titleText={titleText}
       onClose={() => controller.closeWindow(id)}
       closeTitle={t("win.close")}
     >

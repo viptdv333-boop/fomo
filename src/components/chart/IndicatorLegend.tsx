@@ -287,7 +287,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               <MenuItem
                 key={w}
                 icon={IND_ICONS.pane(16)}
-                label={t("win.moveTo", { n: controller.windowNumber(w) })}
+                label={t("win.moveTo", { title: controller.windowTitle(w, t("win.indTitleEmpty")) })}
                 onClick={() => {
                   setMenuUid(null);
                   controller.moveToWindow(uid, w);

@@ -1,8 +1,9 @@
 /**
- * Workspace of floating windows over the chart area: pure model (no DOM). Every window - the price chart itself ("main") and the extra windows
- * with indicators - is a rectangle given as FRACTIONS of the area (so a saved layout survives another screen size) with a z-order. The default
- * (nobody has added a window) is the classic single chart: no workspace, nothing is stored. The first extra window switches the workspace on:
- * the price chart becomes a window too (it starts filling the whole area) that can be moved and resized like the others.
+ * Workspace of floating windows over the chart area: pure model (no DOM). Every window - the price chart itself ("main") and the extra windows -
+ * is a rectangle given as FRACTIONS of the area (so a saved layout survives another screen size) with a z-order. The workspace is always there
+ * on a wide screen: the default (nobody has touched anything, nothing is stored) is ONE window, the price chart, filling the whole area. Windows
+ * can be added, moved, resized and closed - the price chart's too; a workspace with no window at all (everything closed) is valid, it is an
+ * empty background. A narrow screen has no windows (the classic stack).
  * Stored next to the indicators (one extra entry `{ws: ...}` of the indicator list, which older builds skip). The tiled layout of the first
  * multi-window build (`{lay: tree}`) is still read and turned into rectangles (`migrateTree`). Every stored value goes through the sanitisers
  * here: whatever is wrong with it, the result is a valid workspace or null (= the classic chart).
@@ -57,7 +58,7 @@ export interface WsWindow extends Rect {
   tk?: string;
 }
 
-/** wins[0] is always the price chart. */
+/** The windows that are open (the price chart is one of them unless it was closed). */
 export interface Workspace {
   wins: WsWindow[];
 }
@@ -65,6 +66,16 @@ export interface Workspace {
 /* ───────────── queries ───────────── */
 
 const mainWin = (): WsWindow => ({ id: MAIN_ID, kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1, link: MAIN_ID });
+
+/** What nobody has touched: the price chart fills the area. (Never changed: every edit makes a new workspace.) */
+export const DEFAULT_WORKSPACE: Workspace = { wins: [mainWin()] };
+
+/** The default look (or nothing): not worth storing. */
+export function isDefault(ws: Workspace | null): boolean {
+  if (!ws) return true;
+  const m = ws.wins[0];
+  return ws.wins.length === 1 && m.id === MAIN_ID && m.kind === "chart" && Math.abs(m.x) < 1e-6 && Math.abs(m.y) < 1e-6 && Math.abs(m.w - 1) < 1e-6 && Math.abs(m.h - 1) < 1e-6;
+}
 
 /** Windows besides the price chart, in creation order. */
 export const extraIds = (ws: Workspace | null): string[] => (ws ? ws.wins.filter((w) => w.id !== MAIN_ID).map((w) => w.id) : []);
@@ -96,8 +107,8 @@ function relink(wins: WsWindow[]): WsWindow[] {
   });
 }
 
-/** The workspace is on: there is something besides the price chart. */
-export const isActive = (ws: Workspace | null): ws is Workspace => !!ws && ws.wins.length > 1;
+/** There is a window besides the price chart. */
+export const isActive = (ws: Workspace | null): ws is Workspace => !!ws && ws.wins.some((w) => w.id !== MAIN_ID);
 
 /** 1-based number of an indicator window ("Window 2"), 0 for anything else. */
 export const windowNumber = (ws: Workspace | null, id: string): number => indIds(ws).indexOf(id) + 1;
@@ -133,10 +144,19 @@ export function addWindow(ws: Workspace | null, id?: string, link: string = MAIN
 
 const replaceWin = (ws: Workspace, id: string, f: (w: WsWindow) => WsWindow): Workspace => ({ wins: relink(ws.wins.map((w) => (w.id === id ? f(w) : w))) });
 
-/** A new (or indicator) window becomes a chart of its own on this instrument. The same object comes back when that is not possible (too many charts, junk instrument). */
+/**
+ * A new (or indicator) window becomes a chart of its own on this instrument - or, when the price chart's window was closed, THAT window comes
+ * back in its place (the price chart is the one behind the toolbar). The same object comes back when that is not possible (too many charts,
+ * junk instrument).
+ */
 export function makeChart(ws: Workspace | null, id: string, src: string, tk: string): Workspace | null {
-  if (!ws || !SRC_RE.test(src) || !TK_RE.test(tk)) return ws;
+  if (!ws) return ws;
   const w = ws.wins.find((x) => x.id === id && x.id !== MAIN_ID);
+  if (w && w.kind === "new" && !hasWindow(ws, MAIN_ID)) {
+    const back: WsWindow = { id: MAIN_ID, kind: "chart", x: w.x, y: w.y, w: w.w, h: w.h, z: w.z, link: MAIN_ID };
+    return { wins: relink(ws.wins.map((x) => (x.id === id ? back : x))) };
+  }
+  if (!SRC_RE.test(src) || !TK_RE.test(tk)) return ws;
   if (!w || w.kind === "chart" || chartCount(ws) >= MAX_CHARTS) return ws;
   return replaceWin(ws, id, (x) => ({ id: x.id, kind: "chart", x: x.x, y: x.y, w: x.w, h: x.h, z: x.z, link: id, src, tk }));
 }
@@ -175,12 +195,15 @@ export function setSymbol(ws: Workspace | null, id: string, src: string, tk: str
   return { wins };
 }
 
-/** Closes a window. The price chart cannot be closed. Null when nothing is left but the price chart (back to the classic look). */
+/**
+ * Closes a window (the price chart's too: what is left may be an empty background). The windows that followed a closed chart move to the price
+ * chart. Null when what is left is the default look (the price chart filling the area).
+ */
 export function closeWindow(ws: Workspace | null, id: string): Workspace | null {
-  if (!ws || id === MAIN_ID || !hasWindow(ws, id)) return ws;
-  // the windows that followed a closed chart move to the price chart
-  const out: Workspace = { wins: rankZ(relink(ws.wins.filter((w) => w.id !== id))) };
-  return isActive(out) ? out : null;
+  const base = ws ?? DEFAULT_WORKSPACE;
+  if (!hasWindow(base, id)) return ws;
+  const out: Workspace = { wins: rankZ(relink(base.wins.filter((w) => w.id !== id))) };
+  return isDefault(out) ? null : out;
 }
 
 const clampFrac = (r: Rect): Rect => {
@@ -296,14 +319,12 @@ export function parseWorkspace(raw: unknown): Workspace | null {
       ...(isChart ? { src: o.src as string, tk: o.tk as string } : {}),
     });
   }
-  if (!seen.has(MAIN_ID)) list.unshift(mainWin());
   // z by rank (ties keep the stored order), the price chart first in the list
   const ranked = list.map((w, i) => ({ w, i })).sort((a, b) => a.w.z - b.w.z || a.i - b.i);
   ranked.forEach((e, k) => (e.w.z = k + 1));
-  const main = list.find((w) => w.id === MAIN_ID) as WsWindow;
-  // a link to a chart that is not there (or to something that is not a chart) is the price chart
-  const wins = relink([main, ...list.filter((w) => w !== main)]);
-  return wins.length > 1 ? { wins } : null;
+  // a link to a chart that is not there (or to something that is not a chart) is the price chart; no price chart in the list = it was closed
+  const wins = relink(list);
+  return isDefault({ wins }) ? null : { wins };
 }
 
 /* ───────────── the tiled layout of the first multi-window build ───────────── */
