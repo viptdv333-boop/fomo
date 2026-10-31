@@ -6,8 +6,8 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { MAIN_ID, WIN_PANE, WIN_PREFIX, addWindow as layoutAdd, closeWindow as layoutClose, hasLeaf, isMulti, parseLayout, serializeLayout, setRatioAt, windowIds } from "../windows-layout";
-import type { SplitDir, WinNode } from "../windows-layout";
+import { MAIN_ID, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, closeWindow as wsClose, extraIds, hasWindow, isActive, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, serializeWorkspace, setRect as wsSetRect, windowNumber } from "../windows-layout";
+import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
 import type { ScriptEvent } from "../scripts/store";
@@ -79,8 +79,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private scriptOffs: (() => void)[] = [];
   /** True while many items are built at once (restore / attach): the pane heights are resolved once at the end. */
   private bulk = false;
-  /** Multi-window layout (null: the single chart). The engines of the extra windows are registered by their tiles (attachWindow). */
-  private layout: WinNode | null = null;
+  /** Workspace of floating windows (null: the classic single chart). The engines of the extra windows are registered by their tiles (attachWindow). */
+  private ws: Workspace | null = null;
   private winEngines = new Map<string, ChartEngine>();
   /** The chart area is wide enough for windows (the host reports it); a narrow one shows the one stack of panes as before. */
   private winAvail = false;
@@ -215,7 +215,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** Extra window the indicator is drawn in right now, undefined: on the price chart (its pane or an own pane under it). */
   private winOf(it: Item): string | undefined {
     const w = it.win;
-    return w && this.winAvail && w !== MAIN_ID && isMulti(this.layout) && hasLeaf(this.layout, w) ? w : undefined;
+    return w && this.winAvail && w !== MAIN_ID && hasWindow(this.ws, w) ? w : undefined;
   }
 
   /** Where the indicator belongs now: "main", the id of its own pane or WIN_PREFIX + window id. */
@@ -379,14 +379,14 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const inst: IndicatorInstance = { uid, id, params: merged, visible };
     if (st) inst.style = st;
     const item: Item = { inst, def, series, pane: null, host: null, ratio: { ...ratio } };
-    if (win && win !== MAIN_ID && windowable(def) && hasLeaf(this.layout, win)) item.win = win;
+    if (win && win !== MAIN_ID && windowable(def) && hasWindow(this.ws, win)) item.win = win;
     this.items.push(item);
     if (eng) this.mount(item);
     return item;
   }
 
   add(id: string, params?: Record<string, ParamValue>): string {
-    const target = this.addTarget && hasLeaf(this.layout, this.addTarget) ? this.addTarget : undefined;
+    const target = this.addTarget && hasWindow(this.ws, this.addTarget) ? this.addTarget : undefined;
     const item = this.create(id, params, true, undefined, undefined, target);
     if (!item) return "";
     this.emit();
@@ -558,11 +558,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
       if (it.ratio.d !== undefined) o.pr = Math.round(it.ratio.d * 10000) / 10000;
       if (it.ratio.m !== undefined) o.pm = Math.round(it.ratio.m * 10000) / 10000;
       // extra window (kept also while this chart is too narrow to show windows: a phone must not wipe the desktop layout)
-      if (it.win && hasLeaf(this.layout, it.win)) o.w = it.win;
+      if (it.win && hasWindow(this.ws, it.win)) o.w = it.win;
       return o;
     });
     // the window layout rides in the same list as one more entry without an indicator id (builds without windows skip it)
-    if (this.layout && isMulti(this.layout)) out.push({ lay: serializeLayout(this.layout) });
+    if (isActive(this.ws)) out.push({ ws: serializeWorkspace(this.ws) });
     return JSON.stringify(out);
   }
 
@@ -577,15 +577,16 @@ export class IndicatorsController implements IndicatorsControllerLike {
     for (const it of this.items) this.unmount(it);
     this.items = [];
     // the window layout first: the indicators that sit in windows are checked against it
-    let lay: unknown;
+    let stored: { ws?: unknown; lay?: unknown } | null = null;
     for (const raw of arr) {
-      if (raw && typeof raw === "object" && typeof (raw as { id?: unknown }).id !== "string" && "lay" in raw) {
-        lay = (raw as { lay?: unknown }).lay;
+      if (raw && typeof raw === "object" && typeof (raw as { id?: unknown }).id !== "string" && ("ws" in raw || "lay" in raw)) {
+        stored = raw as { ws?: unknown; lay?: unknown };
         break;
       }
     }
-    this.layout = parseLayout(lay);
-    if (this.addTarget && !hasLeaf(this.layout, this.addTarget)) this.addTarget = null;
+    // `ws`: floating windows; `lay`: the tiled layout of the first multi-window build, turned into windows in the same places
+    this.ws = stored ? (stored.ws !== undefined ? parseWorkspace(stored.ws) : migrateTree(parseLayout(stored.lay))) : null;
+    if (this.addTarget && !hasWindow(this.ws, this.addTarget)) this.addTarget = null;
     this.bulk = true;
     for (const raw of arr) {
       if (!raw || typeof raw !== "object") continue;
@@ -602,14 +603,24 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /* ───────────── extra windows ───────────── */
 
-  /** The tree of windows (null: the single chart). A new object after every change. */
-  getLayout(): WinNode | null {
-    return this.layout;
+  /** The workspace of floating windows (null: the classic chart). A new object after every change. */
+  getWorkspace(): Workspace | null {
+    return this.ws;
   }
 
-  /** Ids of the extra windows in reading order. */
+  /** Ids of the extra windows in creation order. */
   windowIds(): string[] {
-    return windowIds(this.layout);
+    return extraIds(this.ws);
+  }
+
+  /** 1-based number of an extra window ("Window 2"). */
+  windowNumber(id: string): number {
+    return windowNumber(this.ws, id);
+  }
+
+  /** One more window may be added. */
+  canAddWindow(): boolean {
+    return extraIds(this.ws).length < MAX_WINDOWS;
   }
 
   /** The chart area is wide enough for windows (reported by the chart); a narrow one folds them back into the one stack. */
@@ -619,7 +630,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** The windows are on screen right now. */
   windowsOn(): boolean {
-    return this.winAvail && isMulti(this.layout);
+    return this.winAvail && isActive(this.ws);
   }
 
   setWindowsAvailable(on: boolean): void {
@@ -645,11 +656,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return out;
   }
 
-  /** Adds an empty window next to `at` (the whole area when omitted). Returns its id, "" when there are too many windows. */
-  addWindow(dir: SplitDir, at?: string): string {
-    const r = layoutAdd(this.layout, dir, at);
+  /** Adds an empty window (the first one switches the workspace on). Returns its id, "" when there are too many windows. */
+  addWindow(): string {
+    const r = wsAdd(this.ws);
     if (!r) return "";
-    this.layout = r.tree;
+    this.ws = r.ws;
     this.replace();
     this.emit();
     return r.id;
@@ -657,19 +668,19 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** Closes a window: its indicators go back to the price chart. */
   closeWindow(id: string): void {
-    if (id === MAIN_ID || !hasLeaf(this.layout, id)) return;
+    if (id === MAIN_ID || !hasWindow(this.ws, id)) return;
     for (const it of this.items) if (it.win === id) it.win = undefined;
-    this.layout = layoutClose(this.layout, id);
+    this.ws = wsClose(this.ws, id);
     if (this.addTarget === id) this.addTarget = null;
     this.replace();
     this.emit();
   }
 
-  /** Closes every window. */
+  /** Back to the classic single chart: every window is closed, its indicators return to the price chart. */
   resetWindows(): void {
-    if (!this.layout) return;
+    if (!this.ws) return;
     for (const it of this.items) it.win = undefined;
-    this.layout = null;
+    this.ws = null;
     this.addTarget = null;
     this.replace();
     this.emit();
@@ -681,17 +692,17 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return !!it && windowable(it.def);
   }
 
-  /** Moves an indicator to a window ("new": a new one below the chart; null: back to the price chart, to its own pane or the main pane as the indicator is set). */
+  /** Moves an indicator to a window ("new": a new floating one; null: back to the price chart, to its own pane or the main pane as the indicator is set). */
   moveToWindow(uid: string, to: string | "new" | null): void {
     const it = this.find(uid);
     if (!it || (to !== null && !windowable(it.def))) return;
     let target: string | undefined;
     if (to === "new") {
-      const id = this.addWindow("v");
+      const id = this.addWindow();
       if (!id) return;
       target = id;
     } else if (to !== null) {
-      if (!hasLeaf(this.layout, to) || to === MAIN_ID) return;
+      if (!hasWindow(this.ws, to) || to === MAIN_ID) return;
       target = to;
     }
     it.win = target;
@@ -706,25 +717,33 @@ export class IndicatorsController implements IndicatorsControllerLike {
   }
 
   /**
-   * A divider was dragged: the split at `path` gets a new share. `commit` false while the pointer is still down (nothing is saved or announced to the
-   * indicator listeners, only the layout listeners hear it); the last call has `commit` true.
+   * A window was moved / resized: new rectangle (fractions of the area). `commit` false while the pointer is still down (only the layout
+   * listeners hear it, nothing is saved); the last call has `commit` true.
    */
-  setSplitRatio(path: string, ratio: number, commit = true): void {
-    const next = setRatioAt(this.layout, path, ratio);
-    if (next === this.layout) return;
-    this.layout = next;
+  setRect(id: string, r: Rect, commit = true): void {
+    const next = wsSetRect(this.ws, id, r);
+    if (next === this.ws) return;
+    this.ws = next;
     if (commit) this.emit();
     else this.emitLayout();
   }
 
-  /** The drag of a divider is over: the layout is stored. */
+  /** A window was clicked: it goes to the front (stored). */
+  raise(id: string): void {
+    const next = wsRaise(this.ws, id);
+    if (next === this.ws) return;
+    this.ws = next;
+    this.emit();
+  }
+
+  /** The drag of a window is over: the layout is stored. */
   commitLayout(): void {
     this.emit();
   }
 
   /** New indicators from the catalog land in this window (null: the price chart as usual). */
   setAddTarget(id: string | null): void {
-    this.addTarget = id && hasLeaf(this.layout, id) && id !== MAIN_ID ? id : null;
+    this.addTarget = id && hasWindow(this.ws, id) && id !== MAIN_ID ? id : null;
   }
 
   /** The tile of an extra window has an engine: the indicators of that window are drawn in it. */
@@ -745,9 +764,13 @@ export class IndicatorsController implements IndicatorsControllerLike {
     for (const it of this.items) if (it.host === engine) this.unmount(it);
   }
 
-  /** Engines of the extra windows that are on screen (the screenshot puts them together with the price chart). */
-  windowEngines(): ChartEngine[] {
-    return Array.from(this.winEngines.values());
+  /** The price chart and the windows that are on screen, back to front (the screenshot puts them together the way they overlap). */
+  windowStack(): { engine: ChartEngine; z: number }[] {
+    const out: { engine: ChartEngine; z: number }[] = [];
+    const z = (id: string) => this.ws?.wins.find((w) => w.id === id)?.z ?? 0;
+    if (this.engine) out.push({ engine: this.engine, z: z(MAIN_ID) });
+    for (const [id, engine] of this.winEngines) out.push({ engine, z: z(id) });
+    return out.sort((a, b) => a.z - b.z);
   }
 
   private emitLayout(): void {

@@ -94,14 +94,15 @@ interface Props {
   };
   onScreenshotCopy?: () => void;
   onOpenShortcuts?: () => void;
-  /** Extra windows for the indicators (the button is shown when the chart is wide enough). */
+  /** Floating windows with indicators over the chart (the button is shown when the chart is wide enough). */
   windows?: {
     available: boolean;
     /** Extra windows now. */
     count: number;
-    max: number;
-    onAdd: (dir: "h" | "v") => void;
-    onCloseAll: () => void;
+    canAdd: boolean;
+    onAdd: () => void;
+    /** Back to the classic single chart. */
+    onReset: () => void;
   };
   /** Extra buttons (the multi-chart layout picker). */
   extra?: ReactNode;
@@ -255,43 +256,41 @@ export default function TopToolbar(p: Props) {
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       {win && (
-        <Menu title={t("win.menuTitle")} className={btn} width={250} trigger={<>{IND_ICONS.pane(18)}<span className={lbl2}>{t("win.menu")}</span>{win.count > 0 && badge(win.count)}</>}>
-          {(close) => (
-            <div className="px-1 text-[13px] text-[var(--tv3-text)]">
-              {(
-                [
-                  ["v", "win.addBelow"],
-                  ["h", "win.addRight"],
-                ] as const
-              ).map(([dir, label]) => (
+        <span className="inline-flex shrink-0 items-stretch">
+          <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindow") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={`${btn} !rounded-r-none`}>
+            {IND_ICONS.pane(18)}
+            <span className={lbl2}>{t("win.menu")}</span>
+            {win.count > 0 && badge(win.count)}
+          </button>
+          <Menu title={t("win.menuTitle")} className={`${btn} !rounded-l-none !px-1.5 ml-px`} width={250} trigger={IND_ICONS.chevronDown(14)}>
+            {(close) => (
+              <div className="px-1 text-[13px] text-[var(--tv3-text)]">
                 <button
-                  key={dir}
-                  disabled={win.count >= win.max}
-                  title={win.count >= win.max ? t("win.max", { n: win.max }) : undefined}
+                  disabled={!win.canAdd}
                   onClick={() => {
-                    win.onAdd(dir);
+                    win.onAdd();
                     close();
                   }}
                   className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
                 >
-                  {t(label)}
+                  {t("win.addWindow")}
                 </button>
-              ))}
-              {win.count > 0 && (
-                <button
-                  onClick={() => {
-                    win.onCloseAll();
-                    close();
-                  }}
-                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer text-[var(--tv3-red)] hover:bg-[var(--tv3-fill)]"
-                >
-                  {t("win.closeAll")}
-                </button>
-              )}
-              <div className="px-2 pb-1.5 pt-1 text-[11.5px] leading-snug text-[var(--tv3-muted)] whitespace-normal">{t("win.hint")}</div>
-            </div>
-          )}
-        </Menu>
+                {win.count > 0 && (
+                  <button
+                    onClick={() => {
+                      win.onReset();
+                      close();
+                    }}
+                    className="w-full h-9 px-2 rounded-lg text-left cursor-pointer text-[var(--tv3-red)] hover:bg-[var(--tv3-fill)]"
+                  >
+                    {t("win.reset")}
+                  </button>
+                )}
+                <div className="px-2 pb-1.5 pt-1 text-[11.5px] leading-snug text-[var(--tv3-muted)] whitespace-normal">{t("win.hint")}</div>
+              </div>
+            )}
+          </Menu>
+        </span>
       )}
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
         {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}

@@ -1,39 +1,39 @@
-/* Check of the multi-window layout of the chart (src/lib/chart/windows-layout.ts pure tree model + the way IndicatorsController keeps it):
-   add / close / resize, geometry (tiles fill the area, floors, tiny areas), divider drag limits, stored-layout sanitising (junk never gives a
-   broken tree), save -> restore round trip together with the indicators, old data without windows, windows folding back into the one stack
-   when the chart is narrow (and the layout surviving it), moving indicators between windows, indicators that cannot leave the price chart.
+/* Check of the workspace of floating windows of the chart (src/lib/chart/windows-layout.ts pure model + the way IndicatorsController keeps it):
+   add / close / raise / move / resize (fractions, pixel floors, kept inside the area), dragging by header and edges, stored-workspace sanitising
+   (junk never gives a broken layout), the tiled layout of the first multi-window build turned into windows, save -> restore round trip together
+   with the indicators, old data without windows, windows folding back into the one stack when the chart is narrow (and the layout surviving it),
+   moving indicators between windows, indicators that cannot leave the price chart.
    OFFLINE, pure (stub engines, no DOM). Run:  npx tsx scripts/check-windows-layout.ts
    Exit code: 0 all passed, 1 at least one FAIL. */
 
 import {
-  DIVIDER_PX,
   MAIN_ID,
   MAX_DEPTH,
   MAX_WINDOWS,
-  MIN_MAIN_H,
-  MIN_MAIN_W,
-  MIN_RATIO,
   MIN_WIN_H,
   MIN_WIN_W,
+  NEW_H,
+  NEW_W,
   WIN_PANE,
   addWindow,
-  clampRatio,
+  cascadeRect,
   closeWindow,
-  computeGeometry,
-  hasLeaf,
-  isMulti,
-  leafIds,
-  mainLayout,
+  dragRect,
+  extraIds,
+  hasWindow,
+  isActive,
+  migrateTree,
   newWindowId,
-  nodeAt,
   parseLayout,
-  ratioAtPointer,
-  serializeLayout,
-  setRatioAt,
-  windowIds,
+  parseWorkspace,
+  raise,
+  rectFromPx,
+  rectPx,
+  serializeWorkspace,
+  setRect,
   windowNumber,
 } from "../src/lib/chart/windows-layout";
-import type { Rect, WinNode } from "../src/lib/chart/windows-layout";
+import type { Rect, WinNode, Workspace } from "../src/lib/chart/windows-layout";
 import { IndicatorsController } from "../src/lib/chart/indicators/controller";
 import type { ChartEngine } from "../src/lib/chart/engine";
 
@@ -44,166 +44,167 @@ function ok(cond: boolean, name: string, note = "") {
   else fails++;
   console.log(`${cond ? "PASS" : "FAIL"}  ${name}${cond ? "" : note ? "  -> " + note : ""}`);
 }
-const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+// same value whatever the order of the keys
+const canon = (v: unknown): unknown => (Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon((v as Record<string, unknown>)[k])])) : v);
+const eq = (a: unknown, b: unknown) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 const near = (a: number, b: number, name: string, eps = 1e-6) => ok(Math.abs(a - b) <= eps, name, `${a} != ${b}`);
 
 const W = (id: string): WinNode => ({ kind: "win", id });
 const S = (dir: "h" | "v", ratio: number, a: WinNode, b: WinNode): WinNode => ({ kind: "split", dir, ratio, a, b });
-const area = (w: number, h: number): Rect => ({ x: 0, y: 0, w, h });
+const inside = (r: Rect, w: number, h: number) => r.x >= -1e-9 && r.y >= -1e-9 && r.x + r.w <= w + 1e-9 && r.y + r.h <= h + 1e-9 && r.w >= 0 && r.h >= 0;
+const frac = (r: Rect) => r.x >= -1e-9 && r.y >= -1e-9 && r.x + r.w <= 1 + 1e-9 && r.y + r.h <= 1 + 1e-9;
+
+function many(n: number): Workspace {
+  let ws: Workspace | null = null;
+  for (let i = 0; i < n; i++) ws = addWindow(ws)?.ws ?? ws;
+  return ws as Workspace;
+}
 
 function main() {
-  /* ───────────── queries ───────────── */
-  ok(eq(leafIds(null), [MAIN_ID]) && eq(windowIds(null), []) && !isMulti(null) && !isMulti(mainLayout()), "single chart: one leaf, no windows");
-  const t0 = S("v", 0.7, W("main"), S("h", 0.5, W("w2"), W("w1")));
-  ok(eq(leafIds(t0), ["main", "w2", "w1"]) && eq(windowIds(t0), ["w2", "w1"]), "leaves are in reading order");
-  ok(windowNumber(t0, "w2") === 1 && windowNumber(t0, "w1") === 2 && windowNumber(t0, "main") === 0 && windowNumber(t0, "zz") === 0, "window numbers follow the reading order");
-  ok(newWindowId(null) === "w1" && newWindowId(t0) === "w3", "new window id is the lowest free one");
-
-  /* ───────────── add ───────────── */
-  const a1 = addWindow(null, "v");
-  ok(!!a1 && a1.id === "w1" && eq(leafIds(a1.tree), ["main", "w1"]), "add: the first window goes below the chart");
-  ok(!!a1 && a1.tree.kind === "split" && a1.tree.dir === "v" && Math.abs(a1.tree.ratio - 0.68) < 1e-9 && a1.tree.a.kind === "win" && a1.tree.a.id === MAIN_ID, "add: the chart keeps about two thirds");
-  const a2 = a1 && addWindow(a1.tree, "h");
-  ok(!!a2 && a2.id === "w2" && a2.tree.kind === "split" && a2.tree.dir === "h" && a2.tree.a === a1!.tree, "add without a target wraps the whole area (a strip on the right)");
-  const a3 = a1 && addWindow(a1.tree, "h", "w1");
-  ok(!!a3 && eq(leafIds(a3.tree), ["main", "w1", "w2"]) && nodeAt(a3.tree, "b")?.kind === "split", "add next to a window splits that window", JSON.stringify(a3));
-  ok(a1 !== null && addWindow(a1.tree, "h", "nope") === null, "add next to an unknown window is refused");
-  ok(a1 !== null && JSON.stringify(a1.tree).includes("w1") && eq(a1.tree, JSON.parse(JSON.stringify(a1.tree))), "tree is plain JSON");
-  let full: WinNode | null = null;
-  for (let i = 0; i < MAX_WINDOWS; i++) full = addWindow(full, i % 2 ? "h" : "v")?.tree ?? full;
-  ok(windowIds(full).length === MAX_WINDOWS, `add: up to ${MAX_WINDOWS} windows`);
-  ok(addWindow(full, "v") === null && addWindow(full, "h", "w1") === null, "add: one more is refused");
-  const keep = JSON.stringify(a1?.tree);
-  addWindow(a1!.tree, "h", "w1");
-  ok(JSON.stringify(a1?.tree) === keep, "add never changes the tree it was given");
+  /* ───────────── queries / add ───────────── */
+  ok(!isActive(null) && eq(extraIds(null), []) && !hasWindow(null, "w1"), "classic chart: no workspace, no windows");
+  ok(newWindowId(null) === "w1", "first window id");
+  const a1 = addWindow(null);
+  ok(!!a1 && a1.id === "w1" && isActive(a1.ws) && a1.ws.wins.length === 2 && a1.ws.wins[0].id === MAIN_ID, "add: the first window switches the workspace on, the chart is window 0");
+  const m = a1!.ws.wins[0];
+  ok(m.kind === "chart" && m.x === 0 && m.y === 0 && m.w === 1 && m.h === 1, "add: the price chart starts filling the whole area");
+  const w1 = a1!.ws.wins[1];
+  near(w1.w, NEW_W, "add: a new window is 40% wide");
+  near(w1.h, NEW_H, "add: ... and 35% high");
+  ok(w1.z > m.z && frac(w1), "add: it opens on top and inside the area");
+  const a2 = addWindow(a1!.ws);
+  ok(!!a2 && a2.id === "w2" && eq(extraIds(a2.ws), ["w1", "w2"]) && windowNumber(a2.ws, "w2") === 2 && windowNumber(a2.ws, MAIN_ID) === 0, "add: the second window, numbers follow creation");
+  const w2 = a2!.ws.wins[2];
+  ok(Math.abs(w2.x - w1.x) > 0.01 || Math.abs(w2.y - w1.y) > 0.01, "add: a cascade - never exactly over the previous window");
+  for (let n = 0; n < 20; n++) ok(frac(cascadeRect(n)), `cascade ${n} stays inside the area`);
+  const keep = JSON.stringify(a1!.ws);
+  addWindow(a1!.ws);
+  ok(JSON.stringify(a1!.ws) === keep, "add never changes the workspace it was given");
+  const full = many(MAX_WINDOWS + 3);
+  ok(extraIds(full).length === MAX_WINDOWS && addWindow(full) === null, `add: at most ${MAX_WINDOWS} windows`);
+  ok(addWindow(a1!.ws, "w1")!.id === "w2" && addWindow(a1!.ws, "w5")!.id === "w5", "add: a free wanted id is used, a taken one is not");
 
   /* ───────────── close ───────────── */
-  ok(closeWindow(null, "w1") === null && closeWindow(a1!.tree, MAIN_ID) === a1!.tree, "close: nothing to close / the chart cannot be closed");
-  ok(closeWindow(a1!.tree, "w1") === null, "close the only window: back to the single chart (null)");
-  const c3 = closeWindow(a3!.tree, "w1");
-  ok(eq(leafIds(c3), ["main", "w2"]) && isMulti(c3), "close: the sibling takes the room", JSON.stringify(c3));
-  ok(closeWindow(a3!.tree, "zz") !== null && eq(leafIds(closeWindow(a3!.tree, "zz")), leafIds(a3!.tree)), "close an unknown window: nothing changes");
-  ok(eq(leafIds(closeWindow(t0, "w2")), ["main", "w1"]), "close in a deep tree");
-  const re = addWindow(c3, "v");
-  ok(!!re && re.id === "w1", "a freed id is used again");
+  ok(closeWindow(null, "w1") === null && closeWindow(a1!.ws, MAIN_ID) === a1!.ws && closeWindow(a1!.ws, "zz") === a1!.ws, "close: nothing to close / the chart cannot be closed / unknown id");
+  ok(closeWindow(a1!.ws, "w1") === null, "close the last window: back to the classic chart (null)");
+  const c2 = closeWindow(a2!.ws, "w1");
+  ok(!!c2 && eq(extraIds(c2), ["w2"]) && isActive(c2), "close one of two");
+  ok(addWindow(c2, undefined)!.id === "w1", "a freed id is used again");
 
-  /* ───────────── resize ───────────── */
-  const r1 = setRatioAt(a1!.tree, "", 0.5);
-  ok(r1 !== a1!.tree && r1!.kind === "split" && r1!.ratio === 0.5, "resize: new ratio");
-  ok(setRatioAt(a1!.tree, "", (a1!.tree as { ratio: number }).ratio) === a1!.tree, "resize to the same value: same object (nothing to save)");
-  ok((setRatioAt(a1!.tree, "", 0) as { ratio: number }).ratio === MIN_RATIO && (setRatioAt(a1!.tree, "", 5) as { ratio: number }).ratio === 1 - MIN_RATIO, "resize: clamped");
-  ok(setRatioAt(a1!.tree, "", NaN) === a1!.tree && setRatioAt(a1!.tree, "ab", 0.3) === a1!.tree && setRatioAt(a1!.tree, "x", 0.3) === a1!.tree, "resize: NaN / a path that does not exist change nothing");
-  const deep = setRatioAt(t0, "b", 0.25);
-  ok(nodeAt(deep, "b")?.kind === "split" && (nodeAt(deep, "b") as { ratio: number }).ratio === 0.25 && (deep as { ratio: number }).ratio === 0.7, "resize a nested split");
-  ok(clampRatio(0.5) === 0.5 && clampRatio(-3) === MIN_RATIO, "clampRatio");
+  /* ───────────── rect / raise ───────────── */
+  const r1 = setRect(a2!.ws, "w1", { x: 0.1, y: 0.2, w: 0.5, h: 0.4 });
+  ok(r1 !== a2!.ws && eq({ ...r1!.wins[1], z: 0, link: "" }, { id: "w1", kind: "ind", x: 0.1, y: 0.2, w: 0.5, h: 0.4, z: 0, link: "" }), "rect: new place");
+  ok(setRect(r1, "w1", { x: 0.1, y: 0.2, w: 0.5, h: 0.4 }) === r1, "rect: the same value gives the same object (nothing to save)");
+  const out = setRect(r1, "w1", { x: 5, y: -3, w: 9, h: 0 })!.wins[1];
+  ok(frac(out) && out.w === 1 && out.h >= 0.05 && out.x === 0, "rect: huge / negative values are pulled inside", JSON.stringify(out));
+  ok(setRect(r1, "w1", { x: NaN, y: Infinity, w: NaN, h: NaN })!.wins[1].w === NEW_W, "rect: NaN never reaches the window");
+  ok(setRect(r1, "zz", { x: 0, y: 0, w: 1, h: 1 }) === r1 && setRect(null, "w1", { x: 0, y: 0, w: 1, h: 1 }) === null, "rect: unknown window / no workspace change nothing");
+  const mv = setRect(a2!.ws, MAIN_ID, { x: 0.02, y: 0.02, w: 0.3, h: 0.3 })!;
+  ok(mv.wins[0].id === MAIN_ID && mv.wins[0].w === 0.3, "the price chart can be made small");
+  const top = raise(a2!.ws, "w1")!;
+  ok(top.wins[1].z > top.wins[2].z && top.wins[1].z > top.wins[0].z, "raise: the clicked window goes to the front");
+  ok(raise(top, "w1") === top && raise(a2!.ws, "w2") === a2!.ws && raise(a2!.ws, "zz") === a2!.ws, "raise: already in front / unknown -> same object");
+  const rm = raise(a2!.ws, MAIN_ID)!;
+  ok(rm.wins[0].z > rm.wins[1].z && rm.wins[0].z > rm.wins[2].z, "raise: the price chart can come to the front too");
+
+  /* ───────────── pixels, dragging ───────────── */
+  const px = rectPx({ x: 0.5, y: 0.5, w: 0.4, h: 0.35 }, 1000, 600);
+  ok(eq(px, { x: 500, y: 300, w: 400, h: 210 }), "px: fractions of the area");
+  ok(rectPx({ x: 0, y: 0, w: 0.05, h: 0.05 }, 1000, 600).w === MIN_WIN_W && rectPx({ x: 0, y: 0, w: 0.05, h: 0.05 }, 1000, 600).h === MIN_WIN_H, "px: never under the floors");
+  ok(inside(rectPx({ x: 0.95, y: 0.95, w: 0.4, h: 0.4 }, 1000, 600), 1000, 600), "px: a window that sticks out is pulled in");
+  for (const [aw, ah] of [[0, 0], [100, 50], [300, 200], [640, 260], [1920, 1080]] as const) ok(inside(rectPx({ x: 0.9, y: 0.9, w: 1, h: 1 }, aw, ah), aw, ah), `px: area ${aw}x${ah} always holds the window`);
+  const back = rectFromPx({ x: 500, y: 300, w: 400, h: 210 }, 1000, 600);
+  near(back.x, 0.5, "px -> fractions x");
+  near(back.h, 0.35, "px -> fractions h");
+  ok(eq(rectFromPx({ x: 1, y: 1, w: 1, h: 1 }, 0, 0), { x: 0, y: 0, w: 1, h: 1 }), "px -> fractions: an empty area is the whole area, never NaN");
+  // a window saved on a big screen is the same share on a small one
+  const share = rectFromPx(rectPx({ x: 0.3, y: 0.2, w: 0.5, h: 0.5 }, 1920, 1000), 1920, 1000);
+  const small = rectPx(share, 960, 500);
+  near(small.x / 960, 0.3, "resize of the area keeps the place (share)");
+
+  const st: Rect = { x: 100, y: 100, w: 400, h: 300 };
+  ok(eq(dragRect(st, "move", 50, -20, 1000, 600), { x: 150, y: 80, w: 400, h: 300 }), "drag: move");
+  ok(eq(dragRect(st, "move", -999, -999, 1000, 600), { x: 0, y: 0, w: 400, h: 300 }) && eq(dragRect(st, "move", 9999, 9999, 1000, 600), { x: 600, y: 300, w: 400, h: 300 }), "drag: a move stops at the edges of the area");
+  ok(eq(dragRect(st, "e", 100, 0, 1000, 600), { x: 100, y: 100, w: 500, h: 300 }) && eq(dragRect(st, "s", 0, 100, 1000, 600), { x: 100, y: 100, w: 400, h: 400 }), "drag: right / bottom edge");
+  ok(eq(dragRect(st, "w", 60, 0, 1000, 600), { x: 160, y: 100, w: 340, h: 300 }) && eq(dragRect(st, "n", 0, 40, 1000, 600), { x: 100, y: 140, w: 400, h: 260 }), "drag: left / top edge move the other side's opposite");
+  const se = dragRect(st, "se", 30, 40, 1000, 600);
+  ok(se.x === 100 && se.y === 100 && se.w === 430 && se.h === 340, "drag: a corner changes both sizes");
+  const nw = dragRect(st, "nw", 20, 20, 1000, 600);
+  ok(nw.x === 120 && nw.y === 120 && nw.w === 380 && nw.h === 280, "drag: the opposite corner stays where it was");
+  const tiny = dragRect(st, "e", -9999, 0, 1000, 600);
+  ok(tiny.w === MIN_WIN_W && tiny.x === 100, "drag: not narrower than the floor");
+  const tiny2 = dragRect(st, "nw", 9999, 9999, 1000, 600);
+  ok(tiny2.w === MIN_WIN_W && tiny2.h === MIN_WIN_H && tiny2.x + tiny2.w === 500 && tiny2.y + tiny2.h === 400, "drag: shrinking from the top-left stops at the floors, the bottom-right corner stays");
+  ok(inside(dragRect(st, "se", 9999, 9999, 1000, 600), 1000, 600) && inside(dragRect(st, "nw", -9999, -9999, 1000, 600), 1000, 600), "drag: a resize never leaves the area");
+  for (const mode of ["move", "n", "s", "e", "w", "ne", "nw", "se", "sw"] as const)
+    for (const [dx, dy] of [[0, 0], [37, -81], [-5000, 5000], [1e9, -1e9]] as const) {
+      const r = dragRect(st, mode, dx, dy, 1000, 600);
+      ok(inside(r, 1000, 600) && r.w >= MIN_WIN_W - 1e-9 && r.h >= MIN_WIN_H - 1e-9 && [r.x, r.y, r.w, r.h].every(Number.isFinite), `drag ${mode} (${dx},${dy}): inside, above the floors, finite`);
+    }
 
   /* ───────────── stored form ───────────── */
-  ok(eq(parseLayout(JSON.parse(JSON.stringify(serializeLayout(t0)))), t0), "serialise -> parse gives the same tree");
-  const rounded = serializeLayout(S("h", 0.123456789, W("main"), W("w1"))) as { ratio: number };
-  ok(rounded.ratio === 0.1235, "serialise rounds ratios");
+  ok(eq(parseWorkspace(JSON.parse(JSON.stringify(serializeWorkspace(a2!.ws)))), a2!.ws), "serialise -> parse gives the same workspace");
+  ok((serializeWorkspace(a1!.ws) as { wins: { x: number }[] }).wins.every((w) => String(w.x).length <= 8), "serialise rounds the fractions");
   const junk: [string, unknown][] = [
     ["undefined", undefined],
     ["null", null],
     ["number", 7],
     ["string", "main"],
     ["array", [1, 2]],
-    ["empty object", {}],
-    ["unknown kind", { kind: "grid" }],
-    ["win without id", { kind: "win" }],
-    ["win with object id", { kind: "win", id: { x: 1 } }],
-    ["only the chart", { kind: "win", id: "main" }],
-    ["no chart", S("v", 0.5, W("w1"), W("w2"))],
-    ["bad id", S("v", 0.5, W("main"), W("W 1!"))],
-    ["bad dir", { kind: "split", dir: "x", ratio: 0.5, a: W("main"), b: W("w1") }],
-    ["id with spaces", S("v", 0.5, W("main"), W("a b"))],
+    ["no wins", {}],
+    ["wins not an array", { wins: {} }],
+    ["wins of junk", { wins: [1, null, "x", [], {}] }],
+    ["only the chart", { wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1 }] }],
+    ["bad ids", { wins: [{ id: "W 1!", kind: "ind", x: 0, y: 0, w: 0.5, h: 0.5 }, { id: 5, kind: "ind" }] }],
+    ["unknown kind", { wins: [{ id: "w1", kind: "grid", x: 0, y: 0, w: 0.5, h: 0.5 }] }],
   ];
-  for (const [label, v] of junk) ok(parseLayout(v) === null, `parse: ${label} -> null`, JSON.stringify(parseLayout(v)));
-  const half = parseLayout({ kind: "split", dir: "v", ratio: 0.6, a: W("main"), b: { kind: "bogus" } });
-  ok(half === null, "parse: one good side and nothing else is not a layout (single chart)");
-  const sal = parseLayout({ kind: "split", dir: "v", ratio: 0.6, a: { kind: "split", dir: "h", ratio: "x", a: W("main"), b: W("w1") }, b: { nope: 1 } });
-  ok(!!sal && eq(leafIds(sal), ["main", "w1"]) && sal.kind === "split" && sal.ratio === 0.5, "parse: a broken side is cut away, a broken ratio becomes 0.5", JSON.stringify(sal));
-  const dup = parseLayout(S("v", 0.5, W("main"), S("h", 0.5, W("w1"), W("w1"))));
-  ok(!!dup && eq(leafIds(dup), ["main", "w1"]), "parse: a repeated id is dropped", JSON.stringify(dup));
-  const dupMain = parseLayout(S("v", 0.5, W("main"), S("h", 0.5, W("main"), W("w1"))));
-  ok(!!dupMain && eq(leafIds(dupMain), ["main", "w1"]), "parse: a second chart is dropped");
-  const ratios = parseLayout(S("v", 7, W("main"), W("w1")));
-  ok(!!ratios && ratios.kind === "split" && ratios.ratio === 1 - MIN_RATIO, "parse: huge ratio is clamped");
-  const nan = parseLayout({ kind: "split", dir: "h", ratio: NaN, a: W("main"), b: W("w1") });
-  ok(!!nan && nan.kind === "split" && nan.ratio === 0.5, "parse: NaN ratio -> 0.5");
-  let tall: unknown = W("w1");
-  for (let i = 0; i < MAX_DEPTH + 6; i++) tall = { kind: "split", dir: i % 2 ? "h" : "v", ratio: 0.5, a: tall, b: W(`x${i}`) };
-  tall = { kind: "split", dir: "v", ratio: 0.5, a: W("main"), b: tall };
-  const cut = parseLayout(tall);
-  ok(cut === null || leafIds(cut).length <= MAX_WINDOWS + 1, "parse: a tree that is too deep is cut", String(leafIds(cut).length));
-  const chain = (n: number) => {
-    let t: unknown = W("main");
-    for (let i = 1; i <= n; i++) t = { kind: "split", dir: "h", ratio: 0.5, a: t, b: W(`w${i}`) };
-    return t;
-  };
-  const many = parseLayout(chain(MAX_DEPTH));
-  ok(!!many && windowIds(many).length === MAX_WINDOWS && hasLeaf(many, MAIN_ID), "parse: more windows than allowed are dropped", String(windowIds(many).length));
-  ok(parseLayout(chain(MAX_DEPTH + 4)) === null, "parse: a chain deeper than allowed is refused as a whole");
+  for (const [label, v] of junk) ok(parseWorkspace(v) === null, `parse: ${label} -> null`, JSON.stringify(parseWorkspace(v)));
+  const p1 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0.2, y: 0.2, w: 0.4, h: 0.4, z: 3 }] });
+  ok(!!p1 && p1.wins[0].id === MAIN_ID && p1.wins[0].w === 1 && p1.wins.length === 2, "parse: a missing price chart is put back, filling the area");
+  const p2 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0.2, y: 0.2, w: 0.4, h: 0.4 }, { id: "w1", kind: "ind", x: 0.5, y: 0.5, w: 0.4, h: 0.4 }, { id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1 }, { id: "main", kind: "chart", x: 0.4, y: 0.4, w: 0.1, h: 0.1 }] });
+  ok(!!p2 && p2.wins.length === 2 && p2.wins[1].x === 0.2 && p2.wins[0].w === 1, "parse: a repeated id is dropped (the first one wins)");
+  const p3 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 9, y: -9, w: 7, h: 0, z: NaN }, { id: "w2", kind: "ind", x: "a", y: null, w: NaN, h: {}, z: "q" }] });
+  ok(!!p3 && p3.wins.every((w) => frac(w) && [w.x, w.y, w.w, w.h, w.z].every(Number.isFinite) && w.w >= 0.05 && w.h >= 0.05), "parse: wild numbers are pulled inside, never NaN", JSON.stringify(p3));
+  const p4 = parseWorkspace({ wins: [{ id: "w1", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: 50 }, { id: "w2", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: 50 }, { id: "w3", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4, z: -4 }] });
+  ok(!!p4 && eq(p4.wins.map((w) => w.z).sort(), [1, 2, 3, 4]) && p4.wins.find((w) => w.id === "w3")!.z < p4.wins.find((w) => w.id === "w1")!.z, "parse: z-orders become 1..n and keep their order", JSON.stringify(p4?.wins.map((w) => [w.id, w.z])));
+  const hugeList = { wins: Array.from({ length: 40 }, (_, i) => ({ id: `w${i + 1}`, kind: "ind", x: 0.1, y: 0.1, w: 0.3, h: 0.3, z: i })) };
+  ok(extraIds(parseWorkspace(hugeList)).length === MAX_WINDOWS, "parse: more windows than allowed are cut");
   let proto: unknown = null;
   try {
-    proto = parseLayout(JSON.parse('{"kind":"split","dir":"h","ratio":0.5,"a":{"kind":"win","id":"main"},"b":{"kind":"win","id":"w1"},"__proto__":{"polluted":1}}'));
+    proto = parseWorkspace(JSON.parse('{"wins":[{"id":"w1","kind":"ind","x":0,"y":0,"w":0.5,"h":0.5,"__proto__":{"polluted":1}}],"__proto__":{"polluted":1}}'));
   } catch {
     proto = "threw";
   }
   ok(proto !== "threw" && ({} as { polluted?: number }).polluted === undefined, "parse: __proto__ in the stored value does nothing");
 
-  /* ───────────── geometry ───────────── */
-  const g = computeGeometry(t0, area(1200, 800));
-  const tiles = Object.entries(g.tiles);
-  ok(tiles.length === 3 && g.dividers.length === 2, "geometry: a tile per leaf, a divider per split");
-  const covered = tiles.reduce((s, [, r]) => s + r.w * r.h, 0) + g.dividers.reduce((s, d) => s + d.rect.w * d.rect.h, 0);
-  near(covered, 1200 * 800, "geometry: tiles and dividers cover the whole area exactly", 1e-3);
-  let overlap = false;
-  const all: Rect[] = [...tiles.map(([, r]) => r), ...g.dividers.map((d) => d.rect)];
-  for (let i = 0; i < all.length; i++)
-    for (let j = i + 1; j < all.length; j++) {
-      const a = all[i];
-      const b = all[j];
-      if (a.x < b.x + b.w - 1e-6 && b.x < a.x + a.w - 1e-6 && a.y < b.y + b.h - 1e-6 && b.y < a.y + a.h - 1e-6) overlap = true;
-    }
-  ok(!overlap, "geometry: nothing overlaps");
-  ok(g.tiles.main.x === 0 && g.tiles.main.y === 0 && g.tiles.main.w === 1200 && Math.abs(g.tiles.main.h - (800 - DIVIDER_PX) * 0.7) < 1e-6, "geometry: the chart is on top and as wide as the area");
-  ok(g.tiles.w2.y > g.tiles.main.y + g.tiles.main.h && g.tiles.w1.x > g.tiles.w2.x + g.tiles.w2.w, "geometry: windows below, side by side");
-  ok(g.dividers[0].path === "" && g.dividers[1].path === "b" && nodeAt(t0, g.dividers[1].path)?.kind === "split", "geometry: divider paths point at their splits");
-
-  // floors: a ratio that would crush a tile is pulled back
-  const crush = computeGeometry(S("h", 0.97, W("main"), W("w1")), area(900, 500));
-  ok(crush.tiles.w1.w >= MIN_WIN_W - 1e-6 && crush.tiles.main.w >= MIN_MAIN_W, "geometry: a window keeps its minimum width", JSON.stringify(crush.tiles));
-  const crush2 = computeGeometry(S("v", 0.02, W("main"), W("w1")), area(900, 600));
-  ok(crush2.tiles.main.h >= MIN_MAIN_H - 1e-6, "geometry: the chart keeps its minimum height", JSON.stringify(crush2.tiles));
-  const nested = computeGeometry(S("h", 0.5, W("main"), S("h", 0.5, W("w1"), W("w2"))), area(1000, 500));
-  ok(nested.tiles.w1.w >= MIN_WIN_W && nested.tiles.w2.w >= MIN_WIN_W, "geometry: nested windows keep their minimums");
-  // an area that is too small for the floors: nobody gets a negative or NaN size, everything still adds up
-  for (const [w, h] of [
-    [0, 0],
-    [1, 1],
-    [100, 50],
-    [300, 200],
-    [640, 260],
-  ] as const) {
-    const gg = computeGeometry(S("v", 0.7, W("main"), S("h", 0.5, W("w1"), W("w2"))), area(w, h));
-    const finite = Object.values(gg.tiles).every((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w >= 0 && r.h >= 0) && gg.dividers.every((d) => [d.rect.x, d.rect.y, d.minRatio, d.maxRatio].every(Number.isFinite));
-    const inside = w < 2 * DIVIDER_PX || h < 2 * DIVIDER_PX || Object.values(gg.tiles).every((r) => r.x + r.w <= w + 1e-6 && r.y + r.h <= h + 1e-6);
-    ok(finite && inside, `geometry: area ${w}x${h} gives finite, non-negative tiles`, JSON.stringify(gg.tiles));
-  }
-  const bad = computeGeometry(S("h", NaN, W("main"), W("w1")), area(800, 400));
-  ok(Object.values(bad.tiles).every((r) => Number.isFinite(r.w) && Number.isFinite(r.x)), "geometry: a NaN ratio never reaches the tiles");
-
-  // divider drag
-  const d0 = g.dividers[0];
-  const mid = d0.parent.y + (d0.parent.h - DIVIDER_PX) * 0.5 + DIVIDER_PX / 2;
-  near(ratioAtPointer(d0, mid), 0.5, "drag: the pointer in the middle -> 0.5");
-  ok(ratioAtPointer(d0, -500) === d0.minRatio && ratioAtPointer(d0, 99999) === d0.maxRatio, "drag: limited by the floors of the tiles");
-  ok(d0.minRatio >= MIN_MAIN_H / (800 - DIVIDER_PX) - 1e-9 && d0.maxRatio <= 1 - MIN_WIN_H / (800 - DIVIDER_PX) + 1e-9, "drag: limits come from the minimum sizes", `${d0.minRatio} ${d0.maxRatio}`);
-  const dragged = setRatioAt(t0, d0.path, ratioAtPointer(d0, 600));
-  ok((dragged as { ratio: number }).ratio > 0.7, "drag down gives the chart more room");
-  const gh = computeGeometry(S("h", 0.5, W("main"), W("w1")), area(1000, 400));
-  const dh = gh.dividers[0];
-  near(ratioAtPointer(dh, dh.rect.x + DIVIDER_PX / 2), 0.5, "drag (side by side): uses x");
+  /* ───────────── the tiled layout of the first multi-window build ───────────── */
+  const t0 = S("v", 0.7, W("main"), S("h", 0.5, W("w2"), W("w1")));
+  const junkTree: [string, unknown][] = [
+    ["undefined", undefined],
+    ["number", 7],
+    ["unknown kind", { kind: "grid" }],
+    ["only the chart", { kind: "win", id: "main" }],
+    ["no chart", S("v", 0.5, W("w1"), W("w2"))],
+    ["bad dir", { kind: "split", dir: "x", ratio: 0.5, a: W("main"), b: W("w1") }],
+  ];
+  for (const [label, v] of junkTree) ok(parseLayout(v) === null, `old tree: ${label} -> null`);
+  const mig = migrateTree(parseLayout(t0));
+  ok(!!mig && eq(mig.wins.map((w) => w.id), ["main", "w2", "w1"]), "old tree: becomes windows", JSON.stringify(mig?.wins.map((w) => w.id)));
+  const mm = mig!.wins.find((w) => w.id === "main")!;
+  const m2 = mig!.wins.find((w) => w.id === "w2")!;
+  const m1 = mig!.wins.find((w) => w.id === "w1")!;
+  near(mm.h, 0.7, "old tree: the chart keeps its 70% height");
+  near(m2.w + m1.w, 1, "old tree: the two windows below share the width");
+  near(m1.x, 0.5, "old tree: ... side by side as they were");
+  ok(mig!.wins.every(frac), "old tree: everything inside the area");
+  ok(migrateTree(null) === null && migrateTree(parseLayout({ kind: "win", id: "main" })) === null, "old tree: nothing to migrate for a single chart");
+  const deepOk = (n: number) => {
+    let t: unknown = W("main");
+    for (let i = 1; i <= n; i++) t = { kind: "split", dir: "h", ratio: 0.5, a: t, b: W(`w${i}`) };
+    return t;
+  };
+  ok(extraIds(migrateTree(parseLayout(deepOk(MAX_DEPTH)))).length === MAX_WINDOWS, "old tree: more windows than allowed are cut");
+  ok(parseLayout(deepOk(MAX_DEPTH + 4)) === null, "old tree: a chain deeper than allowed is refused");
 
   /* ───────────── controller ───────────── */
   type Mounted = { pane: string };
@@ -259,7 +260,7 @@ function main() {
   }
   const asEng = (e: Stub) => e as unknown as ChartEngine;
   const saved = (c: IndicatorsController): unknown[] => JSON.parse(c.serialize());
-  const entry = (c: IndicatorsController, i: number) => saved(c)[i] as { id?: string; w?: string; lay?: unknown };
+  const entry = (c: IndicatorsController, i: number) => saved(c)[i] as { id?: string; w?: string; ws?: unknown };
 
   {
     // 1) a plain chart: nothing about windows in the saved list
@@ -268,20 +269,20 @@ function main() {
     c.attach(asEng(e));
     c.add("rsi");
     c.add("macd");
-    ok(c.getLayout() === null && !c.windowsOn() && saved(c).length === 2 && !JSON.stringify(saved(c)).includes('"lay"') && !JSON.stringify(saved(c)).includes('"w"'), "controller: no windows -> the saved list is exactly as before");
+    ok(c.getWorkspace() === null && !c.windowsOn() && saved(c).length === 2 && !JSON.stringify(saved(c)).includes('"ws"') && !JSON.stringify(saved(c)).includes('"w"'), "controller: no windows -> the saved list is exactly as before");
     ok(c.paneOf(c.list()[0].uid).startsWith("ind-"), "controller: own panes as before");
 
     // 2) windows are not available yet (narrow / not measured): the indicator stays in the stack even if it is assigned
-    const w = c.addWindow("v");
+    const w = c.addWindow();
     ok(w === "w1" && eq(c.windowIds(), ["w1"]) && !c.windowsOn(), "controller: addWindow makes a window, but it is not on screen while the chart is narrow");
     c.moveToWindow(c.list()[0].uid, "w1");
     ok(c.paneOf(c.list()[0].uid).startsWith("ind-") && e.series.size === 2 && e.order.length === 2, "controller: unavailable windows -> the indicator stays in the one stack");
-    ok(entry(c, 0).w === "w1" && saved(c).length === 3 && !!entry(c, 2).lay, "controller: the assignment and the layout are saved even while folded");
+    ok(entry(c, 0).w === "w1" && saved(c).length === 3 && !!entry(c, 2).ws, "controller: the assignment and the workspace are saved even while folded");
 
-    // 3) windows become available, the tile registers its engine
+    // 3) windows become available, the window registers its engine
     const win = new Stub();
     c.attachWindow("w1", asEng(win));
-    ok(c.paneOf(c.list()[0].uid).startsWith("ind-"), "controller: a registered tile does not pull the indicator before windows are available");
+    ok(c.paneOf(c.list()[0].uid).startsWith("ind-"), "controller: a registered window does not pull the indicator before windows are available");
     c.setWindowsAvailable(true);
     const u0 = c.list()[0].uid;
     ok(c.windowsOn() && c.windowOf(u0) === "w1" && c.paneOf(u0) === "win:w1", "controller: available -> the indicator lives in the window");
@@ -290,7 +291,7 @@ function main() {
 
     // 4) save -> restore on a fresh chart (reload)
     const json = c.serialize();
-    ok(entry(c, 0).w === "w1" && eq(windowIds(parseLayout(entry(c, 2).lay)), ["w1"]), "controller: saved list has the window and the assignment");
+    ok(entry(c, 0).w === "w1" && extraIds(parseWorkspace(entry(c, 2).ws)).join() === "w1", "controller: saved list has the window and the assignment");
     const e2 = new Stub();
     const c2 = new IndicatorsController();
     c2.restore(json);
@@ -309,23 +310,23 @@ function main() {
     c2.setWindowsAvailable(true);
     ok(c2.windowOf(u2) === "w1" && win2.series.has(u2) && !e2.series.has(u2), "controller: wide again -> back in its window");
 
-    // 6) the tile goes away (windows folded away by the page): the indicator waits, no crash, no stray mount
+    // 6) the window goes away: the indicator waits, no crash, no stray mount
     c2.detachWindow("w1", asEng(win2));
-    ok(!win2.series.has(u2) && !e2.series.has(u2), "controller: a removed tile unmounts its indicators");
+    ok(!win2.series.has(u2) && !e2.series.has(u2), "controller: a removed window unmounts its indicators");
     const win3 = new Stub();
     c2.attachWindow("w1", asEng(win3));
-    ok(win3.series.has(u2), "controller: a new tile for the same window takes them again");
+    ok(win3.series.has(u2), "controller: a new engine for the same window takes them again");
 
     // 7) move between windows
-    const w2 = c2.addWindow("h", "w1");
-    ok(w2 === "w2" && eq(c2.windowIds(), ["w1", "w2"]), "controller: split a window -> a second window");
+    const w2 = c2.addWindow();
+    ok(w2 === "w2" && eq(c2.windowIds(), ["w1", "w2"]) && c2.windowNumber("w2") === 2, "controller: a second window");
     const win4 = new Stub();
     c2.attachWindow("w2", asEng(win4));
     c2.moveToWindow(u2, "w2");
     ok(c2.windowOf(u2) === "w2" && win4.series.has(u2) && !win3.series.has(u2), "controller: move to another window");
     const u2b = c2.list()[1].uid;
     c2.moveToWindow(u2b, "new");
-    ok(c2.windowIds().length === 3 && c2.windowOf(u2b) === "w3", "controller: «move to a new window» creates it and puts the indicator there");
+    ok(c2.windowIds().length === 3 && c2.windowOf(u2b) === "w3", "controller: «move to a new window» creates a floating one and puts the indicator there");
     c2.moveToWindow(u2b, null);
     ok(c2.windowOf(u2b) === undefined && c2.paneOf(u2b).startsWith("ind-") && c2.windowIds().length === 3, "controller: back to the chart (the empty window stays until it is closed)");
     c2.moveToWindow(u2, "nope");
@@ -335,25 +336,38 @@ function main() {
     c2.closeWindow("w2");
     ok(!c2.windowIds().includes("w2") && c2.windowOf(u2) === undefined && e2.series.has(u2) && !win4.series.has(u2), "controller: closing a window sends its indicators back to the chart");
     c2.closeWindow(MAIN_ID);
-    ok(c2.getLayout() !== null, "controller: the chart cannot be closed");
+    ok(c2.getWorkspace() !== null, "controller: the chart cannot be closed");
     c2.resetWindows();
-    ok(c2.getLayout() === null && !c2.windowsOn() && saved(c2).length === 2 && !JSON.stringify(saved(c2)).includes('"w"'), "controller: close all -> exactly the old saved format");
+    ok(c2.getWorkspace() === null && !c2.windowsOn() && saved(c2).length === 2 && !JSON.stringify(saved(c2)).includes('"w"'), "controller: reset layout -> exactly the old saved format");
 
-    // 9) divider drag: only the end of the drag is saved
+    // 9) moving / resizing / raising: only the end of a drag is saved
     const e3 = new Stub();
     const c3 = new IndicatorsController();
     c3.attach(asEng(e3));
     c3.setWindowsAvailable(true);
-    c3.addWindow("v");
+    c3.addWindow();
+    c3.addWindow();
     let layoutEvents = 0;
     let savedEvents = 0;
     c3.subscribeLayout(() => layoutEvents++);
     c3.subscribeSaved(() => savedEvents++);
-    c3.setSplitRatio("", 0.5, false);
-    c3.setSplitRatio("", 0.45, false);
-    ok(layoutEvents === 2 && savedEvents === 0, "controller: dragging a divider updates the layout without saving", `${layoutEvents} ${savedEvents}`);
+    c3.setRect("w1", { x: 0.1, y: 0.1, w: 0.3, h: 0.3 }, false);
+    c3.setRect("w1", { x: 0.2, y: 0.1, w: 0.3, h: 0.3 }, false);
+    ok(layoutEvents === 2 && savedEvents === 0, "controller: dragging a window updates the layout without saving", `${layoutEvents} ${savedEvents}`);
     c3.commitLayout();
-    ok(savedEvents === 1 && (nodeAt(c3.getLayout(), "") as { ratio: number }).ratio === 0.45, "controller: the end of the drag is saved once");
+    ok(savedEvents === 1 && c3.getWorkspace()!.wins[1].x === 0.2, "controller: the end of the drag is saved once");
+    c3.setRect("w1", { x: 0.2, y: 0.1, w: 0.3, h: 0.3 }, true);
+    ok(savedEvents === 1, "controller: the same place again is not a change");
+    c3.raise("w1");
+    ok(savedEvents === 2 && c3.getWorkspace()!.wins[1].z > c3.getWorkspace()!.wins[2].z, "controller: a click brings the window to the front (saved)");
+    c3.raise("w1");
+    ok(savedEvents === 2, "controller: ... once");
+    c3.setRect(MAIN_ID, { x: 0, y: 0, w: 0.5, h: 0.5 });
+    ok(c3.getWorkspace()!.wins[0].w === 0.5, "controller: the price chart window is resized");
+    const json3 = c3.serialize();
+    const c3b = new IndicatorsController();
+    c3b.restore(json3);
+    ok(c3b.serialize() === json3 && c3b.getWorkspace()!.wins[0].w === 0.5, "controller: positions, sizes and z-order survive save -> restore");
     savedEvents = 0;
     c3.setWindowsAvailable(false);
     ok(savedEvents === 0, "controller: folding / unfolding is not a saved change");
@@ -368,7 +382,7 @@ function main() {
     const pat = c.add("candle_patterns");
     const rsi = c.add("rsi");
     const ema = c.add("ema");
-    const id = c.addWindow("v");
+    const id = c.addWindow();
     const win = new Stub();
     c.attachWindow(id, asEng(win));
     ok(!c.canWindow(pat) && c.canWindow(rsi) && c.canWindow(ema), "controller: pattern markers stay on the chart, an oscillator and a moving average may go");
@@ -392,20 +406,26 @@ function main() {
     ok(c.windowOf(cl) === id, "controller: a clone stays in the window");
     c.remove(added);
     ok(!win.series.has(added), "controller: removing an indicator unmounts it from the window");
+    // the stack for the screenshot is back to front
+    c.raise(MAIN_ID);
+    const stack = c.windowStack();
+    ok(stack.length === 2 && stack[0].z < stack[1].z && stack[1].engine === (e as unknown as ChartEngine), "controller: the picture is put together back to front (the chart on top after a click)");
   }
 
   {
     // 12) damaged / foreign stored data never breaks the chart
+    const goodWs = serializeWorkspace(addWindow(null)!.ws);
     const cases: [string, unknown[]][] = [
-      ["lay is a number", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { lay: 5 }]],
-      ["lay is a string", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { lay: "w1" }]],
-      ["lay without a chart", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { lay: serializeLayout(S("v", 0.5, W("w1"), W("w2"))) }]],
-      ["w is an object", [{ id: "rsi", params: {}, visible: true, w: { a: 1 } }, { lay: serializeLayout(S("v", 0.5, W("main"), W("w1"))) }]],
-      ["w names a window that is not in the layout", [{ id: "rsi", params: {}, visible: true, w: "w9" }, { lay: serializeLayout(S("v", 0.5, W("main"), W("w1"))) }]],
-      ["w is main", [{ id: "rsi", params: {}, visible: true, w: "main" }, { lay: serializeLayout(S("v", 0.5, W("main"), W("w1"))) }]],
+      ["ws is a number", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: 5 }]],
+      ["ws is a string", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: "w1" }]],
+      ["ws without windows", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: { wins: [] } }]],
+      ["w is an object", [{ id: "rsi", params: {}, visible: true, w: { a: 1 } }, { ws: goodWs }]],
+      ["w names a window that is not there", [{ id: "rsi", params: {}, visible: true, w: "w9" }, { ws: goodWs }]],
+      ["w is main", [{ id: "rsi", params: {}, visible: true, w: "main" }, { ws: goodWs }]],
       ["w without any layout", [{ id: "rsi", params: {}, visible: true, w: "w1" }]],
-      ["lay as an array", [{ id: "rsi", params: {}, visible: true }, [{ lay: 1 }]]],
-      ["lay twice", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { lay: serializeLayout(S("v", 0.5, W("main"), W("w1"))) }, { lay: 7 }]],
+      ["ws as an array", [{ id: "rsi", params: {}, visible: true }, [{ ws: 1 }]]],
+      ["ws twice", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: goodWs }, { ws: 7 }]],
+      ["a good window", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: goodWs }]],
     ];
     for (const [label, arr] of cases) {
       const e = new Stub();
@@ -426,21 +446,30 @@ function main() {
     }
     // the sentinel is not an indicator and is skipped by code that knows only indicators
     const c = new IndicatorsController();
-    c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { lay: serializeLayout(S("v", 0.5, W("main"), W("w1"))) }]));
-    ok(c.list().length === 1 && c.getLayout() !== null, "restore: the layout entry is not an indicator");
-    // an older list (no layout) replaces the layout of a live chart
+    c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { ws: goodWs }]));
+    ok(c.list().length === 1 && c.getWorkspace() !== null, "restore: the workspace entry is not an indicator");
+    // an older list (no workspace) replaces the layout of a live chart
     c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }]));
-    ok(c.getLayout() === null, "restore: a list without a layout clears the windows (a template without windows)");
+    ok(c.getWorkspace() === null, "restore: a list without a workspace clears the windows (a template without windows)");
     c.restore("not json");
     ok(c.list().length === 1, "restore: junk text changes nothing");
     // too many windows in the stored data
-    const manyLay = (() => {
-      let t: unknown = W("main");
-      for (let i = 1; i <= MAX_DEPTH; i++) t = { kind: "split", dir: "h", ratio: 0.5, a: t, b: W(`w${i}`) };
-      return t;
-    })();
-    c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { lay: manyLay }]));
+    c.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { ws: hugeList }]));
     ok(c.windowIds().length === MAX_WINDOWS, "restore: more windows than allowed are cut", String(c.windowIds().length));
+    // what the first multi-window build saved (the tiled tree) becomes floating windows in the same places, indicators stay in theirs
+    const e = new Stub();
+    const old = new IndicatorsController();
+    old.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true, w: "w1" }, { lay: t0 }]));
+    old.attach(asEng(e));
+    old.setWindowsAvailable(true);
+    const ow = new Stub();
+    old.attachWindow("w1", asEng(ow));
+    const ou = old.list()[0].uid;
+    ok(eq(old.windowIds(), ["w2", "w1"]) && old.windowOf(ou) === "w1" && ow.series.has(ou), "restore: a layout saved by the tiled build keeps its windows and indicators");
+    const migrated = JSON.parse(old.serialize()).find((x: { ws?: unknown }) => x.ws);
+    ok(!!migrated && !JSON.stringify(JSON.parse(old.serialize())).includes('"lay"'), "restore: ... and is saved in the new form from now on");
+    old.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { lay: "junk" }]));
+    ok(old.getWorkspace() === null && old.list().length === 1, "restore: a broken old layout is ignored");
   }
 
   console.log(`\n${passes} passed, ${fails} failed`);

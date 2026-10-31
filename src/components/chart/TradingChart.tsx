@@ -23,7 +23,7 @@ import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
 import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
-import ChartWindows, { useWindowsGeometry } from "@/components/chart/ChartWindows";
+import ChartWindows, { WindowFrame, useWindowsGeometry } from "@/components/chart/ChartWindows";
 import { MAX_WINDOWS } from "@/lib/chart/windows-layout";
 import { composeWindows } from "@/lib/chart/windows-shot";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
@@ -43,7 +43,7 @@ import PriceScaleMenu from "@/components/chart/PriceScaleMenu";
 import ShortcutsDialog from "@/components/chart/ShortcutsDialog";
 import CompareLegend, { type CompareItem } from "@/components/chart/CompareLegend";
 import { useChartSettings } from "@/components/chart/useChartSettings";
-import { DESIGN_PATHS, DrawIcon, panelTabIcon, ui } from "@/components/chart/icons";
+import { DESIGN_PATHS, DrawIcon, IND_ICONS, panelTabIcon, ui } from "@/components/chart/icons";
 import { CS_ICONS } from "@/components/chart/icons-cs";
 import { aggregateCandles, formatInterval, intervalPlan, isSecondsInterval, isValidInterval, secondsIntervalMs, secondsSupported, usableInterval } from "@/lib/chart/intervals";
 import { BybitTradeStream, foldTrades, type StreamState } from "@/lib/chart/seconds-feed";
@@ -403,7 +403,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   /* extra windows with indicators (not in the panes of a multi-chart grid, not on bars built from the candles) */
   const [winBroken, setWinBroken] = useState(false);
-  const { geo: winGeo, available: winAvailable } = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
+  const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
   const [winCount, setWinCount] = useState(0);
   useEffect(() => {
     const read = () => setWinCount(indicators.windowIds().length);
@@ -1254,8 +1254,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const snapshotUrl = (): string | undefined => {
     const eng = engineRef.current;
     if (!eng) return undefined;
-    const wins = indicators.windowsOn() ? indicators.windowEngines() : [];
-    return wins.length > 0 ? composeWindows(eng, wins) : eng.screenshot();
+    return indicators.windowsOn() ? composeWindows(eng, indicators.windowStack()) : eng.screenshot();
   };
 
   const screenshot = () => {
@@ -1685,7 +1684,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
-        windows={{ available: winAvailable, count: winCount, max: MAX_WINDOWS, onAdd: (dir) => void indicators.addWindow(dir), onCloseAll: () => indicators.resetWindows() }}
+        windows={{ available: winGeo.available, count: winCount, canAdd: winCount < MAX_WINDOWS, onAdd: () => void indicators.addWindow(), onReset: () => indicators.resetWindows() }}
         onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
@@ -1717,9 +1716,27 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       />
       )}
 
-          {/* chart area: the price chart is the first tile, the extra windows (indicators) are the others; with one window nothing changes */}
+          {/* chart area: with extra windows the price chart is a floating window too (header to move, edges to resize); with none nothing changes */}
           <div ref={areaRef} className="relative flex flex-col flex-1 min-h-0">
-          <div className="group relative flex-1 min-h-0" style={winGeo?.tiles.main ? { position: "absolute", zIndex: 0, left: winGeo.tiles.main.x, top: winGeo.tiles.main.y, width: winGeo.tiles.main.w, height: winGeo.tiles.main.h } : undefined}>
+          <WindowFrame
+            id="main"
+            controller={indicators}
+            rect={winGeo.px.main ?? null}
+            size={winGeo.size}
+            z={winGeo.ws?.wins[0]?.z ?? 1}
+            title={`${instrument.ticker} · ${formatInterval(shownInterval(prefs.interval, source), t)}`}
+            actions={
+              <>
+                <button type="button" className="tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)]" title={t("win.addWindow")} aria-label={t("win.addWindow")} disabled={winCount >= MAX_WINDOWS} onClick={() => void indicators.addWindow()}>
+                  {IND_ICONS.plus(15)}
+                </button>
+                <button type="button" className="tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)]" title={t("win.reset")} aria-label={t("win.reset")} onClick={() => indicators.resetWindows()}>
+                  {IND_ICONS.reset(15)}
+                </button>
+              </>
+            }
+          >
+          <div className="group relative flex-1 min-h-0">
             <div ref={hostRef} className="absolute inset-0" />
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1804,6 +1821,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             )}
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
+          </WindowFrame>
           <ChartWindows controller={indicators} leader={engineReady ? engineRef.current : null} geo={winGeo} onAddIndicator={openIndicatorsFor} onBroken={() => setWinBroken(true)} />
           </div>
           {!appPage && (

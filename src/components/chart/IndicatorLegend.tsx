@@ -7,7 +7,7 @@ import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { setIndTranslator } from "@/lib/chart/indicators/ind-text";
-import { MAX_WINDOWS, WIN_PANE, WIN_PREFIX, windowNumber } from "@/lib/chart/windows-layout";
+import { WIN_PANE, WIN_PREFIX } from "@/lib/chart/windows-layout";
 import IndicatorEditor from "./IndicatorEditor";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
@@ -42,8 +42,6 @@ interface Props {
 
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
 const enginePane = (pid: string) => (pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
-/** Room for the header strip of an extra window above its rows. */
-const WIN_ROWS_TOP = 26;
 
 export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 51, winId, ready = true }: Props) {
   const { t } = useT();
@@ -242,7 +240,6 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     const inOwn = info.pane !== "main";
     // windows: «move to a new window / to window N / back to the main chart»
     const winsOn = controller.windowsAvailable() && controller.canWindow(uid);
-    const layout = controller.getLayout();
     const winIds = controller.windowIds();
     const curWin = controller.windowOf(uid);
     return (
@@ -273,7 +270,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             }}
           />
         )}
-        {winsOn && winIds.length < MAX_WINDOWS && (
+        {winsOn && controller.canAddWindow() && (
           <MenuItem
             icon={IND_ICONS.pane(16)}
             label={t("win.moveNew")}
@@ -290,7 +287,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               <MenuItem
                 key={w}
                 icon={IND_ICONS.pane(16)}
-                label={t("win.moveTo", { n: windowNumber(layout, w) })}
+                label={t("win.moveTo", { n: controller.windowNumber(w) })}
                 onClick={() => {
                   setMenuUid(null);
                   controller.moveToWindow(uid, w);
@@ -460,7 +457,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
         )}
         {others.map(([pid, uids]) =>
           tops[pid] === undefined ? null : (
-            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + (winId ? WIN_ROWS_TOP : 5) }}>
+            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + 5 }}>
               {uids.map((u) => renderRow(u, true))}
             </div>
           ),

@@ -1,32 +1,41 @@
 "use client";
 
 import { Component, useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import type { ReactNode } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from "react";
 import { useT } from "@/lib/i18n/client";
 import { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
-import { MIN_AREA_H, MIN_AREA_W, computeGeometry, isMulti, ratioAtPointer, windowIds, windowNumber } from "@/lib/chart/windows-layout";
-import type { Divider, Geometry } from "@/lib/chart/windows-layout";
+import { MAIN_ID, MIN_AREA_H, MIN_AREA_W, dragRect, extraIds, isActive, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
+import type { DragMode, Rect, Workspace } from "@/lib/chart/windows-layout";
 import IndicatorLegend from "./IndicatorLegend";
 import { IND_ICONS } from "./icons";
 
-/* Multi-window layout of the chart: the price chart plus any number of extra windows (tiles) with indicators. This file draws the extra tiles and
-   the dividers between all tiles; the price chart keeps its own element in TradingChart and only gets its rectangle from here.
-   Model: lib/chart/windows-layout.ts, indicators of a window: IndicatorsController, one shared time view and crosshair: ChartEngine.follow. */
+/* Workspace of floating windows over the chart area: the price chart and the extra windows with indicators are all rectangles that can be moved by
+   their header and resized by their edges. The model is lib/chart/windows-layout.ts, the indicators of a window live in IndicatorsController, one
+   shared time view and crosshair come from ChartEngine.follow. With nothing added (the default) nothing here changes the classic single chart. */
 
-/** Layout tree of the controller as React state (a new object after every change, so the snapshot is stable). */
-function useLayout(controller: IndicatorsController) {
+/** The workspace of the controller as React state (a new object after every change, so the snapshot is stable). */
+function useWorkspace(controller: IndicatorsController) {
   const subscribe = useCallback((cb: () => void) => controller.subscribeLayout(cb), [controller]);
-  return useSyncExternalStore(subscribe, () => controller.getLayout(), () => null);
+  return useSyncExternalStore(subscribe, () => controller.getWorkspace(), () => null);
+}
+
+export interface WindowsGeo {
+  /** The workspace while it is on screen (windows exist and the area is wide enough), else null: the classic single chart. */
+  ws: Workspace | null;
+  /** Rectangle of every window in px of the area, by id (the price chart included). */
+  px: Record<string, Rect>;
+  size: { w: number; h: number };
+  /** The area is wide enough for windows (the toolbar button is shown then). */
+  available: boolean;
 }
 
 /**
- * Tells the controller whether the chart area is wide enough for windows and returns where the tiles are (null: one chart, or too narrow for windows,
- * then the indicators keep the one stack of panes under the price chart as before).
+ * Tells the controller whether the chart area is wide enough for windows and returns where the windows are (ws null: one chart, or too narrow
+ * for windows, then the indicators keep the one stack of panes under the price chart as before).
  */
-export function useWindowsGeometry(controller: IndicatorsController, areaRef: RefObject<HTMLElement | null>, enabled: boolean): { geo: Geometry | null; available: boolean } {
-  const layout = useLayout(controller);
+export function useWindowsGeometry(controller: IndicatorsController, areaRef: RefObject<HTMLElement | null>, enabled: boolean): WindowsGeo {
+  const stored = useWorkspace(controller);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
     const el = areaRef.current;
@@ -47,18 +56,130 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
     controller.setWindowsAvailable(available);
   }, [controller, available]);
   useEffect(() => () => controller.setWindowsAvailable(false), [controller]);
-  const geo = useMemo(() => (available && layout && isMulti(layout) ? computeGeometry(layout, { x: 0, y: 0, w: size.w, h: size.h }) : null), [available, layout, size.w, size.h]);
-  return { geo, available };
+  return useMemo(() => {
+    const ws = available && isActive(stored) ? stored : null;
+    const px: Record<string, Rect> = {};
+    if (ws) for (const w of ws.wins) px[w.id] = rectPx(w, size.w, size.h);
+    return { ws, px, size, available };
+  }, [available, stored, size]);
 }
+
+/* ───────────── a window frame: header to move, edges to resize ───────────── */
+
+const hbtn =
+  "tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
+
+const HANDLES: [DragMode, string][] = [
+  ["n", "inset-x-2 top-0 h-[5px] cursor-ns-resize"],
+  ["s", "inset-x-2 bottom-0 h-[5px] cursor-ns-resize"],
+  ["w", "inset-y-2 left-0 w-[5px] cursor-ew-resize"],
+  ["e", "inset-y-2 right-0 w-[5px] cursor-ew-resize"],
+  ["nw", "left-0 top-0 h-[10px] w-[10px] cursor-nwse-resize"],
+  ["ne", "right-0 top-0 h-[10px] w-[10px] cursor-nesw-resize"],
+  ["sw", "bottom-0 left-0 h-[10px] w-[10px] cursor-nesw-resize"],
+  ["se", "bottom-0 right-0 h-[10px] w-[10px] cursor-nwse-resize"],
+];
+
+interface FrameProps {
+  id: string;
+  controller: IndicatorsController;
+  /** Where the window is, in px of the area; null: the classic single chart (the frame is only a transparent wrapper). */
+  rect: Rect | null;
+  size: { w: number; h: number };
+  z: number;
+  title: ReactNode;
+  actions: ReactNode;
+  children: ReactNode;
+}
+
+/**
+ * The frame of a window. With `rect` null it is a plain wrapper that fills the area (children stay mounted when the workspace switches on or
+ * off, the price chart's canvas never gets re-created).
+ */
+export function WindowFrame({ id, controller, rect, size, z, title, actions, children }: FrameProps) {
+  const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
+    if (e.button !== 0 || !rect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    controller.raise(id);
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const { w: W, h: H } = size;
+    const start = rect;
+    const sx = e.clientX;
+    const sy = e.clientY;
+    // the whole chart lays out on every change: at most once per frame
+    let raf = 0;
+    let last: Rect | null = null;
+    const flush = () => {
+      raf = 0;
+      if (last) controller.setRect(id, rectFromPx(last, W, H), false);
+    };
+    const move = (ev: PointerEvent) => {
+      last = dragRect(start, mode, ev.clientX - sx, ev.clientY - sy, W, H);
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+    const done = () => {
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", done);
+      el.removeEventListener("pointercancel", done);
+      controller.commitLayout();
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", done);
+    el.addEventListener("pointercancel", done);
+  };
+
+  // one element tree in both modes (null placeholders keep the slots): the children - the price chart's canvas host - are never re-created
+  const style: CSSProperties | undefined = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: 10 + z } : undefined;
+  return (
+    <div
+      className={
+        rect
+          ? "absolute flex flex-col overflow-hidden rounded-lg border border-[var(--tv3-hair)] bg-[var(--tv3-card)] shadow-[0_6px_24px_rgba(0,0,0,.28)]"
+          : "relative flex flex-col flex-1 min-h-0"
+      }
+      style={style}
+      data-chart-window={rect ? id : undefined}
+      // a click anywhere in an indicator window brings it to the front; the price chart (it fills the area) only by its header or edges, or it would bury the windows
+      onPointerDownCapture={rect && id !== MAIN_ID ? () => controller.raise(id) : undefined}
+    >
+      {rect ? (
+        <div
+          className="flex h-[26px] shrink-0 cursor-move touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1"
+          onPointerDown={(e) => {
+            if ((e.target as HTMLElement).closest("button")) return;
+            startDrag(e, "move");
+          }}
+        >
+          <span className="truncate text-[11.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{title}</span>
+          <span className="flex shrink-0 items-center gap-0.5">{actions}</span>
+        </div>
+      ) : null}
+      {children}
+      {rect ? (
+        <>
+          {HANDLES.map(([mode, cls]) => (
+            <div key={mode} className={`absolute z-40 touch-none ${cls}`} onPointerDown={(e) => startDrag(e, mode)} />
+          ))}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/* ───────────── the extra windows ───────────── */
 
 interface Props {
   controller: IndicatorsController;
   /** The engine of the price chart (null until it exists). */
   leader: ChartEngine | null;
-  geo: Geometry | null;
+  geo: WindowsGeo;
   /** The «+» of a window: open the indicator catalog so that the next indicators land there. */
   onAddIndicator: (winId: string) => void;
-  /** A tile failed to render: the windows are switched off for this session (the chart and the saved layout stay), see the parent. */
+  /** A window failed to render: the windows are switched off for this session (the chart and the saved layout stay), see the parent. */
   onBroken: () => void;
 }
 
@@ -82,41 +203,25 @@ class WindowsBoundary extends Component<{ onBroken: () => void; children: ReactN
 export default function ChartWindows(props: Props) {
   return (
     <WindowsBoundary onBroken={props.onBroken}>
-      <Tiles {...props} />
+      <Windows {...props} />
     </WindowsBoundary>
   );
 }
 
-function Tiles({ controller, leader, geo, onAddIndicator }: Props) {
-  const layout = useLayout(controller);
-  if (!geo || !leader || !layout) return null;
+function Windows({ controller, leader, geo, onAddIndicator }: Props) {
+  if (!geo.ws || !leader) return null;
   return (
     <>
-      {windowIds(layout).map((id) => {
-        const rect = geo.tiles[id];
-        return rect ? <WindowTile key={id} id={id} rect={rect} controller={controller} leader={leader} number={windowNumber(layout, id)} onAddIndicator={onAddIndicator} /> : null;
+      {extraIds(geo.ws).map((id) => {
+        const rect = geo.px[id];
+        const z = geo.ws?.wins.find((w) => w.id === id)?.z ?? 1;
+        return rect ? <IndicatorWindow key={id} id={id} rect={rect} z={z} size={geo.size} controller={controller} leader={leader} onAddIndicator={onAddIndicator} /> : null;
       })}
-      {geo.dividers.map((d) => (
-        <DividerBar key={d.path} d={d} controller={controller} />
-      ))}
     </>
   );
 }
 
-/* ───────────── one extra window ───────────── */
-
-const hbtn =
-  "tv3-press pointer-events-auto flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
-
-function svg(body: string) {
-  return (
-    <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d={body} />
-    </svg>
-  );
-}
-
-function WindowTile({ id, rect, controller, leader, number, onAddIndicator }: { id: string; rect: { x: number; y: number; w: number; h: number }; controller: IndicatorsController; leader: ChartEngine; number: number; onAddIndicator: (winId: string) => void }) {
+function IndicatorWindow({ id, rect, z, size, controller, leader, onAddIndicator }: { id: string; rect: Rect; z: number; size: { w: number; h: number }; controller: IndicatorsController; leader: ChartEngine; onAddIndicator: (winId: string) => void }) {
   const { t } = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const engRef = useRef<ChartEngine | null>(null);
@@ -144,89 +249,41 @@ function WindowTile({ id, rect, controller, leader, number, onAddIndicator }: { 
   useEffect(() => controller.subscribe(tick), [controller]);
 
   const empty = !controller.usedWindows().has(id);
-  const style: CSSProperties = { left: rect.x, top: rect.y, width: rect.w, height: rect.h };
   return (
-    <div className="absolute z-[1] overflow-hidden bg-[var(--tv3-card)]" style={style} data-chart-window={id}>
-      <div ref={hostRef} className="absolute inset-0" />
-      <IndicatorLegend controller={controller} getEngine={getEngine} hostRef={hostRef} winId={id} ready={ready} />
-      {empty && ready && <div className="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-xs text-[var(--tv3-muted)]">{t("win.empty")}</div>}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-[26px] items-center justify-between pl-2.5 pr-1">
-        <span className="select-none text-[11.5px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("win.title", { n: number })}</span>
-        <span className="flex items-center gap-0.5 rounded-lg bg-[var(--tv3-glass)] px-[2px]">
+    <WindowFrame
+      id={id}
+      controller={controller}
+      rect={rect}
+      size={size}
+      z={z}
+      title={t("win.title", { n: controller.windowNumber(id) })}
+      actions={
+        <>
           <button type="button" className={hbtn} title={t("win.addInd")} aria-label={t("win.addInd")} onClick={() => onAddIndicator(id)}>
             {IND_ICONS.plus(15)}
-          </button>
-          <button type="button" className={hbtn} title={t("win.splitRight")} aria-label={t("win.splitRight")} onClick={() => controller.addWindow("h", id)}>
-            {svg("M4 5h16v14H4zM12 5v14")}
-          </button>
-          <button type="button" className={hbtn} title={t("win.splitDown")} aria-label={t("win.splitDown")} onClick={() => controller.addWindow("v", id)}>
-            {svg("M4 5h16v14H4zM4 12h16")}
           </button>
           <button type="button" className={`${hbtn} hover:!text-red-500`} title={t("win.close")} aria-label={t("win.close")} onClick={() => controller.closeWindow(id)}>
             {IND_ICONS.close(14)}
           </button>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ───────────── divider between two tiles ───────────── */
-
-function DividerBar({ d, controller }: { d: Divider; controller: IndicatorsController }) {
-  const { t } = useT();
-  const [active, setActive] = useState(false);
-  const horiz = d.dir === "h";
-  // the strip is thin, the grab area around it is wider (a finger needs more)
-  const pad = 4;
-  const style: CSSProperties = horiz
-    ? { left: d.rect.x - pad, top: d.rect.y, width: d.rect.w + pad * 2, height: d.rect.h, cursor: "col-resize" }
-    : { left: d.rect.x, top: d.rect.y - pad, width: d.rect.w, height: d.rect.h + pad * 2, cursor: "row-resize" };
-
-  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const el = e.currentTarget;
-    const area = (el.offsetParent ?? el.parentElement)?.getBoundingClientRect();
-    if (!area) return;
-    el.setPointerCapture(e.pointerId);
-    setActive(true);
-    // the whole chart re-lays out on every change: at most once per frame
-    let raf = 0;
-    let want = NaN;
-    const move = (ev: PointerEvent) => {
-      want = ratioAtPointer(d, horiz ? ev.clientX - area.left : ev.clientY - area.top);
-      if (!raf)
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          controller.setSplitRatio(d.path, want, false);
-        });
-    };
-    const done = () => {
-      if (raf) cancelAnimationFrame(raf);
-      if (isFinite(want)) controller.setSplitRatio(d.path, want, false);
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", done);
-      el.removeEventListener("pointercancel", done);
-      setActive(false);
-      controller.commitLayout();
-    };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", done);
-    el.addEventListener("pointercancel", done);
-  };
-
-  return (
-    <div
-      role="separator"
-      aria-orientation={horiz ? "vertical" : "horizontal"}
-      title={t("win.resize")}
-      className="group absolute z-[2] touch-none select-none"
-      style={style}
-      onPointerDown={onDown}
+        </>
+      }
     >
-      <div className={`absolute ${horiz ? "inset-y-0 left-1/2 w-[6px] -translate-x-1/2" : "inset-x-0 top-1/2 h-[6px] -translate-y-1/2"} transition-colors ${active ? "bg-[var(--tv3-accent)]" : "bg-[var(--tv3-fill2)] group-hover:bg-[var(--tv3-accent)]/60"}`} />
-    </div>
+      <div className="relative min-h-0 flex-1">
+        <div ref={hostRef} className="absolute inset-0" />
+        <IndicatorLegend controller={controller} getEngine={getEngine} hostRef={hostRef} winId={id} ready={ready} />
+        {empty && ready && (
+          <div className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 flex-col items-center gap-2 text-center text-xs text-[var(--tv3-muted)]">
+            <span>{t("win.empty")}</span>
+            <button
+              type="button"
+              onClick={() => onAddIndicator(id)}
+              className="tv3-press pointer-events-auto cursor-pointer rounded-lg bg-[var(--tv3-accent)] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110"
+            >
+              {t("win.addIndBtn")}
+            </button>
+          </div>
+        )}
+      </div>
+    </WindowFrame>
   );
 }
