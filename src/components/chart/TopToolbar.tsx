@@ -265,6 +265,11 @@ export default function TopToolbar(p: Props) {
             <span className={lbl2}>{t("win.menu")}</span>
             {win.count > 0 && badge(win.count)}
           </button>
+          {/* a chart of its own (any instrument / timeframe) is the thing people look for first: a button of its own, not only a menu item */}
+          <button onClick={win.onAddChart} disabled={!win.canAddChart} title={win.canAddChart ? t("win.addChart") : t("win.max", { n: win.count })} aria-label={t("win.addChart")} className={`${btn} !rounded-none ml-px`}>
+            {I.indicators}
+            <span className={lbl2}>{t("win.addChartBtn")}</span>
+          </button>
           <Menu title={t("win.menuTitle")} className={`${btn} !rounded-l-none !px-1.5 ml-px`} width={250} trigger={IND_ICONS.chevronDown(14)}>
             {(close) => (
               <div className="px-1 text-[13px] text-[var(--tv3-text)]">
