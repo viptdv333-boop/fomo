@@ -120,6 +120,7 @@ const rows: [string, string, string, string][] = [
   ["win.hint", "Окно двигается за заголовок и тянется за края. Окно индикатора связано с одним графиком (выбор в заголовке), у окна графика индикаторы свои.", "Move a window by its header, resize it by its edges. An indicator window is linked to one chart (set in its header); a chart window has indicators of its own.", "拖动标题可移动窗口，拖动边缘可调整大小。指标窗口关联一个图表 (在标题中选择)；图表窗口有自己的指标。"],
   ["win.empty", "Индикаторов нет. Они считаются по свечам связанного графика (выбор в заголовке).", "No indicators yet. They are calculated on the candles of the linked chart (set in the header).", "尚无指标。指标基于关联图表的K线计算 (在标题中选择)。"],
   ["win.maximize", "Развернуть на всю область", "Fill the whole area", "铺满整个区域"],
+  ["win.pickInstrument", "Сменить инструмент", "Change the instrument", "更换品种"],
   ["win.shrink", "Свернуть: уменьшить окно до 1/4 области", "Shrink the window to a quarter of the area", "缩小窗口至区域的 1/4"],
   ["win.restore", "Вернуть размер", "Restore size", "还原大小"],
   ["win.moveTo", "Перенести в окно: {title}", "Move to window: {title}", "移到窗口：{title}"],

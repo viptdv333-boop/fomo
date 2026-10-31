@@ -259,6 +259,8 @@ interface Props {
   /** A new window became a chart / an indicator window (the page knows the instrument and the catalog). */
   onPickChart: (winId: string) => void;
   onPickIndicator: (winId: string) => void;
+  /** Open the instrument search of a chart window (the title of the window, or right after «Chart» was chosen). */
+  onPickInstrument: (winId: string) => void;
   /** Back to the classic single chart. */
   onReset: () => void;
   /** A window failed to render: the windows are switched off for this session (the chart and the saved layout stay), see the parent. */
@@ -324,7 +326,7 @@ function Windows(props: Props) {
           const rect = geo.px[w.id];
           if (!rect) return null;
           const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id };
-          if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} />;
+          if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} onPickInstrument={props.onPickInstrument} />;
           if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={chartCount(ws) < MAX_CHARTS || mainClosed} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
           return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} />;
         })}
@@ -479,7 +481,7 @@ function NewWindow({ win, rect, size, controller, ws, maximized, canChart, hasOt
 }
 
 /** A window with a chart of its own: the same component as the panes of the multi-chart grid (own instrument picker, interval, indicators). */
-function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, onFocus }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
+function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, onFocus, onPickInstrument }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void; onPickInstrument: (winId: string) => void }) {
   const { t } = useT();
   const title = useLive(controller, ws, () => chartTitle(controller, ws, win.id));
   return (
@@ -490,7 +492,12 @@ function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, 
       size={size}
       z={win.z}
       maximized={maximized}
-      title={<span className="truncate">{title}</span>}
+      title={
+        // the title is the way to another instrument: it opens the same search the ticker button of the window's toolbar opens
+        <button type="button" className="min-w-0 cursor-pointer truncate text-left hover:text-[var(--tv3-text)] hover:underline" title={t("win.pickInstrument")} aria-label={t("win.pickInstrument")} onClick={() => onPickInstrument(win.id)}>
+          {title}
+        </button>
+      }
       titleText={title}
       onFocus={onFocus}
       actions={

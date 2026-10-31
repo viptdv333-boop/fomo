@@ -98,6 +98,10 @@ interface Props {
   appFullLead?: ReactNode;
   /** Told about the engine of this chart (null when it goes away): a chart window lets the indicator windows linked to it follow it. */
   onEngine?: (engine: ChartEngine | null) => void;
+  /** A chart window: a new number opens the instrument search of this chart (the window's title, a window that was just made a chart). */
+  searchSignal?: number;
+  /** The search was opened for that signal (the parent forgets it, so a remounted window does not open it again). */
+  onSearchHandled?: () => void;
 }
 
 const PREFS_KEY = "fomo-chart-prefs-v1";
@@ -214,7 +218,7 @@ interface CompareState {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, onEngine }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, onEngine, searchSignal, onSearchHandled }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
@@ -282,6 +286,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [autoScale, setAutoScale] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const onSearchHandledRef = useRef(onSearchHandled);
+  onSearchHandledRef.current = onSearchHandled;
+  useEffect(() => {
+    if (!searchSignal) return;
+    setSearchOpen(true);
+    onSearchHandledRef.current?.();
+  }, [searchSignal]);
   const [indOpen, setIndOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
@@ -434,6 +445,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }, [indicators]);
   const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && !appPage && !appFull && engineReady && !winBroken);
   const [winCount, setWinCount] = useState(0);
+  /** Chart windows whose instrument search should open (window id -> a number that changes with every request). */
+  const [pickSignals, setPickSignals] = useState<Record<string, number>>({});
+  const askInstrument = useCallback((id: string) => setPickSignals((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 })), []);
   /** «Платина · 15м»: the asset (its display name) and the timeframe of the price chart, live. */
   const mainTitle = `${instName(instrument, t)} · ${formatInterval(shownInterval(prefs.interval, source), t)}`;
   useEffect(() => {
@@ -455,6 +469,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         storageId={`cw-${w.id}`}
         active={focusWin === w.id}
         onEngine={(e) => indicators.setChartEngine(w.id, e)}
+        searchSignal={pickSignals[w.id]}
+        onSearchHandled={() =>
+          setPickSignals((p) => {
+            const { [w.id]: _gone, ...rest } = p;
+            return rest;
+          })
+        }
         onSelectSymbol={(i) => indicators.setChartSymbol(w.id, i.source, i.dataTicker)}
       />
     );
@@ -1875,7 +1896,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             controller={indicators}
             geo={winGeo}
             onAddIndicator={openIndicatorsFor}
-            onPickChart={(id) => indicators.makeChart(id, source, ticker)}
+            onPickChart={(id) => {
+              indicators.makeChart(id, source, ticker);
+              // a new chart window starts on the current instrument as a placeholder and asks which one the user wants (the price chart coming back does not)
+              if (indicators.getWorkspace().wins.some((w) => w.id === id && w.kind === "chart")) askInstrument(id);
+            }}
+            onPickInstrument={askInstrument}
             onPickIndicator={(id) => {
               indicators.makeIndicator(id);
               openIndicatorsFor(id);
