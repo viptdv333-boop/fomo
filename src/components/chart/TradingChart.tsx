@@ -1060,6 +1060,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (prefs.chartType === "footprint") engineRef.current?.ensureMinSpacing(64);
   }, [engineReady, prefs.chartType]);
 
+  /* alerts: a fixed-level alert dragged with the mouse saves its new level (a refused save puts the line back) */
+  const alertUpdate = alertsApi.update;
+  useEffect(() => {
+    alertsLayer.onMove = async (id, price) => (await alertUpdate(id, { price })).ok;
+    return () => {
+      alertsLayer.onMove = null;
+    };
+  }, [alertsLayer, alertUpdate]);
+
   /* alerts: paint the active ones of this symbol on the chart */
   const { alerts: allAlerts } = alertsApi;
   useEffect(() => {
