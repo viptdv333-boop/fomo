@@ -1778,8 +1778,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             size={winGeo.size}
             z={winGeo.ws?.wins.find((w) => w.id === "main")?.z ?? 1}
             maximized={winGeo.maxId === "main"}
-            minimized={winGeo.minIds.includes("main")}
-            restRect={winGeo.full.main}
             onFocus={focusChart}
             title={<span className="truncate">{mainTitle}</span>}
             titleText={mainTitle}

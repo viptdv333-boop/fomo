@@ -43,6 +43,7 @@ import {
   setLink,
   setRect,
   setSymbol,
+  shrink,
   windowNumber,
 } from "../src/lib/chart/windows-layout";
 import type { Rect, WinNode, Workspace } from "../src/lib/chart/windows-layout";
@@ -126,6 +127,43 @@ function main() {
   ok(raise(top, "w1") === top && raise(a2!.ws, "w2") === a2!.ws && raise(a2!.ws, "zz") === a2!.ws, "raise: already in front / unknown -> same object");
   const rm = raise(a2!.ws, MAIN_ID)!;
   ok(rm.wins[0].z > rm.wins[1].z && rm.wins[0].z > rm.wins[2].z, "raise: the price chart can come to the front too");
+
+  /* ───────────── shrink ───────────── */
+  {
+    const base = addWindow(null, "w1")!.ws;
+    const full = base.wins[0];
+    const sh = shrink(base, MAIN_ID)!;
+    const m = sh.wins[0];
+    ok(m.x === 0 && m.y === 0 && m.w === 0.5 && m.h === 0.5 && m.z === full.z && m.id === MAIN_ID, "shrink: a full window becomes half x half, same place (top-left)");
+    ok(shrink(sh, MAIN_ID) === sh, "shrink: already a quarter -> same object");
+    ok(shrink(base, "zz") === base && shrink(null, "w1") === null, "shrink: unknown window / no workspace -> same object");
+    const moved = setRect(base, "w1", { x: 0.8, y: 0.7, w: 0.9, h: 0.9 })!;
+    const sm = shrink(moved, "w1")!.wins[1];
+    ok(frac(sm) && sm.w === 0.5 && sm.h === 0.5, "shrink: pulled inside the area when the corner was near the edge", JSON.stringify(sm));
+    const wide = setRect(base, "w1", { x: 0.1, y: 0.1, w: 0.9, h: 0.3 })!;
+    const sw = shrink(wide, "w1")!.wins[1];
+    ok(sw.w === 0.5 && sw.h === 0.3, "shrink: only the side that is too big is cut");
+    // it must not sit exactly on another window
+    const twin = setRect(sh, "w1", { x: 0, y: 0, w: 0.9, h: 0.9 })!;
+    const sn = shrink(twin, "w1")!.wins.find((w) => w.id === "w1")!;
+    ok(frac(sn) && !(Math.abs(sn.x) < 0.01 && Math.abs(sn.y) < 0.01), "shrink: shifted when it would hide another window exactly", JSON.stringify(sn));
+    // whatever comes out is visible and big enough on a real screen
+    for (const [aw, ah] of [[640, 260], [1000, 600], [1920, 1080]] as const) {
+      const px = rectPx(sn, aw, ah);
+      ok(px.w >= MIN_WIN_W && px.h >= MIN_WIN_H && inside(px, aw, ah), `shrink: the window is at least ${MIN_WIN_W}x${MIN_WIN_H} px and inside a ${aw}x${ah} area`);
+    }
+  }
+
+  /* ───────────── no window can end up unreachable ───────────── */
+  {
+    const tiny = parseWorkspace({ wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1 }, { id: "w1", kind: "ind", x: -4, y: 9, w: 0.0001, h: 0, z: 2 }, { id: "w2", kind: "ind", x: 7, y: 7, w: 0.001, h: 0.001, z: 3 }] })!;
+    for (const w of tiny.wins) ok(frac(w) && w.w >= 0.05 && w.h >= 0.05, `load: a tiny / off-screen window (${w.id}) is brought back into the area`, JSON.stringify(w));
+    for (const [aw, ah] of [[640, 260], [800, 400], [1280, 720], [3000, 1400]] as const)
+      for (const w of tiny.wins) {
+        const px = rectPx(w, aw, ah);
+        ok(inside(px, aw, ah) && px.w >= MIN_WIN_W && px.h >= MIN_WIN_H, `resize: window ${w.id} stays at least ${MIN_WIN_W}x${MIN_WIN_H} and inside a ${aw}x${ah} area`);
+      }
+  }
 
   /* ───────────── pixels, dragging ───────────── */
   const px = rectPx({ x: 0.5, y: 0.5, w: 0.4, h: 0.35 }, 1000, 600);
@@ -668,23 +706,20 @@ function main() {
     ok(c.maximizedId() === w2id && c.serialize() !== before, "controller: a window is maximized");
     const stored = c.serialize();
     c.toggleMaximize(MAIN_ID);
-    c.toggleMinimize(MAIN_ID);
-    ok(c.maximizedId() === null && c.serialize() === stored && c.getWinState().min === MAIN_ID, "controller: maximize / collapse are session only (nothing stored), a collapsed window is not maximized");
-    c.toggleMinimize(MAIN_ID);
+    ok(c.maximizedId() === MAIN_ID && c.serialize() === stored, "controller: maximize is session only (nothing stored), one window at a time");
+    c.toggleMaximize(MAIN_ID);
     c.toggleMaximize(w2id);
     c.addWindow();
     ok(c.maximizedId() === null, "controller: a new window un-maximizes the other one");
     c.toggleMaximize(w2id);
-    c.toggleMinimize(w2id);
-    ok(c.maximizedId() === null && c.getWinState().min === w2id, "controller: collapsing a maximized window puts it back first");
-    c.toggleMaximize(w2id);
-    ok(c.maximizedId() === w2id && c.getWinState().min === "", "controller: maximizing a collapsed window opens it");
+    c.shrinkWindow(w2id);
+    ok(c.maximizedId() === null, "controller: shrinking a maximized window puts it back first");
     c.closeWindow(w2id);
     ok(c.maximizedId() === null, "controller: closing the maximized window");
     c.toggleMaximize("zz");
     ok(c.maximizedId() === null, "controller: an unknown window is not maximized");
     c.resetWindows();
-    ok(isDefault(c.getWorkspace()) && c.maximizedId() === null && c.getWinState().min === "", "controller: reset layout clears everything");
+    ok(isDefault(c.getWorkspace()) && c.maximizedId() === null, "controller: reset layout clears everything");
   }
 
   /* ───────────── the price chart's window can be closed; titles ───────────── */
@@ -695,10 +730,18 @@ function main() {
     c.setWindowsAvailable(true);
     ok(isDefault(c.getWorkspace()) && c.getWorkspace().wins.length === 1 && c.windowsOn(), "default: on a wide screen the price chart is one window filling the area, nothing stored");
     ok(saved(c).length === 0, "default: nothing stored");
+    // «shrink» on the default window: a normal window of a quarter of the area, its real rectangle (stored)
+    c.shrinkWindow(MAIN_ID);
+    const sm = c.getWorkspace().wins[0];
+    ok(!isDefault(c.getWorkspace()) && sm.w === 0.5 && sm.h === 0.5 && sm.x === 0 && sm.y === 0 && saved(c).length === 1, "shrink: the price chart window becomes a half x half window and that is stored");
+    const afterShrink = c.serialize();
+    c.shrinkWindow(MAIN_ID);
+    ok(c.serialize() === afterShrink, "shrink: a window that is small already stays as it is");
     c.toggleMaximize(MAIN_ID);
-    c.toggleMinimize(MAIN_ID);
-    ok(c.getWinState().min === MAIN_ID && c.maximizedId() === null, "default: the price chart window can be collapsed");
-    c.toggleMinimize(MAIN_ID);
+    ok(c.maximizedId() === MAIN_ID && c.getWorkspace().wins[0].w === 0.5, "shrink: maximize from the shrunk state fills the area, the shrunk rectangle stays");
+    c.toggleMaximize(MAIN_ID);
+    ok(c.maximizedId() === null && c.getWorkspace().wins[0].w === 0.5, "shrink: restore returns to the shrunk rectangle");
+    c.resetWindows();
     c.closeWindow(MAIN_ID);
     ok(c.getWorkspace().wins.length === 0 && !isDefault(c.getWorkspace()), "closed: the price chart window is gone, the workspace is empty");
     const closedJson = c.serialize();

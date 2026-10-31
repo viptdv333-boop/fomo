@@ -15,9 +15,7 @@ import { IND_ICONS } from "./icons";
    their header and resized by their edges. The model is lib/chart/windows-layout.ts, the indicators of a window live in IndicatorsController, one
    shared time view and crosshair come from ChartEngine.follow. With nothing added (the default) nothing here changes the classic single chart. */
 
-const NO_STATE = { ws: DEFAULT_WORKSPACE, rev: 0, max: null, min: "" };
-/** Height of a collapsed window: its title bar and the frame. */
-const BAR_PX = 28;
+const NO_STATE = { ws: DEFAULT_WORKSPACE, rev: 0, max: null };
 
 /** The workspace of the controller (and the engines of its charts) as React state (a new object after every change, so the snapshot is stable). */
 function useWorkspace(controller: IndicatorsController) {
@@ -32,10 +30,6 @@ export interface WindowsGeo {
   px: Record<string, Rect>;
   /** The window that fills the area right now. */
   maxId: string | null;
-  /** Windows collapsed to their title bar. */
-  minIds: string[];
-  /** The rectangle each window has when it is open (px): a collapsed window shows only its title bar, but keeps this size. */
-  full: Record<string, Rect>;
   size: { w: number; h: number };
   /** The area is wide enough for windows (the toolbar button is shown then). */
   available: boolean;
@@ -83,11 +77,8 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
     const px: Record<string, Rect> = {};
     if (ws) for (const w of ws.wins) px[w.id] = rectPx(w, size.w, size.h);
     const maxId = ws && state.max && ws.wins.some((w) => w.id === state.max) ? state.max : null;
-    const full: Record<string, Rect> = { ...px };
-    const minIds = ws && state.min ? state.min.split(",").filter((id) => ws.wins.some((w) => w.id === id) && id !== maxId) : [];
-    for (const id of minIds) px[id] = { ...px[id], h: Math.min(px[id].h, BAR_PX) };
     if (maxId) px[maxId] = { x: 0, y: 0, w: size.w, h: size.h };
-    return { ws, px, size, available, maxId, minIds, full };
+    return { ws, px, size, available, maxId };
   }, [available, state, size]);
 }
 
@@ -102,14 +93,9 @@ const expandIcon = (
     <path d={DESIGN_PATHS.fullscreen} />
   </svg>
 );
-const minimizeIcon = (
+const shrinkIcon = (
   <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" aria-hidden="true" focusable="false">
     <path d="M6 17h12" />
-  </svg>
-);
-const restoreIcon = (
-  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinejoin="round" aria-hidden="true" focusable="false">
-    <rect x="6" y="6" width="12" height="12" rx="1.5" />
   </svg>
 );
 const collapseIcon = (
@@ -138,9 +124,6 @@ interface FrameProps {
   z: number;
   /** The window fills the whole area (it is above the others and cannot be moved; the button puts it back). */
   maximized?: boolean;
-  /** The window shows only its title bar; `restRect` is the rectangle it has when open. */
-  minimized?: boolean;
-  restRect?: Rect;
   title: ReactNode;
   /** The whole title as text (tooltip: the title is cut with an ellipsis when it does not fit). */
   titleText?: string;
@@ -160,7 +143,7 @@ interface FrameProps {
  * The frame of a window. With `rect` null it is a plain wrapper that fills the area (children stay mounted when the workspace switches on or
  * off, the price chart's canvas never gets re-created).
  */
-export function WindowFrame({ id, controller, rect, size, z, maximized = false, minimized = false, restRect, title, titleText, hidden = false, actions, onClose, closeTitle, onFocus, children }: FrameProps) {
+export function WindowFrame({ id, controller, rect, size, z, maximized = false, title, titleText, hidden = false, actions, onClose, closeTitle, onFocus, children }: FrameProps) {
   const { t } = useT();
   const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
     if (e.button !== 0 || !rect || maximized) return;
@@ -170,8 +153,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
     const { w: W, h: H } = size;
-    // a collapsed window is only moved, and it keeps the size it has when open
-    const start = minimized && restRect ? restRect : rect;
+    const start = rect;
     const sx = e.clientX;
     const sy = e.clientY;
     // the whole chart lays out on every change: at most once per frame
@@ -199,6 +181,8 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
   };
 
   // one element tree in both modes (null placeholders keep the slots): the children - the price chart's canvas host - are never re-created
+  // «shrink» has nothing to do for a window that is a quarter of the area or less
+  const small = !!rect && rect.w <= size.w * 0.5 + 1 && rect.h <= size.h * 0.5 + 1;
   // one window that fills the whole area: no frame, only the slim title bar
   const plain = !!rect && rect.x < 1 && rect.y < 1 && rect.w >= size.w - 1 && rect.h >= size.h - 1;
   const style: CSSProperties | undefined = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: 10 + (maximized ? 9999 : z) } : undefined;
@@ -239,8 +223,8 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
           </span>
           <span className="flex shrink-0 items-center gap-0.5">
             {actions}
-            <button type="button" className={hbtn} title={minimized ? t("win.restore") : t("win.minimize")} aria-label={minimized ? t("win.restore") : t("win.minimize")} aria-pressed={minimized} onClick={() => controller.toggleMinimize(id)}>
-              {minimized ? restoreIcon : minimizeIcon}
+            <button type="button" className={`${hbtn} disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent`} title={t("win.shrink")} aria-label={t("win.shrink")} disabled={small && !maximized} onClick={() => controller.shrinkWindow(id)}>
+              {shrinkIcon}
             </button>
             <button type="button" className={hbtn} title={maximized ? t("win.restore") : t("win.maximize")} aria-label={maximized ? t("win.restore") : t("win.maximize")} aria-pressed={maximized} onClick={() => controller.toggleMaximize(id)}>
               {maximized ? collapseIcon : expandIcon}
@@ -254,7 +238,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
         </div>
       ) : null}
       {children}
-      {rect && !maximized && !minimized ? (
+      {rect && !maximized ? (
         <>
           {HANDLES.map(([mode, cls]) => (
             <div key={mode} className={`absolute z-40 touch-none ${cls}`} onPointerDown={(e) => startDrag(e, mode)} />
@@ -339,7 +323,7 @@ function Windows(props: Props) {
         .map((w) => {
           const rect = geo.px[w.id];
           if (!rect) return null;
-          const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id, minimized: geo.minIds.includes(w.id), restRect: geo.full[w.id] };
+          const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id };
           if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} />;
           if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={chartCount(ws) < MAX_CHARTS || mainClosed} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
           return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} />;
@@ -348,7 +332,7 @@ function Windows(props: Props) {
   );
 }
 
-type Common = { rect: Rect; size: { w: number; h: number }; controller: IndicatorsController; ws: Workspace; maximized: boolean; minimized: boolean; restRect: Rect };
+type Common = { rect: Rect; size: { w: number; h: number }; controller: IndicatorsController; ws: Workspace; maximized: boolean };
 
 /**
  * Text that follows the charts: re-computed when a chart's instrument / timeframe changes or the indicators change (the title of a window,
@@ -449,7 +433,7 @@ function LinkChip({ win, ws, controller }: { win: WsWindow; ws: Workspace; contr
 }
 
 /** A window nobody has decided about: two big choices. */
-function NewWindow({ win, rect, size, controller, ws, maximized, minimized, restRect, canChart, hasOthers, onPickChart, onPickIndicator, onReset }: Common & { win: WsWindow; canChart: boolean; hasOthers: boolean; onPickChart: (id: string) => void; onPickIndicator: (id: string) => void; onReset: () => void }) {
+function NewWindow({ win, rect, size, controller, ws, maximized, canChart, hasOthers, onPickChart, onPickIndicator, onReset }: Common & { win: WsWindow; canChart: boolean; hasOthers: boolean; onPickChart: (id: string) => void; onPickIndicator: (id: string) => void; onReset: () => void }) {
   const { t } = useT();
   const big = "tv3-press flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-[var(--tv3-hair)] bg-[var(--tv3-fill)] px-3 py-4 text-center hover:border-[var(--tv3-accent)] hover:bg-[var(--tv3-accent-soft)] disabled:cursor-default disabled:opacity-40 disabled:hover:border-[var(--tv3-hair)] disabled:hover:bg-[var(--tv3-fill)]";
   return (
@@ -460,8 +444,6 @@ function NewWindow({ win, rect, size, controller, ws, maximized, minimized, rest
       size={size}
       z={win.z}
       maximized={maximized}
-      minimized={minimized}
-      restRect={restRect}
       title={t("win.new.title")}
       actions={null}
       onClose={() => controller.closeWindow(win.id)}
@@ -497,7 +479,7 @@ function NewWindow({ win, rect, size, controller, ws, maximized, minimized, rest
 }
 
 /** A window with a chart of its own: the same component as the panes of the multi-chart grid (own instrument picker, interval, indicators). */
-function ChartWindow({ win, rect, size, controller, ws, maximized, minimized, restRect, renderChart, onFocus }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
+function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, onFocus }: Common & { win: WsWindow; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
   const { t } = useT();
   const title = useLive(controller, ws, () => chartTitle(controller, ws, win.id));
   return (
@@ -508,8 +490,6 @@ function ChartWindow({ win, rect, size, controller, ws, maximized, minimized, re
       size={size}
       z={win.z}
       maximized={maximized}
-      minimized={minimized}
-      restRect={restRect}
       title={<span className="truncate">{title}</span>}
       titleText={title}
       onFocus={onFocus}
@@ -530,7 +510,7 @@ function ChartWindow({ win, rect, size, controller, ws, maximized, minimized, re
   );
 }
 
-function IndicatorWindow({ win, ws, rect, size, controller, maximized, minimized, restRect, leader, onAddIndicator }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void }) {
+function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, onAddIndicator }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void }) {
   const { t } = useT();
   const id = win.id;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -568,8 +548,6 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, minimized
       size={size}
       z={win.z}
       maximized={maximized}
-      minimized={minimized}
-      restRect={restRect}
       title={
         <>
           <span className="truncate">{titleText}</span>

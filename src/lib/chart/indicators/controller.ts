@@ -6,7 +6,7 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { DEFAULT_WORKSPACE, MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, windowNumber } from "../windows-layout";
+import { DEFAULT_WORKSPACE, MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, shrink as wsShrink, windowNumber } from "../windows-layout";
 import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
@@ -86,11 +86,9 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private chartOffs = new Map<string, () => void>();
   /** Changes with every engine that comes or goes, so React sees it. */
   private rev = 0;
-  private winSnap: { ws: Workspace; rev: number; max: string | null; min: string } = { ws: DEFAULT_WORKSPACE, rev: 0, max: null, min: "" };
+  private winSnap: { ws: Workspace; rev: number; max: string | null } = { ws: DEFAULT_WORKSPACE, rev: 0, max: null };
   /** The window that fills the whole area right now (this session only, never stored). */
   private maximized: string | null = null;
-  /** Windows collapsed to their title bar (this session only). */
-  private minimized = new Set<string>();
   /** The chart the user clicked last (the default link of a new indicator window). */
   private focusChart = MAIN_ID;
   private noticeListeners = new Set<(n: number) => void>();
@@ -723,22 +721,23 @@ export class IndicatorsController implements IndicatorsControllerLike {
   }
 
   /** The workspace and the engines of its charts as one snapshot (a new object when either changed). */
-  getWinState(): { ws: Workspace; rev: number; max: string | null; min: string } {
-    const min = Array.from(this.minimized).sort().join(",");
+  getWinState(): { ws: Workspace; rev: number; max: string | null } {
     const ws = this.eff();
-    if (this.winSnap.ws !== ws || this.winSnap.rev !== this.rev || this.winSnap.max !== this.maximized || this.winSnap.min !== min) this.winSnap = { ws, rev: this.rev, max: this.maximized, min };
+    if (this.winSnap.ws !== ws || this.winSnap.rev !== this.rev || this.winSnap.max !== this.maximized) this.winSnap = { ws, rev: this.rev, max: this.maximized };
     return this.winSnap;
   }
 
-  /** Collapses a window to its title bar / opens it again (this session only). */
-  toggleMinimize(id: string): void {
-    if (!hasWindow(this.eff(), id)) return;
-    if (this.minimized.has(id)) this.minimized.delete(id);
-    else {
-      this.minimized.add(id);
-      if (this.maximized === id) this.maximized = null;
-    }
-    this.emitLayout();
+  /** «Shrink»: the window becomes a normal window of a quarter of the area (its real rectangle, stored like any move / resize). */
+  shrinkWindow(id: string): void {
+    const cur = this.eff();
+    if (!hasWindow(cur, id)) return;
+    const wasMax = this.maximized === id;
+    if (wasMax) this.maximized = null;
+    const next = wsShrink(cur, id);
+    if (next !== cur) {
+      this.ws = isDefault(next) ? null : next;
+      this.emit();
+    } else if (wasMax) this.emitLayout();
   }
 
   /** The window that fills the whole area (null: none). Session only. */
@@ -750,7 +749,6 @@ export class IndicatorsController implements IndicatorsControllerLike {
   toggleMaximize(id: string): void {
     if (!hasWindow(this.eff(), id)) return;
     this.maximized = this.maximized === id ? null : id;
-    this.minimized.delete(id);
     this.emitLayout();
   }
 
@@ -805,7 +803,6 @@ export class IndicatorsController implements IndicatorsControllerLike {
     this.ws = next && !isDefault(next) ? next : null;
     const eff = this.eff();
     if (this.maximized && !hasWindow(eff, this.maximized)) this.maximized = null;
-    for (const id of Array.from(this.minimized)) if (!hasWindow(eff, id)) this.minimized.delete(id);
     for (const it of this.items) if (it.win && !hasIndWindow(next, it.win)) it.win = undefined;
     if (this.addTarget && !hasIndWindow(next, this.addTarget)) this.addTarget = null;
     this.replace();
@@ -867,11 +864,10 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** Back to the classic single chart: every window is closed, its indicators return to the price chart. */
   resetWindows(): void {
-    if (!this.ws && !this.maximized && this.minimized.size === 0) return;
+    if (!this.ws && !this.maximized) return;
     for (const it of this.items) it.win = undefined;
     this.ws = null;
     this.maximized = null;
-    this.minimized.clear();
     this.addTarget = null;
     this.replace();
     this.emit();

@@ -225,6 +225,31 @@ export function setRect(ws: Workspace | null, id: string, r: Rect): Workspace | 
   return { wins };
 }
 
+/** The size «shrink» gives a window: half the area each way (a quarter of it). */
+export const SHRUNK = 0.5;
+
+/**
+ * «Shrink»: the window becomes a normal window of at most a quarter of the area (half the width, half the height), keeping its top-left corner
+ * where it can (pulled inside the area); if that would sit exactly on another window it is shifted a little. The same object comes back when
+ * the window is that small already.
+ */
+export function shrink(ws: Workspace | null, id: string): Workspace | null {
+  if (!ws) return ws;
+  const w = ws.wins.find((x) => x.id === id);
+  if (!w || (w.w <= SHRUNK + 1e-6 && w.h <= SHRUNK + 1e-6)) return ws;
+  const nw = Math.min(w.w, SHRUNK);
+  const nh = Math.min(w.h, SHRUNK);
+  let x = Math.min(w.x, 1 - nw);
+  let y = Math.min(w.y, 1 - nh);
+  const sits = (cx: number, cy: number) => ws.wins.some((o) => o.id !== id && Math.abs(o.x - cx) < 0.01 && Math.abs(o.y - cy) < 0.01 && Math.abs(o.w - nw) < 0.01 && Math.abs(o.h - nh) < 0.01);
+  for (let i = 0; i < 6 && sits(x, y); i++) {
+    // down and right, or back up and left at the edge of the area
+    x = x + 0.04 <= 1 - nw ? x + 0.04 : Math.max(0, x - 0.04);
+    y = y + 0.05 <= 1 - nh ? y + 0.05 : Math.max(0, y - 0.05);
+  }
+  return setRect(ws, id, { x, y, w: nw, h: nh });
+}
+
 /** Brings a window to the front. The same object comes back when it is there already. */
 export function raise(ws: Workspace | null, id: string): Workspace | null {
   if (!ws) return ws;
