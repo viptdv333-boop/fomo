@@ -6,7 +6,7 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { MAIN_ID, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, closeWindow as wsClose, extraIds, hasWindow, isActive, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, serializeWorkspace, setRect as wsSetRect, windowNumber } from "../windows-layout";
+import { MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addChartWindow as wsAddChart, addWindow as wsAdd, chartCount, closeWindow as wsClose, extraIds, hasIndWindow, hasWindow, indIds, isActive, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, serializeWorkspace, setRect as wsSetRect, setSymbol as wsSetSymbol, windowNumber } from "../windows-layout";
 import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
@@ -215,7 +215,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** Extra window the indicator is drawn in right now, undefined: on the price chart (its pane or an own pane under it). */
   private winOf(it: Item): string | undefined {
     const w = it.win;
-    return w && this.winAvail && w !== MAIN_ID && hasWindow(this.ws, w) ? w : undefined;
+    return w && this.winAvail && hasIndWindow(this.ws, w) ? w : undefined;
   }
 
   /** Where the indicator belongs now: "main", the id of its own pane or WIN_PREFIX + window id. */
@@ -379,14 +379,14 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const inst: IndicatorInstance = { uid, id, params: merged, visible };
     if (st) inst.style = st;
     const item: Item = { inst, def, series, pane: null, host: null, ratio: { ...ratio } };
-    if (win && win !== MAIN_ID && windowable(def) && hasWindow(this.ws, win)) item.win = win;
+    if (win && win !== MAIN_ID && windowable(def) && hasIndWindow(this.ws, win)) item.win = win;
     this.items.push(item);
     if (eng) this.mount(item);
     return item;
   }
 
   add(id: string, params?: Record<string, ParamValue>): string {
-    const target = this.addTarget && hasWindow(this.ws, this.addTarget) ? this.addTarget : undefined;
+    const target = this.addTarget && hasIndWindow(this.ws, this.addTarget) ? this.addTarget : undefined;
     const item = this.create(id, params, true, undefined, undefined, target);
     if (!item) return "";
     this.emit();
@@ -558,7 +558,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
       if (it.ratio.d !== undefined) o.pr = Math.round(it.ratio.d * 10000) / 10000;
       if (it.ratio.m !== undefined) o.pm = Math.round(it.ratio.m * 10000) / 10000;
       // extra window (kept also while this chart is too narrow to show windows: a phone must not wipe the desktop layout)
-      if (it.win && hasWindow(this.ws, it.win)) o.w = it.win;
+      if (it.win && hasIndWindow(this.ws, it.win)) o.w = it.win;
       return o;
     });
     // the window layout rides in the same list as one more entry without an indicator id (builds without windows skip it)
@@ -586,7 +586,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     }
     // `ws`: floating windows; `lay`: the tiled layout of the first multi-window build, turned into windows in the same places
     this.ws = stored ? (stored.ws !== undefined ? parseWorkspace(stored.ws) : migrateTree(parseLayout(stored.lay))) : null;
-    if (this.addTarget && !hasWindow(this.ws, this.addTarget)) this.addTarget = null;
+    if (this.addTarget && !hasIndWindow(this.ws, this.addTarget)) this.addTarget = null;
     this.bulk = true;
     for (const raw of arr) {
       if (!raw || typeof raw !== "object") continue;
@@ -608,9 +608,37 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return this.ws;
   }
 
-  /** Ids of the extra windows in creation order. */
+  /** Ids of the windows with indicators in creation order (the ones an indicator can be moved to). */
   windowIds(): string[] {
-    return extraIds(this.ws);
+    return indIds(this.ws);
+  }
+
+  /** Every extra window, charts included. */
+  windowCount(): number {
+    return extraIds(this.ws).length;
+  }
+
+  /** One more window with a chart of its own may be added. */
+  canAddChart(): boolean {
+    return extraIds(this.ws).length < MAX_WINDOWS && chartCount(this.ws) < MAX_CHARTS;
+  }
+
+  /** Adds a window with a chart of its own (the instrument is what the chart takes: data source + data ticker). Returns its id, "" when refused. */
+  addChartWindow(src: string, tk: string): string {
+    // never the id of a window that was closed: the chart keeps its interval / indicators / drawings under that id
+    const r = wsAddChart(this.ws, src, tk, `c${Math.random().toString(36).slice(2, 8)}`);
+    if (!r) return "";
+    this.ws = r.ws;
+    this.emit();
+    return r.id;
+  }
+
+  /** The user picked another instrument in a chart window. */
+  setChartSymbol(id: string, src: string, tk: string): void {
+    const next = wsSetSymbol(this.ws, id, src, tk);
+    if (next === this.ws) return;
+    this.ws = next;
+    this.emit();
   }
 
   /** 1-based number of an extra window ("Window 2"). */
@@ -621,6 +649,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** One more window may be added. */
   canAddWindow(): boolean {
     return extraIds(this.ws).length < MAX_WINDOWS;
+  }
+
+  /** The window is a window with indicators. */
+  isIndicatorWindow(id: string): boolean {
+    return hasIndWindow(this.ws, id);
   }
 
   /** The chart area is wide enough for windows (reported by the chart); a narrow one folds them back into the one stack. */
@@ -702,7 +735,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
       if (!id) return;
       target = id;
     } else if (to !== null) {
-      if (!hasWindow(this.ws, to) || to === MAIN_ID) return;
+      if (!hasIndWindow(this.ws, to)) return;
       target = to;
     }
     it.win = target;
@@ -743,7 +776,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** New indicators from the catalog land in this window (null: the price chart as usual). */
   setAddTarget(id: string | null): void {
-    this.addTarget = id && hasWindow(this.ws, id) && id !== MAIN_ID ? id : null;
+    this.addTarget = id && hasIndWindow(this.ws, id) ? id : null;
   }
 
   /** The tile of an extra window has an engine: the indicators of that window are drawn in it. */

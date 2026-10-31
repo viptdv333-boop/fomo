@@ -17,6 +17,8 @@ export const WIN_PANE = "win";
 export const WIN_PREFIX = "win:";
 /** Extra windows (the price chart is not counted). */
 export const MAX_WINDOWS = 8;
+/** Of them, windows with a chart of their own (each is a whole chart with its own data feed). */
+export const MAX_CHARTS = 6;
 /** Smallest window, CSS px, whatever the fractions say. */
 export const MIN_WIN_W = 200;
 export const MIN_WIN_H = 120;
@@ -29,9 +31,11 @@ export const NEW_H = 0.35;
 /** Smallest fraction a stored value may have (the pixel floors decide the rest on screen). */
 const MIN_FRAC = 0.05;
 const ID_RE = /^[a-z][a-z0-9]{0,11}$/;
+const SRC_RE = /^[a-z][a-z0-9]{0,11}$/;
+const TK_RE = /^[A-Za-z0-9_.:\-!@/]{1,40}$/;
 const fin = (v: unknown): v is number => typeof v === "number" && isFinite(v);
 
-/** "chart": a price chart (the main one); "ind": a window with indicators. */
+/** "chart": a price chart (the main one or a window with a chart of its own); "ind": a window with indicators. */
 export type WinKind = "ind" | "chart";
 
 export interface Rect {
@@ -48,6 +52,9 @@ export interface WsWindow extends Rect {
   z: number;
   /** The chart whose bars and time view an indicator window follows (only the price chart for now). */
   link: string;
+  /** A chart window: its instrument (data source and data ticker, as the chart takes them). Its interval and indicators are the chart's own. */
+  src?: string;
+  tk?: string;
 }
 
 /** wins[0] is always the price chart. */
@@ -64,11 +71,16 @@ export const extraIds = (ws: Workspace | null): string[] => (ws ? ws.wins.filter
 
 export const hasWindow = (ws: Workspace | null, id: string): boolean => !!ws && ws.wins.some((w) => w.id === id);
 
+/** Windows with indicators (the ones an indicator can be moved to), in creation order. */
+export const indIds = (ws: Workspace | null): string[] => (ws ? ws.wins.filter((w) => w.id !== MAIN_ID && w.kind === "ind").map((w) => w.id) : []);
+export const hasIndWindow = (ws: Workspace | null, id: string): boolean => !!ws && ws.wins.some((w) => w.id === id && w.kind === "ind" && w.id !== MAIN_ID);
+export const chartCount = (ws: Workspace | null): number => (ws ? ws.wins.filter((w) => w.id !== MAIN_ID && w.kind === "chart").length : 0);
+
 /** The workspace is on: there is something besides the price chart. */
 export const isActive = (ws: Workspace | null): ws is Workspace => !!ws && ws.wins.length > 1;
 
-/** 1-based number of an extra window ("Window 2"), 0 for the price chart / an unknown id. */
-export const windowNumber = (ws: Workspace | null, id: string): number => extraIds(ws).indexOf(id) + 1;
+/** 1-based number of an indicator window ("Window 2"), 0 for anything else. */
+export const windowNumber = (ws: Workspace | null, id: string): number => indIds(ws).indexOf(id) + 1;
 
 /** Lowest free id "w1", "w2" ... */
 export function newWindowId(ws: Workspace | null): string {
@@ -80,9 +92,10 @@ const topZ = (ws: Workspace | null): number => (ws ? ws.wins.reduce((m, w) => Ma
 
 /* ───────────── edits (all return a new workspace, the old one is never changed) ───────────── */
 
-/** Where the n-th extra window opens: a cascade inside the area (never exactly over the previous one, never outside). */
-export function cascadeRect(n: number): Rect {
+/** Where the n-th extra window opens: a cascade inside the area (never exactly over the previous one, never outside). A chart window is bigger. */
+export function cascadeRect(n: number, kind: WinKind = "ind"): Rect {
   const k = n % 6;
+  if (kind === "chart") return { x: 0.4 - 0.05 * k, y: 0.35 - 0.05 * k, w: 0.5, h: 0.55 };
   return { x: 0.55 - 0.05 * k, y: 0.6 - 0.07 * k, w: NEW_W, h: NEW_H };
 }
 
@@ -93,6 +106,26 @@ export function addWindow(ws: Workspace | null, id?: string): { ws: Workspace; i
   const wid = id && ID_RE.test(id) && !hasWindow(base, id) ? id : newWindowId(base);
   const win: WsWindow = { id: wid, kind: "ind", ...cascadeRect(extraIds(base).length), z: topZ(base) + 1, link: MAIN_ID };
   return { ws: { wins: [...base.wins, win] }, id: wid };
+}
+
+/** Adds a window with a chart of its own (instrument = what the chart takes: data source + data ticker). Null when there are too many windows / charts or the instrument is not valid. */
+export function addChartWindow(ws: Workspace | null, src: string, tk: string, id?: string): { ws: Workspace; id: string } | null {
+  if (!SRC_RE.test(src) || !TK_RE.test(tk)) return null;
+  const base: Workspace = ws ?? { wins: [mainWin()] };
+  if (extraIds(base).length >= MAX_WINDOWS || chartCount(base) >= MAX_CHARTS) return null;
+  const wid = id && ID_RE.test(id) && !hasWindow(base, id) ? id : newWindowId(base);
+  const win: WsWindow = { id: wid, kind: "chart", ...cascadeRect(extraIds(base).length, "chart"), z: topZ(base) + 1, link: wid, src, tk };
+  return { ws: { wins: [...base.wins, win] }, id: wid };
+}
+
+/** Another instrument in a chart window. The same object comes back when nothing changed (or the window / instrument is not valid). */
+export function setSymbol(ws: Workspace | null, id: string, src: string, tk: string): Workspace | null {
+  if (!ws || !SRC_RE.test(src) || !TK_RE.test(tk)) return ws;
+  const i = ws.wins.findIndex((w) => w.id === id && w.id !== MAIN_ID && w.kind === "chart");
+  if (i < 0 || (ws.wins[i].src === src && ws.wins[i].tk === tk)) return ws;
+  const wins = ws.wins.slice();
+  wins[i] = { ...wins[i], src, tk };
+  return { wins };
 }
 
 /** Closes a window. The price chart cannot be closed. Null when nothing is left but the price chart (back to the classic look). */
@@ -175,7 +208,10 @@ export function dragRect(start: Rect, mode: DragMode, dx: number, dy: number, W:
 /** Plain JSON of a workspace (fractions rounded). */
 export function serializeWorkspace(ws: Workspace): unknown {
   const r = (v: number) => Math.round(v * 10000) / 10000;
-  return { v: 2, wins: ws.wins.map((w) => ({ id: w.id, kind: w.kind, x: r(w.x), y: r(w.y), w: r(w.w), h: r(w.h), z: w.z, link: w.link })) };
+  return {
+    v: 2,
+    wins: ws.wins.map((w) => ({ id: w.id, kind: w.kind, x: r(w.x), y: r(w.y), w: r(w.w), h: r(w.h), z: w.z, link: w.link, ...(w.src && w.tk ? { src: w.src, tk: w.tk } : {}) })),
+  };
 }
 
 /**
@@ -187,18 +223,23 @@ export function parseWorkspace(raw: unknown): Workspace | null {
   const seen = new Set<string>();
   const list: WsWindow[] = [];
   let extra = 0;
+  let charts = 0;
   for (const v of (raw as { wins: unknown[] }).wins) {
     if (!v || typeof v !== "object") continue;
     const o = v as Record<string, unknown>;
     const id = o.id;
-    if (typeof id !== "string" || !ID_RE.test(id) || seen.has(id) || (id !== MAIN_ID && o.kind !== "ind")) continue;
+    if (typeof id !== "string" || !ID_RE.test(id) || seen.has(id) || (id !== MAIN_ID && o.kind !== "ind" && o.kind !== "chart")) continue;
+    // a chart window needs a valid instrument, or it is dropped
+    const isChart = id !== MAIN_ID && o.kind === "chart";
+    if (isChart && !(typeof o.src === "string" && SRC_RE.test(o.src) && typeof o.tk === "string" && TK_RE.test(o.tk))) continue;
     if (id !== MAIN_ID) {
-      if (extra >= MAX_WINDOWS) continue;
+      if (extra >= MAX_WINDOWS || (isChart && charts >= MAX_CHARTS)) continue;
       extra++;
+      if (isChart) charts++;
     }
     seen.add(id);
     const c = id === MAIN_ID && !(fin(o.w) && fin(o.h)) ? { x: 0, y: 0, w: 1, h: 1 } : clampFrac({ x: o.x as number, y: o.y as number, w: o.w as number, h: o.h as number });
-    list.push({ id, kind: id === MAIN_ID ? "chart" : "ind", ...c, z: fin(o.z) ? o.z : 0, link: MAIN_ID });
+    list.push({ id, kind: id === MAIN_ID || isChart ? "chart" : "ind", ...c, z: fin(o.z) ? o.z : 0, link: isChart ? id : MAIN_ID, ...(isChart ? { src: o.src as string, tk: o.tk as string } : {}) });
   }
   if (!seen.has(MAIN_ID)) list.unshift(mainWin());
   // z by rank (ties keep the stored order), the price chart first in the list

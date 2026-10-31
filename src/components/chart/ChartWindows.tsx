@@ -5,8 +5,8 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, RefOb
 import { useT } from "@/lib/i18n/client";
 import { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
-import { MAIN_ID, MIN_AREA_H, MIN_AREA_W, dragRect, extraIds, isActive, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
-import type { DragMode, Rect, Workspace } from "@/lib/chart/windows-layout";
+import { MAIN_ID, MIN_AREA_H, MIN_AREA_W, dragRect, isActive, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
+import type { DragMode, Rect, Workspace, WsWindow } from "@/lib/chart/windows-layout";
 import IndicatorLegend from "./IndicatorLegend";
 import { IND_ICONS } from "./icons";
 
@@ -89,6 +89,8 @@ interface FrameProps {
   z: number;
   title: ReactNode;
   actions: ReactNode;
+  /** A click in the window: the id of the window whose chart now takes the keyboard (null: the price chart). */
+  onFocus?: (id: string | null) => void;
   children: ReactNode;
 }
 
@@ -96,7 +98,7 @@ interface FrameProps {
  * The frame of a window. With `rect` null it is a plain wrapper that fills the area (children stay mounted when the workspace switches on or
  * off, the price chart's canvas never gets re-created).
  */
-export function WindowFrame({ id, controller, rect, size, z, title, actions, children }: FrameProps) {
+export function WindowFrame({ id, controller, rect, size, z, title, actions, onFocus, children }: FrameProps) {
   const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
     if (e.button !== 0 || !rect) return;
     e.preventDefault();
@@ -144,7 +146,14 @@ export function WindowFrame({ id, controller, rect, size, z, title, actions, chi
       style={style}
       data-chart-window={rect ? id : undefined}
       // a click anywhere in an indicator window brings it to the front; the price chart (it fills the area) only by its header or edges, or it would bury the windows
-      onPointerDownCapture={rect && id !== MAIN_ID ? () => controller.raise(id) : undefined}
+      onPointerDownCapture={
+        rect
+          ? () => {
+              onFocus?.(id === MAIN_ID ? null : id);
+              if (id !== MAIN_ID) controller.raise(id);
+            }
+          : undefined
+      }
     >
       {rect ? (
         <div
@@ -181,6 +190,9 @@ interface Props {
   onAddIndicator: (winId: string) => void;
   /** A window failed to render: the windows are switched off for this session (the chart and the saved layout stay), see the parent. */
   onBroken: () => void;
+  /** The chart of a chart window (a whole TradingChart with its own instrument, interval and indicators). */
+  renderChart: (w: WsWindow) => ReactNode;
+  onFocus: (id: string | null) => void;
 }
 
 /** A failing window must never take the price chart down with it: the windows are dropped, the indicators fall back to the stack under the chart. */
@@ -208,20 +220,51 @@ export default function ChartWindows(props: Props) {
   );
 }
 
-function Windows({ controller, leader, geo, onAddIndicator }: Props) {
+function Windows({ controller, leader, geo, onAddIndicator, renderChart, onFocus }: Props) {
   if (!geo.ws || !leader) return null;
   return (
     <>
-      {extraIds(geo.ws).map((id) => {
-        const rect = geo.px[id];
-        const z = geo.ws?.wins.find((w) => w.id === id)?.z ?? 1;
-        return rect ? <IndicatorWindow key={id} id={id} rect={rect} z={z} size={geo.size} controller={controller} leader={leader} onAddIndicator={onAddIndicator} /> : null;
-      })}
+      {geo.ws.wins
+        .filter((w) => w.id !== MAIN_ID)
+        .map((w) => {
+          const rect = geo.px[w.id];
+          if (!rect) return null;
+          return w.kind === "chart" ? (
+            <ChartWindow key={w.id} win={w} rect={rect} size={geo.size} controller={controller} renderChart={renderChart} onFocus={onFocus} />
+          ) : (
+            <IndicatorWindow key={w.id} id={w.id} rect={rect} z={w.z} size={geo.size} controller={controller} leader={leader} onAddIndicator={onAddIndicator} onFocus={onFocus} />
+          );
+        })}
     </>
   );
 }
 
-function IndicatorWindow({ id, rect, z, size, controller, leader, onAddIndicator }: { id: string; rect: Rect; z: number; size: { w: number; h: number }; controller: IndicatorsController; leader: ChartEngine; onAddIndicator: (winId: string) => void }) {
+/** A window with a chart of its own: the same component as the panes of the multi-chart grid (own instrument picker, interval, indicators). */
+function ChartWindow({ win, rect, size, controller, renderChart, onFocus }: { win: WsWindow; rect: Rect; size: { w: number; h: number }; controller: IndicatorsController; renderChart: (w: WsWindow) => ReactNode; onFocus: (id: string | null) => void }) {
+  const { t } = useT();
+  return (
+    <WindowFrame
+      id={win.id}
+      controller={controller}
+      rect={rect}
+      size={size}
+      z={win.z}
+      title={win.tk}
+      onFocus={onFocus}
+      actions={
+        <button type="button" className={`${hbtn} hover:!text-red-500`} title={t("win.closeChart")} aria-label={t("win.closeChart")} onClick={() => controller.closeWindow(win.id)}>
+          {IND_ICONS.close(14)}
+        </button>
+      }
+    >
+      <div className="relative min-h-0 flex-1">
+        <div className="absolute inset-0">{renderChart(win)}</div>
+      </div>
+    </WindowFrame>
+  );
+}
+
+function IndicatorWindow({ id, rect, z, size, controller, leader, onAddIndicator, onFocus }: { id: string; rect: Rect; z: number; size: { w: number; h: number }; controller: IndicatorsController; leader: ChartEngine; onAddIndicator: (winId: string) => void; onFocus: (id: string | null) => void }) {
   const { t } = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const engRef = useRef<ChartEngine | null>(null);
@@ -257,6 +300,7 @@ function IndicatorWindow({ id, rect, z, size, controller, leader, onAddIndicator
       size={size}
       z={z}
       title={t("win.title", { n: controller.windowNumber(id) })}
+      onFocus={onFocus}
       actions={
         <>
           <button type="button" className={hbtn} title={t("win.addInd")} aria-label={t("win.addInd")} onClick={() => onAddIndicator(id)}>

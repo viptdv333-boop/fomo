@@ -8,6 +8,7 @@
 
 import {
   MAIN_ID,
+  MAX_CHARTS,
   MAX_DEPTH,
   MAX_WINDOWS,
   MIN_WIN_H,
@@ -15,12 +16,15 @@ import {
   NEW_H,
   NEW_W,
   WIN_PANE,
+  addChartWindow,
   addWindow,
   cascadeRect,
+  chartCount,
   closeWindow,
   dragRect,
   extraIds,
   hasWindow,
+  indIds,
   isActive,
   migrateTree,
   newWindowId,
@@ -31,6 +35,7 @@ import {
   rectPx,
   serializeWorkspace,
   setRect,
+  setSymbol,
   windowNumber,
 } from "../src/lib/chart/windows-layout";
 import type { Rect, WinNode, Workspace } from "../src/lib/chart/windows-layout";
@@ -470,6 +475,60 @@ function main() {
     ok(!!migrated && !JSON.stringify(JSON.parse(old.serialize())).includes('"lay"'), "restore: ... and is saved in the new form from now on");
     old.restore(JSON.stringify([{ id: "rsi", params: {}, visible: true }, { lay: "junk" }]));
     ok(old.getWorkspace() === null && old.list().length === 1, "restore: a broken old layout is ignored");
+  }
+
+  /* ───────────── windows with a chart of their own ───────────── */
+  {
+    const c1 = addChartWindow(null, "moex", "SBER", "cabc12");
+    ok(!!c1 && c1.id === "cabc12" && isActive(c1.ws) && c1.ws.wins[1].kind === "chart" && c1.ws.wins[1].src === "moex" && c1.ws.wins[1].tk === "SBER", "chart window: added with its instrument, the workspace is on");
+    ok(frac(c1!.ws.wins[1]) && c1!.ws.wins[1].w > NEW_W, "chart window: inside the area, bigger than an indicator window");
+    for (let n = 0; n < 12; n++) ok(frac(cascadeRect(n, "chart")), `chart cascade ${n} stays inside the area`);
+    ok(addChartWindow(null, "moex", "BAD TICKER!") === null && addChartWindow(null, "", "SBER") === null && addChartWindow(null, "MOEX", "SBER") === null && addChartWindow(null, "moex", "") === null, "chart window: a bad instrument is refused");
+    ok(addChartWindow(null, "forex", "EURUSD")!.id === "w1" && addChartWindow(null, "bybit", "BTCUSDT")!.ws.wins[1].tk === "BTCUSDT" && addChartWindow(null, "moex", "Si-12.26")!.ws.wins[1].tk === "Si-12.26", "chart window: usual tickers pass");
+    let both: Workspace | null = c1!.ws;
+    both = addWindow(both)!.ws;
+    ok(eq(indIds(both), ["w1"]) && windowNumber(both, "w1") === 1 && windowNumber(both, "cabc12") === 0 && chartCount(both) === 1 && extraIds(both).length === 2, "numbers and ids: indicator windows count on their own, a chart window is not 'window 1'");
+    ok(setSymbol(both, "cabc12", "forex", "EURUSD")!.wins[1].tk === "EURUSD" && setSymbol(both, "cabc12", "moex", "SBER") === both, "setSymbol: new instrument / the same one");
+    ok(setSymbol(both, "w1", "forex", "EURUSD") === both && setSymbol(both, MAIN_ID, "forex", "EURUSD") === both && setSymbol(both, "cabc12", "x y", "EURUSD") === both && setSymbol(both, "zz", "forex", "EURUSD") === both, "setSymbol: not for an indicator window / the price chart / junk");
+    let charts: Workspace | null = null;
+    for (let i = 0; i < MAX_CHARTS + 3; i++) charts = addChartWindow(charts, "moex", "SBER", `c${i}x`)?.ws ?? charts;
+    ok(chartCount(charts) === MAX_CHARTS && addChartWindow(charts, "moex", "SBER") === null, `chart windows: at most ${MAX_CHARTS}`);
+    ok(addWindow(charts) !== null, "chart windows: indicator windows can still be added");
+    ok(eq(parseWorkspace(JSON.parse(JSON.stringify(serializeWorkspace(both)))), both), "chart window: serialise -> parse is the same");
+    const bad = parseWorkspace({
+      wins: [
+        { id: "ca", kind: "chart", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "cb", kind: "chart", src: "moex", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "cc", kind: "chart", src: "MOEX!", tk: "SBER", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "cd", kind: "chart", src: "moex", tk: { x: 1 }, x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "ce", kind: "chart", src: "moex", tk: "SBER", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+      ],
+    });
+    ok(!!bad && eq(extraIds(bad), ["ce"]), "parse: a chart window without a valid instrument is dropped", JSON.stringify(bad && extraIds(bad)));
+    const mainC = parseWorkspace({ wins: [{ id: "main", kind: "chart", src: "forex", tk: "X", x: 0, y: 0, w: 1, h: 1 }, { id: "w1", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4 }] });
+    ok(!!mainC && mainC.wins[0].src === undefined, "parse: the price chart takes its instrument from the page, not from storage");
+    const eng = new IndicatorsController();
+    ok(eng.addChartWindow("moex", "SBER") !== "" && eng.windowCount() === 1 && eng.windowIds().length === 0, "controller: a chart window is a window, but not one an indicator can go to");
+    const cid = extraIds(eng.getWorkspace())[0];
+    eng.setChartSymbol(cid, "bybit", "BTCUSDT");
+    ok(eng.getWorkspace()!.wins[1].tk === "BTCUSDT", "controller: another instrument in a chart window");
+    const rsiC = eng.add("rsi");
+    eng.moveToWindow(rsiC, cid);
+    ok(eng.windowOf(rsiC) === undefined, "controller: indicators cannot be moved into a chart window");
+    eng.setAddTarget(cid);
+    const rsiD = eng.add("rsi");
+    ok(eng.windowOf(rsiD) === undefined, "controller: ... nor added there from the catalog");
+    const j = eng.serialize();
+    const eng2 = new IndicatorsController();
+    eng2.restore(j);
+    ok(eng2.serialize() === j && eng2.getWorkspace()!.wins[1].src === "bybit" && eng2.windowCount() === 1, "controller: chart windows survive save -> restore (instrument included)");
+    ok(eng2.canAddChart() && eng2.addChartWindow("moex", "GAZP") !== "" && eng2.windowCount() === 2, "controller: several charts, each with its own instrument");
+    eng2.closeWindow(cid);
+    ok(eng2.windowCount() === 1 && !hasWindow(eng2.getWorkspace(), cid), "controller: a chart window is closed like any other");
+    // a window saved by an older build with the same ids still reads
+    const e3 = new IndicatorsController();
+    e3.restore(JSON.stringify([{ ws: { v: 2, wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1 }, { id: "w1", kind: "ind", x: 0.5, y: 0.5, w: 0.4, h: 0.4, z: 2, link: "main" }] } }]));
+    ok(eq(e3.windowIds(), ["w1"]), "restore: the previous build's workspace still reads");
   }
 
   console.log(`\n${passes} passed, ${fails} failed`);

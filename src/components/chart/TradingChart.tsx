@@ -25,6 +25,7 @@ import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
 import ChartWindows, { WindowFrame, useWindowsGeometry } from "@/components/chart/ChartWindows";
 import { MAX_WINDOWS } from "@/lib/chart/windows-layout";
+import type { WsWindow } from "@/lib/chart/windows-layout";
 import { composeWindows } from "@/lib/chart/windows-shot";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
 import { useAlerts } from "@/components/chart/useAlerts";
@@ -62,7 +63,7 @@ import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
 import type { ChartSyncHub } from "@/lib/chart/sync";
 import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
-import { adHocInstrument, findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
+import { adHocInstrument, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
 
 export type { ChartSource } from "@/lib/terminal-data";
@@ -215,8 +216,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
+  /** A chart window was clicked last: the hotkeys go to that chart, not to this one (null: this chart). */
+  const [focusWin, setFocusWin] = useState<string | null>(null);
   const activeRef = useRef(active !== false);
-  activeRef.current = active !== false;
+  activeRef.current = active !== false && focusWin === null;
   const wrapRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   /** The chart area (between the toolbar and the bottom bar): the price chart and the extra windows are tiles in it. */
@@ -406,10 +409,27 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
   const [winCount, setWinCount] = useState(0);
   useEffect(() => {
-    const read = () => setWinCount(indicators.windowIds().length);
+    const read = () => setWinCount(indicators.windowCount());
     read();
     return indicators.subscribeLayout(read);
   }, [indicators]);
+  /** A window with a chart of its own: the embedded chart of the multi-chart grid (own instrument picker, interval, indicators, drawings). */
+  const renderChartWindow = (w: WsWindow) => {
+    const src = (w.src ?? source) as ChartSource;
+    const tk = w.tk ?? ticker;
+    const inst = findInstrument(src, tk) ?? adHocInstrument(src, tk);
+    return (
+      <TradingChart
+        ticker={tk}
+        source={src}
+        name={instName(inst, t)}
+        embedded
+        storageId={`cw-${w.id}`}
+        active={focusWin === w.id}
+        onSelectSymbol={(i) => indicators.setChartSymbol(w.id, i.source, i.dataTicker)}
+      />
+    );
+  };
   /** The «+» of a window opens the catalog: the indicators added now land in that window. */
   const openIndicatorsFor = useCallback(
     (winId: string) => {
@@ -1684,7 +1704,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
-        windows={{ available: winGeo.available, count: winCount, canAdd: winCount < MAX_WINDOWS, onAdd: () => void indicators.addWindow(), onReset: () => indicators.resetWindows() }}
+        windows={{
+          available: winGeo.available,
+          count: winCount,
+          canAdd: winCount < MAX_WINDOWS,
+          canAddChart: indicators.canAddChart(),
+          onAdd: () => void indicators.addWindow(),
+          onAddChart: () => void indicators.addChartWindow(source, ticker),
+          onReset: () => indicators.resetWindows(),
+        }}
         onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
@@ -1724,6 +1752,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             rect={winGeo.px.main ?? null}
             size={winGeo.size}
             z={winGeo.ws?.wins[0]?.z ?? 1}
+            onFocus={setFocusWin}
             title={`${instrument.ticker} · ${formatInterval(shownInterval(prefs.interval, source), t)}`}
             actions={
               <>
@@ -1822,7 +1851,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
           </WindowFrame>
-          <ChartWindows controller={indicators} leader={engineReady ? engineRef.current : null} geo={winGeo} onAddIndicator={openIndicatorsFor} onBroken={() => setWinBroken(true)} />
+          <ChartWindows controller={indicators} leader={engineReady ? engineRef.current : null} geo={winGeo} onAddIndicator={openIndicatorsFor} onBroken={() => setWinBroken(true)} onFocus={setFocusWin} renderChart={renderChartWindow} />
           </div>
           {!appPage && (
           <BottomBar

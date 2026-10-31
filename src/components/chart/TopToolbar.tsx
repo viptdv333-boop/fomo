@@ -100,7 +100,10 @@ interface Props {
     /** Extra windows now. */
     count: number;
     canAdd: boolean;
+    canAddChart: boolean;
     onAdd: () => void;
+    /** A window with a whole chart of its own (any instrument and interval). */
+    onAddChart: () => void;
     /** Back to the classic single chart. */
     onReset: () => void;
   };
@@ -274,6 +277,16 @@ export default function TopToolbar(p: Props) {
                   className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
                 >
                   {t("win.addWindow")}
+                </button>
+                <button
+                  disabled={!win.canAddChart}
+                  onClick={() => {
+                    win.onAddChart();
+                    close();
+                  }}
+                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+                >
+                  {t("win.addChart")}
                 </button>
                 {win.count > 0 && (
                   <button
