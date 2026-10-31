@@ -6,7 +6,7 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addChartWindow as wsAddChart, addWindow as wsAdd, chartCount, closeWindow as wsClose, extraIds, hasIndWindow, hasWindow, indIds, isActive, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, serializeWorkspace, setRect as wsSetRect, setSymbol as wsSetSymbol, windowNumber } from "../windows-layout";
+import { MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isActive, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, windowNumber } from "../windows-layout";
 import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
@@ -81,6 +81,20 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private bulk = false;
   /** Workspace of floating windows (null: the classic single chart). The engines of the extra windows are registered by their tiles (attachWindow). */
   private ws: Workspace | null = null;
+  /** Engines of the chart windows (the price chart is this.engine): an indicator window follows the engine of its chart. Set by the charts themselves. */
+  private chartEngines = new Map<string, ChartEngine>();
+  private chartOffs = new Map<string, () => void>();
+  /** Changes with every engine that comes or goes, so React sees it. */
+  private rev = 0;
+  private winSnap: { ws: Workspace | null; rev: number; max: string | null; min: string } = { ws: null, rev: 0, max: null, min: "" };
+  /** The window that fills the whole area right now (this session only, never stored). */
+  private maximized: string | null = null;
+  /** Windows collapsed to their title bar (this session only). */
+  private minimized = new Set<string>();
+  /** The chart the user clicked last (the default link of a new indicator window). */
+  private focusChart = MAIN_ID;
+  private noticeListeners = new Set<(n: number) => void>();
+  private dataRaf = 0;
   private winEngines = new Map<string, ChartEngine>();
   /** The chart area is wide enough for windows (the host reports it); a narrow one shows the one stack of panes as before. */
   private winAvail = false;
@@ -95,6 +109,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   attach(engine: ChartEngine): void {
     if (this.engine && this.engine !== engine) this.unmountAll();
     this.engine = engine;
+    this.rev++;
     engine.onPanesResized = (ratios) => this.onPanesResized(ratios);
     engine.onCompactChange = () => this.relayout();
     this.bulk = true;
@@ -115,6 +130,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
       this.engine.onCompactChange = null;
     }
     this.engine = null;
+    this.rev++;
   }
 
   /* ───────────── pane heights ───────────── */
@@ -210,6 +226,15 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private isOwn(it: Item): boolean {
     if (it.def.pane === "own" || it.def.fixedPane) return it.def.pane === "own";
     return it.inst.style?.pane === "own";
+  }
+
+  /** The engine whose bars the indicator is computed on: that of the chart its window is linked to, else the price chart's. */
+  private dataOf(it?: Item): ChartEngine | null {
+    if (it) {
+      const w = this.winOf(it);
+      if (w) return this.chartEngine(this.ws?.wins.find((x) => x.id === w)?.link ?? MAIN_ID);
+    }
+    return this.engine;
   }
 
   /** Extra window the indicator is drawn in right now, undefined: on the price chart (its pane or an own pane under it). */
@@ -361,16 +386,18 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const uid = this.nextUid(id);
     const eng = this.engine;
     const st = sanitizeStyle(style);
+    // an indicator in a window is computed on the bars of the chart that window is linked to (the price chart otherwise)
+    const self: { it?: Item } = {};
     const series = new IndicatorSeries(
       uid,
       def,
       merged,
       {
-        getCandles: () => (this.engine ? this.engine.getCandles() : []),
-        getPrecision: () => (this.engine ? this.engine.getPrecision() : 2),
-        getIntervalMs: () => (this.engine ? this.engine.getIntervalMs() : 0),
-        getFlow: () => (this.engine ? this.engine.flow : null),
-        getAlgo: () => (this.engine ? this.engine.algo : null),
+        getCandles: () => this.dataOf(self.it)?.getCandles() ?? [],
+        getPrecision: () => this.dataOf(self.it)?.getPrecision() ?? 2,
+        getIntervalMs: () => this.dataOf(self.it)?.getIntervalMs() ?? 0,
+        getFlow: () => this.dataOf(self.it)?.flow ?? null,
+        getAlgo: () => this.dataOf(self.it)?.algo ?? null,
       },
       st,
     );
@@ -379,6 +406,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const inst: IndicatorInstance = { uid, id, params: merged, visible };
     if (st) inst.style = st;
     const item: Item = { inst, def, series, pane: null, host: null, ratio: { ...ratio } };
+    self.it = item;
     if (win && win !== MAIN_ID && windowable(def) && hasIndWindow(this.ws, win)) item.win = win;
     this.items.push(item);
     if (eng) this.mount(item);
@@ -504,11 +532,12 @@ export class IndicatorsController implements IndicatorsControllerLike {
   legendInfo(uid: string, index: number): IndicatorLegendInfo | null {
     const it = this.find(uid);
     if (!it) return null;
-    const candles = this.engine ? this.engine.getCandles() : [];
+    const data = this.dataOf(it);
+    const candles = data ? data.getCandles() : [];
     const parts = it.series.legendParts(candles, index);
     let tfHidden = false;
     const tf = it.inst.style?.tf;
-    if (tf && this.engine) tfHidden = tf[tfGroupOf(this.engine.getIntervalMs())] === false;
+    if (tf && data) tfHidden = tf[tfGroupOf(data.getIntervalMs())] === false;
     return { ...parts, uid, visible: it.inst.visible, tfHidden, pane: this.paneOf(uid) };
   }
 
@@ -517,7 +546,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const out: StyleDesc = { plots: [], fills: [], levels: [], band: null };
     const it = this.find(uid);
     if (!it) return out;
-    if (this.engine) it.series.ensure(this.engine.getCandles());
+    const data = this.dataOf(it);
+    if (data) it.series.ensure(data.getCandles());
     const r = it.series.getRaw();
     if (!r) return out;
     for (const p of r.plots) {
@@ -587,6 +617,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     // `ws`: floating windows; `lay`: the tiled layout of the first multi-window build, turned into windows in the same places
     this.ws = stored ? (stored.ws !== undefined ? parseWorkspace(stored.ws) : migrateTree(parseLayout(stored.lay))) : null;
     if (this.addTarget && !hasIndWindow(this.ws, this.addTarget)) this.addTarget = null;
+    if (this.maximized && !hasWindow(this.ws, this.maximized)) this.maximized = null;
     this.bulk = true;
     for (const raw of arr) {
       if (!raw || typeof raw !== "object") continue;
@@ -613,6 +644,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return indIds(this.ws);
   }
 
+  /** 1-based number of an indicator window ("Window 2"). */
+  windowNumber(id: string): number {
+    return windowNumber(this.ws, id);
+  }
+
   /** Every extra window, charts included. */
   windowCount(): number {
     return extraIds(this.ws).length;
@@ -621,29 +657,6 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** One more window with a chart of its own may be added. */
   canAddChart(): boolean {
     return extraIds(this.ws).length < MAX_WINDOWS && chartCount(this.ws) < MAX_CHARTS;
-  }
-
-  /** Adds a window with a chart of its own (the instrument is what the chart takes: data source + data ticker). Returns its id, "" when refused. */
-  addChartWindow(src: string, tk: string): string {
-    // never the id of a window that was closed: the chart keeps its interval / indicators / drawings under that id
-    const r = wsAddChart(this.ws, src, tk, `c${Math.random().toString(36).slice(2, 8)}`);
-    if (!r) return "";
-    this.ws = r.ws;
-    this.emit();
-    return r.id;
-  }
-
-  /** The user picked another instrument in a chart window. */
-  setChartSymbol(id: string, src: string, tk: string): void {
-    const next = wsSetSymbol(this.ws, id, src, tk);
-    if (next === this.ws) return;
-    this.ws = next;
-    this.emit();
-  }
-
-  /** 1-based number of an extra window ("Window 2"). */
-  windowNumber(id: string): number {
-    return windowNumber(this.ws, id);
   }
 
   /** One more window may be added. */
@@ -689,24 +702,139 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return out;
   }
 
-  /** Adds an empty window (the first one switches the workspace on). Returns its id, "" when there are too many windows. */
-  addWindow(): string {
-    const r = wsAdd(this.ws);
-    if (!r) return "";
-    this.ws = r.ws;
+  /** The workspace and the engines of its charts as one snapshot (a new object when either changed). */
+  getWinState(): { ws: Workspace | null; rev: number; max: string | null; min: string } {
+    const min = Array.from(this.minimized).sort().join(",");
+    if (this.winSnap.ws !== this.ws || this.winSnap.rev !== this.rev || this.winSnap.max !== this.maximized || this.winSnap.min !== min) this.winSnap = { ws: this.ws, rev: this.rev, max: this.maximized, min };
+    return this.winSnap;
+  }
+
+  /** Collapses a window to its title bar / opens it again (this session only). */
+  toggleMinimize(id: string): void {
+    if (!hasWindow(this.ws, id)) return;
+    if (this.minimized.has(id)) this.minimized.delete(id);
+    else {
+      this.minimized.add(id);
+      if (this.maximized === id) this.maximized = null;
+    }
+    this.emitLayout();
+  }
+
+  /** The window that fills the whole area (null: none). Session only. */
+  maximizedId(): string | null {
+    return this.maximized && hasWindow(this.ws, this.maximized) ? this.maximized : null;
+  }
+
+  /** Fills the whole area with a window / puts it back where it was (its stored rectangle is never touched). */
+  toggleMaximize(id: string): void {
+    if (!hasWindow(this.ws, id)) return;
+    this.maximized = this.maximized === id ? null : id;
+    this.minimized.delete(id);
+    this.emitLayout();
+  }
+
+  /** The engine of a chart (the price chart or a chart window), null while it does not exist. */
+  chartEngine(id: string): ChartEngine | null {
+    return id === MAIN_ID ? this.engine : (this.chartEngines.get(id) ?? null);
+  }
+
+  /** A chart window's engine appeared (or went away: null). The indicator windows linked to that chart follow it. */
+  setChartEngine(id: string, engine: ChartEngine | null): void {
+    this.chartOffs.get(id)?.();
+    this.chartOffs.delete(id);
+    if (engine) {
+      this.chartEngines.set(id, engine);
+      // the legend values of a window follow the bars of its chart (repaint of that chart = maybe new numbers)
+      this.chartOffs.set(
+        id,
+        engine.addViewListener(() => {
+          if (this.dataRaf || typeof requestAnimationFrame === "undefined" || !this.items.some((it) => this.linkOf(it) === id)) return;
+          this.dataRaf = requestAnimationFrame(() => {
+            this.dataRaf = 0;
+            this.emitData();
+          });
+        }),
+      );
+    } else this.chartEngines.delete(id);
+    this.rev++;
+    this.emitLayout();
+  }
+
+  private linkOf(it: Item): string | undefined {
+    const w = this.winOf(it);
+    return w ? this.ws?.wins.find((x) => x.id === w)?.link : undefined;
+  }
+
+  /** The chart the user clicked last: a new window opens linked to it. */
+  setFocusChart(id: string): void {
+    this.focusChart = chartIds(this.ws).includes(id) ? id : MAIN_ID;
+  }
+
+  /** Told when windows were moved to the price chart because their chart went away (the number of windows). */
+  subscribeNotice(cb: (n: number) => void): () => void {
+    this.noticeListeners.add(cb);
+    return () => {
+      this.noticeListeners.delete(cb);
+    };
+  }
+
+  /** Puts a changed workspace in place: indicators that sat in a window that is no longer an indicator window go back to the chart. */
+  private setWs(next: Workspace | null, chartGone?: string): void {
+    const moved = chartGone ? dependents(this.ws, chartGone).length : 0;
+    this.ws = next;
+    if (this.maximized && !hasWindow(next, this.maximized)) this.maximized = null;
+    for (const id of Array.from(this.minimized)) if (!hasWindow(next, id)) this.minimized.delete(id);
+    for (const it of this.items) if (it.win && !hasIndWindow(next, it.win)) it.win = undefined;
+    if (this.addTarget && !hasIndWindow(next, this.addTarget)) this.addTarget = null;
     this.replace();
     this.emit();
+    if (moved > 0) for (const cb of Array.from(this.noticeListeners)) cb(moved);
+  }
+
+  /** Adds a window (the first one switches the workspace on): "new" - the user chooses what it shows; "ind" - an indicator window linked to the chart clicked last. Returns its id, "" when there are too many windows. */
+  addWindow(kind: "new" | "ind" = "new"): string {
+    const r = wsAdd(this.ws, undefined, this.focusChart);
+    if (!r) return "";
+    // the new window opens on top: whatever filled the area gives it back
+    this.maximized = null;
+    this.setWs(kind === "ind" ? wsMakeIndicator(r.ws, r.id) : r.ws);
     return r.id;
   }
 
-  /** Closes a window: its indicators go back to the price chart. */
+  /** The window becomes a chart of its own on this instrument (data source + data ticker). */
+  makeChart(id: string, src: string, tk: string): void {
+    const next = wsMakeChart(this.ws, id, src, tk);
+    if (next !== this.ws) this.setWs(next, id);
+  }
+
+  /** The window becomes an indicator window (linked to the chart it was opened for). */
+  makeIndicator(id: string): void {
+    const next = wsMakeIndicator(this.ws, id);
+    if (next !== this.ws) this.setWs(next, id);
+  }
+
+  /** The window goes back to «what do you want here?» (its indicators go back to the chart, windows that followed it move to the price chart). */
+  resetKind(id: string): void {
+    const next = wsResetKind(this.ws, id);
+    if (next !== this.ws) this.setWs(next, id);
+  }
+
+  /** An indicator window follows another chart: its candles, time scale, crosshair, instrument and timeframe. */
+  setLink(id: string, chart: string): void {
+    const next = wsSetLink(this.ws, id, chart);
+    if (next !== this.ws) this.setWs(next);
+  }
+
+  /** The user picked another instrument in a chart window (the indicator windows linked to it follow by themselves). */
+  setChartSymbol(id: string, src: string, tk: string): void {
+    const next = wsSetSymbol(this.ws, id, src, tk);
+    if (next !== this.ws) this.setWs(next);
+  }
+
+  /** Closes a window: its indicators go back to the price chart; indicator windows that followed a closed chart move to the price chart. */
   closeWindow(id: string): void {
     if (id === MAIN_ID || !hasWindow(this.ws, id)) return;
-    for (const it of this.items) if (it.win === id) it.win = undefined;
-    this.ws = wsClose(this.ws, id);
-    if (this.addTarget === id) this.addTarget = null;
-    this.replace();
-    this.emit();
+    this.setWs(wsClose(this.ws, id), id);
   }
 
   /** Back to the classic single chart: every window is closed, its indicators return to the price chart. */
@@ -714,6 +842,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (!this.ws) return;
     for (const it of this.items) it.win = undefined;
     this.ws = null;
+    this.maximized = null;
+    this.minimized.clear();
     this.addTarget = null;
     this.replace();
     this.emit();
@@ -731,7 +861,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (!it || (to !== null && !windowable(it.def))) return;
     let target: string | undefined;
     if (to === "new") {
-      const id = this.addWindow();
+      const id = this.addWindow("ind");
       if (!id) return;
       target = id;
     } else if (to !== null) {
@@ -827,9 +957,11 @@ export class IndicatorsController implements IndicatorsControllerLike {
   refresh(): void {
     const eng = this.engine;
     if (!eng) return;
-    const candles = eng.getCandles();
     let changed = false;
-    for (const it of this.items) if (it.series.ensure(candles)) changed = true;
+    for (const it of this.items) {
+      const data = this.dataOf(it);
+      if (data && it.series.ensure(data.getCandles())) changed = true;
+    }
     if (changed) {
       this.redraw();
       this.emitData();

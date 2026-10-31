@@ -96,6 +96,8 @@ interface Props {
   /** App-only terminal page, chart full screen: own toolbar + bottom bar, no phone nav / right panel; `appFullLead` (the close button) goes first in the toolbar. The same chart instance keeps running across the switch. */
   appFull?: boolean;
   appFullLead?: ReactNode;
+  /** Told about the engine of this chart (null when it goes away): a chart window lets the indicator windows linked to it follow it. */
+  onEngine?: (engine: ChartEngine | null) => void;
 }
 
 const PREFS_KEY = "fomo-chart-prefs-v1";
@@ -212,12 +214,14 @@ interface CompareState {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, onEngine }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
   /** A chart window was clicked last: the hotkeys go to that chart, not to this one (null: this chart). */
   const [focusWin, setFocusWin] = useState<string | null>(null);
+  const onEngineRef = useRef(onEngine);
+  onEngineRef.current = onEngine;
   const activeRef = useRef(active !== false);
   activeRef.current = active !== false && focusWin === null;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -406,6 +410,28 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   /* extra windows with indicators (not in the panes of a multi-chart grid, not on bars built from the candles) */
   const [winBroken, setWinBroken] = useState(false);
+  /** A chart (the price chart: null, or a chart window) was clicked: the keyboard goes to it and a new indicator window is linked to it. */
+  const focusChart = useCallback(
+    (id: string | null) => {
+      setFocusWin(id);
+      indicators.setFocusChart(id ?? "main");
+    },
+    [indicators],
+  );
+  /** «The chart of N indicator windows was closed: they follow the price chart now» (a few seconds). */
+  const [winNotice, setWinNotice] = useState<number | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = indicators.subscribeNotice((n) => {
+      setWinNotice(n);
+      clearTimeout(timer);
+      timer = setTimeout(() => setWinNotice(null), 6000);
+    });
+    return () => {
+      off();
+      clearTimeout(timer);
+    };
+  }, [indicators]);
   const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
   const [winCount, setWinCount] = useState(0);
   useEffect(() => {
@@ -426,6 +452,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         embedded
         storageId={`cw-${w.id}`}
         active={focusWin === w.id}
+        onEngine={(e) => indicators.setChartEngine(w.id, e)}
         onSelectSymbol={(i) => indicators.setChartSymbol(w.id, i.source, i.dataTicker)}
       />
     );
@@ -504,6 +531,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     engine.onBaselineChange = (pct) => csRef.current.update((x) => ({ ...x, baselinePercent: Math.round(pct) }));
     engine.onPriceAxisMenu = ({ clientX, clientY }) => setScaleMenu({ x: clientX, y: clientY });
     setEngineReady(true);
+    onEngineRef.current?.(engine);
 
     const mo = new MutationObserver(() => {
       setSiteDark(document.documentElement.classList.contains("dark"));
@@ -522,6 +550,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       avwapLayer.detach();
       vpLayer.detach();
       indicators.detach();
+      onEngineRef.current?.(null);
       engine.destroy();
       engineRef.current = null;
       setEngineReady(false);
@@ -1704,15 +1733,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
-        windows={{
-          available: winGeo.available,
-          count: winCount,
-          canAdd: winCount < MAX_WINDOWS,
-          canAddChart: indicators.canAddChart(),
-          onAdd: () => void indicators.addWindow(),
-          onAddChart: () => void indicators.addChartWindow(source, ticker),
-          onReset: () => indicators.resetWindows(),
-        }}
+        windows={{ available: winGeo.available, count: winCount, canAdd: winCount < MAX_WINDOWS, onAdd: () => void indicators.addWindow() }}
         onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
@@ -1752,18 +1773,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             rect={winGeo.px.main ?? null}
             size={winGeo.size}
             z={winGeo.ws?.wins[0]?.z ?? 1}
-            onFocus={setFocusWin}
+            maximized={winGeo.maxId === "main"}
+            minimized={winGeo.minIds.includes("main")}
+            restRect={winGeo.full.main}
+            onFocus={focusChart}
             title={`${instrument.ticker} · ${formatInterval(shownInterval(prefs.interval, source), t)}`}
-            actions={
-              <>
-                <button type="button" className="tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)]" title={t("win.addWindow")} aria-label={t("win.addWindow")} disabled={winCount >= MAX_WINDOWS} onClick={() => void indicators.addWindow()}>
-                  {IND_ICONS.plus(15)}
-                </button>
-                <button type="button" className="tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)]" title={t("win.reset")} aria-label={t("win.reset")} onClick={() => indicators.resetWindows()}>
-                  {IND_ICONS.reset(15)}
-                </button>
-              </>
-            }
+            actions={null}
           >
           <div className="group relative flex-1 min-h-0">
             <div ref={hostRef} className="absolute inset-0" />
@@ -1851,7 +1866,25 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
           </div>
           </WindowFrame>
-          <ChartWindows controller={indicators} leader={engineReady ? engineRef.current : null} geo={winGeo} onAddIndicator={openIndicatorsFor} onBroken={() => setWinBroken(true)} onFocus={setFocusWin} renderChart={renderChartWindow} />
+          <ChartWindows
+            controller={indicators}
+            geo={winGeo}
+            onAddIndicator={openIndicatorsFor}
+            onPickChart={(id) => indicators.makeChart(id, source, ticker)}
+            onPickIndicator={(id) => {
+              indicators.makeIndicator(id);
+              openIndicatorsFor(id);
+            }}
+            onReset={() => indicators.resetWindows()}
+            onBroken={() => setWinBroken(true)}
+            onFocus={focusChart}
+            renderChart={renderChartWindow}
+          />
+          {winNotice !== null && (
+            <div className="pointer-events-none absolute bottom-3 left-1/2 z-[200] -translate-x-1/2 rounded-lg bg-[var(--tv3-text)] px-3 py-1.5 text-xs font-medium text-[var(--tv3-card)] shadow-lg" role="status">
+              {t("win.relinked", { n: winNotice })}
+            </div>
+          )}
           </div>
           {!appPage && (
           <BottomBar

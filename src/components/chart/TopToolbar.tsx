@@ -100,12 +100,8 @@ interface Props {
     /** Extra windows now. */
     count: number;
     canAdd: boolean;
-    canAddChart: boolean;
+    /** Adds a window that asks what to show in it: a chart or an indicator. */
     onAdd: () => void;
-    /** A window with a whole chart of its own (any instrument and interval). */
-    onAddChart: () => void;
-    /** Back to the classic single chart. */
-    onReset: () => void;
   };
   /** Extra buttons (the multi-chart layout picker). */
   extra?: ReactNode;
@@ -259,56 +255,11 @@ export default function TopToolbar(p: Props) {
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       {win && (
-        <span className="inline-flex shrink-0 items-stretch">
-          <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindow") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={`${btn} !rounded-r-none`}>
-            {IND_ICONS.pane(18)}
-            <span className={lbl2}>{t("win.menu")}</span>
-            {win.count > 0 && badge(win.count)}
-          </button>
-          {/* a chart of its own (any instrument / timeframe) is the thing people look for first: a button of its own, not only a menu item */}
-          <button onClick={win.onAddChart} disabled={!win.canAddChart} title={win.canAddChart ? t("win.addChart") : t("win.max", { n: win.count })} aria-label={t("win.addChart")} className={`${btn} !rounded-none ml-px`}>
-            {I.indicators}
-            <span className={lbl2}>{t("win.addChartBtn")}</span>
-          </button>
-          <Menu title={t("win.menuTitle")} className={`${btn} !rounded-l-none !px-1.5 ml-px`} width={250} trigger={IND_ICONS.chevronDown(14)}>
-            {(close) => (
-              <div className="px-1 text-[13px] text-[var(--tv3-text)]">
-                <button
-                  disabled={!win.canAdd}
-                  onClick={() => {
-                    win.onAdd();
-                    close();
-                  }}
-                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-                >
-                  {t("win.addWindow")}
-                </button>
-                <button
-                  disabled={!win.canAddChart}
-                  onClick={() => {
-                    win.onAddChart();
-                    close();
-                  }}
-                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-                >
-                  {t("win.addChart")}
-                </button>
-                {win.count > 0 && (
-                  <button
-                    onClick={() => {
-                      win.onReset();
-                      close();
-                    }}
-                    className="w-full h-9 px-2 rounded-lg text-left cursor-pointer text-[var(--tv3-red)] hover:bg-[var(--tv3-fill)]"
-                  >
-                    {t("win.reset")}
-                  </button>
-                )}
-                <div className="px-2 pb-1.5 pt-1 text-[11.5px] leading-snug text-[var(--tv3-muted)] whitespace-normal">{t("win.hint")}</div>
-              </div>
-            )}
-          </Menu>
-        </span>
+        <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindowTip") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={btn}>
+          {IND_ICONS.plus(16)}
+          <span className={lbl}>{t("win.addWindow")}</span>
+          {win.count > 0 && badge(win.count)}
+        </button>
       )}
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
         {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}

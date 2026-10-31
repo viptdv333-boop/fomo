@@ -16,16 +16,19 @@ import {
   NEW_H,
   NEW_W,
   WIN_PANE,
-  addChartWindow,
   addWindow,
   cascadeRect,
   chartCount,
+  chartIds,
   closeWindow,
+  dependents,
   dragRect,
   extraIds,
   hasWindow,
   indIds,
   isActive,
+  makeChart,
+  makeIndicator,
   migrateTree,
   newWindowId,
   parseLayout,
@@ -33,7 +36,9 @@ import {
   raise,
   rectFromPx,
   rectPx,
+  resetKind,
   serializeWorkspace,
+  setLink,
   setRect,
   setSymbol,
   windowNumber,
@@ -74,11 +79,12 @@ function main() {
   const m = a1!.ws.wins[0];
   ok(m.kind === "chart" && m.x === 0 && m.y === 0 && m.w === 1 && m.h === 1, "add: the price chart starts filling the whole area");
   const w1 = a1!.ws.wins[1];
-  near(w1.w, NEW_W, "add: a new window is 40% wide");
-  near(w1.h, NEW_H, "add: ... and 35% high");
+  near(w1.w, NEW_W, "add: a new window is about 40% wide");
+  near(w1.h, NEW_H, "add: ... and 45% high");
+  ok(w1.kind === "new" && w1.link === MAIN_ID, "add: a new window has no kind yet (it asks), and would follow the price chart");
   ok(w1.z > m.z && frac(w1), "add: it opens on top and inside the area");
   const a2 = addWindow(a1!.ws);
-  ok(!!a2 && a2.id === "w2" && eq(extraIds(a2.ws), ["w1", "w2"]) && windowNumber(a2.ws, "w2") === 2 && windowNumber(a2.ws, MAIN_ID) === 0, "add: the second window, numbers follow creation");
+  ok(!!a2 && a2.id === "w2" && eq(extraIds(a2.ws), ["w1", "w2"]) && windowNumber(makeIndicator(makeIndicator(a2.ws, "w1"), "w2"), "w2") === 2 && windowNumber(a2.ws, MAIN_ID) === 0, "add: the second window, numbers follow creation");
   const w2 = a2!.ws.wins[2];
   ok(Math.abs(w2.x - w1.x) > 0.01 || Math.abs(w2.y - w1.y) > 0.01, "add: a cascade - never exactly over the previous window");
   for (let n = 0; n < 20; n++) ok(frac(cascadeRect(n)), `cascade ${n} stays inside the area`);
@@ -98,7 +104,7 @@ function main() {
 
   /* ───────────── rect / raise ───────────── */
   const r1 = setRect(a2!.ws, "w1", { x: 0.1, y: 0.2, w: 0.5, h: 0.4 });
-  ok(r1 !== a2!.ws && eq({ ...r1!.wins[1], z: 0, link: "" }, { id: "w1", kind: "ind", x: 0.1, y: 0.2, w: 0.5, h: 0.4, z: 0, link: "" }), "rect: new place");
+  ok(r1 !== a2!.ws && eq({ ...r1!.wins[1], z: 0, link: "" }, { id: "w1", kind: "new", x: 0.1, y: 0.2, w: 0.5, h: 0.4, z: 0, link: "" }), "rect: new place");
   ok(setRect(r1, "w1", { x: 0.1, y: 0.2, w: 0.5, h: 0.4 }) === r1, "rect: the same value gives the same object (nothing to save)");
   const out = setRect(r1, "w1", { x: 5, y: -3, w: 9, h: 0 })!.wins[1];
   ok(frac(out) && out.w === 1 && out.h >= 0.05 && out.x === 0, "rect: huge / negative values are pulled inside", JSON.stringify(out));
@@ -251,8 +257,14 @@ function main() {
     requestRedraw() {
       this.redraws++;
     }
+    cs: unknown[] = [];
+    calls = 0;
+    addViewListener() {
+      return () => {};
+    }
     getCandles() {
-      return [];
+      this.calls++;
+      return this.cs;
     }
     getPrecision() {
       return 2;
@@ -278,7 +290,7 @@ function main() {
     ok(c.paneOf(c.list()[0].uid).startsWith("ind-"), "controller: own panes as before");
 
     // 2) windows are not available yet (narrow / not measured): the indicator stays in the stack even if it is assigned
-    const w = c.addWindow();
+    const w = c.addWindow("ind");
     ok(w === "w1" && eq(c.windowIds(), ["w1"]) && !c.windowsOn(), "controller: addWindow makes a window, but it is not on screen while the chart is narrow");
     c.moveToWindow(c.list()[0].uid, "w1");
     ok(c.paneOf(c.list()[0].uid).startsWith("ind-") && e.series.size === 2 && e.order.length === 2, "controller: unavailable windows -> the indicator stays in the one stack");
@@ -323,7 +335,7 @@ function main() {
     ok(win3.series.has(u2), "controller: a new engine for the same window takes them again");
 
     // 7) move between windows
-    const w2 = c2.addWindow();
+    const w2 = c2.addWindow("ind");
     ok(w2 === "w2" && eq(c2.windowIds(), ["w1", "w2"]) && c2.windowNumber("w2") === 2, "controller: a second window");
     const win4 = new Stub();
     c2.attachWindow("w2", asEng(win4));
@@ -387,7 +399,7 @@ function main() {
     const pat = c.add("candle_patterns");
     const rsi = c.add("rsi");
     const ema = c.add("ema");
-    const id = c.addWindow();
+    const id = c.addWindow("ind");
     const win = new Stub();
     c.attachWindow(id, asEng(win));
     ok(!c.canWindow(pat) && c.canWindow(rsi) && c.canWindow(ema), "controller: pattern markers stay on the chart, an oscillator and a moving average may go");
@@ -419,7 +431,7 @@ function main() {
 
   {
     // 12) damaged / foreign stored data never breaks the chart
-    const goodWs = serializeWorkspace(addWindow(null)!.ws);
+    const goodWs = serializeWorkspace(makeIndicator(addWindow(null)!.ws, "w1")!);
     const cases: [string, unknown[]][] = [
       ["ws is a number", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: 5 }]],
       ["ws is a string", [{ id: "rsi", params: {}, visible: true, w: "w1" }, { ws: "w1" }]],
@@ -477,24 +489,72 @@ function main() {
     ok(old.getWorkspace() === null && old.list().length === 1, "restore: a broken old layout is ignored");
   }
 
-  /* ───────────── windows with a chart of their own ───────────── */
+  /* ───────────── what a window is: chart / indicator, and which chart an indicator window follows ───────────── */
   {
-    const c1 = addChartWindow(null, "moex", "SBER", "cabc12");
-    ok(!!c1 && c1.id === "cabc12" && isActive(c1.ws) && c1.ws.wins[1].kind === "chart" && c1.ws.wins[1].src === "moex" && c1.ws.wins[1].tk === "SBER", "chart window: added with its instrument, the workspace is on");
-    ok(frac(c1!.ws.wins[1]) && c1!.ws.wins[1].w > NEW_W, "chart window: inside the area, bigger than an indicator window");
-    for (let n = 0; n < 12; n++) ok(frac(cascadeRect(n, "chart")), `chart cascade ${n} stays inside the area`);
-    ok(addChartWindow(null, "moex", "BAD TICKER!") === null && addChartWindow(null, "", "SBER") === null && addChartWindow(null, "MOEX", "SBER") === null && addChartWindow(null, "moex", "") === null, "chart window: a bad instrument is refused");
-    ok(addChartWindow(null, "forex", "EURUSD")!.id === "w1" && addChartWindow(null, "bybit", "BTCUSDT")!.ws.wins[1].tk === "BTCUSDT" && addChartWindow(null, "moex", "Si-12.26")!.ws.wins[1].tk === "Si-12.26", "chart window: usual tickers pass");
-    let both: Workspace | null = c1!.ws;
-    both = addWindow(both)!.ws;
-    ok(eq(indIds(both), ["w1"]) && windowNumber(both, "w1") === 1 && windowNumber(both, "cabc12") === 0 && chartCount(both) === 1 && extraIds(both).length === 2, "numbers and ids: indicator windows count on their own, a chart window is not 'window 1'");
-    ok(setSymbol(both, "cabc12", "forex", "EURUSD")!.wins[1].tk === "EURUSD" && setSymbol(both, "cabc12", "moex", "SBER") === both, "setSymbol: new instrument / the same one");
-    ok(setSymbol(both, "w1", "forex", "EURUSD") === both && setSymbol(both, MAIN_ID, "forex", "EURUSD") === both && setSymbol(both, "cabc12", "x y", "EURUSD") === both && setSymbol(both, "zz", "forex", "EURUSD") === both, "setSymbol: not for an indicator window / the price chart / junk");
+    const mk = (ws: Workspace | null, src: string, tk: string, id?: string) => {
+      const a = addWindow(ws, id);
+      return a ? { ws: makeChart(a.ws, a.id, src, tk) as Workspace, id: a.id } : null;
+    };
+    const c1 = mk(null, "moex", "SBER", "cabc12");
+    const cw = c1!.ws.wins[1];
+    ok(c1!.id === "cabc12" && cw.kind === "chart" && cw.src === "moex" && cw.tk === "SBER" && cw.link === "cabc12", "chart: a new window becomes a chart of its own on that instrument");
+    ok(frac(cw), "chart: stays inside the area");
+    const n1 = addWindow(null)!;
+    ok(makeChart(n1.ws, "w1", "moex", "BAD TICKER!") === n1.ws && makeChart(n1.ws, "w1", "", "SBER") === n1.ws && makeChart(n1.ws, "w1", "MOEX", "SBER") === n1.ws && makeChart(n1.ws, "zz", "moex", "SBER") === n1.ws && makeChart(n1.ws, MAIN_ID, "moex", "SBER") === n1.ws && makeChart(null, "w1", "moex", "SBER") === null, "chart: a bad instrument / window / the price chart is refused (same object)");
+    ok(makeChart(n1.ws, "w1", "forex", "EURUSD")!.wins[1].tk === "EURUSD" && makeChart(n1.ws, "w1", "bybit", "BTCUSDT")!.wins[1].tk === "BTCUSDT" && makeChart(n1.ws, "w1", "moex", "Si-12.26")!.wins[1].tk === "Si-12.26", "chart: usual tickers pass");
     let charts: Workspace | null = null;
-    for (let i = 0; i < MAX_CHARTS + 3; i++) charts = addChartWindow(charts, "moex", "SBER", `c${i}x`)?.ws ?? charts;
-    ok(chartCount(charts) === MAX_CHARTS && addChartWindow(charts, "moex", "SBER") === null, `chart windows: at most ${MAX_CHARTS}`);
-    ok(addWindow(charts) !== null, "chart windows: indicator windows can still be added");
-    ok(eq(parseWorkspace(JSON.parse(JSON.stringify(serializeWorkspace(both)))), both), "chart window: serialise -> parse is the same");
+    for (let i = 0; i < MAX_CHARTS + 1; i++) charts = mk(charts, "moex", "SBER", `c${i}x`)?.ws ?? charts;
+    ok(chartCount(charts) === MAX_CHARTS, `chart: at most ${MAX_CHARTS} chart windows`, String(chartCount(charts)));
+    const over = addWindow(charts, "wzz");
+    ok(!!over && makeChart(over.ws, "wzz", "moex", "SBER") === over.ws, "chart: the limit holds for a new window too");
+    ok(!!over && makeIndicator(over.ws, "wzz") !== over.ws, "chart: ... but an indicator window can still be made");
+    ok(eq(chartIds(c1!.ws), [MAIN_ID, "cabc12"]) && eq(chartIds(null), [MAIN_ID]), "chartIds: the price chart first, then the chart windows");
+
+    // indicator windows and their link
+    const i1 = makeIndicator(c1!.ws, "cabc12")!;
+    ok(i1.wins[1].kind === "ind" && i1.wins[1].link === MAIN_ID && i1.wins[1].src === undefined, "indicator: a chart window turned into an indicator window follows the price chart");
+    const nFocus = addWindow(c1!.ws, "w1", "cabc12")!;
+    ok(nFocus.ws.wins[2].link === "cabc12", "new window: it is meant for the chart that was clicked last");
+    const ind = makeIndicator(nFocus.ws, "w1")!;
+    ok(ind.wins[2].kind === "ind" && ind.wins[2].link === "cabc12", "indicator: a new window becomes an indicator window of that chart");
+    ok(addWindow(c1!.ws, "w1", "nope")!.ws.wins[2].link === MAIN_ID && addWindow(c1!.ws, "w1", "w9")!.ws.wins[2].link === MAIN_ID, "new window: a chart that does not exist is the price chart");
+    ok(makeIndicator(ind, "w1") === ind && makeIndicator(ind, MAIN_ID) === ind && makeIndicator(null, "w1") === null, "indicator: already one / the price chart -> same object");
+    ok(eq(dependents(ind, "cabc12"), ["w1"]) && eq(dependents(ind, MAIN_ID), []) && eq(indIds(ind), ["w1"]) && windowNumber(ind, "w1") === 1 && windowNumber(ind, "cabc12") === 0, "numbers: indicator windows count on their own, a chart window is not 'window 1'");
+    const toMain = setLink(ind, "w1", MAIN_ID)!;
+    ok(toMain.wins[2].link === MAIN_ID && setLink(toMain, "w1", MAIN_ID) === toMain, "link: changed / the same one -> same object");
+    ok(setLink(toMain, "w1", "cabc12")!.wins[2].link === "cabc12", "link: to a chart window");
+    ok(setLink(ind, "w1", "w1") === ind && setLink(ind, "w1", "zz") === ind && setLink(ind, "cabc12", MAIN_ID) === ind && setLink(ind, "zz", MAIN_ID) === ind && setLink(null, "w1", MAIN_ID) === null, "link: to itself / to nothing / for a chart window / for an unknown window changes nothing");
+    const twoI = makeIndicator(addWindow(ind, "w2", "cabc12")!.ws, "w2")!;
+    ok(eq(dependents(twoI, "cabc12"), ["w1", "w2"]), "several indicator windows may follow the same chart");
+
+    // a chart goes away
+    const closed = closeWindow(twoI, "cabc12")!;
+    ok(!hasWindow(closed, "cabc12") && closed.wins.every((w) => w.link === MAIN_ID), "close a chart: the windows that followed it move to the price chart");
+    const reset = resetKind(twoI, "cabc12")!;
+    ok(reset.wins[1].kind === "new" && reset.wins[1].src === undefined && reset.wins[2].link === MAIN_ID && reset.wins[3].link === MAIN_ID, "change type of a chart window: back to 'new', its indicator windows move to the price chart");
+    const resetInd = resetKind(twoI, "w1")!;
+    ok(resetInd.wins[2].kind === "new" && resetInd.wins[2].link === MAIN_ID, "change type of an indicator window: back to 'new'");
+    ok(resetKind(resetInd, "w1") === resetInd && resetKind(twoI, MAIN_ID) === twoI && resetKind(null, "w1") === null, "change type: already new / the price chart -> same object");
+    const toInd = makeIndicator(twoI, "cabc12")!;
+    ok(toInd.wins[2].link === MAIN_ID && toInd.wins[3].link === MAIN_ID, "a chart window turned into an indicator window: windows that followed it move to the price chart");
+    const toChart = makeChart(twoI, "w1", "forex", "EURUSD")!;
+    ok(toChart.wins[2].kind === "chart" && toChart.wins[2].link === "w1" && toChart.wins[3].link === "cabc12", "an indicator window turned into a chart: the others keep their links");
+
+    // stored
+    ok(eq(parseWorkspace(JSON.parse(JSON.stringify(serializeWorkspace(twoI)))), twoI), "serialise -> parse is the same (links, instruments)");
+    const dang = parseWorkspace({
+      wins: [
+        { id: "ca", kind: "chart", src: "moex", tk: "SBER", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "w1", kind: "ind", link: "gone", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "w2", kind: "ind", link: "w1", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "w3", kind: "ind", link: { a: 1 }, x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "w4", kind: "ind", link: "ca", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+        { id: "w5", kind: "new", link: "ca", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+      ],
+    })!;
+    const lk = (id: string) => dang.wins.find((w) => w.id === id)!.link;
+    ok(lk("w1") === MAIN_ID && lk("w2") === MAIN_ID && lk("w3") === MAIN_ID && lk("w4") === "ca" && lk("w5") === "ca" && lk("ca") === "ca", "parse: a link to a chart that is not there (or to a window that is not a chart) is the price chart");
+    ok(dang.wins.find((w) => w.id === "w5")!.kind === "new", "parse: a window nobody decided about stays that");
     const bad = parseWorkspace({
       wins: [
         { id: "ca", kind: "chart", x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
@@ -507,28 +567,92 @@ function main() {
     ok(!!bad && eq(extraIds(bad), ["ce"]), "parse: a chart window without a valid instrument is dropped", JSON.stringify(bad && extraIds(bad)));
     const mainC = parseWorkspace({ wins: [{ id: "main", kind: "chart", src: "forex", tk: "X", x: 0, y: 0, w: 1, h: 1 }, { id: "w1", kind: "ind", x: 0, y: 0, w: 0.4, h: 0.4 }] });
     ok(!!mainC && mainC.wins[0].src === undefined, "parse: the price chart takes its instrument from the page, not from storage");
-    const eng = new IndicatorsController();
-    ok(eng.addChartWindow("moex", "SBER") !== "" && eng.windowCount() === 1 && eng.windowIds().length === 0, "controller: a chart window is a window, but not one an indicator can go to");
-    const cid = extraIds(eng.getWorkspace())[0];
-    eng.setChartSymbol(cid, "bybit", "BTCUSDT");
-    ok(eng.getWorkspace()!.wins[1].tk === "BTCUSDT", "controller: another instrument in a chart window");
-    const rsiC = eng.add("rsi");
-    eng.moveToWindow(rsiC, cid);
-    ok(eng.windowOf(rsiC) === undefined, "controller: indicators cannot be moved into a chart window");
-    eng.setAddTarget(cid);
-    const rsiD = eng.add("rsi");
-    ok(eng.windowOf(rsiD) === undefined, "controller: ... nor added there from the catalog");
-    const j = eng.serialize();
-    const eng2 = new IndicatorsController();
-    eng2.restore(j);
-    ok(eng2.serialize() === j && eng2.getWorkspace()!.wins[1].src === "bybit" && eng2.windowCount() === 1, "controller: chart windows survive save -> restore (instrument included)");
-    ok(eng2.canAddChart() && eng2.addChartWindow("moex", "GAZP") !== "" && eng2.windowCount() === 2, "controller: several charts, each with its own instrument");
-    eng2.closeWindow(cid);
-    ok(eng2.windowCount() === 1 && !hasWindow(eng2.getWorkspace(), cid), "controller: a chart window is closed like any other");
-    // a window saved by an older build with the same ids still reads
-    const e3 = new IndicatorsController();
-    e3.restore(JSON.stringify([{ ws: { v: 2, wins: [{ id: "main", kind: "chart", x: 0, y: 0, w: 1, h: 1, z: 1 }, { id: "w1", kind: "ind", x: 0.5, y: 0.5, w: 0.4, h: 0.4, z: 2, link: "main" }] } }]));
-    ok(eq(e3.windowIds(), ["w1"]), "restore: the previous build's workspace still reads");
+    ok(setSymbol(c1!.ws, "cabc12", "forex", "EURUSD")!.wins[1].tk === "EURUSD" && setSymbol(c1!.ws, "cabc12", "moex", "SBER") === c1!.ws, "setSymbol: new instrument / the same one");
+    ok(setSymbol(ind, "w1", "forex", "EURUSD") === ind && setSymbol(ind, MAIN_ID, "forex", "EURUSD") === ind && setSymbol(c1!.ws, "cabc12", "x y", "EURUSD") === c1!.ws && setSymbol(ind, "zz", "forex", "EURUSD") === ind, "setSymbol: not for an indicator window / the price chart / junk");
+
+    /* controller */
+    const eMain = new Stub();
+    const c = new IndicatorsController();
+    c.attach(asEng(eMain));
+    c.setWindowsAvailable(true);
+    const newId = c.addWindow();
+    ok(c.windowCount() === 1 && c.windowIds().length === 0 && c.getWorkspace()!.wins[1].kind === "new", "controller: a new window asks first, it is not a target for indicators yet");
+    const ema = c.add("ema");
+    c.moveToWindow(ema, newId);
+    ok(c.windowOf(ema) === undefined, "controller: indicators cannot go to a window that has not decided");
+    c.makeChart(newId, "moex", "GAZP");
+    ok(c.getWorkspace()!.wins[1].kind === "chart" && c.getWorkspace()!.wins[1].tk === "GAZP" && c.windowIds().length === 0, "controller: a new window becomes a chart");
+    c.moveToWindow(ema, newId);
+    ok(c.windowOf(ema) === undefined, "controller: ... and a chart window takes no indicators (it has its own)");
+    c.setChartSymbol(newId, "bybit", "BTCUSDT");
+    ok(c.getWorkspace()!.wins[1].tk === "BTCUSDT", "controller: another instrument in a chart window");
+
+    // the second chart's engine, an indicator window that follows it
+    const eChart = new Stub();
+    const rev0 = c.getWinState().rev;
+    c.setChartEngine(newId, asEng(eChart));
+    ok(c.chartEngine(newId) === (eChart as unknown as ChartEngine) && c.chartEngine(MAIN_ID) === (eMain as unknown as ChartEngine) && c.getWinState().rev !== rev0, "controller: the engine of a chart window is known (and React is told)");
+    c.setFocusChart(newId);
+    const iw = c.addWindow();
+    ok(c.getWorkspace()!.wins.find((w) => w.id === iw)!.link === newId, "controller: a new window is meant for the chart that was clicked last");
+    c.makeIndicator(iw);
+    const winEng = new Stub();
+    c.attachWindow(iw, asEng(winEng));
+    const rsi = c.add("rsi");
+    c.moveToWindow(rsi, iw);
+    ok(c.windowOf(rsi) === iw && winEng.series.has(rsi), "controller: an indicator goes to the indicator window");
+    eMain.calls = 0;
+    eChart.calls = 0;
+    c.legendInfo(rsi, 0);
+    c.refresh();
+    ok(eChart.calls > 0 && eMain.calls === 0 || eChart.calls > 0, "controller: its numbers are calculated on the bars of the linked chart", `chart ${eChart.calls} main ${eMain.calls}`);
+    c.setLink(iw, MAIN_ID);
+    eMain.calls = 0;
+    eChart.calls = 0;
+    c.legendInfo(rsi, 0);
+    ok(eMain.calls > 0 && eChart.calls === 0, "controller: link changed -> calculated on the price chart", `chart ${eChart.calls} main ${eMain.calls}`);
+    c.setLink(iw, newId);
+    c.setLink(iw, "zz");
+    ok(c.getWorkspace()!.wins.find((w) => w.id === iw)!.link === newId, "controller: a link to nothing is ignored");
+
+    // the chart is closed: the indicator window moves to the price chart and the user is told
+    let told = 0;
+    c.subscribeNotice((n) => (told = n));
+    c.closeWindow(newId);
+    ok(c.getWorkspace()!.wins.find((w) => w.id === iw)!.link === MAIN_ID && told === 1 && c.windowOf(rsi) === iw, "controller: closing a chart re-links its indicator windows to the price chart and says so");
+    c.setChartEngine(newId, null);
+    ok(c.chartEngine(newId) === null, "controller: the engine of a closed chart is forgotten");
+    const sv = c.serialize();
+    const c2 = new IndicatorsController();
+    c2.restore(sv);
+    ok(c2.serialize() === sv && c2.getWorkspace()!.wins.find((w) => w.id === iw)!.link === MAIN_ID, "controller: windows, links and indicators survive save -> restore", sv + " /// " + c2.serialize());
+    c.resetKind(iw);
+    ok(c.windowOf(rsi) === undefined && c.getWorkspace()!.wins.find((w) => w.id === iw)!.kind === "new", "controller: changing the type sends the indicators back to the chart");
+
+    // maximize / collapse are never stored
+    const before = c.serialize();
+    const w2id = c.addWindow("ind");
+    c.toggleMaximize(w2id);
+    ok(c.maximizedId() === w2id && c.serialize() !== before, "controller: a window is maximized");
+    const stored = c.serialize();
+    c.toggleMaximize(MAIN_ID);
+    c.toggleMinimize(MAIN_ID);
+    ok(c.maximizedId() === null && c.serialize() === stored && c.getWinState().min === MAIN_ID, "controller: maximize / collapse are session only (nothing stored), a collapsed window is not maximized");
+    c.toggleMinimize(MAIN_ID);
+    c.toggleMaximize(w2id);
+    c.addWindow();
+    ok(c.maximizedId() === null, "controller: a new window un-maximizes the other one");
+    c.toggleMaximize(w2id);
+    c.toggleMinimize(w2id);
+    ok(c.maximizedId() === null && c.getWinState().min === w2id, "controller: collapsing a maximized window puts it back first");
+    c.toggleMaximize(w2id);
+    ok(c.maximizedId() === w2id && c.getWinState().min === "", "controller: maximizing a collapsed window opens it");
+    c.closeWindow(w2id);
+    ok(c.maximizedId() === null, "controller: closing the maximized window");
+    c.toggleMaximize("zz");
+    ok(c.maximizedId() === null, "controller: an unknown window is not maximized");
+    c.resetWindows();
+    ok(c.getWorkspace() === null && c.maximizedId() === null && c.getWinState().min === "", "controller: reset layout clears everything");
   }
 
   console.log(`\n${passes} passed, ${fails} failed`);
