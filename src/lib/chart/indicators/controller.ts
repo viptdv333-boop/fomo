@@ -31,8 +31,18 @@ const DEFAULT_PANE_RATIO = 0.18;
 /** Indicators that are painted by a layer of the price chart (not by their series): they cannot live in another window. */
 const LAYER_DRAWN = new Set(["avwap", "vprofile_pro"]);
 
-/** An indicator can live in an extra window when it has a scale of its own (or may be given one) and is drawn by its series. */
-const windowable = (def: IndicatorDef): boolean => (def.pane === "own" || (def.pane === "overlay" && !def.fixedPane)) && !LAYER_DRAWN.has(def.id);
+/**
+ * An indicator can live in an extra window when its series draws it: an oscillator gets the pane of the window, one that stands on the price
+ * (averages, patterns, waves, zones ...) gets a price pane with the candles of the chart the window follows. Not the ones drawn by a layer of the
+ * price chart (their state - anchors, handles - belongs to the price chart).
+ */
+const windowable = (def: IndicatorDef): boolean => !LAYER_DRAWN.has(def.id);
+
+/** Whether an indicator may be put in an extra window (the catalogue says so in its rows). */
+export function windowableId(id: string): boolean {
+  const def = getIndicatorDef(id);
+  return !!def && windowable(def);
+}
 
 /* What the settings dialog needs to know about the plots of an indicator (from the un-styled result). */
 export interface PlotDesc {
@@ -244,7 +254,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** Where the indicator belongs now: "main", the id of its own pane or WIN_PREFIX + window id. */
   private targetPane(it: Item): string {
     const w = this.winOf(it);
-    if (w) return WIN_PREFIX + w;
+    // in a window: the pane of the oscillators, or the price pane (candles) for what stands on the price (:p)
+    if (w) return WIN_PREFIX + w + (this.isOwn(it) ? "" : ":p");
     return this.isOwn(it) ? this.paneId(it) : "main";
   }
 
@@ -258,13 +269,15 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (!eng) return;
     const w = this.winOf(it);
     if (w) {
-      it.series.setOnMain(false);
+      const onPrice = !this.isOwn(it);
+      it.series.setOnMain(onPrice);
       const weng = this.winEngines.get(w);
       // the tile of the window is still being built: attachWindow mounts the indicator
       if (!weng) return;
-      weng.addSeries(it.series, WIN_PANE);
-      it.pane = WIN_PREFIX + w;
+      weng.addSeries(it.series, onPrice ? "main" : WIN_PANE);
+      it.pane = WIN_PREFIX + w + (onPrice ? ":p" : "");
       it.host = weng;
+      this.syncWindowPanes(weng);
       return;
     }
     const own = this.isOwn(it);
@@ -292,6 +305,12 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (host === this.engine && it.pane && it.pane !== "main") host.removePane(it.pane);
     it.pane = null;
     it.host = null;
+    if (host !== this.engine) this.syncWindowPanes(host);
+  }
+
+  /** A window shows the candles (its price pane) while something stands on the price in it. */
+  private syncWindowPanes(eng: ChartEngine): void {
+    eng.setPriceView(this.items.some((it) => it.host === eng && !!it.pane && it.pane.endsWith(":p")));
   }
 
   /** The engines of the price chart and of every extra window need a repaint. */

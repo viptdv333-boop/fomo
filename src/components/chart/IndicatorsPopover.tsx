@@ -2,9 +2,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import { windowableId } from "@/lib/chart/indicators/controller";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { TV3, Toggle } from "./tv3-ui";
+import { IND_ICONS } from "./icons";
 
 /* Compact «ИНДИКАТОРЫ» popover of the Terminal v3 design: colour dot + name + muted description + iOS switch per row
    (indicators that are on the chart first, then the popular ones), and a green «All indicators…» button that opens the
@@ -27,9 +29,11 @@ interface Props {
   onOpenCatalog: () => void;
   /** the toolbar button the popover hangs under (optional: falls back to the top-left of the chart area) */
   anchor?: HTMLElement | null;
+  /** Opened from an indicator window: a row adds a NEW indicator into that window every time (no on / off switch). */
+  windowId?: string | null;
 }
 
-export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, anchor }: Props) {
+export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, anchor, windowId }: Props) {
   const { t } = useT();
   const [, force] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
@@ -70,7 +74,7 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const countOf = (id: string) => active.filter((i) => i.id === id).length;
+  const countOf = (id: string) => active.filter((i) => i.id === id && (!windowId || controller.windowOf(i.uid) === windowId)).length;
   const toggle = (id: string, on: boolean) => {
     if (on) controller.add(id);
     else for (const i of controller.list()) if (i.id === id) controller.remove(i.uid);
@@ -88,10 +92,12 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
         style={{ left: pos.left, top: pos.top, width: Math.min(WIDTH, typeof window !== "undefined" ? window.innerWidth - 16 : WIDTH) }}
       >
         <div className="px-3.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t("ind.title")}</div>
+        {windowId && <div className="px-3.5 pb-1.5 text-[11.5px] leading-snug text-[var(--tv3-muted)]">{t("win.catAddNew")}</div>}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {rows.map((id, i) => {
             const n = countOf(id);
             const on = n > 0;
+            const canHere = !windowId || windowableId(id);
             const def = getIndicatorDef(id);
             const nk = `ind.${id}.name`;
             const dk = `ind.${id}.desc`;
@@ -108,11 +114,12 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
                 key={id}
                 role="button"
                 tabIndex={0}
-                onClick={() => toggle(id, !on)}
+                onClick={() => (windowId ? canHere && controller.add(id) : toggle(id, !on))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    toggle(id, !on);
+                    if (windowId) canHere && controller.add(id);
+                    else toggle(id, !on);
                   }
                 }}
                 className={`flex cursor-pointer items-center gap-2.5 px-3.5 py-2 hover:bg-[var(--tv3-fill3)] focus:bg-[var(--tv3-fill3)] focus:outline-none ${i > 0 ? "border-t-[0.5px] border-[var(--tv3-hair)]" : ""}`}
@@ -125,7 +132,13 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
                   </span>
                   <span className="block truncate text-xs text-[var(--tv3-muted)]">{desc}</span>
                 </span>
-                <Toggle checked={on} onChange={(v) => toggle(id, v)} label={name} />
+                {windowId ? (
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--tv3-fill)] text-[var(--tv3-text2)] ${canHere ? "" : "opacity-40"}`} title={canHere ? t("win.catAddNew") : t("win.catOnlyMain")} aria-label={`${t("ind.add")}: ${name}`}>
+                    {IND_ICONS.plus(15)}
+                  </span>
+                ) : (
+                  <Toggle checked={on} onChange={(v) => toggle(id, v)} label={name} />
+                )}
               </div>
             );
           })}

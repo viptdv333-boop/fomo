@@ -445,6 +445,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }, [indicators]);
   const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && !appPage && !appFull && engineReady && !winBroken);
   const [winCount, setWinCount] = useState(0);
+  /** The indicator window the catalogue was opened from (null: from the toolbar). */
+  const [indTarget, setIndTarget] = useState<string | null>(null);
   /** Chart windows whose instrument search should open (window id -> a number that changes with every request). */
   const [pickSignals, setPickSignals] = useState<Record<string, number>>({});
   const askInstrument = useCallback((id: string) => setPickSignals((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 })), []);
@@ -484,6 +486,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const openIndicatorsFor = useCallback(
     (winId: string) => {
       indicators.setAddTarget(winId);
+      setIndTarget(winId);
       setIndOpen(true);
     },
     [indicators],
@@ -495,7 +498,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   /* the catalog is closed: the next indicators go to the price chart again */
   useEffect(() => {
-    if (!indOpen) indicators.setAddTarget(null);
+    if (!indOpen) {
+      indicators.setAddTarget(null);
+      setIndTarget(null);
+    }
   }, [indOpen, indicators]);
 
   /* engine lifetime */
@@ -2019,7 +2025,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       <InstrumentSearchDialog open={comparePick} mode="compare" onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <InstrumentSearchDialog open={searchOpen} mode="symbol" onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
-      <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} />
+      <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} windowId={indTarget} />
       <AlertsDialog
         open={alertsOpen}
         onClose={() => setAlertsOpen(false)}

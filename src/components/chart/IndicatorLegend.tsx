@@ -41,7 +41,7 @@ interface Props {
 }
 
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
-const enginePane = (pid: string) => (pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
+const enginePane = (pid: string) => (pid.endsWith(":p") ? "main" : pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
 
 export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 51, winId, ready = true }: Props) {
   const { t } = useT();
@@ -78,7 +78,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   }, [t, getEngine]);
 
   /* the pane of an indicator that another chart draws (the legend of the price chart does not list the windows, a window lists only its own) */
-  const foreign = useCallback((pid: string) => (winId ? pid !== WIN_PREFIX + winId : pid.startsWith(WIN_PREFIX)), [winId]);
+  const foreign = useCallback((pid: string) => (winId ? pid !== WIN_PREFIX + winId && pid !== WIN_PREFIX + winId + ":p" : pid.startsWith(WIN_PREFIX)), [winId]);
 
   /* pane positions */
   const measure = useCallback(() => {
@@ -457,7 +457,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
         )}
         {others.map(([pid, uids]) =>
           tops[pid] === undefined ? null : (
-            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + 5 }}>
+            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + (pid.endsWith(":p") ? mainTop : 5) }}>
               {uids.map((u) => renderRow(u, true))}
             </div>
           ),

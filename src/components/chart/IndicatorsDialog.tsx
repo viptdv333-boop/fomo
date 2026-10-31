@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { IndicatorInstance } from "@/lib/chart/contracts";
+import { windowableId } from "@/lib/chart/indicators/controller";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { INDICATOR_DEFS, getIndicatorDef } from "@/lib/chart/indicators/registry";
 import type { Category } from "@/lib/chart/indicators/registry";
@@ -92,6 +93,8 @@ interface Props {
   controller: IndicatorsController;
   open: boolean;
   onClose: () => void;
+  /** The catalogue was opened from an indicator window: every pick adds a NEW indicator into that window (no on / off, no «already added»). */
+  windowId?: string | null;
 }
 
 /** ё = е, lower case; every word of the query must appear as a word start/stem ("объемный профиль" finds "Профиль объёма"). */
@@ -117,7 +120,7 @@ export default function IndicatorsDialog(props: Props) {
   }, [props.open]);
   return (
     <>
-      {props.open && !catalog && <IndicatorsPopover controller={controller} onClose={onClose} onOpenCatalog={() => setCatalog(true)} />}
+      {props.open && !catalog && <IndicatorsPopover controller={controller} onClose={onClose} onOpenCatalog={() => setCatalog(true)} windowId={props.windowId} />}
       {props.open && catalog && (
         <DialogBody
           {...props}
@@ -141,7 +144,7 @@ function readRecent(): string[] {
   }
 }
 
-function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScript: (scriptId: string) => void }) {
+function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { onEditScript: (scriptId: string) => void }) {
   const { t } = useT();
   const [, force] = useState(0);
   const [section, setSection] = useState<Section>("all");
@@ -254,9 +257,10 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
 
   const countById = useMemo(() => {
     const m = new Map<string, number>();
-    for (const i of active) m.set(i.id, (m.get(i.id) ?? 0) + 1);
+    // from a window: how many of it are in THAT window
+    for (const i of active) if (!windowId || controller.windowOf(i.uid) === windowId) m.set(i.id, (m.get(i.id) ?? 0) + 1);
     return m;
-  }, [active]);
+  }, [active, windowId, controller]);
 
   const addIndicator = (id: string) => {
     const uid = controller.add(id);
@@ -395,18 +399,21 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                       const swatch = def.params.find((p) => p.type === "color");
                       const fav = favs.includes(def.id);
                       const just = justAdded === def.id;
+                      // from a window an indicator can always be added again; only what the price chart alone draws cannot be put there
+                      const canHere = !windowId || windowableId(def.id);
+                      const taken = !windowId && n > 0;
                       return (
                         <li key={def.id} className="group flex items-stretch hover:bg-[var(--tv3-fill3)]">
                           <button
                             type="button"
                             data-nav
                             onClick={() => {
-                              // one instance of an indicator: already on the chart -> nothing to add
-                              if (n === 0) addIndicator(def.id);
+                              // on the chart: one instance of an indicator, already there -> nothing to add; in a window: a new one every time
+                              if (canHere && !taken) addIndicator(def.id);
                             }}
-                            aria-disabled={n > 0}
-                            title={n > 0 ? t("ind.added") : undefined}
-                            className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-[var(--tv3-fill3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)] ${n > 0 ? "cursor-default" : ""}`}
+                            aria-disabled={taken || !canHere}
+                            title={!canHere ? t("win.catOnlyMain") : taken ? t("ind.added") : windowId ? t("win.catAddNew") : undefined}
+                            className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left focus:bg-[var(--tv3-fill3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--tv3-accent)] ${taken || !canHere ? "cursor-default" : ""} ${!canHere ? "opacity-50" : ""}`}
                           >
                             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatch && swatch.type === "color" ? swatch.default : "#9ca3af" }} />
                             <span className="min-w-0 flex-1">
@@ -416,18 +423,18 @@ function DialogBody({ controller, onClose, onEditScript }: Props & { onEditScrip
                                   {def.pane === "own" ? t("ind.pane.own") : t("ind.pane.overlay")}
                                 </span>
                               </span>
-                              <span className="mt-0.5 block truncate text-[11px] text-[var(--tv3-muted)]">{desc}</span>
+                              <span className="mt-0.5 block truncate text-[11px] text-[var(--tv3-muted)]">{canHere ? desc : t("win.catOnlyMain")}</span>
                             </span>
                             {n > 0 && (
                               <span className="shrink-0 rounded-full bg-[var(--tv3-fill)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--tv3-text2)]">×{n}</span>
                             )}
                             <span
                               className={`flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[11px] font-medium ${
-                                just || n > 0 ? "text-[#26a69a]" : "text-[var(--tv3-muted)] group-hover:text-[var(--tv3-accent)]"
+                                just || taken ? "text-[#26a69a]" : "text-[var(--tv3-muted)] group-hover:text-[var(--tv3-accent)]"
                               }`}
                             >
-                              {just || n > 0 ? IND_ICONS.check(14) : IND_ICONS.plus(14)}
-                              <span className="hidden sm:inline">{just || n > 0 ? t("ind.added") : t("ind.add")}</span>
+                              {just || taken ? IND_ICONS.check(14) : IND_ICONS.plus(14)}
+                              <span className="hidden sm:inline">{just || taken ? t("ind.added") : t("ind.add")}</span>
                             </span>
                           </button>
                           <button

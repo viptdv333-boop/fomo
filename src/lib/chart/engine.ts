@@ -105,6 +105,15 @@ const WINDOW_OPTION_KEYS = [
   "status",
   "chartType",
   "transform",
+  // the price pane of a window (overlay indicators drawn on the candles of the chart it follows)
+  "candleStyle",
+  "priceSource",
+  "lineWidth",
+  "showCountdown",
+  "showLastPriceLabel",
+  "showPriceLine",
+  "symbolLabel",
+  "scaleSymbol",
 ] as const;
 
 function windowOptions(src: Partial<EngineOptions>): Partial<EngineOptions> {
@@ -236,6 +245,8 @@ export class ChartEngine {
   private groupView: { r: number; span: number } | null = null;
   /** This window changed its size: it takes the group's view again instead of telling the others its own. */
   private resync = false;
+  /** An extra window shows the candles of its chart (the main pane) because an overlay indicator lives in it. */
+  private priceView = false;
   /** Width of the price scale the labels need, and the common width the group asks for (so stacked windows line up). */
   private naturalAxisW = 0;
   private minAxisW = 0;
@@ -828,6 +839,8 @@ export class ChartEngine {
     this.leader = leader;
     leader.followers.add(this);
     this.setOptions(windowOptions(leader.opts));
+    // a window is no second chart: no volume bars (its price pane, when there is one, is only the ground the overlay indicators stand on)
+    this.opts.showVolume = false;
     if (!this.hasPane(WIN_PANE)) this.addPane(WIN_PANE, 1);
     this.adopt(leader, true);
     this.resync = true;
@@ -844,6 +857,22 @@ export class ChartEngine {
       l.minAxisW = 0;
     }
     l.invalidate();
+  }
+
+  /**
+   * The price pane of an extra window (the candles of the chart it follows, on top) is shown while an overlay indicator lives in it; the pane of
+   * the oscillators is below it, or the whole window when there is no price pane.
+   */
+  setPriceView(on: boolean) {
+    if (!this.leader || this.priceView === on) return;
+    this.priceView = on;
+    const win = this.panes.find((p) => p.id === WIN_PANE);
+    if (win) win.ratio = on ? 0.3 : 1;
+    for (const p of this.panes) {
+      p.ready = false;
+      p.manual = false;
+    }
+    this.invalidate();
   }
 
   /** True for an extra window. */
@@ -1072,8 +1101,10 @@ export class ChartEngine {
     const plotH = this.plotH();
     // indicator panes cannot be drawn on bars that are built from the candles
     const hideSubs = this.transformed();
-    const subs = hideSubs ? [] : this.panes.slice(1);
-    if (this.leader) {
+    const all = this.panes.slice(1);
+    // a window with a price pane: the pane of the oscillators takes room only when something is on it
+    const subs = hideSubs ? [] : this.leader && this.priceView ? all.filter((p) => p.series.length > 0) : all;
+    if (this.leader && !this.priceView) {
       // an extra window has no price pane: its own panes share the whole plot
       const w = (p: Pane) => (p.ratio > 0 ? p.ratio : 1);
       const tot = subs.reduce((a, p) => a + w(p), 0) || 1;
@@ -1142,7 +1173,7 @@ export class ChartEngine {
     let animating = false;
     for (const p of this.panes) {
       if (p.height <= 0 && p.id !== "main") continue;
-      if (this.leader && p.id === "main") continue;
+      if (this.leader && !this.priceView && p.id === "main") continue;
       if (p.manual || to < from || (this.opts.lockScale && p.ready)) continue;
       let lo = Infinity;
       let hi = -Infinity;
@@ -1403,7 +1434,7 @@ export class ChartEngine {
 
     // brand mark «fomo.spot»: always on (also when the symbol watermark is off), drawn into the chart bitmap so it stays visible
     // in a screenshot someone posts; faint enough not to disturb reading, noticeable enough to make people look the site up
-    if (plotW >= 260 && main.height >= 150) {
+    if (plotW >= 260 && main.height >= 150 && !this.leader) {
       ctx.save();
       const size = Math.max(14, Math.min(34, plotW / 22));
       const symbolWm = this.opts.showWatermark && !!this.opts.symbolLabel;
@@ -2158,7 +2189,7 @@ export class ChartEngine {
 
   /** Extras drawn over the main pane's series: previous close line and the highest / lowest labels. */
   private drawMainExtras(ctx: CanvasRenderingContext2D, from: number, to: number) {
-    if (this.leader) return;
+    if (this.leader && !this.priceView) return;
     const main = this.panes[0];
     const th = this.opts.theme;
     const plotW = this.plotW();
@@ -2225,7 +2256,7 @@ export class ChartEngine {
   }
 
   private drawLastPrice() {
-    if (this.leader) return;
+    if (this.leader && !this.priceView) return;
     const price = this.lastPriceValue();
     if (price === null) return;
     const n = this.candles.length;
@@ -2255,7 +2286,7 @@ export class ChartEngine {
   private countdownText(): string {
     const n = this.candles.length;
     if (n === 0) return "";
-    const left = barCountdownMs(this.candles[n - 1].t, this.opts.intervalMs, Date.now() + this.opts.clockOffsetMs, this.flow.wallShiftMs);
+    const left = barCountdownMs(this.candles[n - 1].t, this.opts.intervalMs, Date.now() + this.opts.clockOffsetMs, (this.leader ?? this).flow.wallShiftMs);
     return left === null ? "" : formatCountdown(left, countdownUnits(this.opts.locale));
   }
 
@@ -2266,14 +2297,14 @@ export class ChartEngine {
   private collectAxisTags(): EngineTag[] {
     const out: EngineTag[] = [];
     const n = this.candles.length;
-    if (n === 0 || (!this.leader && this.panes[0].height <= 0)) return out;
+    if (n === 0 || ((!this.leader || this.priceView) && this.panes[0].height <= 0)) return out;
     const main = this.panes[0];
     const th = this.opts.theme;
     const loc = this.opts.locale;
     const caps = this.opts.showTagCaptions;
 
     // the price chart's own tags (an extra window has only the flags of its indicators)
-    const price = this.leader ? null : this.lastPriceValue();
+    const price = this.leader && !this.priceView ? null : this.lastPriceValue();
     if (price !== null) {
       const y = this.paneY(main, price);
       if (y >= 0 && y <= main.height) {
@@ -2302,7 +2333,7 @@ export class ChartEngine {
     }
 
     // previous close
-    if (this.opts.showPrevCloseLine && !this.leader) {
+    if (this.opts.showPrevCloseLine && (!this.leader || this.priceView)) {
       const pc = this.prevCloseValue();
       if (pc !== null) {
         const y = this.paneY(main, pc);
@@ -2831,7 +2862,7 @@ export class ChartEngine {
     let pane: Pane | null = null;
     for (const p of this.panes) if (p.height > 0 && y >= p.top && y <= p.top + p.height) pane = p;
     if (this.opts.scaleSide === "left" ? x < 0 : x >= plotW) return { region: "priceAxis", pane };
-    if (!this.leader) {
+    if (!this.leader || this.priceView) {
       for (let i = 1; i < this.panes.length; i++) {
         if (this.panes[i].height > 0 && Math.abs(y - this.panes[i].top) <= 4) return { region: "separator", pane: this.panes[i] };
       }

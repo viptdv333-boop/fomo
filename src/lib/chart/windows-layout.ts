@@ -98,6 +98,27 @@ function rankZ(wins: WsWindow[]): WsWindow[] {
   return wins.map((w) => (rank.get(w.id) === w.z ? w : { ...w, z: rank.get(w.id) as number }));
 }
 
+/**
+ * The chart group a window belongs to: a chart (the price chart or a chart window) is its own group, an indicator window belongs to the chart it is
+ * linked to; null for a window that has not decided yet / an unknown one. Scrolling, zoom and the crosshair move the windows of ONE group
+ * together (the engine of an indicator window follows the engine of its chart) and never those of another group.
+ */
+export function groupOf(ws: Workspace | null, id: string): string | null {
+  const base = ws ?? DEFAULT_WORKSPACE;
+  const w = base.wins.find((x) => x.id === id);
+  if (id === MAIN_ID && !w) return MAIN_ID;
+  if (!w) return null;
+  if (w.kind === "chart") return w.id;
+  if (w.kind === "ind") return chartIds(base).includes(w.link) ? w.link : MAIN_ID;
+  return null;
+}
+
+/** Every window that moves together with this chart: the chart itself (when it is open) and the indicator windows linked to it. */
+export function groupMembers(ws: Workspace | null, chartId: string): string[] {
+  const base = ws ?? DEFAULT_WORKSPACE;
+  return base.wins.filter((w) => groupOf(base, w.id) === chartId).map((w) => w.id);
+}
+
 /** Links made right: an indicator / new window points at a chart that exists (else the price chart), a chart points at itself. */
 function relink(wins: WsWindow[]): WsWindow[] {
   const charts = new Set([MAIN_ID, ...wins.filter((w) => w.id !== MAIN_ID && w.kind === "chart").map((w) => w.id)]);

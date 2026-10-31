@@ -121,6 +121,8 @@ const rows: [string, string, string, string][] = [
   ["win.empty", "Индикаторов нет. Они считаются по свечам связанного графика (выбор в заголовке).", "No indicators yet. They are calculated on the candles of the linked chart (set in the header).", "尚无指标。指标基于关联图表的K线计算 (在标题中选择)。"],
   ["win.maximize", "Развернуть на всю область", "Fill the whole area", "铺满整个区域"],
   ["win.pickInstrument", "Сменить инструмент", "Change the instrument", "更换品种"],
+  ["win.catAddNew", "Каждый выбор добавляет новый индикатор в это окно, даже если такой уже есть на графике", "Every pick adds a new indicator to this window, even if the chart already has one", "每次选择都会向此窗口添加新指标，即使图表上已有"],
+  ["win.catOnlyMain", "Только на основном графике: его нельзя вынести в окно", "Main chart only: it cannot be put in a window", "仅限主图：无法放入窗口"],
   ["win.shrink", "Свернуть: уменьшить окно до 1/4 области", "Shrink the window to a quarter of the area", "缩小窗口至区域的 1/4"],
   ["win.restore", "Вернуть размер", "Restore size", "还原大小"],
   ["win.moveTo", "Перенести в окно: {title}", "Move to window: {title}", "移到窗口：{title}"],

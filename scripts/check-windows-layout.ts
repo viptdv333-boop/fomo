@@ -25,6 +25,8 @@ import {
   dependents,
   dragRect,
   extraIds,
+  groupMembers,
+  groupOf,
   hasWindow,
   indIds,
   isActive,
@@ -47,7 +49,7 @@ import {
   windowNumber,
 } from "../src/lib/chart/windows-layout";
 import type { Rect, WinNode, Workspace } from "../src/lib/chart/windows-layout";
-import { IndicatorsController } from "../src/lib/chart/indicators/controller";
+import { IndicatorsController, windowableId } from "../src/lib/chart/indicators/controller";
 import type { ChartEngine } from "../src/lib/chart/engine";
 
 let fails = 0;
@@ -309,6 +311,11 @@ function main() {
     removeSeries(id: string) {
       this.series.delete(id);
     }
+    /** The candles of the chart the window follows are shown (an overlay indicator lives in it). */
+    price = false;
+    setPriceView(on: boolean) {
+      this.price = on;
+    }
     requestRedraw() {
       this.redraws++;
     }
@@ -447,7 +454,7 @@ function main() {
   }
 
   {
-    // 10) which indicators may leave the price chart
+    // 10) what stands on the price gets a price pane (the candles) in the window, oscillators the pane of the window
     const e = new Stub();
     const c = new IndicatorsController();
     c.attach(asEng(e));
@@ -455,30 +462,50 @@ function main() {
     const pat = c.add("candle_patterns");
     const rsi = c.add("rsi");
     const ema = c.add("ema");
+    const av = c.add("avwap");
     const id = c.addWindow("ind");
     const win = new Stub();
     c.attachWindow(id, asEng(win));
-    ok(!c.canWindow(pat) && c.canWindow(rsi) && c.canWindow(ema), "controller: pattern markers stay on the chart, an oscillator and a moving average may go");
+    ok(c.canWindow(pat) && c.canWindow(rsi) && c.canWindow(ema) && c.canWindow(c.add("elliott_auto")) && c.canWindow(c.add("vwap")), "controller: patterns, waves, VWAP, averages and oscillators may all go to a window");
+    ok(!c.canWindow(av) && !windowableId("avwap") && !windowableId("vprofile_pro") && windowableId("candle_patterns") && windowableId("rsi") && !windowableId("no-such-indicator"), "controller: only what a layer of the price chart draws (anchored VWAP, volume profile pro) stays on the chart");
+    c.moveToWindow(av, id);
+    ok(c.windowOf(av) === undefined && !win.series.has(av), "controller: ... and ignores «move to a window»");
+    ok(!win.price, "window: no price pane while nothing stands on the price");
+    c.moveToWindow(rsi, id);
+    ok(win.series.get(rsi)?.pane === WIN_PANE && c.paneOf(rsi) === "win:" + id && !win.price, "window: an oscillator is drawn in the pane of the window, no candles");
     c.moveToWindow(pat, id);
-    ok(c.windowOf(pat) === undefined && !win.series.has(pat), "controller: a pattern indicator ignores «move to a window»");
+    ok(c.windowOf(pat) === id && win.series.get(pat)?.pane === "main" && c.paneOf(pat) === "win:" + id + ":p" && win.price && !e.series.has(pat), "window: a candlestick-pattern indicator lives in the price pane of the window (the candles are shown)");
+    ok(win.series.get(rsi)?.pane === WIN_PANE, "window: the oscillator stays below the price pane");
     c.moveToWindow(ema, id);
-    ok(c.windowOf(ema) === id && win.series.has(ema) && !e.series.has(ema), "controller: a moving average can live in a window (own scale there)");
-    c.move(ema, "main");
-    ok(c.windowOf(ema) === undefined && e.series.get(ema)?.pane === "main" && !win.series.has(ema), "controller: «to the main pane» takes it out of the window");
+    ok(win.series.get(ema)?.pane === "main" && !e.series.has(ema), "window: a moving average stands on the candles too");
+    ok(c.windowTitle(id, "Indicators").endsWith(" · SBER") && c.windowTitle(id, "Indicators").split(", ").length === 3, "window: the title names all three and the asset", c.windowTitle(id, "Indicators"));
+    c.moveToWindow(pat, null);
+    c.moveToWindow(ema, null);
+    ok(!win.price && win.series.has(rsi), "window: the price pane goes away with the last overlay indicator");
+    c.moveToWindow(ema, id);
+    c.move(ema, "own");
+    ok(c.windowOf(ema) === undefined && !win.series.has(ema) && !win.price, "controller: «to its own pane» takes it out of the window");
 
-    // 11) the catalog adds into a window
+    // 11) the catalog adds into a window: a NEW indicator every time, even when the chart / another window has it
+    const rsiOnChart = c.add("rsi");
+    ok(c.windowOf(rsiOnChart) === undefined, "controller: RSI on the chart");
     c.setAddTarget(id);
-    const added = c.add("cci");
-    ok(c.windowOf(added) === id && win.series.has(added), "controller: with a target window the catalog adds there");
+    const second = c.add("rsi");
+    ok(c.windowOf(second) === id && second !== rsiOnChart && c.list().filter((i) => i.id === "rsi").length === 3, "controller: with a target window the catalog adds ANOTHER RSI there while the chart (and the window) keep theirs");
+    const third = c.add("rsi");
+    ok(c.windowOf(third) === id && third !== second, "controller: ... again and again");
     const pat2 = c.add("candle_patterns");
-    ok(c.windowOf(pat2) === undefined, "controller: ... except what cannot leave the chart");
+    ok(c.windowOf(pat2) === id && win.price, "controller: patterns added from a window land in that window (candles shown)");
+    const av2 = c.add("avwap");
+    ok(c.windowOf(av2) === undefined, "controller: ... except what only the price chart draws");
     c.setAddTarget(null);
-    const added2 = c.add("cci");
+    const added2 = c.add("rsi");
     ok(c.windowOf(added2) === undefined, "controller: target cleared -> the chart again");
-    const cl = c.clone(added);
+    const cl = c.clone(second);
     ok(c.windowOf(cl) === id, "controller: a clone stays in the window");
-    c.remove(added);
-    ok(!win.series.has(added), "controller: removing an indicator unmounts it from the window");
+    c.remove(second);
+    ok(!win.series.has(second), "controller: removing an indicator unmounts it from the window");
+    const added = third;
     // the stack for the screenshot is back to front
     c.raise(MAIN_ID);
     const stack = c.windowStack();
@@ -639,6 +666,27 @@ function main() {
     ok(!!mainC && mainC.wins[0].src === undefined, "parse: the price chart takes its instrument from the page, not from storage");
     ok(setSymbol(c1!.ws, "cabc12", "forex", "EURUSD")!.wins[1].tk === "EURUSD" && setSymbol(c1!.ws, "cabc12", "moex", "SBER") === c1!.ws, "setSymbol: new instrument / the same one");
     ok(setSymbol(ind, "w1", "forex", "EURUSD") === ind && setSymbol(ind, MAIN_ID, "forex", "EURUSD") === ind && setSymbol(c1!.ws, "cabc12", "x y", "EURUSD") === c1!.ws && setSymbol(ind, "zz", "forex", "EURUSD") === ind, "setSymbol: not for an indicator window / the price chart / junk");
+
+    // which windows move together: one group per chart (the price chart is one), indicator windows join the group of their chart
+    {
+      let g: Workspace | null = mk(null, "forex", "USDRUBF", "ca")!.ws;
+      g = mk(g, "moex", "PLD", "cb")!.ws;
+      for (const [id, chart] of [["w1", MAIN_ID], ["w2", "ca"], ["w3", "ca"], ["w4", "cb"], ["w5", "cb"]] as const) {
+        const a = addWindow(g, id, chart) as { ws: Workspace; id: string };
+        g = makeIndicator(a.ws, id)!;
+      }
+      ok(eq(groupMembers(g, MAIN_ID), [MAIN_ID, "w1"]) && eq(groupMembers(g, "ca"), ["ca", "w2", "w3"]) && eq(groupMembers(g, "cb"), ["cb", "w4", "w5"]), "group: a chart and the indicator windows linked to it, one group per chart");
+      const all = [MAIN_ID, "ca", "cb"].map((c) => groupMembers(g, c));
+      ok(all.flat().length === new Set(all.flat()).size && all.flat().length === g.wins.length, "group: every window is in exactly one group, the groups never share a window");
+      ok(groupOf(g, "w2") === "ca" && groupOf(g, "ca") === "ca" && groupOf(g, "w4") === "cb" && groupOf(g, MAIN_ID) === MAIN_ID && groupOf(g, "zz") === null, "group: groupOf");
+      const moved = setLink(g, "w2", "cb")!;
+      ok(groupOf(moved, "w2") === "cb" && eq(groupMembers(moved, "ca"), ["ca", "w3"]) && eq(groupMembers(moved, "cb"), ["cb", "w2", "w4", "w5"]), "group: a window linked to another chart joins that group at once and leaves the old one");
+      const closedChart = closeWindow(g, "ca")!;
+      ok(groupOf(closedChart, "w2") === MAIN_ID && eq(groupMembers(closedChart, MAIN_ID), [MAIN_ID, "w1", "w2", "w3"]) && eq(groupMembers(closedChart, "cb"), ["cb", "w4", "w5"]), "group: closing a chart moves its indicator windows to the price chart's group, the other group is untouched");
+      const noMainG = closeWindow(g, MAIN_ID)!;
+      ok(groupOf(noMainG, "w1") === MAIN_ID && groupOf(noMainG, MAIN_ID) === MAIN_ID, "group: the price chart behind the toolbar keeps its group when its window is closed");
+      ok(groupOf(addWindow(g, "w9")!.ws, "w9") === null && groupOf(null, MAIN_ID) === MAIN_ID, "group: a window that has not decided yet is in no group");
+    }
 
     /* controller */
     const eMain = new Stub();
