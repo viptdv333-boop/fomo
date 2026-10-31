@@ -100,6 +100,26 @@ const rows: [string, string, string, string][] = [
   ["ind2.lg.settings", "Настройки…", "Settings…", "设置…"],
   ["ind2.lg.tfHidden", "Скрыт на этом таймфрейме", "Hidden on this timeframe", "在当前周期已隐藏"],
 
+  /* windows: the price chart plus any number of extra windows with indicators (tiles you can resize) */
+  ["win.menu", "Окна", "Windows", "窗口"],
+  ["win.menuTitle", "Окна индикаторов", "Indicator windows", "指标窗口"],
+  ["win.addBelow", "Добавить окно снизу", "Add a window below", "在下方添加窗口"],
+  ["win.addRight", "Добавить окно справа", "Add a window on the right", "在右侧添加窗口"],
+  ["win.closeAll", "Закрыть все окна", "Close all windows", "关闭所有窗口"],
+  ["win.max", "Больше окон добавить нельзя (не более {n})", "No more windows can be added (at most {n})", "无法再添加窗口 (最多 {n} 个)"],
+  ["win.hint", "Потяните границу между окнами, чтобы изменить размер. Прокрутка, масштаб и перекрестие общие у всех окон.", "Drag the border between windows to resize them. Scrolling, zoom and the crosshair are shared by all windows.", "拖动窗口之间的分隔线可调整大小。滚动、缩放和十字线在所有窗口间同步。"],
+  ["win.title", "Окно {n}", "Window {n}", "窗口 {n}"],
+  ["win.close", "Закрыть окно (индикаторы вернутся на график)", "Close the window (its indicators go back to the chart)", "关闭窗口 (其中的指标将回到图表)"],
+  ["win.splitRight", "Новое окно справа", "New window on the right", "在右侧新建窗口"],
+  ["win.splitDown", "Новое окно снизу", "New window below", "在下方新建窗口"],
+  ["win.addInd", "Добавить индикатор в это окно", "Add an indicator to this window", "向此窗口添加指标"],
+  ["win.empty", "В окне нет индикаторов. Нажмите «+» или перенесите индикатор через меню «⋯» его строки.", "No indicators in this window. Press \"+\" or move an indicator here with the \"…\" menu of its row.", "此窗口中没有指标。点击“+”，或通过指标行的“…”菜单将指标移到此处。"],
+  ["win.resize", "Потяните, чтобы изменить размер", "Drag to resize", "拖动以调整大小"],
+  ["win.moveNew", "Перенести в новое окно", "Move to a new window", "移到新窗口"],
+  ["win.moveTo", "Перенести в окно {n}", "Move to window {n}", "移到窗口 {n}"],
+  ["win.moveBack", "Вернуть на основной график", "Back to the main chart", "移回主图"],
+  ["win.narrow", "Окна работают на широком экране", "Windows need a wider screen", "窗口功能需要更宽的屏幕"],
+
   /* parameter labels of the newer indicators */
   ["ind.p.count", "Количество линий", "Number of lines", "线条数量"],
   ["ind.p.startLength", "Начальный период", "Start length", "起始周期"],

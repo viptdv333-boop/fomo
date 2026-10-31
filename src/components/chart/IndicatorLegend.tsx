@@ -7,6 +7,7 @@ import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { setIndTranslator } from "@/lib/chart/indicators/ind-text";
+import { MAX_WINDOWS, WIN_PANE, WIN_PREFIX, windowNumber } from "@/lib/chart/windows-layout";
 import IndicatorEditor from "./IndicatorEditor";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
@@ -33,9 +34,18 @@ interface Props {
   hostRef: RefObject<HTMLElement | null>;
   /** Distance from the top of the chart to the first indicator row, below the symbol / OHLC status line. */
   mainTop?: number;
+  /** The legend of an extra window (its tile has its own engine): only the indicators of that window, no «Indicators ( N )» list. */
+  winId?: string;
+  /** The engine exists (the legend listens to its crosshair). */
+  ready?: boolean;
 }
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 51 }: Props) {
+/** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
+const enginePane = (pid: string) => (pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
+/** Room for the header strip of an extra window above its rows. */
+const WIN_ROWS_TOP = 26;
+
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 51, winId, ready = true }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -47,6 +57,8 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const [tops, setTops] = useState<Record<string, number>>({});
   /* where the «more» menu of a row of the (scrolling) main list opens: in the coordinates of mainRef, outside the clipping of the scroll box */
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
+  /* the menu of a row in an extra window (a small tile would clip it): fixed, in page coordinates */
+  const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
@@ -55,9 +67,10 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
 
   /* the canvas legend steps aside for the whole lifetime of this overlay */
   useEffect(() => {
+    if (winId) return;
     controller.setExternalLegend(true);
     return () => controller.setExternalLegend(false);
-  }, [controller]);
+  }, [controller, winId]);
 
   /* canvas / legend texts of the pattern indicators (Elliott waves) are translated through the same dictionary */
   useEffect(() => {
@@ -66,6 +79,9 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     tick();
   }, [t, getEngine]);
 
+  /* the pane of an indicator that another chart draws (the legend of the price chart does not list the windows, a window lists only its own) */
+  const foreign = useCallback((pid: string) => (winId ? pid !== WIN_PREFIX + winId : pid.startsWith(WIN_PREFIX)), [winId]);
+
   /* pane positions */
   const measure = useCallback(() => {
     const eng = getEngine();
@@ -73,8 +89,8 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     const next: Record<string, number> = {};
     for (const inst of controller.list()) {
       const pid = controller.paneOf(inst.uid);
-      if (pid === "main" || next[pid] !== undefined) continue;
-      const r = eng.getPaneRect(pid);
+      if (pid === "main" || next[pid] !== undefined || foreign(pid)) continue;
+      const r = eng.getPaneRect(enginePane(pid));
       if (r) next[pid] = r.top;
     }
     setTops((prev) => {
@@ -83,7 +99,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
       if (a.length === b.length && b.every((k) => prev[k] === next[k])) return prev;
       return next;
     });
-  }, [controller, getEngine]);
+  }, [controller, getEngine, foreign]);
 
   const scheduleMeasure = useCallback(() => {
     cancelAnimationFrame(raf.current);
@@ -158,6 +174,22 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     };
   }, [hostRef, getEngine, scheduleMeasure]);
 
+  /* the engine appeared (a window builds its engine after the first render) */
+  useEffect(() => {
+    if (ready) scheduleMeasure();
+  }, [ready, scheduleMeasure]);
+
+  /* the crosshair of another window (or of another chart) moves the values of this legend too */
+  useEffect(() => {
+    const eng = ready ? getEngine() : null;
+    if (!eng) return;
+    return eng.addCrosshairListener((time) => {
+      if (time === null) return setHoverIdx(null);
+      const n = eng.getCandles().length;
+      if (n > 0) setHoverIdx(Math.max(0, Math.min(n - 1, Math.round(eng.getIndexForTime(time)))));
+    });
+  }, [ready, getEngine]);
+
   /* close the "more" menu on outside click / Escape */
   useEffect(() => {
     if (!menuUid) return;
@@ -192,6 +224,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const groups = new Map<string, string[]>();
   for (const inst of list) {
     const pid = controller.paneOf(inst.uid);
+    if (foreign(pid)) continue;
     const arr = groups.get(pid);
     if (arr) arr.push(inst.uid);
     else groups.set(pid, [inst.uid]);
@@ -204,8 +237,14 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     const info = controller.legendInfo(uid, index);
     const inst = list.find((i) => i.uid === uid);
     if (!info || !inst) return null;
-    const move = controller.canMove(uid);
+    const inWin = info.pane.startsWith(WIN_PREFIX);
+    const move = controller.canMove(uid) && !inWin;
     const inOwn = info.pane !== "main";
+    // windows: «move to a new window / to window N / back to the main chart»
+    const winsOn = controller.windowsAvailable() && controller.canWindow(uid);
+    const layout = controller.getLayout();
+    const winIds = controller.windowIds();
+    const curWin = controller.windowOf(uid);
     return (
       <div role="menu" className={`${pos} w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]`} style={style}>
         <MenuItem
@@ -231,6 +270,40 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             onClick={() => {
               setMenuUid(null);
               controller.move(uid, inOwn ? "main" : "own");
+            }}
+          />
+        )}
+        {winsOn && winIds.length < MAX_WINDOWS && (
+          <MenuItem
+            icon={IND_ICONS.pane(16)}
+            label={t("win.moveNew")}
+            onClick={() => {
+              setMenuUid(null);
+              controller.moveToWindow(uid, "new");
+            }}
+          />
+        )}
+        {winsOn &&
+          winIds
+            .filter((w) => w !== curWin)
+            .map((w) => (
+              <MenuItem
+                key={w}
+                icon={IND_ICONS.pane(16)}
+                label={t("win.moveTo", { n: windowNumber(layout, w) })}
+                onClick={() => {
+                  setMenuUid(null);
+                  controller.moveToWindow(uid, w);
+                }}
+              />
+            ))}
+        {curWin && (
+          <MenuItem
+            icon={IND_ICONS.pane(16)}
+            label={t("win.moveBack")}
+            onClick={() => {
+              setMenuUid(null);
+              controller.moveToWindow(uid, null);
             }}
           />
         )}
@@ -323,6 +396,13 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                   const wr = mainRef.current?.getBoundingClientRect();
                   const rr = e.currentTarget.closest("[data-lg-row]")?.getBoundingClientRect();
                   if (wr && rr) setMenuPos({ left: rr.left - wr.left, top: rr.bottom - wr.top + 4 });
+                } else if (winId) {
+                  const rr = e.currentTarget.closest("[data-lg-row]")?.getBoundingClientRect();
+                  // under the row when there is room, otherwise above it (the menu hugs the row either way)
+                  if (rr) {
+                    const left = Math.max(4, Math.min(rr.left, window.innerWidth - 232));
+                    setFixedPos(window.innerHeight - rr.bottom >= 290 ? { left, top: rr.bottom + 4 } : { left, bottom: window.innerHeight - rr.top + 4 });
+                  }
                 }
                 setMenuUid((m) => (m === uid ? null : uid));
               }}
@@ -334,7 +414,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             </button>
           </span>
         </div>
-        {menuUid === uid && !inScroll && renderMenu(uid, "absolute left-0 top-full z-30 mt-1")}
+        {menuUid === uid && !inScroll && !winId && renderMenu(uid, "absolute left-0 top-full z-30 mt-1")}
       </div>
     );
   };
@@ -347,7 +427,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   return (
     <>
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
-        {mainUids.length > 0 && (
+        {!winId && mainUids.length > 0 && (
           <div ref={mainRef} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
             {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
             <div className="pointer-events-auto flex items-center">
@@ -380,11 +460,12 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
         )}
         {others.map(([pid, uids]) =>
           tops[pid] === undefined ? null : (
-            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + 5 }}>
+            <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + (winId ? WIN_ROWS_TOP : 5) }}>
               {uids.map((u) => renderRow(u, true))}
             </div>
           ),
         )}
+        {winId && menuUid && fixedPos && renderMenu(menuUid, "pointer-events-auto fixed z-[60]", { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom })}
       </div>
       <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} onEditSource={setEditScript} />
       <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />

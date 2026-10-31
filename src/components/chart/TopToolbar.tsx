@@ -6,7 +6,7 @@ import type { ChartType } from "@/lib/chart/types";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import type { ReplayApi } from "./ReplayControls";
 import InstIcon from "./InstIcon";
-import { CHART_TYPE_ICONS, UI_ICONS } from "./icons";
+import { CHART_TYPE_ICONS, IND_ICONS, UI_ICONS } from "./icons";
 import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
 import IntervalControl from "./IntervalControl";
 import ContractPicker from "./ContractPicker";
@@ -94,6 +94,15 @@ interface Props {
   };
   onScreenshotCopy?: () => void;
   onOpenShortcuts?: () => void;
+  /** Extra windows for the indicators (the button is shown when the chart is wide enough). */
+  windows?: {
+    available: boolean;
+    /** Extra windows now. */
+    count: number;
+    max: number;
+    onAdd: (dir: "h" | "v") => void;
+    onCloseAll: () => void;
+  };
   /** Extra buttons (the multi-chart layout picker). */
   extra?: ReactNode;
   /** App full-screen chart: the close button goes first, the browser-fullscreen and phone-panel buttons are left out, and the row never wraps (it scrolls) so a landscape phone keeps its height for the chart. */
@@ -177,6 +186,7 @@ export default function TopToolbar(p: Props) {
     else p.replay.exit(true);
   };
 
+  const win = p.windows?.available ? p.windows : null;
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
 
   return (
@@ -244,6 +254,45 @@ export default function TopToolbar(p: Props) {
         <span className={lbl}>{t("shell.indicators")}</span>
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
+      {win && (
+        <Menu title={t("win.menuTitle")} className={btn} width={250} trigger={<>{IND_ICONS.pane(18)}<span className={lbl2}>{t("win.menu")}</span>{win.count > 0 && badge(win.count)}</>}>
+          {(close) => (
+            <div className="px-1 text-[13px] text-[var(--tv3-text)]">
+              {(
+                [
+                  ["v", "win.addBelow"],
+                  ["h", "win.addRight"],
+                ] as const
+              ).map(([dir, label]) => (
+                <button
+                  key={dir}
+                  disabled={win.count >= win.max}
+                  title={win.count >= win.max ? t("win.max", { n: win.max }) : undefined}
+                  onClick={() => {
+                    win.onAdd(dir);
+                    close();
+                  }}
+                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+                >
+                  {t(label)}
+                </button>
+              ))}
+              {win.count > 0 && (
+                <button
+                  onClick={() => {
+                    win.onCloseAll();
+                    close();
+                  }}
+                  className="w-full h-9 px-2 rounded-lg text-left cursor-pointer text-[var(--tv3-red)] hover:bg-[var(--tv3-fill)]"
+                >
+                  {t("win.closeAll")}
+                </button>
+              )}
+              <div className="px-2 pb-1.5 pt-1 text-[11.5px] leading-snug text-[var(--tv3-muted)] whitespace-normal">{t("win.hint")}</div>
+            </div>
+          )}
+        </Menu>
+      )}
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
         {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}
         <span className={lbl2}>{t("shell.alerts")}</span>

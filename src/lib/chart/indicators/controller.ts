@@ -6,6 +6,8 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
+import { MAIN_ID, WIN_PANE, WIN_PREFIX, addWindow as layoutAdd, closeWindow as layoutClose, hasLeaf, isMulti, parseLayout, serializeLayout, setRatioAt, windowIds } from "../windows-layout";
+import type { SplitDir, WinNode } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
 import type { ScriptEvent } from "../scripts/store";
@@ -14,13 +16,23 @@ interface Item {
   inst: IndicatorInstance;
   def: IndicatorDef;
   series: IndicatorSeries;
-  /** Pane the series is currently mounted in. */
+  /** Pane the series is currently mounted in: "main", the id of its own pane under the price chart, or WIN_PREFIX + window id. Null: not mounted. */
   pane: string | null;
+  /** The engine that draws the series (the price chart or an extra window). */
+  host: ChartEngine | null;
+  /** Extra window the user put the indicator in (stored; it only counts while that window exists and windows are on). */
+  win?: string;
   /** Share of the plot height of the own pane: `d` wide chart, `m` narrow (phone) chart. Undefined: never sized (the default look). */
   ratio: { d?: number; m?: number };
 }
 
 const DEFAULT_PANE_RATIO = 0.18;
+
+/** Indicators that are painted by a layer of the price chart (not by their series): they cannot live in another window. */
+const LAYER_DRAWN = new Set(["avwap", "vprofile_pro"]);
+
+/** An indicator can live in an extra window when it has a scale of its own (or may be given one) and is drawn by its series. */
+const windowable = (def: IndicatorDef): boolean => (def.pane === "own" || (def.pane === "overlay" && !def.fixedPane)) && !LAYER_DRAWN.has(def.id);
 
 /* What the settings dialog needs to know about the plots of an indicator (from the un-styled result). */
 export interface PlotDesc {
@@ -67,6 +79,16 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private scriptOffs: (() => void)[] = [];
   /** True while many items are built at once (restore / attach): the pane heights are resolved once at the end. */
   private bulk = false;
+  /** Multi-window layout (null: the single chart). The engines of the extra windows are registered by their tiles (attachWindow). */
+  private layout: WinNode | null = null;
+  private winEngines = new Map<string, ChartEngine>();
+  /** The chart area is wide enough for windows (the host reports it); a narrow one shows the one stack of panes as before. */
+  private winAvail = false;
+  /** New indicators from the catalog go to this window (set while the catalog is opened from a window). */
+  private addTarget: string | null = null;
+  /** Listeners of the changes that are saved (the others also fire for the way the chart is laid out right now). */
+  private savedListeners = new Set<() => void>();
+  private layoutListeners = new Set<() => void>();
 
   /* ───────────── engine binding ───────────── */
 
@@ -105,7 +127,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private relayout(): void {
     const eng = this.engine;
     if (!eng) return;
-    const own = this.items.filter((it) => it.pane && it.pane !== "main");
+    const own = this.items.filter((it) => this.isMainOwn(it));
     if (own.length === 0) return;
     const kind = this.sizeKey();
     const alt = kind === "m" ? "d" : "m";
@@ -169,18 +191,14 @@ export class IndicatorsController implements IndicatorsControllerLike {
       } else {
         it.series.invalidate();
       }
-      if (this.engine && it.pane !== null) {
-        const wantOwn = this.isOwn(it);
-        const isOwnNow = it.pane !== "main";
-        if (wantOwn !== isOwnNow) {
-          this.unmount(it);
-          this.mount(it);
-        }
+      if (this.engine && it.pane !== null && it.pane !== this.targetPane(it)) {
+        this.unmount(it);
+        this.mount(it);
       }
     }
     if (!touched) return;
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
     this.refresh();
   }
 
@@ -194,11 +212,41 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return it.inst.style?.pane === "own";
   }
 
+  /** Extra window the indicator is drawn in right now, undefined: on the price chart (its pane or an own pane under it). */
+  private winOf(it: Item): string | undefined {
+    const w = it.win;
+    return w && this.winAvail && w !== MAIN_ID && isMulti(this.layout) && hasLeaf(this.layout, w) ? w : undefined;
+  }
+
+  /** Where the indicator belongs now: "main", the id of its own pane or WIN_PREFIX + window id. */
+  private targetPane(it: Item): string {
+    const w = this.winOf(it);
+    if (w) return WIN_PREFIX + w;
+    return this.isOwn(it) ? this.paneId(it) : "main";
+  }
+
+  /** Sits in an own pane under the price chart (not in an extra window). */
+  private isMainOwn(it: Item): boolean {
+    return !!it.pane && it.pane !== "main" && it.host === this.engine;
+  }
+
   private mount(it: Item) {
     const eng = this.engine;
     if (!eng) return;
+    const w = this.winOf(it);
+    if (w) {
+      it.series.setOnMain(false);
+      const weng = this.winEngines.get(w);
+      // the tile of the window is still being built: attachWindow mounts the indicator
+      if (!weng) return;
+      weng.addSeries(it.series, WIN_PANE);
+      it.pane = WIN_PREFIX + w;
+      it.host = weng;
+      return;
+    }
     const own = this.isOwn(it);
     it.series.setOnMain(!own);
+    it.host = eng;
     if (own) {
       const pid = this.paneId(it);
       if (!eng.hasPane(pid)) eng.addPane(pid, it.def.paneRatio ?? DEFAULT_PANE_RATIO);
@@ -212,11 +260,35 @@ export class IndicatorsController implements IndicatorsControllerLike {
   }
 
   private unmount(it: Item) {
-    const eng = this.engine;
-    if (!eng) return;
-    eng.removeSeries(it.inst.uid);
-    if (it.pane && it.pane !== "main") eng.removePane(it.pane);
+    const host = it.host;
+    if (!host) {
+      it.pane = null;
+      return;
+    }
+    host.removeSeries(it.inst.uid);
+    if (host === this.engine && it.pane && it.pane !== "main") host.removePane(it.pane);
     it.pane = null;
+    it.host = null;
+  }
+
+  /** The engines of the price chart and of every extra window need a repaint. */
+  private redraw() {
+    this.engine?.requestRedraw();
+    for (const e of this.winEngines.values()) e.requestRedraw();
+  }
+
+  /** Puts every indicator where it belongs now (after the layout changed, or windows became available / unavailable). */
+  private replace() {
+    if (!this.engine) return;
+    this.bulk = true;
+    for (const it of this.items) {
+      if (it.pane !== null && it.pane === this.targetPane(it)) continue;
+      this.unmount(it);
+      this.mount(it);
+    }
+    this.bulk = false;
+    this.relayout();
+    this.redraw();
   }
 
   private unmountAll() {
@@ -233,7 +305,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
     });
   }
 
-  private emit() {
+  /** `saved` false: only the way the chart is laid out right now changed, nothing that is stored. */
+  private emit(saved = true) {
     this.rebuildSnapshot();
     for (const cb of Array.from(this.listeners)) {
       try {
@@ -242,6 +315,16 @@ export class IndicatorsController implements IndicatorsControllerLike {
         /* a broken listener must not block the others */
       }
     }
+    if (saved) {
+      for (const cb of Array.from(this.savedListeners)) {
+        try {
+          cb();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    this.emitLayout();
     this.emitData();
   }
 
@@ -271,7 +354,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return uid;
   }
 
-  private create(id: string, params: Record<string, ParamValue> | undefined, visible: boolean, style?: IndicatorStyle, ratio?: { d?: number; m?: number }): Item | null {
+  private create(id: string, params: Record<string, ParamValue> | undefined, visible: boolean, style?: IndicatorStyle, ratio?: { d?: number; m?: number }, win?: string): Item | null {
     const def = getIndicatorDef(id);
     if (!def) return null;
     const merged: Params = sanitizeParams(def, { ...defaultParams(def), ...(params ?? {}) });
@@ -295,17 +378,19 @@ export class IndicatorsController implements IndicatorsControllerLike {
     series.externalLegend = this.externalLegend;
     const inst: IndicatorInstance = { uid, id, params: merged, visible };
     if (st) inst.style = st;
-    const item: Item = { inst, def, series, pane: null, ratio: { ...ratio } };
+    const item: Item = { inst, def, series, pane: null, host: null, ratio: { ...ratio } };
+    if (win && win !== MAIN_ID && windowable(def) && hasLeaf(this.layout, win)) item.win = win;
     this.items.push(item);
     if (eng) this.mount(item);
     return item;
   }
 
   add(id: string, params?: Record<string, ParamValue>): string {
-    const item = this.create(id, params, true);
+    const target = this.addTarget && hasLeaf(this.layout, this.addTarget) ? this.addTarget : undefined;
+    const item = this.create(id, params, true, undefined, undefined, target);
     if (!item) return "";
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
     return item.inst.uid;
   }
 
@@ -315,7 +400,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const [it] = this.items.splice(idx, 1);
     this.unmount(it);
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
   }
 
   update(uid: string, patch: { params?: Record<string, ParamValue>; visible?: boolean; style?: IndicatorStyle | null }): void {
@@ -336,25 +421,23 @@ export class IndicatorsController implements IndicatorsControllerLike {
       else delete it.inst.style;
       it.series.setStyle(st);
       // the pane may have changed
-      const wantOwn = this.isOwn(it);
-      const isOwnNow = it.pane !== null && it.pane !== "main";
-      if (this.engine && it.pane !== null && wantOwn !== isOwnNow) {
+      if (this.engine && it.pane !== null && it.pane !== this.targetPane(it)) {
         this.unmount(it);
         this.mount(it);
       }
     }
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
   }
 
   /** Copy with the same params and style; returns the new uid. */
   clone(uid: string): string {
     const it = this.find(uid);
     if (!it) return "";
-    const c = this.create(it.inst.id, it.inst.params, it.inst.visible, cloneStyle(it.inst.style));
+    const c = this.create(it.inst.id, it.inst.params, it.inst.visible, cloneStyle(it.inst.style), undefined, it.win);
     if (!c) return "";
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
     return c.inst.uid;
   }
 
@@ -371,6 +454,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     const st: IndicatorStyle = { ...(it.inst.style ?? {}) };
     if (to === "own") st.pane = "own";
     else delete st.pane;
+    it.win = undefined;
     this.update(uid, { style: st });
   }
 
@@ -378,13 +462,21 @@ export class IndicatorsController implements IndicatorsControllerLike {
   paneOf(uid: string): string {
     const it = this.find(uid);
     if (!it) return "main";
-    return this.isOwn(it) ? this.paneId(it) : "main";
+    return this.targetPane(it);
   }
 
   subscribe(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => {
       this.listeners.delete(cb);
+    };
+  }
+
+  /** Fires after a change that is stored (indicators, their settings, the window layout), not when the chart is only laid out differently (a narrow window). */
+  subscribeSaved(cb: () => void): () => void {
+    this.savedListeners.add(cb);
+    return () => {
+      this.savedListeners.delete(cb);
     };
   }
 
@@ -405,7 +497,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   setExternalLegend(on: boolean): void {
     this.externalLegend = on;
     for (const it of this.items) it.series.externalLegend = on;
-    this.engine?.requestRedraw();
+    this.redraw();
   }
 
   /** Legend data for one indicator at a bar index. Null when the instance does not exist. */
@@ -459,16 +551,19 @@ export class IndicatorsController implements IndicatorsControllerLike {
   }
 
   serialize(): string {
-    return JSON.stringify(
-      this.items.map((it) => {
-        const o: { id: string; params: Params; visible: boolean; style?: IndicatorStyle; pr?: number; pm?: number } = { id: it.inst.id, params: it.inst.params, visible: it.inst.visible };
-        if (it.inst.style) o.style = it.inst.style;
-        // height of the own pane (share of the plot height), wide and narrow chart separately
-        if (it.ratio.d !== undefined) o.pr = Math.round(it.ratio.d * 10000) / 10000;
-        if (it.ratio.m !== undefined) o.pm = Math.round(it.ratio.m * 10000) / 10000;
-        return o;
-      }),
-    );
+    const out: unknown[] = this.items.map((it) => {
+      const o: { id: string; params: Params; visible: boolean; style?: IndicatorStyle; pr?: number; pm?: number; w?: string } = { id: it.inst.id, params: it.inst.params, visible: it.inst.visible };
+      if (it.inst.style) o.style = it.inst.style;
+      // height of the own pane (share of the plot height), wide and narrow chart separately
+      if (it.ratio.d !== undefined) o.pr = Math.round(it.ratio.d * 10000) / 10000;
+      if (it.ratio.m !== undefined) o.pm = Math.round(it.ratio.m * 10000) / 10000;
+      // extra window (kept also while this chart is too narrow to show windows: a phone must not wipe the desktop layout)
+      if (it.win && hasLeaf(this.layout, it.win)) o.w = it.win;
+      return o;
+    });
+    // the window layout rides in the same list as one more entry without an indicator id (builds without windows skip it)
+    if (this.layout && isMulti(this.layout)) out.push({ lay: serializeLayout(this.layout) });
+    return JSON.stringify(out);
   }
 
   restore(json: string): void {
@@ -481,18 +576,196 @@ export class IndicatorsController implements IndicatorsControllerLike {
     if (!Array.isArray(arr)) return;
     for (const it of this.items) this.unmount(it);
     this.items = [];
+    // the window layout first: the indicators that sit in windows are checked against it
+    let lay: unknown;
+    for (const raw of arr) {
+      if (raw && typeof raw === "object" && typeof (raw as { id?: unknown }).id !== "string" && "lay" in raw) {
+        lay = (raw as { lay?: unknown }).lay;
+        break;
+      }
+    }
+    this.layout = parseLayout(lay);
+    if (this.addTarget && !hasLeaf(this.layout, this.addTarget)) this.addTarget = null;
     this.bulk = true;
     for (const raw of arr) {
       if (!raw || typeof raw !== "object") continue;
-      const r = raw as { id?: unknown; params?: unknown; visible?: unknown; style?: unknown; pr?: unknown; pm?: unknown };
+      const r = raw as { id?: unknown; params?: unknown; visible?: unknown; style?: unknown; pr?: unknown; pm?: unknown; w?: unknown };
       if (typeof r.id !== "string") continue;
       const params = r.params && typeof r.params === "object" ? (r.params as Record<string, ParamValue>) : undefined;
-      this.create(r.id, params, r.visible !== false, sanitizeStyle(r.style), { d: parseRatio(r.pr), m: parseRatio(r.pm) });
+      this.create(r.id, params, r.visible !== false, sanitizeStyle(r.style), { d: parseRatio(r.pr), m: parseRatio(r.pm) }, typeof r.w === "string" ? r.w : undefined);
     }
     this.bulk = false;
     this.relayout();
     this.emit();
-    this.engine?.requestRedraw();
+    this.redraw();
+  }
+
+  /* ───────────── extra windows ───────────── */
+
+  /** The tree of windows (null: the single chart). A new object after every change. */
+  getLayout(): WinNode | null {
+    return this.layout;
+  }
+
+  /** Ids of the extra windows in reading order. */
+  windowIds(): string[] {
+    return windowIds(this.layout);
+  }
+
+  /** The chart area is wide enough for windows (reported by the chart); a narrow one folds them back into the one stack. */
+  windowsAvailable(): boolean {
+    return this.winAvail;
+  }
+
+  /** The windows are on screen right now. */
+  windowsOn(): boolean {
+    return this.winAvail && isMulti(this.layout);
+  }
+
+  setWindowsAvailable(on: boolean): void {
+    if (on === this.winAvail) return;
+    this.winAvail = on;
+    this.replace();
+    this.emit(false);
+  }
+
+  /** The window an indicator is drawn in right now (undefined: on the price chart). */
+  windowOf(uid: string): string | undefined {
+    const it = this.find(uid);
+    return it ? this.winOf(it) : undefined;
+  }
+
+  /** Windows that are not empty (their ids). */
+  usedWindows(): Set<string> {
+    const out = new Set<string>();
+    for (const it of this.items) {
+      const w = this.winOf(it);
+      if (w) out.add(w);
+    }
+    return out;
+  }
+
+  /** Adds an empty window next to `at` (the whole area when omitted). Returns its id, "" when there are too many windows. */
+  addWindow(dir: SplitDir, at?: string): string {
+    const r = layoutAdd(this.layout, dir, at);
+    if (!r) return "";
+    this.layout = r.tree;
+    this.replace();
+    this.emit();
+    return r.id;
+  }
+
+  /** Closes a window: its indicators go back to the price chart. */
+  closeWindow(id: string): void {
+    if (id === MAIN_ID || !hasLeaf(this.layout, id)) return;
+    for (const it of this.items) if (it.win === id) it.win = undefined;
+    this.layout = layoutClose(this.layout, id);
+    if (this.addTarget === id) this.addTarget = null;
+    this.replace();
+    this.emit();
+  }
+
+  /** Closes every window. */
+  resetWindows(): void {
+    if (!this.layout) return;
+    for (const it of this.items) it.win = undefined;
+    this.layout = null;
+    this.addTarget = null;
+    this.replace();
+    this.emit();
+  }
+
+  /** Whether the indicator may live in an extra window. */
+  canWindow(uid: string): boolean {
+    const it = this.find(uid);
+    return !!it && windowable(it.def);
+  }
+
+  /** Moves an indicator to a window ("new": a new one below the chart; null: back to the price chart, to its own pane or the main pane as the indicator is set). */
+  moveToWindow(uid: string, to: string | "new" | null): void {
+    const it = this.find(uid);
+    if (!it || (to !== null && !windowable(it.def))) return;
+    let target: string | undefined;
+    if (to === "new") {
+      const id = this.addWindow("v");
+      if (!id) return;
+      target = id;
+    } else if (to !== null) {
+      if (!hasLeaf(this.layout, to) || to === MAIN_ID) return;
+      target = to;
+    }
+    it.win = target;
+    // a window that lost its last indicator stays (empty windows are allowed: the user closes them)
+    if (this.engine && it.pane !== this.targetPane(it)) {
+      this.unmount(it);
+      this.mount(it);
+    }
+    this.relayout();
+    this.emit();
+    this.redraw();
+  }
+
+  /**
+   * A divider was dragged: the split at `path` gets a new share. `commit` false while the pointer is still down (nothing is saved or announced to the
+   * indicator listeners, only the layout listeners hear it); the last call has `commit` true.
+   */
+  setSplitRatio(path: string, ratio: number, commit = true): void {
+    const next = setRatioAt(this.layout, path, ratio);
+    if (next === this.layout) return;
+    this.layout = next;
+    if (commit) this.emit();
+    else this.emitLayout();
+  }
+
+  /** The drag of a divider is over: the layout is stored. */
+  commitLayout(): void {
+    this.emit();
+  }
+
+  /** New indicators from the catalog land in this window (null: the price chart as usual). */
+  setAddTarget(id: string | null): void {
+    this.addTarget = id && hasLeaf(this.layout, id) && id !== MAIN_ID ? id : null;
+  }
+
+  /** The tile of an extra window has an engine: the indicators of that window are drawn in it. */
+  attachWindow(id: string, engine: ChartEngine): void {
+    this.winEngines.set(id, engine);
+    for (const it of this.items) {
+      if (this.winOf(it) !== id || it.host === engine) continue;
+      this.unmount(it);
+      this.mount(it);
+    }
+    engine.requestRedraw();
+    this.emit(false);
+  }
+
+  /** The tile is gone (closed, or the windows folded away): its indicators are unmounted, the layout decides where they go next. */
+  detachWindow(id: string, engine: ChartEngine): void {
+    if (this.winEngines.get(id) === engine) this.winEngines.delete(id);
+    for (const it of this.items) if (it.host === engine) this.unmount(it);
+  }
+
+  /** Engines of the extra windows that are on screen (the screenshot puts them together with the price chart). */
+  windowEngines(): ChartEngine[] {
+    return Array.from(this.winEngines.values());
+  }
+
+  private emitLayout(): void {
+    for (const cb of Array.from(this.layoutListeners)) {
+      try {
+        cb();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /** Fires for every change of the layout, also while a divider is being dragged. */
+  subscribeLayout(cb: () => void): () => void {
+    this.layoutListeners.add(cb);
+    return () => {
+      this.layoutListeners.delete(cb);
+    };
   }
 
   refresh(): void {
@@ -502,7 +775,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
     let changed = false;
     for (const it of this.items) if (it.series.ensure(candles)) changed = true;
     if (changed) {
-      eng.requestRedraw();
+      this.redraw();
       this.emitData();
     }
   }

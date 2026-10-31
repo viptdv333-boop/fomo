@@ -24,6 +24,7 @@ import {
 } from "./format";
 import { transformBars } from "./transforms";
 import { MIN_SUB_RATIO, dragRatio, isCompactWidth, layoutHeights } from "./pane-layout";
+import { WIN_PANE } from "./windows-layout";
 import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
 import { barCountdownMs, countdownUnits, formatCountdown } from "./bar-clock";
@@ -79,6 +80,39 @@ const MAX_BS_FOOTPRINT = 320;
 const DEFAULT_BS = 8;
 const RIGHT_MARGIN_BARS = 8;
 const TIME_AXIS_H = 26;
+
+/** Options an extra window copies from the main chart (look of the axes and the crosshair, clock, bar length); the rest is the price chart's own. */
+const WINDOW_OPTION_KEYS = [
+  "theme",
+  "fontFamily",
+  "scaleFontSize",
+  "showGrid",
+  "gridV",
+  "gridH",
+  "locale",
+  "timeShiftMs",
+  "timeZone",
+  "clockOffsetMs",
+  "intervalMs",
+  "intervalLabel",
+  "crosshair",
+  "rightOffset",
+  "sessionBreaks",
+  "showTagCaptions",
+  "scaleSide",
+  "marginTop",
+  "marginBottom",
+  "status",
+  "chartType",
+  "transform",
+] as const;
+
+function windowOptions(src: Partial<EngineOptions>): Partial<EngineOptions> {
+  const out: Record<string, unknown> = {};
+  const from = src as Record<string, unknown>;
+  for (const k of WINDOW_OPTION_KEYS) if (k in from && from[k] !== undefined) out[k] = from[k];
+  return out as Partial<EngineOptions>;
+}
 
 /** A symbol drawn over the main one (Compare). */
 interface CompareEntry {
@@ -192,6 +226,19 @@ export class ChartEngine {
   private lastCrossT: number | null = null;
   /** A crosshair time coming from another chart, drawn as a vertical line. */
   private externalT: number | null = null;
+  private crossListeners = new Set<(time: number | null) => void>();
+
+  /* Extra windows (tiles of the multi-window layout): an engine that `follow`s this one shows indicators only, on the SAME bars (the leader's array,
+     nothing is fetched or copied twice), with the same time scroll / zoom and a shared crosshair. */
+  private leader: ChartEngine | null = null;
+  private followers = new Set<ChartEngine>();
+  /** Time view all windows show (on the leader): the right edge as a bar index and how many bars fit. Index space is the same in every window. */
+  private groupView: { r: number; span: number } | null = null;
+  /** This window changed its size: it takes the group's view again instead of telling the others its own. */
+  private resync = false;
+  /** Width of the price scale the labels need, and the common width the group asks for (so stacked windows line up). */
+  private naturalAxisW = 0;
+  private minAxisW = 0;
 
   // pointer state
   private layers: OverlayLayer[] = [];
@@ -251,7 +298,15 @@ export class ChartEngine {
       ready: false,
     });
 
-    this.ro = new ResizeObserver(() => this.resize());
+    this.ro = new ResizeObserver(() => {
+      this.resize();
+      // a resized canvas is blank: paint it in this frame (dragging a divider between windows resizes the tiles all the time), not in the next one
+      if (this.raf && (this.dirtyBase || this.dirtyOver)) {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+        this.frame(performance.now());
+      }
+    });
     this.ro.observe(container);
     this.bindEvents();
     this.resize();
@@ -289,6 +344,9 @@ export class ChartEngine {
 
   destroy() {
     this.destroyed = true;
+    this.unfollow();
+    for (const f of this.followers) f.leader = null;
+    this.followers.clear();
     cancelAnimationFrame(this.raf);
     this.ro.disconnect();
     if (this.longPress) clearTimeout(this.longPress);
@@ -333,6 +391,10 @@ export class ChartEngine {
     if ("pricePrecision" in patch) this.precision = patch.pricePrecision ?? inferPrecision(this.candles);
     if (patch.scaleMode !== undefined && patch.scaleMode !== prevMode) for (const p of this.panes) p.ready = false;
     if (patch.showCountdown !== undefined) this.syncCountdown();
+    if (this.followers.size) {
+      const sub = windowOptions(patch);
+      if (Object.keys(sub).length) for (const f of this.followers) f.setOptions(sub);
+    }
     this.invalidate();
   }
 
@@ -386,6 +448,7 @@ export class ChartEngine {
     this.opts.autoScale = true;
     this.onAutoScaleChange?.(true);
     this.invalidate();
+    for (const f of this.followers) f.adopt(this, true);
   }
 
   /** Older bars, ascending, all earlier than the current first bar. The view does not move. */
@@ -406,6 +469,7 @@ export class ChartEngine {
     this.rebuildDisplay();
     this.r += this.bars.length - before;
     this.invalidate();
+    for (const f of this.followers) f.adopt(this, false);
   }
 
   /**
@@ -424,6 +488,7 @@ export class ChartEngine {
     this.rebuildDisplay();
     if (atLatest && this.bars.length > nb) this.r += this.bars.length - nb;
     this.invalidate();
+    for (const f of this.followers) f.adopt(this, false);
   }
 
   /** Live seconds: the series starts empty, the first trade opens its first bar; after that this is upsertCandle. */
@@ -613,13 +678,23 @@ export class ChartEngine {
 
   /** PNG of the chart as currently shown. */
   screenshot(): string {
+    return this.screenshotCanvas().toDataURL("image/png");
+  }
+
+  /** The chart as currently shown, on a canvas of its own (device pixels). */
+  screenshotCanvas(): HTMLCanvasElement {
     const out = document.createElement("canvas");
     out.width = this.base.width;
     out.height = this.base.height;
     const c = out.getContext("2d")!;
     c.drawImage(this.base, 0, 0);
     c.drawImage(this.over, 0, 0);
-    return out.toDataURL("image/png");
+    return out;
+  }
+
+  /** Where the chart sits on the page (client coordinates); the windows are put together into one picture by it. */
+  getContainerRect(): DOMRect {
+    return this.container.getBoundingClientRect();
   }
 
   /* coordinate helpers for drawings and other overlays */
@@ -735,6 +810,105 @@ export class ChartEngine {
     if (this.externalT === t) return;
     this.externalT = t;
     this.invalidateOver();
+    for (const cb of this.crossListeners) cb(t);
+    for (const f of this.followers) f.setExternalCrosshair(t);
+  }
+  /** Called with the chart time under the crosshair of this chart, of another chart or of one of its windows (null = it is gone). */
+  addCrosshairListener(cb: (time: number | null) => void): () => void {
+    this.crossListeners.add(cb);
+    return () => this.crossListeners.delete(cb);
+  }
+
+  /* ───────────── extra windows ───────────── */
+
+  /** Makes this engine an extra window of `leader`: indicators only, the leader's bars, one time view and one crosshair. */
+  follow(leader: ChartEngine) {
+    if (leader === this) return;
+    this.unfollow();
+    this.leader = leader;
+    leader.followers.add(this);
+    this.setOptions(windowOptions(leader.opts));
+    if (!this.hasPane(WIN_PANE)) this.addPane(WIN_PANE, 1);
+    this.adopt(leader, true);
+    this.resync = true;
+  }
+
+  unfollow() {
+    const l = this.leader;
+    if (!l) return;
+    l.followers.delete(this);
+    this.leader = null;
+    this.minAxisW = 0;
+    if (l.followers.size === 0) {
+      l.groupView = null;
+      l.minAxisW = 0;
+    }
+    l.invalidate();
+  }
+
+  /** True for an extra window. */
+  isWindow(): boolean {
+    return this.leader !== null;
+  }
+
+  /** Takes the bars of the leader (the same array) and its time view; `reset` after a new data set. */
+  private adopt(src: ChartEngine, reset: boolean) {
+    this.candles = src.candles;
+    this.precision = src.precision;
+    this.rebuildDisplay();
+    if (reset) {
+      for (const p of this.panes) {
+        p.ready = false;
+        p.manual = false;
+      }
+      this.opts.autoScale = true;
+    }
+    const span = src.plotW() / src.barSpacing;
+    src.groupView = { r: src.r, span };
+    this.applyGroupView(src.r, span);
+  }
+
+  /** Shows the same bars as the group: `r` is the right edge, `span` the number of bars that fit the plot (this window's own width gives the spacing). */
+  private applyGroupView(r: number, span: number) {
+    if (!(span > 0) || !isFinite(r)) return;
+    this.zoomAnchor = null;
+    this.inertiaV = 0;
+    this.barSpacing = this.targetSpacing = Math.max(MIN_BS, Math.min(this.maxBs(), this.plotW() / span));
+    this.r = r;
+    this.invalidate();
+  }
+
+  /** After a repaint: a window whose view moved (the user dragged it) passes it on to the others; one that was resized takes the group's view. */
+  private syncGroup() {
+    const root = this.leader ?? this;
+    if (root.followers.size === 0) return;
+    const members = [root, ...root.followers];
+    // one width of the price scale: the plots of stacked windows start and end at the same x
+    let want = 0;
+    for (const m of members) want = Math.max(want, m.naturalAxisW);
+    for (const m of members) {
+      if (want > m.minAxisW || want < m.minAxisW - 6) {
+        m.minAxisW = want;
+        m.invalidate();
+      }
+    }
+    if (this.resync) {
+      this.resync = false;
+      if (root.groupView) this.applyGroupView(root.groupView.r, root.groupView.span);
+      return;
+    }
+    const span = this.plotW() / this.barSpacing;
+    const g = root.groupView;
+    if (g && Math.abs(g.r - this.r) <= 1e-4 && Math.abs(g.span - span) <= span * 1e-5) return;
+    root.groupView = { r: this.r, span };
+    for (const m of members) if (m !== this) m.applyGroupView(this.r, span);
+  }
+
+  /** The crosshair of this chart moved: the other windows of the group show it as a vertical line. */
+  private shareCrosshair(t: number | null) {
+    const root = this.leader ?? this;
+    if (root.followers.size === 0) return;
+    for (const m of [root, ...root.followers]) if (m !== this) m.setExternalCrosshair(t);
   }
   /** Offset (ms) added to a chart time before reading it with UTC getters, for the time zone in use. */
   getTimeShiftAt(t: number): number {
@@ -899,6 +1073,21 @@ export class ChartEngine {
     // indicator panes cannot be drawn on bars that are built from the candles
     const hideSubs = this.transformed();
     const subs = hideSubs ? [] : this.panes.slice(1);
+    if (this.leader) {
+      // an extra window has no price pane: its own panes share the whole plot
+      const w = (p: Pane) => (p.ratio > 0 ? p.ratio : 1);
+      const tot = subs.reduce((a, p) => a + w(p), 0) || 1;
+      this.panes[0].top = 0;
+      this.panes[0].height = 0;
+      let y = 0;
+      this.panes.slice(1).forEach((p) => {
+        const k = subs.indexOf(p);
+        p.top = y;
+        p.height = k < 0 ? 0 : (plotH * w(p)) / tot;
+        y += p.height;
+      });
+      return;
+    }
     const lay = layoutHeights(plotH, subs.map((p) => p.ratio));
     this.panes[0].top = 0;
     this.panes[0].height = lay.main;
@@ -953,6 +1142,7 @@ export class ChartEngine {
     let animating = false;
     for (const p of this.panes) {
       if (p.height <= 0 && p.id !== "main") continue;
+      if (this.leader && p.id === "main") continue;
       if (p.manual || to < from || (this.opts.lockScale && p.ready)) continue;
       let lo = Infinity;
       let hi = -Infinity;
@@ -1074,6 +1264,7 @@ export class ChartEngine {
     }
     this.bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (this.leader) this.resync = true;
     const compact = W > 1 && isCompactWidth(W);
     if (compact !== this.compact) {
       this.compact = compact;
@@ -1132,6 +1323,7 @@ export class ChartEngine {
   private notifyView() {
     this.onViewChange?.();
     for (const cb of this.viewListeners) cb();
+    this.syncGroup();
     const { from } = this.visibleRange();
     const n = this.candles.length;
     const wantMore = !this.transformed() || this.bars.length < 300;
@@ -1157,7 +1349,7 @@ export class ChartEngine {
       paneHeight: pane.height,
       theme: this.opts.theme,
       options: this.opts,
-      flow: this.flow,
+      flow: (this.leader ?? this).flow,
     };
   }
 
@@ -1196,7 +1388,7 @@ export class ChartEngine {
     ctx.translate(px, 0);
 
     // watermark
-    if (this.opts.showWatermark && this.opts.symbolLabel) {
+    if (this.opts.showWatermark && this.opts.symbolLabel && !this.leader) {
       ctx.save();
       ctx.fillStyle = th.watermark;
       ctx.textAlign = "center";
@@ -1337,8 +1529,12 @@ export class ChartEngine {
 
     // keep the axis wide enough for the widest label
     const need = Math.max(this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
-    if (Math.abs(need - this.axisW) > 6) {
-      this.axisW = need;
+    this.naturalAxisW = need;
+    // windows of one group ask for one common width (minAxisW), a lone chart keeps its small hysteresis
+    const want = Math.max(need, this.minAxisW);
+    if (this.minAxisW > 0 ? want !== this.axisW : Math.abs(want - this.axisW) > 6) {
+      this.axisW = want;
+      if (this.leader) this.resync = true;
       this.dirtyBase = true;
       this.schedule();
     }
@@ -1962,6 +2158,7 @@ export class ChartEngine {
 
   /** Extras drawn over the main pane's series: previous close line and the highest / lowest labels. */
   private drawMainExtras(ctx: CanvasRenderingContext2D, from: number, to: number) {
+    if (this.leader) return;
     const main = this.panes[0];
     const th = this.opts.theme;
     const plotW = this.plotW();
@@ -2028,6 +2225,7 @@ export class ChartEngine {
   }
 
   private drawLastPrice() {
+    if (this.leader) return;
     const price = this.lastPriceValue();
     if (price === null) return;
     const n = this.candles.length;
@@ -2068,14 +2266,14 @@ export class ChartEngine {
   private collectAxisTags(): EngineTag[] {
     const out: EngineTag[] = [];
     const n = this.candles.length;
-    if (n === 0 || this.panes[0].height <= 0) return out;
+    if (n === 0 || (!this.leader && this.panes[0].height <= 0)) return out;
     const main = this.panes[0];
     const th = this.opts.theme;
     const loc = this.opts.locale;
     const caps = this.opts.showTagCaptions;
 
-    // last price: the symbol above it (or "Price"), the countdown to the bar close below it
-    const price = this.lastPriceValue();
+    // the price chart's own tags (an extra window has only the flags of its indicators)
+    const price = this.leader ? null : this.lastPriceValue();
     if (price !== null) {
       const y = this.paneY(main, price);
       if (y >= 0 && y <= main.height) {
@@ -2104,7 +2302,7 @@ export class ChartEngine {
     }
 
     // previous close
-    if (this.opts.showPrevCloseLine) {
+    if (this.opts.showPrevCloseLine && !this.leader) {
       const pc = this.prevCloseValue();
       if (pc !== null) {
         const y = this.paneY(main, pc);
@@ -2115,7 +2313,7 @@ export class ChartEngine {
     }
 
     // levels of the layers (alerts)
-    this.layers.forEach((layer, li) => {
+    if (!this.leader) this.layers.forEach((layer, li) => {
       const tags = layer.axisTags?.(this);
       if (!tags) return;
       tags.forEach((t, ti) => {
@@ -2136,7 +2334,7 @@ export class ChartEngine {
       });
     });
 
-    this.compareTags(out);
+    if (!this.leader) this.compareTags(out);
 
     // flags of the indicators, on the pane of each
     if (!this.transformed()) {
@@ -2288,12 +2486,14 @@ export class ChartEngine {
     let index = n - 1;
     if (hv) index = Math.max(0, Math.min(n - 1, hv.index));
 
-    // tell linked charts where the crosshair is
-    if (this.onCrosshairMove) {
+    // tell linked charts, the windows and the legends where the crosshair is
+    if (this.onCrosshairMove || this.crossListeners.size || this.leader || this.followers.size) {
       const ct = hv && hv.x >= 0 && hv.x <= plotW && hv.y >= 0 && hv.y <= plotH ? this.indexToTime(hv.index) : null;
       if (ct !== this.lastCrossT) {
         this.lastCrossT = ct;
-        this.onCrosshairMove(ct);
+        this.onCrosshairMove?.(ct);
+        this.shareCrosshair(ct);
+        for (const cb of this.crossListeners) cb(ct);
       }
     }
 
@@ -2631,8 +2831,10 @@ export class ChartEngine {
     let pane: Pane | null = null;
     for (const p of this.panes) if (p.height > 0 && y >= p.top && y <= p.top + p.height) pane = p;
     if (this.opts.scaleSide === "left" ? x < 0 : x >= plotW) return { region: "priceAxis", pane };
-    for (let i = 1; i < this.panes.length; i++) {
-      if (this.panes[i].height > 0 && Math.abs(y - this.panes[i].top) <= 4) return { region: "separator", pane: this.panes[i] };
+    if (!this.leader) {
+      for (let i = 1; i < this.panes.length; i++) {
+        if (this.panes[i].height > 0 && Math.abs(y - this.panes[i].top) <= 4) return { region: "separator", pane: this.panes[i] };
+      }
     }
     return { region: "plot", pane };
   }

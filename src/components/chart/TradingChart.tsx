@@ -23,6 +23,9 @@ import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
 import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
+import ChartWindows, { useWindowsGeometry } from "@/components/chart/ChartWindows";
+import { MAX_WINDOWS } from "@/lib/chart/windows-layout";
+import { composeWindows } from "@/lib/chart/windows-shot";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
 import { useAlerts } from "@/components/chart/useAlerts";
 import DrawingToolbar from "@/components/chart/DrawingToolbar";
@@ -216,6 +219,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   activeRef.current = active !== false;
   const wrapRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  /** The chart area (between the toolbar and the bottom bar): the price chart and the extra windows are tiles in it. */
+  const areaRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ChartEngine | null>(null);
   const shiftRef = useRef({ tzMs: 0, displayShiftMs: 0, offsetMs: 0 });
   const genRef = useRef(0);
@@ -395,10 +400,33 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }, [indicators]);
 
   const getEngine = useCallback(() => engineRef.current, []);
+
+  /* extra windows with indicators (not in the panes of a multi-chart grid, not on bars built from the candles) */
+  const [winBroken, setWinBroken] = useState(false);
+  const { geo: winGeo, available: winAvailable } = useWindowsGeometry(indicators, areaRef, !embedded && engineReady && !winBroken && !isTransformedType(prefs.chartType));
+  const [winCount, setWinCount] = useState(0);
+  useEffect(() => {
+    const read = () => setWinCount(indicators.windowIds().length);
+    read();
+    return indicators.subscribeLayout(read);
+  }, [indicators]);
+  /** The «+» of a window opens the catalog: the indicators added now land in that window. */
+  const openIndicatorsFor = useCallback(
+    (winId: string) => {
+      indicators.setAddTarget(winId);
+      setIndOpen(true);
+    },
+    [indicators],
+  );
   const replay = useReplay(getEngine, refreshInd);
   const replayRef = useRef(replay);
   replayRef.current = replay;
   const replayActive = replay.mode !== "off";
+
+  /* the catalog is closed: the next indicators go to the price chart again */
+  useEffect(() => {
+    if (!indOpen) indicators.setAddTarget(null);
+  }, [indOpen, indicators]);
 
   /* engine lifetime */
   useEffect(() => {
@@ -437,14 +465,19 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     };
     const onHide = () => flushInd(true);
     window.addEventListener("pagehide", onHide);
-    const unsubInd = indicators.subscribe(() => {
-      setIndCount(indicators.list().length);
+    const unsubCount = indicators.subscribe(() => setIndCount(indicators.list().length));
+    // only what is stored goes to the account (a window becoming too narrow to show its tiles is not a change)
+    const unsubSaved = indicators.subscribeSaved(() => {
       clearTimeout(indTimer);
       indTimer = setTimeout(() => {
         indTimer = undefined;
         indChan.changed(indicators.serialize());
       }, 200);
     });
+    const unsubInd = () => {
+      unsubCount();
+      unsubSaved();
+    };
     const unsubDraw = drawings.subscribe(() => setHasSelection(!!drawings.getSelection()));
 
     setSiteDark(dark);
@@ -1217,14 +1250,22 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     void saveBlobAsFile(blob, `${instrument.ticker}_${prefs.interval}.csv`);
   };
 
+  /** The picture of the chart: with extra windows on screen they are put together with the price chart as they are laid out. */
+  const snapshotUrl = (): string | undefined => {
+    const eng = engineRef.current;
+    if (!eng) return undefined;
+    const wins = indicators.windowsOn() ? indicators.windowEngines() : [];
+    return wins.length > 0 ? composeWindows(eng, wins) : eng.screenshot();
+  };
+
   const screenshot = () => {
-    const url = engineRef.current?.screenshot();
+    const url = snapshotUrl();
     if (!url) return;
     void saveDataUrlAsFile(url, `${ticker}-${prefs.interval}.png`);
   };
 
   const copyScreenshot = async () => {
-    const url = engineRef.current?.screenshot();
+    const url = snapshotUrl();
     if (!url) return;
     try {
       const blob = await (await fetch(url)).blob();
@@ -1644,6 +1685,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
+        windows={{ available: winAvailable, count: winCount, max: MAX_WINDOWS, onAdd: (dir) => void indicators.addWindow(dir), onCloseAll: () => indicators.resetWindows() }}
         onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
@@ -1675,7 +1717,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       />
       )}
 
-          <div className="group relative flex-1 min-h-0">
+          {/* chart area: the price chart is the first tile, the extra windows (indicators) are the others; with one window nothing changes */}
+          <div ref={areaRef} className="relative flex flex-col flex-1 min-h-0">
+          <div className="group relative flex-1 min-h-0" style={winGeo?.tiles.main ? { position: "absolute", zIndex: 0, left: winGeo.tiles.main.x, top: winGeo.tiles.main.y, width: winGeo.tiles.main.w, height: winGeo.tiles.main.h } : undefined}>
             <div ref={hostRef} className="absolute inset-0" />
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1718,7 +1762,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy ? `fmp.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
-            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} />}
+            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} />}
             <CompareLegend
               items={compareItems}
               right={cs.scale.side === "left" ? 12 : 84}
@@ -1759,6 +1803,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             <ReplayControls api={replay} hostRef={hostRef} getEngine={getEngine} />
+          </div>
+          <ChartWindows controller={indicators} leader={engineReady ? engineRef.current : null} geo={winGeo} onAddIndicator={openIndicatorsFor} onBroken={() => setWinBroken(true)} />
           </div>
           {!appPage && (
           <BottomBar
