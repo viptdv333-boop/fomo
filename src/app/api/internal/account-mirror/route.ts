@@ -41,16 +41,12 @@ function refuse(req: NextRequest, reason: string) {
   return notFound();
 }
 
-// The peer talks to this instance over loopback, without a reverse proxy in between. A request that came through nginx (the public sites)
-// carries the client-address headers nginx adds: such a request is refused up front, whatever its signature, so the endpoint does not
-// exist for the internet even when the nginx vhost has no explicit block for it. NOT x-forwarded-host / -proto / -port: Next.js itself puts
-// those on every request it handles (also on the loopback ones), checking them refused the real peer too.
-const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "cf-connecting-ip"];
-
+// There is deliberately NO check for proxy headers (x-forwarded-*): Next.js adds them to the loopback requests of the peer too, so such a check
+// refused the real peer. The HMAC signature with the shared secret is what protects this route; an nginx `location = ... { return 404; }` for
+// the public vhosts is an optional extra (docs/terminal-instance.md).
 export async function POST(req: NextRequest) {
   const cfg = mirrorConfig();
   if (!cfg) return refuse(req, "mirror off here (ACCOUNT_MIRROR_SECRET / ACCOUNT_MIRROR_PEER_URL missing or invalid)");
-  if (PROXY_HEADERS.some((h) => req.headers.has(h))) return refuse(req, "came through a reverse proxy");
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return refuse(req, "body too large");
