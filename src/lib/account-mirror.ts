@@ -478,12 +478,17 @@ export function mainWinsProfile(p: MirrorProfile): MirrorProfile {
   return out as MirrorProfile;
 }
 
+/** JSON text with object keys sorted: the same value compares equal whatever order a JSON column returned its keys in. */
+function stableJson(v: unknown): string {
+  return JSON.stringify(v, (_k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([p], [q]) => (p < q ? -1 : p > q ? 1 : 0))) : x));
+}
+
 /** The whitelisted fields of an update whose value really differs from the stored one (an unchanged form field is not sent to the peer). */
 export function changedFields(before: Record<string, unknown> | null | undefined, data: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (!(PROFILE_FIELDS as readonly string[]).includes(k)) continue;
-    if (before && JSON.stringify(before[k]) === JSON.stringify(v)) continue;
+    if (before && stableJson(before[k]) === stableJson(v)) continue;
     out[k] = v;
   }
   return out;

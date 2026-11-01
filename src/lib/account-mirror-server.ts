@@ -11,9 +11,9 @@
 // passwords differ are different people as far as the mirror is concerned and stay as they are.
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import { isIP } from "node:net";
-import sharp from "sharp";
+import { reencodeAvatar } from "./avatar-image";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
@@ -32,7 +32,6 @@ import {
   mainWinsProfile,
   profileFromUser,
   profileToPrismaData,
-  sniffImage,
   type MirrorMessage,
   type MirrorProfile,
   type MirrorReply,
@@ -95,18 +94,12 @@ async function pullAvatar(avatarPath: string, localUserId: string): Promise<stri
       }
       chunks.push(value);
     }
-    const buf = Buffer.concat(chunks);
-    if (!sniffImage(buf)) return null;
-    const processed = await sharp(buf, { limitInputPixels: 25_000_000, failOn: "error" })
-      .rotate()
-      .resize(200, 200, { fit: "cover" })
-      .flatten({ background: "#ffffff" })
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    const re = await reencodeAvatar(Buffer.concat(chunks));
+    if (!re) return null;
     const dir = path.join(process.cwd(), "public", "uploads", "avatars", localUserId);
     await mkdir(dir, { recursive: true });
-    const filename = `${createHash("sha256").update(processed).digest("hex").slice(0, 32)}.jpg`;
-    await writeFile(path.join(dir, filename), processed);
+    const filename = `${re.name}.jpg`;
+    await writeFile(path.join(dir, filename), re.buffer);
     return `/uploads/avatars/${localUserId}/${filename}`;
   } catch {
     return null;
