@@ -4,7 +4,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { rateLimit, resetRateLimit, clientIp } from "./rate-limit";
 import { authCookieNames, authCookiesSecure, siteMode } from "./site-mode";
-import { mirrorAlignLogin, mirrorLogin } from "./account-mirror-client";
+import { mirrorAlignAvailable, mirrorAlignLogin, mirrorLogin } from "./account-mirror-client";
+import { mayAlignLogin, normalizeLoginEmail } from "./account-mirror";
 
 // Session cookies. The main site keeps the next-auth defaults ("authjs.session-token" ...), nothing changes there. An instance
 // with a cookie prefix (terminal.fomo.spot: "terminal", or AUTH_COOKIE_PREFIX) names every auth cookie differently and never sets a
@@ -30,6 +31,10 @@ const cookieConfig = COOKIE_NAMES
     }
   : {};
 
+let dummyHashPromise: Promise<string> | null = null;
+/** A valid bcrypt hash of cost 10 nobody knows the password of (made once per process). */
+const dummyHash = () => (dummyHashPromise ??= bcrypt.hash(`dummy-${Math.random()}-${Date.now()}`, 10));
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   ...cookieConfig,
@@ -43,7 +48,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const email = (credentials.email as string).toLowerCase();
+        // ONE normalisation for the counters and the lookup: trimmed (tabs and NBSP included) and lower-cased. With a raw lower-cased key every
+        // spelling with a space or another invisible character in it had its own ten tries.
+        const email = normalizeLoginEmail(credentials.email);
         const ip = request ? clientIp(request as Request) : "unknown";
 
         // Login used to be a free-for-all: unlimited guesses against a password
@@ -61,19 +68,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Case-insensitive: phone keyboards capitalise the first letter of the address, the account was registered as typed.
         const findUser = () =>
           prisma.user.findFirst({
-            where: { email: { equals: (credentials.email as string).trim(), mode: "insensitive" } },
+            where: { email: { equals: email, mode: "insensitive" } },
           });
         let user = await findUser();
 
-        let isValid = user ? await bcrypt.compare(credentials.password as string, user.passwordHash) : false;
-        if (!isValid) {
-          // Terminal only (a no-op on fomo.spot and while the mirror is off): fomo.spot is the MASTER account, one login and password on both sites.
-          // If the typed password is not the local one (or there is no local account), fomo.spot is asked whether it is right for this
-          // address; if it confirms (and the account there is APPROVED) the local account is created / takes that password and the login
-          // goes on. Unreachable or refusing fomo.spot = the usual "invalid credentials".
-          if (await mirrorAlignLogin({ email: (credentials.email as string).trim(), password: credentials.password as string, ip, userId: user?.id })) {
-            user = await findUser();
-            isValid = !!user;
+        // No such account: compare against a throw-away hash all the same, so an unknown address costs as much time as a wrong password.
+        let isValid = false;
+        if (user) isValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        else await bcrypt.compare(credentials.password as string, await dummyHash());
+        // Terminal only (a no-op on fomo.spot and while the mirror is off): fomo.spot is the MASTER account, one login and password on both sites.
+        // If the typed password is not the local one (or there is no local account), fomo.spot is asked whether it is right for this
+        // address; if it confirms (and the account there is APPROVED) the local account is created / takes the master hash (and address) and the
+        // login goes on. Never for a local account that is BANNED or unfinished: no question, no hash replaced. A per-source quota of its own keeps
+        // this form from using up fomo.spot's global allowance for such questions. Unreachable or refusing fomo.spot = "invalid credentials".
+        if (!isValid && mayAlignLogin(user) && mirrorAlignAvailable()) {
+          const quota = await rateLimit(`verify:local:ip:${ip}`, 10, 15 * 60 * 1000);
+          if (quota.allowed) {
+            const aligned = await mirrorAlignLogin({ email: String(credentials.email).trim(), password: credentials.password as string, ip, userId: user?.id });
+            if (aligned) {
+              user = await prisma.user.findUnique({ where: { id: aligned.userId } });
+              isValid = !!user;
+            }
           }
         }
         if (!user || !isValid) return null;

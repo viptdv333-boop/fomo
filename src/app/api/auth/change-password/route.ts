@@ -6,6 +6,7 @@ import { checkPassword } from "@/lib/account-security";
 import { rateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/i18n/server";
 import { mirrorExists, mirrorPassword } from "@/lib/account-mirror-client";
+import { passwordChangeGate } from "@/lib/account-mirror";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { passwordHash: true, email: true },
+    select: { passwordHash: true, email: true, role: true },
   });
 
   if (!user) {
@@ -49,10 +50,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Terminal: the password of an ADMIN / OWNER account of fomo.spot (the master) is managed there only (see reset-password).
+  // An ADMIN / OWNER account here fails CLOSED when fomo.spot cannot be asked ("try later"); a plain account carries on as before.
   const onMain = await mirrorExists(user.email);
-  if (onMain?.privileged) {
-    return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
-  }
+  const gate = passwordChangeGate(user.role, onMain);
+  if (gate === "managed_on_main") return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
+  if (gate === "try_later") return NextResponse.json({ error: t("api.tryAgainLater") }, { status: 503 });
 
   const newHash = await bcrypt.hash(newPassword, 10);
   // Every other session dies with the old password — see User.sessionVersion.

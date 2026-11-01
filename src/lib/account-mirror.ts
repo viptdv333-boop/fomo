@@ -371,12 +371,15 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("email"), email: emailSchema, newEmail: emailSchema, passwordHash: bcryptSchema }),
   z.object({ op: z.literal("profile"), email: emailSchema, profile: profileSchema }),
   // PASSWORD ALIGNMENT at a terminal login: the typed password failed locally, fomo.spot (the master account) is asked whether it is right. The plaintext
-  // password is in this one request body only (over loopback, signed), never logged or stored; `ip` is the visitor's address as the terminal saw it, so
-  // fomo.spot counts the attempt in the same per-address / per-source login limits as its own login. Answered by fomo.spot only.
+  // password is in this one request body only (over loopback, signed), never logged or stored; `ip` is the visitor's address as the terminal saw it
+  // (a literal IP address, checked again on fomo.spot); the attempt is counted in buckets of its own on fomo.spot (verify:email:, verify:ip:), never in
+  // the real login limits, so the terminal form cannot lock anybody out of fomo.spot. Answered by fomo.spot only.
   z.object({ op: z.literal("verify"), email: emailSchema, password: z.string().min(1).max(200), ip: z.string().max(64).optional() }),
-  // sign-up on the terminal: does this address (or another spelling of the same mailbox) already have an account on fomo.spot? Answered by fomo.spot only.
+  // sign-up / password change on the terminal: what does fomo.spot know about this address? An APPROVED account (the address, or another spelling of the same
+  // mailbox) is "exists"; the status of the exact match comes back too (a PENDING signup there must not block the user). Answered by fomo.spot only.
   z.object({ op: z.literal("exists"), email: emailSchema }),
-  // profile reconcile at login on the TERMINAL: "give me your whitelisted profile" (answered by fomo.spot, the source of truth, and only for plain USER accounts)
+  // profile reconcile at login on the TERMINAL: "give me your whitelisted profile" (answered by fomo.spot, the source of truth, for ANY role: display
+  // fields only, never role, status, e-mail or a hash)
   z.object({ op: z.literal("pull"), email: emailSchema }),
 ]);
 export type MirrorMessage = z.infer<typeof mirrorMessageSchema>;
@@ -563,8 +566,66 @@ export interface MirrorReply {
   profile?: MirrorProfile;
   /** with result "exists" (answer to `exists`): the account there is ADMIN / OWNER */
   privileged?: boolean;
+  /** with result "exists": the status of the account there (APPROVED, PENDING or BANNED) */
+  accountStatus?: "APPROVED" | "PENDING" | "BANNED";
+  /** with result "verified" ONLY: the master's bcrypt hash and canonical e-mail (a signed loopback answer, see verifiedReplySchema) */
+  passwordHash?: string;
+  email?: string;
   /** the wanted fomoId was taken, another one was given (created / completed) */
   fomoIdChanged?: boolean;
   /** profile fields that could not be applied (taken fomoId, avatar that could not be fetched) */
   skipped?: string[];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Login address normalisation, IP literals, the verified answer
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The address as the LIMITS and the lookup of a login see it: trimmed (String.trim also strips tabs and NBSP) and lower-cased. One function
+ * for the terminal login, the real login and `verify` on fomo.spot: variants with spaces or another case share ONE counter instead of
+ * getting ten tries each.
+ */
+export function normalizeLoginEmail(raw: unknown): string {
+  return String(raw ?? "").trim().toLowerCase();
+}
+
+/** A cheap shape check for an IPv4 / IPv6 literal (the sender omits anything else; fomo.spot re-checks with node:net isIP). */
+export function looksLikeIp(v: unknown): v is string {
+  if (typeof v !== "string" || v.length === 0 || v.length > 45) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) return v.split(".").every((n) => Number(n) <= 255);
+  return /^[0-9A-Fa-f:.]+$/.test(v) && v.includes(":") && (v.match(/:/g) ?? []).length >= 2;
+}
+
+/** What a `verify` success has to look like when it arrives on the terminal. */
+export const verifiedReplySchema = z.object({ passwordHash: bcryptSchema, email: emailSchema, profile: profileSchema });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Decisions of the routes and of the login (pure, so the unit check covers them)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** What `mirrorExists` answers: null = not applicable (not the terminal / mirror off), "unavailable" = fomo.spot could not be asked. */
+export type ExistsLike = { exists: boolean; privileged: boolean; status: string | null } | null | "unavailable";
+
+/**
+ * Terminal, password change / reset: an ADMIN / OWNER account of fomo.spot is managed there only. The LOCAL role decides how an unknown
+ * answer is treated: a plain account carries on as before (fail open), an ADMIN / OWNER account here fails CLOSED ("try later"), so a
+ * timeout, a 429 or a 5xx on the question cannot be used to get around the block.
+ */
+export function passwordChangeGate(localRole: string, onMain: ExistsLike): "ok" | "managed_on_main" | "try_later" {
+  if (onMain && onMain !== "unavailable" && onMain.privileged) return "managed_on_main";
+  if (onMain === "unavailable" && localRole !== "USER") return "try_later";
+  return "ok";
+}
+
+/** Terminal, sign-up after the code: only an APPROVED account on fomo.spot blocks; a PENDING one does not, a BANNED one is refused as banned. */
+export function registerGate(onMain: ExistsLike): "ok" | "exists" | "banned" {
+  if (!onMain || onMain === "unavailable") return "ok";
+  if (onMain.exists) return "exists";
+  return onMain.status === "BANNED" ? "banned" : "ok";
+}
+
+/** Terminal login: fomo.spot is asked about a failed password only for a missing local account or an APPROVED one (never for BANNED / unfinished). */
+export function mayAlignLogin(localUser: { status: string } | null | undefined): boolean {
+  return !localUser || localUser.status === "APPROVED";
 }

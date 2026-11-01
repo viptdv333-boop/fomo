@@ -6,6 +6,7 @@ import { sendVerificationCode, generateCode } from "@/lib/email";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
 import { mirrorEmail } from "@/lib/account-mirror-client";
+import { invalidateAliasCache } from "@/lib/account-mirror-server";
 
 // Step 1: POST with { action: "send-code", newEmail, password }
 // Step 2: POST with { action: "verify", newEmail, code }
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
     });
 
     // The other site renames its account (found by the old address), best-effort, in the background.
+    invalidateAliasCache();
     mirrorEmail(session.user.id, user.email, newEmail, user.passwordHash);
 
     return NextResponse.json({ message: t("api.emailChanged") });

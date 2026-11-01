@@ -67,7 +67,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li5":
       "источники рыночных данных (МосБиржа, Bybit, FMP и другие): запросы за котировками, как правило, выполняет сервер Терминала, данные вашего аккаунта им не передаются;",
     "termlegal.privacy.s5.li6": "государственные органы: только по обоснованному требованию, предусмотренному законом.",
-    "termlegal.privacy.s5.p2": "Каждый из этих сервисов обрабатывает данные по своим правилам. Подключать ли Telegram, WhatsApp, Max, VK или webhook, решаете вы. Сайт fomo.spot (тот же Оператор) получает копию данных аккаунта и профиля, как описано в разделе 1; хэш пароля передаётся между серверами Оператора по защищённому внутреннему соединению. Главный аккаунт находится на fomo.spot: если при входе в Терминал пароль не подошёл, введённый пароль один раз передаётся серверу fomo.spot по этому же внутреннему соединению для проверки; он не сохраняется и не записывается в журналы, а при успешной проверке аккаунт Терминала получает тот же пароль (в виде хэша, который создаётся на сервере Терминала).",
+    "termlegal.privacy.s5.p2": "Каждый из этих сервисов обрабатывает данные по своим правилам. Подключать ли Telegram, WhatsApp, Max, VK или webhook, решаете вы. Сайт fomo.spot (тот же Оператор) получает копию данных аккаунта и профиля, как описано в разделе 1; хэш пароля передаётся между серверами Оператора по защищённому внутреннему соединению. Главный аккаунт находится на fomo.spot: если при входе в Терминал пароль не подошёл, введённый пароль один раз передаётся серверу fomo.spot по этому же внутреннему соединению для проверки; он не сохраняется и не записывается в журналы, а при успешной проверке аккаунт Терминала получает тот же пароль (в виде хэша, который сервер fomo.spot передаёт серверу Терминала по этому же внутреннему соединению).",
 
     "termlegal.privacy.s6.h": "6. Где хранятся данные",
     "termlegal.privacy.s6.p1":
@@ -288,7 +288,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li5":
       "market data sources (Moscow Exchange, Bybit, FMP and others): quote requests are normally made by the Terminal's server, and your account data is not passed to them;",
     "termlegal.privacy.s5.li6": "public authorities: only on a justified request provided for by law.",
-    "termlegal.privacy.s5.p2": "Each of these services processes data under its own rules. Whether to connect Telegram, WhatsApp, Max, VK or a webhook is up to you. The fomo.spot website (the same Operator) receives a copy of the account and profile data as described in section 1; the password hash travels between the Operator's servers over a protected internal connection. The main account is on fomo.spot: if the password does not match when you sign in to the Terminal, the password you typed is sent once to the fomo.spot server over the same internal connection to be checked; it is not stored or written to logs, and when the check succeeds the Terminal account gets the same password (as a hash created on the Terminal's server).",
+    "termlegal.privacy.s5.p2": "Each of these services processes data under its own rules. Whether to connect Telegram, WhatsApp, Max, VK or a webhook is up to you. The fomo.spot website (the same Operator) receives a copy of the account and profile data as described in section 1; the password hash travels between the Operator's servers over a protected internal connection. The main account is on fomo.spot: if the password does not match when you sign in to the Terminal, the password you typed is sent once to the fomo.spot server over the same internal connection to be checked; it is not stored or written to logs, and when the check succeeds the Terminal account gets the same password (as a hash that the fomo.spot server passes to the Terminal's server over the same internal connection).",
 
     "termlegal.privacy.s6.h": "6. Where data is stored",
     "termlegal.privacy.s6.p1":
@@ -495,7 +495,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li4": "Telegram、WhatsApp（Meta）、Max、VK：接收方标识和通知文本，仅在您自己连接了该方式时；Webhook 会向您指定的地址发送通知；",
     "termlegal.privacy.s5.li5": "市场数据来源（莫斯科交易所、Bybit、FMP 等）：行情请求通常由终端服务器发出，不会向它们传递您的账户数据；",
     "termlegal.privacy.s5.li6": "国家机关：仅在法律规定的有正当理由的要求下。",
-    "termlegal.privacy.s5.p2": "这些服务各自按其自身规则处理数据。是否连接 Telegram、WhatsApp、Max、VK 或 Webhook 由您决定。fomo.spot 网站（同一运营者）会收到账户和个人资料数据的副本，详见第 1 节；密码哈希通过受保护的内部通道在运营者的服务器之间传输。主账户在 fomo.spot：如果登录终端时密码不匹配，您输入的密码会通过同一内部通道一次性发送到 fomo.spot 服务器进行验证；该密码不会被保存，也不会写入日志，验证成功后终端账户将采用相同的密码（以终端服务器生成的哈希形式保存）。",
+    "termlegal.privacy.s5.p2": "这些服务各自按其自身规则处理数据。是否连接 Telegram、WhatsApp、Max、VK 或 Webhook 由您决定。fomo.spot 网站（同一运营者）会收到账户和个人资料数据的副本，详见第 1 节；密码哈希通过受保护的内部通道在运营者的服务器之间传输。主账户在 fomo.spot：如果登录终端时密码不匹配，您输入的密码会通过同一内部通道一次性发送到 fomo.spot 服务器进行验证；该密码不会被保存，也不会写入日志，验证成功后终端账户将采用相同的密码（以哈希形式，由 fomo.spot 服务器通过同一内部通道传给终端服务器）。",
 
     "termlegal.privacy.s6.h": "6. 数据存储地点",
     "termlegal.privacy.s6.p1":

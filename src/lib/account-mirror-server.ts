@@ -12,6 +12,7 @@
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { createHash, randomUUID } from "crypto";
+import { isIP } from "node:net";
 import sharp from "sharp";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -25,6 +26,7 @@ import {
   altFomoId,
   avatarFetchUrl,
   mirrorConfig,
+  normalizeLoginEmail,
   PROFILE_FIELDS,
   changedFields,
   mainWinsProfile,
@@ -135,15 +137,39 @@ async function pickFomoId(db: Db, wanted: string | undefined, email: string): Pr
   return { fomoId: id, changed: !!wanted };
 }
 
+/**
+ * The set of normalised addresses of all APPROVED accounts (value: is one of them ADMIN / OWNER), built by ONE scan that selects only
+ * e-mail and role, and kept in memory for 60 s per process and database. There is no indexed `emailNormalized` column (a schema change
+ * and a migration are out of scope for now), so this is the cap on the cost of the alias check of sign-up, `ensure` and `exists`. A
+ * stale answer is possible for up to a minute; the places in THIS process that add or rename an address invalidate it at once
+ * (invalidateAliasCache is also called by the local register and change-email routes). A future column would replace the scan.
+ */
+const ALIAS_TTL_MS = 60_000;
+const aliasIndexes = new WeakMap<object, { at: number; byKey: Map<string, boolean> }>();
+export function invalidateAliasCache(db: Db = prisma): void {
+  aliasIndexes.delete(db);
+}
+async function aliasIndex(db: Db): Promise<Map<string, boolean>> {
+  const hit = aliasIndexes.get(db);
+  if (hit && Date.now() - hit.at < ALIAS_TTL_MS) return hit.byKey;
+  const rows = await db.user.findMany({ where: { status: "APPROVED" }, select: { email: true, role: true } });
+  const byKey = new Map<string, boolean>();
+  for (const u of rows as Array<{ email: string; role: string }>) {
+    const k = normalizeEmail(u.email);
+    byKey.set(k, (byKey.get(k) ?? false) || u.role !== "USER");
+  }
+  aliasIndexes.set(db, { at: Date.now(), byKey });
+  return byKey;
+}
+
 /** Same rule as the local sign-up: another spelling of an address that already belongs to an approved account is not a new person. */
 async function aliasTaken(db: Db, email: string): Promise<boolean> {
-  const normalized = normalizeEmail(email);
-  const approved = await db.user.findMany({ where: { status: "APPROVED" }, select: { email: true } });
-  return approved.some((u) => normalizeEmail(u.email) === normalized);
+  return (await aliasIndex(db)).has(normalizeEmail(email));
 }
 
 async function createAccount(db: Db, msg: Extract<MirrorMessage, { op: "register" | "ensure" }>): Promise<MirrorReply> {
-  const existing = await db.user.findUnique({ where: { email: msg.email }, select: { id: true, status: true, role: true } });
+  // the address is looked up without regard to case: "Anna@x" and "anna@x" are one mailbox, a second account must never be created for it
+  const existing = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { id: true, status: true, role: true } });
   const { profile } = msg;
   const skipped: string[] = [];
 
@@ -158,6 +184,7 @@ async function createAccount(db: Db, msg: Extract<MirrorMessage, { op: "register
       data: { ...plainData(profile), passwordHash: msg.passwordHash, status: "APPROVED" },
     });
     await applyFomoIdAndAvatar(db, existing.id, profile, skipped);
+    invalidateAliasCache(db);
     return { ok: true, result: "completed", ...(skipped.length ? { skipped } : {}) };
   }
 
@@ -176,6 +203,7 @@ async function createAccount(db: Db, msg: Extract<MirrorMessage, { op: "register
     },
     select: { id: true },
   });
+  invalidateAliasCache(db);
   if (profile.avatarUrl) await applyFomoIdAndAvatar(db, created.id, { avatarUrl: profile.avatarUrl }, skipped);
   return { ok: true, result: "created", ...(changed ? { fomoIdChanged: true } : {}), ...(skipped.length ? { skipped } : {}) };
 }
@@ -231,25 +259,44 @@ export async function applyPulledProfile(userId: string, profile: MirrorProfile,
 }
 
 /**
- * Password alignment at a terminal login, step 2 (fomo.spot confirmed the typed password): make the LOCAL account follow the master. The local
- * hash is computed here from the typed password (no hash travels); an existing account gets it with a sessionVersion bump (its old sessions
- * die) and the master profile (main wins, as in `pull`), a missing one is created exactly as `ensure` creates it. Any role: the proof is the
- * master password itself. Returns what happened, or null when nothing could be done.
+ * Password alignment at a terminal login, step 2 (fomo.spot confirmed the typed password and sent ITS hash and the canonical address): make
+ * the LOCAL account follow the master. The local account stores the master's hash (identical hashes keep the compare-and-swap password and
+ * e-mail ops working; no second bcrypt with a new salt), takes the canonical address (an account found under another spelling or an old
+ * address is renamed, never duplicated), gets a sessionVersion bump (its old sessions die) and the master profile (main wins, as in `pull`).
+ * A missing account is created as `ensure` creates it. Any role: the proof is the master password itself. Null = nothing could be done.
  */
 export async function alignLocalLogin(
-  p: { email: string; password: string; userId?: string | null; profile: MirrorProfile },
+  p: { email: string; canonicalEmail: string; passwordHash: string; userId?: string | null; profile: MirrorProfile },
   db: Db = prisma,
-): Promise<"created" | "password" | null> {
-  const hash = await bcrypt.hash(p.password, 10);
-  if (p.userId) {
-    const r = await db.user.updateMany({ where: { id: p.userId }, data: { passwordHash: hash, sessionVersion: { increment: 1 } } });
-    if (r.count !== 1) return null;
-    await applyPulledProfile(p.userId, p.profile, db);
-    return "password";
+): Promise<{ how: "created" | "password"; userId: string } | null> {
+  const canonical = p.canonicalEmail.trim();
+  let id = p.userId ?? null;
+  if (!id) {
+    const found = await db.user.findFirst({ where: { email: { equals: canonical, mode: "insensitive" } }, select: { id: true } });
+    id = found?.id ?? null;
   }
-  const fallbackName = p.email.split("@")[0].slice(0, 100) || "user";
-  const reply = await createAccount(db, { op: "ensure", email: p.email, passwordHash: hash, profile: { ...p.profile, displayName: p.profile.displayName || fallbackName } });
-  return reply.result === "created" ? "created" : null;
+  if (id) {
+    const holder = await db.user.findFirst({ where: { email: { equals: canonical, mode: "insensitive" } }, select: { id: true } });
+    const rename = !holder || holder.id === id; // the canonical address is free (or already this account's): take it
+    try {
+      const r = await db.user.updateMany({
+        where: { id },
+        data: { passwordHash: p.passwordHash, sessionVersion: { increment: 1 }, ...(rename ? { email: canonical } : {}) },
+      });
+      if (r.count !== 1) return null;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return null;
+      throw e;
+    }
+    await applyPulledProfile(id, p.profile, db);
+    invalidateAliasCache(db);
+    return { how: "password", userId: id };
+  }
+  const fallbackName = canonical.split("@")[0].slice(0, 100) || "user";
+  const reply = await createAccount(db, { op: "ensure", email: canonical, passwordHash: p.passwordHash, profile: { ...p.profile, displayName: p.profile.displayName || fallbackName } });
+  if (reply.result !== "created") return null;
+  const made = await db.user.findFirst({ where: { email: { equals: canonical, mode: "insensitive" } }, select: { id: true } });
+  return made ? { how: "created", userId: made.id } : null;
 }
 
 const PROFILE_SELECT = { ...Object.fromEntries(PROFILE_FIELDS.map((f) => [f, true])) };
@@ -303,6 +350,7 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma, de
           where: { id: user.id, role: "USER", passwordHash: msg.passwordHash },
           data: { email: msg.newEmail, sessionVersion: { increment: 1 } },
         });
+        if (r.count === 1) invalidateAliasCache(db);
         return r.count === 1 ? { ok: true, result: "updated" } : MISMATCH;
       } catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { ok: true, result: "conflict" };
@@ -314,26 +362,33 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma, de
       // fomo.spot is the master of the account: is this the right password? The attempt is counted in the SAME limits as a login here (per
       // address and per source, the source being the visitor's address the terminal saw), so the terminal is no unlimited password oracle.
       // Every failure is one and the same answer; the account must be APPROVED (a ban or an unfinished sign-up here applies as well).
-      const email = msg.email.trim().toLowerCase();
+      // Buckets of their own (verify:email: 5 and verify:ip: 20 per 15 minutes): the real login counters (login:email:, login:ip:) are NOT used,
+      // so nobody can lock a person out of fomo.spot through the terminal's form; a success resets only the verify counter of the address.
+      // The address is normalised exactly like the real login (trim, lower case); a source that is not an IP literal is refused.
+      if (msg.ip !== undefined && isIP(msg.ip) === 0) return DENIED;
+      const email = normalizeLoginEmail(msg.email);
       const [byAccount, bySource] = await Promise.all([
-        deps.rateLimit(`login:email:${email}`, 10, 15 * 60 * 1000),
-        deps.rateLimit(`login:ip:${msg.ip || "unknown"}`, 50, 15 * 60 * 1000),
+        deps.rateLimit(`verify:email:${email}`, 5, 15 * 60 * 1000),
+        deps.rateLimit(`verify:ip:${msg.ip || "unknown"}`, 20, 15 * 60 * 1000),
       ]);
-      const user = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { ...PROFILE_SELECT, passwordHash: true, status: true } });
+      const user = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { ...PROFILE_SELECT, email: true, passwordHash: true, status: true } });
       const right = await deps.compare(msg.password, user?.passwordHash ?? "");
       if (!byAccount.allowed || !bySource.allowed || !user || !right || user.status !== "APPROVED") return DENIED;
-      await deps.resetRateLimit(`login:email:${email}`);
-      return { ok: true, result: "verified", profile: profileFromUser(user as Record<string, unknown>) };
+      await deps.resetRateLimit(`verify:email:${email}`);
+      // the signed answer carries the master hash and the canonical address: the terminal stores THAT (identical hashes keep the compare-and-swap ops working)
+      return { ok: true, result: "verified", profile: profileFromUser(user as Record<string, unknown>), passwordHash: user.passwordHash as string, email: user.email as string };
     }
 
     case "exists": {
       // sign-up / password change on the terminal: does fomo.spot know this mailbox (the same address, or another spelling of it)?
-      const exact = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { role: true } });
-      if (exact) return { ok: true, result: "exists", ...(exact.role !== "USER" ? { privileged: true } : {}) };
-      const normalized = normalizeEmail(msg.email);
-      const approved = await db.user.findMany({ where: { status: "APPROVED" }, select: { email: true, role: true } });
-      const alias = approved.find((u) => normalizeEmail(u.email) === normalized);
-      return alias ? { ok: true, result: "exists", ...(alias.role !== "USER" ? { privileged: true } : {}) } : { ok: true, result: "not_found" };
+      // Only an APPROVED account counts as existing. A PENDING (unfinished) or BANNED one answers not_found with its status, so the terminal can
+      // let the PENDING person register and refuse the banned one with the ordinary banned message instead of a dead-end "sign in" text.
+      const exact = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { role: true, status: true } });
+      if (exact && exact.status === "APPROVED") return { ok: true, result: "exists", accountStatus: "APPROVED", ...(exact.role !== "USER" ? { privileged: true } : {}) };
+      if (exact) return { ok: true, result: "not_found", accountStatus: exact.status as "PENDING" | "BANNED" };
+      const index = await aliasIndex(db);
+      const key = normalizeEmail(msg.email);
+      return index.has(key) ? { ok: true, result: "exists", accountStatus: "APPROVED", ...(index.get(key) ? { privileged: true } : {}) } : { ok: true, result: "not_found" };
     }
 
     case "pull": {

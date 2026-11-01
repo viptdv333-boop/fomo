@@ -68,12 +68,21 @@ export async function resetRateLimit(key: string): Promise<void> {
 }
 
 /**
- * Caller IP. Behind nginx the socket address is always 127.0.0.1, so the
- * forwarded headers are what actually identifies the client.
+ * The client address from the proxy headers. Behind nginx the socket address is always 127.0.0.1, so the forwarded headers are what
+ * identifies the client. nginx sets X-Forwarded-For with $proxy_add_x_forwarded_for: whatever the client sent is kept and the address nginx
+ * itself saw is APPENDED. So the FIRST element is chosen by the visitor (free spoofing: every request a fresh "address", every per-source
+ * limit bypassed) and the LAST one is the one our own nginx added: that one is used. Without X-Forwarded-For X-Real-IP is used, and
+ * without any proxy header (local development, the loopback peer) "unknown", as before. With a second trusted proxy in front of nginx
+ * this would have to take the one before last: there is none today.
  */
+export function pickClientIp(forwardedFor: string | null | undefined, realIp: string | null | undefined): string {
+  if (forwardedFor) {
+    const parts = forwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  return (realIp ?? "").trim() || "unknown";
+}
+
 export function clientIp(req: NextRequest | Request): string {
-  const h = req.headers;
-  const forwarded = h.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return h.get("x-real-ip") ?? "unknown";
+  return pickClientIp(req.headers.get("x-forwarded-for"), req.headers.get("x-real-ip"));
 }

@@ -8,6 +8,8 @@ import { checkPassword, normalizeEmail, isDisposableEmail, MIN_PASSWORD_LENGTH }
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
 import { mirrorExists, mirrorRegister } from "@/lib/account-mirror-client";
+import { registerGate } from "@/lib/account-mirror";
+import { invalidateAliasCache } from "@/lib/account-mirror-server";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -54,10 +56,12 @@ export async function POST(req: NextRequest) {
     // Terminal: fomo.spot is the MASTER account. If this mailbox (proven by the code just now) already has an account there, no competing
     // account with another password is created here: the person signs in with the fomo.spot password (the login aligns this site to it).
     // fomo.spot unreachable / mirror off = null: carry on as before. Registering on fomo.spot itself is never blocked by the terminal.
+    // Only an APPROVED account there blocks: an unfinished (PENDING) signup on fomo.spot must not lock the person into a dead end, a BANNED
+    // one gets the ordinary banned message.
     const onMain = await mirrorExists(data.email);
-    if (onMain?.exists) {
-      return NextResponse.json({ error: t("api.accountExistsOnMain") }, { status: 400 });
-    }
+    const gate = registerGate(onMain);
+    if (gate === "exists") return NextResponse.json({ error: t("api.accountExistsOnMain") }, { status: 400 });
+    if (gate === "banned") return NextResponse.json({ error: t("api.accountBanned") }, { status: 403 });
 
     // Check if user already exists — including aliases of the same mailbox.
     const existing = await prisma.user.findUnique({
@@ -121,6 +125,7 @@ export async function POST(req: NextRequest) {
     }
 
     // The same account on the other site (fomo.spot <-> terminal.fomo.spot). Best-effort, in the background: it never delays or fails this sign-up.
+    invalidateAliasCache();
     mirrorRegister(account);
 
     return NextResponse.json({

@@ -7,10 +7,21 @@ import { checkPassword } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
 import { mirrorExists, mirrorReset } from "@/lib/account-mirror-client";
+import { passwordChangeGate } from "@/lib/account-mirror";
 
 export async function POST(request: NextRequest) {
   const { action, email, code, newPassword } = await request.json();
   const { locale, t } = await getT();
+
+  // The body is untrusted JSON: strings only (an object or an array as the address would be matched and counted in odd ways)
+  if (
+    (email !== undefined && typeof email !== "string") ||
+    (action !== undefined && typeof action !== "string") ||
+    (code !== undefined && typeof code !== "string") ||
+    (newPassword !== undefined && typeof newPassword !== "string")
+  ) {
+    return NextResponse.json({ error: t("api.invalidData") }, { status: 400 });
+  }
 
   // Password reset is the shortest path to someone else's account, so it gets
   // an IP ceiling on top of the per-code attempt counter.
@@ -29,7 +40,7 @@ export async function POST(request: NextRequest) {
   // The address is matched without regard to case or stray spaces: phone keyboards capitalise the first letter ("Name@gmail.com"), and
   // a miss here is answered with the generic "code sent" text without sending anything, so a user never learns why no mail came.
   const typed = String(email).trim();
-  const user = await prisma.user.findFirst({ where: { email: { equals: typed, mode: "insensitive" } }, select: { id: true, status: true, email: true } });
+  const user = await prisma.user.findFirst({ where: { email: { equals: typed, mode: "insensitive" } }, select: { id: true, status: true, email: true, role: true } });
   if (!user) {
     // Don't reveal whether email exists
     return NextResponse.json({ message: t("api.resetGeneric") });
@@ -86,11 +97,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Terminal: the password of an ADMIN / OWNER account of fomo.spot (the master) is managed there only; a reset here could not be mirrored
-    // and would split the two. Plain accounts reset as usual (and are mirrored). fomo.spot unreachable / mirror off = null: reset as before.
-    const onMain = await mirrorExists(email);
-    if (onMain?.privileged) {
-      return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
-    }
+    // and would split the two. The address asked about is the one STORED on the account. Plain accounts reset as usual (and are mirrored; if
+    // fomo.spot cannot be asked, as before). An ADMIN / OWNER account here fails CLOSED: if the answer is unknown the reset waits ("try later").
+    const onMain = await mirrorExists(accountEmail);
+    const gate = passwordChangeGate(user.role, onMain);
+    if (gate === "managed_on_main") return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
+    if (gate === "try_later") return NextResponse.json({ error: t("api.tryAgainLater") }, { status: 503 });
 
     const hash = await bcrypt.hash(newPassword, 10);
     // Bumping sessionVersion evicts every existing session. Without it a reset

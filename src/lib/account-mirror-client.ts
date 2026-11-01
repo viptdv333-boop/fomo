@@ -19,16 +19,49 @@ import {
   mirrorDirection,
   mirroredStatus,
   profileFromUser,
+  looksLikeIp,
   profileSchema,
   shouldRetryStatus,
   signRequest,
+  verifiedReplySchema,
   type MirrorMessage,
   type MirrorProfile,
   type MirrorResult,
 } from "./account-mirror";
 import { siteMode } from "./site-mode";
 
-type Outcome = { delivered: boolean; result?: MirrorResult; profile?: MirrorProfile; reason?: string; privileged?: boolean };
+type Outcome = {
+  delivered: boolean;
+  result?: MirrorResult;
+  profile?: MirrorProfile;
+  reason?: string;
+  privileged?: boolean;
+  accountStatus?: "APPROVED" | "PENDING" | "BANNED";
+  /** `verify` success only: the master's hash and canonical address */
+  passwordHash?: string;
+  email?: string;
+};
+
+// A fomo.spot that does not answer (down, restarting, wrong secret) must not add its timeout to every login / profile read: after a failed
+// pull / verify / exists the questions that wait for an answer are skipped for 60 s (negative cache, per process).
+const PEER_DOWN_MS = 60_000;
+let peerDownUntil = 0;
+function peerDown(): boolean {
+  return Date.now() < peerDownUntil;
+}
+function markPeerDown(o: Outcome): void {
+  if (!o.delivered && o.reason !== "invalid_data") peerDownUntil = Date.now() + PEER_DOWN_MS;
+}
+/** For the unit check only. */
+export function resetPeerDown(): void {
+  peerDownUntil = 0;
+}
+/** For the unit check only: forget the negative cache, the throttle and the running reconciles. */
+export function resetMirrorState(): void {
+  peerDownUntil = 0;
+  ensured.clear();
+  pulling.clear();
+}
 
 /** Waits without keeping the process alive: a graceful shutdown never waits for a retry timer. */
 const sleep = (ms: number) =>
@@ -78,7 +111,7 @@ async function deliver(msg: MirrorMessage): Promise<Outcome> {
         signal: AbortSignal.timeout(timeout),
       });
       if (res.ok) {
-        const json = (await res.json().catch(() => null)) as { result?: MirrorResult; profile?: unknown; privileged?: boolean } | null;
+        const json = (await res.json().catch(() => null)) as { result?: MirrorResult; profile?: unknown; privileged?: boolean; accountStatus?: Outcome["accountStatus"]; passwordHash?: unknown; email?: unknown } | null;
         if (json?.result === "not_found" && RETRY_NOT_FOUND.has(msg.op) && notFound < NOT_FOUND_PAUSES_MS.length) {
           await sleep(NOT_FOUND_PAUSES_MS[notFound++]);
           attempt--; // this was an answer, not a failed try
@@ -86,7 +119,7 @@ async function deliver(msg: MirrorMessage): Promise<Outcome> {
         }
         // the answer to `pull` carries a profile: trusted only after it passes the same schema as an incoming one
         const pulled = json?.profile !== undefined ? profileSchema.safeParse(json.profile) : null;
-        return { delivered: true, result: json?.result, ...(json?.privileged === true ? { privileged: true } : {}), ...(pulled?.success ? { profile: pulled.data } : {}), ...(json?.profile !== undefined && !pulled?.success ? { reason: "bad_profile" } : {}) };
+        return { delivered: true, result: json?.result, ...(json?.privileged === true ? { privileged: true } : {}), ...(json?.accountStatus ? { accountStatus: json.accountStatus } : {}), ...(typeof json?.passwordHash === "string" ? { passwordHash: json.passwordHash } : {}), ...(typeof json?.email === "string" ? { email: json.email } : {}), ...(pulled?.success ? { profile: pulled.data } : {}), ...(json?.profile !== undefined && !pulled?.success ? { reason: "bad_profile" } : {}) };
       }
       if (res.status === 400) {
         console.warn(`[account-mirror] ${msg.op}: peer refused the data (400), giving up`);
@@ -238,9 +271,11 @@ export function mirrorLogin(u: MirrorUser | MirrorSessionUser, loadFull?: () => 
   if (until && until > Date.now()) return Promise.resolve();
   const running = pulling.get(key);
   if (running) return running; // a reconcile of this address is already on its way (login and profile page at the same time)
+  if (peerDown()) return Promise.resolve(); // fomo.spot did not answer a moment ago: do not add its timeout to this request
   const p = send({ op: "pull", email: u.email }, u.id, async (o) => {
     // one log line per outcome, without addresses: pull: pulled | nochange | skipped | failed:<reason>
     if (!o.delivered) {
+      markPeerDown(o);
       console.log(`[account-mirror] pull: failed:${o.reason ?? "unknown"}`);
       return;
     }
@@ -278,7 +313,7 @@ export function mirrorLogin(u: MirrorUser | MirrorSessionUser, loadFull?: () => 
 const pulling = new Map<string, Promise<void>>();
 
 // ---- fomo.spot is the master account (the owner's rule: one login and password on both sites) ----
-export type LoginAligner = (p: { email: string; password: string; userId?: string | null; profile: MirrorProfile }) => Promise<"created" | "password" | null>;
+export type LoginAligner = (p: { email: string; canonicalEmail: string; passwordHash: string; userId?: string | null; profile: MirrorProfile }) => Promise<{ how: "created" | "password"; userId: string } | null>;
 const ALIGNER_KEY = "__accountMirrorLoginAligner";
 export function registerLoginAligner(fn: LoginAligner): void {
   (globalThis as unknown as Record<string, unknown>)[ALIGNER_KEY] = fn;
@@ -287,50 +322,71 @@ export function registerLoginAligner(fn: LoginAligner): void {
 /**
  * Terminal login whose password did not match the LOCAL account (or there is no local account): ask fomo.spot whether the typed password is
  * right for that address. The plaintext password is in this one signed request body (loopback) and nowhere else: never logged, never stored.
- * If the master confirms it (and the account there is APPROVED), the local account is created or its password replaced by the typed one
- * (hashed here, no hash travels), the master profile is applied, and true is returned so the login can complete. Anything else (denied,
- * rate limited, a ban there, fomo.spot unreachable, the mirror off) is false: the normal local "invalid credentials", never an error.
+ * If the master confirms it (and the account there is APPROVED) it answers with ITS hash and the canonical address; the local account is
+ * created or takes that hash and address (no second bcrypt, so the two hashes stay identical), the master profile is applied, and the id of
+ * the local account is returned so the login can complete. Anything else (denied, rate limited, a ban there, fomo.spot unreachable or
+ * known to be down, the mirror off) is null: the normal local "invalid credentials", never an error. `ip` is sent only if it is an IP literal.
  */
-export async function mirrorAlignLogin(p: { email: string; password: string; ip?: string; userId?: string | null }): Promise<boolean> {
+export async function mirrorAlignLogin(p: { email: string; password: string; ip?: string; userId?: string | null }): Promise<{ userId: string } | null> {
   try {
-    if (siteMode() !== "terminal" || !mirrorConfig()) return false;
+    if (siteMode() !== "terminal" || !mirrorConfig()) return null;
     const aligner = (globalThis as unknown as Record<string, unknown>)[ALIGNER_KEY] as LoginAligner | undefined;
-    if (!aligner) return false;
-    const o = await deliver({ op: "verify", email: p.email, password: p.password, ...(p.ip ? { ip: p.ip.slice(0, 64) } : {}) });
+    if (!aligner) return null;
+    if (peerDown()) {
+      console.log("[account-mirror] verify: failed:peer_down (skipped, fomo.spot did not answer a moment ago)");
+      return null;
+    }
+    const o = await deliver({ op: "verify", email: p.email, password: p.password, ...(looksLikeIp(p.ip) ? { ip: p.ip } : {}) });
     if (!o.delivered) {
+      markPeerDown(o);
       console.log(`[account-mirror] verify: failed:${o.reason ?? "unknown"}`);
-      return false;
+      return null;
     }
-    if (o.result !== "verified" || !o.profile) {
-      console.log("[account-mirror] verify: denied");
-      return false;
+    const reply = o.result === "verified" ? verifiedReplySchema.safeParse({ passwordHash: o.passwordHash, email: o.email, profile: o.profile }) : null;
+    if (!reply?.success) {
+      console.log(o.result === "verified" ? "[account-mirror] verify: failed:bad_answer" : "[account-mirror] verify: denied");
+      return null;
     }
-    const how = await aligner({ email: p.email, password: p.password, userId: p.userId ?? null, profile: o.profile });
-    if (!how) {
+    const done = await aligner({ email: p.email, canonicalEmail: reply.data.email, passwordHash: reply.data.passwordHash, userId: p.userId ?? null, profile: reply.data.profile });
+    if (!done) {
       console.log("[account-mirror] verify: failed:align");
-      return false;
+      return null;
     }
-    console.log(`[account-mirror] verify: aligned (${how})`);
+    console.log(`[account-mirror] verify: aligned (${done.how})`);
     remember(p.email.trim().toLowerCase(), { delivered: true }); // the profile was merged just now: no second pull
-    return true;
+    remember(reply.data.email.trim().toLowerCase(), { delivered: true });
+    return { userId: done.userId };
   } catch {
-    return false;
+    return null;
   }
 }
 
+/** Terminal, mirror on, aligner registered: the only case in which a failed password is worth a question to fomo.spot (and a local quota). */
+export function mirrorAlignAvailable(): boolean {
+  return siteMode() === "terminal" && mirrorConfig() !== null && typeof (globalThis as unknown as Record<string, unknown>)[ALIGNER_KEY] === "function";
+}
+
+export type ExistsAnswer = { exists: boolean; privileged: boolean; status: "APPROVED" | "PENDING" | "BANNED" | null };
+
 /**
- * Sign-up (or a password change / reset) on the terminal: does fomo.spot already know this address? null = cannot tell (not the terminal, the
- * mirror off, fomo.spot unreachable): the caller then carries on as before.
+ * Sign-up / password change / reset on the terminal: what does fomo.spot know about this address? Only an APPROVED account there is "exists";
+ * a PENDING or BANNED one comes back as exists:false with its status. null = not applicable (not the terminal, the mirror off): carry on as
+ * before. "unavailable" = it could not be asked (fomo.spot down, refusing, slow, or known to be down for the last minute): callers that must
+ * not fail OPEN (privileged local accounts) answer "try later".
  */
-export async function mirrorExists(email: string): Promise<{ exists: boolean; privileged: boolean } | null> {
+export async function mirrorExists(email: string): Promise<ExistsAnswer | null | "unavailable"> {
   try {
     if (siteMode() !== "terminal" || !mirrorConfig()) return null;
+    if (peerDown()) return "unavailable";
     const o = await deliver({ op: "exists", email });
-    if (!o.delivered) return null;
-    if (o.result === "exists") return { exists: true, privileged: o.privileged === true };
-    return o.result === "not_found" ? { exists: false, privileged: false } : null;
+    if (!o.delivered) {
+      markPeerDown(o);
+      return "unavailable";
+    }
+    if (o.result === "exists") return { exists: true, privileged: o.privileged === true, status: "APPROVED" };
+    return o.result === "not_found" ? { exists: false, privileged: false, status: o.accountStatus ?? null } : "unavailable";
   } catch {
-    return null;
+    return "unavailable";
   }
 }
 

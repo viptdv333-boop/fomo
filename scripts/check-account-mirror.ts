@@ -34,7 +34,13 @@ import {
   isCriticalOp,
   isMirrorAvatarPath,
   isSyncOp,
+  looksLikeIp,
   mainWinsProfile,
+  mayAlignLogin,
+  normalizeLoginEmail,
+  passwordChangeGate,
+  registerGate,
+  verifiedReplySchema,
   mirrorConfig,
   mirrorDirection,
   mirrorMessageSchema,
@@ -48,7 +54,9 @@ import {
   sniffImage,
   verifyRequest,
 } from "../src/lib/account-mirror";
-import { alignLocalLogin, applyMirrorMessage, applyPulledProfile, type Db, type MirrorDeps } from "../src/lib/account-mirror-server";
+import { alignLocalLogin, applyMirrorMessage, applyPulledProfile, invalidateAliasCache, type Db, type MirrorDeps } from "../src/lib/account-mirror-server";
+import type { MirrorMessage } from "../src/lib/account-mirror";
+import { clientIp, pickClientIp } from "../src/lib/rate-limit";
 import { FOMO_ID_REGEX } from "../src/lib/fomoId";
 import { routeAllowed } from "../src/lib/site-mode";
 
@@ -70,6 +78,7 @@ type Row = Record<string, any>;
 /** Just enough of Prisma's user delegate for the receiver: findUnique / findMany / create / update / updateMany over an array. */
 function fakeDb(rows: Row[]) {
   let n = 0;
+  const stats = { scans: 0 };
   const match = (r: Row, w: Row) => Object.entries(w).every(([k, v]) => r[k] === v);
   const apply = (r: Row, data: Row) => {
     for (const [k, v] of Object.entries(data)) r[k] = v && typeof v === "object" && "increment" in v ? (r[k] ?? 0) + v.increment : v;
@@ -80,7 +89,10 @@ function fakeDb(rows: Row[]) {
       rows.find((r) =>
         Object.entries(where).every(([k, v]: [string, any]) => (v && typeof v === "object" && "equals" in v ? String(r[k]).toLowerCase() === String(v.equals).toLowerCase() : r[k] === v)),
       ) ?? null,
-    findMany: async ({ where }: any) => rows.filter((r) => match(r, where ?? {})),
+    findMany: async ({ where }: any) => {
+      stats.scans++;
+      return rows.filter((r) => match(r, where ?? {}));
+    },
     create: async ({ data }: any) => {
       const r = { id: "new" + ++n, role: "USER", sessionVersion: 0, avatarUrl: null, ...data };
       rows.push(r);
@@ -97,7 +109,7 @@ function fakeDb(rows: Row[]) {
       return { count: hit.length };
     },
   };
-  return { db: { user } as unknown as Db, rows };
+  return { db: { user } as unknown as Db, rows, stats };
 }
 
 async function main() {
@@ -415,6 +427,34 @@ async function main() {
     eq("pull: a pull is not a critical op (the usual 3 tries and the 300/min bucket)", [isCriticalOp("pull"), backoffFor("pull") === BACKOFF_MS], [false, true]);
   }
 
+  /* ---- pure rules: login address, client address, gates ---- */
+  eq("login address: spaces, tabs, NBSP and case all collapse into ONE key", [" Anna@B.co", "anna@b.co\t", "\u00a0ANNA@b.co\u00a0", "  anna@b.co  "].map(normalizeLoginEmail), ["anna@b.co", "anna@b.co", "anna@b.co", "anna@b.co"]);
+  eq("login address: a non-string cannot make a key of its own", [normalizeLoginEmail(undefined), normalizeLoginEmail({ a: 1 }), normalizeLoginEmail(["x@b.co"])], ["", "[object object]", "x@b.co"]);
+  eq("client address: the LAST X-Forwarded-For element (the one nginx appended) wins over what the visitor sent", [
+    pickClientIp("6.6.6.6, 203.0.113.9", null), pickClientIp("203.0.113.9", "1.1.1.1"), pickClientIp(" 6.6.6.6 ,7.7.7.7, 203.0.113.9 ", null),
+  ], ["203.0.113.9", "203.0.113.9", "203.0.113.9"]);
+  eq("client address: without X-Forwarded-For X-Real-IP, without any proxy header 'unknown' (as before)", [pickClientIp(null, "198.51.100.4"), pickClientIp("", " 198.51.100.4 "), pickClientIp(null, null), pickClientIp(undefined, "")], ["198.51.100.4", "198.51.100.4", "unknown", "unknown"]);
+  eq("client address: from a Request, a forged first element does not change the key", [
+    clientIp(new Request("http://x/", { headers: { "x-forwarded-for": "9.9.9.9, 203.0.113.9" } })),
+    clientIp(new Request("http://x/", { headers: { "x-forwarded-for": "8.8.8.8, 203.0.113.9" } })),
+    clientIp(new Request("http://x/")),
+  ], ["203.0.113.9", "203.0.113.9", "unknown"]);
+  eq("ip literal check on the sender", ["203.0.113.7", "::1", "2001:db8::1", "unknown", "", "300.1.1.1", "1.2.3", undefined, "evil.example"].map(looksLikeIp), [true, true, true, false, false, false, false, false, false]);
+  eq("gate: password change / reset on the terminal, fomo.spot says the account there is ADMIN / OWNER -> managed on fomo.spot", [
+    passwordChangeGate("USER", { exists: true, privileged: true, status: "APPROVED" }), passwordChangeGate("OWNER", { exists: true, privileged: true, status: "APPROVED" }),
+  ], ["managed_on_main", "managed_on_main"]);
+  eq("gate: an unknown answer (down, 429, 5xx, slow) is fail-OPEN for a plain local account and fail-CLOSED for a local ADMIN / OWNER", [
+    passwordChangeGate("USER", "unavailable"), passwordChangeGate("ADMIN", "unavailable"), passwordChangeGate("OWNER", "unavailable"),
+  ], ["ok", "try_later", "try_later"]);
+  eq("gate: not applicable (fomo.spot itself, mirror off) never blocks anybody, nor does a plain answer", [
+    passwordChangeGate("OWNER", null), passwordChangeGate("ADMIN", null), passwordChangeGate("OWNER", { exists: false, privileged: false, status: null }), passwordChangeGate("USER", { exists: true, privileged: false, status: "APPROVED" }),
+  ], ["ok", "ok", "ok", "ok"]);
+  eq("gate: sign-up on the terminal - APPROVED there blocks, PENDING there does not, BANNED there is refused as banned, unknown carries on", [
+    registerGate({ exists: true, privileged: false, status: "APPROVED" }), registerGate({ exists: false, privileged: false, status: "PENDING" }), registerGate({ exists: false, privileged: false, status: "BANNED" }),
+    registerGate({ exists: false, privileged: false, status: null }), registerGate("unavailable"), registerGate(null),
+  ], ["exists", "ok", "banned", "ok", "ok", "ok"]);
+  eq("login: fomo.spot is asked about a failed password only for a missing or an APPROVED local account, never for BANNED / PENDING", [mayAlignLogin(null), mayAlignLogin(undefined), mayAlignLogin({ status: "APPROVED" }), mayAlignLogin({ status: "BANNED" }), mayAlignLogin({ status: "PENDING" })], [true, true, true, false, false]);
+
   /* ---- fomo.spot is the MASTER account: verify (password check for the terminal login), exists (sign-up), local alignment ---- */
   {
     const prof = { displayName: "Master", fomoId: "fomo_user3000001", city: "Kazan", locale: "en", bio: "master bio", avatarUrl: null };
@@ -425,7 +465,7 @@ async function main() {
       { id: "v4", email: "pending@b.co", passwordHash: HASH, role: "USER", status: "PENDING", ...prof, fomoId: "fomo_user3000004" },
       { id: "v5", email: "john@gmail.com", passwordHash: HASH, role: "ADMIN", status: "APPROVED", ...prof, fomoId: "fomo_user3000005" },
     ];
-    const { db } = fakeDb(rows);
+    const { db, stats } = fakeDb(rows);
     let compareCalls = 0;
     let rl: string[] = [];
     let resets: string[] = [];
@@ -433,7 +473,7 @@ async function main() {
     const deps: MirrorDeps = {
       rateLimit: async (key) => {
         rl.push(key);
-        return { allowed: key.startsWith("login:email:") ? allow.email : allow.ip };
+        return { allowed: key.startsWith("verify:email:") ? allow.email : allow.ip };
       },
       resetRateLimit: async (key) => {
         resets.push(key);
@@ -447,11 +487,16 @@ async function main() {
 
     const ok = await verify("master@b.co", "right-password", "203.0.113.7");
     eq("verify: the right password of an APPROVED account (any case of the address) -> verified with the whitelisted profile", [ok.result, ok.profile?.displayName, ok.profile?.city, ok.profile?.locale], ["verified", "Master", "Kazan", "en"]);
-    eq("verify: nothing but display fields comes back (no hash, role, status, e-mail, money, and not the password)", ["passwordHash", "role", "status", "paymentCard", "email", HASH, "right-password", "b.co"].filter((w) => JSON.stringify(ok).includes(w)), []);
-    eq("verify: counted in the login limits of fomo.spot per address (lower-cased) and per source; a success resets the address counter", [rl, resets], [["login:email:master@b.co", "login:ip:203.0.113.7"], ["login:email:master@b.co"]]);
+    eq("verify: the signed answer carries the master hash and the CANONICAL address (as stored), and passes the terminal's schema", [ok.passwordHash === HASH, ok.email, verifiedReplySchema.safeParse({ passwordHash: ok.passwordHash, email: ok.email, profile: ok.profile }).success], [true, "Master@B.co", true]);
+    eq("verify: nothing else leaks (no role, status, money, rating, the typed password)", ["role", "status", "paymentCard", "right-password", "rating"].filter((w) => JSON.stringify(ok).includes(w)), []);
+    eq("verify: counted in buckets of its own (verify:email:, verify:ip:), NEVER in the real login counters; a success resets only the verify counter", [rl, resets, [...rl, ...resets].some((k) => k.startsWith("login:"))], [["verify:email:master@b.co", "verify:ip:203.0.113.7"], ["verify:email:master@b.co"], false]);
     rl = [];
     await verify("master@b.co", "right-password");
-    eq("verify: without a source address the 'unknown' bucket is used", rl[1], "login:ip:unknown");
+    eq("verify: without a source address the 'unknown' bucket is used", rl[1], "verify:ip:unknown");
+    rl = [];
+    // (the wire schema would refuse the blanks; the receiver normalises all the same, as the real login does)
+    await applyMirrorMessage({ op: "verify", email: "  MASTER@b.co	", password: "right-password", ip: "203.0.113.7" } as MirrorMessage, db, deps);
+    eq("verify: the address is normalised like the real login (trim, lower case): spaces and case share one counter", rl[0], "verify:email:master@b.co");
     eq("verify: an OWNER account is verified too (the proof is the master password itself)", (await verify("boss@b.co", "right-password", "1.1.1.1")).result, "verified");
 
     const denied = [
@@ -465,37 +510,72 @@ async function main() {
     await verify("nobody@b.co", "x", "1.1.1.1");
     eq("verify: an unknown address still costs a password comparison (no timing hint)", compareCalls, 1);
     allow.email = false;
-    eq("verify: the per-address login limit applies (a right password is denied once it is exhausted)", (await verify("master@b.co", "right-password", "1.1.1.1")).result, "denied");
+    eq("verify: the per-address budget applies (a right password is denied once it is exhausted)", (await verify("master@b.co", "right-password", "1.1.1.1")).result, "denied");
     allow.email = true;
     allow.ip = false;
-    eq("verify: the per-source login limit applies too", (await verify("master@b.co", "right-password", "9.9.9.9")).result, "denied");
+    eq("verify: the per-source budget applies too", (await verify("master@b.co", "right-password", "9.9.9.9")).result, "denied");
     allow.ip = true;
+    rl = [];
+    const badIp = [await verify("master@b.co", "right-password", "not-an-ip"), await verify("master@b.co", "right-password", "300.1.1.1"), await verify("master@b.co", "right-password", "evil.example")];
+    eq("verify: a source that is not an IP literal is refused before any counting", [badIp.map((b) => b.result), rl.length], [["denied", "denied", "denied"], 0]);
+    eq("verify: IPv6 literals are fine", (await verify("master@b.co", "right-password", "2001:db8::1")).result, "verified");
+    eq("verify budgets: 5 per address and 20 per source in 15 minutes", await (async () => {
+      const seen: Array<[string, number, number]> = [];
+      const d2: MirrorDeps = { ...deps, rateLimit: async (k, l, w) => (seen.push([k.split(":").slice(0, 2).join(":"), l, w]), { allowed: true }) };
+      await applyMirrorMessage(mirrorMessageSchema.parse({ op: "verify", email: "master@b.co", password: "x", ip: "1.1.1.1" }), db, d2);
+      return seen;
+    })(), [["verify:email", 5, 900000], ["verify:ip", 20, 900000]]);
 
     // exists
     const ex = (email: string) => applyMirrorMessage(mirrorMessageSchema.parse({ op: "exists", email }), db, deps);
-    eq("exists: a plain account (any case) -> exists, not privileged", [await ex("MASTER@b.co")].map((r) => [r.result, r.privileged ?? false])[0], ["exists", false]);
+    eq("exists: a plain APPROVED account (any case) -> exists, not privileged", [await ex("MASTER@b.co")].map((r) => [r.result, r.privileged ?? false, r.accountStatus])[0], ["exists", false, "APPROVED"]);
     eq("exists: an OWNER account is flagged privileged", (await ex("boss@b.co")).privileged, true);
     eq("exists: another spelling of an approved mailbox counts (gmail dots / plus), flagged by that account's role", [await ex("j.o.h.n+x@gmail.com")].map((r) => [r.result, r.privileged ?? false])[0], ["exists", true]);
     eq("exists: unknown -> not_found", (await ex("new@b.co")).result, "not_found");
-    eq("exists: carries no profile, hash or role", Object.keys(await ex("master@b.co")).sort(), ["ok", "result"]);
+    eq("exists: an unfinished (PENDING) signup there is NOT 'existing' - not_found with its status", [await ex("pending@b.co")].map((r) => [r.result, r.accountStatus])[0], ["not_found", "PENDING"]);
+    eq("exists: a BANNED account there is not 'existing' either - not_found with the status BANNED", [await ex("banned@b.co")].map((r) => [r.result, r.accountStatus])[0], ["not_found", "BANNED"]);
+    eq("exists: carries no profile, hash or role", Object.keys(await ex("master@b.co")).sort(), ["accountStatus", "ok", "result"]);
+    // the alias scan is cached
+    const scansBefore = stats.scans;
+    await ex("zzz1@b.co");
+    await ex("zzz2@b.co");
+    await ex("zzz3@b.co");
+    eq("alias scan: one scan serves many questions (60 s cache)", stats.scans - scansBefore, 0);
+    rows.push({ id: "v9", email: "late@b.co", passwordHash: HASH, role: "USER", status: "APPROVED", fomoId: "fomo_user3000009" });
+    eq("alias scan: a mailbox added a moment ago is not seen yet (stale up to 60 s)", (await ex("late+tag@b.co")).result, "not_found");
+    invalidateAliasCache(db);
+    const scans2 = stats.scans;
+    eq("alias scan: ... until the cache is invalidated (what register / change-email do), then ONE new scan", [(await ex("late+tag@b.co")).result, (await ex("late+other@b.co")).result, stats.scans - scans2], ["exists", "exists", 1]);
 
-    // local alignment (terminal side)
+    // local alignment (terminal side): the master hash and the canonical address are stored
+    const MH = bc("M");
     const t = fakeDb([
-      { id: "L1", email: "master@b.co", passwordHash: bc("Z"), role: "USER", status: "APPROVED", fomoId: "fomo_user4000001", displayName: "", city: "Old", sessionVersion: 4 },
+      { id: "L1", email: "Master.Old@b.co", passwordHash: bc("Z"), role: "USER", status: "APPROVED", fomoId: "fomo_user4000001", displayName: "", city: "Old", sessionVersion: 4 },
       { id: "L2", email: "boss@b.co", passwordHash: bc("Z"), role: "OWNER", status: "APPROVED", fomoId: "fomo_user4000002", sessionVersion: 0 },
+      { id: "L3", email: "taken@b.co", passwordHash: bc("Z"), role: "USER", status: "APPROVED", fomoId: "fomo_user4000003", sessionVersion: 0 },
+      { id: "L4", email: "Case@B.co", passwordHash: bc("Z"), role: "USER", status: "APPROVED", fomoId: "fomo_user4000004", sessionVersion: 0 },
     ]);
     const trow = (id: string) => t.rows.find((r) => r.id === id)!;
-    const how1 = await alignLocalLogin({ email: "master@b.co", password: "right-password", userId: "L1", profile: { displayName: "Master", city: "Kazan", bio: null } }, t.db);
-    eq("alignment: an existing local account gets the typed password (hashed here), a session bump and the master profile", [
-      how1, await bcrypt.compare("right-password", trow("L1").passwordHash), trow("L1").passwordHash === bc("Z"), trow("L1").sessionVersion, trow("L1").displayName, trow("L1").city,
-    ], ["password", true, false, 5, "Master", "Kazan"]);
-    const how2 = await alignLocalLogin({ email: "boss@b.co", password: "right-password", userId: "L2", profile: { displayName: "Boss" } }, t.db);
-    eq("alignment: allowed for a privileged local account too, its role stays", [how2, trow("L2").role, await bcrypt.compare("right-password", trow("L2").passwordHash)], ["password", "OWNER", true]);
-    const how3 = await alignLocalLogin({ email: "fresh@b.co", password: "right-password", profile: { displayName: "Fresh", fomoId: "fomo_user4000009", city: "Rome" } }, t.db);
-    const fresh = t.rows.find((r) => r.email === "fresh@b.co")!;
-    eq("alignment: a missing local account is created (APPROVED / USER, typed password hashed, master profile and fomoId)", [how3, fresh.status, fresh.role, await bcrypt.compare("right-password", fresh.passwordHash), fresh.displayName, fresh.fomoId, fresh.city], ["created", "APPROVED", "USER", true, "Fresh", "fomo_user4000009", "Rome"]);
-    eq("alignment: no display name from the master -> the part of the address before @", [await alignLocalLogin({ email: "noname@b.co", password: "right-password", profile: {} }, t.db), t.rows.find((r) => r.email === "noname@b.co")?.displayName], ["created", "noname"]);
-    eq("alignment: an unknown local id changes nothing", [await alignLocalLogin({ email: "x@b.co", password: "right-password", userId: "nope", profile: { displayName: "X" } }, t.db), t.rows.length], [null, 4]);
+    const n0 = t.rows.length;
+    const how1 = await alignLocalLogin({ email: "Master.Old@b.co", canonicalEmail: "master.new@b.co", passwordHash: MH, userId: "L1", profile: { displayName: "Master", city: "Kazan", bio: null } }, t.db);
+    eq("alignment: the local account takes the MASTER hash (not a new bcrypt of the typed password) and the canonical address, a session bump, the master profile; no second account", [
+      how1, trow("L1").passwordHash === MH, trow("L1").email, trow("L1").sessionVersion, trow("L1").displayName, trow("L1").city, t.rows.length,
+    ], [{ how: "password", userId: "L1" }, true, "master.new@b.co", 5, "Master", "Kazan", n0]);
+    const how2 = await alignLocalLogin({ email: "boss@b.co", canonicalEmail: "boss@b.co", passwordHash: MH, userId: "L2", profile: { displayName: "Boss" } }, t.db);
+    eq("alignment: allowed for a privileged local account too, its role stays", [how2?.how, trow("L2").role, trow("L2").passwordHash === MH], ["password", "OWNER", true]);
+    const how3 = await alignLocalLogin({ email: "fresh@b.co", canonicalEmail: "Fresh@B.co", passwordHash: MH, profile: { displayName: "Fresh", fomoId: "fomo_user4000009", city: "Rome" } }, t.db);
+    const fresh = t.rows.find((r) => r.email === "Fresh@B.co")!;
+    eq("alignment: a missing local account is created under the canonical address (APPROVED / USER, the master hash, master profile and fomoId)", [how3?.how, how3?.userId === fresh.id, fresh.status, fresh.role, fresh.passwordHash === MH, fresh.displayName, fresh.fomoId, fresh.city], ["created", true, "APPROVED", "USER", true, "Fresh", "fomo_user4000009", "Rome"]);
+    const n1 = t.rows.length;
+    const how4 = await alignLocalLogin({ email: "case@b.co", canonicalEmail: "CASE@b.co", passwordHash: MH, profile: { displayName: "Case" } }, t.db);
+    eq("alignment: an account that exists under another spelling of the canonical address is found (case-insensitively) and aligned, NOT duplicated", [how4, t.rows.length, trow("L4").passwordHash === MH, trow("L4").email], [{ how: "password", userId: "L4" }, n1, true, "CASE@b.co"]);
+    const how5 = await alignLocalLogin({ email: "old@b.co", canonicalEmail: "taken@b.co", passwordHash: MH, userId: "L2", profile: { displayName: "Boss" } }, t.db);
+    eq("alignment: a canonical address held by ANOTHER local account is never taken over (password still aligned, address kept)", [how5?.how, trow("L2").email, trow("L3").email, trow("L3").passwordHash === bc("Z")], ["password", "boss@b.co", "taken@b.co", true]);
+    eq("alignment: no display name from the master -> the part of the address before @", [(await alignLocalLogin({ email: "noname@b.co", canonicalEmail: "noname@b.co", passwordHash: MH, profile: {} }, t.db))?.how, t.rows.find((r) => r.email === "noname@b.co")?.displayName], ["created", "noname"]);
+    eq("alignment: a local id that vanished meanwhile is not an update and creates nothing -> null", (await alignLocalLogin({ email: "x@b.co", canonicalEmail: "x@b.co", passwordHash: MH, userId: "nope", profile: { displayName: "X" } }, t.db)), null);
+    const nBefore = t.rows.length;
+    const ens = await applyMirrorMessage(mirrorMessageSchema.parse({ op: "ensure", email: "CASE@B.CO", passwordHash: HASH, profile: { displayName: "Dup" } }), t.db, deps);
+    eq("ensure / register never create a second account for the same mailbox in another case", [ens.result, t.rows.length], ["exists", nBefore]);
     const again = await applyPulledProfile("L1", { displayName: "Master", city: "Kazan" }, t.db);
     eq("pull apply: an already equal profile reports nothing changed", [again.applied, again.changed], [true, []]);
   }
@@ -504,6 +584,11 @@ async function main() {
   process.env.ACCOUNT_MIRROR_SECRET = SECRET;
   process.env.ACCOUNT_MIRROR_PEER_URL = "http://127.0.0.1:3100";
   const client = await import("../src/lib/account-mirror-client");
+  // every scenario starts with a fomo.spot that is not "known to be down" (the negative cache is tested on its own below)
+  const c_mirrorLogin = (...a: Parameters<typeof client.mirrorLogin>) => (client.resetPeerDown(), client.mirrorLogin(...a));
+  const c_mirrorSession = (...a: Parameters<typeof client.mirrorSession>) => (client.resetPeerDown(), client.mirrorSession(...a));
+  const c_mirrorAlignLogin = (...a: Parameters<typeof client.mirrorAlignLogin>) => (client.resetPeerDown(), client.mirrorAlignLogin(...a));
+  const c_mirrorExists = (...a: Parameters<typeof client.mirrorExists>) => (client.resetPeerDown(), client.mirrorExists(...a));
   const realFetch = globalThis.fetch;
   const realWarn = console.warn;
   const warnings: string[] = [];
@@ -511,7 +596,7 @@ async function main() {
     warnings.push(a.join(" "));
   };
   type Call = { url: string; headers: Record<string, string>; body: string };
-  type Step = number | "throw" | { result: string; profile?: unknown; privileged?: boolean };
+  type Step = number | "throw" | { result: string; profile?: unknown; privileged?: boolean; accountStatus?: string };
   let calls: Call[] = [];
   let script: Step[] = [];
   let fetchDelay = 0;
@@ -634,7 +719,7 @@ async function main() {
   /* ---- mirrorLogin: on fomo.spot ensure, on the terminal pull + apply (main wins) ---- */
   calls = [];
   script = [];
-  client.mirrorLogin({ ...user, id: "m-a", email: "main-login@b.co" });
+  c_mirrorLogin({ ...user, id: "m-a", email: "main-login@b.co" });
   await settle();
   eq("login on fomo.spot: the old behaviour (ensure), no pull", calls.map((c) => JSON.parse(c.body).op), ["ensure"]);
 
@@ -642,7 +727,7 @@ async function main() {
   const applied: Array<[string, unknown]> = [];
   calls = [];
   script = [];
-  client.mirrorLogin({ ...user, id: "t-0", email: "noapplier@b.co" });
+  c_mirrorLogin({ ...user, id: "t-0", email: "noapplier@b.co" });
   await settle();
   eq("login on the terminal without a registered applier falls back to ensure", calls.map((c) => JSON.parse(c.body).op), ["ensure"]);
 
@@ -652,7 +737,7 @@ async function main() {
   const mainProfile = { displayName: "Main Name", fomoId: "fomo_user1234567", bio: "main bio", avatarUrl: "/uploads/avatars/m1/abc.jpg", city: null };
   calls = [];
   script = [{ result: "pulled", profile: mainProfile }];
-  client.mirrorLogin({ ...user, id: "t-1", email: "t1@b.co" });
+  c_mirrorLogin({ ...user, id: "t-1", email: "t1@b.co" });
   await settle();
   eq("login on the terminal asks fomo.spot for the profile: one signed `pull` carrying only the address, direction terminal>main", await (async () => {
     const c = calls[0];
@@ -660,34 +745,34 @@ async function main() {
     return [calls.length, JSON.parse(c.body), await verifyRequest({ ...v, direction: "terminal>main" }), await verifyRequest({ ...v, direction: "main>terminal" })];
   })(), [1, { op: "pull", email: "t1@b.co" }, true, false]);
   eq("login on the terminal: the pulled profile is applied to the local account", applied, [["t-1", mainProfile]]);
-  client.mirrorLogin({ ...user, id: "t-1", email: "T1@b.co" });
+  c_mirrorLogin({ ...user, id: "t-1", email: "T1@b.co" });
   await settle();
   eq("login on the terminal: throttled, once per address (any case) per 6 hours", [calls.length, applied.length], [1, 1]);
 
   calls = [];
   applied.length = 0;
   script = [{ result: "pulled", profile: { displayName: "x", role: "OWNER", locale: "de", avatarUrl: "https://evil.example/a.jpg" } }];
-  client.mirrorLogin({ ...user, id: "t-2", email: "t2@b.co" });
+  c_mirrorLogin({ ...user, id: "t-2", email: "t2@b.co" });
   await settle();
   eq("login on the terminal: a pulled profile that fails the schema is never applied", [calls.length, applied.length], [1, 0]);
 
   calls = [];
   script = [{ result: "not_found" }, 200];
-  client.mirrorLogin({ ...user, id: "t-3", email: "t3@b.co" });
+  c_mirrorLogin({ ...user, id: "t-3", email: "t3@b.co" });
   await settle();
   eq("login on the terminal: fomo.spot has no such address -> nothing applied, the account is created there (ensure)", [calls.map((c) => JSON.parse(c.body).op), applied.length], [["pull", "ensure"], 0]);
 
   calls = [];
   script = [{ result: "skipped" }];
-  client.mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
+  c_mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
   await settle();
-  client.mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
+  c_mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
   await settle();
   eq("login on the terminal: a refused pull applies nothing and is not asked again", [calls.length, applied.length], [1, 0]);
 
   calls = [];
   script = ["throw", "throw", "throw"];
-  client.mirrorLogin({ ...user, id: "t-5", email: "t5@b.co" });
+  c_mirrorLogin({ ...user, id: "t-5", email: "t5@b.co" });
   await settle(BACKOFF_MS[1] + BACKOFF_MS[2] + 300);
   eq("login on the terminal: fomo.spot unreachable -> silent, nothing applied, no throw", [calls.length, applied.length], [BACKOFF_MS.length, 0]);
 
@@ -696,12 +781,12 @@ async function main() {
     throw new Error("db down");
   });
   script = [{ result: "pulled", profile: mainProfile }];
-  client.mirrorLogin({ ...user, id: "t-6", email: "t6@b.co" });
+  c_mirrorLogin({ ...user, id: "t-6", email: "t6@b.co" });
   await settle();
   eq("login on the terminal: an applier that fails is swallowed (login is never blocked)", calls.length, 1);
 
   calls = [];
-  client.mirrorLogin({ ...user, id: "t-7", email: "t7@b.co", status: "BANNED" });
+  c_mirrorLogin({ ...user, id: "t-7", email: "t7@b.co", status: "BANNED" });
   await settle();
   eq("login on the terminal: not an APPROVED account -> nothing is asked", calls.length, 0);
   delete process.env.SITE_MODE;
@@ -715,7 +800,7 @@ async function main() {
     return applyResult;
   });
   const pulledOk = { result: "pulled", profile: mainProfile };
-  const login = (id: string, email: string) => client.mirrorLogin({ ...user, id, email });
+  const login = (id: string, email: string) => c_mirrorLogin({ ...user, id, email });
   const lastLog = () => logs.slice(-1)[0];
 
   logs = [];
@@ -764,21 +849,21 @@ async function main() {
   script = [pulledOk];
   fetchDelay = 250;
   const t0s = Date.now();
-  await client.mirrorSession({ id: "s-1", email: "s1@b.co", status: "APPROVED" }, 2500);
+  await c_mirrorSession({ id: "s-1", email: "s1@b.co", status: "APPROVED" }, 2500);
   const took = Date.now() - t0s;
   eq("session: the first profile read waits for the reconcile, so it already sees the merged profile", [calls.length, JSON.parse(calls[0].body).op, applied2.length, took >= 200 && took < 2000], [1, "pull", 1, true]);
-  await client.mirrorSession({ id: "s-1", email: "S1@b.co", status: "APPROVED" }, 2500);
+  await c_mirrorSession({ id: "s-1", email: "S1@b.co", status: "APPROVED" }, 2500);
   eq("session: inside the 6-hour window it costs nothing (no request, no wait)", [calls.length, applied2.length], [1, 1]);
   calls = [];
   fetchDelay = 0;
   script = [pulledOk];
-  await Promise.all([client.mirrorSession({ id: "s-2", email: "s2@b.co", status: "APPROVED" }, 2500), client.mirrorSession({ id: "s-2", email: "s2@b.co", status: "APPROVED" }, 2500)]);
+  await Promise.all([c_mirrorSession({ id: "s-2", email: "s2@b.co", status: "APPROVED" }, 2500), c_mirrorSession({ id: "s-2", email: "s2@b.co", status: "APPROVED" }, 2500)]);
   eq("session: two reads at the same time ask once", calls.length, 1);
   calls = [];
   fetchDelay = 1200;
   script = [pulledOk];
   const t1s = Date.now();
-  await client.mirrorSession({ id: "s-3", email: "s3@b.co", status: "APPROVED" }, 200);
+  await c_mirrorSession({ id: "s-3", email: "s3@b.co", status: "APPROVED" }, 200);
   const quick = Date.now() - t1s;
   const before3 = applied2.length;
   await settle(1400);
@@ -787,7 +872,7 @@ async function main() {
   calls = [];
   script = [{ result: "not_found" }, 200];
   let loaded = 0;
-  await client.mirrorSession({ id: "s-4", email: "s4@b.co", status: "APPROVED" }, 2500, async () => {
+  await c_mirrorSession({ id: "s-4", email: "s4@b.co", status: "APPROVED" }, 2500, async () => {
     loaded++;
     return { ...user, id: "s-4", email: "s4@b.co" };
   });
@@ -795,71 +880,98 @@ async function main() {
   eq("session: fomo.spot has no such address -> the full record is loaded only now and the account is created there", [calls.map((c) => JSON.parse(c.body).op), loaded], [["pull", "ensure"], 1]);
   delete process.env.SITE_MODE;
   calls = [];
-  await client.mirrorSession({ id: "s-5", email: "s5@b.co", status: "APPROVED" }, 500);
+  await c_mirrorSession({ id: "s-5", email: "s5@b.co", status: "APPROVED" }, 500);
   eq("session: on fomo.spot itself it does nothing", calls.length, 0);
   process.env.SITE_MODE = "terminal";
   calls = [];
-  await client.mirrorSession({ id: "s-6", email: "s6@b.co", status: "BANNED" }, 500);
+  await c_mirrorSession({ id: "s-6", email: "s6@b.co", status: "BANNED" }, 500);
   eq("session: not an APPROVED account -> nothing", calls.length, 0);
 
   // password alignment at the terminal login (the typed password goes to fomo.spot once, over loopback)
   const aligned: unknown[] = [];
-  let alignResult: "created" | "password" | null = "password";
+  let alignResult: { how: "created" | "password"; userId: string } | null = { how: "password", userId: "A1" };
   client.registerLoginAligner(async (p) => {
     aligned.push(p);
     return alignResult;
   });
+  const verifiedAnswer = (extra: Record<string, unknown> = {}) => ({ result: "verified", profile: { displayName: "Master", city: "Kazan" }, passwordHash: HASH_B, email: "Al1@B.co", ...extra });
   logs = [];
   calls = [];
-  script = [{ result: "verified", profile: { displayName: "Master", city: "Kazan" } }];
-  const okAlign = await client.mirrorAlignLogin({ email: "al1@b.co", password: "TypedSecret-123", ip: "203.0.113.7", userId: "A1" });
+  script = [verifiedAnswer()];
+  const okAlign = await c_mirrorAlignLogin({ email: "al1@b.co", password: "TypedSecret-123", ip: "203.0.113.7", userId: "A1" });
   const sentAlign = calls[0];
   const sentV = { secret: SECRET, body: sentAlign.body, timestamp: sentAlign.headers[HEADER_TIMESTAMP], nonce: sentAlign.headers[HEADER_NONCE], signature: sentAlign.headers[HEADER_SIGNATURE] };
-  eq("align: verified -> the aligner gets the typed password, the local id and the master profile; true", [okAlign, aligned], [true, [{ email: "al1@b.co", password: "TypedSecret-123", userId: "A1", profile: { displayName: "Master", city: "Kazan" } }]]);
+  eq("align: verified -> the aligner gets the master hash, the canonical address, the local id and the master profile; the login gets the local id", [okAlign, aligned], [{ userId: "A1" }, [{ email: "al1@b.co", canonicalEmail: "Al1@B.co", passwordHash: HASH_B, userId: "A1", profile: { displayName: "Master", city: "Kazan" } }]]);
   eq("align: ONE signed request (terminal>main) with the address, the password and the visitor's address", [calls.length, JSON.parse(sentAlign.body), await verifyRequest({ ...sentV, direction: "terminal>main" }), await verifyRequest({ ...sentV, direction: "main>terminal" })], [1, { op: "verify", email: "al1@b.co", password: "TypedSecret-123", ip: "203.0.113.7" }, true, false]);
-  eq("align: the password and the address are never logged", [logs, logs.some((l) => l.includes("TypedSecret") || l.includes("@"))], [["[account-mirror] verify: aligned (password)"], false]);
+  eq("align: the password, the hash and the address are never logged", [logs, logs.some((l) => l.includes("TypedSecret") || l.includes("@") || l.includes("$2b$"))], [["[account-mirror] verify: aligned (password)"], false]);
   calls = [];
   script = [];
-  await client.mirrorLogin({ ...user, id: "A1", email: "AL1@b.co" });
+  await c_mirrorLogin({ ...user, id: "A1", email: "AL1@b.co" });
   eq("align: the profile was merged by the alignment, so the login does not pull again", calls.length, 0);
+  calls = [];
+  script = [verifiedAnswer()];
+  await c_mirrorAlignLogin({ email: "al1b@b.co", password: "pw-pw-pw-pw", ip: "unknown" });
+  eq("align: a source that is not an IP literal ('unknown') is not sent", "ip" in JSON.parse(calls[0].body), false);
 
   logs = [];
   aligned.length = 0;
   script = [{ result: "denied" }];
-  eq("align: denied by fomo.spot -> false, nothing local is touched", [await client.mirrorAlignLogin({ email: "al2@b.co", password: "wrong-pw-12345" }), aligned.length, lastLog()], [false, 0, "[account-mirror] verify: denied"]);
+  eq("align: denied by fomo.spot -> null, nothing local is touched", [await c_mirrorAlignLogin({ email: "al2@b.co", password: "wrong-pw-12345" }), aligned.length, lastLog()], [null, 0, "[account-mirror] verify: denied"]);
   calls = [];
   script = [500, 200];
-  eq("align: one try only (the login must not wait for retries); a 500 -> false", [await client.mirrorAlignLogin({ email: "al3@b.co", password: "pw-pw-pw-pw" }), calls.length, lastLog()], [false, 1, "[account-mirror] verify: failed:http_500"]);
+  eq("align: one try only (the login must not wait for retries); a 500 -> null", [await c_mirrorAlignLogin({ email: "al3@b.co", password: "pw-pw-pw-pw" }), calls.length, lastLog()], [null, 1, "[account-mirror] verify: failed:http_500"]);
   script = ["throw"];
-  eq("align: fomo.spot unreachable -> false, no throw", [await client.mirrorAlignLogin({ email: "al4@b.co", password: "pw-pw-pw-pw" }), lastLog()], [false, "[account-mirror] verify: failed:unreachable"]);
+  eq("align: fomo.spot unreachable -> null, no throw", [await c_mirrorAlignLogin({ email: "al4@b.co", password: "pw-pw-pw-pw" }), lastLog()], [null, "[account-mirror] verify: failed:unreachable"]);
   script = [404];
-  eq("align: 404 (mirror off / other secret there) -> false", [await client.mirrorAlignLogin({ email: "al5@b.co", password: "pw-pw-pw-pw" }), lastLog()], [false, "[account-mirror] verify: failed:peer_off_or_secret"]);
-  script = [{ result: "verified" }];
-  eq("align: a 'verified' without a valid profile is not trusted", [await client.mirrorAlignLogin({ email: "al6@b.co", password: "pw-pw-pw-pw" }), aligned.length], [false, 0]);
-  alignResult = null;
+  eq("align: 404 (mirror off / other secret there) -> null", [await c_mirrorAlignLogin({ email: "al5@b.co", password: "pw-pw-pw-pw" }), lastLog()], [null, "[account-mirror] verify: failed:peer_off_or_secret"]);
   script = [{ result: "verified", profile: { displayName: "M" } }];
-  eq("align: the aligner could not do it (e.g. the local write failed) -> false", [await client.mirrorAlignLogin({ email: "al7@b.co", password: "pw-pw-pw-pw" }), lastLog()], [false, "[account-mirror] verify: failed:align"]);
-  alignResult = "password";
-  eq("align: no password sent to the logs in any case", logs.some((l) => l.includes("pw-pw") || l.includes("wrong-pw") || l.includes("@")), false);
+  eq("align: a 'verified' without the hash and the address is not trusted", [await c_mirrorAlignLogin({ email: "al6@b.co", password: "pw-pw-pw-pw" }), aligned.length, lastLog()], [null, 0, "[account-mirror] verify: failed:bad_answer"]);
+  script = [verifiedAnswer({ passwordHash: "plaintext-not-a-hash" })];
+  eq("align: ... nor a hash that is not a bcrypt hash", [await c_mirrorAlignLogin({ email: "al6b@b.co", password: "pw-pw-pw-pw" }), aligned.length], [null, 0]);
+  alignResult = null;
+  script = [verifiedAnswer()];
+  eq("align: the aligner could not do it (e.g. the local write failed) -> null", [await c_mirrorAlignLogin({ email: "al7@b.co", password: "pw-pw-pw-pw" }), lastLog()], [null, "[account-mirror] verify: failed:align"]);
+  alignResult = { how: "password", userId: "A1" };
+  eq("align: no password, hash or address in the logs in any case", logs.some((l) => l.includes("pw-pw") || l.includes("wrong-pw") || l.includes("@") || l.includes("$2b$")), false);
+  eq("align: the terminal can tell when asking makes sense", client.mirrorAlignAvailable(), true);
   delete process.env.SITE_MODE;
   calls = [];
-  eq("align: on fomo.spot itself it never asks anybody", [await client.mirrorAlignLogin({ email: "al8@b.co", password: "pw-pw-pw-pw" }), calls.length], [false, 0]);
+  eq("align: on fomo.spot itself it never asks anybody", [await c_mirrorAlignLogin({ email: "al8@b.co", password: "pw-pw-pw-pw" }), calls.length, client.mirrorAlignAvailable()], [null, 0, false]);
   process.env.SITE_MODE = "terminal";
 
-  // exists (sign-up and password change on the terminal)
-  script = [{ result: "exists", privileged: false }];
-  eq("exists: fomo.spot has the address", await client.mirrorExists("ex1@b.co"), { exists: true, privileged: false });
-  script = [{ result: "exists", privileged: true }];
-  eq("exists: ... and it is an ADMIN / OWNER account", await client.mirrorExists("ex2@b.co"), { exists: true, privileged: true });
+  // negative cache: a fomo.spot that did not answer is not asked again for a minute (no extra 2.5 s on every profile read or login)
+  client.resetPeerDown();
+  calls = [];
+  script = ["throw", "throw", "throw"];
+  await client.mirrorSession({ id: "nc-1", email: "nc1@b.co", status: "APPROVED" }, 2500);
+  const afterFail = calls.length;
+  calls = [];
+  const tN = Date.now();
+  await client.mirrorSession({ id: "nc-2", email: "nc2@b.co", status: "APPROVED" }, 2500);
+  const second = [await client.mirrorAlignLogin({ email: "nc3@b.co", password: "pw-pw-pw-pw" }), await client.mirrorExists("nc4@b.co")];
+  eq("negative cache: after a failed pull, the next profile read / verify / exists neither wait nor ask (exists says 'unavailable')", [afterFail, calls.length, Date.now() - tN < 400, second], [BACKOFF_MS.length, 0, true, [null, "unavailable"]]);
+  client.resetPeerDown();
   script = [{ result: "not_found" }];
-  eq("exists: nobody there", await client.mirrorExists("ex3@b.co"), { exists: false, privileged: false });
+  eq("negative cache: ... and it is forgotten when the minute is over (here: reset), fomo.spot is asked again", [(await client.mirrorExists("nc5@b.co")) !== "unavailable"], [true]);
+
+  // exists (sign-up and password change on the terminal)
+  script = [{ result: "exists", privileged: false, accountStatus: "APPROVED" }];
+  eq("exists: fomo.spot has the address", await c_mirrorExists("ex1@b.co"), { exists: true, privileged: false, status: "APPROVED" });
+  script = [{ result: "exists", privileged: true, accountStatus: "APPROVED" }];
+  eq("exists: ... and it is an ADMIN / OWNER account", await c_mirrorExists("ex2@b.co"), { exists: true, privileged: true, status: "APPROVED" });
+  script = [{ result: "not_found" }];
+  eq("exists: nobody there", await c_mirrorExists("ex3@b.co"), { exists: false, privileged: false, status: null });
+  script = [{ result: "not_found", accountStatus: "PENDING" }];
+  eq("exists: an unfinished signup there -> not existing, status PENDING", await c_mirrorExists("ex3b@b.co"), { exists: false, privileged: false, status: "PENDING" });
   script = ["throw"];
-  eq("exists: fomo.spot unreachable -> null (cannot tell, the caller carries on as before)", await client.mirrorExists("ex4@b.co"), null);
+  eq("exists: fomo.spot unreachable -> 'unavailable' (callers decide: fail open for a plain account, closed for ADMIN / OWNER)", await c_mirrorExists("ex4@b.co"), "unavailable");
   script = [404];
-  eq("exists: 404 -> null", await client.mirrorExists("ex5@b.co"), null);
+  eq("exists: 404 -> 'unavailable'", await c_mirrorExists("ex5@b.co"), "unavailable");
+  script = [429];
+  eq("exists: 429 and 5xx -> 'unavailable' too", [await c_mirrorExists("ex5b@b.co"), (script = [503], await c_mirrorExists("ex5c@b.co"))], ["unavailable", "unavailable"]);
   delete process.env.SITE_MODE;
   calls = [];
-  eq("exists: on fomo.spot itself -> null, no request", [await client.mirrorExists("ex6@b.co"), calls.length], [null, 0]);
+  eq("exists: on fomo.spot itself -> null (not applicable), no request", [await c_mirrorExists("ex6@b.co"), calls.length], [null, 0]);
 
   globalThis.fetch = (async () => {
     throw new Error("must not be called");
@@ -869,10 +981,10 @@ async function main() {
   try {
     client.mirrorRegister({ ...user, id: "o1", email: "off@b.co" });
     client.mirrorEnsure({ ...user, id: "o2", email: "off2@b.co" });
-    client.mirrorLogin({ ...user, id: "o3", email: "off4@b.co" });
-    await client.mirrorSession({ id: "o4", email: "off5@b.co", status: "APPROVED" }, 100);
+    c_mirrorLogin({ ...user, id: "o3", email: "off4@b.co" });
+    await c_mirrorSession({ id: "o4", email: "off5@b.co", status: "APPROVED" }, 100);
     process.env.SITE_MODE = "terminal";
-    eq("off: align and exists are silent no-ops too", [await client.mirrorAlignLogin({ email: "off6@b.co", password: "pw-pw-pw-pw" }), await client.mirrorExists("off7@b.co")], [false, null]);
+    eq("off: align and exists are silent no-ops too", [await c_mirrorAlignLogin({ email: "off6@b.co", password: "pw-pw-pw-pw" }), await c_mirrorExists("off7@b.co")], [null, null]);
     delete process.env.SITE_MODE;
     client.mirrorPassword("o1", "off@b.co", HASH, HASH_B);
     client.mirrorReset("o1", "off@b.co", HASH_B);
