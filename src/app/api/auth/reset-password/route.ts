@@ -6,7 +6,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
-import { mirrorReset } from "@/lib/account-mirror-client";
+import { mirrorExists, mirrorReset } from "@/lib/account-mirror-client";
 
 export async function POST(request: NextRequest) {
   const { action, email, code, newPassword } = await request.json();
@@ -83,6 +83,13 @@ export async function POST(request: NextRequest) {
     const check = await consumeCode(accountEmail, code, "reset_password", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
+    }
+
+    // Terminal: the password of an ADMIN / OWNER account of fomo.spot (the master) is managed there only; a reset here could not be mirrored
+    // and would split the two. Plain accounts reset as usual (and are mirrored). fomo.spot unreachable / mirror off = null: reset as before.
+    const onMain = await mirrorExists(email);
+    if (onMain?.privileged) {
+      return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

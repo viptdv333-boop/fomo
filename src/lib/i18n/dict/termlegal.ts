@@ -67,7 +67,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li5":
       "источники рыночных данных (МосБиржа, Bybit, FMP и другие): запросы за котировками, как правило, выполняет сервер Терминала, данные вашего аккаунта им не передаются;",
     "termlegal.privacy.s5.li6": "государственные органы: только по обоснованному требованию, предусмотренному законом.",
-    "termlegal.privacy.s5.p2": "Каждый из этих сервисов обрабатывает данные по своим правилам. Подключать ли Telegram, WhatsApp, Max, VK или webhook, решаете вы. Сайт fomo.spot (тот же Оператор) получает копию данных аккаунта и профиля, как описано в разделе 1; хэш пароля передаётся между серверами Оператора по защищённому внутреннему соединению.",
+    "termlegal.privacy.s5.p2": "Каждый из этих сервисов обрабатывает данные по своим правилам. Подключать ли Telegram, WhatsApp, Max, VK или webhook, решаете вы. Сайт fomo.spot (тот же Оператор) получает копию данных аккаунта и профиля, как описано в разделе 1; хэш пароля передаётся между серверами Оператора по защищённому внутреннему соединению. Главный аккаунт находится на fomo.spot: если при входе в Терминал пароль не подошёл, введённый пароль один раз передаётся серверу fomo.spot по этому же внутреннему соединению для проверки; он не сохраняется и не записывается в журналы, а при успешной проверке аккаунт Терминала получает тот же пароль (в виде хэша, который создаётся на сервере Терминала).",
 
     "termlegal.privacy.s6.h": "6. Где хранятся данные",
     "termlegal.privacy.s6.p1":
@@ -138,7 +138,7 @@ const dict: SectionDict = {
     "termlegal.terms.s1.link": "Политику конфиденциальности",
     "termlegal.terms.s1.p1":
       "Эти условия регулируют использование FOMO Terminal (сайт terminal.fomo.spot, приложение для Android, установщик для Windows; далее — «Терминал») между вами и его оператором — физическим лицом, работающим под брендом «Neurotrader» (далее — «Оператор»). Регистрируясь или пользуясь Терминалом, вы принимаете эти условия и {privacy}. Если вы не согласны, не пользуйтесь Терминалом.",
-    "termlegal.terms.s1.p2": "Терминал — отдельный сервис, но аккаунт и профиль (имя, ник, аватар и т. д.) общие с сайтом fomo.spot и синхронизируются между сайтами. Условия сайта fomo.spot на Терминал не распространяются, остальные данные у сервисов раздельные.",
+    "termlegal.terms.s1.p2": "Терминал — отдельный сервис, но аккаунт и профиль (имя, ник, аватар и т. д.) общие с сайтом fomo.spot и синхронизируются между сайтами. Главный аккаунт находится на сайте fomo.spot: если адрес e-mail там уже зарегистрирован, вход в Терминал выполняется с логином и паролем от fomo.spot. Условия сайта fomo.spot на Терминал не распространяются, остальные данные у сервисов раздельные.",
 
     "termlegal.terms.s2.h": "2. Что такое Терминал",
     "termlegal.terms.s2.p1":
@@ -288,7 +288,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li5":
       "market data sources (Moscow Exchange, Bybit, FMP and others): quote requests are normally made by the Terminal's server, and your account data is not passed to them;",
     "termlegal.privacy.s5.li6": "public authorities: only on a justified request provided for by law.",
-    "termlegal.privacy.s5.p2": "Each of these services processes data under its own rules. Whether to connect Telegram, WhatsApp, Max, VK or a webhook is up to you. The fomo.spot website (the same Operator) receives a copy of the account and profile data as described in section 1; the password hash travels between the Operator's servers over a protected internal connection.",
+    "termlegal.privacy.s5.p2": "Each of these services processes data under its own rules. Whether to connect Telegram, WhatsApp, Max, VK or a webhook is up to you. The fomo.spot website (the same Operator) receives a copy of the account and profile data as described in section 1; the password hash travels between the Operator's servers over a protected internal connection. The main account is on fomo.spot: if the password does not match when you sign in to the Terminal, the password you typed is sent once to the fomo.spot server over the same internal connection to be checked; it is not stored or written to logs, and when the check succeeds the Terminal account gets the same password (as a hash created on the Terminal's server).",
 
     "termlegal.privacy.s6.h": "6. Where data is stored",
     "termlegal.privacy.s6.p1":
@@ -359,7 +359,7 @@ const dict: SectionDict = {
     "termlegal.terms.s1.link": "Privacy Policy",
     "termlegal.terms.s1.p1":
       "These terms govern the use of FOMO Terminal (the terminal.fomo.spot website, the Android app and the Windows installer; the “Terminal”) between you and its operator, a private individual acting under the brand “Neurotrader” (the “Operator”). By signing up or using the Terminal you accept these terms and the {privacy}. If you do not agree, do not use the Terminal.",
-    "termlegal.terms.s1.p2": "The Terminal is a separate service, but the account and profile (name, nickname, avatar, etc.) are shared with the fomo.spot website and kept in sync between the two sites. The terms of the fomo.spot website do not apply to the Terminal, and all other data is kept separately by each service.",
+    "termlegal.terms.s1.p2": "The Terminal is a separate service, but the account and profile (name, nickname, avatar, etc.) are shared with the fomo.spot website and kept in sync between the two sites. The main account is on the fomo.spot website: if the e-mail address is already registered there, you sign in to the Terminal with your fomo.spot e-mail and password. The terms of the fomo.spot website do not apply to the Terminal, and all other data is kept separately by each service.",
 
     "termlegal.terms.s2.h": "2. What the Terminal is",
     "termlegal.terms.s2.p1":
@@ -495,7 +495,7 @@ const dict: SectionDict = {
     "termlegal.privacy.s5.li4": "Telegram、WhatsApp（Meta）、Max、VK：接收方标识和通知文本，仅在您自己连接了该方式时；Webhook 会向您指定的地址发送通知；",
     "termlegal.privacy.s5.li5": "市场数据来源（莫斯科交易所、Bybit、FMP 等）：行情请求通常由终端服务器发出，不会向它们传递您的账户数据；",
     "termlegal.privacy.s5.li6": "国家机关：仅在法律规定的有正当理由的要求下。",
-    "termlegal.privacy.s5.p2": "这些服务各自按其自身规则处理数据。是否连接 Telegram、WhatsApp、Max、VK 或 Webhook 由您决定。fomo.spot 网站（同一运营者）会收到账户和个人资料数据的副本，详见第 1 节；密码哈希通过受保护的内部通道在运营者的服务器之间传输。",
+    "termlegal.privacy.s5.p2": "这些服务各自按其自身规则处理数据。是否连接 Telegram、WhatsApp、Max、VK 或 Webhook 由您决定。fomo.spot 网站（同一运营者）会收到账户和个人资料数据的副本，详见第 1 节；密码哈希通过受保护的内部通道在运营者的服务器之间传输。主账户在 fomo.spot：如果登录终端时密码不匹配，您输入的密码会通过同一内部通道一次性发送到 fomo.spot 服务器进行验证；该密码不会被保存，也不会写入日志，验证成功后终端账户将采用相同的密码（以终端服务器生成的哈希形式保存）。",
 
     "termlegal.privacy.s6.h": "6. 数据存储地点",
     "termlegal.privacy.s6.p1":
@@ -555,7 +555,7 @@ const dict: SectionDict = {
     "termlegal.terms.s1.link": "隐私政策",
     "termlegal.terms.s1.p1":
       "本条款规范您与 FOMO Terminal（terminal.fomo.spot 网站、Android 应用、Windows 安装程序，以下简称“终端”）运营者之间的使用关系，运营者是以“Neurotrader”品牌开展活动的自然人（以下简称“运营者”）。注册或使用终端即表示您接受本条款和{privacy}。如不同意，请勿使用终端。",
-    "termlegal.terms.s1.p2": "终端是独立的服务，但账户和个人资料（姓名、昵称、头像等）与 fomo.spot 网站共用，并在两个网站之间保持同步。fomo.spot 网站的条款不适用于终端，其他数据由各服务分别保存。",
+    "termlegal.terms.s1.p2": "终端是独立的服务，但账户和个人资料（姓名、昵称、头像等）与 fomo.spot 网站共用，并在两个网站之间保持同步。主账户在 fomo.spot 网站：如果该电子邮件地址已在 fomo.spot 注册，请使用 fomo.spot 的邮箱和密码登录终端。fomo.spot 网站的条款不适用于终端，其他数据由各服务分别保存。",
 
     "termlegal.terms.s2.h": "2. 终端是什么",
     "termlegal.terms.s2.p1":

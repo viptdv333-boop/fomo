@@ -6,7 +6,7 @@ import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 import { recalculateRating } from "@/lib/rating";
 import { getT } from "@/lib/i18n/server";
-import { mirrorActive, mirrorProfile } from "@/lib/account-mirror-client";
+import { mirrorActive, mirrorProfile, mirrorSession } from "@/lib/account-mirror-client";
 import { changedFields } from "@/lib/account-mirror";
 
 const adminPatchSchema = z.object({
@@ -52,6 +52,18 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const session = await auth();
+
+  // Terminal, the signed-in user opens HIS OWN profile (profile page, app profile screen): a session cookie lives 30 days, so a long-lived user
+  // never logs in again and the login-time reconcile never runs for him. Do it here: terminal only, only with the mirror configured, once per
+  // address and process per 6 hours (an in-memory check, no database work otherwise); the profile read below then already sees the merged data.
+  if (session?.user?.id && session.user.id === id && session.user.email) {
+    await mirrorSession(
+      { id, email: session.user.email, status: (session.user as { status?: string }).status ?? "APPROVED" },
+      2500,
+      // only if fomo.spot turns out to have no account with this address: the full record to create it there
+      () => prisma.user.findUnique({ where: { id } }),
+    );
+  }
 
   // Try by ID first, then by fomoId
   const isCuid = /^[a-z0-9]{20,}$/i.test(id);

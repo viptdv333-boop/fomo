@@ -79,9 +79,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } });
   }
 
-  // fomo.spot is the source of truth of the profile: only it answers `pull`
-  if (parsed.data.op === "pull" && siteMode() === "terminal") {
+  // fomo.spot is the master of the account: only it answers `pull`, `verify` and `exists`
+  if (siteMode() === "terminal" && (parsed.data.op === "pull" || parsed.data.op === "exists")) {
     return NextResponse.json({ ok: true, result: "not_found" }, { headers: { "Cache-Control": "no-store" } });
+  }
+  if (siteMode() === "terminal" && parsed.data.op === "verify") {
+    return NextResponse.json({ ok: true, result: "denied" }, { headers: { "Cache-Control": "no-store" } });
   }
 
   try {

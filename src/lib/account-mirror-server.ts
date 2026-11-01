@@ -11,10 +11,12 @@
 // passwords differ are different people as far as the mirror is concerned and stay as they are.
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import sharp from "sharp";
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { rateLimit, resetRateLimit } from "./rate-limit";
 import { generateFomoId } from "./fomoId";
 import { normalizeEmail } from "./account-security";
 import {
@@ -24,6 +26,7 @@ import {
   avatarFetchUrl,
   mirrorConfig,
   PROFILE_FIELDS,
+  changedFields,
   mainWinsProfile,
   profileFromUser,
   profileToPrismaData,
@@ -32,6 +35,20 @@ import {
   type MirrorProfile,
   type MirrorReply,
 } from "./account-mirror";
+
+/** What the receiver needs besides the database (the unit check passes fakes). */
+export interface MirrorDeps {
+  rateLimit: (key: string, limit: number, windowMs: number) => Promise<{ allowed: boolean }>;
+  resetRateLimit: (key: string) => Promise<void>;
+  compare: (plain: string, hash: string) => Promise<boolean>;
+}
+let dummyHash: string | null = null;
+const realDeps: MirrorDeps = {
+  rateLimit,
+  resetRateLimit,
+  // unknown address: compare against a throw-away hash all the same, so the answer takes as long as for a real account
+  compare: async (plain, hash) => bcrypt.compare(plain, hash || (dummyHash ??= await bcrypt.hash(randomUUID(), 10))),
+};
 
 /** The part of Prisma this module uses (scripts/check-account-mirror.ts passes an in-memory fake). */
 export type Db = Pick<typeof prisma, "user">;
@@ -43,6 +60,7 @@ function plainData(profile: MirrorProfile): Prisma.UserUncheckedUpdateInput {
   return data as Prisma.UserUncheckedUpdateInput;
 }
 
+const DENIED: MirrorReply = { ok: true, result: "denied" };
 const PRIVILEGED: MirrorReply = { ok: true, result: "skipped", reason: "privileged" };
 const MISMATCH: MirrorReply = { ok: true, result: "skipped", reason: "mismatch" };
 
@@ -163,7 +181,7 @@ async function createAccount(db: Db, msg: Extract<MirrorMessage, { op: "register
 }
 
 /** fomoId (when wanted and free) and the avatar of an existing local account. Reports what could not be applied. */
-async function applyFomoIdAndAvatar(db: Db, userId: string, profile: MirrorProfile, skipped: string[]): Promise<void> {
+async function applyFomoIdAndAvatar(db: Db, userId: string, profile: MirrorProfile, skipped: string[]): Promise<string[]> {
   const data: Record<string, unknown> = {};
   let before: string | null = null;
   let after: string | null = null;
@@ -175,17 +193,19 @@ async function applyFomoIdAndAvatar(db: Db, userId: string, profile: MirrorProfi
   if (profile.avatarUrl !== undefined) {
     before = (await db.user.findUnique({ where: { id: userId }, select: { avatarUrl: true } }))?.avatarUrl ?? null;
     if (profile.avatarUrl === null) {
-      data.avatarUrl = null;
+      if (before !== null) data.avatarUrl = null;
     } else {
       const local = await pullAvatar(profile.avatarUrl, userId);
       if (local) {
-        data.avatarUrl = local;
+        // the file is named by its content: the same picture lands on the same path, which is no change
+        if (local !== before) data.avatarUrl = local;
         after = local;
       } else skipped.push("avatarUrl");
     }
   }
   if (Object.keys(data).length) await db.user.update({ where: { id: userId }, data });
   if ("avatarUrl" in data) await removeOwnAvatarFile(userId, before, after);
+  return Object.keys(data);
 }
 
 /** `db` is the Prisma client; the unit check passes an in-memory fake. */
@@ -194,27 +214,54 @@ async function applyFomoIdAndAvatar(db: Db, userId: string, profile: MirrorProfi
  * has a value there (empty values never blank local ones); the avatar is fetched from the peer by the safe code above, a taken fomoId is
  * skipped. Any role may be updated (only display fields are involved: never role, status, e-mail or password), passwords are never part of this.
  */
-export async function applyPulledProfile(userId: string, profile: MirrorProfile, db: Db = prisma): Promise<{ applied: boolean; skipped: string[] }> {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
-  if (!user) return { applied: false, skipped: [] };
+export async function applyPulledProfile(userId: string, profile: MirrorProfile, db: Db = prisma): Promise<{ applied: boolean; changed: string[]; skipped: string[] }> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, ...PROFILE_SELECT } });
+  if (!user) return { applied: false, changed: [], skipped: [] };
   const wins = mainWinsProfile(profile);
   const skipped: string[] = [];
-  const data = plainData(wins);
-  if (Object.keys(data).length) await db.user.update({ where: { id: userId }, data });
-  await applyFomoIdAndAvatar(db, userId, wins, skipped);
-  return { applied: true, skipped };
+  // only what really differs is written (a reconcile of an already equal profile touches nothing)
+  const differs = changedFields(user as Record<string, unknown>, profileToPrismaData(wins));
+  const changed = Object.keys(differs);
+  if (changed.length) {
+    const subset = Object.fromEntries(Object.entries(wins).filter(([k]) => changed.includes(k))) as MirrorProfile;
+    await db.user.update({ where: { id: userId }, data: plainData(subset) });
+  }
+  changed.push(...(await applyFomoIdAndAvatar(db, userId, wins, skipped)));
+  return { applied: true, changed, skipped };
+}
+
+/**
+ * Password alignment at a terminal login, step 2 (fomo.spot confirmed the typed password): make the LOCAL account follow the master. The local
+ * hash is computed here from the typed password (no hash travels); an existing account gets it with a sessionVersion bump (its old sessions
+ * die) and the master profile (main wins, as in `pull`), a missing one is created exactly as `ensure` creates it. Any role: the proof is the
+ * master password itself. Returns what happened, or null when nothing could be done.
+ */
+export async function alignLocalLogin(
+  p: { email: string; password: string; userId?: string | null; profile: MirrorProfile },
+  db: Db = prisma,
+): Promise<"created" | "password" | null> {
+  const hash = await bcrypt.hash(p.password, 10);
+  if (p.userId) {
+    const r = await db.user.updateMany({ where: { id: p.userId }, data: { passwordHash: hash, sessionVersion: { increment: 1 } } });
+    if (r.count !== 1) return null;
+    await applyPulledProfile(p.userId, p.profile, db);
+    return "password";
+  }
+  const fallbackName = p.email.split("@")[0].slice(0, 100) || "user";
+  const reply = await createAccount(db, { op: "ensure", email: p.email, passwordHash: hash, profile: { ...p.profile, displayName: p.profile.displayName || fallbackName } });
+  return reply.result === "created" ? "created" : null;
 }
 
 const PROFILE_SELECT = { ...Object.fromEntries(PROFILE_FIELDS.map((f) => [f, true])) };
 
-export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): Promise<MirrorReply> {
+export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma, deps: MirrorDeps = realDeps): Promise<MirrorReply> {
   switch (msg.op) {
     case "register":
     case "ensure":
       return createAccount(db, msg);
 
     case "password": {
-      const user = await db.user.findUnique({ where: { email: msg.email }, select: { id: true, passwordHash: true, role: true } });
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true } });
       if (!user) return { ok: true, result: "not_found" };
       if (user.role !== "USER") return PRIVILEGED;
       if (user.passwordHash === msg.passwordHash) return { ok: true, result: "noop" }; // a retry of a message already applied
@@ -228,7 +275,7 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): P
     }
 
     case "reset": {
-      const user = await db.user.findUnique({ where: { email: msg.email }, select: { id: true, passwordHash: true, role: true } });
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true } });
       if (!user) return { ok: true, result: "not_found" };
       if (user.role !== "USER") return PRIVILEGED;
       if (user.passwordHash === msg.passwordHash) return { ok: true, result: "noop" };
@@ -240,7 +287,7 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): P
     }
 
     case "email": {
-      const user = await db.user.findUnique({ where: { email: msg.email }, select: { id: true, passwordHash: true, role: true } });
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true } });
       if (!user) {
         // already renamed by an earlier (retried) message? Only if that account is the same person (same hash).
         const renamed = await db.user.findUnique({ where: { email: msg.newEmail }, select: { passwordHash: true } });
@@ -261,6 +308,32 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): P
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { ok: true, result: "conflict" };
         throw e;
       }
+    }
+
+    case "verify": {
+      // fomo.spot is the master of the account: is this the right password? The attempt is counted in the SAME limits as a login here (per
+      // address and per source, the source being the visitor's address the terminal saw), so the terminal is no unlimited password oracle.
+      // Every failure is one and the same answer; the account must be APPROVED (a ban or an unfinished sign-up here applies as well).
+      const email = msg.email.trim().toLowerCase();
+      const [byAccount, bySource] = await Promise.all([
+        deps.rateLimit(`login:email:${email}`, 10, 15 * 60 * 1000),
+        deps.rateLimit(`login:ip:${msg.ip || "unknown"}`, 50, 15 * 60 * 1000),
+      ]);
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { ...PROFILE_SELECT, passwordHash: true, status: true } });
+      const right = await deps.compare(msg.password, user?.passwordHash ?? "");
+      if (!byAccount.allowed || !bySource.allowed || !user || !right || user.status !== "APPROVED") return DENIED;
+      await deps.resetRateLimit(`login:email:${email}`);
+      return { ok: true, result: "verified", profile: profileFromUser(user as Record<string, unknown>) };
+    }
+
+    case "exists": {
+      // sign-up / password change on the terminal: does fomo.spot know this mailbox (the same address, or another spelling of it)?
+      const exact = await db.user.findFirst({ where: { email: { equals: msg.email.trim(), mode: "insensitive" } }, select: { role: true } });
+      if (exact) return { ok: true, result: "exists", ...(exact.role !== "USER" ? { privileged: true } : {}) };
+      const normalized = normalizeEmail(msg.email);
+      const approved = await db.user.findMany({ where: { status: "APPROVED" }, select: { email: true, role: true } });
+      const alias = approved.find((u) => normalizeEmail(u.email) === normalized);
+      return alias ? { ok: true, result: "exists", ...(alias.role !== "USER" ? { privileged: true } : {}) } : { ok: true, result: "not_found" };
     }
 
     case "pull": {

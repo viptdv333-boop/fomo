@@ -169,7 +169,7 @@ const dict: SectionDict = {
       "сервисов, обеспечивающих техническую работу Сайта (хостинг, отправка почты, аналитика);",
     "privacy.s5.li2": "случаев, предусмотренных законодательством Российской Федерации.",
     "privacy.s5.p2":
-      "Данные профиля, которые вы сами делаете публичными (имя, аватар, идеи, комментарии), видны другим пользователям и посетителям Сайта — это не является передачей третьим лицам в смысле настоящей Политики. Аккаунт на Сайте общий с торговым терминалом FOMO Terminal (terminal.fomo.spot) того же Оператора: адрес e-mail, пароль (в виде хэша) и данные профиля (имя, ник, аватар и т. д.) копируются в базу терминала и синхронизируются между сайтами; остальные данные (идеи, подписки, сообщения, платежи) в терминал не передаются.",
+      "Данные профиля, которые вы сами делаете публичными (имя, аватар, идеи, комментарии), видны другим пользователям и посетителям Сайта — это не является передачей третьим лицам в смысле настоящей Политики. Аккаунт на Сайте общий с торговым терминалом FOMO Terminal (terminal.fomo.spot) того же Оператора: адрес e-mail, пароль (в виде хэша) и данные профиля (имя, ник, аватар и т. д.) копируются в базу терминала и синхронизируются между сайтами; остальные данные (идеи, подписки, сообщения, платежи) в терминал не передаются. Аккаунт на Сайте главный: если при входе в терминал пароль не подошёл там, введённый пароль один раз передаётся серверу Сайта для проверки (по защищённому внутреннему соединению, он не сохраняется и не записывается в журналы), и при успешной проверке аккаунт терминала получает тот же пароль.",
 
     "privacy.s6.h": "6. Хранение и защита данных",
     "privacy.s6.p1":
@@ -365,7 +365,7 @@ const dict: SectionDict = {
       "services that ensure the technical operation of the Site (hosting, email delivery, analytics);",
     "privacy.s5.li2": "cases provided for by the laws of the Russian Federation.",
     "privacy.s5.p2":
-      "Profile data that you yourself make public (name, avatar, ideas, comments) is visible to other users and visitors of the Site — this does not constitute a transfer to third parties within the meaning of this Policy. Your account on the Site is shared with the FOMO Terminal trading terminal (terminal.fomo.spot) of the same Operator: your e-mail address, password (as a hash) and profile data (name, nickname, avatar, etc.) are copied to the terminal's database and kept in sync between the two sites; all other data (ideas, subscriptions, messages, payments) is not passed to the terminal.",
+      "Profile data that you yourself make public (name, avatar, ideas, comments) is visible to other users and visitors of the Site — this does not constitute a transfer to third parties within the meaning of this Policy. Your account on the Site is shared with the FOMO Terminal trading terminal (terminal.fomo.spot) of the same Operator: your e-mail address, password (as a hash) and profile data (name, nickname, avatar, etc.) are copied to the terminal's database and kept in sync between the two sites; all other data (ideas, subscriptions, messages, payments) is not passed to the terminal. The account on the Site is the main one: if the password does not match when you sign in to the terminal, the password you typed is sent once to the Site's server to be checked (over a protected internal connection; it is not stored or written to logs), and when the check succeeds the terminal account gets the same password.",
 
     "privacy.s6.h": "6. Data Storage and Protection",
     "privacy.s6.p1":
@@ -532,7 +532,7 @@ const dict: SectionDict = {
     "privacy.s5.li1": "保障网站技术运行的服务（托管、邮件发送、分析）；",
     "privacy.s5.li2": "俄罗斯联邦法律规定的情形。",
     "privacy.s5.p2":
-      "您自行公开的个人资料数据（用户名、头像、观点、评论）对网站的其他用户和访客可见——这不属于本政策意义上的向第三方提供数据。本网站的账户与同一运营者的交易终端 FOMO Terminal（terminal.fomo.spot）共用：电子邮件地址、密码（哈希形式）和个人资料数据（姓名、昵称、头像等）会复制到终端的数据库，并在两个网站之间保持同步；其他数据（观点、订阅、消息、付款）不会传递给终端。",
+      "您自行公开的个人资料数据（用户名、头像、观点、评论）对网站的其他用户和访客可见——这不属于本政策意义上的向第三方提供数据。本网站的账户与同一运营者的交易终端 FOMO Terminal（terminal.fomo.spot）共用：电子邮件地址、密码（哈希形式）和个人资料数据（姓名、昵称、头像等）会复制到终端的数据库，并在两个网站之间保持同步；其他数据（观点、订阅、消息、付款）不会传递给终端。本网站的账户为主账户：如果登录终端时密码不匹配，您输入的密码会一次性发送到本网站服务器进行验证（通过受保护的内部连接，不会被保存或写入日志），验证成功后终端账户将采用相同的密码。",
 
     "privacy.s6.h": "6. 数据存储与保护",
     "privacy.s6.p1":

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { checkPassword } from "@/lib/account-security";
 import { rateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/i18n/server";
-import { mirrorPassword } from "@/lib/account-mirror-client";
+import { mirrorExists, mirrorPassword } from "@/lib/account-mirror-client";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -46,6 +46,12 @@ export async function POST(request: NextRequest) {
   const valid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!valid) {
     return NextResponse.json({ error: t("api.wrongCurrentPassword") }, { status: 403 });
+  }
+
+  // Terminal: the password of an ADMIN / OWNER account of fomo.spot (the master) is managed there only (see reset-password).
+  const onMain = await mirrorExists(user.email);
+  if (onMain?.privileged) {
+    return NextResponse.json({ error: t("api.passwordManagedOnMain") }, { status: 403 });
   }
 
   const newHash = await bcrypt.hash(newPassword, 10);

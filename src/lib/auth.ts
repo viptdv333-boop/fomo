@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { rateLimit, resetRateLimit, clientIp } from "./rate-limit";
 import { authCookieNames, authCookiesSecure, siteMode } from "./site-mode";
-import { mirrorLogin } from "./account-mirror-client";
+import { mirrorAlignLogin, mirrorLogin } from "./account-mirror-client";
 
 // Session cookies. The main site keeps the next-auth defaults ("authjs.session-token" ...), nothing changes there. An instance
 // with a cookie prefix (terminal.fomo.spot: "terminal", or AUTH_COOKIE_PREFIX) names every auth cookie differently and never sets a
@@ -59,17 +59,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Case-insensitive: phone keyboards capitalise the first letter of the address, the account was registered as typed.
-        const user = await prisma.user.findFirst({
-          where: { email: { equals: (credentials.email as string).trim(), mode: "insensitive" } },
-        });
+        const findUser = () =>
+          prisma.user.findFirst({
+            where: { email: { equals: (credentials.email as string).trim(), mode: "insensitive" } },
+          });
+        let user = await findUser();
 
-        if (!user) return null;
-
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-        if (!isValid) return null;
+        let isValid = user ? await bcrypt.compare(credentials.password as string, user.passwordHash) : false;
+        if (!isValid) {
+          // Terminal only (a no-op on fomo.spot and while the mirror is off): fomo.spot is the MASTER account, one login and password on both sites.
+          // If the typed password is not the local one (or there is no local account), fomo.spot is asked whether it is right for this
+          // address; if it confirms (and the account there is APPROVED) the local account is created / takes that password and the login
+          // goes on. Unreachable or refusing fomo.spot = the usual "invalid credentials".
+          if (await mirrorAlignLogin({ email: (credentials.email as string).trim(), password: credentials.password as string, ip, userId: user?.id })) {
+            user = await findUser();
+            isValid = !!user;
+          }
+        }
+        if (!user || !isValid) return null;
 
         if (user.status === "BANNED") {
           throw new Error("BANNED");

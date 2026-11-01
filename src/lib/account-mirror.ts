@@ -39,11 +39,19 @@ export const CRITICAL_OPS = ["register", "password", "reset", "email"] as const;
 export function isCriticalOp(op: string): boolean {
   return (CRITICAL_OPS as readonly string[]).includes(op);
 }
+/** Questions a request of the user is waiting for (the login, the sign-up): one try, short timeout, never queued behind other messages. */
+export const SYNC_OPS = ["verify", "exists"] as const;
+export const REQUEST_TIMEOUT_SYNC_MS = 3000;
+export function isSyncOp(op: string): boolean {
+  return (SYNC_OPS as readonly string[]).includes(op);
+}
 export function backoffFor(op: string): readonly number[] {
+  if (isSyncOp(op)) return [0];
   return isCriticalOp(op) ? CRITICAL_BACKOFF_MS : BACKOFF_MS;
 }
 /** Inbound rate limit buckets (per minute): profile / login-copy noise can never starve a password reset or a sign-up. */
 export function inboundBucket(op: string): { key: string; limit: number } {
+  if (op === "verify") return { key: "account-mirror:in:verify", limit: 120 }; // plus the login limits per e-mail and per source (account-mirror-server.ts)
   return isCriticalOp(op) ? { key: "account-mirror:in:critical", limit: 60 } : { key: "account-mirror:in", limit: 300 };
 }
 
@@ -362,6 +370,12 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
   // e-mail change: only if the receiver account has the same current hash as the sender's (same person, same password)
   z.object({ op: z.literal("email"), email: emailSchema, newEmail: emailSchema, passwordHash: bcryptSchema }),
   z.object({ op: z.literal("profile"), email: emailSchema, profile: profileSchema }),
+  // PASSWORD ALIGNMENT at a terminal login: the typed password failed locally, fomo.spot (the master account) is asked whether it is right. The plaintext
+  // password is in this one request body only (over loopback, signed), never logged or stored; `ip` is the visitor's address as the terminal saw it, so
+  // fomo.spot counts the attempt in the same per-address / per-source login limits as its own login. Answered by fomo.spot only.
+  z.object({ op: z.literal("verify"), email: emailSchema, password: z.string().min(1).max(200), ip: z.string().max(64).optional() }),
+  // sign-up on the terminal: does this address (or another spelling of the same mailbox) already have an account on fomo.spot? Answered by fomo.spot only.
+  z.object({ op: z.literal("exists"), email: emailSchema }),
   // profile reconcile at login on the TERMINAL: "give me your whitelisted profile" (answered by fomo.spot, the source of truth, and only for plain USER accounts)
   z.object({ op: z.literal("pull"), email: emailSchema }),
 ]);
@@ -534,6 +548,8 @@ export type MirrorResult =
   | "updated"
   | "noop" // already in the wanted state
   | "not_found" // no account here for this address
+  | "verified" // answer to `verify`: the password is right (and the account is APPROVED); `profile` follows
+  | "denied" // answer to `verify` in EVERY other case (unknown address, wrong password, banned, not approved, rate limited): one uniform answer
   | "pulled" // answer to `pull`: the whitelisted profile is in `profile`
   | "conflict" // the new e-mail already belongs to another account here
   | "skipped"; // refused on purpose, see `reason`
@@ -545,6 +561,8 @@ export interface MirrorReply {
   reason?: "privileged" | "mismatch";
   /** with result "pulled": the whitelisted profile of the account, nothing else (no hash, role, status or e-mail) */
   profile?: MirrorProfile;
+  /** with result "exists" (answer to `exists`): the account there is ADMIN / OWNER */
+  privileged?: boolean;
   /** the wanted fomoId was taken, another one was given (created / completed) */
   fomoIdChanged?: boolean;
   /** profile fields that could not be applied (taken fomoId, avatar that could not be fetched) */

@@ -7,7 +7,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword, normalizeEmail, isDisposableEmail, MIN_PASSWORD_LENGTH } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
-import { mirrorRegister } from "@/lib/account-mirror-client";
+import { mirrorExists, mirrorRegister } from "@/lib/account-mirror-client";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -49,6 +49,14 @@ export async function POST(req: NextRequest) {
     const check = await consumeCode(data.email, data.code, "register", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
+    }
+
+    // Terminal: fomo.spot is the MASTER account. If this mailbox (proven by the code just now) already has an account there, no competing
+    // account with another password is created here: the person signs in with the fomo.spot password (the login aligns this site to it).
+    // fomo.spot unreachable / mirror off = null: carry on as before. Registering on fomo.spot itself is never blocked by the terminal.
+    const onMain = await mirrorExists(data.email);
+    if (onMain?.exists) {
+      return NextResponse.json({ error: t("api.accountExistsOnMain") }, { status: 400 });
     }
 
     // Check if user already exists — including aliases of the same mailbox.
