@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { sendVerificationCode, generateCode } from "@/lib/email";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
+import { mirrorEmail } from "@/lib/account-mirror-client";
 
 // Step 1: POST with { action: "send-code", newEmail, password }
 // Step 2: POST with { action: "verify", newEmail, code }
@@ -104,6 +105,9 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       data: { email: newEmail, sessionVersion: { increment: 1 } },
     });
+
+    // The other site renames its account (found by the old address), best-effort, in the background.
+    mirrorEmail(user.email, newEmail);
 
     return NextResponse.json({ message: t("api.emailChanged") });
   }

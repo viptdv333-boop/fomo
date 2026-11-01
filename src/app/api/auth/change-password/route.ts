@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { checkPassword } from "@/lib/account-security";
 import { rateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/i18n/server";
+import { mirrorPassword } from "@/lib/account-mirror-client";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { passwordHash: true },
+    select: { passwordHash: true, email: true },
   });
 
   if (!user) {
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
     where: { id: session.user.id },
     data: { passwordHash: newHash, sessionVersion: { increment: 1 } },
   });
+
+  // The other site takes the new hash too (best-effort, in the background).
+  mirrorPassword(user.email, newHash);
 
   return NextResponse.json({ message: t("api.passwordChanged") });
 }

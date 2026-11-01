@@ -7,6 +7,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword, normalizeEmail, isDisposableEmail, MIN_PASSWORD_LENGTH } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
+import { mirrorRegister } from "@/lib/account-mirror-client";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -88,8 +89,9 @@ export async function POST(req: NextRequest) {
     }
 
     // If user exists with PENDING status, update them
+    let account;
     if (existing) {
-      await prisma.user.update({
+      account = await prisma.user.update({
         where: { id: existing.id },
         data: {
           passwordHash,
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Create new user with APPROVED status (no admin approval needed)
-      await prisma.user.create({
+      account = await prisma.user.create({
         data: {
           email: data.email,
           passwordHash,
@@ -109,6 +111,9 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+
+    // The same account on the other site (fomo.spot <-> terminal.fomo.spot). Best-effort, in the background: it never delays or fails this sign-up.
+    mirrorRegister(account);
 
     return NextResponse.json({
       message: t("api.registerSuccess"),

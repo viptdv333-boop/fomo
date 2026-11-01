@@ -6,6 +6,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkPassword } from "@/lib/account-security";
 import { consumeCode } from "@/lib/verification";
 import { getT } from "@/lib/i18n/server";
+import { mirrorPassword } from "@/lib/account-mirror-client";
 
 export async function POST(request: NextRequest) {
   const { action, email, code, newPassword } = await request.json();
@@ -86,6 +87,9 @@ export async function POST(request: NextRequest) {
       where: { email },
       data: { passwordHash: hash, sessionVersion: { increment: 1 } },
     });
+
+    // The other site takes the new hash too (best-effort, in the background).
+    mirrorPassword(email, hash);
 
     return NextResponse.json({ message: t("api.passwordResetSuccess") });
   }

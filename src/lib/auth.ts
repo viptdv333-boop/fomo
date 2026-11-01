@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { rateLimit, resetRateLimit, clientIp } from "./rate-limit";
 import { authCookieNames, authCookiesSecure, siteMode } from "./site-mode";
+import { mirrorEnsure } from "./account-mirror-client";
 
 // Session cookies. The main site keeps the next-auth defaults ("authjs.session-token" ...), nothing changes there. An instance
 // with a cookie prefix (terminal.fomo.spot: "terminal", or AUTH_COOKIE_PREFIX) names every auth cookie differently and never sets a
@@ -76,6 +77,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Honest users shouldn't inherit the counter left by someone guessing
         // at their address.
         await resetRateLimit(`login:email:${email}`);
+
+        // One account on fomo.spot and terminal.fomo.spot: if the other site has no account with this address yet, create it there
+        // (same hash and profile). Background and best-effort; an existing account over there is left alone. No-op while the mirror is off.
+        mirrorEnsure(user);
 
         return {
           id: user.id,

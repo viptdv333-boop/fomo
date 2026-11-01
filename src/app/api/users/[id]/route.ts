@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 import { recalculateRating } from "@/lib/rating";
 import { getT } from "@/lib/i18n/server";
+import { mirrorProfile } from "@/lib/account-mirror-client";
 
 const adminPatchSchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "BANNED"]).optional(),
@@ -267,10 +268,16 @@ export async function PATCH(
         donationCard: true,
         sbpQrUrl: true,
         socialLinks: true,
+        email: true,
       },
     });
 
-    return NextResponse.json(updated);
+    // The profile is the same on fomo.spot and terminal.fomo.spot: the changed fields (whitelist in lib/account-mirror.ts) go to the other
+    // site, best-effort, in the background. Money fields and the price are not in the whitelist and never leave.
+    const { email: accountEmail, ...publicProfile } = updated;
+    mirrorProfile(accountEmail, data);
+
+    return NextResponse.json(publicProfile);
   }
 
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });

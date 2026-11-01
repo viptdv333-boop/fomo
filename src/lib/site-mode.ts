@@ -229,6 +229,8 @@ export function routeAllowed(mode: SiteMode, pathname: string, isApi: boolean): 
       return seg.length <= 2 && seg[1] !== "online" && seg[1] !== "dm-enabled" && seg[1] !== "by-fomo-id";
     }
     if (TERMINAL_API_CLOSED.includes(seg.join("/"))) return false;
+    // the account mirror to the other instance (fomo.spot <-> terminal): exactly this one internal route, signed requests only
+    if (seg[0] === "internal") return seg.length === 2 && seg[1] === "account-mirror";
     return TERMINAL_API_PREFIX.includes(seg[0]);
   }
   if (TERMINAL_PAGES_CLOSED.includes(p)) return false;

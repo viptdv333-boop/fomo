@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isLocale } from "@/lib/i18n/locale-url";
+import { mirrorProfile } from "@/lib/account-mirror-client";
 
 // Saves the language notifications, push and Telegram messages are written in.
 export async function POST(req: NextRequest) {
@@ -10,5 +11,7 @@ export async function POST(req: NextRequest) {
   const { locale } = await req.json().catch(() => ({}));
   if (!isLocale(locale)) return NextResponse.json({ error: "Invalid locale" }, { status: 400 });
   await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
+  // The language is part of the profile shared with the other site.
+  mirrorProfile(session.user.email, { locale });
   return NextResponse.json({ ok: true });
 }
