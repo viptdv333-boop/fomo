@@ -479,7 +479,7 @@ export function mainWinsProfile(p: MirrorProfile): MirrorProfile {
 }
 
 /** JSON text with object keys sorted: the same value compares equal whatever order a JSON column returned its keys in. */
-function stableJson(v: unknown): string {
+export function stableJson(v: unknown): string {
   return JSON.stringify(v, (_k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([p], [q]) => (p < q ? -1 : p > q ? 1 : 0))) : x));
 }
 

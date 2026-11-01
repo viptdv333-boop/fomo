@@ -7,7 +7,7 @@
 // whitelist and the same "main wins, empty never blanks" rule as the live mirror (src/lib/account-mirror.ts).
 import { normalizeEmail } from "./account-security";
 import { generateFomoId } from "./fomoId";
-import { altFomoId, changedFields, mainWinsProfile, profileFromUser, profileToPrismaData } from "./account-mirror";
+import { PROFILE_FIELDS, altFomoId, mainWinsProfile, profileFromUser, profileToPrismaData, stableJson, type MirrorProfile } from "./account-mirror";
 
 export type SyncUser = {
   id: string;
@@ -127,6 +127,8 @@ export interface MatchedItem {
   /** the password hash changes: the executor adds sessionVersion + 1 */
   bumpSession: boolean;
   groups: Set<Group>;
+  /** names (never values) of the whitelisted profile fields that differ and are written, in whitelist order; fomoId included when it changes */
+  profileFields: string[];
   /** the main avatar path, if main has one (the executor compares the picture with the terminal's) */
   avatarFrom: string | null;
   /** main's fomoId is taken by another terminal account: the local one stays */
@@ -265,6 +267,17 @@ export async function planSync(main: SyncUser[], term: SyncUser[], opts: { termi
   return plan;
 }
 
+/** A profile in comparison form: social links without blank values (and gone altogether when nothing is left). */
+function effectiveProfile(p: MirrorProfile): MirrorProfile {
+  const out: Record<string, unknown> = { ...p };
+  if (p.socialLinks && typeof p.socialLinks === "object") {
+    const kept = Object.fromEntries(Object.entries(p.socialLinks).filter(([, v]) => typeof v === "string" && v.trim() !== ""));
+    if (Object.keys(kept).length > 0) out.socialLinks = kept;
+    else delete out.socialLinks;
+  }
+  return out as MirrorProfile;
+}
+
 function matchPair(main: SyncUser, term: SyncUser, termFomoIds: Set<string>): MatchedItem {
   const data: Record<string, unknown> = {};
   const groups = new Set<Group>();
@@ -281,11 +294,25 @@ function matchPair(main: SyncUser, term: SyncUser, termFomoIds: Set<string>): Ma
     groups.add("email");
   }
 
-  // main wins for every whitelisted field that has a value there; empty never blanks (locale ru / dmEnabled true are the column defaults, not values)
+  // main wins for every whitelisted field that has a value there; empty never blanks (locale ru / dmEnabled true are the column defaults, not values).
+  // Both sides are compared in the SAME normalised form (profileFromUser: clipped, invalid parts dropped, dates as ISO text; social links without their
+  // blank keys): the form editors store links like {"telegram":"@a","vk":""}, and a stored copy must not look "different" from main only because it
+  // keeps a blank key that "has no value" on main.
   const wins = mainWinsProfile(profileFromUser(main));
-  const diff = changedFields(term, profileToPrismaData(wins));
-  if (Object.keys(diff).length > 0) {
-    Object.assign(data, diff);
+  const termView = effectiveProfile(profileFromUser(term));
+  const winsView = effectiveProfile(wins);
+  const profileFields: string[] = [];
+  const changedKeys: Array<keyof MirrorProfile> = [];
+  for (const f of PROFILE_FIELDS) {
+    if (f === "fomoId" || f === "avatarUrl") continue;
+    if (winsView[f] === undefined) continue;
+    if (stableJson(winsView[f]) !== stableJson(termView[f])) changedKeys.push(f);
+  }
+  if (changedKeys.length > 0) {
+    const subset: Record<string, unknown> = {};
+    for (const k of changedKeys) subset[k] = wins[k];
+    Object.assign(data, profileToPrismaData(subset as MirrorProfile));
+    profileFields.push(...changedKeys);
     groups.add("profile");
   }
   if (wins.fomoId !== undefined && wins.fomoId !== term.fomoId) {
@@ -294,10 +321,11 @@ function matchPair(main: SyncUser, term: SyncUser, termFomoIds: Set<string>): Ma
     else {
       data.fomoId = wins.fomoId;
       termFomoIds.add(wins.fomoId);
+      profileFields.push("fomoId");
       groups.add("profile");
     }
   }
-  return { main, term, data, bumpSession, groups, avatarFrom: wins.avatarUrl ?? null, fomoIdKept };
+  return { main, term, data, bumpSession, groups, profileFields, avatarFrom: wins.avatarUrl ?? null, fomoIdKept };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -354,6 +382,11 @@ export function formatSummary(c: Counts, apply: boolean, terminalOnlyToMain: boo
     row("errors", c.errors),
   ];
   return lines.join("\n");
+}
+
+/** "password,profile:city+bio,avatar": the changed groups, with the NAMES of the differing profile fields (never values). */
+export function describeChange(groups: Iterable<Group>, profileFields: string[]): string {
+  return [...groups].map((g) => (g === "profile" && profileFields.length ? `profile:${profileFields.join("+")}` : g)).join(",");
 }
 
 /** One per-user line: only ids and a masked address. */

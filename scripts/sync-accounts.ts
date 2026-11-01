@@ -19,7 +19,7 @@ import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { MAX_AVATAR_BYTES, isMirrorAvatarPath } from "../src/lib/account-mirror";
 import { reencodeAvatar } from "../src/lib/avatar-image";
-import { SYNC_SELECT, emptyCounts, formatSummary, parseArgs, parseEnvFile, planSync, userLine, type CreateItem, type Group, type SyncUser } from "../src/lib/account-sync";
+import { SYNC_SELECT, describeChange, emptyCounts, formatSummary, parseArgs, parseEnvFile, planSync, userLine, type CreateItem, type Group, type SyncUser } from "../src/lib/account-sync";
 
 type Db = PrismaClient;
 
@@ -155,7 +155,7 @@ async function main() {
         }
         counts.changed++;
         for (const g of groups) counts.byGroup[g]++;
-        lines.push(userLine("changed", { main: item.main.id, term: item.term.id }, item.main.email, `[${[...groups].join(",")}]${item.fomoIdKept ? " fomoId kept" : ""}`));
+        lines.push(userLine("changed", { main: item.main.id, term: item.term.id }, item.main.email, `[${describeChange(groups, item.profileFields)}]${item.fomoIdKept ? " fomoId kept" : ""}`));
       } catch (e) {
         counts.errors++;
         lines.push(userLine("ERROR", { main: item.main.id, term: item.term.id }, item.main.email, errName(e)));

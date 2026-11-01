@@ -1,7 +1,7 @@
 /* The pure parts of the one-off account sync (src/lib/account-sync.ts): matching, masking, .env / argument parsing, the plan (what is updated, created,
    skipped), the "main wins, empty never blanks" merge, conflicts, idempotency (planning again after applying the plan finds nothing to do).
    Run: npx tsx scripts/check-sync-accounts.ts   (exit code 1 on a failed assertion) */
-import { emailKey, emptyCounts, formatSummary, maskEmail, parseArgs, parseEnvFile, planSync, userLine, type Group, type MatchedItem, type SyncPlan, type SyncUser } from "../src/lib/account-sync";
+import { describeChange, emailKey, emptyCounts, formatSummary, maskEmail, parseArgs, parseEnvFile, planSync, userLine, type Group, type MatchedItem, type SyncPlan, type SyncUser } from "../src/lib/account-sync";
 import { FOMO_ID_REGEX } from "../src/lib/fomoId";
 
 let fails = 0;
@@ -154,6 +154,41 @@ async function main() {
     // a JSON column returns its keys in another order: that is no change
     const reordered = await planSync([user({ email: "j@b.co", displayName: "J", socialLinks: { telegram: "@a", vk: "v" }, fomoId: "fomo_user7300001" })], [user({ email: "j@b.co", displayName: "J", socialLinks: { vk: "v", telegram: "@a" }, fomoId: "fomo_user7300001" })], { terminalOnlyToMain: false });
     eq("idempotent: the same social links in another key order are not a change", reordered.matched[0].groups.size, 0);
+  }
+
+  /* ---- regression: accounts created by the first --apply must look identical to main on the next run ---- */
+  {
+    // what the profile editors really store: links with BLANK keys, blank texts, blank list items, a birth date with a time part, default locale
+    const odd = [
+      user({ email: "s1@b.co", displayName: "S1", socialLinks: { telegram: "@a", vk: "", youtube: " ", website: "" }, fomoId: "fomo_user7400001" }),
+      user({ email: "s2@b.co", displayName: "S2", socialLinks: { telegram: "", vk: "" }, bio: "  ", firstName: "", city: " ", specializations: ["", " ", "futures"], fomoId: "fomo_user7400002" }),
+      user({ email: "s3@b.co", displayName: "S3", birthDate: new Date("1991-02-03T21:30:00.123Z"), locale: "ru", dmEnabled: true, socialLinks: {}, specializations: [], fomoId: "fomo_user7400003" }),
+      user({ email: "s4@b.co", displayName: "S4", locale: "en", dmEnabled: false, bio: "x".repeat(900), firstName: "A".repeat(150), specializations: Array.from({ length: 60 }, (_, i) => "s" + i), fomoId: "fomo_user7400004" }),
+      user({ email: "s5@b.co", displayName: "  ", fomoId: "bad id!" }),
+      user({ email: "s6@b.co", displayName: "S6", socialLinks: { telegram: "@z", instagram: "dropped", vk: 5 as unknown as string }, fomoId: null }),
+    ];
+    const term: SyncUser[] = [];
+    const p1 = await planSync(odd, term, { terminalOnlyToMain: false });
+    applyPlan(p1, odd, term, false);
+    const p2 = await planSync(odd, term, { terminalOnlyToMain: false });
+    eq("regression: after creating the accounts, planning again reports no profile difference (blank link keys, blank texts, defaults, clipped values all converge)", [
+      p1.createOnTerminal.length, p2.createOnTerminal.length, p2.matched.filter((x) => x.groups.size > 0).map((x) => [x.main.email, x.profileFields]),
+    ], [6, 0, []]);
+    // and the same through an update of an existing account
+    const before = odd.map((u) => user({ email: u.email, passwordHash: u.passwordHash, displayName: "old", fomoId: "fomo_user6" + String(u.id).slice(2).padStart(6, "0") }));
+    const p3 = await planSync(odd, before, { terminalOnlyToMain: false });
+    applyPlan(p3, odd, before, false);
+    const p4 = await planSync(odd, before, { terminalOnlyToMain: false });
+    eq("regression: after updating existing accounts, planning again reports nothing to change", p4.matched.filter((x) => x.groups.size > 0).map((x) => [x.main.email, x.profileFields]), []);
+  }
+  {
+    const m = user({ email: "n@b.co", displayName: "Main", bio: "b", city: "Kazan", socialLinks: { telegram: "@a" }, fomoId: "fomo_user7500001" });
+    const same = user({ email: "n@b.co", displayName: "Main", bio: "b", city: "Kazan", socialLinks: { vk: "", telegram: "@a", max: "" }, fomoId: "fomo_user7500001", passwordHash: m.passwordHash });
+    eq("compare: a stored copy that only keeps blank link keys is the same as main", (await planSync([m], [same], { terminalOnlyToMain: false })).matched[0].groups.size, 0);
+    const diff = user({ email: "n@b.co", displayName: "Main", bio: "other", city: null, socialLinks: null, fomoId: "fomo_user7500001", passwordHash: bc("Z") });
+    const it = (await planSync([m], [diff], { terminalOnlyToMain: false })).matched[0];
+    eq("report: the NAMES of the differing profile fields are listed (never values), in whitelist order", [it.profileFields, describeChange(it.groups, it.profileFields)], [["bio", "city", "socialLinks"], "password,profile:bio+city+socialLinks"]);
+    eq("report: no value ever appears in the description", /other|Kazan|@a/.test(describeChange(it.groups, it.profileFields)), false);
   }
 
   /* ---- output ---- */
