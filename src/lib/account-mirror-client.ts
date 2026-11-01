@@ -1,16 +1,20 @@
 // Sending side of the account mirror (see account-mirror.ts for the design). Every function is fire-and-forget and NEVER throws or
 // blocks the caller: the local sign-up / login / password change has already succeeded, the copy to the other site is best-effort
-// (timeout ~3.5 s per try, 3 tries with backoff, in-process). With the mirror switched off (a variable missing) every call returns at once.
+// (timeout ~3.5 s per try; sign-up / password / e-mail messages are retried for about 5 minutes, the rest 3 times). The retries live in
+// THIS process only: there is no persistent outbox, so a message still pending when the process stops is lost (docs/terminal-instance.md).
 // No Node-only imports (fetch + Web Crypto), so auth.ts can import it without trouble for the edge bundle. Logs carry the operation
-// and the outcome only: never an address, a hash or the secret.
+// and the outcome only: never an address, a hash, a payload or the secret.
 import {
-  BACKOFF_MS,
   HEADER_NONCE,
   HEADER_SIGNATURE,
   HEADER_TIMESTAMP,
   MIRROR_PATH,
+  NOT_FOUND_PAUSES_MS,
+  REQUEST_TIMEOUT_AVATAR_MS,
   REQUEST_TIMEOUT_MS,
+  backoffFor,
   mirrorConfig,
+  mirrorDirection,
   mirroredStatus,
   profileFromUser,
   shouldRetryStatus,
@@ -19,20 +23,43 @@ import {
   type MirrorProfile,
   type MirrorResult,
 } from "./account-mirror";
+import { siteMode } from "./site-mode";
 
 type Outcome = { delivered: boolean; result?: MirrorResult };
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Waits without keeping the process alive: a graceful shutdown never waits for a retry timer. */
+const sleep = (ms: number) =>
+  new Promise<void>((r) => {
+    const t = setTimeout(r, ms) as unknown as { unref?: () => void };
+    t.unref?.();
+  });
+
+/** This site -> the other one, as part of the signed text ("main>terminal" / "terminal>main"). */
+function outgoingDirection(): string {
+  const me = siteMode();
+  return mirrorDirection(me, me === "terminal" ? "main" : "terminal");
+}
+
+/** A peer that has not got the account (yet): a rename or the sign-up copy may still be on its way. */
+const RETRY_NOT_FOUND = new Set(["password", "reset", "profile"]);
+
+function hasAvatar(msg: MirrorMessage): boolean {
+  return "profile" in msg && typeof msg.profile.avatarUrl === "string";
+}
 
 async function deliver(msg: MirrorMessage): Promise<Outcome> {
   const cfg = mirrorConfig();
   if (!cfg) return { delivered: false };
   const body = JSON.stringify(msg);
-  for (let attempt = 0; attempt < BACKOFF_MS.length; attempt++) {
-    if (BACKOFF_MS[attempt] > 0) await sleep(BACKOFF_MS[attempt]);
+  const schedule = backoffFor(msg.op);
+  const timeout = hasAvatar(msg) ? REQUEST_TIMEOUT_AVATAR_MS : REQUEST_TIMEOUT_MS;
+  const direction = outgoingDirection();
+  let notFound = 0;
+  for (let attempt = 0; attempt < schedule.length; attempt++) {
+    if (schedule[attempt] > 0) await sleep(schedule[attempt]);
     try {
       // a fresh signature (timestamp, nonce) for every try
-      const sig = await signRequest(cfg.secret, body);
+      const sig = await signRequest(cfg.secret, body, { direction });
       const res = await fetch(cfg.peerUrl + MIRROR_PATH, {
         method: "POST",
         headers: {
@@ -44,26 +71,36 @@ async function deliver(msg: MirrorMessage): Promise<Outcome> {
         body,
         redirect: "error",
         cache: "no-store",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeout),
       });
       if (res.ok) {
         const json = (await res.json().catch(() => null)) as { result?: MirrorResult } | null;
+        if (json?.result === "not_found" && RETRY_NOT_FOUND.has(msg.op) && notFound < NOT_FOUND_PAUSES_MS.length) {
+          await sleep(NOT_FOUND_PAUSES_MS[notFound++]);
+          attempt--; // this was an answer, not a failed try
+          continue;
+        }
         return { delivered: true, result: json?.result };
       }
+      if (res.status === 400) {
+        console.warn(`[account-mirror] ${msg.op}: peer refused the data (400), giving up`);
+        return { delivered: false };
+      }
       if (!shouldRetryStatus(res.status)) {
-        // 404: the peer has the feature off or another secret; 400: it refused the data. Neither gets better with a retry.
+        // 404: the peer has the feature off or another secret. It does not get better with a retry.
         console.warn(`[account-mirror] ${msg.op}: peer answered ${res.status}, giving up`);
         return { delivered: false };
       }
-      console.warn(`[account-mirror] ${msg.op}: peer answered ${res.status} (try ${attempt + 1}/${BACKOFF_MS.length})`);
+      console.warn(`[account-mirror] ${msg.op}: peer answered ${res.status} (try ${attempt + 1}/${schedule.length})`);
     } catch (e) {
-      console.warn(`[account-mirror] ${msg.op}: ${e instanceof Error ? e.name : "error"} (try ${attempt + 1}/${BACKOFF_MS.length})`);
+      console.warn(`[account-mirror] ${msg.op}: ${e instanceof Error ? e.name : "error"} (try ${attempt + 1}/${schedule.length})`);
     }
   }
   return { delivered: false };
 }
 
-// Requests about one account go out one after another (an edit never overtakes the previous one inside this process).
+// Messages about one account (keyed by the SENDER's user id, so an e-mail change does not split the order) go out one after another:
+// an edit never overtakes the previous one inside this process, and a rename is always sent before whatever follows it.
 const chains = new Map<string, Promise<unknown>>();
 function enqueue<T>(key: string, task: () => Promise<T>): Promise<T> {
   const prev = chains.get(key) ?? Promise.resolve();
@@ -76,10 +113,10 @@ function enqueue<T>(key: string, task: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function send(msg: MirrorMessage, key: string, after?: (o: Outcome) => void): void {
+function send(msg: MirrorMessage, userId: string, after?: (o: Outcome) => void): void {
   try {
-    if (!mirrorConfig()) return;
-    void enqueue(key.trim().toLowerCase(), async () => {
+    if (!mirrorConfig() || !userId) return;
+    void enqueue(userId, async () => {
       const o = await deliver(msg);
       try {
         after?.(o);
@@ -94,10 +131,10 @@ function send(msg: MirrorMessage, key: string, after?: (o: Outcome) => void): vo
 
 /** The account a flow has just written, in the shape the senders need. Only the whitelisted profile fields are ever sent. */
 export interface MirrorUser {
+  id: string;
   email: string;
   passwordHash: string;
   status?: string | null;
-  displayName: string;
   [k: string]: unknown;
 }
 
@@ -107,11 +144,16 @@ function newAccountMessage(op: "register" | "ensure", u: MirrorUser): MirrorMess
   return { op, email: u.email, passwordHash: u.passwordHash, profile: profile as MirrorProfile & { displayName: string } };
 }
 
+/** Is the mirror on? Callers use it to skip work (reading the previous values) that only the mirror needs. */
+export function mirrorActive(): boolean {
+  return mirrorConfig() !== null;
+}
+
 /** Sign-up (or completing an abandoned sign-up) on this site: create the same account on the other one. */
 export function mirrorRegister(u: MirrorUser): void {
   if (mirroredStatus(u.status ?? "APPROVED") === null) return;
   const msg = newAccountMessage("register", u);
-  if (msg) send(msg, u.email);
+  if (msg) send(msg, u.id);
 }
 
 // Addresses the peer is known to have already (or to refuse): one lookup per address and process per 6 hours, so a login costs no extra request.
@@ -130,7 +172,7 @@ export function mirrorEnsure(u: MirrorUser): void {
   if (until && until > Date.now()) return;
   const msg = newAccountMessage("ensure", u);
   if (!msg) return;
-  send(msg, u.email, (o) => {
+  send(msg, u.id, (o) => {
     if (!o.delivered) return;
     if (ensured.size >= ENSURED_MAX) {
       const oldest = ensured.keys().next().value;
@@ -140,20 +182,28 @@ export function mirrorEnsure(u: MirrorUser): void {
   });
 }
 
-/** Password change / reset: the other site takes the new hash for the account with this address and drops its old sessions. */
-export function mirrorPassword(email: string, passwordHash: string): void {
-  send({ op: "password", email, passwordHash }, email);
+/**
+ * Password change by the signed-in user: the other site takes the new hash ONLY if its account still has the old one (so accounts whose
+ * passwords differ stay as they are) and drops its old sessions.
+ */
+export function mirrorPassword(userId: string, email: string, oldHash: string, passwordHash: string): void {
+  send({ op: "password", email, passwordHash, oldHash }, userId);
 }
 
-/** E-mail change: the other site renames the account found by the OLD address. */
-export function mirrorEmail(oldEmail: string, newEmail: string): void {
-  send({ op: "email", email: oldEmail, newEmail }, oldEmail);
+/** Password reset by a code from the mailbox (ownership proven): the other site takes the new hash whatever it had (plain USER accounts only). */
+export function mirrorReset(userId: string, email: string, passwordHash: string): void {
+  send({ op: "reset", email, passwordHash }, userId);
+}
+
+/** E-mail change: the other site renames its account found by the OLD address, if that account has the same current hash. */
+export function mirrorEmail(userId: string, oldEmail: string, newEmail: string, passwordHash: string): void {
+  send({ op: "email", email: oldEmail, newEmail, passwordHash }, userId);
 }
 
 /** Profile edit: `changed` is the set of columns that was written (anything outside the whitelist is dropped here). */
-export function mirrorProfile(email: string | null | undefined, changed: Record<string, unknown>): void {
+export function mirrorProfile(userId: string, email: string | null | undefined, changed: Record<string, unknown>): void {
   if (!email) return;
   const profile = profileFromUser(changed);
   if (Object.keys(profile).length === 0) return;
-  send({ op: "profile", email, profile }, email);
+  send({ op: "profile", email, profile }, userId);
 }

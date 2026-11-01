@@ -6,23 +6,33 @@
 #
 # Run on the server:  bash scripts/setup-account-mirror.sh
 # Idempotent: the secret (openssl rand -hex 32) is generated ONLY when /opt/fomo/.env has none; running it again changes nothing.
-# Other lines of the .env files are never touched; the files are rewritten in place (same owner, mode and inode); the secret is never
-# printed. Prints only "OK ..." (already in place) / "changed ..." lines. It restarts nothing: the deploy (scripts/deploy-swap.sh does
-# `pm2 restart --update-env`) or `pm2 restart fomo fomo-terminal --update-env` makes the processes read the new variables.
-# Overrides: MAIN_DIR, TERMINAL_DIR, MAIN_PORT, TERMINAL_PORT (otherwise PORT from each .env, defaults 3000 and 3100).
+# Other lines of the .env files are never touched. Before a file is changed it is copied (cp -p) into a private backup directory
+# (mode 0700; default ~/.fomo-env-backups, override with BACKUP_DIR), the new content is written to a temporary file in the SAME directory
+# (mode and owner copied from the original) and moved over the original in one atomic step (mv), so a failure never leaves a half-written
+# .env. The secret is never printed. Prints only "OK ..." (already in place) / "changed ..." lines. It restarts nothing: the deploy
+# (scripts/deploy-swap.sh does `pm2 restart --update-env`) or `pm2 restart fomo fomo-terminal --update-env` makes the processes read the
+# new variables.
+# Overrides: MAIN_DIR, TERMINAL_DIR, MAIN_PORT, TERMINAL_PORT (otherwise PORT from each .env, defaults 3000 and 3100), BACKUP_DIR.
 set -euo pipefail
+umask 077
 
 MAIN_DIR="${MAIN_DIR:-/opt/fomo}"
 TERMINAL_DIR="${TERMINAL_DIR:-/opt/fomo-terminal}"
 MAIN_ENV="${MAIN_DIR}/.env"
 TERMINAL_ENV="${TERMINAL_DIR}/.env"
+BACKUP_DIR="${BACKUP_DIR:-${HOME:-/root}/.fomo-env-backups}"
+
+# the temporary file of the edit in progress; removed on any exit (success, error, Ctrl-C)
+tmp=""
+trap 'rm -f "${tmp:-}"' EXIT
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 command -v openssl >/dev/null 2>&1 || die "missing command: openssl"
-[ -f "$MAIN_ENV" ] || die "no $MAIN_ENV"
-[ -f "$TERMINAL_ENV" ] || die "no $TERMINAL_ENV"
-[ -w "$MAIN_ENV" ] || die "$MAIN_ENV is not writable (run as the owner of the file, or with sudo)"
-[ -w "$TERMINAL_ENV" ] || die "$TERMINAL_ENV is not writable (run as the owner of the file, or with sudo)"
+for f in "$MAIN_ENV" "$TERMINAL_ENV"; do
+  [ -f "$f" ] || die "no $f"
+  [ -w "$f" ] || die "$f is not writable (run as the owner of the file, or with sudo)"
+  [ -w "$(dirname "$f")" ] || die "$(dirname "$f") is not writable (the new file is written next to the old one)"
+done
 
 # value of KEY in an .env file (last assignment wins; one pair of surrounding quotes and a trailing CR are removed); empty when absent
 get_val() {
@@ -37,31 +47,50 @@ get_val() {
   printf '%s' "$line"
 }
 
+BACKED_UP=" "
+backup_once() {
+  local file="$1" name
+  case "$BACKED_UP" in *" ${file} "*) return 0 ;; esac
+  mkdir -p "$BACKUP_DIR"
+  chmod 700 "$BACKUP_DIR"
+  name="$(printf '%s' "$file" | tr '/' '_')"
+  cp -p "$file" "${BACKUP_DIR}/${name}.$(date +%Y%m%d-%H%M%S)"
+  BACKED_UP="${BACKED_UP}${file} "
+}
+
 # set KEY=VALUE in FILE without touching any other line: replaces the line(s) of KEY, or appends one. Prints one status line (no values).
 set_val() {
-  local key="$1" value="$2" file="$3" current tmp
+  local key="$1" value="$2" file="$3" current action
   current="$(get_val "$key" "$file")"
   if [ "$current" = "$value" ]; then
     echo "OK      ${file}: ${key} already set"
     return 0
   fi
-  tmp="$(mktemp)"
+  backup_once "$file"
+  tmp="$(mktemp "${file}.XXXXXX")"
+  cp -p "$file" "$tmp"                 # same mode (and owner, where permitted) as the original; the content is rewritten below
+  chown --reference="$file" "$tmp" 2>/dev/null || true
   if grep -qE "^[[:space:]]*(export[[:space:]]+)?${key}=" "$file"; then
+    action="updated"
     # replace in place; ENVIRON keeps the value away from awk's escape processing
     KEY="$key" VAL="$value" awk '
       $0 ~ "^[ \t]*(export[ \t]+)?" ENVIRON["KEY"] "=" { if (!done) { print ENVIRON["KEY"] "=" ENVIRON["VAL"]; done = 1 } ; next }
       { print }
     ' "$file" > "$tmp"
-    cat "$tmp" > "$file"   # write through the existing file: owner, mode and inode stay
-    echo "changed ${file}: ${key} updated"
   else
+    action="added"
+    cat "$file" > "$tmp"
     if [ -s "$file" ] && [ "$(tail -c 1 "$file" | od -An -c | tr -d ' ')" != '\n' ]; then
-      printf '\n' >> "$file"
+      printf '\n' >> "$tmp"
     fi
-    printf '%s=%s\n' "$key" "$value" >> "$file"
-    echo "changed ${file}: ${key} added"
+    printf '%s=%s\n' "$key" "$value" >> "$tmp"
   fi
-  rm -f "$tmp"
+  # never replace a good .env with an empty or wrong file
+  [ -s "$tmp" ] || die "the new ${file} would be empty, nothing was changed"
+  [ "$(KEY="$key" VAL="$value" awk '$0 == ENVIRON["KEY"] "=" ENVIRON["VAL"] { n++ } END { print n + 0 }' "$tmp")" -ge 1 ] || die "the new ${file} lacks ${key}, nothing was changed"
+  mv -f "$tmp" "$file"                 # atomic: same directory
+  tmp=""
+  echo "changed ${file}: ${key} ${action} (backup in ${BACKUP_DIR})"
 }
 
 port_of() {

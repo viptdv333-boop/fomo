@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     });
 
     // The other site renames its account (found by the old address), best-effort, in the background.
-    mirrorEmail(user.email, newEmail);
+    mirrorEmail(session.user.id, user.email, newEmail, user.passwordHash);
 
     return NextResponse.json({ message: t("api.emailChanged") });
   }

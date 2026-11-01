@@ -260,6 +260,12 @@ server {
         access_log off;
     }
 
+    # Account mirror between the two instances (docs/terminal-instance.md): the peers talk over loopback, never through this public vhost
+    location = /api/internal/account-mirror {
+        client_max_body_size 64k;
+        return 404;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${PORT};
         proxy_http_version 1.1;

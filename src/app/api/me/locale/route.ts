@@ -10,8 +10,11 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ ok: false }, { status: 401 });
   const { locale } = await req.json().catch(() => ({}));
   if (!isLocale(locale)) return NextResponse.json({ error: "Invalid locale" }, { status: 400 });
+  // The client sends this on every page load: nothing is written or mirrored while the language has not changed.
+  const current = await prisma.user.findUnique({ where: { id: session.user.id }, select: { locale: true } });
+  if (current?.locale === locale) return NextResponse.json({ ok: true });
   await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
   // The language is part of the profile shared with the other site.
-  mirrorProfile(session.user.email, { locale });
+  mirrorProfile(session.user.id, session.user.email, { locale });
   return NextResponse.json({ ok: true });
 }

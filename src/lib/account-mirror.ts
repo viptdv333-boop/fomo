@@ -20,9 +20,32 @@ export const HEADER_SIGNATURE = "x-mirror-signature";
 export const REPLAY_WINDOW_MS = 60_000;
 export const MAX_BODY_BYTES = 64 * 1024;
 export const MIN_SECRET_LENGTH = 32;
-/** One try now, then after 0.4 s and 1.2 s; each try has its own timeout (see account-mirror-client.ts). */
+/** Profile edits and the login-time copy: one try now, then after 0.4 s and 1.2 s (the next login / edit repeats them anyway). */
 export const BACKOFF_MS = [0, 400, 1200] as const;
+/**
+ * Sign-up, password change / reset, e-mail change: these must not be lost when the peer restarts (deploy-swap restarts both instances), so
+ * the in-process retry runs for about 5 minutes (waits between tries, total 317.6 s). There is NO persistent outbox: a message still
+ * pending when THIS process stops is lost (timers are unref'ed so they never hold a graceful shutdown); see docs/terminal-instance.md.
+ */
+export const CRITICAL_BACKOFF_MS = [0, 400, 1200, 4000, 12000, 30000, 60000, 90000, 120000] as const;
+/** Pauses before another try when the peer answers not_found for password / reset / profile (its rename or sign-up copy may still be on the way). */
+export const NOT_FOUND_PAUSES_MS = [2000, 5000, 10000] as const;
 export const REQUEST_TIMEOUT_MS = 3500;
+/** A message that carries an avatar makes the receiver download a file first: the sender waits longer than that download can take. */
+export const AVATAR_DOWNLOAD_TIMEOUT_MS = 4000;
+export const REQUEST_TIMEOUT_AVATAR_MS = 9000;
+/** Operations that change who can sign in: separate (stricter) inbound limit, long retry. */
+export const CRITICAL_OPS = ["register", "password", "reset", "email"] as const;
+export function isCriticalOp(op: string): boolean {
+  return (CRITICAL_OPS as readonly string[]).includes(op);
+}
+export function backoffFor(op: string): readonly number[] {
+  return isCriticalOp(op) ? CRITICAL_BACKOFF_MS : BACKOFF_MS;
+}
+/** Inbound rate limit buckets (per minute): profile / login-copy noise can never starve a password reset or a sign-up. */
+export function inboundBucket(op: string): { key: string; limit: number } {
+  return isCriticalOp(op) ? { key: "account-mirror:in:critical", limit: 60 } : { key: "account-mirror:in", limit: 300 };
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Configuration
@@ -108,15 +131,34 @@ export interface SignedHeaders {
   signature: string;
 }
 
-/** The signature covers timestamp, nonce and the exact body text: `${timestamp}.${nonce}.${body}`. */
-export async function signRequest(secret: string, body: string, now: number = Date.now(), nonce: string = newNonce()): Promise<SignedHeaders> {
-  const timestamp = String(now);
-  return { timestamp, nonce, signature: await hmacHex(secret, `${timestamp}.${nonce}.${body}`) };
+export const MIRROR_VERSION = "mirror-v1";
+/** "main>terminal": which site sends to which. Part of the signed text, so a request captured in one direction is useless in the other. */
+export function mirrorDirection(from: string, to: string): string {
+  return `${from}>${to}`;
+}
+
+/** What is signed: version, HTTP method, path, direction, timestamp, nonce and the exact body text, separated by "|". */
+export function signingString(p: { direction: string; method?: string; path?: string; timestamp: string; nonce: string; body: string }): string {
+  return [MIRROR_VERSION, p.method ?? "POST", p.path ?? MIRROR_PATH, p.direction, p.timestamp, p.nonce, p.body].join("|");
+}
+
+export async function signRequest(
+  secret: string,
+  body: string,
+  o: { direction: string; method?: string; path?: string; now?: number; nonce?: string },
+): Promise<SignedHeaders> {
+  const timestamp = String(o.now ?? Date.now());
+  const nonce = o.nonce ?? newNonce();
+  return { timestamp, nonce, signature: await hmacHex(secret, signingString({ direction: o.direction, method: o.method, path: o.path, timestamp, nonce, body })) };
 }
 
 export type VerifyInput = {
   secret: string | undefined | null;
   body: string;
+  /** direction the receiver expects, e.g. "terminal>main" on fomo.spot */
+  direction: string;
+  method?: string;
+  path?: string;
   timestamp: string | null | undefined;
   nonce: string | null | undefined;
   signature: string | null | undefined;
@@ -132,7 +174,7 @@ export async function verifyRequest(i: VerifyInput): Promise<boolean> {
   if (!TS_RE.test(timestamp) || !NONCE_RE.test(nonce) || !SIG_RE.test(signature)) return false;
   const now = i.now ?? Date.now();
   if (Math.abs(now - Number(timestamp)) > REPLAY_WINDOW_MS) return false;
-  const expected = await hmacHex(secret, `${timestamp}.${nonce}.${i.body}`);
+  const expected = await hmacHex(secret, signingString({ direction: i.direction, method: i.method, path: i.path, timestamp, nonce, body: i.body }));
   return constantTimeEqual(expected, signature);
 }
 
@@ -236,30 +278,47 @@ export function isMirrorAvatarPath(v: unknown): v is string {
   return typeof v === "string" && v.length <= 200 && AVATAR_PATH_RE.test(v);
 }
 
+/** Field limits of the wire format. The SENDER clips to exactly these (profileFromUser), so one long value never discards a whole message. */
+export const LIMITS = {
+  displayName: 100,
+  bio: 500,
+  firstName: 100,
+  lastName: 100,
+  city: 100,
+  workplace: 200,
+  exchangeExperience: 100,
+  specialization: 100,
+  specializations: 50,
+  socialShort: 200,
+  website: 500,
+} as const;
+const SOCIAL_KEYS = ["telegram", "vk", "youtube", "whatsapp", "max", "website"] as const;
+
 const str = (max: number) => z.string().max(max);
 const isoDate = z.string().max(40).refine((s) => !Number.isNaN(Date.parse(s)), "bad date");
 
 const socialLinksSchema = z.object({
-  telegram: str(200).optional(),
-  vk: str(200).optional(),
-  youtube: str(200).optional(),
-  whatsapp: str(200).optional(),
-  max: str(200).optional(),
-  website: str(500).optional(),
+  telegram: str(LIMITS.socialShort).optional(),
+  vk: str(LIMITS.socialShort).optional(),
+  youtube: str(LIMITS.socialShort).optional(),
+  whatsapp: str(LIMITS.socialShort).optional(),
+  max: str(LIMITS.socialShort).optional(),
+  website: str(LIMITS.website).optional(),
 });
 
 const profileShape = {
-  displayName: z.string().min(1).max(100),
+  displayName: z.string().min(1).max(LIMITS.displayName),
+  // optional, never null: fomoId may be NULL in the source database; then the receiver generates one
   fomoId: z.string().regex(FOMO_ID_REGEX),
-  bio: str(500).nullable(),
+  bio: str(LIMITS.bio).nullable(),
   avatarUrl: z.string().regex(AVATAR_PATH_RE).max(200).nullable(),
-  firstName: str(100).nullable(),
-  lastName: str(100).nullable(),
+  firstName: str(LIMITS.firstName).nullable(),
+  lastName: str(LIMITS.lastName).nullable(),
   birthDate: isoDate.nullable(),
-  city: str(100).nullable(),
-  workplace: str(200).nullable(),
-  exchangeExperience: str(100).nullable(),
-  specializations: z.array(str(100)).max(50),
+  city: str(LIMITS.city).nullable(),
+  workplace: str(LIMITS.workplace).nullable(),
+  exchangeExperience: str(LIMITS.exchangeExperience).nullable(),
+  specializations: z.array(str(LIMITS.specialization)).max(LIMITS.specializations),
   socialLinks: socialLinksSchema.nullable(),
   locale: z.enum(LOCALES),
   dmEnabled: z.boolean(),
@@ -295,17 +354,41 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("register"), email: emailSchema, passwordHash: bcryptSchema, profile: newProfileSchema }),
   // first successful login on the other site: create the account only if the address is absent, never touch an existing one
   z.object({ op: z.literal("ensure"), email: emailSchema, passwordHash: bcryptSchema, profile: newProfileSchema }),
-  z.object({ op: z.literal("password"), email: emailSchema, passwordHash: bcryptSchema }),
-  z.object({ op: z.literal("email"), email: emailSchema, newEmail: emailSchema }),
+  // password change by the user: applied only if the receiver still holds the sender's OLD hash (compare-and-swap); accounts whose
+  // passwords differ stay as they are
+  z.object({ op: z.literal("password"), email: emailSchema, passwordHash: bcryptSchema, oldHash: bcryptSchema }),
+  // password reset (ownership of the mailbox was proven by the code): applied unconditionally, but still only to a plain USER account
+  z.object({ op: z.literal("reset"), email: emailSchema, passwordHash: bcryptSchema }),
+  // e-mail change: only if the receiver account has the same current hash as the sender's (same person, same password)
+  z.object({ op: z.literal("email"), email: emailSchema, newEmail: emailSchema, passwordHash: bcryptSchema }),
   z.object({ op: z.literal("profile"), email: emailSchema, profile: profileSchema }),
 ]);
 export type MirrorMessage = z.infer<typeof mirrorMessageSchema>;
 
 type UserLike = Record<string, unknown>;
 
+/** Cuts to `max` UTF-16 units (what zod's max counts) without leaving half of a surrogate pair at the end. */
+export function clip(v: string, max: number): string {
+  if (v.length <= max) return v;
+  const r = v.slice(0, max);
+  const c = r.charCodeAt(r.length - 1);
+  return c >= 0xd800 && c <= 0xdbff ? r.slice(0, -1) : r;
+}
+
+const TEXT_LIMITS: Record<string, number> = {
+  bio: LIMITS.bio,
+  firstName: LIMITS.firstName,
+  lastName: LIMITS.lastName,
+  city: LIMITS.city,
+  workplace: LIMITS.workplace,
+  exchangeExperience: LIMITS.exchangeExperience,
+};
+
 /**
  * Whitelisted profile fields of a user record (or of a Prisma update `data` object) in wire form: only the keys that are present and
- * valid; Date -> ISO string; an avatar that is not one of our uploads is left out. Money fields, role, status etc. cannot get through.
+ * usable; Date -> ISO string; text clipped to the wire limits, invalid list items dropped; an avatar that is not one of our uploads, a NULL
+ * or malformed fomoId and a missing display name are left out (so one odd value never discards the message). Money fields, role, status
+ * etc. cannot get through.
  */
 export function profileFromUser(u: UserLike): MirrorProfile {
   const out: Record<string, unknown> = {};
@@ -320,19 +403,47 @@ export function profileFromUser(u: UserLike): MirrorProfile {
       if (v === null || v === "") out[f] = null;
       else if (isMirrorAvatarPath(v)) out[f] = v;
     } else if (f === "specializations") {
-      if (Array.isArray(v)) out[f] = v.filter((x): x is string => typeof x === "string");
+      if (Array.isArray(v)) {
+        out[f] = v
+          .filter((x): x is string => typeof x === "string" && x.trim() !== "")
+          .map((x) => clip(x, LIMITS.specialization))
+          .slice(0, LIMITS.specializations);
+      }
     } else if (f === "socialLinks") {
       if (v === null) out[f] = null;
-      else if (typeof v === "object") out[f] = v;
+      else if (typeof v === "object" && !Array.isArray(v)) {
+        const links: Record<string, string> = {};
+        for (const k of SOCIAL_KEYS) {
+          const x = (v as Record<string, unknown>)[k];
+          if (typeof x === "string") links[k] = clip(x, k === "website" ? LIMITS.website : LIMITS.socialShort);
+        }
+        out[f] = links;
+      }
     } else if (f === "locale") {
       if (typeof v === "string" && (LOCALES as readonly string[]).includes(v)) out[f] = v;
     } else if (f === "dmEnabled") {
       if (typeof v === "boolean") out[f] = v;
+    } else if (f === "fomoId") {
+      if (typeof v === "string" && FOMO_ID_REGEX.test(v)) out[f] = v;
+    } else if (f === "displayName") {
+      if (typeof v === "string" && v.trim() !== "") out[f] = clip(v, LIMITS.displayName);
     } else {
-      if (v === null || typeof v === "string") out[f] = v;
+      if (v === null) out[f] = null;
+      else if (typeof v === "string") out[f] = clip(v, TEXT_LIMITS[f] ?? 500);
     }
   }
   return out as MirrorProfile;
+}
+
+/** The whitelisted fields of an update whose value really differs from the stored one (an unchanged form field is not sent to the peer). */
+export function changedFields(before: Record<string, unknown> | null | undefined, data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!(PROFILE_FIELDS as readonly string[]).includes(k)) continue;
+    if (before && JSON.stringify(before[k]) === JSON.stringify(v)) continue;
+    out[k] = v;
+  }
+  return out;
 }
 
 /**
@@ -397,11 +508,14 @@ export type MirrorResult =
   | "updated"
   | "noop" // already in the wanted state
   | "not_found" // no account here for this address
-  | "conflict"; // the new e-mail already belongs to another account here
+  | "conflict" // the new e-mail already belongs to another account here
+  | "skipped"; // refused on purpose, see `reason`
 
 export interface MirrorReply {
   ok: true;
   result: MirrorResult;
+  /** with result "skipped": "privileged" = ADMIN / OWNER (never changed by the mirror); "mismatch" = the passwords of the two accounts differ */
+  reason?: "privileged" | "mismatch";
   /** the wanted fomoId was taken, another one was given (created / completed) */
   fomoIdChanged?: boolean;
   /** profile fields that could not be applied (taken fomoId, avatar that could not be fetched) */

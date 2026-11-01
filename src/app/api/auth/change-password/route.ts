@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   });
 
   // The other site takes the new hash too (best-effort, in the background).
-  mirrorPassword(user.email, newHash);
+  mirrorPassword(session.user.id, user.email, user.passwordHash, newHash);
 
   return NextResponse.json({ message: t("api.passwordChanged") });
 }

@@ -6,7 +6,8 @@ import { z } from "zod/v4";
 import { isValidCustomFomoId } from "@/lib/fomoId";
 import { recalculateRating } from "@/lib/rating";
 import { getT } from "@/lib/i18n/server";
-import { mirrorProfile } from "@/lib/account-mirror-client";
+import { mirrorActive, mirrorProfile } from "@/lib/account-mirror-client";
+import { changedFields } from "@/lib/account-mirror";
 
 const adminPatchSchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "BANNED"]).optional(),
@@ -246,6 +247,11 @@ export async function PATCH(
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
+    // Only for the mirror: the previous values of the fields being written, so a form that re-sends everything mirrors what really changed.
+    const before = mirrorActive()
+      ? await prisma.user.findUnique({ where: { id }, select: Object.fromEntries(Object.keys(data).map((k) => [k, true])) })
+      : null;
+
     const updated = await prisma.user.update({
       where: { id },
       data,
@@ -275,7 +281,7 @@ export async function PATCH(
     // The profile is the same on fomo.spot and terminal.fomo.spot: the changed fields (whitelist in lib/account-mirror.ts) go to the other
     // site, best-effort, in the background. Money fields and the price are not in the whitelist and never leave.
     const { email: accountEmail, ...publicProfile } = updated;
-    mirrorProfile(accountEmail, data);
+    if (before) mirrorProfile(id, accountEmail, changedFields(before, data));
 
     return NextResponse.json(publicProfile);
   }
