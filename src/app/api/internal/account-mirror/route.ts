@@ -27,10 +27,11 @@ const nonces = new NonceCache();
 
 const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
-// The peer talks to this instance over loopback, without a reverse proxy in between. Anything that came through nginx (the public sites)
-// carries proxy headers: such a request is refused up front, whatever its signature, so the endpoint does not exist for the internet
-// even when the nginx vhost has no explicit block for it.
-const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "x-forwarded-host", "x-forwarded-proto", "forwarded", "cf-connecting-ip"];
+// The peer talks to this instance over loopback, without a reverse proxy in between. A request that came through nginx (the public sites)
+// carries the client-address headers nginx adds: such a request is refused up front, whatever its signature, so the endpoint does not
+// exist for the internet even when the nginx vhost has no explicit block for it. NOT x-forwarded-host / -proto / -port: Next.js itself puts
+// those on every request it handles (also on the loopback ones), checking them refused the real peer too.
+const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "cf-connecting-ip"];
 
 export async function POST(req: NextRequest) {
   const cfg = mirrorConfig();
