@@ -12,8 +12,18 @@ import {
   MAX_CHARTS,
   MAX_DEPTH,
   MAX_WINDOWS,
+  MAX_CHARTS_PHONE,
+  MAX_WINDOWS_PHONE,
+  MIN_AREA_H,
+  MIN_AREA_W,
   MIN_WIN_H,
+  MIN_WIN_PHONE_H,
+  MIN_WIN_PHONE_W,
   MIN_WIN_W,
+  capCharts,
+  capWindows,
+  isPhoneArea,
+  minWin,
   NEW_H,
   NEW_W,
   WIN_PANE,
@@ -768,6 +778,50 @@ function main() {
     ok(c.maximizedId() === null, "controller: an unknown window is not maximized");
     c.resetWindows();
     ok(isDefault(c.getWorkspace()) && c.maximizedId() === null, "controller: reset layout clears everything");
+  }
+
+  /* ───────────── phones: windows work everywhere, a bit differently ───────────── */
+  {
+    ok(isPhoneArea(375) && isPhoneArea(639) && !isPhoneArea(640) && !isPhoneArea(1280) && !isPhoneArea(0), "phone: an area narrower than 640 px is a phone");
+    ok(eq(minWin(375), { w: MIN_WIN_PHONE_W, h: MIN_WIN_PHONE_H }) && eq(minWin(1280), { w: MIN_WIN_W, h: MIN_WIN_H }) && MIN_WIN_PHONE_W === 160 && MIN_WIN_PHONE_H === 110, "phone: windows may be 160x110, elsewhere 200x120");
+    ok(MIN_AREA_W <= 320 && MIN_AREA_H <= 200, "windows work down to a 320 px area (only a smaller one falls back to the classic stack)");
+    ok(capWindows(true) === MAX_WINDOWS_PHONE && capWindows(false) === MAX_WINDOWS && capCharts(true) === MAX_CHARTS_PHONE && capCharts(false) === MAX_CHARTS && MAX_WINDOWS_PHONE === 4 && MAX_CHARTS_PHONE === 3, "phone: at most 4 windows, 3 of them charts");
+    // a new window: about 70% x 45%, inside the area, a cascade
+    for (let n = 0; n < 8; n++) {
+      const r = cascadeRect(n, "new", true);
+      ok(frac(r) && r.w === 0.7 && r.h === 0.45, `phone: new window ${n} is 70% x 45% and inside the area`);
+    }
+    ok(!eq(cascadeRect(0, "new", true), cascadeRect(1, "new", true)), "phone: the next window is shifted");
+    let ph: Workspace | null = null;
+    for (let i = 0; i < MAX_WINDOWS_PHONE; i++) ph = addWindow(ph, undefined, MAIN_ID, true)?.ws ?? ph;
+    ok(extraIds(ph).length === MAX_WINDOWS_PHONE && addWindow(ph, undefined, MAIN_ID, true) === null && addWindow(ph, undefined, MAIN_ID, false) !== null, "phone: the fifth window is refused (a wide screen still takes it)");
+    let phc: Workspace | null = null;
+    for (let i = 0; i < MAX_CHARTS_PHONE + 1; i++) {
+      const a = addWindow(phc, `p${i}x`, MAIN_ID, false);
+      phc = a ? (makeChart(a.ws, a.id, "moex", "SBER", true) as Workspace) : phc;
+    }
+    ok(chartCount(phc) === MAX_CHARTS_PHONE, "phone: at most 3 chart windows");
+    // pixels: the phone floors, the window stays inside
+    for (const [aw, ah] of [[320, 200], [375, 500], [412, 700], [639, 400]] as const) {
+      const px = rectPx({ x: 0.9, y: 0.9, w: 0.05, h: 0.05 }, aw, ah);
+      ok(inside(px, aw, ah) && px.w >= Math.min(aw, MIN_WIN_PHONE_W) && px.h >= Math.min(ah, MIN_WIN_PHONE_H), `phone: tiny window on ${aw}x${ah} shows at least 160x110 inside the area`);
+      const dr = dragRect({ x: 20, y: 20, w: 200, h: 150 }, "se", -9999, -9999, aw, ah);
+      ok(dr.w === MIN_WIN_PHONE_W && dr.h === MIN_WIN_PHONE_H, `phone: a resize stops at 160x110 on ${aw}x${ah}`);
+    }
+    ok(rectPx({ x: 0, y: 0, w: 0.05, h: 0.05 }, 1000, 600).w === MIN_WIN_W, "wide: still 200 px");
+    // the controller knows (the host reports the area)
+    const e = new Stub();
+    const c = new IndicatorsController();
+    c.attach(asEng(e));
+    c.setWindowsAvailable(true);
+    c.setPhoneArea(true);
+    const id1 = c.addWindow();
+    const w1 = c.getWorkspace().wins.find((w) => w.id === id1)!;
+    ok(w1.w === 0.7 && w1.h === 0.45, "controller: on a phone a new window is 70% x 45%");
+    for (let i = 0; i < 6; i++) c.addWindow();
+    ok(c.windowCount() === MAX_WINDOWS_PHONE && !c.canAddWindow(), "controller: a phone stops at 4 windows");
+    c.setPhoneArea(false);
+    ok(c.canAddWindow() && c.addWindow() !== "", "controller: the same chart on a wide area takes more (the limit follows the area)");
   }
 
   /* ───────────── the price chart's window can be closed; titles ───────────── */

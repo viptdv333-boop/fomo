@@ -23,9 +23,23 @@ export const MAX_CHARTS = 6;
 /** Smallest window, CSS px, whatever the fractions say. */
 export const MIN_WIN_W = 200;
 export const MIN_WIN_H = 120;
-/** Below this size of the chart area (CSS px) the windows fold back into one stack (phone / narrow window). Same threshold as pane-layout. */
-export const MIN_AREA_W = 640;
-export const MIN_AREA_H = 260;
+/** On a phone-size area (narrower than PHONE_AREA_W) windows may be smaller, there are fewer of them and a new one is bigger. */
+export const PHONE_AREA_W = 640;
+export const MIN_WIN_PHONE_W = 160;
+export const MIN_WIN_PHONE_H = 110;
+export const MAX_WINDOWS_PHONE = 4;
+export const MAX_CHARTS_PHONE = 3;
+/** An area smaller than this (CSS px) is not usable for windows: the classic stack (tiny panels of a multi-chart grid never get here, they are embedded). */
+export const MIN_AREA_W = 320;
+export const MIN_AREA_H = 200;
+
+/** The area is phone-size. */
+export const isPhoneArea = (w: number): boolean => w > 0 && w < PHONE_AREA_W;
+/** Smallest window (CSS px) for an area of this width. */
+export const minWin = (areaW: number): { w: number; h: number } => (isPhoneArea(areaW) ? { w: MIN_WIN_PHONE_W, h: MIN_WIN_PHONE_H } : { w: MIN_WIN_W, h: MIN_WIN_H });
+/** How many extra windows / chart windows a new window may be made for (a phone has less room and less power). */
+export const capWindows = (phone: boolean): number => (phone ? MAX_WINDOWS_PHONE : MAX_WINDOWS);
+export const capCharts = (phone: boolean): number => (phone ? MAX_CHARTS_PHONE : MAX_CHARTS);
 /** Size of a new window: share of the area. */
 export const NEW_W = 0.42;
 export const NEW_H = 0.45;
@@ -145,8 +159,10 @@ const topZ = (ws: Workspace | null): number => (ws ? ws.wins.reduce((m, w) => Ma
 /* ───────────── edits (all return a new workspace, the old one is never changed) ───────────── */
 
 /** Where the n-th extra window opens: a cascade inside the area (never exactly over the previous one, never outside). A chart window is bigger. */
-export function cascadeRect(n: number, kind: WinKind = "new"): Rect {
+export function cascadeRect(n: number, kind: WinKind = "new", phone = false): Rect {
   const k = n % 6;
+  // a phone: a window is about 70% x 45% of the area (it is maximized for real work), shifted a little for the next one
+  if (phone) return { x: Math.max(0, 0.3 - 0.04 * k), y: Math.max(0, 0.5 - 0.06 * k), w: 0.7, h: 0.45 };
   if (kind === "chart") return { x: 0.4 - 0.05 * k, y: 0.35 - 0.05 * k, w: 0.5, h: 0.55 };
   return { x: 0.5 - 0.05 * k, y: 0.45 - 0.06 * k, w: NEW_W, h: NEW_H };
 }
@@ -155,11 +171,11 @@ export function cascadeRect(n: number, kind: WinKind = "new"): Rect {
  * Adds a window nobody has decided about yet (it shows the choice «chart / indicator»). `link` is the chart it will follow if it becomes an indicator
  * window (the chart the user was looking at; a chart that does not exist is the price chart). Null when there are too many windows.
  */
-export function addWindow(ws: Workspace | null, id?: string, link: string = MAIN_ID): { ws: Workspace; id: string } | null {
+export function addWindow(ws: Workspace | null, id?: string, link: string = MAIN_ID, phone = false): { ws: Workspace; id: string } | null {
   const base: Workspace = ws ?? { wins: [mainWin()] };
-  if (extraIds(base).length >= MAX_WINDOWS) return null;
+  if (extraIds(base).length >= capWindows(phone)) return null;
   const wid = id && ID_RE.test(id) && !hasWindow(base, id) ? id : newWindowId(base);
-  const win: WsWindow = { id: wid, kind: "new", ...cascadeRect(extraIds(base).length), z: topZ(base) + 1, link: chartIds(base).includes(link) ? link : MAIN_ID };
+  const win: WsWindow = { id: wid, kind: "new", ...cascadeRect(extraIds(base).length, "new", phone), z: topZ(base) + 1, link: chartIds(base).includes(link) ? link : MAIN_ID };
   return { ws: { wins: [...base.wins, win] }, id: wid };
 }
 
@@ -170,7 +186,7 @@ const replaceWin = (ws: Workspace, id: string, f: (w: WsWindow) => WsWindow): Wo
  * back in its place (the price chart is the one behind the toolbar). The same object comes back when that is not possible (too many charts,
  * junk instrument).
  */
-export function makeChart(ws: Workspace | null, id: string, src: string, tk: string): Workspace | null {
+export function makeChart(ws: Workspace | null, id: string, src: string, tk: string, phone = false): Workspace | null {
   if (!ws) return ws;
   const w = ws.wins.find((x) => x.id === id && x.id !== MAIN_ID);
   if (w && w.kind === "new" && !hasWindow(ws, MAIN_ID)) {
@@ -178,7 +194,7 @@ export function makeChart(ws: Workspace | null, id: string, src: string, tk: str
     return { wins: relink(ws.wins.map((x) => (x.id === id ? back : x))) };
   }
   if (!SRC_RE.test(src) || !TK_RE.test(tk)) return ws;
-  if (!w || w.kind === "chart" || chartCount(ws) >= MAX_CHARTS) return ws;
+  if (!w || w.kind === "chart" || chartCount(ws) >= capCharts(phone)) return ws;
   return replaceWin(ws, id, (x) => ({ id: x.id, kind: "chart", x: x.x, y: x.y, w: x.w, h: x.h, z: x.z, link: id, src, tk }));
 }
 
@@ -288,8 +304,9 @@ export function raise(ws: Workspace | null, id: string): Workspace | null {
 export function rectPx(r: Rect, W: number, H: number): Rect {
   const aw = Math.max(0, fin(W) ? W : 0);
   const ah = Math.max(0, fin(H) ? H : 0);
-  const w = Math.min(aw, Math.max(MIN_WIN_W, r.w * aw));
-  const h = Math.min(ah, Math.max(MIN_WIN_H, r.h * ah));
+  const m = minWin(aw);
+  const w = Math.min(aw, Math.max(m.w, r.w * aw));
+  const h = Math.min(ah, Math.max(m.h, r.h * ah));
   return { w, h, x: Math.min(Math.max(0, aw - w), Math.max(0, r.x * aw)), y: Math.min(Math.max(0, ah - h), Math.max(0, r.y * ah)) };
 }
 
@@ -313,10 +330,11 @@ export function dragRect(start: Rect, mode: DragMode, dx: number, dy: number, W:
     const y = clamp(start.y + dy, 0, H - start.h);
     return { x, y, w: start.w, h: start.h };
   }
-  if (mode.includes("w")) left = clamp(left + dx, 0, right - MIN_WIN_W);
-  if (mode.includes("e")) right = clamp(right + dx, left + MIN_WIN_W, W);
-  if (mode.includes("n")) top = clamp(top + dy, 0, bottom - MIN_WIN_H);
-  if (mode.includes("s")) bottom = clamp(bottom + dy, top + MIN_WIN_H, H);
+  const m = minWin(W);
+  if (mode.includes("w")) left = clamp(left + dx, 0, right - m.w);
+  if (mode.includes("e")) right = clamp(right + dx, left + m.w, W);
+  if (mode.includes("n")) top = clamp(top + dy, 0, bottom - m.h);
+  if (mode.includes("s")) bottom = clamp(bottom + dy, top + m.h, H);
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
 

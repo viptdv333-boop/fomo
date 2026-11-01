@@ -245,6 +245,8 @@ export class ChartEngine {
   private groupView: { r: number; span: number } | null = null;
   /** This window changed its size: it takes the group's view again instead of telling the others its own. */
   private resync = false;
+  /** An extra window that is covered by a maximized one does not paint (its view and data stay in step, it paints again when it is shown). */
+  private paused = false;
   /** An extra window shows the candles of its chart (the main pane) because an overlay indicator lives in it. */
   private priceView = false;
   /** Width of the price scale the labels need, and the common width the group asks for (so stacked windows line up). */
@@ -875,6 +877,12 @@ export class ChartEngine {
     this.invalidate();
   }
 
+  setPaused(on: boolean) {
+    if (this.paused === on) return;
+    this.paused = on;
+    if (!on) this.invalidate();
+  }
+
   /** True for an extra window. */
   isWindow(): boolean {
     return this.leader !== null;
@@ -1306,6 +1314,10 @@ export class ChartEngine {
 
   private frame(now: number) {
     if (this.destroyed) return;
+    if (this.paused) {
+      this.dirtyBase = this.dirtyOver = true;
+      return;
+    }
     const dt = this.lastFrame ? Math.min(64, now - this.lastFrame) : 16;
     this.lastFrame = now;
     let more = false;

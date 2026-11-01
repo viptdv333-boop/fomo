@@ -6,7 +6,7 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { DEFAULT_WORKSPACE, MAIN_ID, MAX_CHARTS, MAX_WINDOWS, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, shrink as wsShrink, windowNumber } from "../windows-layout";
+import { DEFAULT_WORKSPACE, MAIN_ID, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, capCharts, capWindows, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, shrink as wsShrink, windowNumber } from "../windows-layout";
 import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
@@ -99,6 +99,8 @@ export class IndicatorsController implements IndicatorsControllerLike {
   private winSnap: { ws: Workspace; rev: number; max: string | null } = { ws: DEFAULT_WORKSPACE, rev: 0, max: null };
   /** The window that fills the whole area right now (this session only, never stored). */
   private maximized: string | null = null;
+  /** The chart area is phone-size (the host tells): fewer windows, a bigger new window. */
+  private phone = false;
   /** The chart the user clicked last (the default link of a new indicator window). */
   private focusChart = MAIN_ID;
   private noticeListeners = new Set<(n: number) => void>();
@@ -693,12 +695,22 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** One more window with a chart of its own may be added. */
   canAddChart(): boolean {
-    return extraIds(this.ws).length < MAX_WINDOWS && chartCount(this.ws) < MAX_CHARTS;
+    return extraIds(this.ws).length < capWindows(this.phone) && chartCount(this.ws) < capCharts(this.phone);
   }
 
   /** One more window may be added. */
   canAddWindow(): boolean {
-    return extraIds(this.ws).length < MAX_WINDOWS;
+    return extraIds(this.ws).length < capWindows(this.phone);
+  }
+
+  /** A new window may become a chart (or the price chart comes back, which needs no room). */
+  canMakeChart(): boolean {
+    return chartCount(this.ws) < capCharts(this.phone) || !hasWindow(this.eff(), MAIN_ID);
+  }
+
+  /** The area the windows live in is phone-size (narrower than 640 px). */
+  setPhoneArea(on: boolean): void {
+    this.phone = on;
   }
 
   /** The window is a window with indicators. */
@@ -831,7 +843,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
 
   /** Adds a window (the first one switches the workspace on): "new" - the user chooses what it shows; "ind" - an indicator window linked to the chart clicked last. Returns its id, "" when there are too many windows. */
   addWindow(kind: "new" | "ind" = "new"): string {
-    const r = wsAdd(this.ws, undefined, this.focusChart);
+    const r = wsAdd(this.ws, undefined, this.focusChart, this.phone);
     if (!r) return "";
     // the new window opens on top: whatever filled the area gives it back
     this.maximized = null;
@@ -842,7 +854,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   /** The window becomes a chart of its own on this instrument (data source + data ticker). */
   makeChart(id: string, src: string, tk: string): void {
     const cur = this.eff();
-    const next = wsMakeChart(cur, id, src, tk);
+    const next = wsMakeChart(cur, id, src, tk, this.phone);
     if (next !== cur) this.setWs(next, id);
   }
 

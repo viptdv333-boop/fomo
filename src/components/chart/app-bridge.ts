@@ -8,6 +8,8 @@ export interface AppChartHandle {
   openAlerts: () => void;
   openIndicators: () => void;
   openSettings: () => void;
+  /** Adds a window (the same «chart / indicator» window of the web terminal). */
+  addWindow: () => void;
   toggleDrawTools: () => void;
   openWatchlist: () => void;
   /** pin / unpin timeframes (the chart's settings: saved on this device and on the account like the other chart preferences) */
@@ -25,4 +27,6 @@ export interface AppChartState {
   favIntervals: string[];
   /** the chart's data source (seconds exist only for some) */
   source: string;
+  /** The chart can have windows (its area is big enough): the page shows its «Windows» action with the count. */
+  windows?: { count: number; canAdd: boolean };
 }

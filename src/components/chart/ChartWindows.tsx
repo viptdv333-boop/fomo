@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DESIGN_PATHS } from "./icons";
-import { DEFAULT_WORKSPACE, MAIN_ID, MAX_CHARTS, MIN_AREA_H, MIN_AREA_W, chartCount, chartIds, dragRect, hasWindow, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
+import { DEFAULT_WORKSPACE, MAIN_ID, MIN_AREA_H, MIN_AREA_W, capCharts, chartIds, dragRect, hasWindow, isPhoneArea, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
 import type { DragMode, Rect, Workspace, WsWindow } from "@/lib/chart/windows-layout";
 import IndicatorLegend from "./IndicatorLegend";
 import { IND_ICONS } from "./icons";
@@ -58,6 +58,9 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
   }, [areaRef]);
   const available = enabled && size.w >= MIN_AREA_W && size.h >= MIN_AREA_H;
   useEffect(() => {
+    controller.setPhoneArea(isPhoneArea(size.w));
+  }, [controller, size.w]);
+  useEffect(() => {
     controller.setWindowsAvailable(available);
   }, [controller, available]);
   useEffect(() => () => controller.setWindowsAvailable(false), [controller]);
@@ -85,7 +88,8 @@ export function useWindowsGeometry(controller: IndicatorsController, areaRef: Re
 /* ───────────── a window frame: header to move, edges to resize ───────────── */
 
 const hbtn =
-  "tv3-press flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)]";
+  // touch: taller buttons in a header that stays slim (the 2px slop above and below makes the hit area 32px)
+  "tv3-press relative flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md text-[var(--tv3-text2)] before:absolute before:inset-x-0 before:-inset-y-[2px] before:content-[''] hover:bg-gray-500/15 hover:text-[var(--tv3-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] pointer-coarse:h-[28px] pointer-coarse:w-[34px]";
 
 /* the icons the chart's fullscreen button uses: corners out to expand, corners in to put it back */
 const expandIcon = (
@@ -104,15 +108,16 @@ const collapseIcon = (
   </svg>
 );
 
+// the edge zones are wider for a finger (inside the window); the top ones start under the title bar there so they never cover its buttons
 const HANDLES: [DragMode, string][] = [
-  ["n", "inset-x-2 top-0 h-[5px] cursor-ns-resize"],
-  ["s", "inset-x-2 bottom-0 h-[5px] cursor-ns-resize"],
-  ["w", "inset-y-2 left-0 w-[5px] cursor-ew-resize"],
-  ["e", "inset-y-2 right-0 w-[5px] cursor-ew-resize"],
-  ["nw", "left-0 top-0 h-[10px] w-[10px] cursor-nwse-resize"],
-  ["ne", "right-0 top-0 h-[10px] w-[10px] cursor-nesw-resize"],
-  ["sw", "bottom-0 left-0 h-[10px] w-[10px] cursor-nesw-resize"],
-  ["se", "bottom-0 right-0 h-[10px] w-[10px] cursor-nwse-resize"],
+  ["n", "inset-x-2 top-0 h-[5px] cursor-ns-resize pointer-coarse:top-[28px] pointer-coarse:h-[16px]"],
+  ["s", "inset-x-2 bottom-0 h-[5px] cursor-ns-resize pointer-coarse:h-[18px]"],
+  ["w", "inset-y-2 left-0 w-[5px] cursor-ew-resize pointer-coarse:w-[18px]"],
+  ["e", "inset-y-2 right-0 w-[5px] cursor-ew-resize pointer-coarse:w-[18px]"],
+  ["nw", "left-0 top-0 h-[10px] w-[10px] cursor-nwse-resize pointer-coarse:top-[28px] pointer-coarse:h-[24px] pointer-coarse:w-[24px]"],
+  ["ne", "right-0 top-0 h-[10px] w-[10px] cursor-nesw-resize pointer-coarse:top-[28px] pointer-coarse:h-[24px] pointer-coarse:w-[24px]"],
+  ["sw", "bottom-0 left-0 h-[10px] w-[10px] cursor-nesw-resize pointer-coarse:h-[24px] pointer-coarse:w-[24px]"],
+  ["se", "bottom-0 right-0 h-[10px] w-[10px] cursor-nwse-resize pointer-coarse:h-[24px] pointer-coarse:w-[24px]"],
 ];
 
 interface FrameProps {
@@ -209,7 +214,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
     >
       {rect ? (
         <div
-          className={`flex h-[24px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
+          className={`flex h-[24px] pointer-coarse:h-[28px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
           onDoubleClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) controller.toggleMaximize(id);
           }}
@@ -327,8 +332,8 @@ function Windows(props: Props) {
           if (!rect) return null;
           const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id };
           if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} onPickInstrument={props.onPickInstrument} />;
-          if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={chartCount(ws) < MAX_CHARTS || mainClosed} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
-          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} />;
+          if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={controller.canMakeChart()} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
+          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} covered={!!geo.maxId && geo.maxId !== w.id} />;
         })}
     </>
   );
@@ -454,7 +459,7 @@ function NewWindow({ win, rect, size, controller, ws, maximized, canChart, hasOt
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-auto p-4">
         <div className="text-sm font-semibold text-[var(--tv3-text)]">{t("win.new.q")}</div>
         <div className="flex w-full max-w-[380px] gap-3">
-          <button type="button" className={big} disabled={!canChart} title={canChart ? undefined : t("win.max", { n: MAX_CHARTS })} onClick={() => onPickChart(win.id)}>
+          <button type="button" className={big} disabled={!canChart} title={canChart ? undefined : t("win.max", { n: capCharts(isPhoneArea(size.w)) })} onClick={() => onPickChart(win.id)}>
             <svg viewBox="0 0 24 24" width={30} height={30} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="text-[var(--tv3-accent)]" aria-hidden="true">
               <path d="M7 4v16M7 8h0M5 8h4v7H5zM17 3v14M15 7h4v7h-4z" />
             </svg>
@@ -517,7 +522,7 @@ function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, 
   );
 }
 
-function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, onAddIndicator }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void }) {
+function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, onAddIndicator, covered }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void; covered: boolean }) {
   const { t } = useT();
   const id = win.id;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -544,6 +549,11 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, o
   }, [id, leader, controller]);
 
   useEffect(() => controller.subscribe(tick), [controller]);
+
+  // behind a maximized window nothing is seen: it stops painting (cheap on a phone)
+  useEffect(() => {
+    if (ready) engRef.current?.setPaused(covered);
+  }, [covered, ready]);
 
   const empty = !controller.usedWindows().has(id);
   const titleText = useLive(controller, ws, () => controller.windowTitle(id, t("win.indTitleEmpty")));

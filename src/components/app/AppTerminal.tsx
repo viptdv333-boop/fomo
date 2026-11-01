@@ -314,10 +314,11 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const tone = changeTone(quote?.changePercent);
   const delayed = !!selected && showDelayNote(selected.source, !!chart?.delayed, guest);
   const tfLabel = chart ? formatInterval(chart.interval, t) : "";
-  const tool = (key: string, icon: "list" | "pulse" | "pen" | "bell" | "sliders", label: string, run: () => void) => (
+  const tool = (key: string, icon: "list" | "pulse" | "pen" | "bell" | "sliders" | "windows", label: string, run: () => void, badge?: number) => (
     <button key={key} type="button" className="app-term-tool" onClick={run}>
       <AppIcon name={icon} size={22} stroke={1.8} />
       <span>{label}</span>
+      {badge ? <span className="app-term-tool-n">{badge}</span> : null}
     </button>
   );
   const h = handle;
@@ -397,12 +398,13 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           ))}
         </div>
 
-        <div className="app-term-tools">
+        <div className="app-term-tools" data-n={chart?.windows ? 6 : 5}>
           {tool("watch", "list", t("appui.term.toolWatch"), () => h.current?.openWatchlist())}
           {tool("ind", "pulse", t("appui.term.toolInd"), () => h.current?.openIndicators())}
           {tool("draw", "pen", t("appui.term.toolDraw"), () => h.current?.toggleDrawTools())}
           {tool("alert", "bell", t("appui.term.toolAlert"), () => h.current?.openAlerts())}
           {tool("set", "sliders", t("appui.term.toolSet"), () => h.current?.openSettings())}
+          {chart?.windows && tool("win", "windows", t("appui.term.toolWin"), () => h.current?.addWindow(), chart.windows.count)}
         </div>
         </div>
 

@@ -24,7 +24,6 @@ import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/ty
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
 import ChartWindows, { WindowFrame, useWindowsGeometry } from "@/components/chart/ChartWindows";
-import { MAX_WINDOWS } from "@/lib/chart/windows-layout";
 import type { WsWindow } from "@/lib/chart/windows-layout";
 import { composeWindows } from "@/lib/chart/windows-shot";
 import AlertsDialog, { type AlertDraft } from "@/components/chart/AlertsDialog";
@@ -443,7 +442,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(timer);
     };
   }, [indicators]);
-  const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && !appPage && !appFull && engineReady && !winBroken);
+  const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && engineReady && !winBroken);
   const [winCount, setWinCount] = useState(0);
   /** The indicator window the catalogue was opened from (null: from the toolbar). */
   const [indTarget, setIndTarget] = useState<string | null>(null);
@@ -1718,6 +1717,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       openAlerts: () => openAlerts(null),
       openIndicators: () => setIndOpen(true),
       openSettings: () => openSettings(),
+      addWindow: () => void indicators.addWindow(),
       toggleDrawTools: () => setToolsOpen((v) => !v),
       openWatchlist: () => onTab("watchlist"),
       setFavIntervals: (list) => csApi.update((x) => ({ ...x, ui: { ...x.ui, favIntervals: list } })),
@@ -1729,8 +1729,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const sideWatch = !!appPage && prefsLoaded && isDesktop;
   useEffect(() => {
     // the timeframe the chart can really show for this source (a seconds one saved for a symbol without seconds reads as 1м at once)
-    onAppStateRef.current?.({ interval: shownInterval(prefs.interval, source), delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source });
-  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source]);
+    onAppStateRef.current?.({ interval: shownInterval(prefs.interval, source), delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source, windows: winGeo.available ? { count: winCount, canAdd: indicators.canAddWindow() } : undefined });
+  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source, winGeo.available, winCount, indicators]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
@@ -1763,7 +1763,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSearch={() => setSearchOpen(true)}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => setIndOpen(true)}
-        windows={{ available: winGeo.available, count: winCount, canAdd: winCount < MAX_WINDOWS, onAdd: () => void indicators.addWindow() }}
+        windows={{ available: winGeo.available, count: winCount, canAdd: indicators.canAddWindow(), onAdd: () => void indicators.addWindow() }}
         onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
@@ -1950,8 +1950,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   ["tools", "mnav.tools", <DrawIcon key="d" id="trend" size={25} filled={toolsOpen} />, () => setToolsOpen((v) => !v), toolsOpen],
                   ["alerts", "mnav.alerts", ui(<path d={DESIGN_PATHS.alert} />, 25), () => openAlerts(null), false],
                   ["settings", "mnav.settings", ui(<path d={DESIGN_PATHS.gear} />, 25), () => openSettings(), false],
+                  ["windows", "mnav.windows", IND_ICONS.pane(25), () => void indicators.addWindow(), winCount > 0],
                 ] as const
-              ).map(([k, label, icon, fn, on]) => (
+              )
+                .filter(([k]) => k !== "windows" || winGeo.available)
+                .map(([k, label, icon, fn, on]) => (
                 <button
                   key={k}
                   type="button"

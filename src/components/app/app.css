@@ -464,6 +464,10 @@ html.app-ui .app-term-range[data-on="1"] { color: var(--app-tx); background: var
 html.app-ui .app-term-tools { display: grid; grid-template-columns: repeat(5, 1fr); margin: 12px 12px 0; padding: 6px; border-radius: 14px; background: var(--app-card); border: var(--app-gb); }
 html.app-ui .app-term-tool { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border-radius: 10px; font-size: 11px; color: var(--app-tx2); }
 html.app-ui .app-term-tool:active { background: var(--app-press); }
+/* the «Windows» action: a sixth button (a badge with the number of windows) */
+html.app-ui .app-term-tools[data-n="6"] { grid-template-columns: repeat(6, 1fr); }
+html.app-ui .app-term-tool { position: relative; }
+html.app-ui .app-term-tool-n { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: var(--app-tx); color: var(--app-card); font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; }
 /* ideas card */
 html.app-ui .app-term-ideas { margin: 12px 12px 0; padding: 12px 14px; border-radius: 14px; background: var(--app-card); border: var(--app-gb); display: flex; align-items: center; gap: 10px; color: var(--app-tx); text-decoration: none; }
 html.app-ui .app-term-ideas-t { flex: 1; font-size: 15px; min-width: 0; }
