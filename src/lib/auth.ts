@@ -58,8 +58,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("RATE_LIMITED");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+        // Case-insensitive: phone keyboards capitalise the first letter of the address, the account was registered as typed.
+        const user = await prisma.user.findFirst({
+          where: { email: { equals: (credentials.email as string).trim(), mode: "insensitive" } },
         });
 
         if (!user) return null;

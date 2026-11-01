@@ -26,11 +26,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: t("api.enterEmail") }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, status: true } });
+  // The address is matched without regard to case or stray spaces: phone keyboards capitalise the first letter ("Name@gmail.com"), and
+  // a miss here is answered with the generic "code sent" text without sending anything, so a user never learns why no mail came.
+  const typed = String(email).trim();
+  const user = await prisma.user.findFirst({ where: { email: { equals: typed, mode: "insensitive" } }, select: { id: true, status: true, email: true } });
   if (!user) {
     // Don't reveal whether email exists
     return NextResponse.json({ message: t("api.resetGeneric") });
   }
+  // From here on the address is the one stored on the account: codes are issued for it, and checked against it.
+  const accountEmail = user.email;
 
   if (user.status === "BANNED") {
     return NextResponse.json({ error: t("api.accountBanned") }, { status: 403 });
@@ -39,7 +44,7 @@ export async function POST(request: NextRequest) {
   // Step 1: Send code
   if (action === "send-code") {
     const recent = await prisma.emailVerification.findFirst({
-      where: { email, createdAt: { gte: new Date(Date.now() - 60000) } },
+      where: { email: accountEmail, createdAt: { gte: new Date(Date.now() - 60000) } },
     });
     if (recent) {
       return NextResponse.json({ error: t("api.waitBeforeResend") }, { status: 429 });
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
     const verCode = generateCode();
     await prisma.emailVerification.create({
       data: {
-        email,
+        email: accountEmail,
         code: verCode,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         purpose: "reset_password",
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      await sendVerificationCode(email, verCode, locale);
+      await sendVerificationCode(accountEmail, verCode, locale);
     } catch {
       return NextResponse.json({ error: t("api.sendCodeFailed") }, { status: 500 });
     }
@@ -75,7 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: strength.error }, { status: 400 });
     }
 
-    const check = await consumeCode(email, code, "reset_password", locale);
+    const check = await consumeCode(accountEmail, code, "reset_password", locale);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: check.status });
     }
@@ -84,12 +89,12 @@ export async function POST(request: NextRequest) {
     // Bumping sessionVersion evicts every existing session. Without it a reset
     // done because the account was compromised left the intruder logged in.
     await prisma.user.update({
-      where: { email },
+      where: { id: user.id },
       data: { passwordHash: hash, sessionVersion: { increment: 1 } },
     });
 
     // The other site takes the new hash too (best-effort, in the background).
-    mirrorReset(user.id, email, hash);
+    mirrorReset(user.id, accountEmail, hash);
 
     return NextResponse.json({ message: t("api.passwordResetSuccess") });
   }
