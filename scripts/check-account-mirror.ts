@@ -440,7 +440,12 @@ async function main() {
   await settle(700);
   const late = calls.map((c) => JSON.parse(c.body).op + ":" + JSON.parse(c.body).email);
   fetchDelay = 0;
-  eq("client: one account's messages go out in order (the rename first, the next one only after it finished); other accounts do not wait", [early, late], [["email:anna@b.co", "profile:other@b.co"], ["email:anna@b.co", "profile:other@b.co", "profile:anna4@b.co"]]);
+  // the two chains run side by side, so only the order INSIDE one account is a property (which chain's request is logged first is not)
+  eq(
+    "client: one account's messages go out in order (the rename first, the next one only after it finished); other accounts do not wait",
+    [[...early].sort(), late.indexOf("email:anna@b.co") < late.indexOf("profile:anna4@b.co"), late.length, late.slice(0, 2).sort()],
+    [["email:anna@b.co", "profile:other@b.co"], true, 3, ["email:anna@b.co", "profile:other@b.co"]]
+  );
 
   calls = [];
   script = [];
