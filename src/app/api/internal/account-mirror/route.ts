@@ -27,9 +27,15 @@ const nonces = new NonceCache();
 
 const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
+// The peer talks to this instance over loopback, without a reverse proxy in between. Anything that came through nginx (the public sites)
+// carries proxy headers: such a request is refused up front, whatever its signature, so the endpoint does not exist for the internet
+// even when the nginx vhost has no explicit block for it.
+const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "x-forwarded-host", "x-forwarded-proto", "forwarded", "cf-connecting-ip"];
+
 export async function POST(req: NextRequest) {
   const cfg = mirrorConfig();
   if (!cfg) return notFound();
+  if (PROXY_HEADERS.some((h) => req.headers.has(h))) return notFound();
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return notFound();

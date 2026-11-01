@@ -177,6 +177,9 @@ export default function RegisterPage() {
           <div>
             <input
               type="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
