@@ -27,6 +27,20 @@ const nonces = new NonceCache();
 
 const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
+// Why a request that CARRIES our signature headers got the 404 (the answer itself stays identical for everyone): one line per reason per minute,
+// no addresses, no secrets. Unsigned internet probes are never logged.
+const lastRefusal = new Map<string, number>();
+function refuse(req: NextRequest, reason: string) {
+  if (req.headers.has(HEADER_SIGNATURE)) {
+    const now = Date.now();
+    if (now - (lastRefusal.get(reason) ?? 0) > 60_000) {
+      lastRefusal.set(reason, now);
+      console.warn(`[account-mirror] inbound refused: ${reason}`);
+    }
+  }
+  return notFound();
+}
+
 // The peer talks to this instance over loopback, without a reverse proxy in between. A request that came through nginx (the public sites)
 // carries the client-address headers nginx adds: such a request is refused up front, whatever its signature, so the endpoint does not
 // exist for the internet even when the nginx vhost has no explicit block for it. NOT x-forwarded-host / -proto / -port: Next.js itself puts
@@ -35,13 +49,13 @@ const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "cf-connecti
 
 export async function POST(req: NextRequest) {
   const cfg = mirrorConfig();
-  if (!cfg) return notFound();
-  if (PROXY_HEADERS.some((h) => req.headers.has(h))) return notFound();
+  if (!cfg) return refuse(req, "mirror off here (ACCOUNT_MIRROR_SECRET / ACCOUNT_MIRROR_PEER_URL missing or invalid)");
+  if (PROXY_HEADERS.some((h) => req.headers.has(h))) return refuse(req, "came through a reverse proxy");
 
   const declared = Number(req.headers.get("content-length") ?? 0);
-  if (declared > MAX_BODY_BYTES) return notFound();
+  if (declared > MAX_BODY_BYTES) return refuse(req, "body too large");
   const body = await req.text().catch(() => "");
-  if (body.length > MAX_BODY_BYTES) return notFound();
+  if (body.length > MAX_BODY_BYTES) return refuse(req, "body too large");
 
   const ok = await verifyRequest({
     secret: cfg.secret,
@@ -54,9 +68,9 @@ export async function POST(req: NextRequest) {
     nonce: req.headers.get(HEADER_NONCE),
     signature: req.headers.get(HEADER_SIGNATURE),
   });
-  if (!ok) return notFound();
+  if (!ok) return refuse(req, "bad signature (secret, direction, path, clock or format)");
   // a captured request cannot be replayed inside its time window
-  if (!nonces.fresh(req.headers.get(HEADER_NONCE) as string)) return notFound();
+  if (!nonces.fresh(req.headers.get(HEADER_NONCE) as string)) return refuse(req, "replayed nonce");
 
   let json: unknown;
   try {
