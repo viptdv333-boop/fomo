@@ -17,6 +17,7 @@ import {
   mirrorDirection,
   mirroredStatus,
   profileFromUser,
+  profileSchema,
   shouldRetryStatus,
   signRequest,
   type MirrorMessage,
@@ -25,7 +26,7 @@ import {
 } from "./account-mirror";
 import { siteMode } from "./site-mode";
 
-type Outcome = { delivered: boolean; result?: MirrorResult };
+type Outcome = { delivered: boolean; result?: MirrorResult; profile?: MirrorProfile };
 
 /** Waits without keeping the process alive: a graceful shutdown never waits for a retry timer. */
 const sleep = (ms: number) =>
@@ -74,13 +75,15 @@ async function deliver(msg: MirrorMessage): Promise<Outcome> {
         signal: AbortSignal.timeout(timeout),
       });
       if (res.ok) {
-        const json = (await res.json().catch(() => null)) as { result?: MirrorResult } | null;
+        const json = (await res.json().catch(() => null)) as { result?: MirrorResult; profile?: unknown } | null;
         if (json?.result === "not_found" && RETRY_NOT_FOUND.has(msg.op) && notFound < NOT_FOUND_PAUSES_MS.length) {
           await sleep(NOT_FOUND_PAUSES_MS[notFound++]);
           attempt--; // this was an answer, not a failed try
           continue;
         }
-        return { delivered: true, result: json?.result };
+        // the answer to `pull` carries a profile: trusted only after it passes the same schema as an incoming one
+        const pulled = json?.profile !== undefined ? profileSchema.safeParse(json.profile) : null;
+        return { delivered: true, result: json?.result, ...(pulled?.success ? { profile: pulled.data } : {}) };
       }
       if (res.status === 400) {
         console.warn(`[account-mirror] ${msg.op}: peer refused the data (400), giving up`);
@@ -113,13 +116,13 @@ function enqueue<T>(key: string, task: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function send(msg: MirrorMessage, userId: string, after?: (o: Outcome) => void): void {
+function send(msg: MirrorMessage, userId: string, after?: (o: Outcome) => void | Promise<void>): void {
   try {
     if (!mirrorConfig() || !userId) return;
     void enqueue(userId, async () => {
       const o = await deliver(msg);
       try {
-        after?.(o);
+        await after?.(o);
       } catch {
         // bookkeeping only
       }
@@ -172,13 +175,55 @@ export function mirrorEnsure(u: MirrorUser): void {
   if (until && until > Date.now()) return;
   const msg = newAccountMessage("ensure", u);
   if (!msg) return;
-  send(msg, u.id, (o) => {
+  send(msg, u.id, (o) => remember(key, o));
+}
+
+function remember(key: string, o: Outcome): void {
+  if (!o.delivered) return;
+  if (ensured.size >= ENSURED_MAX) {
+    const oldest = ensured.keys().next().value;
+    if (oldest !== undefined) ensured.delete(oldest);
+  }
+  ensured.set(key, Date.now() + ENSURED_TTL_MS);
+}
+
+// ---- profile reconcile at login (terminal only) ----
+// The terminal cannot import the database / image code (this file also ends up in the edge bundle), so the code that applies a pulled
+// profile registers itself here (src/lib/account-mirror-pull.ts, imported by the next-auth route).
+export type PullApplier = (userId: string, profile: MirrorProfile) => Promise<unknown>;
+const APPLIER_KEY = "__accountMirrorPullApplier";
+export function registerPullApplier(fn: PullApplier): void {
+  (globalThis as unknown as Record<string, unknown>)[APPLIER_KEY] = fn;
+}
+function pullApplier(): PullApplier | null {
+  const fn = (globalThis as unknown as Record<string, unknown>)[APPLIER_KEY];
+  return typeof fn === "function" ? (fn as PullApplier) : null;
+}
+
+/**
+ * Everything the mirror does after a successful credentials login. On fomo.spot: `mirrorEnsure` (create the account on the terminal if it
+ * is absent there). On the TERMINAL: ask fomo.spot for its profile of the same address (`pull`) and apply it here, main wins for every
+ * field that has a value there (avatar included); if fomo.spot has no such address, create it there (`ensure`) as before. Throttled like
+ * `ensure` (once per address and process per 6 hours); failures are silent and never block the login. Passwords are not touched.
+ */
+export function mirrorLogin(u: MirrorUser): void {
+  if (siteMode() !== "terminal") return mirrorEnsure(u);
+  const applier = pullApplier();
+  if (!applier) return mirrorEnsure(u);
+  if (mirroredStatus(u.status) === null) return;
+  const key = u.email.trim().toLowerCase();
+  const until = ensured.get(key);
+  if (until && until > Date.now()) return;
+  send({ op: "pull", email: u.email }, u.id, async (o) => {
     if (!o.delivered) return;
-    if (ensured.size >= ENSURED_MAX) {
-      const oldest = ensured.keys().next().value;
-      if (oldest !== undefined) ensured.delete(oldest);
+    if (o.result === "not_found") {
+      // fomo.spot has no account with this address: create it there (it remembers the address once that went through)
+      const msg = newAccountMessage("ensure", u);
+      if (msg) send(msg, u.id, (e) => remember(key, e));
+      return;
     }
-    ensured.set(key, Date.now() + ENSURED_TTL_MS);
+    remember(key, o);
+    if (o.result === "pulled" && o.profile) await applier(u.id, o.profile);
   });
 }
 

@@ -79,6 +79,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } });
   }
 
+  // fomo.spot is the source of truth of the profile: only it answers `pull`
+  if (parsed.data.op === "pull" && siteMode() === "terminal") {
+    return NextResponse.json({ ok: true, result: "not_found" }, { headers: { "Cache-Control": "no-store" } });
+  }
+
   try {
     const reply = await applyMirrorMessage(parsed.data);
     console.log(`[account-mirror] ${parsed.data.op}: ${reply.result}${reply.reason ? `/${reply.reason}` : ""}${reply.skipped?.length ? ` (skipped: ${reply.skipped.join(",")})` : ""}${reply.fomoIdChanged ? " (fomoId changed)" : ""}`);

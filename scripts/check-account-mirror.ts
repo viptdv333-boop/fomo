@@ -31,6 +31,7 @@ import {
   inboundBucket,
   isCriticalOp,
   isMirrorAvatarPath,
+  mainWinsProfile,
   mirrorConfig,
   mirrorDirection,
   mirrorMessageSchema,
@@ -44,7 +45,7 @@ import {
   sniffImage,
   verifyRequest,
 } from "../src/lib/account-mirror";
-import { applyMirrorMessage, type Db } from "../src/lib/account-mirror-server";
+import { applyMirrorMessage, applyPulledProfile, type Db } from "../src/lib/account-mirror-server";
 import { FOMO_ID_REGEX } from "../src/lib/fomoId";
 import { routeAllowed } from "../src/lib/site-mode";
 
@@ -72,6 +73,10 @@ function fakeDb(rows: Row[]) {
   };
   const user = {
     findUnique: async ({ where }: any) => rows.find((r) => match(r, where)) ?? null,
+    findFirst: async ({ where }: any) =>
+      rows.find((r) =>
+        Object.entries(where).every(([k, v]: [string, any]) => (v && typeof v === "object" && "equals" in v ? String(r[k]).toLowerCase() === String(v.equals).toLowerCase() : r[k] === v)),
+      ) ?? null,
     findMany: async ({ where }: any) => rows.filter((r) => match(r, where ?? {})),
     create: async ({ data }: any) => {
       const r = { id: "new" + ++n, role: "USER", sessionVersion: 0, avatarUrl: null, ...data };
@@ -304,16 +309,22 @@ async function main() {
       { op: "password", email: "owner@b.co", passwordHash: HASH_B, oldHash: HASH },
       { op: "reset", email: "owner@b.co", passwordHash: HASH_B },
       { op: "email", email: "owner@b.co", newEmail: "pwned@b.co", passwordHash: HASH },
-      { op: "profile", email: "owner@b.co", profile: { city: "Hacked", displayName: "Hacked" } },
       { op: "password", email: "admin@b.co", passwordHash: HASH_B, oldHash: HASH },
       { op: "reset", email: "admin@b.co", passwordHash: HASH_B },
       { op: "email", email: "admin@b.co", newEmail: "pwned2@b.co", passwordHash: HASH },
-      { op: "profile", email: "admin@b.co", profile: { city: "Hacked" } },
     ];
     const privReplies = [];
     for (const m of priv) privReplies.push(await res(m));
-    eq("receiver: password / reset / email / profile for OWNER and ADMIN are all skipped as privileged", privReplies, priv.map(() => ["skipped", "privileged"]));
+    eq("receiver: password / reset / email for OWNER and ADMIN are all skipped as privileged", privReplies, priv.map(() => ["skipped", "privileged"]));
     eq("receiver: OWNER and ADMIN rows are exactly as before", [row("o1").passwordHash === HASH, row("o1").email, row("o1").city, row("o1").sessionVersion, row("a1").passwordHash === HASH, row("a1").email, row("a1").sessionVersion], [true, "owner@b.co", "Owner town", 0, true, "admin@b.co", 0]);
+    // profile-only ops work for every role: display fields sync, credentials and role never move
+    const ownerBefore = JSON.stringify({ role: row("o1").role, status: row("o1").status, email: row("o1").email, hash: row("o1").passwordHash, sv: row("o1").sessionVersion });
+    eq("receiver profile: an OWNER's display fields sync (name, city, social links)", [
+      await res({ op: "profile", email: "owner@b.co", profile: { city: "Oslo", displayName: "The Owner", socialLinks: { telegram: "@o" } } }), row("o1").city, row("o1").displayName, row("o1").socialLinks,
+    ], [["updated", null], "Oslo", "The Owner", { telegram: "@o" }]);
+    eq("receiver profile: an ADMIN's display fields sync too", [await res({ op: "profile", email: "admin@b.co", profile: { bio: "hello" } }), row("a1").bio], [["updated", null], "hello"]);
+    eq("receiver profile: role, status, e-mail, hash and sessions of the OWNER are exactly as before", JSON.stringify({ role: row("o1").role, status: row("o1").status, email: row("o1").email, hash: row("o1").passwordHash, sv: row("o1").sessionVersion }), ownerBefore);
+    eq("receiver profile: the e-mail is matched without regard to case", [await res({ op: "profile", email: "OWNER@b.co", profile: { city: "Rome" } }), row("o1").city], [["updated", null], "Rome"]);
     // e-mail change: same current hash required
     eq("receiver email: the account with a different hash is not renamed", [await res({ op: "email", email: "anna@b.co", newEmail: "anna2@b.co", passwordHash: HASH_B }), row("u1").email], [["skipped", "mismatch"], "anna@b.co"]);
     eq("receiver email: same hash -> renamed, sessions closed", [await res({ op: "email", email: "anna@b.co", newEmail: "anna2@b.co", passwordHash: HASH_C }), row("u1").email, row("u1").sessionVersion], [["updated", null], "anna2@b.co", 3]);
@@ -348,6 +359,46 @@ async function main() {
     eq("receiver profile: unknown address -> not_found", await res({ op: "profile", email: "nobody@b.co", profile: { city: "X" } }), ["not_found", null]);
   }
 
+  /* ---- profile reconcile at login: main wins, empty never blanks ---- */
+  eq("mainWinsProfile: fields with a value win", mainWinsProfile({ displayName: "Main", bio: "b", firstName: "F", city: "C", specializations: ["x"], birthDate: "1990-01-01T00:00:00.000Z", dmEnabled: false, locale: "en", avatarUrl: "/uploads/avatars/a/b.jpg", fomoId: "fomo_user1234567" }), { displayName: "Main", fomoId: "fomo_user1234567", bio: "b", avatarUrl: "/uploads/avatars/a/b.jpg", firstName: "F", birthDate: "1990-01-01T00:00:00.000Z", city: "C", specializations: ["x"], locale: "en", dmEnabled: false });
+  eq("mainWinsProfile: empty values (null, blank, empty list, link-less object) never blank local ones", mainWinsProfile({ bio: null, firstName: "  ", lastName: "", city: null, specializations: [], socialLinks: { telegram: "", vk: " " }, birthDate: null, avatarUrl: null, workplace: "" }), {});
+  eq("mainWinsProfile: the column defaults (locale ru, dmEnabled true) are not values; social links keep only the filled keys", mainWinsProfile({ locale: "ru", dmEnabled: true, socialLinks: { telegram: "@a", vk: "" } }), { socialLinks: { telegram: "@a" } });
+  {
+    const rows: Row[] = [
+      { id: "l1", email: "me@b.co", passwordHash: HASH_C, role: "USER", status: "APPROVED", fomoId: "fomo_user1000001", displayName: "Local Name", bio: "local bio", city: "Local city", firstName: null, locale: "en", avatarUrl: null, sessionVersion: 0 },
+      { id: "l2", email: "boss@b.co", passwordHash: HASH_C, role: "OWNER", status: "APPROVED", fomoId: "fomo_user1000002", displayName: "", bio: null, avatarUrl: "/uploads/avatars/l2/keep.jpg", sessionVersion: 0 },
+      { id: "l3", email: "other@b.co", passwordHash: HASH, role: "USER", status: "APPROVED", fomoId: "fomo_user1000003", sessionVersion: 0 },
+    ];
+    const { db } = fakeDb(rows);
+    const row = (id: string) => rows.find((r) => r.id === id)!;
+    const pulled: import("../src/lib/account-mirror").MirrorProfile = { displayName: "Main Name", bio: null, city: "", firstName: "Maria", specializations: [], locale: "ru", dmEnabled: true, avatarUrl: "/uploads/avatars/zz/main.jpg", fomoId: "fomo_user1000003" };
+    const r1 = await applyPulledProfile("l1", pulled, db);
+    eq("pull apply: main wins for filled fields, empty ones do not blank, defaults do not override, a taken fomoId is skipped, passwords untouched", [
+      r1.applied, row("l1").displayName, row("l1").firstName, row("l1").bio, row("l1").city, row("l1").locale, row("l1").fomoId, row("l1").passwordHash === HASH_C, row("l1").sessionVersion,
+    ], [true, "Main Name", "Maria", "local bio", "Local city", "en", "fomo_user1000001", true, 0]);
+    eq("pull apply: an avatar that cannot be fetched is reported and the current avatar stays", [r1.skipped.sort(), row("l1").avatarUrl, row("l2").avatarUrl], [["avatarUrl", "fomoId"], null, "/uploads/avatars/l2/keep.jpg"]);
+    const r2 = await applyPulledProfile("l2", { displayName: "The Boss", fomoId: "fomo_user1000009", city: "Rome" }, db);
+    eq("pull apply: a privileged local account gets the display fields too, never credentials or role", [r2.applied, row("l2").displayName, row("l2").city, row("l2").fomoId, row("l2").role, row("l2").passwordHash === HASH_C, row("l2").sessionVersion], [true, "The Boss", "Rome", "fomo_user1000009", "OWNER", true, 0]);
+    eq("pull apply: an unknown local user is a no-op", await applyPulledProfile("nobody", { displayName: "X" }, db), { applied: false, skipped: [] });
+
+    // the answering side (fomo.spot)
+    rows.push({ id: "m1", email: "Main.User@b.co", passwordHash: HASH_B, role: "USER", status: "APPROVED", fomoId: "fomo_user2000001", displayName: "Main User", bio: "hi", city: null, firstName: "Mu", lastName: null, birthDate: new Date("1991-02-03T00:00:00Z"), specializations: ["futures"], socialLinks: { telegram: "@mu" }, locale: "en", dmEnabled: false, avatarUrl: "/uploads/avatars/m1/abc.jpg", paymentCard: "4111111111111111", sbpQrUrl: "/uploads/payment-qr/m1/q.png", subscriptionPrice: 100, rating: 5, bannedUntil: null, banReason: null, ratingBonus: 1 });
+    rows.push({ id: "m2", email: "chief@b.co", passwordHash: HASH_B, role: "OWNER", status: "APPROVED", fomoId: "fomo_user2000002", displayName: "Chief", bio: null, avatarUrl: "/uploads/avatars/m2/c.jpg", paymentCard: "5555", sessionVersion: 0 });
+    const ask = (email: string) => applyMirrorMessage(mirrorMessageSchema.parse({ op: "pull", email }), db);
+    const ans = await ask("main.user@B.CO");
+    const text = JSON.stringify(ans);
+    eq("pull answer: result pulled with exactly the whitelisted fields (address matched without regard to case)", [ans.result, ans.profile], ["pulled", {
+      displayName: "Main User", fomoId: "fomo_user2000001", bio: "hi", avatarUrl: "/uploads/avatars/m1/abc.jpg", firstName: "Mu", lastName: null, birthDate: "1991-02-03T00:00:00.000Z",
+      city: null, specializations: ["futures"], socialLinks: { telegram: "@mu" }, locale: "en", dmEnabled: false,
+    }]);
+    eq("pull answer: no hash, role, status, e-mail, money, rating or ban in the payload", ["passwordHash", "role", "status", "email", "paymentCard", "sbpQrUrl", "subscriptionPrice", "rating", "banReason", "bannedUntil", HASH_B, "b.co", "4111"].filter((w) => text.includes(w)), []);
+    const own = await ask("chief@b.co");
+    eq("pull answer: an OWNER's profile is answered too (display fields only, no credentials)", [own.result, own.profile?.displayName, JSON.stringify(own).includes(HASH_B), JSON.stringify(own).includes("OWNER"), JSON.stringify(own).includes("5555")], ["pulled", "Chief", false, false, false]);
+    eq("pull answer: an unknown address -> not_found, no profile", [(await ask("ghost@b.co")).result, (await ask("ghost@b.co")).profile], ["not_found", undefined]);
+    eq("pull schema: nothing but the address is sent", [mirrorMessageSchema.safeParse({ op: "pull", email: "a@b.co" }).success, mirrorMessageSchema.safeParse({ op: "pull" }).success], [true, false]);
+    eq("pull: a pull is not a critical op (the usual 3 tries and the 300/min bucket)", [isCriticalOp("pull"), backoffFor("pull") === BACKOFF_MS], [false, true]);
+  }
+
   /* ---- the sending side against a fake peer ---- */
   process.env.ACCOUNT_MIRROR_SECRET = SECRET;
   process.env.ACCOUNT_MIRROR_PEER_URL = "http://127.0.0.1:3100";
@@ -359,7 +410,7 @@ async function main() {
     warnings.push(a.join(" "));
   };
   type Call = { url: string; headers: Record<string, string>; body: string };
-  type Step = number | "throw" | { result: string };
+  type Step = number | "throw" | { result: string; profile?: unknown };
   let calls: Call[] = [];
   let script: Step[] = [];
   let fetchDelay = 0;
@@ -368,7 +419,7 @@ async function main() {
     if (fetchDelay) await new Promise((r) => setTimeout(r, fetchDelay));
     const next: Step = script.length ? script.shift()! : 200;
     if (next === "throw") throw new TypeError("fetch failed");
-    if (typeof next === "object") return new Response(JSON.stringify({ ok: true, result: next.result }), { status: 200 });
+    if (typeof next === "object") return new Response(JSON.stringify({ ok: true, ...next }), { status: 200 });
     return new Response(JSON.stringify({ ok: true, result: "created" }), { status: next });
   }) as unknown as typeof fetch;
   const settle = (ms = 150) => new Promise<void>((r) => setTimeout(r, ms));
@@ -471,6 +522,81 @@ async function main() {
   eq("client: a profile edit sends only whitelisted changed fields; nothing to send -> no request", [calls.length, JSON.parse(calls[0].body).profile], [1, { city: "Kazan" }]);
   eq("client: mirrorActive follows the variables", client.mirrorActive(), true);
 
+  /* ---- mirrorLogin: on fomo.spot ensure, on the terminal pull + apply (main wins) ---- */
+  calls = [];
+  script = [];
+  client.mirrorLogin({ ...user, id: "m-a", email: "main-login@b.co" });
+  await settle();
+  eq("login on fomo.spot: the old behaviour (ensure), no pull", calls.map((c) => JSON.parse(c.body).op), ["ensure"]);
+
+  process.env.SITE_MODE = "terminal";
+  const applied: Array<[string, unknown]> = [];
+  calls = [];
+  script = [];
+  client.mirrorLogin({ ...user, id: "t-0", email: "noapplier@b.co" });
+  await settle();
+  eq("login on the terminal without a registered applier falls back to ensure", calls.map((c) => JSON.parse(c.body).op), ["ensure"]);
+
+  client.registerPullApplier(async (id, profile) => {
+    applied.push([id, profile]);
+  });
+  const mainProfile = { displayName: "Main Name", fomoId: "fomo_user1234567", bio: "main bio", avatarUrl: "/uploads/avatars/m1/abc.jpg", city: null };
+  calls = [];
+  script = [{ result: "pulled", profile: mainProfile }];
+  client.mirrorLogin({ ...user, id: "t-1", email: "t1@b.co" });
+  await settle();
+  eq("login on the terminal asks fomo.spot for the profile: one signed `pull` carrying only the address, direction terminal>main", await (async () => {
+    const c = calls[0];
+    const v = { secret: SECRET, body: c.body, timestamp: c.headers[HEADER_TIMESTAMP], nonce: c.headers[HEADER_NONCE], signature: c.headers[HEADER_SIGNATURE] };
+    return [calls.length, JSON.parse(c.body), await verifyRequest({ ...v, direction: "terminal>main" }), await verifyRequest({ ...v, direction: "main>terminal" })];
+  })(), [1, { op: "pull", email: "t1@b.co" }, true, false]);
+  eq("login on the terminal: the pulled profile is applied to the local account", applied, [["t-1", mainProfile]]);
+  client.mirrorLogin({ ...user, id: "t-1", email: "T1@b.co" });
+  await settle();
+  eq("login on the terminal: throttled, once per address (any case) per 6 hours", [calls.length, applied.length], [1, 1]);
+
+  calls = [];
+  applied.length = 0;
+  script = [{ result: "pulled", profile: { displayName: "x", role: "OWNER", locale: "de", avatarUrl: "https://evil.example/a.jpg" } }];
+  client.mirrorLogin({ ...user, id: "t-2", email: "t2@b.co" });
+  await settle();
+  eq("login on the terminal: a pulled profile that fails the schema is never applied", [calls.length, applied.length], [1, 0]);
+
+  calls = [];
+  script = [{ result: "not_found" }, 200];
+  client.mirrorLogin({ ...user, id: "t-3", email: "t3@b.co" });
+  await settle();
+  eq("login on the terminal: fomo.spot has no such address -> nothing applied, the account is created there (ensure)", [calls.map((c) => JSON.parse(c.body).op), applied.length], [["pull", "ensure"], 0]);
+
+  calls = [];
+  script = [{ result: "skipped" }];
+  client.mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
+  await settle();
+  client.mirrorLogin({ ...user, id: "t-4", email: "t4@b.co" });
+  await settle();
+  eq("login on the terminal: a refused pull applies nothing and is not asked again", [calls.length, applied.length], [1, 0]);
+
+  calls = [];
+  script = ["throw", "throw", "throw"];
+  client.mirrorLogin({ ...user, id: "t-5", email: "t5@b.co" });
+  await settle(BACKOFF_MS[1] + BACKOFF_MS[2] + 300);
+  eq("login on the terminal: fomo.spot unreachable -> silent, nothing applied, no throw", [calls.length, applied.length], [BACKOFF_MS.length, 0]);
+
+  calls = [];
+  client.registerPullApplier(async () => {
+    throw new Error("db down");
+  });
+  script = [{ result: "pulled", profile: mainProfile }];
+  client.mirrorLogin({ ...user, id: "t-6", email: "t6@b.co" });
+  await settle();
+  eq("login on the terminal: an applier that fails is swallowed (login is never blocked)", calls.length, 1);
+
+  calls = [];
+  client.mirrorLogin({ ...user, id: "t-7", email: "t7@b.co", status: "BANNED" });
+  await settle();
+  eq("login on the terminal: not an APPROVED account -> nothing is asked", calls.length, 0);
+  delete process.env.SITE_MODE;
+
   globalThis.fetch = (async () => {
     throw new Error("must not be called");
   }) as unknown as typeof fetch;
@@ -479,6 +605,7 @@ async function main() {
   try {
     client.mirrorRegister({ ...user, id: "o1", email: "off@b.co" });
     client.mirrorEnsure({ ...user, id: "o2", email: "off2@b.co" });
+    client.mirrorLogin({ ...user, id: "o3", email: "off4@b.co" });
     client.mirrorPassword("o1", "off@b.co", HASH, HASH_B);
     client.mirrorReset("o1", "off@b.co", HASH_B);
     client.mirrorEmail("o1", "off@b.co", "off3@b.co", HASH);

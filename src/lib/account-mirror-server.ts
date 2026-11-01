@@ -3,8 +3,10 @@
 // sending functions, so a mirrored write cannot bounce back to the instance it came from.
 // Rules: create-if-absent / update-if-matches, idempotent (a repeated message ends in "exists" / "noop"); the wire format carries no
 // role or status, a new account is always APPROVED / USER; hashes are stored, never logged or returned.
-// PRIVILEGED ACCOUNTS ARE UNTOUCHABLE: password, reset, email and profile messages (and the completion of an abandoned sign-up) apply only to
-// users with role USER, so a compromised sibling site can never overwrite the credentials of an ADMIN / OWNER here. A user-initiated
+// PRIVILEGED ACCOUNTS' CREDENTIALS ARE UNTOUCHABLE: password, reset and email messages (and the completion of an abandoned sign-up) apply only
+// to users with role USER, so a compromised sibling site can never overwrite the credentials of an ADMIN / OWNER here. The PROFILE-ONLY
+// operations (`profile` push, `pull` at login) work for every role: they carry the whitelist of display fields and nothing that could
+// escalate (never role, status, ban, rating, payment fields, e-mail or password). A user-initiated
 // password change is a compare-and-swap on the old hash, an e-mail change needs the same current hash on both sides: accounts whose
 // passwords differ are different people as far as the mirror is concerned and stay as they are.
 import { mkdir, unlink, writeFile } from "fs/promises";
@@ -21,6 +23,9 @@ import {
   altFomoId,
   avatarFetchUrl,
   mirrorConfig,
+  PROFILE_FIELDS,
+  mainWinsProfile,
+  profileFromUser,
   profileToPrismaData,
   sniffImage,
   type MirrorMessage,
@@ -184,6 +189,24 @@ async function applyFomoIdAndAvatar(db: Db, userId: string, profile: MirrorProfi
 }
 
 /** `db` is the Prisma client; the unit check passes an in-memory fake. */
+/**
+ * Profile reconcile on the terminal, step 2: apply the profile pulled from fomo.spot to the local account. MAIN WINS for every field that
+ * has a value there (empty values never blank local ones); the avatar is fetched from the peer by the safe code above, a taken fomoId is
+ * skipped. Any role may be updated (only display fields are involved: never role, status, e-mail or password), passwords are never part of this.
+ */
+export async function applyPulledProfile(userId: string, profile: MirrorProfile, db: Db = prisma): Promise<{ applied: boolean; skipped: string[] }> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) return { applied: false, skipped: [] };
+  const wins = mainWinsProfile(profile);
+  const skipped: string[] = [];
+  const data = plainData(wins);
+  if (Object.keys(data).length) await db.user.update({ where: { id: userId }, data });
+  await applyFomoIdAndAvatar(db, userId, wins, skipped);
+  return { applied: true, skipped };
+}
+
+const PROFILE_SELECT = { ...Object.fromEntries(PROFILE_FIELDS.map((f) => [f, true])) };
+
 export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): Promise<MirrorReply> {
   switch (msg.op) {
     case "register":
@@ -240,10 +263,19 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma): P
       }
     }
 
-    case "profile": {
-      const user = await db.user.findUnique({ where: { email: msg.email }, select: { id: true, role: true } });
+    case "pull": {
+      // The peer (the terminal) asks for the profile. The e-mail is matched without regard to case, like the login. Any role: the answer is the
+      // whitelist of display fields and nothing else (never role, status, ban, rating, payment fields, e-mail or a hash), so it cannot escalate anything.
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: PROFILE_SELECT });
       if (!user) return { ok: true, result: "not_found" };
-      if (user.role !== "USER") return PRIVILEGED;
+      return { ok: true, result: "pulled", profile: profileFromUser(user as Record<string, unknown>) };
+    }
+
+    case "profile": {
+      // Display fields only (never role, status, e-mail, password), so this is applied to ANY role, an ADMIN / OWNER included: the owner's own
+      // profile edits must reach the other site. The e-mail is matched without regard to case, like the login.
+      const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: { id: true } });
+      if (!user) return { ok: true, result: "not_found" };
       const skipped: string[] = [];
       const data = plainData(msg.profile);
       const plain = Object.keys(data).length > 0;

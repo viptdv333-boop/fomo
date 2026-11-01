@@ -362,6 +362,8 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
   // e-mail change: only if the receiver account has the same current hash as the sender's (same person, same password)
   z.object({ op: z.literal("email"), email: emailSchema, newEmail: emailSchema, passwordHash: bcryptSchema }),
   z.object({ op: z.literal("profile"), email: emailSchema, profile: profileSchema }),
+  // profile reconcile at login on the TERMINAL: "give me your whitelisted profile" (answered by fomo.spot, the source of truth, and only for plain USER accounts)
+  z.object({ op: z.literal("pull"), email: emailSchema }),
 ]);
 export type MirrorMessage = z.infer<typeof mirrorMessageSchema>;
 
@@ -431,6 +433,30 @@ export function profileFromUser(u: UserLike): MirrorProfile {
       if (v === null) out[f] = null;
       else if (typeof v === "string") out[f] = clip(v, TEXT_LIMITS[f] ?? 500);
     }
+  }
+  return out as MirrorProfile;
+}
+
+/**
+ * MAIN WINS: which fields of the profile received from fomo.spot overwrite the local ones. Only fields that HAVE a value there:
+ * a null, an empty / blank text, an empty list or an object without any link never blanks what the terminal account already has.
+ * `locale` "ru" and `dmEnabled` true are the column defaults, so they cannot be told from "never set" and are not treated as values.
+ */
+export function mainWinsProfile(p: MirrorProfile): MirrorProfile {
+  const out: Record<string, unknown> = {};
+  for (const f of PROFILE_FIELDS) {
+    const v = p[f];
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string" && v.trim() === "") continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    if (f === "socialLinks") {
+      const kept = Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, x]) => typeof x === "string" && x.trim() !== ""));
+      if (Object.keys(kept).length > 0) out[f] = kept;
+      continue;
+    }
+    if (f === "locale" && v === "ru") continue;
+    if (f === "dmEnabled" && v === true) continue;
+    out[f] = v;
   }
   return out as MirrorProfile;
 }
@@ -508,6 +534,7 @@ export type MirrorResult =
   | "updated"
   | "noop" // already in the wanted state
   | "not_found" // no account here for this address
+  | "pulled" // answer to `pull`: the whitelisted profile is in `profile`
   | "conflict" // the new e-mail already belongs to another account here
   | "skipped"; // refused on purpose, see `reason`
 
@@ -516,6 +543,8 @@ export interface MirrorReply {
   result: MirrorResult;
   /** with result "skipped": "privileged" = ADMIN / OWNER (never changed by the mirror); "mismatch" = the passwords of the two accounts differ */
   reason?: "privileged" | "mismatch";
+  /** with result "pulled": the whitelisted profile of the account, nothing else (no hash, role, status or e-mail) */
+  profile?: MirrorProfile;
   /** the wanted fomoId was taken, another one was given (created / completed) */
   fomoIdChanged?: boolean;
   /** profile fields that could not be applied (taken fomoId, avatar that could not be fetched) */
