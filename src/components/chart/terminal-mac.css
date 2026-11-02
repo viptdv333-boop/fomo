@@ -1060,3 +1060,13 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 /* the separate contract chevron is not in the design: the pill shows the contract ticker, another contract is picked in the symbol search (or from the expiry banner) */
 .tvmac [data-tv="toolbar"] .tb-ct { display: none !important; }
 .tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 12px !important; }
+
+/* header icons: big, as tall as the header allows (glyph 32px + a 10px caption) */
+@layer utilities {
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { height: 46px !important; min-width: 60px; padding: 0 !important; gap: 0 !important; justify-content: space-between; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 10px; line-height: 12px; height: 12px; }
+  .tvmac [data-tv="toolbar"] button .mg { width: 32px !important; height: 32px !important; margin-top: 1px; }
+  .tvmac [data-tv="toolbar"] .tb-events .mg { width: 26px !important; height: 26px !important; margin: 0; }
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert) > span[class*="rounded-full"] { top: 0; left: calc(50% + 8px); }
+@media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 12px !important; } }
