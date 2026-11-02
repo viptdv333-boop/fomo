@@ -780,6 +780,16 @@ export class IndicatorsController implements IndicatorsControllerLike {
   toggleMaximize(id: string): void {
     if (!hasWindow(this.eff(), id)) return;
     this.maximized = this.maximized === id ? null : id;
+    // maximizing is the same as picking the window up: it comes to the front like after a click (that is its only stacking change)
+    if (this.maximized === id) {
+      const cur = this.eff();
+      const next = wsRaise(cur, id);
+      if (next !== cur) {
+        this.ws = isDefault(next) ? null : next;
+        this.emit();
+        return;
+      }
+    }
     this.emitLayout();
   }
 
@@ -845,8 +855,7 @@ export class IndicatorsController implements IndicatorsControllerLike {
   addWindow(kind: "new" | "ind" = "new"): string {
     const r = wsAdd(this.ws, undefined, this.focusChart, this.phone);
     if (!r) return "";
-    // the new window opens on top: whatever filled the area gives it back
-    this.maximized = null;
+    // the new window opens on top (the highest z-order); a maximized window stays maximized below it
     this.setWs(kind === "ind" ? wsMakeIndicator(r.ws, r.id) : r.ws);
     return r.id;
   }

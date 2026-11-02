@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { PopupPortal } from "./ModalPortal";
 
 /** Toolbar dropdown: a trigger button and a fixed-position panel that closes on outside click / Escape. */
 export default function MenuPopover({
@@ -60,7 +61,7 @@ export default function MenuPopover({
         {trigger}
       </button>
       {open && (
-        <>
+        <PopupPortal>
           <div className="fixed inset-0 z-[55]" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
           <div
             className="tv3-pop fixed z-[56] py-1.5 rounded-2xl text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] overflow-y-auto overflow-x-hidden"
@@ -68,7 +69,7 @@ export default function MenuPopover({
           >
             {children(close)}
           </div>
-        </>
+        </PopupPortal>
       )}
     </>
   );

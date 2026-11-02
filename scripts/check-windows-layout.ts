@@ -762,13 +762,29 @@ function main() {
     const w2id = c.addWindow("ind");
     c.toggleMaximize(w2id);
     ok(c.maximizedId() === w2id && c.serialize() !== before, "controller: a window is maximized");
-    const stored = c.serialize();
+    const rects = () => JSON.stringify(c.getWorkspace().wins.map((w) => [w.id, w.x, w.y, w.w, w.h]));
+    const stored = rects();
     c.toggleMaximize(MAIN_ID);
-    ok(c.maximizedId() === MAIN_ID && c.serialize() === stored, "controller: maximize is session only (nothing stored), one window at a time");
+    ok(c.maximizedId() === MAIN_ID && rects() === stored, "controller: maximize is session only (no rectangle is stored), one window at a time");
+    const mainWin = () => c.getWorkspace().wins.find((w) => w.id === MAIN_ID)!;
+    const topZ = () => Math.max(...c.getWorkspace().wins.map((w) => w.z));
+    ok(mainWin().z === topZ(), "maximize: the window comes to the front like after a click (that is its only stacking change)");
+    // a new window while one is maximized: the maximized one stays, the new one is on top of it
+    const nw = c.addWindow();
+    const nz = c.getWorkspace().wins.find((w) => w.id === nw)!.z;
+    ok(c.maximizedId() === MAIN_ID && nz === topZ() && nz > mainWin().z, "controller: a new window opens ON TOP of a maximized one, which stays maximized");
+    const nw2 = c.addWindow();
+    ok(c.maximizedId() === MAIN_ID && c.getWorkspace().wins.find((w) => w.id === nw2)!.z > nz, "controller: ... and the next one above that");
+    // a window clicked above the maximized one stays above it; clicking the maximized one brings it back in front
+    c.raise(MAIN_ID);
+    ok(mainWin().z === topZ() && c.maximizedId() === MAIN_ID, "controller: a click on the maximized window brings it to the front (still maximized)");
+    c.raise(nw);
+    ok(c.getWorkspace().wins.find((w) => w.id === nw)!.z === topZ() && c.maximizedId() === MAIN_ID, "controller: a click on a smaller window puts it above the maximized one");
+    c.closeWindow(nw);
+    c.closeWindow(nw2);
     c.toggleMaximize(MAIN_ID);
     c.toggleMaximize(w2id);
-    c.addWindow();
-    ok(c.maximizedId() === null, "controller: a new window un-maximizes the other one");
+    ok(c.maximizedId() === w2id, "controller: another window can be maximized");
     c.toggleMaximize(w2id);
     c.shrinkWindow(w2id);
     ok(c.maximizedId() === null, "controller: shrinking a maximized window puts it back first");

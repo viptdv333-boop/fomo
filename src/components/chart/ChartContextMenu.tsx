@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { PopupPortal } from "./ModalPortal";
 import { useT } from "@/lib/i18n/client";
 import type { DrawingsController, ZOrderMode } from "@/lib/chart/drawings/controller";
 import { ALERT_LINE_TOOLS } from "@/lib/alerts/evaluate";
@@ -186,6 +187,7 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
   ];
 
   return (
+    <PopupPortal>
     <div
       ref={ref}
       role="menu"
@@ -292,5 +294,6 @@ export default function ChartContextMenu({ state, controller, onClose, onResetVi
         </>
       )}
     </div>
+    </PopupPortal>
   );
 }

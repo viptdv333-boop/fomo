@@ -1796,7 +1796,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       )}
 
           {/* chart area: with extra windows the price chart is a floating window too (header to move, edges to resize); with none nothing changes */}
-          <div ref={areaRef} className="relative flex flex-col flex-1 min-h-0">
+          <div ref={areaRef} className="relative isolate flex flex-col flex-1 min-h-0">
           <WindowFrame
             id="main"
             controller={indicators}

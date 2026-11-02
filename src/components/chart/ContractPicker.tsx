@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PopupPortal } from "./ModalPortal";
 import { useT } from "@/lib/i18n/client";
 import { findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
@@ -121,7 +122,7 @@ export default function ContractPicker({
       )}
 
       {open && (
-        <>
+        <PopupPortal>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
           <div
             role="listbox"
@@ -174,7 +175,7 @@ export default function ContractPicker({
               );
             })}
           </div>
-        </>
+        </PopupPortal>
       )}
     </>
   );

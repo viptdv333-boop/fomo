@@ -16,6 +16,7 @@ import ChartEventsButton from "./calendar/ChartEventsMenu";
 import type { ChartSettingsApi } from "./useChartSettings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { exchangeLabel, type TerminalInstrument } from "@/lib/terminal-data";
+import { PopupPortal } from "./ModalPortal";
 
 export const INTERVALS: { id: string; key: string }[] = [
   { id: "1", key: "inst.period.1m" },
@@ -144,7 +145,7 @@ function Menu({
         {trigger}
       </button>
       {open && (
-        <>
+        <PopupPortal>
           <div className="fixed inset-0 z-[55]" onClick={close} />
           <div
             className="tv3-pop fixed z-[56] py-1.5 rounded-2xl text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] max-h-[calc(100vh-70px)] overflow-y-auto"
@@ -152,7 +153,7 @@ function Menu({
           >
             {children(close)}
           </div>
-        </>
+        </PopupPortal>
       )}
     </>
   );

@@ -9,6 +9,7 @@ import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { setIndTranslator } from "@/lib/chart/indicators/ind-text";
 import { WIN_PANE, WIN_PREFIX } from "@/lib/chart/windows-layout";
 import IndicatorEditor from "./IndicatorEditor";
+import { PopupPortal } from "./ModalPortal";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
 
@@ -192,7 +193,9 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   useEffect(() => {
     if (!menuUid) return;
     const close = (e: MouseEvent | TouchEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setMenuUid(null);
+      // the menu of a row in a window is rendered at the top level of the page (above the windows): a press on it is not «outside»
+      const t = e.target as Element | null;
+      if (rootRef.current && !rootRef.current.contains(t as Node) && !t?.closest?.("[data-lg-menu]")) setMenuUid(null);
     };
     const key = (e: KeyboardEvent) => e.key === "Escape" && setMenuUid(null);
     document.addEventListener("mousedown", close);
@@ -243,7 +246,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     const winIds = controller.windowIds();
     const curWin = controller.windowOf(uid);
     return (
-      <div role="menu" className={`${pos} w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]`} style={style}>
+      <div role="menu" data-lg-menu className={`${pos} w-56 rounded-xl tv3-pop py-1 text-xs text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]`} style={style}>
         <MenuItem
           icon={IND_ICONS.gear(16)}
           label={t("ind2.lg.settings")}
@@ -462,7 +465,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             </div>
           ),
         )}
-        {winId && menuUid && fixedPos && renderMenu(menuUid, "pointer-events-auto fixed z-[60]", { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom })}
+        {winId && menuUid && fixedPos && <PopupPortal>{renderMenu(menuUid, "pointer-events-auto fixed z-[60]", { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom })}</PopupPortal>}
       </div>
       <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} onEditSource={setEditScript} />
       <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />

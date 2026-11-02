@@ -6,6 +6,7 @@ import { windowableId } from "@/lib/chart/indicators/controller";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { TV3, Toggle } from "./tv3-ui";
+import { PopupPortal } from "./ModalPortal";
 import { IND_ICONS } from "./icons";
 
 /* Compact «ИНДИКАТОРЫ» popover of the Terminal v3 design: colour dot + name + muted description + iOS switch per row
@@ -81,6 +82,7 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
   };
 
   return (
+    <PopupPortal>
     <div className="fixed inset-0 z-50" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}>
       <div
         ref={ref}
@@ -152,5 +154,6 @@ export default function IndicatorsPopover({ controller, onClose, onOpenCatalog, 
         </button>
       </div>
     </div>
+    </PopupPortal>
   );
 }

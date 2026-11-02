@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { PopupPortal } from "./ModalPortal";
 import { useT } from "@/lib/i18n/client";
 import { CS_ICONS } from "./icons-cs";
 import type { ScaleMode } from "@/lib/chart/types";
@@ -55,7 +56,7 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
   const modes: ScaleMode[] = ["regular", "percent", "indexed", "log"];
 
   return (
-    <>
+    <PopupPortal>
       <div className="fixed inset-0 z-[60]" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
         ref={ref}
@@ -85,6 +86,6 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
         </Item>
         <Item onClick={() => { onSettings(); onClose(); }}>{t("cs.settingsDots")}</Item>
       </div>
-    </>
+    </PopupPortal>
   );
 }

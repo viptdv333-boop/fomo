@@ -9,6 +9,7 @@ import { DESIGN_PATHS } from "./icons";
 import { DEFAULT_WORKSPACE, MAIN_ID, MIN_AREA_H, MIN_AREA_W, capCharts, chartIds, dragRect, hasWindow, isPhoneArea, rectFromPx, rectPx } from "@/lib/chart/windows-layout";
 import type { DragMode, Rect, Workspace, WsWindow } from "@/lib/chart/windows-layout";
 import IndicatorLegend from "./IndicatorLegend";
+import { PopupPortal } from "./ModalPortal";
 import { IND_ICONS } from "./icons";
 
 /* Workspace of floating windows over the chart area: the price chart and the extra windows with indicators are all rectangles that can be moved by
@@ -127,7 +128,7 @@ interface FrameProps {
   rect: Rect | null;
   size: { w: number; h: number };
   z: number;
-  /** The window fills the whole area (it is above the others and cannot be moved; the button puts it back). */
+  /** The window fills the whole area (cannot be moved; the button puts it back). Its place in the stacking order is its own z, like any window. */
   maximized?: boolean;
   title: ReactNode;
   /** The whole title as text (tooltip: the title is cut with an ellipsis when it does not fit). */
@@ -190,7 +191,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
   const small = !!rect && rect.w <= size.w * 0.5 + 1 && rect.h <= size.h * 0.5 + 1;
   // one window that fills the whole area: no frame, only the slim title bar
   const plain = !!rect && rect.x < 1 && rect.y < 1 && rect.w >= size.w - 1 && rect.h >= size.h - 1;
-  const style: CSSProperties | undefined = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: 10 + (maximized ? 9999 : z) } : undefined;
+  const style: CSSProperties | undefined = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: z } : undefined;
   return (
     <div
       className={
@@ -306,6 +307,13 @@ const swapIcon = (
   </svg>
 );
 
+/** A maximized window with a higher z-order than this one hides it completely: it stops painting. */
+function covers(ws: Workspace, maxId: string | null, w: WsWindow): boolean {
+  if (!maxId || maxId === w.id) return false;
+  const m = ws.wins.find((x) => x.id === maxId);
+  return !!m && m.z > w.z;
+}
+
 function Windows(props: Props) {
   const { t } = useT();
   const { controller, geo } = props;
@@ -333,7 +341,7 @@ function Windows(props: Props) {
           const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id };
           if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} onPickInstrument={props.onPickInstrument} />;
           if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={controller.canMakeChart()} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
-          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} covered={!!geo.maxId && geo.maxId !== w.id} />;
+          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} covered={covers(ws, geo.maxId, w)} />;
         })}
     </>
   );
@@ -412,7 +420,7 @@ function LinkChip({ win, ws, controller }: { win: WsWindow; ws: Workspace; contr
         {IND_ICONS.chevronDown(12)}
       </button>
       {pos && (
-        <>
+        <PopupPortal>
           <div className="fixed inset-0 z-[79]" onPointerDown={() => setPos(null)} />
           <div role="menu" className="tv3-pop fixed z-[80] w-64 rounded-xl py-1 text-xs font-medium normal-case tracking-normal text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]" style={{ left: pos.left, top: pos.top }}>
             <div className="px-3 pb-1 pt-1.5 text-[11px] text-[var(--tv3-muted)]">{t("win.linkPick")}</div>
@@ -433,7 +441,7 @@ function LinkChip({ win, ws, controller }: { win: WsWindow; ws: Workspace; contr
               </button>
             ))}
           </div>
-        </>
+        </PopupPortal>
       )}
     </>
   );
