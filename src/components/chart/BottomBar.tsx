@@ -118,7 +118,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
   const on = "!bg-[var(--tv3-accent-soft)]"; // design: only the tint (rgba(30,158,74,.18)), the label keeps its colour
 
   return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div data-tv="bottom" className="flex items-center gap-2 px-2.5 py-1.5 shrink-0 overflow-x-auto whitespace-nowrap border-t-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center rounded-[11px] bg-[var(--tv3-fill2)] p-0.5 shrink-0">
         {RANGES.map((r) => (
           <button key={r} onClick={() => onRange(r)} disabled={rangeBusy} title={t("shell.range.tip")} className={`${seg} disabled:opacity-50 disabled:cursor-wait`}>

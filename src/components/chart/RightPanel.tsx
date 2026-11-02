@@ -937,7 +937,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
         </div>
 
         {/* icon rail (desktop) */}
-        <div className="hidden md:flex flex-col items-center w-[66px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
+        <div data-tv="sidetabs" className="hidden md:flex flex-col items-center w-[66px] shrink-0 py-1.5 overflow-y-auto self-stretch rounded-2xl bg-[var(--tv3-card)]">
           <span className="tv3-rgap" />
           {/* icons spread evenly over the card height (flexible spacers shrink to 2px on short screens, then the rail scrolls) */}
           {TABS.map((tb) => {

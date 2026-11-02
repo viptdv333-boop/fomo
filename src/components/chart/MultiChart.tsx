@@ -214,7 +214,7 @@ export default function MultiChart(props: Props) {
   const picker = (
     <MenuPopover
       title={t("cs.ml.title")}
-      className="tv3-press min-h-[31px] min-w-[44px] px-3 py-[5px] inline-flex items-center justify-center rounded-[11px] bg-[var(--tv3-fill)] text-[13.5px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
+      className="tb-layout tv3-press min-h-[31px] min-w-[44px] px-3 py-[5px] inline-flex items-center justify-center rounded-[11px] bg-[var(--tv3-fill)] text-[13.5px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
       width={250}
       align="right"
       trigger={<span className="inline-flex h-[20px] w-[20px] items-center justify-center"><span className="scale-[0.77] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span>}

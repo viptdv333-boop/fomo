@@ -1,0 +1,374 @@
+/* Optional "macOS" look of the desktop terminal (design "FOMO Terminal macOS v2"). Everything is scoped under `.tvmac` (the terminal page root, set
+   while the skin is on, see src/lib/chart/mac-skin.ts) or `html[data-tvmac]` (page background + site header), so the classic look is untouched.
+   Structure hooks: data-tv="wrap|title|row|rail|card|toolbar|area|bottom|tools|sidetabs" and the `tb-*` classes of the toolbar buttons. */
+
+html[data-tvmac] {
+  --mac-wall: linear-gradient(135deg, #8e9ac7 0%, #a3b4ce 40%, #b9c8c2 72%, #dcc9b4 100%);
+}
+html.dark[data-tvmac] {
+  --mac-wall: linear-gradient(135deg, #1b2036 0%, #232b44 42%, #28383a 74%, #3a3330 100%);
+}
+html[data-tvmac] body {
+  background: var(--mac-wall) fixed;
+}
+/* the site header plays the menu bar: translucent glass over the wallpaper */
+html[data-tvmac] header[data-app-hide] {
+  background: rgba(255, 255, 255, 0.55) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  backdrop-filter: blur(30px) saturate(150%);
+  box-shadow: none !important;
+}
+html.dark[data-tvmac] header[data-app-hide] {
+  background: rgba(30, 30, 36, 0.6) !important;
+}
+
+.tvmac {
+  --m-win: rgba(246, 246, 248, 0.9);
+  --m-card: rgba(255, 255, 255, 0.75);
+  --m-card2: rgba(255, 255, 255, 0.88);
+  --m-chart: #ffffff;
+  --m-text: #26262b;
+  --m-sub: #6e6e73;
+  --m-seg: rgba(0, 0, 0, 0.06);
+  --m-seg-on: #ffffff;
+  --m-seg-on-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 2px 5px rgba(0, 0, 0, 0.16);
+  --m-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --m-win-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.25), 0 30px 80px -10px rgba(30, 30, 60, 0.35), 0 8px 24px rgba(30, 30, 60, 0.15);
+  --m-chart-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 10px 30px rgba(30, 30, 60, 0.14);
+  background: var(--mac-wall) fixed;
+  padding: 12px 16px 16px;
+}
+html.dark .tvmac {
+  --m-win: rgba(34, 34, 38, 0.9);
+  --m-card: rgba(52, 52, 58, 0.72);
+  --m-card2: rgba(46, 46, 52, 0.88);
+  --m-chart: #1c1c1e;
+  --m-text: #f2f2f7;
+  --m-sub: #a1a1a8;
+  --m-seg: rgba(255, 255, 255, 0.1);
+  --m-seg-on: #4a4a50;
+  --m-seg-on-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 2px 5px rgba(0, 0, 0, 0.4);
+  --m-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --m-win-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.18), 0 30px 80px -10px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --m-chart-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ───────── the window ───────── */
+.tvmac [data-tv="wrap"] {
+  background: var(--m-win) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(140%);
+  backdrop-filter: blur(40px) saturate(140%);
+  border-radius: 16px;
+  box-shadow: var(--m-win-sh);
+  overflow: hidden;
+  color: var(--m-text);
+}
+.tvmac-title {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  gap: 8px;
+}
+.tvmac-title-spacer {
+  width: 120px;
+  flex: none;
+}
+.tvmac-title-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+.tvmac-title-sub {
+  font-weight: 400;
+  color: var(--m-sub);
+}
+.tvmac-classic {
+  width: 120px;
+  flex: none;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--m-seg);
+  color: var(--m-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 140ms;
+}
+.tvmac-classic:hover {
+  background: color-mix(in srgb, var(--m-text) 14%, transparent);
+}
+
+/* body of the window: toolbar across the top, tool rail | chart + bottom bar | panel + tab rail below it */
+.tvmac [data-tv="row"] {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0 10px !important;
+  padding: 0 12px 12px !important;
+}
+.tvmac [data-tv="card"] {
+  display: contents;
+}
+.tvmac [data-tv="toolbar"] {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.tvmac [data-tv="rail"] {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  display: flex !important;
+  background: transparent !important;
+}
+.tvmac [data-tv="area"] {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  background: var(--m-chart);
+  border-radius: 14px;
+  box-shadow: var(--m-chart-sh);
+  overflow: hidden;
+}
+.tvmac [data-tv="bottom"] {
+  grid-column: 2;
+  grid-row: 3;
+  margin-top: 8px;
+}
+.tvmac [data-testid="right-panel"] {
+  background: var(--m-card2) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--m-ring), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.tvmac aside {
+  grid-column: 3;
+  grid-row: 2 / 4;
+  min-height: 0;
+  align-self: stretch;
+}
+
+/* Tailwind's `!` utilities (!h-[37px] ...) are layered-important and beat unlayered important rules: these rules live in the same layer, specificity decides */
+@layer utilities {
+/* ───────── toolbar: row 1 (symbol, contract, intervals) + row 2 (labelled colour icons) ───────── */
+.tvmac [data-tv="toolbar"] {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 2px 8px !important;
+  gap: 6px 14px;
+  overflow: visible;
+  flex-wrap: wrap;
+}
+.tvmac [data-tv="toolbar"] .tb-sym {
+  height: 40px !important;
+  background: var(--m-chart);
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-size: 15px;
+}
+.tvmac [data-tv="toolbar"] .tb-spacer {
+  display: none;
+}
+.tvmac [data-tv="toolbar"] .tb-break {
+  display: block;
+  order: 5;
+  flex: 0 0 100%;
+  height: 0;
+}
+.tvmac [data-tv="toolbar"] .tb-extra {
+  display: flex;
+  order: 20;
+}
+.tvmac [data-tv="toolbar"] .tb-macoffer {
+  display: none;
+}
+
+/* row 2 buttons: icon over a label, spread over the width */
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 92px;
+  width: auto !important;
+  height: 56px !important;
+  padding: 0 2px !important;
+  border-radius: 12px !important;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px !important;
+  background: transparent !important;
+  color: var(--tb-c, #747b8c);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--m-text) 6%, transparent) !important;
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--tb-c) 16%, transparent) !important;
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) svg {
+  width: 30px !important;
+  height: 30px !important;
+  flex: none;
+  transform: none;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--tb-c) 35%, transparent));
+}
+/* the classic text labels are replaced by the short ones below (the badge keeps its span) */
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-tpl) > span:not([class*="rounded-full"]) {
+  display: none !important;
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--m-text);
+  line-height: 1.1;
+}
+.tvmac .tb-compare::after { content: var(--tbl-compare); }
+.tvmac .tb-ind::after { content: var(--tbl-indicators); }
+.tvmac .tb-win::after { content: var(--tbl-window); }
+.tvmac .tb-alert::after { content: var(--tbl-alerts); }
+.tvmac .tb-events::after { content: var(--tbl-events); }
+.tvmac .tb-replay::after { content: var(--tbl-replay); }
+.tvmac .tb-type::after { content: var(--tbl-type); }
+.tvmac .tb-undo::after { content: var(--tbl-back); }
+.tvmac .tb-redo::after { content: var(--tbl-forward); }
+.tvmac .tb-layout::after { content: var(--tbl-layout); }
+.tvmac .tb-tpl::after { content: var(--tbl-templates); }
+.tvmac .tb-set::after { content: var(--tbl-settings); }
+.tvmac .tb-keys::after { content: var(--tbl-keys); }
+.tvmac .tb-full::after { content: var(--tbl-screen); }
+.tvmac .tb-shot::after { content: var(--tbl-shot); }
+/* the chart-type options button has no label of its own (it only exists for some chart types) */
+.tvmac [data-tv="toolbar"] .tb-typeset {
+  flex: 0 0 40px;
+  height: 40px !important;
+}
+
+}
+
+/* order + colour of row 2 (design order) */
+.tvmac .tb-compare { order: 10; --tb-c: #5b8fc0; }
+.tvmac .tb-ind { order: 11; --tb-c: #8a6db0; }
+.tvmac .tb-win { order: 12; --tb-c: #4f9a74; }
+.tvmac .tb-alert { order: 13; --tb-c: #cc9446; }
+.tvmac .tb-events { order: 14; --tb-c: #d98a5a; }
+.tvmac .tb-replay { order: 15; --tb-c: #c46a78; }
+.tvmac .tb-type { order: 16; --tb-c: #5b8fc0; }
+.tvmac .tb-typeset { order: 17; --tb-c: #747b8c; }
+.tvmac .tb-undo { order: 18; --tb-c: #747b8c; }
+.tvmac .tb-redo { order: 19; --tb-c: #747b8c; }
+.tvmac .tb-layout { order: 20; --tb-c: #4f9aa0; }
+.tvmac .tb-tpl { order: 21; --tb-c: #8a6db0; }
+.tvmac .tb-set { order: 22; --tb-c: #cc9446; }
+.tvmac .tb-keys { order: 23; --tb-c: #6e73b8; }
+.tvmac .tb-full { order: 24; --tb-c: #4f9a74; }
+.tvmac .tb-shot { order: 25; --tb-c: #c46a78; }
+html.dark .tvmac .tb-compare { --tb-c: #7db0d6; }
+html.dark .tvmac .tb-ind { --tb-c: #a78bc9; }
+html.dark .tvmac .tb-win { --tb-c: #7cc29b; }
+html.dark .tvmac .tb-alert { --tb-c: #e6b877; }
+html.dark .tvmac .tb-events { --tb-c: #e8a47c; }
+html.dark .tvmac .tb-replay { --tb-c: #de96a0; }
+html.dark .tvmac .tb-type { --tb-c: #7db0d6; }
+html.dark .tvmac :is(.tb-typeset, .tb-undo, .tb-redo) { --tb-c: #9aa0ae; }
+html.dark .tvmac .tb-layout { --tb-c: #6bb3b8; }
+html.dark .tvmac .tb-tpl { --tb-c: #a78bc9; }
+html.dark .tvmac .tb-set { --tb-c: #e6b877; }
+html.dark .tvmac .tb-keys { --tb-c: #8a8fd0; }
+html.dark .tvmac .tb-full { --tb-c: #7cc29b; }
+html.dark .tvmac .tb-shot { --tb-c: #de96a0; }
+
+/* counters: the pink round badge above the icon */
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert) > span[class*="rounded-full"] {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #c8607c !important;
+  color: #fff !important;
+  font-size: 11px;
+}
+
+/* segmented controls (intervals, ranges) */
+.tvmac [data-tv="toolbar"] [class*="bg-[var(--tv3-fill2)]"][class*="p-0.5"],
+.tvmac [data-tv="bottom"] > div:first-child {
+  background: var(--m-seg) !important;
+  border-radius: 11px;
+}
+
+/* ───────── rails: pastel rounded tiles, colour cycles over the buttons ───────── */
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) {
+  --rc: #4f9a74;
+  background: var(--m-card) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--m-ring);
+  width: 62px;
+}
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn {
+  width: 44px;
+  border-radius: 12px;
+  color: var(--rc);
+}
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn svg {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--rc) 35%, transparent));
+}
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 1) { --rc: #4f9a74; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 2) { --rc: #5577b8; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 3) { --rc: #cc9446; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 4) { --rc: #8a6db0; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 5) { --rc: #4f9aa0; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n) { --rc: #c46a78; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 1) { --rc: #7cc29b; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 2) { --rc: #8fa8dc; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 3) { --rc: #e6b877; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 4) { --rc: #a78bc9; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n + 5) { --rc: #6bb3b8; }
+html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):nth-of-type(6n) { --rc: #de96a0; }
+/* a chosen tool / tab: a tint of its own colour with a ring */
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn[class*="tv3-accent"],
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--rc) 15%, transparent) !important;
+  color: var(--rc) !important;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--rc) 40%, transparent);
+}
+
+/* ───────── bottom bar ───────── */
+.tvmac [data-tv="bottom"] {
+  height: 44px;
+  background: var(--m-card) !important;
+  border: 0 !important;
+  border-radius: 14px;
+  box-shadow: var(--m-ring);
+  padding: 0 8px !important;
+  gap: 10px !important;
+}
+.tvmac [data-tv="bottom"] > div:first-child > button[class*="px-2.5"]:hover {
+  background: var(--m-seg-on);
+}
+.tvmac [data-tv="bottom"] button[aria-pressed="true"] {
+  background: #5fa37e !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px rgba(79, 154, 116, 0.4);
+}
+
+/* the "try the new design" button of the classic look */
+[data-tv="toolbar"] .tb-macoffer {
+  color: #5a4b9c;
+  background: linear-gradient(135deg, rgba(167, 139, 201, 0.28), rgba(125, 176, 214, 0.28));
+}
+.dark [data-tv="toolbar"] .tb-macoffer {
+  color: #cdbff0;
+}

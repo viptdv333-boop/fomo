@@ -16,6 +16,8 @@ import {
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
+import "@/components/chart/terminal-mac.css";
+import { useMacSkin } from "@/lib/chart/mac-skin";
 import { isForexSymbol } from "@/lib/forex-meta";
 import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client";
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
@@ -106,6 +108,7 @@ function instrumentFromUrl(): TerminalInstrument {
 export default function TerminalPage() {
   const { t } = useT();
   const appUi = useAppUi();
+  const mac = useMacSkin(!appUi).on && !appUi;
   const [selected, setSelected] = useState<TerminalInstrument | null>(null);
   const [top, setTop] = useState(56);
 
@@ -185,7 +188,7 @@ export default function TerminalPage() {
   if (appUi) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
 
   return (
-    <div className="tv3 fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40 bg-[var(--tv3-canvas)]" style={{ top }}>
+    <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={{ top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}

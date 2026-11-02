@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartType } from "@/lib/chart/types";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
@@ -109,6 +109,8 @@ interface Props {
   /** App full-screen chart: the close button goes first, the browser-fullscreen and phone-panel buttons are left out, and the row never wraps (it scrolls) so a landscape phone keeps its height for the chart. */
   appFull?: boolean;
   lead?: ReactNode;
+  /** Classic look on a wide window: offers the optional macOS look (src/lib/chart/mac-skin.ts). */
+  macOffer?: () => void;
 }
 
 /* icons live in ./icons */
@@ -190,14 +192,19 @@ export default function TopToolbar(p: Props) {
   const win = p.windows?.available ? p.windows : null;
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
 
+  // labels of the macOS look: drawn by CSS (::after) under the icon, so every button keeps its own markup
+  const macLabels = Object.fromEntries(
+    ["compare", "indicators", "window", "alerts", "events", "replay", "type", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot"].map((k) => [`--tbl-${k}`, JSON.stringify(t(`mac.lbl.${k}`))]),
+  ) as CSSProperties;
+
   return (
-    <div className={`@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto ${p.appFull ? "" : "md:overflow-visible md:flex-wrap"} border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+    <div data-tv="toolbar" style={macLabels} className={`@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto ${p.appFull ? "" : "md:overflow-visible md:flex-wrap"} border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
       {p.lead}
       <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
         {I.tools}
       </button>
 
-      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
+      <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} tb-sym !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
         <InstIcon inst={p.instrument} size={28} />
         <span className="font-bold text-[16px]">{p.instrument.ticker}</span>
         <span className="hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
@@ -222,7 +229,7 @@ export default function TopToolbar(p: Props) {
         </div>
       )}
 
-      <Menu title={t("shell.chartType")} className={`${btn}`} width={220} trigger={<>{typeIcon[currentType.id]}</>}>
+      <Menu title={t("shell.chartType")} className={`${btn} tb-type`} width={220} trigger={<>{typeIcon[currentType.id]}</>}>
         {(close) =>
           CHART_TYPES.map((c) => (
             <button
@@ -241,51 +248,52 @@ export default function TopToolbar(p: Props) {
           ))
         }
       </Menu>
-      {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={btn} source={p.instrument.source} />}
+      {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={`${btn} tb-typeset`} source={p.instrument.source} />}
 
+      <span className="tb-break" aria-hidden />
       {p.onOpenCompare && (
-        <button onClick={p.onOpenCompare} title={t("cs.compare")} className={btn}>
+        <button onClick={p.onOpenCompare} title={t("cs.compare")} className={`${btn} tb-compare`}>
           {CS_ICONS.compare}
           <span className={lbl}>{t("cs.compareShort")}</span>
           {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
         </button>
       )}
-      <button onClick={p.onOpenIndicators} title={t("shell.indicators")} data-tv3-anchor="indicators" className={btn}>
+      <button onClick={p.onOpenIndicators} title={t("shell.indicators")} data-tv3-anchor="indicators" className={`${btn} tb-ind`}>
         {I.indicators}
         <span className={lbl}>{t("shell.indicators")}</span>
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       {win && (
-        <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindowTip") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={btn}>
+        <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindowTip") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={`${btn} tb-win`}>
           {IND_ICONS.plus(16)}
           <span className={lbl}>{t("win.addWindow")}</span>
           {win.count > 0 && badge(win.count)}
         </button>
       )}
-      <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={btn}>
+      <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={`${btn} tb-alert`}>
         {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}
         <span className={lbl2}>{t("shell.alerts")}</span>
         {(p.alertCount ?? 0) > 0 && badge(p.alertCount ?? 0)}
       </button>
-      <ChartEventsButton className={btn} onClassName={btnOn} />
-      <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} ${replayOn ? btnOn : ""}`}>
+      <ChartEventsButton className={`${btn} tb-events`} onClassName={btnOn} />
+      <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} tb-replay ${replayOn ? btnOn : ""}`}>
         {I.replay}
         <span className={lbl2}>{t("shell.replay")}</span>
       </button>
 
-      <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} aria-label={t("shell.undo")} className={btn}>
+      <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} aria-label={t("shell.undo")} className={`${btn} tb-undo`}>
         {I.undo}
       </button>
-      <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} aria-label={t("shell.redo")} className={btn}>
+      <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} aria-label={t("shell.redo")} className={`${btn} tb-redo`}>
         {I.redo}
       </button>
 
-      <span className="flex-1 min-w-2 hidden md:block" />
+      <span className="tb-spacer flex-1 min-w-2 hidden md:block" />
 
-      {p.extra}
-      {p.templates && <TemplatesMenu btn={btn} {...p.templates} />}
+      {p.extra && <span className="tb-extra contents">{p.extra}</span>}
+      {p.templates && <TemplatesMenu btn={`${btn} tb-tpl`} {...p.templates} />}
       {p.onOpenSettings ? (
-        <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={ibtn}>
+        <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={`${ibtn} tb-set`}>
           {I.gear}
         </button>
       ) : (
@@ -318,15 +326,15 @@ export default function TopToolbar(p: Props) {
       </Menu>
       )}
       {p.onOpenShortcuts && (
-        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} aria-label={t("shortcuts.title")} className={`${ibtn} hidden lg:inline-flex`}>
+        <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} aria-label={t("shortcuts.title")} className={`${ibtn} tb-keys hidden lg:inline-flex`}>
           {CS_ICONS.keyboard}
         </button>
       )}
-      {!p.appFull && <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} ${p.fullscreen ? btnOn : ""}`}>
+      {!p.appFull && <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} tb-full ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
       </button>}
       {p.onScreenshotCopy ? (
-        <Menu title={t("chart.screenshot")} className={ibtn} width={220} trigger={I.camera}>
+        <Menu title={t("chart.screenshot")} className={`${ibtn} tb-shot`} width={220} trigger={I.camera}>
           {(close) => (
             <>
               <button
@@ -355,6 +363,14 @@ export default function TopToolbar(p: Props) {
       ) : (
         <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ibtn}>
           {I.camera}
+        </button>
+      )}
+      {p.macOffer && (
+        <button type="button" onClick={p.macOffer} title={t("mac.tryTip")} className={`${btn} tb-macoffer hidden lg:inline-flex`}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+          </svg>
+          <span>{t("mac.try")}</span>
         </button>
       )}
       {!p.appFull && (

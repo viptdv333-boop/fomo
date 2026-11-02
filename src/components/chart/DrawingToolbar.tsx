@@ -228,6 +228,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       role="toolbar"
       aria-orientation="vertical"
       aria-label={t("draw.toolbar")}
+      data-tv="tools"
       className={`flex w-[66px] shrink-0 select-none flex-col items-center overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--tv3-card)] py-1.5 ${className ?? ""}`}
       style={{ scrollbarWidth: "none" }}
     >

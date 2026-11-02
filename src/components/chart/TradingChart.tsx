@@ -65,6 +65,8 @@ import type { ChartSyncHub } from "@/lib/chart/sync";
 import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
 import { adHocInstrument, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
+import MacTitleBar from "@/components/chart/MacTitleBar";
+import { useMacSkin } from "@/lib/chart/mac-skin";
 
 export type { ChartSource } from "@/lib/terminal-data";
 import type { ChartSource } from "@/lib/terminal-data";
@@ -456,6 +458,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const askInstrument = useCallback((id: string) => setPickSignals((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 })), []);
   /** «Платина · 15м»: the asset (its display name) and the timeframe of the price chart, live. */
   const mainTitle = `${instName(instrument, t)} · ${formatInterval(shownInterval(prefs.interval, source), t)}`;
+  // optional macOS look: only the full terminal (not a grid pane, the app or a phone layout) wears it
+  const macSkin = useMacSkin();
+  const macPage = !embedded && !compact && !appPage && !appFull;
+  const mac = macSkin.on && macPage;
   useEffect(() => {
     const read = () => setWinCount(indicators.windowCount());
     read();
@@ -1743,18 +1749,20 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const setScaleMode = (m: ScaleMode) => csApi.update((x) => ({ ...x, scale: { ...x.scale, mode: m } }));
 
   return (
-    <div ref={wrapRef} className="flex flex-col w-full h-full min-h-0 bg-[var(--tv3-canvas)] text-[var(--tv3-text)] select-none">
+    <div ref={wrapRef} data-tv="wrap" className="flex flex-col w-full h-full min-h-0 bg-[var(--tv3-canvas)] text-[var(--tv3-text)] select-none">
+      {mac && <MacTitleBar title={mainTitle} onClassic={() => macSkin.set(false)} />}
       {/* design v3: floating cards on the canvas: [drawing tools] [chart card: toolbar + chart + bottom bar] [right panel] */}
-      <div className={`relative flex flex-1 min-h-0 ${embedded ? "" : compact ? "md:gap-2" : "md:gap-2 md:p-2"}`}>
+      <div data-tv="row" className={`relative flex flex-1 min-h-0 ${embedded ? "" : compact ? "md:gap-2" : "md:gap-2 md:p-2"}`}>
         {/* drawing tools (the toolbar is its own card; on a phone it is a drawer under the top toolbar) */}
         <div
+          data-tv="rail"
           className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 ${appPage ? "top-0" : "top-[46px]"} md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
         >
           <DrawingToolbar controller={drawings} />
         </div>
 
         {/* chart card */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
+        <div data-tv="card" className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
       {(!appPage || appTb) && (
       <TopToolbar
         instrument={instrument}
@@ -1797,11 +1805,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         extra={toolbarExtra}
         appFull={appFull}
         lead={appFull ? appFullLead : undefined}
+        macOffer={macPage && !macSkin.on && macSkin.canOffer ? () => macSkin.set(true) : undefined}
       />
       )}
 
           {/* chart area: with extra windows the price chart is a floating window too (header to move, edges to resize); with none nothing changes */}
-          <div ref={areaRef} className="relative isolate flex flex-col flex-1 min-h-0">
+          <div ref={areaRef} data-tv="area" className="relative isolate flex flex-col flex-1 min-h-0">
           <WindowFrame
             id="main"
             controller={indicators}
