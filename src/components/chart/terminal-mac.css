@@ -871,3 +871,17 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 3)
 html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 4) { --nc: #8a6db0; }
 html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 5) { --nc: #4f9aa0; }
 html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { --nc: #c46a78; }
+
+/* a low or narrow window: the same look, tighter */
+@media (max-height: 760px) {
+  .tvmac { padding-top: 6px; padding-bottom: 8px; }
+  .tvmac-title { height: 28px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { height: 46px !important; gap: 1px !important; }
+  .tvmac [data-tv="toolbar"] button .mg { width: 24px !important; height: 24px !important; }
+  .tvmac [data-tv="toolbar"] { padding-bottom: 4px !important; gap: 4px 12px; }
+  .tvmac [data-tv="toolbar"] .tb-sym, .tvmac [data-tv="toolbar"] .tb-roll { height: 34px !important; }
+}
+@media (max-width: 1200px) {
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 11px; }
+  .tvmac aside [data-testid="right-panel"] { max-width: 280px; }
+}

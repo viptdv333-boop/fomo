@@ -7,8 +7,8 @@ import { useEffect, useSyncExternalStore } from "react";
 
 export const MAC_SKIN_KEY = "fomo-terminal-skin-v1";
 const EVENT = "fomo-mac-skin";
-/** the design is laid out for 1100x680 and up */
-const WIDE = "(min-width: 1100px) and (min-height: 640px) and (hover: hover) and (pointer: fine)";
+/** the design is laid out for 1100x680; it still holds down to a small window (compact rules in terminal-mac.css) */
+const WIDE = "(min-width: 900px) and (min-height: 480px) and (hover: hover) and (pointer: fine)";
 
 function stored(): boolean {
   try {
