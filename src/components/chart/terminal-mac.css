@@ -902,3 +902,79 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { -
 }
 .tvmac [data-tv="toolbar"] .tb-ct > span { display: none !important; }
 .tvmac [data-tv="toolbar"] .tb-ct > svg { display: block; width: 14px; height: 14px; }
+
+/* indicators dialog rows: 14px names, soft tags, green pills for "Add" / "Added" (design list style) */
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li { border-radius: 0; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child { padding: 10px 14px !important; gap: 12px !important; min-height: 58px; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child > span:first-child { width: 12px !important; height: 12px !important; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18); }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li .truncate.text-xs { font-size: 14px !important; font-weight: 600; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li .text-\[11px\] { font-size: 12.5px !important; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li [class*="border-[var(--tv3-hair)]"][class*="uppercase"] {
+  border: 0 !important;
+  background: var(--tv3-fill);
+  border-radius: 6px !important;
+  padding: 1px 6px !important;
+  font-size: 10px !important;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child > span:last-child {
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 15px !important;
+  font-size: 13px !important;
+  background: rgba(79, 154, 116, 0.12);
+  color: #3f8562 !important;
+}
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child > span:last-child[class*="26a69a"] { background: rgba(79, 154, 116, 0.2); }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child > span:last-child:not([class*="26a69a"]) { background: var(--tv3-fill); color: var(--tv3-text2) !important; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li > button:first-child > span:last-child .hidden { display: inline !important; }
+
+/* ═════════ every dropdown / submenu: one type scale, big coloured glyphs (the colour cycles over the rows when the design has no own colour) ═════════ */
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) {
+  font-family: var(--tv3-font);
+  font-size: 14px;
+}
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) :is(button[class*="w-full"], button[role="menuitem"], button[role="option"], [role="menuitem"]) {
+  min-height: 38px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  gap: 12px !important;
+  border-radius: 9px !important;
+  font-size: 14px !important;
+  color: var(--tv3-text);
+  align-items: center;
+}
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) :is(button[class*="w-full"], button[role="menuitem"], button[role="option"]):hover { background: rgba(0, 0, 0, 0.06); }
+html.dark[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) :is(button[class*="w-full"], button[role="menuitem"], button[role="option"]):hover { background: rgba(255, 255, 255, 0.09); }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) :is(button[class*="w-full"], button[role="menuitem"], button[role="option"]) > svg:first-child:not(.mg) {
+  width: 24px !important;
+  height: 24px !important;
+  flex: none;
+  color: var(--ic, #5b8fc0);
+  fill: color-mix(in srgb, var(--ic, #5b8fc0) 28%, transparent);
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--ic, #5b8fc0) 35%, transparent));
+}
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n + 1) { --ic: #4f9a74; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n + 2) { --ic: #5b8fc0; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n + 3) { --ic: #cc9446; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n + 4) { --ic: #8a6db0; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n + 5) { --ic: #4f9aa0; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) button:nth-of-type(6n) { --ic: #c46a78; }
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"], [role="listbox"]) hr,
+html[data-tvmac] .tv3 :is(.tv3-pop, [role="menu"]) [class*="border-t"] { border-color: rgba(0, 0, 0, 0.08) !important; }
+
+/* drawing flyouts without a design glyph (brushes, shapes, arrows, text, stamps...): large tinted glyphs in the group colour */
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] { height: 40px; }
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
+  width: 30px !important;
+  height: 30px !important;
+  margin: -2px -2px -2px -4px;
+}
+
+/* ═════════ scale: on a wide screen the chrome grows with the window (--mz, set by the page), like the design on a big monitor; the chart canvas itself is never zoomed ═════════ */
+.tvmac :is([data-tv="toolbar"], [data-tv="tools"], [data-tv="sidetabs"], [data-tv="bottom"], aside) { zoom: var(--mz, 1); }
+.tvmac [data-tv="tools"] .tv3-rbtn { height: clamp(34px, calc((100vh - 230px) / 17 / var(--mz, 1)), 46px); }
+.tvmac-title { zoom: var(--mz, 1); }

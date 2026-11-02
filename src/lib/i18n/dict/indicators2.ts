@@ -106,9 +106,9 @@ const rows: [string, string, string, string][] = [
   ["win.addWindowTip", "Добавить окно: график или индикатор", "Add a window: a chart or an indicator", "添加窗口：图表或指标"],
   /* optional macOS look of the terminal (src/lib/chart/mac-skin.ts) */
   ["mac.try", "Попробовать новый дизайн", "Try the new design", "试用新设计"],
-  ["mac.tryTip", "Вид в стиле macOS. Включается в один клик, прежний интерфейс остаётся", "A macOS-style look. One click to switch, the classic interface stays", "macOS 风格外观。一键切换，经典界面保留"],
-  ["mac.classic", "Прежний вид", "Classic view", "经典视图"],
-  ["mac.classicTip", "Вернуться к прежнему оформлению терминала", "Back to the classic terminal look", "返回经典终端外观"],
+  ["mac.tryTip", "Вид в стиле macOS. Включается в один клик, старый интерфейс остаётся", "A macOS-style look. One click to switch, the classic interface stays", "macOS 风格外观。一键切换，经典界面保留"],
+  ["mac.classic", "Старый вид", "Classic view", "经典视图"],
+  ["mac.classicTip", "Вернуться к старому оформлению терминала", "Back to the classic terminal look", "返回经典终端外观"],
   ["mac.lbl.compare", "Сравнить", "Compare", "对比"],
   ["mac.lbl.indicators", "Индикаторы", "Indicators", "指标"],
   ["mac.lbl.window", "Окно", "Window", "窗口"],

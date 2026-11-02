@@ -80,7 +80,7 @@ export function useMacSkin(html = false): { on: boolean; canOffer: boolean; chos
  * `allowed` = the screen can wear it (a phone-style layout); the desktop skin above is untouched.
  */
 export function useAppMacSkin(allowed = true): { on: boolean; chosen: boolean; set: (v: boolean) => void } {
-  // on the phone the new look is the DEFAULT: it is off only after the user picked the classic look ("Прежний вид")
+  // on the phone the new look is the DEFAULT: it is off only after the user picked the classic look ("Старый вид")
   const chosen = useSyncExternalStore(subscribe, storedApp, () => true);
   const on = chosen && allowed;
   useEffect(() => {

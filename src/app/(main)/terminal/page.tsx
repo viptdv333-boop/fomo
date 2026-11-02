@@ -109,6 +109,14 @@ export default function TerminalPage() {
   const { t } = useT();
   const appUi = useAppUi();
   const mac = useMacSkin(!appUi).on && !appUi;
+  // the design is drawn for a ~1440px window: on a wider screen its chrome (toolbar, rails, panels) is enlarged to keep the same proportions
+  const [macZoom, setMacZoom] = useState(1);
+  useEffect(() => {
+    const f = () => setMacZoom(Math.round(Math.min(1.35, Math.max(1, window.innerWidth / 1440)) * 100) / 100);
+    f();
+    window.addEventListener("resize", f);
+    return () => window.removeEventListener("resize", f);
+  }, []);
   const [selected, setSelected] = useState<TerminalInstrument | null>(null);
   const [top, setTop] = useState(56);
 
@@ -188,7 +196,7 @@ export default function TerminalPage() {
   if (appUi) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
 
   return (
-    <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={{ top }}>
+    <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
