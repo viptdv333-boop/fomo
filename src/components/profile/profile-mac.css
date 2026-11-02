@@ -1,0 +1,254 @@
+/*
+ * The optional "macOS" look of the profile PAGE (the desktop / web «Мой профиль»: tabs Профиль / Уведомления / Безопасность ...).
+ * A skin only: nothing here applies unless the page root carries `.pfmac` (page.tsx puts it there while useMacSkin is on, the same per-device
+ * switch as the terminal's) or `html[data-pfmac]` (page background: the wallpaper itself comes from terminal-mac.css, html[data-tvmac]).
+ * Without `.pfmac` the page is the classic one. Same language as the terminal: Golos Text, wallpaper, translucent glass cards (radius 16, hairline
+ * ring), green #4F9A74 with gradient buttons, segmented tabs, white rounded inputs, 42x26 switches, duotone glyphs.
+ * The rules sit outside any @layer, so they win over the Tailwind utilities that the components carry.
+ */
+
+.pfmac {
+  --pfg-bell-amber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%23E0B06A' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%23C98B3C' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-chat-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h16v11H10l-4 4v-4H4z' fill='%237DB0D6' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M4 5h16v11H10l-4 4v-4H4z' stroke='%235B8FC0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-lock-purple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 11h14v10H5z' fill='%23A78BC9' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M5 11h14v10H5zM8 11V8a4 4 0 018 0v3' stroke='%238A6DB0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-mail-teal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h18v14H3z' fill='%236BB3B8' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M3 5h18v14H3zM3 7l9 6 9-6' stroke='%234F9AA0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-user-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a4.5 4.5 0 100 9 4.5 4.5 0 000-9z' fill='%237CC29B' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M12 3a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM4 21a8 8 0 0116 0z' stroke='%234F9A74' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-moon-purple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z' fill='%23A78BC9' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z' stroke='%238A6DB0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-sliders-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6' stroke='%235B8FC0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-chart-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20V4M4 20h16M8 16l4-5 3 3 5-7' stroke='%234F9A74' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-bell-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%237CC29B' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%234F9A74' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-bell-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%237DB0D6' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%235B8FC0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-bell-purple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%23A78BC9' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%238A6DB0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-bell-teal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%236BB3B8' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%234F9AA0' stroke-width='1.7'/%3E%3C/svg%3E");
+    --pfg-bell-rose: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4z' fill='%23DE96A0' fill-opacity='.45' stroke='none'/%3E%3Cpath d='M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4' stroke='%23C46A78' stroke-width='1.7'/%3E%3C/svg%3E");
+  --pf-card: rgba(255, 255, 255, 0.76);
+  --pf-card-in: rgba(255, 255, 255, 0.6);
+  --pf-tx: #26262b;
+  --pf-sub: #6e6e73;
+  --pf-mut: #8e8e93;
+  --pf-hair: rgba(0, 0, 0, 0.07);
+  --pf-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --pf-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 10px 30px rgba(30, 30, 60, 0.1);
+  --pf-seg: rgba(0, 0, 0, 0.06);
+  --pf-seg-on: #ffffff;
+  --pf-seg-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 2px 5px rgba(0, 0, 0, 0.16);
+  --pf-in: #ffffff;
+  --pf-in-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  --pf-in-dis: rgba(0, 0, 0, 0.045);
+  --pf-green: #4f9a74;
+  --pf-green-tx: #3d8562;
+  --pf-btn: linear-gradient(180deg, #6db88f, #4f9a74);
+  --pf-btn-sh: 0 1px 2px rgba(60, 120, 90, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --pf-off: rgba(0, 0, 0, 0.18);
+  --pf-chip: rgba(255, 255, 255, 0.85);
+  --pf-chip-on: rgba(79, 154, 116, 0.16);
+  max-width: 760px;
+  padding: 10px 0 36px;
+  font-family: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.003em;
+  color: var(--pf-tx);
+}
+html.dark .pfmac {
+  --pf-card: rgba(52, 52, 58, 0.72);
+  --pf-card-in: rgba(255, 255, 255, 0.06);
+  --pf-tx: #f2f2f7;
+  --pf-sub: #a1a1a8;
+  --pf-mut: #8a8a92;
+  --pf-hair: rgba(255, 255, 255, 0.09);
+  --pf-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --pf-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.4);
+  --pf-seg: rgba(255, 255, 255, 0.1);
+  --pf-seg-on: #4a4a50;
+  --pf-seg-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 2px 5px rgba(0, 0, 0, 0.4);
+  --pf-in: rgba(255, 255, 255, 0.09);
+  --pf-in-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.16);
+  --pf-in-dis: rgba(255, 255, 255, 0.04);
+  --pf-green-tx: #7cc29b;
+  --pf-off: rgba(255, 255, 255, 0.22);
+  --pf-chip: rgba(255, 255, 255, 0.1);
+  --pf-chip-on: rgba(124, 194, 155, 0.22);
+}
+
+/* the page itself: the wallpaper of the terminal's look (terminal-mac.css is not loaded on this route, so the same gradient is here), the header as a
+   translucent menu bar, the footer melts into the wallpaper */
+html[data-pfmac] { --pf-wall: linear-gradient(135deg, #8e9ac7 0%, #a3b4ce 40%, #b9c8c2 72%, #dcc9b4 100%); }
+html.dark[data-pfmac] { --pf-wall: linear-gradient(135deg, #1b2036 0%, #232b44 42%, #28383a 74%, #3a3330 100%); }
+html[data-pfmac] body { background: var(--pf-wall) fixed; }
+html[data-pfmac] header[data-app-hide] { background: rgba(255, 255, 255, 0.55) !important; -webkit-backdrop-filter: blur(30px) saturate(150%); backdrop-filter: blur(30px) saturate(150%); box-shadow: none !important; }
+html.dark[data-pfmac] header[data-app-hide] { background: rgba(30, 30, 36, 0.6) !important; }
+html[data-pfmac] footer { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+
+/* hidden in the classic look */
+.pfm-ico { display: none; }
+
+/* ───────── title + tabs ───────── */
+.pfmac h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; color: var(--pf-tx); margin: 4px 2px 16px; }
+.pfmac [role="tablist"] {
+  background: var(--pf-card);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  box-shadow: var(--pf-sh);
+  border-radius: 14px;
+  padding: 4px;
+  gap: 3px;
+  margin-bottom: 18px;
+}
+.pfmac [role="tablist"] > button { border-radius: 10px; padding: 8px 14px; font-size: 13.5px; font-weight: 600; color: var(--pf-sub); background: transparent; box-shadow: none; transition: background-color 0.15s, color 0.15s; }
+.pfmac [role="tablist"] > button:hover { color: var(--pf-tx); }
+.pfmac [role="tablist"] > button.shadow { background: var(--pf-seg-on); color: var(--pf-tx); box-shadow: var(--pf-seg-sh); }
+
+/* ───────── glass cards ───────── */
+.pfmac :is(.rounded-xl.shadow, section.rounded-xl) {
+  background: var(--pf-card);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--pf-sh);
+  color: var(--pf-tx);
+}
+.pfmac :is(.rounded-xl.shadow, section.rounded-xl):is(.p-4, .p-6) { padding: 22px 24px; }
+.pfmac article.rounded-xl { background: var(--pf-card-in); border: 0; box-shadow: var(--pf-ring); border-radius: 14px; }
+.pfmac .border-green-200 { background: rgba(79, 154, 116, 0.13); border: 0; border-radius: 14px; box-shadow: var(--pf-ring); }
+.pfmac div.border.rounded-lg { border: 0; background: var(--pf-card-in); box-shadow: var(--pf-ring); border-radius: 12px; }
+.pfmac :is(h2, h3, h4) { color: var(--pf-tx); }
+.pfmac :is(.text-gray-500, .text-gray-600) { color: var(--pf-sub); }
+.pfmac .border-t, .pfmac [class*="divide-y"] > * + * { border-color: var(--pf-hair); }
+.pfmac .border-t { border-top-width: 0.5px; }
+.pfmac :is(.border-gray-100, .border-gray-200):not(button, a) { border-color: var(--pf-hair); }
+.pfmac .bg-gray-50 { background: var(--pf-in-dis); }
+
+/* ───────── avatar row ───────── */
+.pfmac .pfm-ava { gap: 22px; }
+.pfmac .pfm-ava > .rounded-full {
+  width: 80px; height: 80px; flex: none;
+  background: linear-gradient(135deg, #d6ecdf, #a9d3bd);
+  color: var(--pf-green-tx);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 0 0 4.5px rgba(0, 0, 0, 0.07), 0 8px 22px rgba(30, 30, 60, 0.2);
+  margin: 4px;
+}
+html.dark .pfmac .pfm-ava > .rounded-full { background: linear-gradient(135deg, #3b5a4a, #2c4439); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.14), 0 8px 22px rgba(0, 0, 0, 0.45); }
+.pfmac .pfm-ava p { font-size: 12.5px; margin-top: 8px; }
+
+/* ───────── pills / buttons ───────── */
+.pfmac .pfm-pill {
+  display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 18px; border-radius: 999px;
+  background: var(--pf-btn); box-shadow: var(--pf-btn-sh); color: #fff; font-size: 13.5px; font-weight: 600; white-space: nowrap; transition: filter 0.15s;
+}
+.pfmac .pfm-pill:hover { filter: brightness(1.06); color: #fff; }
+.pfmac .pfm-pill-q { height: 32px; padding: 0 16px; background: var(--pf-seg); box-shadow: none; color: var(--pf-green-tx); }
+.pfmac .pfm-pill-q:hover { filter: none; background: color-mix(in srgb, var(--pf-tx) 12%, transparent); color: var(--pf-green-tx); }
+
+.pfmac :is(button, a).bg-green-600:not([role="switch"]) {
+  background: var(--pf-btn); box-shadow: var(--pf-btn-sh); color: #fff; border: 0; border-radius: 11px; font-weight: 600; min-height: 36px;
+  display: inline-flex; align-items: center; justify-content: center; transition: filter 0.15s; text-decoration: none;
+}
+.pfmac :is(button, a).bg-green-600:not([role="switch"]):hover { filter: brightness(1.06); }
+.pfmac :is(button, a).bg-green-600:not([role="switch"]):disabled { opacity: 0.5; filter: none; }
+.pfmac button.bg-green-600.px-3 { min-height: 32px; border-radius: 10px; }
+.pfmac button.pfm-save.pfm-save { min-height: 48px; padding: 0 44px; border-radius: 14px; font-size: 16px; font-weight: 700; letter-spacing: -0.005em; box-shadow: 0 8px 18px rgba(79, 154, 116, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.pfmac button.border.border-gray-200, .pfmac a.border.border-gray-200 { border: 0; border-radius: 10px; background: var(--pf-chip); box-shadow: var(--pf-in-ring); color: var(--pf-tx); min-height: 32px; font-weight: 500; }
+.pfmac button.border.border-gray-200:hover { background: var(--pf-in); }
+.pfmac :is(button, a):is(.text-green-600, .text-green-700) { color: var(--pf-green-tx); }
+.pfmac .pfm-pill.pfm-pill:is(button, a) { color: #fff; }
+.pfmac .pfm-pill-q.pfm-pill-q:is(button, a) { color: var(--pf-green-tx); }
+
+/* ───────── fields ───────── */
+.pfmac label.block, .pfmac label.text-xs { font-size: 12.5px; font-weight: 500; color: var(--pf-sub); margin-bottom: 6px; letter-spacing: 0; }
+.pfmac :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+  background: var(--pf-in); color: var(--pf-tx); border: 0; border-radius: 11px; box-shadow: var(--pf-in-ring); min-height: 40px; box-sizing: border-box; font-size: 14.5px; font-family: inherit;
+  transition: box-shadow 0.15s;
+}
+.pfmac textarea { padding: 10px 14px; line-height: 1.4; }
+.pfmac :is(input, select, textarea)::placeholder { color: var(--pf-mut); opacity: 0.8; }
+.pfmac :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea):focus { outline: none; box-shadow: 0 0 0 0.5px var(--pf-green), 0 0 0 3.5px rgba(79, 154, 116, 0.28); }
+.pfmac input[readonly] { background: var(--pf-in-dis); color: var(--pf-sub); box-shadow: var(--pf-ring); cursor: default; }
+.pfmac .pfm-email { gap: 10px; }
+
+/* section captions inside the form: small, grey, uppercase, letter-spaced */
+.pfmac form h3.text-sm { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--pf-mut); margin-bottom: 10px; }
+.pfmac form .border-t { padding-top: 18px; }
+
+/* specialization chips */
+.pfmac label.cursor-pointer.border { border: 0; border-radius: 999px; background: var(--pf-chip); box-shadow: var(--pf-in-ring); color: var(--pf-sub); padding: 7px 14px; font-size: 13px; font-weight: 500; }
+.pfmac label.cursor-pointer.border.bg-green-50 { background: var(--pf-chip-on); box-shadow: 0 0 0 0.5px rgba(79, 154, 116, 0.5); color: var(--pf-green-tx); font-weight: 600; }
+
+/* ───────── switch rows (Push, DM) ───────── */
+.pfmac .pfm-row { min-height: 44px; gap: 14px; }
+.pfmac .pfm-row > div { flex: 1; min-width: 0; }
+.pfmac .pfm-row > input { order: 3; }
+.pfmac .pfm-row span.text-sm { font-size: 15px; font-weight: 600; color: var(--pf-tx); }
+.pfmac .pfm-row p { font-size: 12.5px; color: var(--pf-sub); margin-top: 2px; }
+
+/* the native checkbox becomes the design's switch (42x26) */
+.pfmac input[type="checkbox"]:not(.sr-only) {
+  -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 42px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 13px;
+  background: var(--pf-off); cursor: pointer; transition: background-color 0.2s; box-shadow: none; outline: none; min-height: 0;
+}
+.pfmac input[type="checkbox"]:not(.sr-only)::before { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+.pfmac input[type="checkbox"]:not(.sr-only):checked { background: var(--pf-green); }
+.pfmac input[type="checkbox"]:not(.sr-only):checked::before { transform: translateX(16px); }
+.pfmac input[type="checkbox"]:not(.sr-only):disabled { opacity: 0.5; cursor: default; }
+.pfmac input[type="checkbox"]:not(.sr-only):focus-visible { box-shadow: 0 0 0 3.5px rgba(79, 154, 116, 0.35); }
+
+/* the site's Switch (button role=switch: channel cards, the matrix, quiet hours) */
+.pfmac [role="switch"] { width: 42px; height: 26px; border: 0; border-radius: 13px; background: var(--pf-off); transition: background-color 0.2s; }
+.pfmac [role="switch"][aria-checked="true"] { background: var(--pf-green); }
+.pfmac [role="switch"][aria-checked="mixed"] { background: color-mix(in srgb, var(--pf-green) 55%, var(--pf-off)); }
+.pfmac [role="switch"] > span { width: 22px; height: 22px; translate: none; transform: translateX(2px); background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+.pfmac [role="switch"][aria-checked="true"] > span { transform: translateX(18px); }
+.pfmac [role="switch"][aria-checked="mixed"] > span { transform: translateX(10px); }
+.pfmac [role="switch"].h-5 { width: 34px; height: 20px; border-radius: 10px; }
+.pfmac [role="switch"].h-5 > span { width: 16px; height: 16px; transform: translateX(2px); }
+.pfmac [role="switch"].h-5[aria-checked="true"] > span { transform: translateX(16px); }
+.pfmac [role="switch"].h-5[aria-checked="mixed"] > span { transform: translateX(9px); }
+.pfmac [role="switch"]:focus-visible { outline: none; box-shadow: 0 0 0 3.5px rgba(79, 154, 116, 0.35); }
+
+/* ───────── duotone glyph tiles (big, coloured) ───────── */
+.pfmac [data-g] { --pfg: var(--pfg-bell-amber); --pft: #e0b06a; }
+.pfmac [data-g="bell"] { --pfg: var(--pfg-bell-amber); --pft: #e0b06a; }
+.pfmac [data-g="chat"] { --pfg: var(--pfg-chat-blue); --pft: #7db0d6; }
+.pfmac [data-g="lock"] { --pfg: var(--pfg-lock-purple); --pft: #a78bc9; }
+.pfmac [data-g="mail"] { --pfg: var(--pfg-mail-teal); --pft: #6bb3b8; }
+.pfmac [data-g="user"] { --pfg: var(--pfg-user-green); --pft: #7cc29b; }
+.pfmac [data-g="moon"] { --pfg: var(--pfg-moon-purple); --pft: #a78bc9; }
+.pfmac [data-g="sliders"] { --pfg: var(--pfg-sliders-blue); --pft: #7db0d6; }
+.pfmac [data-g="chart"] { --pfg: var(--pfg-chart-green); --pft: #7cc29b; }
+.pfmac .pfm-ico, .pfmac .pfm-h::before, .pfmac th[scope="row"]::before, .pfmac :is(#ns-channels-title, #ns-matrix-title, #ns-quiet-title, #ns-term-title)::before {
+  content: ""; display: block; flex: none; width: 38px; height: 38px; border-radius: 12px;
+  background: var(--pfg) center / 24px 24px no-repeat, color-mix(in srgb, var(--pft) 30%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--pft) 40%, transparent);
+}
+.pfmac .pfm-ico { display: block; }
+.pfmac .pfm-h { display: flex; align-items: center; gap: 13px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+
+/* headings of the notification cards: the glyph tile stands to the left of the title and its description */
+.pfmac :is(#ns-channels-title, #ns-matrix-title, #ns-quiet-title, #ns-term-title) { position: relative; padding-left: 52px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 22px; }
+.pfmac :is(#ns-channels-title, #ns-matrix-title, #ns-quiet-title, #ns-term-title)::before { position: absolute; left: 0; top: 0; }
+.pfmac :is(#ns-channels-title, #ns-matrix-title, #ns-quiet-title, #ns-term-title) + p { padding-left: 52px; min-height: 16px; font-size: 12.5px; margin-top: 0; }
+.pfmac #ns-channels-title { --pfg: var(--pfg-bell-amber); --pft: #e0b06a; }
+.pfmac #ns-matrix-title { --pfg: var(--pfg-sliders-blue); --pft: #7db0d6; }
+.pfmac #ns-quiet-title { --pfg: var(--pfg-moon-purple); --pft: #a78bc9; }
+.pfmac #ns-term-title { --pfg: var(--pfg-chart-green); --pft: #7cc29b; }
+
+/* the heading of the whole tab */
+.pfmac h2.text-xl { font-size: 20px; font-weight: 800; letter-spacing: -0.015em; }
+
+/* preference matrix: rows of 52px with hairlines, a coloured bell in front of every event */
+.pfmac [data-testid="ns-matrix-table"] :is(td, th[scope="row"]) { border-bottom: 0.5px solid var(--pf-hair); height: 52px; }
+.pfmac [data-testid="ns-matrix-table"] th[scope="row"] { position: relative; padding-left: 48px; background: transparent; }
+.pfmac [data-testid="ns-matrix-table"] th[scope="row"]::before { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 11px; background-size: 21px 21px; }
+.pfmac [data-testid="ns-matrix-table"] thead th { background: transparent; }
+.pfmac [data-testid="ns-matrix-table"] th[colspan] { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; color: var(--pf-mut); background: transparent; }
+.pfmac [data-testid="ns-matrix-table"] tr:nth-child(5n+1) th[scope="row"] { --pfg: var(--pfg-bell-amber); --pft: #e0b06a; }
+.pfmac [data-testid="ns-matrix-table"] tr:nth-child(5n+2) th[scope="row"] { --pfg: var(--pfg-bell-green); --pft: #7cc29b; }
+.pfmac [data-testid="ns-matrix-table"] tr:nth-child(5n+3) th[scope="row"] { --pfg: var(--pfg-bell-blue); --pft: #7db0d6; }
+.pfmac [data-testid="ns-matrix-table"] tr:nth-child(5n+4) th[scope="row"] { --pfg: var(--pfg-bell-purple); --pft: #a78bc9; }
+.pfmac [data-testid="ns-matrix-table"] tr:nth-child(5n) th[scope="row"] { --pfg: var(--pfg-bell-rose); --pft: #de96a0; }
+.pfmac [data-testid="ns-matrix-table"] th[scope="row"] .font-medium { font-size: 14.5px; font-weight: 600; color: var(--pf-tx); }
+.pfmac [data-testid="ns-matrix-table"] .rounded-full.bg-gray-100 { background: var(--pf-seg); color: var(--pf-sub); }
+
+/* ───────── the quiet switch between the looks ───────── */
+.pfmac .pfm-skin button { height: 30px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, 0.55); box-shadow: var(--pf-ring); color: var(--pf-sub); font-size: 12.5px; font-weight: 500; text-decoration: none; transition: background-color 0.15s; }
+html.dark .pfmac .pfm-skin button { background: rgba(255, 255, 255, 0.1); }
+.pfmac .pfm-skin button:hover { background: var(--pf-in); text-decoration: none; color: var(--pf-tx); }

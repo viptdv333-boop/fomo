@@ -15,6 +15,8 @@ import { useT } from "@/lib/i18n/client";
 import dynamic from "next/dynamic";
 import { useAppUi } from "@/components/app/useAppUi";
 import { isTerminalSite } from "@/lib/site-mode";
+import { useMacSkin } from "@/lib/chart/mac-skin";
+import "@/components/profile/profile-mac.css";
 
 // the app UI's profile tab is loaded only inside the app (the browser's page below never pays for it)
 const AppProfile = dynamic(() => import("@/components/app/profile/AppProfile"), { ssr: false });
@@ -60,6 +62,14 @@ function ProfileContent() {
   const { t } = useT();
   const { data: session, update: updateSession } = useSession();
   const searchParams = useSearchParams();
+  // the optional "macOS" look (same per-device switch as the terminal: wide window only); the old look is this page with `mac` off
+  const macSkin = useMacSkin(true);
+  const mac = macSkin.on;
+  useEffect(() => {
+    if (!mac) return;
+    document.documentElement.setAttribute("data-pfmac", "");
+    return () => document.documentElement.removeAttribute("data-pfmac");
+  }, [mac]);
   const [displayName, setDisplayName] = useState("");
   const [fomoId, setFomoId] = useState("");
   const [fomoIdError, setFomoIdError] = useState("");
@@ -446,7 +456,7 @@ function ProfileContent() {
   }
 
   return (
-    <div className="max-w-2xl w-full mx-auto">
+    <div className={`max-w-2xl w-full mx-auto${mac ? " pfmac" : ""}`}>
       <h1 className="text-2xl font-bold mb-4 dark:text-gray-100">{t("profile.title")}</h1>
 
       {/* Tabs */}
@@ -586,7 +596,7 @@ function ProfileContent() {
       {activeTab === "profile" && (
       <>
       {/* Avatar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-center gap-4">
+      <div className="pfm-ava bg-white dark:bg-gray-900 rounded-xl shadow p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-center gap-4">
         <div
           className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-3xl overflow-hidden cursor-pointer relative"
           onClick={() => avatarInputRef.current?.click()}
@@ -610,7 +620,7 @@ function ProfileContent() {
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
-            className="text-green-600 hover:text-green-800 text-sm font-medium"
+            className="pfm-pill text-green-600 hover:text-green-800 text-sm font-medium"
           >
             {avatarUrl ? t("profile2.changePhoto") : t("profile2.uploadPhoto")}
           </button>
@@ -652,7 +662,7 @@ function ProfileContent() {
         {/* Email — read-only, change on Security tab */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.email")}</label>
-          <div className="flex items-center gap-2">
+          <div className="pfm-email flex items-center gap-2">
             <input
               type="email"
               value={session?.user?.email || ""}
@@ -662,7 +672,7 @@ function ProfileContent() {
             <button
               type="button"
               onClick={() => setActiveTab("security")}
-              className="text-xs text-green-600 hover:text-green-700 whitespace-nowrap shrink-0"
+              className="pfm-pill pfm-pill-q text-xs text-green-600 hover:text-green-700 whitespace-nowrap shrink-0"
             >
               {t("profile.change")}
             </button>
@@ -1013,7 +1023,8 @@ function ProfileContent() {
 
         {/* DM toggle */}
         <div className="border-t dark:border-gray-700 pt-4">
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label className="pfm-row flex items-center gap-3 cursor-pointer">
+            <span className="pfm-ico" data-g="chat" aria-hidden="true" />
             <input
               type="checkbox"
               checked={dmEnabled}
@@ -1032,7 +1043,8 @@ function ProfileContent() {
         {/* Push notifications toggle */}
         {pushSupported && (
           <div className="border-t dark:border-gray-700 pt-4">
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="pfm-row flex items-center gap-3 cursor-pointer">
+              <span className="pfm-ico" data-g="bell" aria-hidden="true" />
               <input
                 type="checkbox"
                 checked={pushEnabled}
@@ -1055,7 +1067,7 @@ function ProfileContent() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
+            className="pfm-save bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
           >
             {loading ? t("channels.saving") : t("common.save")}
           </button>
@@ -1080,7 +1092,7 @@ function ProfileContent() {
         <div className="space-y-6">
           {/* Change Password */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">{t("profile.changePassword")}</h3>
+            <h3 className="pfm-h text-lg font-bold dark:text-gray-100 mb-4" data-g="lock">{t("profile.changePassword")}</h3>
             <form onSubmit={async (e) => {
               e.preventDefault();
               setSecurityMessage(""); setSecurityError("");
@@ -1122,7 +1134,7 @@ function ProfileContent() {
 
           {/* Change Email — 2-step: send code → verify */}
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">{t("profile.changeEmail")}</h3>
+            <h3 className="pfm-h text-lg font-bold dark:text-gray-100 mb-4" data-g="mail">{t("profile.changeEmail")}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t("profile.email")}: {session?.user?.email || "—"}</p>
 
             {emailStep === "form" ? (
@@ -1192,6 +1204,20 @@ function ProfileContent() {
               </form>
             )}
           </div>
+        </div>
+      )}
+
+      {/* the switch between the looks stays reachable on this page (same device setting as the terminal's) */}
+      {(mac || macSkin.canOffer) && (
+        <div className="pfm-skin mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => macSkin.set(!mac)}
+            title={mac ? t("mac.classicTip") : t("mac.tryTip")}
+            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline-offset-2 hover:underline"
+          >
+            {mac ? t("mac.classic") : t("mac.try")}
+          </button>
         </div>
       )}
     </div>

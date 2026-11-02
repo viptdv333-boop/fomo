@@ -1,0 +1,174 @@
+/*
+ * The phone look of the app's «Профиль» tab and the screens pushed from it, in the language of the new terminal ("FOMO Terminal Mobile" tokens of
+ * app-mac.css): Golos Text, white cards of radius 18 with a hairline ring, grouped list rows with big tinted duotone icon tiles, green #4F9A74 with
+ * gradient primary buttons, 42x26 switches. A skin only: nothing here applies unless <html> holds `app-prof-mac` (AppProfile.tsx, while
+ * useAppMacSkin is on: the default on the phone, off after «Старый вид»). The classic screens never load a rule of this file that changes them,
+ * except the quiet button `.ap-macbtn` at the foot of the list.
+ * The tokens are redefined on the screen itself (`.ap`) and on the sheets / toast it opens, not on <html>, so the app's dock and header keep theirs.
+ */
+
+/* ---------- the switch between the looks (both looks) ---------- */
+html.app-ui .ap .ap-macbtn { display: block; margin: -6px auto 22px; padding: 9px 18px; border-radius: 999px; background: var(--app-card2); color: var(--app-tx2); font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; }
+html.app-ui .ap .ap-macbtn:active { background: var(--app-press); }
+
+/* ---------- tokens ---------- */
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet-wrap, .ac-toast) {
+  --app-card: #ffffff;
+  --app-card2: #f1f1f5;
+  --app-line: rgba(0, 0, 0, 0.09);
+  --app-tx: #26262b;
+  --app-tx2: #6e6e73;
+  --app-tx3: #8e8e93;
+  --app-green: #4f9a74;
+  --app-green-tx: #3d8562;
+  --app-green-bg: rgba(79, 154, 116, 0.14);
+  --app-press: rgba(0, 0, 0, 0.05);
+  --app-nav: rgba(244, 244, 247, 0.86);
+  --app-sheet: rgba(244, 244, 247, 0.97);
+  --app-off: rgba(0, 0, 0, 0.18);
+  --app-gb: 0 solid transparent;
+  --app-inv: #26262b;
+  --pm-bg: #f4f4f7;
+  --pm-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --pm-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.05);
+  --pm-fill: rgba(0, 0, 0, 0.045);
+  --pm-seg: rgba(0, 0, 0, 0.06);
+  --pm-btn: linear-gradient(180deg, #6db88f, #4f9a74);
+  --pm-btn-sh: 0 6px 16px rgba(79, 154, 116, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --pm-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+}
+html.app-ui.dark.app-prof-mac :is(.ap, .ac-sheet-wrap, .ac-toast) {
+  --app-card: #1a1a1e;
+  --app-card2: #26262b;
+  --app-line: rgba(255, 255, 255, 0.1);
+  --app-tx: #f2f2f5;
+  --app-tx2: #a1a1a9;
+  --app-tx3: #7d7d86;
+  --app-green-tx: #7cc29b;
+  --app-green-bg: rgba(124, 194, 155, 0.18);
+  --app-press: rgba(255, 255, 255, 0.06);
+  --app-nav: rgba(14, 14, 17, 0.88);
+  --app-sheet: rgba(26, 26, 30, 0.97);
+  --app-off: rgba(255, 255, 255, 0.22);
+  --app-inv: #f2f2f5;
+  --pm-bg: #0e0e11;
+  --pm-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  --pm-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  --pm-fill: rgba(255, 255, 255, 0.07);
+  --pm-seg: rgba(255, 255, 255, 0.09);
+}
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) { font-family: var(--pm-font); letter-spacing: -0.003em; }
+html.app-ui.app-prof-mac .ap button { font-family: inherit; }
+
+/* ---------- pushed-screen bar + the big title ---------- */
+html.app-ui.app-prof-mac .ap .ac-nav { background: var(--app-nav); -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%); border-bottom: 0.5px solid var(--app-line); }
+html.app-ui.app-prof-mac .ap .ac-navtitle { font-weight: 700; letter-spacing: -0.01em; }
+html.app-ui.app-prof-mac .ap .ac-back { font-weight: 500; }
+html.app-ui.app-prof-mac .ap .ap-navbtn { font-weight: 700; }
+html.app-ui.app-prof-mac .ap .ac-large { padding: 10px 20px 14px; font-size: 34px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.12; }
+html.app-ui.app-prof-mac .ap .ac-intro { padding: 4px 24px 16px; font-size: 13.5px; }
+
+/* ---------- hero card ---------- */
+html.app-ui.app-prof-mac .ap .ap-hero { margin: 4px 16px 16px; padding: 18px; border: 0; border-radius: 20px; background: var(--app-card); box-shadow: var(--pm-sh), 0 10px 28px rgba(30, 30, 60, 0.07); gap: 16px; }
+html.app-ui.app-prof-mac .ap .ap-ava { background: linear-gradient(135deg, #d6ecdf, #a9d3bd); color: var(--app-green-tx); font-weight: 800; box-shadow: 0 0 0 3px var(--app-card), 0 0 0 3.5px rgba(0, 0, 0, 0.07), 0 6px 16px rgba(30, 30, 60, 0.16); }
+html.app-ui.dark.app-prof-mac .ap .ap-ava { background: linear-gradient(135deg, #3b5a4a, #2c4439); }
+html.app-ui.app-prof-mac .ap .ap-hero .ap-ava { width: 66px; height: 66px; }
+html.app-ui.app-prof-mac .ap .ap-hero-name { font-size: 21px; font-weight: 800; letter-spacing: -0.015em; }
+html.app-ui.app-prof-mac .ap .ap-stat { --st: #4f9a74; padding: 10px 0; border-radius: 14px; background: color-mix(in srgb, var(--st) 14%, var(--app-card)); }
+html.app-ui.app-prof-mac .ap .ap-stat:nth-child(2) { --st: #5b8fc0; }
+html.app-ui.app-prof-mac .ap .ap-stat:nth-child(3) { --st: #c98b3c; }
+html.app-ui.app-prof-mac .ap .ap-stat-v { font-size: 19px; font-weight: 800; color: color-mix(in srgb, var(--st) 80%, var(--app-tx)); }
+html.app-ui.app-prof-mac .ap .ap-stat-l { font-size: 12px; font-weight: 500; }
+html.app-ui.app-prof-mac .ap .ap-hero-btn { height: 46px; border-radius: 14px; background: var(--pm-btn); color: #fff; font-size: 15.5px; font-weight: 700; box-shadow: var(--pm-btn-sh); }
+html.app-ui.app-prof-mac .ap .ap-hero-btn:active { filter: brightness(0.96); }
+
+/* «Как пользоваться» */
+html.app-ui.app-prof-mac .ap .ap-cta { margin: 0 16px 22px; color: #fff; height: 52px; border-radius: 16px; background: var(--pm-btn); box-shadow: var(--pm-btn-sh); font-weight: 700; }
+html.app-ui.app-prof-mac .ap .ap-guest { border: 0; border-radius: 20px; box-shadow: var(--pm-sh); }
+
+/* ---------- grouped lists ---------- */
+html.app-ui.app-prof-mac .ap .ac-sec { gap: 8px; margin: 0 16px 22px; }
+html.app-ui.app-prof-mac .ap .ac-sectitle { padding: 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--app-tx3); }
+html.app-ui.app-prof-mac .ap .ac-secfoot { padding: 0 8px; font-size: 12.5px; }
+html.app-ui.app-prof-mac .ap .ac-secbox { border: 0; border-radius: 18px; background: var(--app-card); box-shadow: var(--pm-sh); }
+html.app-ui.app-prof-mac .ap .ac-sr { padding-left: 14px; gap: 13px; }
+html.app-ui.app-prof-mac .ap .ac-sr-body { padding: 12px 14px 12px 0; border-bottom: 0.5px solid var(--app-line); min-height: 24px; }
+html.app-ui.app-prof-mac .ap .ac-secbox > :last-child .ac-sr-body { border-bottom: 0; }
+html.app-ui.app-prof-mac .ap .ac-sr-label { font-size: 16px; font-weight: 500; letter-spacing: -0.005em; }
+html.app-ui.app-prof-mac .ap .ac-sr-sub { font-size: 12.5px; }
+html.app-ui.app-prof-mac .ap .ac-sr-val { font-size: 15px; }
+html.app-ui.app-prof-mac .ap .ac-sr-chev { color: var(--app-tx3); opacity: 0.7; }
+html.app-ui.app-prof-mac .ap .ap-badge { background: #e5484d; font-weight: 700; }
+
+/* the big duotone tile of a row: a tint of its colour under a stroke of the dark one with a soft glow (the design's glyphs) */
+html.app-ui.app-prof-mac .ap .ac-sr-ico { --rt: #4f9a74; width: 38px; height: 38px; border-radius: 12px; color: var(--rt); background: color-mix(in srgb, var(--rt) 17%, var(--app-card)); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--rt) 28%, transparent); }
+html.app-ui.app-prof-mac .ap .ac-sr-ico svg { width: 22px; height: 22px; fill: color-mix(in srgb, var(--rt) 18%, transparent); filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--rt) 38%, transparent)); }
+html.app-ui.app-prof-mac .ap .ac-sr[data-k] .ac-sr-ico[data-av="1"] { color: var(--app-tx2); }
+/* colours by what the row is (home list first; the pushed screens use the same keys) */
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="inbox"], [data-k="notif"], [data-k="push"], [data-k="ideas"], [data-k="earn"], [data-k="mine"]) .ac-sr-ico { --rt: #c98b3c; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="authors"], [data-k="subs"], [data-k="lang"], [data-k="dl"], [data-k="download"], [data-k="followers"], [data-k="buys"]) .ac-sr-ico { --rt: #5b8fc0; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="calendar"], [data-k="admin"], [data-k="spend"], [data-k="help"], [data-k="fz"]) .ac-sr-ico { --rt: #c46a78; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="calc"], [data-k="native"], [data-k="allapp"], [data-k="device"], [data-k="offmode"], [data-k="sales"]) .ac-sr-ico { --rt: #4f9aa0; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="rooms"], [data-k="security"], [data-k="theme"], [data-k="pw"], [data-k="mail"], [data-k="privacy"], [data-k="terms"], [data-k="offclear"]) .ac-sr-ico { --rt: #8a6db0; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="logout"], [data-k="out"]) .ac-sr-ico { --rt: #d6454b; }
+html.app-ui.app-prof-mac .ap .ac-sr:is([data-k="update"], [data-k="upd"], [data-k="edit"], [data-k="finance"], [data-k="channels"]) .ac-sr-ico { --rt: #4f9a74; }
+
+/* ---------- switches (42x26), buttons, chips ---------- */
+html.app-ui.app-prof-mac .ap .ac-tg { width: 42px; height: 26px; border-radius: 13px; background: var(--app-off); }
+html.app-ui.app-prof-mac .ap .ac-tg > div { top: 2px; left: 2px; width: 22px; height: 22px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+html.app-ui.app-prof-mac .ap .ac-tg[data-on="1"] { background: var(--app-green); }
+html.app-ui.app-prof-mac .ap .ac-tg[data-on="1"] > div { left: 18px; }
+
+html.app-ui.app-prof-mac .ap .ap-primary { margin: 4px 16px 24px; color: #fff; height: 52px; border-radius: 16px; background: var(--pm-btn); box-shadow: var(--pm-btn-sh); font-weight: 700; }
+html.app-ui.app-prof-mac .ap .ap-primary:disabled { background: var(--app-card2); box-shadow: none; color: var(--app-tx3); }
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-sbtn { margin: 0 16px; color: #fff; height: 52px; border-radius: 16px; background: var(--pm-btn); box-shadow: var(--pm-btn-sh); font-weight: 700; }
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-sbtn:disabled { background: var(--app-card2); box-shadow: none; color: var(--app-tx3); }
+html.app-ui.app-prof-mac .ap .ac-act { height: 34px; padding: 0 16px; border-radius: 999px; background: var(--pm-seg); font-weight: 600; }
+html.app-ui.app-prof-mac .ap .ac-act[data-tone="primary"] { background: var(--pm-btn); box-shadow: var(--pm-btn-sh); color: #fff; }
+html.app-ui.app-prof-mac .ap .ac-act[data-tone="danger"] { background: rgba(229, 72, 77, 0.12); color: #d6454b; }
+html.app-ui.app-prof-mac .ap .ap-chips { gap: 7px; }
+html.app-ui.app-prof-mac .ap .ap-chip { padding: 6px 13px; border: 0; background: var(--pm-seg); color: var(--app-tx2); font-weight: 600; }
+html.app-ui.app-prof-mac .ap .ap-chip[data-on="1"] { background: var(--app-green-bg); color: var(--app-green-tx); box-shadow: 0 0 0 0.5px rgba(79, 154, 116, 0.45); }
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-segs button { border: 0; background: var(--pm-seg); }
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-segs button[data-on="1"] { background: var(--app-green-bg); color: var(--app-green-tx); }
+html.app-ui.app-prof-mac .ap .ap-pill { font-weight: 700; }
+
+/* fields in rows: a soft white-on-grey rounded field with a hairline, a green ring while typing */
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-sfield { margin-top: 6px; padding: 9px 12px; border-radius: 11px; background: var(--pm-fill); font-size: 16px; transition: box-shadow 0.15s; }
+html.app-ui.app-prof-mac :is(.ap, .ac-sheet) .ac-sfield:focus { box-shadow: 0 0 0 0.5px var(--app-green), 0 0 0 3px rgba(79, 154, 116, 0.25); }
+html.app-ui.app-prof-mac .ap .ap-inl { width: 128px; padding: 7px 10px; border-radius: 10px; background: var(--pm-fill); }
+html.app-ui.app-prof-mac .ap .ap-inl:focus { box-shadow: 0 0 0 0.5px var(--app-green), 0 0 0 3px rgba(79, 154, 116, 0.25); }
+html.app-ui.app-prof-mac .ap .ap-qr, html.app-ui.app-prof-mac .ap .ap-qr-empty { border-radius: 14px; border-color: var(--app-line); }
+
+/* ---------- photo row of the profile editor ---------- */
+html.app-ui.app-prof-mac .ap .ap-photo { padding: 8px 0 18px; }
+html.app-ui.app-prof-mac .ap .ap-photo .ap-ava { width: 88px; height: 88px; font-size: 32px; box-shadow: 0 0 0 4px var(--app-card), 0 0 0 4.5px rgba(0, 0, 0, 0.07), 0 10px 24px rgba(30, 30, 60, 0.2); }
+
+/* ---------- the existing widgets shown as they are (channel cards, watchlist, bot ...) ---------- */
+html.app-ui.app-prof-mac .ap .ap-skin { font-family: var(--pm-font); }
+html.app-ui.app-prof-mac .ap .ap-skin :is(section, article) { border: 0; border-radius: 18px; box-shadow: var(--pm-sh); }
+html.app-ui.app-prof-mac .ap .ap-skin article { background: var(--app-card); }
+html.app-ui.app-prof-mac .ap .ap-skin :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { border: 0; border-radius: 12px; background: var(--pm-fill); }
+html.app-ui.app-prof-mac .ap .ap-skin .bg-green-600 { background: var(--pm-btn); box-shadow: var(--pm-btn-sh); border-radius: 12px; }
+html.app-ui.app-prof-mac .ap .ap-skin button.border { border: 0; background: var(--pm-seg); border-radius: 12px; }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"] { width: 42px; height: 26px; border: 0; border-radius: 13px; background: var(--app-off); }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"][aria-checked="true"] { background: var(--app-green); }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"] > span { width: 22px; height: 22px; translate: none; transform: translateX(2px); background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"][aria-checked="true"] > span { transform: translateX(18px); }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"].h-5 { width: 34px; height: 20px; border-radius: 10px; }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"].h-5 > span { width: 16px; height: 16px; }
+html.app-ui.app-prof-mac .ap .ap-skin [role="switch"].h-5[aria-checked="true"] > span { transform: translateX(16px); }
+
+/* ---------- sheets opened from the profile (theme, language, payment ...) and the toast ---------- */
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sheet-back { background: rgba(10, 10, 14, 0.42); }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sheet { border-radius: 26px 26px 0 0; -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: 0 -10px 40px rgba(30, 30, 60, 0.25); }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-grip div { width: 40px; opacity: 0.45; }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sbar > :nth-child(2) { font-weight: 700; }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sbar > :last-child { font-weight: 700; }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-secbox { border: 0; border-radius: 16px; background: var(--app-card); box-shadow: var(--pm-ring); }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sectitle { font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--app-tx3); }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-sr-ico { --rt: #4f9a74; border-radius: 11px; color: var(--rt); background: color-mix(in srgb, var(--rt) 17%, var(--app-card)); }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-tg { width: 42px; height: 26px; border-radius: 13px; }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-tg > div { width: 22px; height: 22px; }
+html.app-ui.app-prof-mac .ac-sheet-wrap .ac-tg[data-on="1"] > div { left: 18px; }
+html.app-ui.app-prof-mac .ac-toast { border-radius: 14px; font-family: var(--pm-font); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }

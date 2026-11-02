@@ -179,11 +179,11 @@ export function SectionBox({ rows }: { rows: SheetRow[] }) {
           </>
         );
         return r.onClick && !r.disabled ? (
-          <button key={r.key} type="button" className="ac-sr" data-unread={r.unread} onClick={r.onClick}>
+          <button key={r.key} type="button" className="ac-sr" data-k={r.key} data-unread={r.unread} onClick={r.onClick}>
             {body}
           </button>
         ) : (
-          <div key={r.key} className="ac-sr" data-unread={r.unread} data-disabled={r.disabled ? "1" : undefined}>
+          <div key={r.key} className="ac-sr" data-k={r.key} data-unread={r.unread} data-disabled={r.disabled ? "1" : undefined}>
             {body}
           </div>
         );

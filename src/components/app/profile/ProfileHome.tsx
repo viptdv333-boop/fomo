@@ -16,6 +16,7 @@ import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { useInboxUnread } from "./useNotifInbox";
 import { PickerSheet } from "./parts";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
 
 // terminal.fomo.spot: the board site's sections (authors, calculator, ideas, finance, rooms ...) do not exist there
 const TERMINAL = isTerminalSite();
@@ -54,6 +55,17 @@ function useVersionLabel(): string {
   return v;
 }
 
+/** The quiet switch between the looks (the new one is the default on the phone), under the lists. */
+function MacLookRow() {
+  const { t } = useProf();
+  const mac = useAppMacSkin(true);
+  return (
+    <button type="button" className="ap-macbtn" onClick={() => mac.set(!mac.on)} title={mac.on ? t("mac.classicTip") : t("mac.tryTip")}>
+      {mac.on ? t("mac.classic") : t("mac.try")}
+    </button>
+  );
+}
+
 /** The Профиль tab: the design's `me` screen. */
 export default function ProfileHome() {
   const { t, user, me, go, open, flash } = useProf();
@@ -89,6 +101,7 @@ export default function ProfileHome() {
         )}
         {/* a guest has no «Настройки приложения», but the language is not a thing to hide behind a sign-in */}
         <Sections sections={[{ key: "guestapp", rows: [langRow] }]} />
+        <MacLookRow />
         {langSheet && <LanguageSheet to={TERMINAL ? "/terminal" : "/feed"} onClose={() => setLangSheet(false)} />}
       </div>
     );
@@ -250,6 +263,7 @@ export default function ProfileHome() {
         </button>
       )}
       <Sections sections={sections} />
+      <MacLookRow />
       {themeSheet && (
         <PickerSheet
           title={t("appprof.theme")}

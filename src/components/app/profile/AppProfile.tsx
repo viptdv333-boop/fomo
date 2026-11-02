@@ -23,7 +23,9 @@ import NotifInbox from "./NotifInbox";
 import AppSettings from "./AppSettings";
 import "../chat/app-chat.css";
 import { holdHtmlClass } from "@/lib/html-class";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import "./app-profile.css";
+import "./profile-mac.css";
 
 // terminal.fomo.spot: no board, channels or payments
 const TERMINAL = isTerminalSite();
@@ -90,6 +92,9 @@ export default function AppProfile() {
 
   // page chrome: the page is edge to edge, the screens bring their own paddings
   useEffect(() => holdHtmlClass(["app-prof-on"]), []);
+  // the new phone look (the default; «Старый вид» at the foot of the list turns it off): the skin of profile-mac.css hangs on this class
+  const macOn = useAppMacSkin(true).on;
+  useLayoutEffect(() => (macOn ? holdHtmlClass(["app-prof-mac"]) : undefined), [macOn]);
 
   const main = () => document.querySelector("main");
   const keep = useMemo(() => {
