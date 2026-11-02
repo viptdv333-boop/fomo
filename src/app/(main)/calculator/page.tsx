@@ -7,6 +7,9 @@ import { useT } from "@/lib/i18n/client";
 import { useAppUi } from "@/components/app/useAppUi";
 import { isNativeUi } from "@/lib/native-app";
 import { RISK_PRESETS, calcPosition, fmtRub, intlLocale, type CalcResult } from "@/lib/futures-calc";
+import { useMacSkin } from "@/lib/chart/mac-skin";
+import CalcGlyph, { CalcTile, type CalcGlyphName } from "@/components/calculator/CalcGlyph";
+import "@/components/calculator/calculator-mac.css";
 
 // the app UI (Android / Windows app, ?appui=1) draws its own calculator screen; it is loaded only there (the browser's page below never pays for it).
 // The math is the same function (src/lib/futures-calc.ts calcPosition) in both.
@@ -45,7 +48,7 @@ function AssetPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 border dark:border-gray-700 rounded-lg dark:bg-gray-800 text-left hover:border-green-500 transition"
+        className="calc-pick w-full flex items-center gap-2 px-3 py-2.5 border dark:border-gray-700 rounded-lg dark:bg-gray-800 text-left hover:border-green-500 transition"
       >
         {selected ? (
           <>
@@ -64,7 +67,7 @@ function AssetPicker({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+        <div className="calc-pop absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
           <div className="p-2 border-b dark:border-gray-800">
             <input
               autoFocus
@@ -72,7 +75,7 @@ function AssetPicker({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("calc.searchPlaceholder")}
-              className="w-full px-2.5 py-1.5 text-sm border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="calc-search w-full px-2.5 py-1.5 text-sm border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
           <div className="max-h-64 overflow-y-auto py-1">
@@ -88,7 +91,7 @@ function AssetPicker({
                     setOpen(false);
                     setQuery("");
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
+                  className={`calc-opt w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
                     selected?.ticker === i.ticker ? "bg-green-50 dark:bg-green-900/20" : ""
                   }`}
                 >
@@ -118,15 +121,15 @@ function NumberField({
   placeholder?: string;
 }) {
   return (
-    <div>
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">{label}</label>
+    <div className="calc-f">
+      <label className="calc-lbl block text-sm text-gray-600 dark:text-gray-400 mb-1">{label}</label>
       <input
         type="number"
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="calc-in w-full px-3 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
       />
     </div>
   );
@@ -137,8 +140,24 @@ export default function CalculatorPage() {
   return appUi ? <AppCalculator /> : <SiteCalculator />;
 }
 
+/** one number of the result in the new look: a duotone glyph, the caption and the value */
+function Stat({ g, label, value, tone }: { g: CalcGlyphName; label: string; value: string; tone?: "bad" | "good" }) {
+  return (
+    <div className="calc-stat" data-tone={tone}>
+      <CalcTile name={g} size={38} />
+      <span className="calc-stat-t">
+        <small>{label}</small>
+        <b>{value}</b>
+      </span>
+    </div>
+  );
+}
+
 function SiteCalculator() {
   const { t, locale } = useT();
+  // the optional "macOS" look (the same per-device switch as the terminal's; only a wide fine-pointer window): wallpaper, glass card, Golos Text
+  const skin = useMacSkin(true);
+  const mac = skin.on;
   const [instruments, setInstruments] = useState<FuturesInstrument[]>([]);
   const [selected, setSelected] = useState<FuturesInstrument | null>(null);
   const [spec, setSpec] = useState<FuturesSpec | null>(null);
@@ -192,22 +211,38 @@ function SiteCalculator() {
     [spec, deposit, entry, stop, take, riskPercent],
   );
 
-  return (
-    <div className="max-w-2xl w-full mx-auto">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t("calc.title")}</h1>
+  const title = mac ? t("calc.title").replace(/^\p{Extended_Pictographic}️?\s*/u, "") : t("calc.title");
+  const header = mac ? (
+    <div className="calc-hero">
+      <CalcTile name="calc" size={52} />
+      <div className="calc-hero-t">
+        <h1>{title}</h1>
+        <p>{t("calc.subtitle")}</p>
+      </div>
+    </div>
+  ) : (
+    <>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{title}</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {t("calc.subtitle")}
       </p>
+    </>
+  );
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
+  return (
+    <div className={`max-w-2xl w-full mx-auto${mac ? " calc-mac" : ""}`}>
+      {!mac && header}
+
+      <div className="calc-card bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
+        {mac && header}
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">{t("calc.asset")}</label>
+          <label className="calc-lbl block text-sm text-gray-600 dark:text-gray-400 mb-1">{t("calc.asset")}</label>
           <AssetPicker instruments={instruments} selected={selected} onSelect={handleSelect} />
 
           {specLoading && <p className="text-xs text-gray-400 mt-1.5">{t("calc.loadingSpec")}</p>}
           {specError && <p className="text-xs text-red-500 mt-1.5">{t(specError)}</p>}
           {spec && !specLoading && (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+            <div className="calc-spec mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span className="font-mono">{spec.secid}</span>
               <span>·</span>
               <span>{t("calc.expiry", { date: new Date(spec.expiry).toLocaleDateString(intlLocale(locale)) })}</span>
@@ -220,7 +255,7 @@ function SiteCalculator() {
               <button
                 type="button"
                 onClick={() => selected && loadSpec(selected.ticker)}
-                className="text-green-600 hover:underline"
+                className="calc-refresh text-green-600 hover:underline"
               >
                 {t("calc.refresh")}
               </button>
@@ -228,6 +263,7 @@ function SiteCalculator() {
           )}
         </div>
 
+        {mac && <div className="calc-cap">{t("appcalc.trade")}</div>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <NumberField label={t("calc.deposit")} value={deposit} onChange={setDeposit} placeholder={t("calc.depositPlaceholder")} />
           <NumberField label={t("calc.entry")} value={entry} onChange={setEntry} />
@@ -236,14 +272,16 @@ function SiteCalculator() {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">{t("calc.riskPerTrade")}</label>
-          <div className="flex gap-2">
+          <label className={`${mac ? "calc-cap" : "block text-sm text-gray-600 dark:text-gray-400 mb-1.5"} block`}>{t("calc.riskPerTrade")}</label>
+          <div className="calc-seg flex gap-2" role="group" aria-label={t("calc.riskPerTrade")}>
             {RISK_PRESETS.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setRiskPercent(p)}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium border transition ${
+                data-on={riskPercent === p ? "1" : undefined}
+                aria-pressed={riskPercent === p}
+                className={`calc-seg-b px-3.5 py-1.5 rounded-lg text-sm font-medium border transition ${
                   riskPercent === p
                     ? "bg-green-600 border-green-600 text-white"
                     : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-green-500"
@@ -256,59 +294,91 @@ function SiteCalculator() {
         </div>
 
         {/* Result */}
-        <div className="pt-2 border-t dark:border-gray-800">
+        <div className="calc-res pt-2 border-t dark:border-gray-800">
           {!selected ? (
-            <p className="text-sm text-gray-400 py-2">{t("calc.selectAssetHint")}</p>
+            <p className="calc-hint text-sm text-gray-400 py-2">{t("calc.selectAssetHint")}</p>
           ) : calc && calc.error ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400 py-2">{t(calc.error)}</p>
+            <p className="calc-hint text-sm text-amber-600 dark:text-amber-400 py-2">{t(calc.error)}</p>
           ) : calc ? (
-            <div className="space-y-3">
-              <div className="flex items-baseline gap-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t("calc.contracts")}</span>
-                <span className="text-3xl font-bold text-green-600 dark:text-green-400">{calc.contracts}</span>
-              </div>
-
-              {calc.contracts === 0 ? (
-                <p className="text-sm text-amber-600 dark:text-amber-400">
-                  {t("calc.tooRisky", { perContract: fmtRub(calc.riskPerContract, locale), budget: fmtRub(calc.riskBudget, locale) })}
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">{t("calc.actualRisk")}</span>
-                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.actualRisk, locale)}</span>
-
-                  <span className="text-gray-500 dark:text-gray-400">{t("calc.riskLimit", { pct: riskPercent })}</span>
-                  <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.riskBudget, locale)}</span>
-
-                  <span className="text-gray-500 dark:text-gray-400">{t("calc.requiredMargin")}</span>
-                  <span className={`text-right ${calc.marginShort ? "text-red-500 font-medium" : "text-gray-900 dark:text-gray-100"}`}>
-                    {fmtRub(calc.requiredMargin, locale)}
-                  </span>
-
-                  {calc.potentialProfit != null && (
-                    <>
-                      <span className="text-gray-500 dark:text-gray-400">{t("calc.potentialProfit")}</span>
-                      <span className="text-green-600 dark:text-green-400 text-right">{fmtRub(calc.potentialProfit, locale)}</span>
-                      <span className="text-gray-500 dark:text-gray-400">{t("calc.rr")}</span>
-                      <span className="text-gray-900 dark:text-gray-100 text-right">1 : {calc.rr!.toFixed(2)}</span>
-                    </>
-                  )}
+            mac ? (
+              <div className="calc-out">
+                <div className="calc-big" data-zero={calc.contracts === 0 ? "1" : undefined}>
+                  <span className="calc-big-k">{t("calc.contracts").replace(/[:：]\s*$/, "")}</span>
+                  <span className="calc-big-n">{calc.contracts}</span>
                 </div>
-              )}
+                {calc.contracts === 0 ? (
+                  <p className="calc-warn">{t("calc.tooRisky", { perContract: fmtRub(calc.riskPerContract, locale), budget: fmtRub(calc.riskBudget, locale) })}</p>
+                ) : (
+                  <div className="calc-stats">
+                    <Stat g="shield" label={t("calc.actualRisk")} value={fmtRub(calc.actualRisk, locale)} />
+                    <Stat g="gauge" label={t("calc.riskLimit", { pct: riskPercent })} value={fmtRub(calc.riskBudget, locale)} />
+                    <Stat g="wallet" label={t("calc.requiredMargin")} value={fmtRub(calc.requiredMargin, locale)} tone={calc.marginShort ? "bad" : undefined} />
+                    {calc.potentialProfit != null && (
+                      <>
+                        <Stat g="profit" label={t("calc.potentialProfit")} value={fmtRub(calc.potentialProfit, locale)} tone="good" />
+                        <Stat g="scale" label={t("calc.rr")} value={`1 : ${calc.rr!.toFixed(2)}`} />
+                      </>
+                    )}
+                  </div>
+                )}
+                {calc.marginShort && <p className="calc-warn" data-bad="1">{t("calc.marginShort")}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{t("calc.contracts")}</span>
+                  <span className="text-3xl font-bold text-green-600 dark:text-green-400">{calc.contracts}</span>
+                </div>
 
-              {calc.marginShort && (
-                <p className="text-sm text-red-500">
-                  {t("calc.marginShort")}
-                </p>
-              )}
-            </div>
+                {calc.contracts === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    {t("calc.tooRisky", { perContract: fmtRub(calc.riskPerContract, locale), budget: fmtRub(calc.riskBudget, locale) })}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">{t("calc.actualRisk")}</span>
+                    <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.actualRisk, locale)}</span>
+
+                    <span className="text-gray-500 dark:text-gray-400">{t("calc.riskLimit", { pct: riskPercent })}</span>
+                    <span className="text-gray-900 dark:text-gray-100 text-right">{fmtRub(calc.riskBudget, locale)}</span>
+
+                    <span className="text-gray-500 dark:text-gray-400">{t("calc.requiredMargin")}</span>
+                    <span className={`text-right ${calc.marginShort ? "text-red-500 font-medium" : "text-gray-900 dark:text-gray-100"}`}>
+                      {fmtRub(calc.requiredMargin, locale)}
+                    </span>
+
+                    {calc.potentialProfit != null && (
+                      <>
+                        <span className="text-gray-500 dark:text-gray-400">{t("calc.potentialProfit")}</span>
+                        <span className="text-green-600 dark:text-green-400 text-right">{fmtRub(calc.potentialProfit, locale)}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{t("calc.rr")}</span>
+                        <span className="text-gray-900 dark:text-gray-100 text-right">1 : {calc.rr!.toFixed(2)}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {calc.marginShort && (
+                  <p className="text-sm text-red-500">
+                    {t("calc.marginShort")}
+                  </p>
+                )}
+              </div>
+            )
           ) : null}
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="calc-disc text-xs text-gray-400 mt-3">
         {t("calc.disclaimer")}
       </p>
+
+      {/* the way in / out of the new look, like the terminal's: a quiet button under the card */}
+      {(mac || skin.canOffer) && (
+        <button type="button" className="calc-skin" onClick={() => skin.set(!mac)} title={t(mac ? "mac.classicTip" : "mac.tryTip")} data-mac-try={mac ? undefined : ""}>
+          {mac ? t("mac.classic") : t("mac.try")}
+        </button>
+      )}
     </div>
   );
 }

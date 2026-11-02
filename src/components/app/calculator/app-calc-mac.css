@@ -1,0 +1,153 @@
+/*
+ * The "macOS" look of the app «Калькулятор» screen (phone / WebView): the language of the terminal screen's look (app-mac.css) extended to a form screen
+ * (there is no calculator in the design files): Golos Text, a pastel wallpaper under translucent glass cards, hairline rings, green #4F9A74 with a gradient
+ * button, a segmented risk control, big duotone glyphs. An opt-in skin: every rule hangs on `html.app-calc-mac` (held by AppCalculator while the look is on)
+ * or on `.acalc-mac`; with the look off (localStorage fomo-terminal-skin-v1 = "classic") the screen is the old one. Shared switch: useAppMacSkin().
+ */
+
+/* the switch button at the bottom of the screen (the old look: «Попробовать новый дизайн»; the new look: «Старый вид») */
+html.app-ui .acalc .acalc-skin { display: block; margin: 14px 16px 6px; padding: 11px 14px; width: calc(100% - 32px); box-sizing: border-box; border-radius: 12px; background: var(--app-card2); color: var(--app-tx2); font-size: 13px; font-weight: 600; text-align: center; }
+html.app-ui .acalc .acalc-skin:active { background: var(--app-press); }
+
+/* ---------- tokens ---------- */
+html.app-ui.app-calc-mac {
+  --c-wall: linear-gradient(160deg, #aab4d6 0%, #bccad8 40%, #c8d5cf 72%, #e4d6c5 100%);
+  --c-card: rgba(255, 255, 255, 0.78);
+  --c-card2: rgba(255, 255, 255, 0.66);
+  --c-card-hi: rgba(250, 250, 252, 0.93);
+  --c-field: #ffffff;
+  --c-tile: rgba(255, 255, 255, 0.85);
+  --c-tx: #26262b;
+  --c-tx2: #6a6a70;
+  --c-tx3: #8e8e93;
+  --c-seg: rgba(0, 0, 0, 0.07);
+  --c-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --c-card-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.09), 0 8px 24px -6px rgba(30, 30, 60, 0.16);
+  --c-hair: rgba(0, 0, 0, 0.08);
+  --c-nav: rgba(255, 255, 255, 0.58);
+  --c-sheet: rgba(244, 244, 247, 0.96);
+  --c-green: #4f9a74;
+  --c-green-tx: #2e7d55;
+  --c-green-bg: rgba(79, 154, 116, 0.16);
+  --c-red: #d4413f;
+  --c-amber: #a86f00;
+  --c-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+}
+html.app-ui.app-calc-mac.dark {
+  --c-wall: linear-gradient(160deg, #1b2036 0%, #232b44 42%, #28383a 74%, #3a3330 100%);
+  --c-card: rgba(44, 44, 50, 0.74);
+  --c-card2: rgba(255, 255, 255, 0.07);
+  --c-card-hi: rgba(46, 46, 52, 0.94);
+  --c-field: rgba(255, 255, 255, 0.09);
+  --c-tile: rgba(255, 255, 255, 0.09);
+  --c-tx: #f2f2f7;
+  --c-tx2: #a8a8b0;
+  --c-tx3: #86868f;
+  --c-seg: rgba(255, 255, 255, 0.1);
+  --c-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --c-card-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+  --c-hair: rgba(255, 255, 255, 0.1);
+  --c-nav: rgba(28, 28, 34, 0.66);
+  --c-sheet: rgba(30, 30, 36, 0.96);
+  --c-green: #5fb08a;
+  --c-green-tx: #7fd0a8;
+  --c-green-bg: rgba(95, 176, 138, 0.2);
+  --c-red: #f06b68;
+  --c-amber: #e8b44a;
+}
+
+/* ---------- the screen ---------- */
+html.app-ui.app-calc-mac body { background: var(--c-wall) fixed; }
+html.app-ui.app-calc-mac main { background: transparent; }
+html.app-ui.app-calc-mac .acalc-mac { background: transparent; color: var(--c-tx); font-family: var(--c-font); letter-spacing: -0.003em; }
+html.app-ui.app-calc-mac .acalc-mac :where(button, input) { font-family: inherit; }
+
+/* the bar: glass over the wallpaper */
+html.app-ui.app-calc-mac .acalc-mac .ac-nav { background: var(--c-nav); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border-bottom: 0.5px solid var(--c-hair); }
+html.app-ui.app-calc-mac .acalc-mac .ac-back,
+html.app-ui.app-calc-mac .acalc-mac .ap-navbtn { color: var(--c-green-tx); font-weight: 600; }
+html.app-ui.app-calc-mac .acalc-mac .ap-navbtn { font-size: 16px; }
+
+/* title + intro */
+html.app-ui.app-calc-mac .acalc-mac .ac-large { display: flex; align-items: center; gap: 14px; padding: 12px 20px 2px; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+html.app-ui.app-calc-mac .acalc-mac .ac-intro { padding: 6px 20px 14px; font-size: 13.5px; color: var(--c-tx2); }
+
+/* the result: a glass card, tinted by the state */
+html.app-ui.app-calc-mac .acalc-mac .acalc-stick { background: transparent; padding: 0 16px 8px; margin-top: 4px; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum { border: 0; border-radius: 18px; background: var(--c-card-hi); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%); box-shadow: var(--c-card-sh); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum[data-state="ok"] { background: linear-gradient(135deg, rgba(109, 184, 143, 0.34), rgba(79, 154, 116, 0.2)), var(--c-card-hi); box-shadow: inset 0 0 0 0.5px rgba(79, 154, 116, 0.4), 0 8px 24px -6px rgba(30, 80, 60, 0.22); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum[data-state="zero"] { background: linear-gradient(135deg, rgba(222, 150, 160, 0.34), rgba(196, 106, 120, 0.2)), var(--c-card-hi); box-shadow: inset 0 0 0 0.5px rgba(196, 106, 120, 0.4), 0 8px 24px -6px rgba(90, 30, 40, 0.2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-k { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-n { font-size: 46px; font-weight: 800; letter-spacing: -0.03em; color: var(--c-tx3); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum[data-state="ok"] .acalc-sum-n { color: var(--c-green-tx); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum[data-state="zero"] .acalc-sum-n { color: var(--c-red); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-r { font-size: 14px; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-r span { color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-r b { font-weight: 700; color: var(--c-tx); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-r b[data-bad="1"] { color: var(--c-red); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-msg { color: var(--c-amber); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-sum-msg[data-idle="1"] { color: var(--c-tx2); }
+
+/* section captions: 11px uppercase, with the small glyph */
+html.app-ui.app-calc-mac .acalc-mac .ac-sectitle { display: flex; align-items: center; gap: 7px; padding: 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; color: var(--c-tx3); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-title { min-height: 20px; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-pill { margin-right: 4px; background: var(--c-green-bg); color: var(--c-green-tx); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-pill[data-side="short"] { background: rgba(212, 65, 63, 0.14); color: var(--c-red); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sec { margin: 0 16px 20px; gap: 8px; }
+
+/* glass cards and rows */
+html.app-ui.app-calc-mac .acalc-mac .ac-secbox,
+html.app-ui.app-calc-mac .acalc-mac .acalc-card { border: 0; border-radius: 18px; background: var(--c-card); -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%); box-shadow: var(--c-card-sh); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-card { padding: 16px; gap: 16px; }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr { gap: 12px; padding-left: 12px; }
+html.app-ui.app-calc-mac .acalc-mac button.ac-sr:active { background: var(--c-seg); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-ico { width: 42px; height: 42px; border-radius: 13px; background: var(--c-tile); box-shadow: var(--c-ring); color: var(--c-tx); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-ico img { width: 26px; height: 26px; }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-body { padding: 13px 14px 13px 0; border-bottom-color: var(--c-hair); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-label { font-size: 16px; font-weight: 500; color: var(--c-tx); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-sub { color: var(--c-tx2); font-size: 12.5px; }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--c-tx); }
+html.app-ui.app-calc-mac .acalc-mac .ac-sr-chev { color: var(--c-tx3); }
+html.app-ui.app-calc-mac .acalc-mac .ac-secfoot { padding: 0 6px; color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .ac-act { color: var(--c-green-tx); font-weight: 600; }
+html.app-ui.app-calc-mac .acalc-mac .ac-tg { background: var(--c-seg); }
+html.app-ui.app-calc-mac .acalc-mac .ac-tg[data-on="1"] { background: #5fa37e; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-note { margin: -12px 22px 20px; color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-note[data-err="1"] { color: var(--c-red); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-mono { font-size: 12px; }
+
+/* fields: white rounded inputs with a hairline ring */
+html.app-ui.app-calc-mac .acalc-mac .acalc-lbl { font-size: 12.5px; font-weight: 500; color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-in { height: 50px; padding: 0 14px; border: 0; border-radius: 13px; background: var(--c-field); box-shadow: var(--c-ring); font-size: 21px; font-weight: 650; color: var(--c-tx); transition: box-shadow 0.14s; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-in::placeholder { color: var(--c-tx3); font-weight: 400; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-in:focus { border: 0; box-shadow: 0 0 0 2px rgba(79, 154, 116, 0.55); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-mkt { background: var(--c-green-bg); color: var(--c-green-tx); font-weight: 650; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-warn { color: var(--c-amber); }
+
+/* risk: a segmented control, the chosen cell green */
+html.app-ui.app-calc-mac .acalc-mac .acalc-chips { flex-wrap: nowrap; gap: 2px; padding: 3px; border-radius: 14px; background: var(--c-seg); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-chip,
+html.app-ui.app-calc-mac .acalc-mac .acalc-risk { flex: 1 1 0; min-width: 0; height: 42px; padding: 0 4px; border: 0; border-radius: 11px; background: transparent; color: var(--c-tx); font-size: 15.5px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; transition: background-color 0.14s, color 0.14s, box-shadow 0.14s; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-risk { flex: 1.5 1 0; font-weight: 500; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-risk::placeholder { color: var(--c-tx3); font-size: 12px; font-weight: 500; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-chip[data-on="1"],
+html.app-ui.app-calc-mac .acalc-mac .acalc-risk[data-on="1"] { background: linear-gradient(180deg, #6db88f, #4f9a74); color: #fff; font-weight: 700; box-shadow: 0 0 0 0.5px rgba(46, 125, 85, 0.5), 0 3px 8px rgba(79, 154, 116, 0.4); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-risk:focus:not([data-on="1"]) { background: var(--c-field); box-shadow: 0 0 0 2px rgba(79, 154, 116, 0.5); }
+
+/* the big green button */
+html.app-ui.app-calc-mac .acalc-mac .ap-primary { gap: 8px; height: 54px; border-radius: 17px; background: linear-gradient(180deg, #6db88f, #4f9a74); box-shadow: 0 0 0 0.5px rgba(46, 125, 85, 0.5), 0 8px 20px -4px rgba(79, 154, 116, 0.55); font-size: 17px; font-weight: 700; letter-spacing: -0.005em; }
+html.app-ui.app-calc-mac .acalc-mac .ap-primary:active:not(:disabled) { filter: brightness(0.96); }
+html.app-ui.app-calc-mac .acalc-mac .ap-primary:disabled { background: var(--c-seg); color: var(--c-tx3); box-shadow: none; }
+html.app-ui.app-calc-mac .acalc-mac .ap-primary:disabled svg { opacity: 0.45; }
+html.app-ui.app-calc-mac .acalc-mac .ap-primary svg { filter: none; }
+html.app-ui.app-calc-mac .acalc-mac .ap-note { color: var(--c-tx2); }
+html.app-ui.app-calc-mac .acalc-mac .acalc-skin { background: var(--c-card2); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: var(--c-ring); color: var(--c-tx2); font-weight: 500; }
+
+/* the contract picker sheet (portaled to <body>; marked from inside) */
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) { background: var(--c-sheet); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); border-radius: 28px 28px 0 0; font-family: var(--c-font); }
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-search { background: var(--c-seg); border-radius: 12px; }
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-secbox { border: 0; border-radius: 16px; background: var(--c-card); box-shadow: var(--c-ring); }
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-sbar > :first-child,
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-sbar > :last-child { color: var(--c-green-tx); }
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-sr-ico img { width: 26px; height: 26px; }
+html.app-ui.app-calc-mac .ac-sheet:has(.acalc-sheet-mark) .ac-sr-chk { color: var(--c-green-tx); }

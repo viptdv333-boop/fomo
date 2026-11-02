@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
@@ -32,7 +32,10 @@ import AppSheet, { Sections, type SheetRow, type SheetSection } from "../chat/Ap
 import "../chat/app-chat.css";
 import "../profile/app-profile.css";
 import { holdHtmlClass } from "@/lib/html-class";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
+import CalcGlyph, { CalcTile, type CalcGlyphName } from "@/components/calculator/CalcGlyph";
 import "./app-calc.css";
+import "./app-calc-mac.css";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // small helpers
@@ -113,6 +116,9 @@ function Field({ label, value, onChange, hint, aside, last }: { label: string; v
   );
 }
 
+/** the duotone glyph of each row of the result (the new look) */
+const DETAIL_GLYPH: Record<string, CalcGlyphName> = { act: "shield", lim: "gauge", per: "box", mar: "wallet", pro: "profit", rr: "scale" };
+
 type SpecState = { spec: FuturesSpec | null; stale: boolean; loading: boolean; error: string | null };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -129,6 +135,10 @@ export default function AppCalculator() {
   const { t, locale } = useT();
   const router = useRouter();
   const loc = locale as Locale;
+  // the optional "macOS" look (default ON on the phone, off only after «Старый вид»: the same switch as the terminal screen's); styles: app-calc-mac.css
+  const macSkin = useAppMacSkin(true);
+  const mac = macSkin.on;
+  useLayoutEffect(() => (mac ? holdHtmlClass(["app-calc-mac"]) : undefined), [mac]);
 
   // ----- inputs: the remembered ones, overridden by a visit from the terminal -----
   const [start] = useState(() => {
@@ -302,6 +312,8 @@ export default function AppCalculator() {
     icon: selected ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={selected.icon} alt="" width={22} height={22} />
+    ) : mac ? (
+      <CalcGlyph name="calc" size={26} />
     ) : (
       <AppIcon name="calc" size={18} stroke={1.8} />
     ),
@@ -313,7 +325,7 @@ export default function AppCalculator() {
   const manualToggle: SheetRow = {
     key: "manual",
     label: manual.on ? t("appcalc.manualOff") : t("appcalc.manualOn"),
-    icon: <AppIcon name="sliders" size={18} stroke={1.8} />,
+    icon: mac ? <CalcGlyph name="sliders" size={26} /> : <AppIcon name="sliders" size={18} stroke={1.8} />,
     toggle: manual.on,
     onClick: () => setManual({ ...manual, on: !manual.on }),
   };
@@ -357,7 +369,7 @@ export default function AppCalculator() {
   const statusNote = sp.stale && spec && !useManual ? t("appcalc.savedFrom", { time: dateFmt(spec.fetchedAt) }) : sp.error && !useManual ? t(sp.error) : "";
 
   return (
-    <div className="ac ap acalc">
+    <div className={`ac ap acalc${mac ? " acalc-mac" : ""}`}>
       <div className="ac-nav">
         {from === "terminal" ? (
           <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>
@@ -376,7 +388,10 @@ export default function AppCalculator() {
       </div>
 
       <div className="ac-page acalc-page">
-        <h1 className="ac-large">{t("nav.calculator")}</h1>
+        <h1 className="ac-large">
+          {mac && <CalcTile name="calc" size={46} />}
+          <span>{t("nav.calculator")}</span>
+        </h1>
         <div className="ac-intro">{t("appcalc.intro")}</div>
 
         <div className="acalc-stick">
@@ -423,7 +438,10 @@ export default function AppCalculator() {
 
         <div className="ac-sec">
           <div className="acalc-title">
-            <div className="ac-sectitle">{t("appcalc.trade")}</div>
+            <div className="ac-sectitle">
+              {mac && <CalcGlyph name="target" size={18} />}
+              {t("appcalc.trade")}
+            </div>
             {side && (
               <span className="acalc-pill" data-side={side}>
                 {side === "long" ? "▲ " : "▼ "}
@@ -454,7 +472,10 @@ export default function AppCalculator() {
         </div>
 
         <div className="ac-sec">
-          <div className="ac-sectitle">{t("calc.riskPerTrade")}</div>
+          <div className="ac-sectitle">
+            {mac && <CalcGlyph name="shield" size={18} />}
+            {t("calc.riskPerTrade")}
+          </div>
           <div className="acalc-card">
             <div className="acalc-chips" role="group" aria-label={t("calc.riskPerTrade")}>
               {RISK_PRESETS.map((p) => (
@@ -479,10 +500,18 @@ export default function AppCalculator() {
 
         {detail.length > 0 && (
           <div className="ac-sec">
-            <div className="ac-sectitle">{t("appcalc.result")}</div>
+            <div className="ac-sectitle">
+              {mac && <CalcGlyph name="scale" size={18} />}
+              {t("appcalc.result")}
+            </div>
             <div className="ac-secbox">
               {detail.map((r) => (
                 <div key={r.key} className="ac-sr">
+                  {mac && (
+                    <span className="ac-sr-ico" aria-hidden="true">
+                      <CalcGlyph name={DETAIL_GLYPH[r.key] ?? "box"} size={26} />
+                    </span>
+                  )}
                   <div className="ac-sr-body">
                     <div className="ac-sr-txt">
                       <div className="ac-sr-label">{r.label}</div>
@@ -499,9 +528,14 @@ export default function AppCalculator() {
         )}
 
         <button type="button" className="ap-primary" disabled={!ready} onClick={() => void doCopy()}>
+          {mac && <CalcGlyph name="copy" size={20} width={1.9} />}
           {t("appcalc.copy")}
         </button>
         <div className="ap-note acalc-disc">{t("calc.disclaimer")}</div>
+        {/* the way in / out of the new look: the same switch as the terminal screen's */}
+        <button type="button" className="acalc-skin" onClick={() => macSkin.set(!mac)} title={t(mac ? "mac.classicTip" : "mac.tryTip")} data-mac-try={mac ? undefined : ""}>
+          {t(mac ? "mac.classic" : "mac.try")}
+        </button>
       </div>
 
       {picker && (
@@ -580,6 +614,7 @@ function PickerSheet({
       sections={[{ key: "list", rows }]}
     >
       {rows.length === 0 && <div className="ap-loading">{emptyLabel}</div>}
+      <i className="acalc-sheet-mark" hidden />
     </AppSheet>
   );
 }

@@ -1,0 +1,233 @@
+/* The "macOS" look of the site's risk calculator (/calculator). An opt-in skin: nothing here applies unless `html[data-tvmac]` (set by useMacSkin(true) from
+   the page, the same per-device switch as the terminal's) and the page root carries `.calc-mac`; the classic look never changes.
+   There is no calculator in the design files: the language of the terminal is extended (Golos Text, pastel wallpaper, glass cards, hairline rings,
+   green #4F9A74 accent, segmented controls, duotone glyphs). The page does not load terminal-mac.css, so the wallpaper + glass header rules are repeated here (same values). */
+
+html[data-tvmac] {
+  --mac-wall: linear-gradient(135deg, #8e9ac7 0%, #a3b4ce 40%, #b9c8c2 72%, #dcc9b4 100%);
+}
+html.dark[data-tvmac] {
+  --mac-wall: linear-gradient(135deg, #1b2036 0%, #232b44 42%, #28383a 74%, #3a3330 100%);
+}
+html[data-tvmac] body {
+  background: var(--mac-wall) fixed;
+}
+html[data-tvmac] header[data-app-hide] {
+  background: rgba(255, 255, 255, 0.55) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  backdrop-filter: blur(30px) saturate(150%);
+  box-shadow: none !important;
+}
+html.dark[data-tvmac] header[data-app-hide] {
+  background: rgba(30, 30, 36, 0.6) !important;
+}
+/* the footer lives on the wallpaper too */
+html[data-tvmac] body footer {
+  background: transparent !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: rgba(38, 38, 43, 0.62);
+}
+html.dark[data-tvmac] body footer {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(242, 242, 247, 0.6);
+}
+html[data-tvmac] body footer a { color: inherit; }
+
+/* ───────── tokens ───────── */
+.calc-mac {
+  --c-card: rgba(255, 255, 255, 0.78);
+  --c-card2: rgba(255, 255, 255, 0.7);
+  --c-field: #ffffff;
+  --c-tx: #26262b;
+  --c-tx2: #6e6e73;
+  --c-tx3: #8e8e93;
+  --c-seg: rgba(0, 0, 0, 0.06);
+  --c-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --c-hair: rgba(0, 0, 0, 0.08);
+  --c-green: #4f9a74;
+  --c-green-tx: #2e7d55;
+  --c-green-bg: rgba(79, 154, 116, 0.14);
+  --c-red: #d4413f;
+  --c-amber: #b07a0a;
+  --c-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 22px 60px -14px rgba(30, 30, 60, 0.32), 0 4px 14px rgba(30, 30, 60, 0.08);
+  --c-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+  max-width: 720px !important;
+  padding: 18px 0 8px;
+  font-family: var(--c-font);
+  color: var(--c-tx);
+  letter-spacing: -0.003em;
+}
+html.dark .calc-mac {
+  --c-card: rgba(44, 44, 50, 0.74);
+  --c-card2: rgba(255, 255, 255, 0.07);
+  --c-field: rgba(255, 255, 255, 0.09);
+  --c-tx: #f2f2f7;
+  --c-tx2: #a8a8b0;
+  --c-tx3: #86868f;
+  --c-seg: rgba(255, 255, 255, 0.1);
+  --c-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --c-hair: rgba(255, 255, 255, 0.1);
+  --c-green: #5fb08a;
+  --c-green-tx: #7fd0a8;
+  --c-green-bg: rgba(95, 176, 138, 0.18);
+  --c-red: #f06b68;
+  --c-amber: #e8b44a;
+  --c-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.16), 0 22px 60px -14px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.calc-mac button,
+.calc-mac input { font-family: inherit; }
+
+/* ───────── the glass card ───────── */
+.calc-mac .calc-card {
+  background: var(--c-card);
+  -webkit-backdrop-filter: blur(40px) saturate(140%);
+  backdrop-filter: blur(40px) saturate(140%);
+  border-radius: 18px;
+  box-shadow: var(--c-sh);
+  padding: 26px 28px 28px;
+}
+.calc-mac .calc-card > * + * { margin-top: 0; }
+.calc-mac .calc-card { display: flex; flex-direction: column; gap: 20px; }
+.calc-mac .calc-card > * { margin: 0 !important; }
+
+.calc-tile { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.calc-hero { display: flex; align-items: center; gap: 16px; padding-bottom: 4px; }
+.calc-hero-t { min-width: 0; }
+.calc-hero h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-tx); }
+.calc-hero p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--c-tx2); }
+
+/* captions */
+.calc-mac .calc-cap { display: block; margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--c-tx3); }
+.calc-mac .calc-cap:not(:first-child) { margin-top: 0; }
+
+/* labels + fields */
+.calc-mac .calc-lbl { margin: 0 0 6px; font-size: 12.5px; font-weight: 500; color: var(--c-tx2); }
+.calc-mac .calc-in,
+.calc-mac .calc-pick {
+  height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--c-field);
+  color: var(--c-tx);
+  box-shadow: var(--c-ring);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: box-shadow 0.14s, background-color 0.14s;
+}
+.calc-mac .calc-pick { height: 46px; font-weight: 500; }
+.calc-mac .calc-in::placeholder { color: var(--c-tx3); font-weight: 400; }
+.calc-mac .calc-in:hover,
+.calc-mac .calc-pick:hover { box-shadow: 0 0 0 0.5px rgba(79, 154, 116, 0.55); }
+.calc-mac .calc-in:focus,
+.calc-mac .calc-in:focus-visible,
+.calc-mac .calc-search:focus { outline: none; box-shadow: 0 0 0 2px rgba(79, 154, 116, 0.5) !important; }
+.calc-mac .calc-pick:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(79, 154, 116, 0.5); }
+.calc-mac .calc-in { appearance: textfield; -moz-appearance: textfield; }
+.calc-mac .calc-in::-webkit-outer-spin-button,
+.calc-mac .calc-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.calc-mac .calc-pick img { width: 28px; height: 28px; }
+.calc-mac .calc-pick span { color: var(--c-tx); }
+.calc-mac .calc-pick span span { color: var(--c-tx3); font-size: 12.5px; }
+.calc-mac .calc-spec { color: var(--c-tx2); font-size: 12px; }
+.calc-mac .calc-refresh { color: var(--c-green-tx); font-weight: 600; text-decoration: none; }
+.calc-mac .calc-refresh:hover { text-decoration: underline; }
+
+/* the instrument list */
+.calc-mac .calc-pop {
+  margin-top: 6px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--c-card);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  backdrop-filter: blur(40px) saturate(150%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 18px 48px rgba(30, 30, 60, 0.28);
+  padding: 4px 0;
+}
+html:not(.dark) .calc-mac .calc-pop { background: rgba(255, 255, 255, 0.92); }
+html.dark .calc-mac .calc-pop { background: rgba(40, 40, 46, 0.94); }
+.calc-mac .calc-pop > div { border-color: var(--c-hair) !important; }
+.calc-mac .calc-search { height: 36px; border: 0; border-radius: 10px; background: var(--c-seg); color: var(--c-tx); box-shadow: none; font-size: 14px; }
+.calc-mac .calc-search::placeholder { color: var(--c-tx3); }
+.calc-mac .calc-opt { color: var(--c-tx); margin: 0 4px; width: calc(100% - 8px); border-radius: 9px; }
+.calc-mac .calc-opt:hover { background: var(--c-seg); }
+.calc-mac .calc-opt[class*="bg-green-50"] { background: var(--c-green-bg); }
+.calc-mac .calc-opt span { color: var(--c-tx); }
+.calc-mac .calc-opt span:last-child { color: var(--c-tx3); }
+
+/* risk: a segmented control, the chosen cell green */
+.calc-mac .calc-seg { gap: 2px; padding: 3px; border-radius: 12px; background: var(--c-seg); }
+.calc-mac .calc-seg-b {
+  flex: 1;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-tx);
+  font-size: 14.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.calc-mac .calc-seg-b:hover { background: rgba(128, 128, 140, 0.16); }
+.calc-mac .calc-seg-b[data-on="1"] {
+  background: linear-gradient(180deg, #6db88f, #4f9a74);
+  color: #fff;
+  box-shadow: 0 0 0 0.5px rgba(46, 125, 85, 0.5), 0 3px 8px rgba(79, 154, 116, 0.38);
+}
+
+/* ───────── the result ───────── */
+.calc-mac .calc-res { border-top: 0; padding-top: 0; }
+.calc-mac .calc-hint { margin: 0; padding: 14px 16px; border-radius: 14px; background: var(--c-card2); box-shadow: var(--c-ring); font-size: 13.5px; color: var(--c-tx2); }
+.calc-out { display: flex; flex-direction: column; gap: 12px; }
+.calc-big { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-radius: 16px; background: linear-gradient(135deg, rgba(109, 184, 143, 0.26), rgba(79, 154, 116, 0.14)); box-shadow: inset 0 0 0 0.5px rgba(79, 154, 116, 0.3); }
+.calc-big-k { font-size: 15px; font-weight: 600; color: var(--c-tx); }
+.calc-big-n { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c-green-tx); }
+.calc-big[data-zero="1"] { background: linear-gradient(135deg, rgba(222, 150, 160, 0.3), rgba(196, 106, 120, 0.14)); box-shadow: inset 0 0 0 0.5px rgba(196, 106, 120, 0.35); }
+.calc-big[data-zero="1"] .calc-big-n { color: var(--c-red); }
+.calc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.calc-stat { display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; border-radius: 14px; background: var(--c-card2); box-shadow: var(--c-ring); min-width: 0; }
+.calc-stat-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.calc-stat-t small { font-size: 12px; font-weight: 500; color: var(--c-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calc-stat-t b { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--c-tx); }
+.calc-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.calc-stat[data-tone="good"] b { color: var(--c-green-tx); }
+.calc-stat[data-tone="bad"] b { color: var(--c-red); }
+.calc-warn { margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(224, 176, 106, 0.2); color: var(--c-amber); font-size: 13.5px; line-height: 1.4; }
+.calc-warn[data-bad="1"] { background: rgba(222, 100, 100, 0.14); color: var(--c-red); }
+
+/* under the card */
+.calc-mac .calc-disc { margin: 14px 6px 0; font-size: 11.5px; line-height: 1.45; color: rgba(38, 38, 43, 0.6); }
+html.dark .calc-mac .calc-disc { color: rgba(242, 242, 247, 0.55); }
+.calc-skin {
+  display: block;
+  margin: 14px auto 8px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.45);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  color: #5a5a60;
+  font-family: "Golos Text", -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.14s;
+}
+.calc-skin:hover { background: rgba(255, 255, 255, 0.7); }
+html.dark .calc-skin { background: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12); color: #c8c8d0; }
+html.dark .calc-skin:hover { background: rgba(255, 255, 255, 0.18); }
+/* in the classic look (no wallpaper under it) the same button is a quiet outlined one */
+html:not([data-tvmac]) .calc-skin { background: transparent; box-shadow: 0 0 0 1px rgba(128, 128, 140, 0.35); color: #6b7280; }
+html:not([data-tvmac]) .calc-skin:hover { background: rgba(128, 128, 140, 0.12); }
+
+@media (max-width: 640px) {
+  .calc-mac .calc-card { padding: 20px 16px 22px; }
+  .calc-stats { grid-template-columns: 1fr; }
+  .calc-big-n { font-size: 44px; }
+}
