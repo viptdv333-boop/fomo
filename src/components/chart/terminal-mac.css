@@ -1046,3 +1046,13 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
   .tvmac [data-tv="toolbar"] > div[class*="bg-[var(--tv3-fill2)]"] button { height: 24px !important; font-size: 13px !important; }
 }
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 14px !important; } }
+
+/* bottom bar: half the height (ranges, clock, scale switches in one slim strip) */
+.tvmac [data-tv="bottom"] { zoom: 1 !important; height: 30px !important; margin-top: 6px !important; padding: 0 6px !important; gap: 8px !important; border-radius: 11px !important; }
+.tvmac [data-tv="bottom"] button, .tvmac [data-tv="bottom"] [class*="MenuPopover"], .tvmac [data-tv="bottom"] > span { font-size: 12px !important; }
+@layer utilities {
+  .tvmac [data-tv="bottom"] button { height: 22px !important; min-height: 0 !important; padding: 0 8px !important; border-radius: 7px !important; line-height: 1; }
+  .tvmac [data-tv="bottom"] > div:first-child { padding: 2px !important; border-radius: 9px !important; }
+  .tvmac [data-tv="bottom"] svg { width: 13px !important; height: 13px !important; }
+}
+.tvmac { padding-bottom: 10px; }
