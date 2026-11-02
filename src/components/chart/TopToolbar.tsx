@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "./MacGlyph";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartType } from "@/lib/chart/types";
@@ -229,7 +230,7 @@ export default function TopToolbar(p: Props) {
         </div>
       )}
 
-      <Menu title={t("shell.chartType")} className={`${btn} tb-type`} width={220} trigger={<>{typeIcon[currentType.id]}</>}>
+      <Menu title={t("shell.chartType")} className={`${btn} tb-type`} width={220} trigger={<>{typeIcon[currentType.id]}<MacGlyph set="tb" k="type" alpha="55" width={1.8} /></>}>
         {(close) =>
           CHART_TYPES.map((c) => (
             <button
@@ -254,38 +255,45 @@ export default function TopToolbar(p: Props) {
       {p.onOpenCompare && (
         <button onClick={p.onOpenCompare} title={t("cs.compare")} className={`${btn} tb-compare`}>
           {CS_ICONS.compare}
+          <MacGlyph set="tb" k="compare" alpha="55" width={1.8} />
           <span className={lbl}>{t("cs.compareShort")}</span>
           {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
         </button>
       )}
       <button onClick={p.onOpenIndicators} title={t("shell.indicators")} data-tv3-anchor="indicators" className={`${btn} tb-ind`}>
         {I.indicators}
+        <MacGlyph set="tb" k="indicators" alpha="55" width={1.8} />
         <span className={lbl}>{t("shell.indicators")}</span>
         {p.indicatorCount > 0 && badge(p.indicatorCount)}
       </button>
       {win && (
         <button onClick={win.onAdd} disabled={!win.canAdd} title={win.canAdd ? t("win.addWindowTip") : t("win.max", { n: win.count })} aria-label={t("win.addWindow")} className={`${btn} tb-win`}>
           {IND_ICONS.plus(16)}
+          <MacGlyph set="tb" k="window" alpha="55" width={1.8} />
           <span className={lbl}>{t("win.addWindow")}</span>
           {win.count > 0 && badge(win.count)}
         </button>
       )}
       <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} className={`${btn} tb-alert`}>
         {(p.alertCount ?? 0) > 0 ? I.alertOn : I.alert}
+        <MacGlyph set="tb" k="alerts" alpha="55" width={1.8} />
         <span className={lbl2}>{t("shell.alerts")}</span>
         {(p.alertCount ?? 0) > 0 && badge(p.alertCount ?? 0)}
       </button>
       <ChartEventsButton className={`${btn} tb-events`} onClassName={btnOn} />
       <button onClick={onReplay} title={t("shell.replay")} aria-pressed={replayOn} className={`${btn} tb-replay ${replayOn ? btnOn : ""}`}>
         {I.replay}
+        <MacGlyph set="tb" k="replay" alpha="55" width={1.8} />
         <span className={lbl2}>{t("shell.replay")}</span>
       </button>
 
       <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} aria-label={t("shell.undo")} className={`${btn} tb-undo`}>
         {I.undo}
+        <MacGlyph set="tb" k="back" alpha="55" width={1.8} />
       </button>
       <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} aria-label={t("shell.redo")} className={`${btn} tb-redo`}>
         {I.redo}
+        <MacGlyph set="tb" k="forward" alpha="55" width={1.8} />
       </button>
 
       <span className="tb-spacer flex-1 min-w-2 hidden md:block" />
@@ -295,6 +303,7 @@ export default function TopToolbar(p: Props) {
       {p.onOpenSettings ? (
         <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={`${ibtn} tb-set`}>
           {I.gear}
+          <MacGlyph set="tb" k="settings" alpha="55" width={1.8} />
         </button>
       ) : (
       <Menu title={t("chart.settings")} className={ibtn} width={220} trigger={I.gear}>
@@ -328,13 +337,15 @@ export default function TopToolbar(p: Props) {
       {p.onOpenShortcuts && (
         <button onClick={p.onOpenShortcuts} title={t("shortcuts.title")} aria-label={t("shortcuts.title")} className={`${ibtn} tb-keys hidden lg:inline-flex`}>
           {CS_ICONS.keyboard}
+          <MacGlyph set="tb" k="keys" alpha="55" width={1.8} />
         </button>
       )}
       {!p.appFull && <button onClick={p.onFullscreen} title={t("chart.fullscreen")} aria-label={t("chart.fullscreen")} aria-pressed={p.fullscreen} className={`${ibtn} tb-full ${p.fullscreen ? btnOn : ""}`}>
         {I.fullscreen}
+        <MacGlyph set="tb" k="screen" alpha="55" width={1.8} />
       </button>}
       {p.onScreenshotCopy ? (
-        <Menu title={t("chart.screenshot")} className={`${ibtn} tb-shot`} width={220} trigger={I.camera}>
+        <Menu title={t("chart.screenshot")} className={`${ibtn} tb-shot`} width={220} trigger={<>{I.camera}<MacGlyph set="tb" k="shot" alpha="55" width={1.8} /></>}>
           {(close) => (
             <>
               <button

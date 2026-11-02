@@ -50,6 +50,15 @@ export function useMacSkin(html = false): { on: boolean; canOffer: boolean; chos
   useEffect(() => {
     if (!on || !html) return;
     document.documentElement.setAttribute("data-tvmac", "");
+    // the typeface of the design, loaded only while the skin is on
+    let link = document.getElementById("tvmac-font") as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.id = "tvmac-font";
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap";
+      document.head.appendChild(link);
+    }
     return () => document.documentElement.removeAttribute("data-tvmac");
   }, [on, html]);
   return { on, canOffer, chosen, set: setMacSkin };

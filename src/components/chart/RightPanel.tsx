@@ -37,6 +37,7 @@ import { ContractBadge } from "./ContractPicker";
 import { isTerminalSite } from "@/lib/site-mode";
 import { FomoCommunityCard, FomoIdeasPanel } from "./FomoPanel";
 import "./terminal-v3.css";
+import MacGlyph from "./MacGlyph";
 
 export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
 
@@ -954,6 +955,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
                   }`}
                 >
                   {panelTabIcon(tb.id, on, 26)}
+                  <MacGlyph set="side" k={tb.id} />
                 </button>
                 <span className="tv3-rgap" />
               </Fragment>

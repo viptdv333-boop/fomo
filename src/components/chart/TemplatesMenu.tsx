@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "./MacGlyph";
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
@@ -145,6 +146,7 @@ export default function TemplatesMenu({ btn, ...rest }: Props) {
       trigger={
         <>
           {CS_ICONS.layout}
+          <MacGlyph set="tb" k="templates" alpha="55" width={1.8} />
           <span>{t("cs.tpl.short")}</span>
         </>
       }

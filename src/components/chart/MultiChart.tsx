@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "./MacGlyph";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import TradingChart from "./TradingChart";
@@ -217,7 +218,7 @@ export default function MultiChart(props: Props) {
       className="tb-layout tv3-press min-h-[31px] min-w-[44px] px-3 py-[5px] inline-flex items-center justify-center rounded-[11px] bg-[var(--tv3-fill)] text-[13.5px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:brightness-95 dark:hover:brightness-125"
       width={250}
       align="right"
-      trigger={<span className="inline-flex h-[20px] w-[20px] items-center justify-center"><span className="scale-[0.77] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span>}
+      trigger={<><span className="inline-flex h-[20px] w-[20px] items-center justify-center"><span className="scale-[0.77] inline-flex shrink-0">{LAYOUT_ICONS[state.layout]}</span></span><MacGlyph set="tb" k="layout" alpha="55" width={1.8} /></>}
     >
       {() => (
         <div className="px-3 py-2">

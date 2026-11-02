@@ -162,6 +162,7 @@ html.dark .tvmac {
   gap: 6px 14px;
   overflow: visible;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 .tvmac [data-tv="toolbar"] .tb-sym {
   height: 40px !important;
@@ -171,7 +172,9 @@ html.dark .tvmac {
   font-size: 15px;
 }
 .tvmac [data-tv="toolbar"] .tb-spacer {
-  display: none;
+  display: block;
+  order: 4;
+  flex: 1 1 0;
 }
 .tvmac [data-tv="toolbar"] .tb-break {
   display: block;
@@ -457,4 +460,134 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
 }
 .tvmac [data-tv="area"] button[aria-label][class*="rounded-[10px]"][class*="bg-[var(--tv3-fill)]"] svg {
   color: #8a6db0;
+}
+
+/* ───────── duotone icons (design): the stroke colour plus a soft tint of it inside closed shapes ───────── */
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) svg {
+  fill: color-mix(in srgb, var(--tb-c) 30%, transparent);
+}
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn svg {
+  fill: color-mix(in srgb, var(--rc) 32%, transparent);
+}
+
+/* left rail: 44px tiles with a 36px glyph; every tool has its own colour like in the design */
+.tvmac [data-tv="tools"] {
+  width: 62px;
+  gap: 0;
+}
+.tvmac [data-tv="tools"] .tv3-rbtn {
+  width: 44px;
+  height: clamp(36px, calc((100vh - 230px) / 17), 46px);
+}
+.tvmac [data-tv="tools"] .tv3-rbtn svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.7;
+}
+@media (max-height: 830px) {
+  .tvmac [data-tv="tools"] .tv3-rbtn svg {
+    width: 30px;
+    height: 30px;
+  }
+}
+.tvmac [data-tv="tools"] [data-rk="cursors"], .tvmac [data-tv="tools"] [data-rk="lines"] { --rc: #4f9a74; }
+.tvmac [data-tv="tools"] [data-rk="hline"] { --rc: #5577b8; }
+.tvmac [data-tv="tools"] [data-rk="fib"] { --rc: #cc9446; }
+.tvmac [data-tv="tools"] [data-rk="patterns"] { --rc: #8a6db0; }
+.tvmac [data-tv="tools"] [data-rk="forecast"] { --rc: #4f9aa0; }
+.tvmac [data-tv="tools"] [data-rk="rect"] { --rc: #c46a78; }
+.tvmac [data-tv="tools"] [data-rk="brush"] { --rc: #cc9446; }
+.tvmac [data-tv="tools"] [data-rk="text"] { --rc: #6e73b8; }
+.tvmac [data-tv="tools"] [data-rk="measure"] { --rc: #4f9aa0; }
+.tvmac [data-tv="tools"] [data-rk="stamps"] { --rc: #cc9446; }
+.tvmac [data-tv="tools"] [data-rk="magnet"] { --rc: #c46a78; }
+.tvmac [data-tv="tools"] [data-rk="stay"] { --rc: #5b8fc0; }
+.tvmac [data-tv="tools"] [data-rk="lock"] { --rc: #747b8c; }
+.tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #8a6db0; }
+.tvmac [data-tv="tools"] [data-rk="trash"] { --rc: #c46a78; }
+.tvmac [data-tv="tools"] :is([data-rk="undo"], [data-rk="redo"]) { --rc: #9a9aa2; }
+.tvmac [data-tv="tools"] :is([data-rk="undo"], [data-rk="redo"]) svg { fill: none; filter: none; }
+html.dark .tvmac [data-tv="tools"] [data-rk="cursors"], html.dark .tvmac [data-tv="tools"] [data-rk="lines"] { --rc: #7cc29b; }
+html.dark .tvmac [data-tv="tools"] [data-rk="hline"] { --rc: #8fa8dc; }
+html.dark .tvmac [data-tv="tools"] :is([data-rk="fib"], [data-rk="brush"], [data-rk="stamps"]) { --rc: #e6b877; }
+html.dark .tvmac [data-tv="tools"] [data-rk="patterns"] { --rc: #a78bc9; }
+html.dark .tvmac [data-tv="tools"] :is([data-rk="forecast"], [data-rk="measure"]) { --rc: #6bb3b8; }
+html.dark .tvmac [data-tv="tools"] :is([data-rk="rect"], [data-rk="magnet"], [data-rk="trash"]) { --rc: #de96a0; }
+html.dark .tvmac [data-tv="tools"] [data-rk="text"] { --rc: #8a8fd0; }
+html.dark .tvmac [data-tv="tools"] [data-rk="stay"] { --rc: #7db0d6; }
+html.dark .tvmac [data-tv="tools"] [data-rk="lock"] { --rc: #9aa0ae; }
+html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
+
+/* ───────── the design's own glyphs replace the classic icons inside the skin ───────── */
+.mg { display: none; }
+.tvmac .mg {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 2px 3px var(--mg-glow, transparent));
+}
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] button, [data-tv="sidetabs"] button) > svg:not(.mg),
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] button, [data-tv="sidetabs"] button) > span:has(> svg):not(.tb-lbl) > svg:not(.mg) {
+  display: none !important;
+}
+.tvmac [data-tv="toolbar"] button > span.inline-flex:has(> span > svg):not([class*="rounded-full"]) {
+  display: none !important;
+}
+.tvmac [data-tv="toolbar"] button .mg {
+  width: 30px !important;
+  height: 30px !important;
+  fill: none !important;
+}
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn .mg {
+  width: 36px;
+  height: 36px;
+  fill: none !important;
+}
+@media (max-height: 830px) {
+  .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn .mg {
+    width: 30px;
+    height: 30px;
+  }
+}
+/* design look of the rail tiles: the chosen tool is a tinted tile with a ring */
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn {
+  color: transparent;
+}
+
+/* typeface of the design */
+.tvmac, .tvmac button, .tvmac input {
+  font-family: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.003em;
+  -webkit-font-smoothing: antialiased;
+}
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* row 1: the interval switch of the design (3px padding, 36x32 cells, white chosen cell) */
+.tvmac [data-tv="toolbar"] > div[class*="bg-[var(--tv3-fill2)]"] {
+  padding: 3px !important;
+  gap: 2px;
+  border-radius: 11px !important;
+}
+.tvmac [data-tv="toolbar"] > div[class*="bg-[var(--tv3-fill2)]"] button {
+  min-width: 36px !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+.tvmac [data-tv="toolbar"] > div[class*="bg-[var(--tv3-fill2)]"] button[aria-pressed="true"] {
+  background: var(--m-seg-on) !important;
+  box-shadow: var(--m-seg-on-sh);
+}
+.tvmac [data-tv="toolbar"] .tb-sym {
+  padding: 0 12px 0 4px !important;
+  gap: 8px !important;
+}
+.tvmac [data-tv="toolbar"] .tb-sym > :first-child {
+  width: 34px !important;
+  height: 34px !important;
 }

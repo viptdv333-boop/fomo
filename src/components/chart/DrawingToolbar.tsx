@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "./MacGlyph";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
 import { DRAWING_GROUPS, getToolDef } from "@/lib/chart/drawings/tools";
@@ -251,7 +252,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         const iconId = slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown;
         return (
           <Fragment key={slot.key}>
-          <div className="group/slot relative flex shrink-0 items-center">
+          <div data-rk={slot.key} className="group/slot relative flex shrink-0 items-center">
             <button
               type="button"
               title={title}
@@ -270,6 +271,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
               }}
             >
               <DrawIcon id={iconId} size={ICON} filled={active} />
+              <MacGlyph set="rail" k={slot.key} />
             </button>
             {!slot.noMenu && (
               <button
@@ -298,10 +300,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         title={magnetTitle}
         aria-label={magnetTitle}
         aria-pressed={magnet !== "off"}
-        className={`${btnBase} ${magnet !== "off" ? btnActive : ""}`}
+        data-rk="magnet" className={`${btnBase} ${magnet !== "off" ? btnActive : ""}`}
         onClick={() => controller.setMagnet(nextMagnet)}
       >
         <DrawIcon id="magnet" size={ICON} filled={magnet !== "off"} />
+        <MacGlyph set="rail" k="magnet" />
         {magnet !== "off" && (
           <span className="pointer-events-none absolute bottom-1 right-1.5 flex gap-px">
             <span className="h-1 w-1 rounded-full bg-current" />
@@ -315,10 +318,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         title={stay ? t("draw.act.stay.on") : t("draw.act.stay")}
         aria-label={t("draw.act.stay")}
         aria-pressed={stay}
-        className={`${btnBase} ${stay ? btnActive : ""}`}
+        data-rk="stay" className={`${btnBase} ${stay ? btnActive : ""}`}
         onClick={() => controller.setStayInDrawing(!stay)}
       >
         <DrawIcon id="stay" size={ICON} filled={stay} />
+        <MacGlyph set="rail" k="stay" />
       </button>
       {GAP}
       <button
@@ -326,10 +330,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         title={lockedAll ? t("draw.act.unlockAll") : t("draw.act.lockAll")}
         aria-label={lockedAll ? t("draw.act.unlockAll") : t("draw.act.lockAll")}
         aria-pressed={lockedAll}
-        className={`${btnBase} ${lockedAll ? btnActive : ""}`}
+        data-rk="lock" className={`${btnBase} ${lockedAll ? btnActive : ""}`}
         onClick={() => controller.setLockedAll(!lockedAll)}
       >
         <DrawIcon id={lockedAll ? "lock" : "unlock"} size={ICON} filled={lockedAll} />
+        <MacGlyph set="rail" k="lock" />
       </button>
       {GAP}
       <button
@@ -337,31 +342,35 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         title={hidden ? t("draw.act.showAll") : t("draw.act.hideAll")}
         aria-label={hidden ? t("draw.act.showAll") : t("draw.act.hideAll")}
         aria-pressed={hidden}
-        className={`${btnBase} ${hidden ? btnActive : ""}`}
+        data-rk="eye" className={`${btnBase} ${hidden ? btnActive : ""}`}
         onClick={() => controller.setHidden(!hidden)}
       >
         <DrawIcon id={hidden ? "eyeOff" : "eye"} size={ICON} filled={hidden} />
+        <MacGlyph set="rail" k="eye" />
       </button>
       {GAP}
       <button
         type="button"
         title={t("draw.act.removeAll")}
         aria-label={t("draw.act.removeAll")}
-        className={`${btnBase} hover:!text-[var(--tv3-red)]`}
+        data-rk="trash" className={`${btnBase} hover:!text-[var(--tv3-red)]`}
         onClick={() => {
           if (window.confirm(t("draw.act.removeConfirm"))) controller.removeAll();
         }}
       >
         <DrawIcon id="trash" size={ICON} />
+        <MacGlyph set="rail" k="trash" />
       </button>
       {GAP}
 
-      <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} className={btnBase} onClick={() => controller.undo()}>
+      <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} data-rk="undo" className={btnBase} onClick={() => controller.undo()}>
         <DrawIcon id="undo" size={ICON} />
+        <MacGlyph set="rail" k="undo" />
       </button>
       {GAP}
-      <button type="button" title={t("draw.act.redo")} aria-label={t("draw.act.redo")} disabled={!controller.canRedo()} className={btnBase} onClick={() => controller.redo()}>
+      <button type="button" title={t("draw.act.redo")} aria-label={t("draw.act.redo")} disabled={!controller.canRedo()} data-rk="redo" className={btnBase} onClick={() => controller.redo()}>
         <DrawIcon id="redo" size={ICON} />
+        <MacGlyph set="rail" k="redo" />
       </button>
       {GAP}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "../MacGlyph";
 import { useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useCalPrefs } from "@/lib/calendar/prefs";
@@ -34,6 +35,7 @@ export default function ChartEventsButton({ className, onClassName = "", label =
         className={`${className} ${on ? onClassName : ""}`}
       >
         {EC_ICONS.onChart}
+        <MacGlyph set="tb" k="events" alpha="55" width={1.8} />
         {label && <span className="hidden lg:inline">{t("ec.chart.short")}</span>}
       </button>
       {anchor && (
