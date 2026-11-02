@@ -16,18 +16,6 @@ import { IND_ICONS } from "./icons";
 /* TradingView-like indicator legend: a React overlay at the top-left of the chart (under the symbol status line)
    and at the top of every indicator pane. Values follow the crosshair; row actions appear on hover (or on tap). */
 
-const COLLAPSED_KEY = "fomo-ind-legend-collapsed";
-
-function readCollapsed(): boolean {
-  try {
-    // design v3: collapsed ("Индикаторы ( N )" pill only) until the user opens the list
-    const v = localStorage.getItem(COLLAPSED_KEY);
-    return v === null ? true : v === "1";
-  } catch {
-    return false;
-  }
-}
-
 interface Props {
   controller: IndicatorsController;
   getEngine: () => ChartEngine | null;
@@ -62,7 +50,6 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const mainRef = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
 
-  useEffect(() => setCollapsed(readCollapsed()), []);
 
   /* the canvas legend steps aside for the whole lifetime of this overlay */
   useEffect(() => {
@@ -208,14 +195,8 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     };
   }, [menuUid]);
 
-  const toggleCollapsed = () => {
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSED_KEY, c ? "0" : "1");
-      } catch {}
-      return !c;
-    });
-  };
+  // the list is collapsed on every load (the choice is not kept); while it is collapsed the names in the indicator panes under the chart are hidden too
+  const toggleCollapsed = () => setCollapsed((c) => !c);
 
   const eng = getEngine();
   const n = eng ? eng.getCandles().length : 0;
@@ -458,7 +439,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             {!collapsed && menuUid && menuPos && mainUids.includes(menuUid) && renderMenu(menuUid, "absolute z-30", { left: menuPos.left, top: menuPos.top })}
           </div>
         )}
-        {others.map(([pid, uids]) =>
+        {(winId || !collapsed) && others.map(([pid, uids]) =>
           tops[pid] === undefined ? null : (
             <div key={pid} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[1px]" style={{ top: tops[pid] + (pid.endsWith(":p") ? mainTop : 5) }}>
               {uids.map((u) => renderRow(u, true))}

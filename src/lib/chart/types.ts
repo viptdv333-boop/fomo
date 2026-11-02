@@ -192,6 +192,8 @@ export interface EngineOptions {
   /** Nominal bar length in ms (used to extrapolate labels past the last bar). */
   intervalMs: number;
   fontFamily: string;
+  /** The optional macOS look of the terminal (terminal-mac.css): a big price header and rounded cards for the indicator panes. */
+  macLook?: boolean;
 
   /* ── chart settings (see lib/chart/settings.ts); the defaults keep the previous look ── */
   candleStyle: CandleStyle;

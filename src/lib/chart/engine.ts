@@ -1415,6 +1415,19 @@ export class ChartEngine {
     } else ctx.fillStyle = th.bg;
     ctx.fillRect(0, 0, W, H);
 
+    // macOS look: every indicator pane is a soft rounded card on the chart background
+    if (this.opts.macLook && !this.transformed()) {
+      ctx.fillStyle = withAlpha(th.text, 0.06);
+      for (const pane of this.panes) {
+        if (pane.id === "main" || pane.height <= 8) continue;
+        ctx.beginPath();
+        const cx = this.plotX();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(cx, pane.top + 3, this.plotW(), pane.height - 6, 10);
+        else ctx.rect(cx, pane.top + 3, this.plotW(), pane.height - 6);
+        ctx.fill();
+      }
+    }
+
     const n = this.bars.length;
     if (n === 0) {
       ctx.fillStyle = th.textMuted;
@@ -2732,7 +2745,8 @@ export class ChartEngine {
     let chipRight = 0;
     if (pane.id === "main") {
       let cy = y;
-      if (st.symbol) {
+      const mac = !!this.opts.macLook;
+      if (st.symbol && !mac) {
         put(`${this.opts.symbolLabel}${this.opts.intervalLabel ? " · " + this.opts.intervalLabel : ""}`, th.text, 600, 14);
         cy += 17;
         chipRight = Math.max(chipRight, x - 8);
@@ -2742,8 +2756,30 @@ export class ChartEngine {
       const col = (up ? this.candleColors(true) : this.candleColors(false)).body;
       const p = (v: number) => formatPrice(v, this.precision, this.opts.locale);
       const showVol = st.volume && this.opts.showVolume;
+      if (mac && c) {
+        // macOS look: the last close big, its change as a soft pill, then the OHLC row on the same line
+        const big = p(c.c);
+        ctx.font = `600 26px ${this.opts.fontFamily}`;
+        ctx.fillStyle = col;
+        ctx.fillText(big, x0, y - 4);
+        x = x0 + ctx.measureText(big).width + 12;
+        const d0 = c.c - prev.c;
+        const chip = `${d0 >= 0 ? "+" : ""}${(prev.c ? (d0 / prev.c) * 100 : 0).toFixed(2)}%`;
+        ctx.font = `600 13px ${this.opts.fontFamily}`;
+        const cw = ctx.measureText(chip).width + 18;
+        ctx.fillStyle = withAlpha(col, 0.16);
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(x, y + 1, cw, 22, 11);
+        else ctx.rect(x, y + 1, cw, 22);
+        ctx.fill();
+        ctx.fillStyle = col;
+        ctx.fillText(chip, x + 9, y + 5);
+        x += cw + 14;
+        cy = y + 5;
+        chipRight = Math.max(chipRight, x);
+      }
       if (st.ohlc || st.barChange || st.change || showVol) {
-        x = x0;
+        if (!mac) x = x0;
         ctx.font = `13px ${this.opts.fontFamily}`;
         const put2 = (label: string, val: string) => {
           ctx.font = `13px ${this.opts.fontFamily}`;
@@ -2804,8 +2840,9 @@ export class ChartEngine {
         chipRight = Math.max(chipRight, x);
         cy += 15;
       }
+      if (mac) cy = y + 36;
       // design v3: the status block sits on a soft rounded chip (drawn behind the text already on this layer)
-      if (chipRight > 0 && cy > y) {
+      if (chipRight > 0 && cy > y && !mac) {
         ctx.globalCompositeOperation = "destination-over";
         ctx.fillStyle = withAlpha(th.bg, 0.88);
         ctx.beginPath();

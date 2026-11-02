@@ -658,6 +658,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     setTransformBox(engine.getTransformBox());
   }, [engineReady, prefs.chartType, prefs.showVolume, prefs.showGrid, prefs.showWatermark]);
 
+  /* the macOS look: big price header and rounded indicator cards inside the chart */
+  useEffect(() => {
+    engineRef.current?.setOptions({ macLook: mac });
+  }, [engineReady, mac]);
+
   /* chart settings: theme, candles, scales, labels ... */
   useEffect(() => {
     const engine = engineRef.current;

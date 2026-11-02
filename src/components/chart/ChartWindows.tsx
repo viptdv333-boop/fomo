@@ -215,7 +215,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
     >
       {rect ? (
         <div
-          className={`flex h-[24px] pointer-coarse:h-[28px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
+          data-win-head className={`flex h-[24px] pointer-coarse:h-[28px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
           onDoubleClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) controller.toggleMaximize(id);
           }}
@@ -229,14 +229,14 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
           </span>
           <span className="flex shrink-0 items-center gap-0.5">
             {actions}
-            <button type="button" className={`${hbtn} disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent`} title={t("win.shrink")} aria-label={t("win.shrink")} disabled={small && !maximized} onClick={() => controller.shrinkWindow(id)}>
+            <button type="button" data-wb="shrink" className={`${hbtn} disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent`} title={t("win.shrink")} aria-label={t("win.shrink")} disabled={small && !maximized} onClick={() => controller.shrinkWindow(id)}>
               {shrinkIcon}
             </button>
-            <button type="button" className={hbtn} title={maximized ? t("win.restore") : t("win.maximize")} aria-label={maximized ? t("win.restore") : t("win.maximize")} aria-pressed={maximized} onClick={() => controller.toggleMaximize(id)}>
+            <button type="button" data-wb="max" className={hbtn} title={maximized ? t("win.restore") : t("win.maximize")} aria-label={maximized ? t("win.restore") : t("win.maximize")} aria-pressed={maximized} onClick={() => controller.toggleMaximize(id)}>
               {maximized ? collapseIcon : expandIcon}
             </button>
             {onClose && (
-              <button type="button" className={`${hbtn} hover:!text-red-500`} title={closeTitle} aria-label={closeTitle} onClick={onClose}>
+              <button type="button" data-wb="close" className={`${hbtn} hover:!text-red-500`} title={closeTitle} aria-label={closeTitle} onClick={onClose}>
                 {IND_ICONS.close(14)}
               </button>
             )}

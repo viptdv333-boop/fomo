@@ -419,3 +419,42 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
 .tvmac [data-fomo-community] [class*="text-[var(--tv3-muted)]"] {
   color: rgba(255, 255, 255, 0.82) !important;
 }
+
+/* ───────── chart window: a 36px title strip with coloured window buttons (design) ───────── */
+.tvmac [data-win-head] {
+  height: 36px !important;
+  padding: 0 12px !important;
+  background: color-mix(in srgb, var(--m-text) 5%, var(--m-chart)) !important;
+  border-bottom: 0.5px solid color-mix(in srgb, var(--m-text) 12%, transparent) !important;
+}
+.tvmac [data-win-head] > span:first-child {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--m-sub) !important;
+}
+.tvmac [data-win-head] button {
+  width: 30px !important;
+  height: 28px !important;
+  border-radius: 8px;
+}
+.tvmac [data-win-head] button svg {
+  width: 22px !important;
+  height: 22px !important;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, currentColor 35%, transparent));
+}
+.tvmac [data-win-head] [data-wb="shrink"] { color: #cc9446 !important; }
+.tvmac [data-win-head] [data-wb="max"] { color: #4f9a74 !important; }
+.tvmac [data-win-head] [data-wb="close"] { color: #c46a78 !important; }
+
+/* the "Indicators (N)" pill of the chart: violet tint with a solid counter */
+.tvmac [data-tv="area"] button[aria-label][class*="rounded-[10px]"][class*="bg-[var(--tv3-fill)]"] {
+  height: 34px;
+  padding: 0 12px 0 8px !important;
+  border-radius: 11px !important;
+  background: rgba(138, 109, 176, 0.14) !important;
+  color: var(--m-text) !important;
+  font-size: 14px !important;
+}
+.tvmac [data-tv="area"] button[aria-label][class*="rounded-[10px]"][class*="bg-[var(--tv3-fill)]"] svg {
+  color: #8a6db0;
+}
