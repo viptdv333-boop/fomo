@@ -409,7 +409,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     <>
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
         {!winId && mainUids.length > 0 && (
-          <div ref={mainRef} className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
+          <div ref={mainRef} data-lg-main className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
             {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
             <div className="pointer-events-auto flex items-center">
               <button

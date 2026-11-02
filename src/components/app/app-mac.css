@@ -1,0 +1,214 @@
+/*
+ * The phone version of the "macOS" look of the app Terminal screen (design "FOMO Terminal Mobile"). An opt-in skin: nothing here applies unless
+ * the screen carries `.app-mac` (AppTerminal.tsx) or the sheet carries `.app-mac-sheet-wrap` (chart/AppMacSheet.tsx), and `html.app-mac-on`
+ * (held by the screen while the look is on) swaps the app's dock for the design's own bottom bar. The classic look never loads a rule of this file
+ * that changes it, except the small «Попробовать новый дизайн» button that sits below the first screen.
+ * Palette and sizes are the design's: #F4F4F7 page, white cards (radius 18), #4F9A74 green, pastel duotone glyphs, Golos Text.
+ */
+
+/* ---------- the classic look: the switch (a quiet text button under the first screen) ---------- */
+html.app-ui .app-term-macbtn { display: block; margin: 4px 12px 0; padding: 10px 14px; width: calc(100% - 24px); border-radius: 12px; background: var(--app-card2); color: var(--app-tx2); font-size: 13px; font-weight: 600; text-align: center; }
+html.app-ui .app-term-macbtn:active { background: var(--app-press); }
+
+/* ---------- tokens ---------- */
+html.app-ui.app-mac-on {
+  --m-bg: #f4f4f7;
+  --m-card: #ffffff;
+  --m-tx: #26262b;
+  --m-tx2: #6e6e73;
+  --m-tx3: #8e8e93;
+  --m-seg: rgba(0, 0, 0, 0.06);
+  --m-seg-on: #ffffff;
+  --m-seg-sh: 0 2px 5px rgba(0, 0, 0, 0.16);
+  --m-hair: rgba(0, 0, 0, 0.07);
+  --m-ring: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --m-card-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.05);
+  --m-bar: rgba(255, 255, 255, 0.85);
+  --m-line: rgba(0, 0, 0, 0.1);
+  --m-sheet: rgba(244, 244, 247, 0.96);
+  --m-veil: rgba(244, 244, 247, 0.5);
+  --m-green: #4f9a74;
+  --m-sw-on: #5fa37e;
+  --m-sw-off: rgba(0, 0, 0, 0.18);
+  --m-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+  /* the design's bar: 8px, the 38px pill, 3px, the 10.5px label; the system gesture area is added below it */
+  --app-mac-bar: 62px;
+}
+html.app-ui.app-mac-on.dark {
+  --m-bg: #0e0e11;
+  --m-card: #1a1a1e;
+  --m-tx: #f2f2f5;
+  --m-tx2: #a1a1a9;
+  --m-tx3: #7d7d86;
+  --m-seg: rgba(255, 255, 255, 0.09);
+  --m-seg-on: #3a3a40;
+  --m-seg-sh: 0 2px 5px rgba(0, 0, 0, 0.4);
+  --m-hair: rgba(255, 255, 255, 0.08);
+  --m-ring: 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --m-card-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --m-bar: rgba(22, 22, 26, 0.88);
+  --m-line: rgba(255, 255, 255, 0.12);
+  --m-sheet: rgba(26, 26, 30, 0.96);
+  --m-veil: rgba(10, 10, 12, 0.55);
+  --m-sw-off: rgba(255, 255, 255, 0.22);
+}
+/* the design's bar replaces the dock: the room it takes is the bar's (everything keyed on --app-bottom-inset follows) */
+html.app-ui.app-mac-on:not(.app-kbd) { --app-bottom-inset: calc(var(--app-mac-bar) + env(safe-area-inset-bottom, 0px)); }
+html.app-ui.app-mac-on [data-app-tabbar],
+html.app-ui.app-mac-on .app-dock-bg,
+html.app-ui.app-mac-on .app-dock-track,
+html.app-ui.app-mac-on .app-dock-more { display: none !important; }
+html.app-ui.app-mac-on body { background: var(--m-bg); }
+/* the dock comes back for the full-screen chart exactly as before (it is hidden by fullscreen.css there) */
+html.app-ui.app-mac-on.app-term-fs .app-mac .app-mac-bar { visibility: hidden; }
+
+/* ---------- the screen ---------- */
+html.app-ui .app-mac { background: var(--m-bg); color: var(--m-tx); font-family: var(--m-font); letter-spacing: -0.003em; font-feature-settings: "tnum" 0; }
+html.app-ui .app-mac button { font-family: inherit; }
+html.app-ui .app-mac-first { display: flex; flex-direction: column; height: calc(100dvh - var(--app-bottom-inset)); min-height: 440px; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
+
+/* header: round icon, name, sub line, the big price with its change pill */
+html.app-ui .app-mac .app-mac-head { display: flex; align-items: center; gap: 12px; padding: 8px 18px 8px; flex: none; }
+html.app-ui .app-mac .app-mac-head-l { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; }
+html.app-ui .app-mac .app-mac-head-t { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+html.app-ui .app-mac .app-mac-head-t b { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-mac .app-mac-head-t small { font-size: 12.5px; color: var(--m-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-mac .app-mac-head-r { text-align: right; line-height: 1.15; flex: none; }
+html.app-ui .app-mac .app-mac-px { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+html.app-ui .app-mac .app-mac-pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.app-ui .app-mac .app-mac-ico { border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; color: #fff; overflow: hidden; }
+html.app-ui .app-mac .app-mac-ico b { font-weight: 700; letter-spacing: 0; }
+html.app-ui .app-mac .app-mac-ico[data-art="1"] { background: var(--m-card) !important; box-shadow: 0 0 0 0.5px var(--m-line), 0 3px 8px rgba(0, 0, 0, 0.1) !important; }
+html.app-ui .app-mac .app-mac-ico-art { display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+
+/* timeframes: the design's segmented control (white chosen cell), the «▾» of the picker and the «⋯» menu next to it */
+html.app-ui .app-mac .app-mac-tfrow { display: flex; align-items: center; gap: 8px; padding: 0 18px; flex: none; position: relative; z-index: 3; }
+html.app-ui .app-mac .app-term-tfs { flex: 1; min-width: 0; padding: 3px; min-height: 0; border-radius: 11px; background: var(--m-seg); gap: 2px; align-items: stretch; }
+html.app-ui .app-mac .app-term-tfscroll { gap: 2px; }
+html.app-ui .app-mac .app-term-chip { flex: 1 0 auto; height: 34px; min-width: 38px; padding: 0 6px; border-radius: 8px; font-size: 14px; font-weight: 600; background: transparent; color: var(--m-tx); }
+html.app-ui .app-mac .app-term-chip[data-on="1"] { background: var(--m-seg-on); color: var(--m-tx); box-shadow: var(--m-seg-sh); }
+html.app-ui .app-mac .app-term-tfmore { flex: 0 0 auto; min-width: 30px; padding: 0; color: var(--m-tx2); }
+html.app-ui .app-mac .app-mac-menu { position: relative; flex: none; }
+html.app-ui .app-mac .app-mac-more { width: 40px; height: 40px; border-radius: 11px; background: var(--m-seg); color: var(--m-tx2); display: flex; align-items: center; justify-content: center; }
+html.app-ui .app-mac .app-mac-pop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; max-height: 70dvh; overflow-y: auto; padding: 6px; border-radius: 16px; background: var(--m-card); box-shadow: 0 10px 40px rgba(30, 30, 60, 0.25), var(--m-ring); z-index: 60; }
+html.app-ui .app-mac .app-mac-mi { display: block; width: 100%; padding: 11px 12px; border-radius: 10px; font-size: 15px; font-weight: 500; color: var(--m-tx); text-align: left; text-decoration: none; box-sizing: border-box; }
+html.app-ui .app-mac .app-mac-mi:active { background: var(--m-seg); }
+html.app-ui .app-mac .app-mac-sep { height: 0.5px; margin: 4px 6px; background: var(--m-line); }
+
+/* indicator chips: white pills with a coloured dot */
+html.app-ui .app-mac .app-mac-chips { display: flex; gap: 6px; padding: 10px 18px 8px; overflow-x: auto; flex: none; scrollbar-width: none; }
+html.app-ui .app-mac .app-mac-chips::-webkit-scrollbar { display: none; }
+html.app-ui .app-mac .app-mac-chip { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; background: var(--m-card); box-shadow: 0 0 0 0.5px var(--m-line); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--m-tx); }
+html.app-ui .app-mac .app-mac-chip span { width: 9px; height: 9px; border-radius: 50%; }
+html.app-ui .app-mac .app-mac-chip[data-off="1"] { opacity: 0.5; }
+html.app-ui .app-mac .app-mac-tfrow + .app-term-slot { margin-top: 10px; }
+
+/* the white card with the chart (its panes are rounded cards drawn by the engine) */
+html.app-ui .app-mac .app-term-slot { flex: 1 1 0; min-height: 200px; margin: 0 12px; border-top: 0; border-radius: 18px; background: var(--m-card); box-shadow: var(--m-card-sh); padding: 5px 5px 4px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
+html.app-ui .app-mac .app-term-slot > .app-term-chart:not(.app-term-fs) { flex: 1 1 0; min-height: 0; height: auto; border: 0; border-radius: 14px; background: transparent; }
+html.app-ui .app-mac .app-term-chart:not(.app-term-fs) .app-term-chartbody { min-height: 0; }
+html.app-ui .app-mac .app-term-chart:not(.app-term-fs) [data-tv="wrap"],
+html.app-ui .app-mac .app-term-chart:not(.app-term-fs) [data-tv="card"] { background: transparent; }
+html.app-ui .app-mac .app-term-chart:not(.app-term-fs) [data-lg-main] { display: none; }
+html.app-ui .app-mac .app-mac-expand { display: flex; align-items: center; justify-content: center; padding: 2px 6px; color: var(--m-tx2); }
+html.app-ui .app-mac .app-mac-expand svg { width: 16px; height: 16px; }
+html.app-ui .app-mac .app-mac-ranges { flex: none; display: flex; justify-content: space-between; padding: 0 4px; }
+html.app-ui .app-mac .app-mac-range { font-size: 11.5px; font-weight: 600; padding: 3px 6px; border-radius: 7px; color: var(--m-tx2); background: transparent; }
+html.app-ui .app-mac .app-mac-range[data-on="1"] { color: var(--m-tx); background: var(--m-seg); }
+
+/* the four quick actions */
+html.app-ui .app-mac .app-mac-quick { display: flex; justify-content: space-around; padding: 10px 12px 6px; flex: none; }
+html.app-ui .app-mac .app-mac-q { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 78px; color: var(--m-tx); }
+html.app-ui .app-mac .app-mac-q span { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+html.app-ui .app-mac .app-mac-q i { position: absolute; top: -2px; left: calc(50% + 8px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--m-tx); color: var(--m-card); font: 700 10px/16px var(--m-font); font-style: normal; text-align: center; }
+
+/* bottom bar: five coloured tabs, the chosen one on a tinted pill */
+html.app-ui .app-mac .app-mac-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; box-sizing: border-box; height: var(--app-bottom-inset); padding: 8px 8px env(safe-area-inset-bottom, 0px); display: flex; justify-content: space-around; align-items: flex-start; background: var(--m-bar); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-top: 0.5px solid var(--m-line); font-family: var(--m-font); }
+html.app-ui.app-kbd .app-mac .app-mac-bar { display: none; }
+html.app-ui .app-mac .app-mac-bar-t { width: 66px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--m-tx2); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; }
+html.app-ui .app-mac .app-mac-bar-p { width: 56px; height: 38px; border-radius: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+html.app-ui .app-mac .app-mac-bar-l { font-size: 10.5px; font-weight: 500; line-height: 1.2; color: var(--m-tx2); white-space: nowrap; }
+html.app-ui .app-mac .app-mac-bar-l[data-on="1"] { font-weight: 700; color: var(--m-tx); }
+
+/* ---------- «Список» ---------- */
+html.app-ui .app-mac .app-mac-list { position: fixed; left: 0; right: 0; top: 0; bottom: var(--app-bottom-inset); z-index: 44; overflow-y: auto; overscroll-behavior: contain; background: var(--m-bg); color: var(--m-tx); font-family: var(--m-font); padding-top: env(safe-area-inset-top, 0px); -webkit-overflow-scrolling: touch; }
+html.app-ui .app-mac .app-mac-list :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+html.app-ui .app-mac .app-mac-list-h { display: flex; align-items: center; padding: 14px 20px 10px; }
+html.app-ui .app-mac .app-mac-list-h h2 { flex: 1; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+html.app-ui .app-mac .app-mac-list .app-mac-plus { display: flex; }
+html.app-ui .app-mac .app-mac-filter { margin: 0 18px 10px; height: 38px; border-radius: 11px; background: var(--m-seg); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 15px; color: var(--m-tx3); }
+html.app-ui .app-mac .app-mac-filter input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; font: inherit; color: var(--m-tx); -webkit-appearance: none; appearance: none; }
+html.app-ui .app-mac .app-mac-filter input::placeholder { color: var(--m-tx3); }
+html.app-ui .app-mac .app-mac-filter input::-webkit-search-cancel-button { -webkit-appearance: none; }
+html.app-ui .app-mac .app-mac-rows { margin: 0 12px; border-radius: 18px; background: var(--m-card); box-shadow: var(--m-ring); padding: 4px 0; overflow: hidden; }
+html.app-ui .app-mac .app-mac-row { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 9px 14px; border-bottom: 0.5px solid var(--m-hair); text-align: left; }
+html.app-ui .app-mac .app-mac-rows > :last-child { border-bottom: 0; }
+html.app-ui .app-mac .app-mac-row[data-sel="1"] { background: rgba(85, 119, 184, 0.1); }
+html.app-ui .app-mac .app-mac-row-n { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+html.app-ui .app-mac .app-mac-row-n b { font-size: 16px; font-weight: 700; }
+html.app-ui .app-mac .app-mac-row-n small { font-size: 12px; color: var(--m-tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-mac .app-mac-spark { flex: none; }
+html.app-ui .app-mac .app-mac-row-p { width: 74px; flex: none; text-align: right; line-height: 1.25; display: flex; flex-direction: column; align-items: flex-end; }
+html.app-ui .app-mac .app-mac-row-p b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.app-ui .app-mac .app-mac-list .app-mac-pill { font-size: 11.5px; padding: 0 7px; margin-top: 0; font-weight: 700; display: inline-block; border-radius: 999px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.app-ui .app-mac .app-mac-list .app-term-ideas { margin: 10px 12px 0; border-radius: 16px; background: var(--m-card); border: 0; box-shadow: var(--m-ring); color: var(--m-tx); }
+html.app-ui .app-mac .app-mac-list .app-term-ideas-n,
+html.app-ui .app-mac .app-mac-list .app-term-ideas-s { color: var(--m-tx2); }
+html.app-ui .app-mac .app-mac-list .app-term-seg { margin: 4px 18px 10px; background: var(--m-seg); }
+html.app-ui .app-mac .app-mac-list .app-term-seg button { color: var(--m-tx); }
+html.app-ui .app-mac .app-mac-list .app-term-seg button[data-on="1"] { background: var(--m-seg-on); color: var(--m-tx); box-shadow: var(--m-seg-sh); }
+html.app-ui .app-mac .app-mac-list .app-term-cal { margin: 0 12px 12px; border: 0; box-shadow: var(--m-ring); }
+html.app-ui .app-mac .app-mac-list .app-term-wempty { padding: 16px; color: var(--m-tx2); }
+html.app-ui .app-mac .app-mac-list .app-term-disc { padding: 14px 18px 20px; color: var(--m-tx3); }
+html.app-ui .app-mac .app-mac-promo { margin: 10px 12px 0; padding: 10px 12px; border-radius: 16px; background: linear-gradient(135deg, #7b7fc4, #a47bb5); color: #fff; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+html.app-ui .app-mac .app-mac-promo span { display: flex; flex-direction: column; line-height: 1.25; flex: 1; }
+html.app-ui .app-mac .app-mac-promo b { font-size: 14px; font-weight: 700; }
+html.app-ui .app-mac .app-mac-promo small { font-size: 12px; }
+
+/* ---------- the sheet «Инструменты и индикаторы» (portaled to <body>) ---------- */
+@keyframes appMacUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes appMacFade { from { opacity: 0; } to { opacity: 1; } }
+html.app-ui .app-mac-sheet-wrap { position: fixed; inset: 0; z-index: 65; font-family: var(--m-font); color: var(--m-tx); -webkit-font-smoothing: antialiased; line-height: normal; letter-spacing: -0.003em; }
+html.app-ui .app-mac-sheet-wrap :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+html.app-ui .app-mac-back { position: absolute; inset: 0; background: var(--m-veil); animation: appMacFade 0.2s; }
+html.app-ui .app-mac-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(env(safe-area-inset-top, 0px) + 96px); display: flex; flex-direction: column; background: var(--m-sheet); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); border-radius: 30px 30px 0 0; box-shadow: 0 -10px 40px rgba(30, 30, 60, 0.25); padding-top: 8px; animation: appMacUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.app-ui .app-mac-grip { flex: none; display: flex; justify-content: center; padding: 0 0 10px; touch-action: none; cursor: grab; }
+html.app-ui .app-mac-grip i { width: 40px; height: 5px; border-radius: 3px; background: rgba(128, 128, 136, 0.45); }
+html.app-ui .app-mac-segc { display: flex; padding: 3px; margin: 0 18px 12px; border-radius: 11px; background: var(--m-seg); flex: none; }
+html.app-ui .app-mac-segc button { flex: 1; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--m-tx); }
+html.app-ui .app-mac-segc button[data-on="1"] { background: var(--m-seg-on); box-shadow: var(--m-seg-sh); }
+html.app-ui .app-mac-sbody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+html.app-ui .app-mac-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 0; padding: 0 14px; }
+html.app-ui .app-mac-tool { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+html.app-ui .app-mac-tool-b { position: relative; width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center; }
+html.app-ui .app-mac-tool-b:active { background: var(--m-seg); }
+html.app-ui .app-mac-tool-b:disabled { opacity: 0.4; }
+html.app-ui .app-mac-tool-l { font-size: 11.5px; font-weight: 600; text-align: center; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-mac-caret { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--m-tx2); }
+html.app-ui .app-mac-dots { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 2px; }
+html.app-ui .app-mac-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--m-tx); }
+html.app-ui .app-mac-xrow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; padding: 10px 14px 0; }
+html.app-ui .app-mac-tool[data-small="1"] .app-mac-tool-b { width: 44px; height: 44px; border-radius: 13px; }
+html.app-ui .app-mac-tool[data-small="1"] .app-mac-tool-l { font-size: 10.5px; }
+html.app-ui .app-mac-h { margin: 14px 18px 0; font-size: 13px; font-weight: 700; color: var(--m-tx2); text-transform: uppercase; letter-spacing: 0.04em; }
+html.app-ui .app-mac-inds { margin: 6px 14px 0; border-radius: 14px; background: var(--m-card); box-shadow: var(--m-ring); overflow: hidden; }
+html.app-ui .app-mac-ind { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 0.5px solid var(--m-hair); min-height: 25px; }
+html.app-ui .app-mac-inds > :last-child { border-bottom: 0; }
+html.app-ui .app-mac-ind-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+html.app-ui .app-mac-ind-n { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.app-ui .app-mac-ind[data-off="1"] .app-mac-ind-n { opacity: 0.5; }
+html.app-ui .app-mac-ind-v { font-size: 12.5px; color: var(--m-tx2); font-variant-numeric: tabular-nums; flex: none; }
+html.app-ui .app-mac-sw { position: relative; width: 40px; height: 24px; border-radius: 12px; background: var(--m-sw-off); flex: none; transition: background 0.15s; }
+html.app-ui .app-mac-sw[aria-checked="true"] { background: var(--m-sw-on); }
+html.app-ui .app-mac-sw i { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.15s; }
+html.app-ui .app-mac-sw[aria-checked="true"] i { transform: translateX(16px); }
+html.app-ui .app-mac-ind-x { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--m-tx3); flex: none; }
+html.app-ui .app-mac-empty { padding: 16px; font-size: 13px; color: var(--m-tx2); text-align: center; }
+html.app-ui .app-mac-add { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 14px 0; width: calc(100% - 28px); height: 44px; border-radius: 14px; background: var(--m-card); box-shadow: var(--m-ring); font-size: 15px; font-weight: 600; color: var(--m-green); }
+html.app-ui .app-mac-fly-back { display: flex; align-items: center; gap: 4px; margin: 0 14px 6px; padding: 6px 0; font-size: 15px; font-weight: 600; color: var(--m-green); }
+html.app-ui .app-mac-fly-list { margin: 0 14px; border-radius: 14px; background: var(--m-card); box-shadow: var(--m-ring); overflow: hidden; padding: 4px 0; }
+html.app-ui .app-mac-fly-sec { padding: 10px 14px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--m-tx2); }
+html.app-ui .app-mac-fly-i { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 10px 14px; font-size: 15px; font-weight: 500; text-align: left; color: var(--m-tx); }
+html.app-ui .app-mac-fly-i[data-on="1"] { background: rgba(79, 154, 116, 0.14); color: var(--m-green); }
+html.app-ui .app-mac-fly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px 8px; }
+html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding: 10px 0; border-radius: 12px; }

@@ -133,11 +133,13 @@ interface Props {
   appFullLead?: ReactNode;
   /** App terminal page on a wide window: the chart's top toolbar «full screen» opens the page's own full screen layer. */
   appExpand?: () => void;
+  /** App terminal page, phone version of the new look (see TradingChart). */
+  appMac?: boolean;
 }
 
 export default function MultiChart(props: Props) {
   const { t } = useT();
-  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState, appFull, appFullLead, appExpand } = props;
+  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState, appFull, appFullLead, appExpand, appMac } = props;
   const [state, setState] = useState<MultiState>(() => (typeof window === "undefined" ? DEFAULT_STATE : loadLocal()));
   const [active, setActive] = useState(0);
   const [sharedInterval, setSharedInterval] = useState<string | null>(null);
@@ -288,6 +290,7 @@ export default function MultiChart(props: Props) {
               appFull={appFull}
               appFullLead={i === 0 ? appFullLead : undefined}
               appExpand={i === 0 ? appExpand : undefined}
+              appMac={i === 0 ? appMac : undefined}
             />
           </div>
         );

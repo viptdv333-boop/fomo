@@ -430,6 +430,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                     >
                       <DrawIcon id={tool.id} size={25} filled={isActive} />
                       <MacGlyph set="cur" k={tool.id} />
+                      {flyGroup.id === "lines" && <MacGlyph set="line" k={String((flyGroup.sections ?? []).flatMap((x) => x.tools).findIndex((x) => x.id === tool.id))} />}
                       <span className="truncate">{t(tool.labelKey)}</span>
                     </button>
                   );

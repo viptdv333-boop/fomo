@@ -232,7 +232,7 @@ export default function TopToolbar(p: Props) {
 
       <Menu title={t("shell.chartType")} className={`${btn} tb-type`} width={220} trigger={<>{typeIcon[currentType.id]}<MacGlyph set="tb" k="type" alpha="55" width={1.8} /></>}>
         {(close) =>
-          CHART_TYPES.map((c) => (
+          CHART_TYPES.map((c, ci) => (
             <button
               key={c.id}
               onClick={() => {
@@ -244,6 +244,7 @@ export default function TopToolbar(p: Props) {
               }`}
             >
               {typeIcon[c.id]}
+              <MacGlyph set="type" k={String(ci)} />
               {t(c.key)}
             </button>
           ))

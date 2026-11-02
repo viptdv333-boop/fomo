@@ -23,6 +23,7 @@ import { VpLayer } from "@/lib/chart/orderflow/vpro-layer";
 import { FLOW_DRAWING_TOOLS, FLOW_INDICATOR_IDS } from "@/lib/chart/orderflow/types";
 import IndicatorsDialog from "@/components/chart/IndicatorsDialog";
 import IndicatorLegend from "@/components/chart/IndicatorLegend";
+import AppMacSheet from "@/components/chart/AppMacSheet";
 import ChartWindows, { WindowFrame, useWindowsGeometry } from "@/components/chart/ChartWindows";
 import type { WsWindow } from "@/lib/chart/windows-layout";
 import { composeWindows } from "@/lib/chart/windows-shot";
@@ -34,7 +35,7 @@ import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
 import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
-import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
+import type { AppChartHandle, AppChartState, AppChip } from "@/components/chart/app-bridge";
 import { useAppTopToolbar } from "@/components/app/useAppUi";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
@@ -100,6 +101,8 @@ interface Props {
   appFullLead?: ReactNode;
   /** App terminal page on a wide window (the web top toolbar is shown): the toolbar's «full screen» takes the page's chart to ITS full screen layer. */
   appExpand?: () => void;
+  /** App terminal page, phone version of the new look (design "FOMO Terminal Mobile"): rounded cards on the canvas, the page draws the chips row and the bottom sheet of tools / indicators comes from here. */
+  appMac?: boolean;
   /** Told about the engine of this chart (null when it goes away): a chart window lets the indicator windows linked to it follow it. */
   onEngine?: (engine: ChartEngine | null) => void;
   /** A chart window: a new number opens the instrument search of this chart (the window's title, a window that was just made a chart). */
@@ -222,7 +225,7 @@ interface CompareState {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, appExpand, onEngine, searchSignal, onSearchHandled }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, appExpand, appMac, onEngine, searchSignal, onSearchHandled }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
@@ -302,6 +305,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
   const [indCount, setIndCount] = useState(0);
   const [toolsOpen, setToolsOpen] = useState(false);
+  /** New look (phone): the bottom sheet «Инструменты и индикаторы» (null = closed) and the indicator chips of the price pane that the page shows above the chart. */
+  const [macSheet, setMacSheet] = useState<"tools" | "inds" | null>(null);
+  const [macChips, setMacChips] = useState<AppChip[]>([]);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   // app UI on a wide window with a mouse: the web terminal's own top toolbar (the same component) instead of the phone-style header of the page
@@ -450,6 +456,23 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     };
   }, [indicators]);
   const winGeo = useWindowsGeometry(indicators, areaRef, !embedded && !compact && engineReady && !winBroken);
+  /* new look (phone): the indicators of the price pane as chips above the chart (a coloured dot + the name), kept in step with the list */
+  useEffect(() => {
+    if (!appMac) return;
+    const read = () => {
+      const n = engineRef.current?.getCandles().length ?? 0;
+      const next: AppChip[] = [];
+      for (const inst of indicators.list()) {
+        if (indicators.paneOf(inst.uid) !== "main") continue;
+        const info = indicators.legendInfo(inst.uid, Math.max(0, n - 1));
+        if (!info) continue;
+        next.push({ uid: inst.uid, title: info.title, color: info.items.find((it) => it.color)?.color ?? null, visible: inst.visible });
+      }
+      setMacChips((prev) => (prev.length === next.length && prev.every((p, i) => p.uid === next[i].uid && p.title === next[i].title && p.color === next[i].color && p.visible === next[i].visible) ? prev : next));
+    };
+    read();
+    return indicators.subscribe(read);
+  }, [indicators, appMac, engineReady]);
   const [winCount, setWinCount] = useState(0);
   /** The indicator window the catalogue was opened from (null: from the toolbar). */
   const [indTarget, setIndTarget] = useState<string | null>(null);
@@ -663,16 +686,22 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     engineRef.current?.setOptions({ macLook: mac });
   }, [engineReady, mac]);
 
+  /* the phone version of the look (app UI terminal): the panes are rounded cards on a card-coloured canvas */
+  const macCards = !!appMac && !!appPage && !appFull;
+  useEffect(() => {
+    engineRef.current?.setOptions({ macCards });
+  }, [engineReady, macCards]);
+
   /* chart settings: theme, candles, scales, labels ... */
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
     const opts = settingsToEngine(cs, siteDark);
     // app terminal page: the design's chart sits on the page background; a canvas colour the user chose themselves is kept
-    if (appPage && opts.theme && cs.preset === "classic" && cs.bgType === "solid" && !cs.colors.bg) opts.theme = { ...opts.theme, bg: siteDark ? "#0a0a0a" : "#f4f4f5" };
+    if (appPage && opts.theme && cs.preset === "classic" && cs.bgType === "solid" && !cs.colors.bg) opts.theme = { ...opts.theme, bg: macCards ? (siteDark ? "#1a1a1e" : "#ffffff") : siteDark ? "#0a0a0a" : "#f4f4f5" };
     engine.setOptions(opts);
     setTransformBox(engine.getTransformBox());
-  }, [engineReady, cs, siteDark, appPage]);
+  }, [engineReady, cs, siteDark, appPage, macCards]);
 
   /* time zone of the axis and crosshair */
   useEffect(() => {
@@ -1737,6 +1766,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       toggleDrawTools: () => setToolsOpen((v) => !v),
       openWatchlist: () => onTab("watchlist"),
       setFavIntervals: (list) => csApi.update((x) => ({ ...x, ui: { ...x.ui, favIntervals: list } })),
+      openCompare: () => setComparePick(true),
+      openMacSheet: (seg) => setMacSheet(seg ?? "tools"),
     };
   }
   const onAppStateRef = useRef(onAppState);
@@ -1745,8 +1776,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const sideWatch = !!appPage && prefsLoaded && isDesktop;
   useEffect(() => {
     // the timeframe the chart can really show for this source (a seconds one saved for a symbol without seconds reads as 1м at once)
-    onAppStateRef.current?.({ interval: shownInterval(prefs.interval, source), delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source, windows: winGeo.available ? { count: winCount, canAdd: indicators.canAddWindow() } : undefined });
-  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source, winGeo.available, winCount, indicators]);
+    onAppStateRef.current?.({ interval: shownInterval(prefs.interval, source), delayed: candlesDelayed || quoteDelayedMark, sideWatch, favIntervals: cs.ui.favIntervals, source, windows: winGeo.available ? { count: winCount, canAdd: indicators.canAddWindow() } : undefined, chips: appMac ? macChips : undefined, sheetOpen: !!macSheet });
+  }, [prefs.interval, candlesDelayed, quoteDelayedMark, sideWatch, cs.ui.favIntervals, source, winGeo.available, winCount, indicators, appMac, macChips, macSheet]);
   const handleSelectRef = useRef(handleSelect);
   handleSelectRef.current = handleSelect;
   hotkeyActions.current = { toggleFullscreen, screenshot };
@@ -2048,6 +2079,20 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <InstrumentSearchDialog open={searchOpen} mode="symbol" onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} windowId={indTarget} />
+      {appMac && appPage && (
+        <AppMacSheet
+          seg={macSheet}
+          onSeg={setMacSheet}
+          onClose={() => setMacSheet(null)}
+          drawings={drawings}
+          indicators={indicators}
+          getEngine={getEngine}
+          onAddIndicator={() => {
+            setMacSheet(null);
+            setIndOpen(true);
+          }}
+        />
+      )}
       <AlertsDialog
         open={alertsOpen}
         onClose={() => setAlertsOpen(false)}

@@ -21,6 +21,7 @@ import {
   swipeTargetTab,
 } from "../src/lib/app-ui";
 import { APP_TERM_RANGES, APP_TERM_TFS, appTopToolbar, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
+import { MAC_TABS, filterWatch, macActiveTab, macGradFor, macIconKey, macTabAction, macTitle, macTone, sparkPath } from "../src/lib/app-mac";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
 import { resumeTime, videoFullscreenPlan, videoResumeFrom } from "../src/lib/video-fullscreen";
 import {
@@ -699,3 +700,15 @@ eq("app toolbar: 900 is wide enough, 899 is not", [appTopToolbar({ appUi: true, 
 eq("app toolbar: a phone / a touch tablet keeps the phone-style header", [appTopToolbar({ appUi: true, width: 412, finePointer: false }), appTopToolbar({ appUi: true, width: 1200, finePointer: false })], [false, false]);
 eq("app toolbar: the desktop window of the app shows it whatever the pointer reports", [appTopToolbar({ appUi: true, width: 1200, finePointer: false, desktopUi: true }), appTopToolbar({ appUi: true, width: 600, finePointer: false, desktopUi: true })], [true, false]);
 eq("app toolbar: never outside the app UI (the site has its own toolbar)", appTopToolbar({ appUi: false, width: 1500, finePointer: true, desktopUi: true }), false);
+// --- the phone version of the new look (src/lib/app-mac.ts)
+eq("mac: five tabs in the design's order", MAC_TABS.map((x) => x.id), ["term", "list", "tools", "alerts", "profile"]);
+eq("mac: tab actions", MAC_TABS.map((x) => macTabAction(x.id)), ["screen:term", "screen:list", "sheet:tools", "alerts", "profile"]);
+eq("mac: the lit tab", [macActiveTab("term", false), macActiveTab("list", false), macActiveTab("list", true), macActiveTab("term", true)], ["term", "list", "tools", "tools"]);
+eq("mac: icon key of a ticker / a futures contract / unknown", [macIconKey("BR"), macIconKey("brx6"), macIconKey("NGZ26"), macIconKey("USDRUBF"), macIconKey("SBER")], ["BR", "BR", "NG", "USDRUBF", null]);
+eq("mac: gradient is stable per ticker", macGradFor("SBER"), macGradFor("SBER"));
+eq("mac: sparkline needs two points", [sparkPath([1]), sparkPath(undefined), sparkPath([1, 2, NaN]).startsWith("M0.0 22.0L60.0 2.0")], ["", "", true]);
+eq("mac: sparkline goes up for a rising series", sparkPath([1, 2, 3]), "M0.0 22.0L30.0 12.0L60.0 2.0");
+eq("mac: pill colours", [macTone("up").fg, macTone("down").fg, macTone(null).fg], ["#2E7D55", "#B8473F", "#6e6e73"]);
+const wl = [{ ticker: "BR", dataTicker: "BRZ6", n: "Нефть Брент" }, { ticker: "SBER", dataTicker: "SBER", n: "Сбербанк" }];
+eq("mac: filter by ticker / name / data ticker / empty", [filterWatch(wl, "sb", (i) => i.n).length, filterWatch(wl, "нефть", (i) => i.n).length, filterWatch(wl, "brz", (i) => i.n).length, filterWatch(wl, " ", (i) => i.n).length, filterWatch(wl, "zzz", (i) => i.n).length], [1, 1, 1, 2, 0]);
+eq("mac: header title", [macTitle("BR", "Нефть Brent"), macTitle("BRZ6", "BR Dec-26 · BRZ6"), macTitle("SBER", "SBER Сбер"), macTitle("X", "")], ["BR · Нефть Brent", "BRZ6 · BR Dec-26", "SBER Сбер", "X"]);

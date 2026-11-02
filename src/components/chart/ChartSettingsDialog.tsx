@@ -1,5 +1,6 @@
 "use client";
 
+import MacGlyph from "./MacGlyph";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import ModalPortal from "./ModalPortal";
@@ -41,7 +42,7 @@ const inputCls =
 
 function Row({ label, children, hint }: { label: ReactNode; children: ReactNode; hint?: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 min-h-9 py-0.5" title={hint}>
+    <div data-csd-row className="flex items-center justify-between gap-3 min-h-9 py-0.5" title={hint}>
       <span className="text-[13px] text-[var(--tv3-text)] min-w-0">{label}</span>
       <div className="flex items-center gap-2 shrink-0">{children}</div>
     </div>
@@ -50,7 +51,7 @@ function Row({ label, children, hint }: { label: ReactNode; children: ReactNode;
 
 function Check({ checked, onChange, label, children }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; children?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 min-h-9 py-0.5">
+    <div data-csd-row className="flex items-center justify-between gap-3 min-h-9 py-0.5">
       <span className="text-[13px] text-[var(--tv3-text)] min-w-0">{label}</span>
       <div className="flex items-center gap-2 shrink-0">
         {children}
@@ -101,7 +102,7 @@ function Num({ value, min, max, step = 1, onChange, suffix }: { value: number; m
 }
 
 function Section({ children }: { children: ReactNode }) {
-  return <div className="mt-4 mb-1 first:mt-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{children}</div>;
+  return <div data-csd-sec className="mt-4 mb-1 first:mt-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{children}</div>;
 }
 
 /* ───────────── dialog ───────────── */
@@ -381,11 +382,12 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
         ref={panel}
         tabIndex={-1}
         role="dialog"
+        data-csd
         aria-modal="true"
         aria-label={t("cs.title")}
         className="flex flex-col w-full sm:w-[720px] sm:max-w-full h-full sm:h-[600px] sm:max-h-full sm:rounded-2xl overflow-hidden bg-[var(--tv3-card)] text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)] outline-none"
       >
-        <div className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-[var(--tv3-hair)]">
+        <div data-csd-head className="flex items-center justify-between h-12 px-4 shrink-0 border-b border-[var(--tv3-hair)]">
           <h2 className="text-base font-bold">{t("cs.title")}</h2>
           <button onClick={cancel} aria-label={t("shell.close")} className="w-8 h-8 inline-flex items-center justify-center rounded-lg hover:bg-[var(--tv3-fill)] cursor-pointer">
             {CS_ICONS.close}
@@ -393,7 +395,7 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
         </div>
 
         <div className="flex flex-col sm:flex-row flex-1 min-h-0">
-          <div className="flex sm:flex-col shrink-0 gap-0.5 p-2 overflow-x-auto sm:w-[170px] sm:border-r border-b sm:border-b-0 border-[var(--tv3-hair)] [scrollbar-width:none]">
+          <div data-csd-nav className="flex sm:flex-col shrink-0 gap-0.5 p-2 overflow-x-auto sm:w-[170px] sm:border-r border-b sm:border-b-0 border-[var(--tv3-hair)] [scrollbar-width:none]">
             {TABS.map((x) => (
               <button
                 key={x.id}
@@ -403,7 +405,8 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
                   tab === x.id ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)] font-semibold" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
                 }`}
               >
-                {t(x.key)}
+                <MacGlyph set="set" k={x.id} width={1.8} />
+                <span>{t(x.key)}</span>
               </button>
             ))}
           </div>

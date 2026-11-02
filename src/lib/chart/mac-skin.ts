@@ -41,6 +41,16 @@ function subscribe(cb: () => void): () => void {
   };
 }
 
+/** The typeface of the design (Golos Text), loaded once, only while a look that uses it is on. */
+export function ensureMacFont(): void {
+  if (document.getElementById("tvmac-font")) return;
+  const link = document.createElement("link");
+  link.id = "tvmac-font";
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&display=swap";
+  document.head.appendChild(link);
+}
+
 /** `html`: this caller mirrors the switch on <html> (only the terminal page does, never the chart panes or the app screen). */
 export function useMacSkin(html = false): { on: boolean; canOffer: boolean; chosen: boolean; set: (v: boolean) => void } {
   const chosen = useSyncExternalStore(subscribe, stored, () => false);
@@ -51,15 +61,21 @@ export function useMacSkin(html = false): { on: boolean; canOffer: boolean; chos
     if (!on || !html) return;
     document.documentElement.setAttribute("data-tvmac", "");
     // the typeface of the design, loaded only while the skin is on
-    let link = document.getElementById("tvmac-font") as HTMLLinkElement | null;
-    if (!link) {
-      link = document.createElement("link");
-      link.id = "tvmac-font";
-      link.rel = "stylesheet";
-      link.href = "https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap";
-      document.head.appendChild(link);
-    }
+    ensureMacFont();
     return () => document.documentElement.removeAttribute("data-tvmac");
   }, [on, html]);
   return { on, canOffer, chosen, set: setMacSkin };
+}
+
+/**
+ * The phone version of the look (app UI terminal screen, design "FOMO Terminal Mobile"): the same per-device switch, but not tied to a wide window.
+ * `allowed` = the screen can wear it (a phone-style layout); the desktop skin above is untouched.
+ */
+export function useAppMacSkin(allowed = true): { on: boolean; chosen: boolean; set: (v: boolean) => void } {
+  const chosen = useSyncExternalStore(subscribe, stored, () => false);
+  const on = chosen && allowed;
+  useEffect(() => {
+    if (on) ensureMacFont();
+  }, [on]);
+  return { on, chosen, set: setMacSkin };
 }

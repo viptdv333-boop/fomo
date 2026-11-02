@@ -15,7 +15,11 @@ import OrderBookPanel from "@/components/chart/OrderBookPanel";
 import AlgoPanel from "@/components/chart/AlgoPanel";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { useFomoIdeas } from "@/components/chart/FomoPanel";
-import { useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
+import { useBatchQuotes, useSparklines, useWatchlist, type Quote } from "@/components/chart/RightPanel";
+import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
+import { filterWatch, macActiveTab, macTabAction, macTone, type MacTabId } from "@/lib/app-mac";
+import { MacChips, MacHeader, MacInstIcon, MacMenu, MacQuick, MacSpark, MacTabBar } from "./AppMac";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
@@ -43,6 +47,7 @@ import { useBackLayer } from "./useBackLayer";
 import { useAppTopToolbar } from "./useAppUi";
 import { holdHtmlClass } from "@/lib/html-class";
 import "./fullscreen.css";
+import "./app-mac.css";
 
 // MultiChart wraps the chart(s); here it is one chart whose toolbar / bottom bar / phone nav are replaced by the page's own (appPage)
 const Chart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -131,6 +136,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const handle = useRef<AppChartHandle | null>(null);
   // wide window with a mouse: the chart brings the web terminal's top toolbar; the phone-style timeframe row / caption / expand icon / alert icon are not repeated
   const tb = useAppTopToolbar();
+  // the phone version of the new look (design "FOMO Terminal Mobile"): an opt-in skin, never on a wide window with a mouse (that one has the web toolbar)
+  const macSkin = useAppMacSkin(!tb);
+  const mac = macSkin.on;
+  const [macScreen, setMacScreen] = useState<"term" | "list">("term");
+  const [macAdd, setMacAdd] = useState(false);
+  const [macFilter, setMacFilter] = useState("");
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -145,6 +156,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
 
   // the page owns the edge-to-edge layout of <main> while it is shown
   useLayoutEffect(() => holdHtmlClass(["app-term-on"]), []);
+  // the new look brings its own bottom bar: the app's dock steps aside while this screen wears it (and comes back with the classic look / on leaving)
+  useLayoutEffect(() => (mac ? holdHtmlClass(["app-mac-on"]) : undefined), [mac]);
 
   const inList = !!selected && watchlist.items.some((i) => qKey(i) === qKey(selected));
   const instruments = useMemo(() => (selected && !inList ? [...watchlist.items, selected] : watchlist.items), [watchlist.items, selected, inList]);
@@ -213,6 +226,9 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   }, []);
   // the Android Back button (window.FomoBack) collapses the chart: through closeFs, i.e. the same history step as the browser's Back
   useBackLayer(expanded, closeFs, "screen");
+  // the Список screen of the new look is a layer too: Back returns to the chart
+  useBackLayer(mac && macScreen === "list", () => setMacScreen("term"));
+  const macSparks = useSparklines(watchlist.items, mac && macScreen === "list");
 
   // Back button (Android system / browser) pops our entry: collapse
   useEffect(() => {
@@ -309,6 +325,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       appFull={expanded}
       appFullLead={closeBtn}
       appExpand={openFs}
+      appMac={mac}
       appHandle={handle}
       onAppState={onAppState}
     />
@@ -326,6 +343,238 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     </button>
   );
   const h = handle;
+
+  /* ---------- the phone version of the new look: the same chart and the same actions in the design's layout ---------- */
+  if (mac) {
+    const loc = locale as "ru" | "en" | "cn";
+    const onMacTab = (id: MacTabId) => {
+      const a = macTabAction(id);
+      if (a === "screen:term") setMacScreen("term");
+      else if (a === "screen:list") setMacScreen("list");
+      else if (a === "sheet:tools") {
+        setMacScreen("term");
+        h.current?.openMacSheet("tools");
+      } else if (a === "alerts") h.current?.openAlerts();
+    };
+    const rows = filterWatch(watchlist.items, macFilter, (i) => instName(i, t));
+    const segBlock =
+      TERMINAL_SITE || algoSegs ? (
+        <div className="app-term-seg" role="tablist" data-n={1 + (TERMINAL_SITE ? 1 : 0) + (algoSegs ? 2 : 0)}>
+          <button type="button" role="tab" aria-selected={effSeg === "watch"} data-on={effSeg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
+            {algoSegs ? t("mnav.watchlist") : t("appui.term.watch")}
+          </button>
+          {TERMINAL_SITE && (
+            <button type="button" role="tab" aria-selected={effSeg === "cal"} data-on={effSeg === "cal" ? "1" : undefined} onClick={() => setSeg("cal")}>
+              {t("nav.calendar")}
+            </button>
+          )}
+          {algoSegs && (
+            <>
+              <button type="button" role="tab" aria-selected={effSeg === "ob"} data-on={effSeg === "ob" ? "1" : undefined} data-seg-ob onClick={() => setSeg("ob")}>
+                {t("shell.tab.orderbook")}
+              </button>
+              <button type="button" role="tab" aria-selected={effSeg === "algo"} data-on={effSeg === "algo" ? "1" : undefined} data-seg-algo onClick={() => setSeg("algo")}>
+                {t("ap.seg.algo")}
+              </button>
+            </>
+          )}
+        </div>
+      ) : null;
+    return (
+      <DemoGate kind="terminal" path="/terminal" layout="flow">
+        <div className="app-term app-mac" data-screen={macScreen}>
+          <h1 className="sr-only">{t("term2.heading")}</h1>
+
+          <div className="app-mac-first">
+            <MacHeader
+              inst={selected}
+              price={selected ? priceText(quote, selected, locale) : NO_VALUE}
+              pct={pctLabel(quote?.changePercent, locale)}
+              tone={tone}
+              tfLabel={tfLabel}
+              delayed={!!chart?.delayed}
+              onSearch={() => h.current?.openSearch()}
+            />
+            <div className="app-mac-tfrow">
+              <ChartErrorBoundary compact>
+                <AppTimeframes
+                  interval={chart?.interval ?? APP_TERM_TFS[0]}
+                  favs={chart?.favIntervals ?? (APP_TERM_TFS as string[])}
+                  source={chart?.source ?? selected?.source ?? ""}
+                  onPick={(id) => h.current?.setInterval(id)}
+                  onFavs={(list) => h.current?.setFavIntervals(list)}
+                />
+              </ChartErrorBoundary>
+              <MacMenu inList={inList} onFav={toggleFav} onSettings={() => h.current?.openSettings()} onClassic={() => macSkin.set(false)} locale={loc} />
+            </div>
+            <MacChips chips={chart?.chips ?? []} onOpen={() => h.current?.openMacSheet("inds")} />
+
+            {/* the slot keeps the page's height while the chart block is a fixed full-screen layer; here it is the white card of the design */}
+            <div className="app-term-slot">
+              <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
+                <div className="app-term-chartbody">{body}</div>
+              </div>
+              <div className="app-mac-ranges" role="group" aria-label={t("appui.term.range")}>
+                {APP_TERM_RANGES.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className="app-mac-range"
+                    data-on={range === r ? "1" : undefined}
+                    onClick={() => {
+                      setRange(r);
+                      h.current?.applyRange(r);
+                    }}
+                  >
+                    {t(`shell.range.${r}`)}
+                  </button>
+                ))}
+                {/* the chart to full screen (the classic look has this icon over the chart's corner; here it ends the range row so it never sits on the chart's window title) */}
+                <button type="button" className="app-mac-range app-mac-expand" onClick={openFs} aria-label={t("appui.term.expand")} title={t("appui.term.expand")}>
+                  <FsGlyph on={false} />
+                </button>
+              </div>
+            </div>
+
+            <MacQuick
+              windows={chart?.windows ? { count: chart.windows.count } : null}
+              onCompare={() => h.current?.openCompare()}
+              onIndicators={() => h.current?.openMacSheet("inds")}
+              onWindow={() => h.current?.addWindow()}
+              onSettings={() => h.current?.openSettings()}
+              onAlerts={() => h.current?.openAlerts()}
+            />
+          </div>
+
+          {/* «Список»: a screen of its own over the chart (the chart keeps running under it) */}
+          {macScreen === "list" && (
+            <div className="app-mac-list" data-app-mac-list>
+              <div className="app-mac-list-h">
+                <h2>{t("mac.m.tabList")}</h2>
+                <button type="button" className="app-mac-plus" onClick={() => setMacAdd(true)} aria-label={t("mac.m.addList")} title={t("mac.m.addList")}>
+                  <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#4F9A74" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" style={{ filter: "drop-shadow(0 2px 3px rgba(79,154,116,.35))" }}>
+                    <circle cx="12" cy="12" r="9.5" fill="rgba(124,194,155,.3)" />
+                    <path d="M12 7.5v9M7.5 12h9" />
+                  </svg>
+                </button>
+              </div>
+              {segBlock}
+              {effSeg === "watch" && (
+                <label className="app-mac-filter">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                    <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
+                  </svg>
+                  <input type="search" value={macFilter} onChange={(e) => setMacFilter(e.target.value)} placeholder={t("mac.m.filter")} aria-label={t("mac.m.filter")} autoComplete="off" autoCorrect="off" spellCheck={false} />
+                </label>
+              )}
+              {TERMINAL_SITE && effSeg === "cal" && (
+                <div className="tv3 app-term-cal" data-app-calendar>
+                  <CalendarPanel zone={zone} visible />
+                </div>
+              )}
+              {algoSegs && selected && effSeg === "ob" && (
+                <div className="tv3 app-term-cal" data-app-orderbook>
+                  <OrderBookPanel inst={selected} visible last={quote?.price} dayChange={quote?.change} />
+                </div>
+              )}
+              {algoSegs && selected && effSeg === "algo" && (
+                <div className="tv3 app-term-cal" data-app-algopack>
+                  <AlgoPanel inst={selected} visible />
+                </div>
+              )}
+              {effSeg === "watch" && (
+                <div className="app-mac-rows">
+                  {watchlist.items.length === 0 ? (
+                    <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
+                  ) : (
+                    rows.map((i) => {
+                      const q = quotes[qKey(i)];
+                      const c = macTone(changeTone(q?.changePercent));
+                      return (
+                        <button
+                          key={qKey(i)}
+                          type="button"
+                          className="app-mac-row"
+                          data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined}
+                          onClick={() => {
+                            onSelectSymbol(i);
+                            setMacScreen("term");
+                          }}
+                        >
+                          <MacInstIcon inst={i} size={44} />
+                          <span className="app-mac-row-n">
+                            <b>{i.ticker}</b>
+                            <small>
+                              {instName(i, t)} · {exchangeLabel(i.source)}
+                            </small>
+                          </span>
+                          <MacSpark values={macSparks[qKey(i)]} line={c.line} />
+                          <span className="app-mac-row-p">
+                            <b>{priceText(q, i, locale)}</b>
+                            <span className="app-mac-pill" style={{ background: c.bg, color: c.fg }}>
+                              {pctLabel(q?.changePercent, locale)}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {!wide && !TERMINAL_SITE && selected && (
+                <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">
+                  <AppIcon name="bulb" size={18} stroke={1.8} />
+                  <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
+                  {ideas?.n != null && <span className="app-term-ideas-n">{ideas.n}</span>}
+                  <AppIcon name="chevR" size={18} stroke={1.8} />
+                </Link>
+              )}
+              {!wide && TERMINAL_SITE && selected && fomoIdeas?.ok && (
+                <a href={fomoIdeas.boardUrl} target="_blank" rel="noopener" className="app-term-ideas" data-fomo-ideas>
+                  <AppIcon name="bulb" size={18} stroke={1.8} />
+                  <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
+                  {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
+                  <AppIcon name="chevR" size={18} stroke={1.8} />
+                </a>
+              )}
+              {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
+                <Link
+                  href={calculatorHref(locale as Locale, { ticker: calcTickerFor(selected.source, selected.dataTicker), entry: quote && Number.isFinite(quote.price) ? quote.price : null, from: "terminal" })}
+                  prefetch={false}
+                  className="app-term-ideas"
+                  data-calc-link
+                >
+                  <AppIcon name="calc" size={18} stroke={1.8} />
+                  <span className="app-term-ideas-t">
+                    {t("nav.calculator")}
+                    <span className="app-term-ideas-s">{t("appprof.calcSub")}</span>
+                  </span>
+                  <AppIcon name="chevR" size={18} stroke={1.8} />
+                </Link>
+              )}
+              {TERMINAL_SITE && (
+                <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-mac-promo" data-fomo-community>
+                  <AppIcon name="users" size={26} stroke={1.9} />
+                  <span>
+                    <b>{t("mac.m.promo")}</b>
+                    <small>{t("mac.m.promoSub")}</small>
+                  </span>
+                </a>
+              )}
+              <div className="app-term-disc">
+                {t("appui.term.disc")}
+                {delayed ? ` ${t("appui.term.disc15")}` : ""}
+              </div>
+            </div>
+          )}
+
+          <MacTabBar active={macActiveTab(macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
+          <InstrumentSearchDialog open={macAdd} mode="watchlist" onClose={() => setMacAdd(false)} onPick={watchlist.add} existing={watchlist.items} onRemove={watchlist.remove} />
+        </div>
+      </DemoGate>
+    );
+  }
 
   return (
     <DemoGate kind="terminal" path="/terminal" layout="flow">
@@ -415,6 +664,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {chart?.windows && tool("win", "windows", t("appui.term.toolWin"), () => h.current?.addWindow(), chart.windows.count)}
         </div>
         </div>
+
+        {!tb && (
+          <button type="button" className="app-term-macbtn" onClick={() => macSkin.set(true)} title={t("mac.tryTip")} data-mac-try>
+            {t("mac.try")}
+          </button>
+        )}
 
         {!wide && !TERMINAL_SITE && selected && (
           <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">

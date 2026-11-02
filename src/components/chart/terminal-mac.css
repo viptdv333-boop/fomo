@@ -782,3 +782,92 @@ html[data-tvmac] .tv3 [data-fly] .mg { display: block; width: 22px; height: 22px
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .tvmac [data-tv="toolbar"] button[aria-label][class*="border-[var(--tv3-hair)]"] > span:first-child:not(.font-semibold) { display: none; }
+
+/* ═════════ chart settings dialog: the settings sheet of the design ═════════ */
+html[data-tvmac] .tv3 [data-csd] { font-family: var(--tv3-font); }
+html[data-tvmac] .tv3 [data-csd-head] { height: 54px !important; padding: 0 20px !important; border-bottom: 0.5px solid rgba(0, 0, 0, 0.1) !important; }
+html[data-tvmac] .tv3 [data-csd-head] h2 { font-size: 17px; font-weight: 600; }
+html[data-tvmac] .tv3 [data-csd-nav] { width: 190px !important; padding: 10px !important; gap: 2px !important; border-right: 0.5px solid rgba(0, 0, 0, 0.08) !important; }
+html[data-tvmac] .tv3 [data-csd-nav] button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px !important;
+  border-radius: 9px !important;
+  font-size: 14px !important;
+}
+html[data-tvmac] .tv3 [data-csd-nav] button .mg { display: block; width: 22px; height: 22px; flex: none; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow)); }
+html[data-tvmac] .tv3 [data-csd-nav] button[aria-pressed="true"] { background: rgba(79, 154, 116, 0.14) !important; color: #2e7d55 !important; }
+html[data-tvmac] .tv3 [data-csd-row] {
+  min-height: 44px !important;
+  padding: 0 !important;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+html[data-tvmac] .tv3 [data-csd-row] > span { font-size: 14px !important; }
+html[data-tvmac] .tv3 [data-csd-sec] { padding: 16px 0 6px; margin: 0 !important; font-size: 11px !important; letter-spacing: 0.06em !important; color: #8e8e93 !important; }
+html[data-tvmac] .tv3 [data-csd] [role="switch"] { transform: scale(1.235); transform-origin: right center; background: var(--tv3-fill2); }
+html[data-tvmac] .tv3 [data-csd] [role="switch"][aria-checked="true"] { background: #4f9a74 !important; }
+html[data-tvmac] .tv3 [data-csd] select,
+html[data-tvmac] .tv3 [data-csd] input[type="number"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 0 !important;
+  border-radius: 9px;
+  background-color: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-size: 13.5px;
+  color: var(--tv3-text);
+}
+html[data-tvmac] .tv3 [data-csd] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px;
+}
+html[data-tvmac] .tv3 [data-csd] input[type="number"] { padding: 0 8px; width: 64px; text-align: center; }
+html[data-tvmac] .tv3 [data-csd] button[class*="h-8"] { height: 34px !important; border-radius: 9px !important; font-size: 13.5px !important; }
+
+/* chart-type menu and line flyout: the design's own glyph replaces the classic icon (own colour per item) */
+html[data-tvmac] .tv3 .tv3-pop button:has(> .mg) > svg:not(.mg) { display: none !important; }
+html[data-tvmac] .tv3 .tv3-pop button > .mg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none !important;
+  filter: drop-shadow(0 2px 3px var(--mg-glow, transparent));
+}
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"]:has(> .mg:not(.mg-keep)) > svg:not(.mg) { display: none !important; }
+html[data-tvmac] .tv3 [data-fly] button[aria-current="true"] { box-shadow: none !important; outline: 0 !important; }
+html[data-tvmac] .tv3 [data-fly] button[aria-current="true"]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234F9A74' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* sheet size of the design (760x620) for the settings and the indicators dialogs */
+html[data-tvmac] .tv3 [data-csd],
+html[data-tvmac] .tv3 [role="dialog"][aria-label]:has(nav[aria-label]) {
+  width: 760px !important;
+  max-width: calc(100vw - 40px) !important;
+  height: 620px !important;
+  max-height: calc(100vh - 60px) !important;
+}
+/* indicators dialog: 54px header, 36px search, 38px category rows with coloured glyphs */
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) > div:first-child { height: 54px; padding: 0 16px !important; border-bottom: 0.5px solid rgba(0, 0, 0, 0.1) !important; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) h2 { font-size: 17px !important; font-weight: 600 !important; }
+html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) input[type="text"] { height: 36px; padding-top: 0 !important; padding-bottom: 0 !important; border-radius: 10px !important; font-size: 14px !important; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] { width: 190px !important; padding: 10px !important; gap: 2px !important; border-right: 0.5px solid rgba(0, 0, 0, 0.08) !important; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button { height: 38px; border-radius: 9px !important; font-size: 14px !important; gap: 10px; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button svg { width: 22px !important; height: 22px !important; flex: none; fill: color-mix(in srgb, var(--nc, #4f9a74) 28%, transparent); color: var(--nc, #4f9a74); filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--nc, #4f9a74) 35%, transparent)); }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 1) { --nc: #cc9446; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 2) { --nc: #5b8fc0; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 3) { --nc: #4f9a74; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 4) { --nc: #8a6db0; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n + 5) { --nc: #4f9aa0; }
+html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { --nc: #c46a78; }

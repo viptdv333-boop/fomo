@@ -151,7 +151,7 @@ function sparkPump() {
   }
 }
 
-function useSparklines(items: TerminalInstrument[], enabled: boolean): Record<string, number[]> {
+export function useSparklines(items: TerminalInstrument[], enabled: boolean): Record<string, number[]> {
   const [data, setData] = useState<Record<string, number[]>>({});
   const key = useMemo(() => items.map(qKey).join(","), [items]);
   useEffect(() => {

@@ -1427,6 +1427,25 @@ export class ChartEngine {
         ctx.fill();
       }
     }
+    // phone version (app UI): the price pane is a card with the design's soft vertical gradient too, the indicator panes are flat cards, 12px corners
+    if (this.opts.macCards && !this.opts.macLook && !this.transformed()) {
+      const cx = this.plotX();
+      for (const pane of this.panes) {
+        if (pane.height <= 8) continue;
+        const top = pane.top + 3;
+        const hh = pane.height - 6;
+        if (pane.id === "main") {
+          const g = ctx.createLinearGradient(0, top, 0, top + hh);
+          g.addColorStop(0, withAlpha(th.text, 0.012));
+          g.addColorStop(1, withAlpha(th.text, 0.04));
+          ctx.fillStyle = g;
+        } else ctx.fillStyle = withAlpha(th.text, 0.035);
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(cx, top, this.plotW(), hh, 12);
+        else ctx.rect(cx, top, this.plotW(), hh);
+        ctx.fill();
+      }
+    }
 
     const n = this.bars.length;
     if (n === 0) {
@@ -1584,7 +1603,8 @@ export class ChartEngine {
     ctx.restore();
 
     // keep the axis wide enough for the widest label
-    const need = Math.max(this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
+    // macOS look: the scale is a wide column, the tags carry their names inside (design: 132px)
+    const need = Math.max(this.opts.macLook && !this.leader ? 120 : this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
     this.naturalAxisW = need;
     // windows of one group ask for one common width (minAxisW), a lone chart keeps its small hysteresis
     const want = Math.max(need, this.minAxisW);
@@ -2448,6 +2468,54 @@ export class ChartEngine {
           if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, ww, hh, r);
           else ctx.rect(x, y, ww, hh);
         };
+        // macOS look: one rounded tag with the name on the left and the value on the right (the price tag solid, the others outlined)
+        if (this.opts.macLook && (t.caption || t.id === "last")) {
+          const solid = t.id === "last" || t.id.startsWith("layer:");
+          const name = (t.caption ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
+          ctx.save();
+          ctx.beginPath();
+          rr(x0 + 1, pl.bodyTop, w - 2, bodyH, 6);
+          if (solid) {
+            ctx.fillStyle = t.bg;
+            ctx.fill();
+          } else {
+            ctx.fillStyle = withAlpha(this.opts.theme.bg, 0.96);
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = t.bg;
+            ctx.stroke();
+          }
+          ctx.textBaseline = "middle";
+          const ink = solid ? t.fg : t.bg;
+          const cy2 = pl.bodyTop + bodyH / 2 + 0.5;
+          ctx.fillStyle = ink;
+          ctx.textAlign = "right";
+          ctx.font = `600 ${fs}px ${ff}`;
+          ctx.fillText(t.text, x0 + w - 8, cy2);
+          const vw = ctx.measureText(t.text).width;
+          if (name) {
+            ctx.textAlign = "left";
+            ctx.font = `500 ${Math.max(10, fs - 2)}px ${ff}`;
+            ctx.globalAlpha = 0.85;
+            let nm = name;
+            const room = w - 16 - vw - 6;
+            while (nm.length > 1 && ctx.measureText(nm).width > room) nm = nm.slice(0, -1);
+            ctx.fillText(nm, x0 + 8, cy2);
+            ctx.globalAlpha = 1;
+          }
+          if (t.extra) {
+            ctx.beginPath();
+            rr(x0 + 1, pl.bodyTop + bodyH - 3, w - 2, extraH + 3, [0, 0, 6, 6]);
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fill();
+            ctx.textAlign = "center";
+            ctx.fillStyle = t.fg;
+            ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
+            ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
+          }
+          ctx.restore();
+          continue;
+        }
         // the name chip: its right edge touches the tag, its left edge is where the text ends (never farther than the plot allows)
         if (t.caption) {
           ctx.font = `600 ${capFs}px ${ff}`;
@@ -2746,7 +2814,7 @@ export class ChartEngine {
     if (pane.id === "main") {
       let cy = y;
       const mac = !!this.opts.macLook;
-      if (st.symbol && !mac) {
+      if (st.symbol && !mac && !this.opts.macCards) {
         put(`${this.opts.symbolLabel}${this.opts.intervalLabel ? " · " + this.opts.intervalLabel : ""}`, th.text, 600, 14);
         cy += 17;
         chipRight = Math.max(chipRight, x - 8);

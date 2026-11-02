@@ -14,6 +14,18 @@ export interface AppChartHandle {
   openWatchlist: () => void;
   /** pin / unpin timeframes (the chart's settings: saved on this device and on the account like the other chart preferences) */
   setFavIntervals: (list: string[]) => void;
+  /** New look (phone): the instrument search of «Сравнить» (adds a compare series). */
+  openCompare: () => void;
+  /** New look (phone): the bottom sheet «Инструменты и индикаторы» on the given segment. */
+  openMacSheet: (seg?: "tools" | "inds") => void;
+}
+
+/** One indicator of the chart as the new look's chips row shows it. */
+export interface AppChip {
+  uid: string;
+  title: string;
+  color: string | null;
+  visible: boolean;
 }
 
 /** What the chart tells the page around it (for the chips and the caption). */
@@ -29,4 +41,8 @@ export interface AppChartState {
   source: string;
   /** The chart can have windows (its area is big enough): the page shows its «Windows» action with the count. */
   windows?: { count: number; canAdd: boolean };
+  /** the indicators on the price pane (chips row of the new look) */
+  chips?: AppChip[];
+  /** the bottom sheet of the new look is open */
+  sheetOpen?: boolean;
 }
