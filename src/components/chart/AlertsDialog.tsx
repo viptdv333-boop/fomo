@@ -10,6 +10,7 @@ import { COOLDOWN_OPTIONS, type TerminalNotifyDefaults } from "@/lib/terminal-al
 import { getTerminalNotifyDefaults, loadTerminalNotifyDefaults } from "@/lib/terminal-alert-defaults-client";
 import { Toggle } from "./tv3-ui";
 import type { AlertItem, AlertResult, AlertsApi } from "./useAlerts";
+import ModalPortal from "./ModalPortal";
 
 /** What the create form starts from: a price (cursor / last), optionally bound to a drawn line. */
 export interface AlertDraft {
@@ -50,7 +51,17 @@ const STATUS_DOT: Record<AlertItem["status"], string> = {
   expired: "bg-[var(--tv3-fill2)]",
 };
 
-export default function AlertsDialog({ open, onClose, api, symbol, draft }: Props) {
+export default function AlertsDialog(props: Props) {
+  // on top of everything (also of the floating chart windows)
+  if (!props.open) return null;
+  return (
+    <ModalPortal>
+      <AlertsDialogBody {...props} />
+    </ModalPortal>
+  );
+}
+
+function AlertsDialogBody({ open, onClose, api, symbol, draft }: Props) {
   const { t, locale } = useT();
   const panelRef = useRef<HTMLDivElement>(null);
   const [creating, setCreating] = useState(false);

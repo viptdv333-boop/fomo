@@ -16,6 +16,7 @@ import IndicatorsPopover from "./IndicatorsPopover";
 import { TV3 } from "./tv3-ui";
 import IndicatorSettingsDialog from "./IndicatorSettingsDialog";
 import { IND_ICONS } from "./icons";
+import ModalPortal from "./ModalPortal";
 
 /* Indicator catalog, TradingView style: categories on the left (favorites, recently used, built-ins and the
    groups), search on top, add several indicators without closing, and the list of indicators on the chart. */
@@ -122,13 +123,15 @@ export default function IndicatorsDialog(props: Props) {
     <>
       {props.open && !catalog && <IndicatorsPopover controller={controller} onClose={onClose} onOpenCatalog={() => setCatalog(true)} windowId={props.windowId} />}
       {props.open && catalog && (
-        <DialogBody
-          {...props}
-          onEditScript={(id) => {
-            setEditScript(id);
-            onClose();
-          }}
-        />
+        <ModalPortal>
+          <DialogBody
+            {...props}
+            onEditScript={(id) => {
+              setEditScript(id);
+              onClose();
+            }}
+          />
+        </ModalPortal>
       )}
       <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />
     </>

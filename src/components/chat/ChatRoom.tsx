@@ -18,6 +18,7 @@ import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
 import VideoPlayer from "@/components/shared/VideoPlayer";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -530,9 +531,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     if (!msg.fileUrl) return null;
     if (msg.fileType === "image") {
       return (
-        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
-          <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
-        </a>
+        <div className="mt-1">
+          <ImageLightbox src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
+        </div>
       );
     }
     if (msg.fileType === "video") {

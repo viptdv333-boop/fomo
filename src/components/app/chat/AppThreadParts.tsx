@@ -6,6 +6,7 @@ import { FONT_DEFAULT, bgCss, clockLabel, firstUnreadId, fontPx, messageHtml, wi
 import AppIcon from "../AppIcon";
 import VideoPlayer from "@/components/shared/VideoPlayer";
 import { removeItem, retryItem } from "@/lib/outbox/outbox";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 
 /** A message of either kind (болталка room or personal conversation) in the shape the bubbles draw. */
 export interface ViewMsg {
@@ -176,10 +177,9 @@ export function Bubble({
 function FileBlock({ file, fallback }: { file: NonNullable<ViewMsg["file"]>; fallback: string }) {
   if (file.type === "image")
     return (
-      <a href={file.url} target="_blank" rel="noopener noreferrer" data-noopen>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="ac-media" src={file.url} alt={file.name || "image"} />
-      </a>
+      <span data-noopen style={{ display: "contents" }}>
+        <ImageLightbox className="ac-media" src={file.url} alt={file.name || "image"} />
+      </span>
     );
   if (file.type === "video") return <VideoPlayer className="ac-media" src={file.url} />;
   return (

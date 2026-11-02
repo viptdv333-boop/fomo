@@ -12,6 +12,7 @@ import { deleteUserData, isSignedInForUserData, listUserData, saveUserData } fro
 import ColorPicker from "./ColorPicker";
 import { IND_ICONS } from "./icons";
 import { Toggle } from "./tv3-ui";
+import ModalPortal from "./ModalPortal";
 
 /* TradingView-like indicator settings: Inputs / Style / Visibility tabs, live preview on the chart,
    Defaults, Template (save / apply) and OK / Cancel (Cancel restores what was there when the dialog opened). */
@@ -41,7 +42,12 @@ interface Props {
 
 export default function IndicatorSettingsDialog({ controller, uid, onClose, onEditSource }: Props) {
   if (!uid) return null;
-  return <Body key={uid} controller={controller} uid={uid} onClose={onClose} onEditSource={onEditSource} />;
+  // on top of everything (also of the floating chart windows): the dialog must never open behind another window
+  return (
+    <ModalPortal>
+      <Body key={uid} controller={controller} uid={uid} onClose={onClose} onEditSource={onEditSource} />
+    </ModalPortal>
+  );
 }
 
 /* ───────────── small controls ───────────── */

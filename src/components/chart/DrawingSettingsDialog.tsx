@@ -11,6 +11,7 @@ import ColorPicker, { composeColor, parseColor } from "./ColorPicker";
 import { btnCls, clone, inputCls, LinePreview, Menu, NumInput, TemplateMenu } from "./DrawingControls";
 import { IND_ICONS } from "./icons";
 import { Segmented, Toggle } from "./tv3-ui";
+import ModalPortal from "./ModalPortal";
 
 /* TradingView-like "Properties" modal of a drawing: Style and Text tabs are generated from the tool's property schema
    (drawings/props.ts), Coordinates edits the anchors, Visibility switches the drawing per timeframe.
@@ -388,7 +389,12 @@ function VisTab({ controller, ctx }: { controller: DrawingsControllerLike; ctx: 
 
 export default function DrawingSettingsDialog({ controller, id, onClose }: { controller: DrawingsControllerLike; id: string | null; onClose: () => void }) {
   if (!id) return null;
-  return <Dialog key={id} controller={controller} id={id} onClose={onClose} />;
+  // on top of everything (also of the floating chart windows): a settings dialog must never open behind another window
+  return (
+    <ModalPortal>
+      <Dialog key={id} controller={controller} id={id} onClose={onClose} />
+    </ModalPortal>
+  );
 }
 
 function Dialog({ controller, id, onClose }: { controller: DrawingsControllerLike; id: string; onClose: () => void }) {

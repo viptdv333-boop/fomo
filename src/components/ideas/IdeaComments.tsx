@@ -17,6 +17,7 @@ import { useOutboxAll, useOutboxItems, useOutboxSent } from "@/lib/outbox/useOut
 import { OUTBOX_SENT_EVENT, outboxUid, removeItem, retryItem, type OutboxItem, type OutboxSentDetail } from "@/lib/outbox/outbox";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 
 interface Comment {
   id: string;
@@ -302,9 +303,7 @@ export default function IdeaComments({ ideaId }: Props) {
                 )}
                 {c.text && <p className="text-sm text-gray-700 dark:text-gray-300"><Linkify text={c.text} /></p>}
                 {c.fileUrl && (
-                  <a href={c.fileUrl} target="_blank" rel="noopener noreferrer">
-                    <img src={c.fileUrl} alt="" className="mt-1 max-w-[200px] max-h-[200px] rounded-lg object-cover" />
-                  </a>
+                  <ImageLightbox src={c.fileUrl} alt="" className="mt-1 max-w-[200px] max-h-[200px] rounded-lg object-cover" />
                 )}
                 {/* Always visible (not hover-only) — hover reveals nothing on
                     touch devices, which made replying effectively undiscoverable
