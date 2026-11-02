@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { stripLocale } from "@/lib/i18n/locale-url";
 import ThemeToggle from "./ThemeToggle";
+import SkinSwitch from "./SkinSwitch";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
 import { useT } from "@/lib/i18n/client";
@@ -71,6 +72,7 @@ export default function TerminalHeader() {
           <div className="hidden sm:block">
             <LanguageSelector />
           </div>
+          <SkinSwitch />
           <ThemeToggle />
           {session && !appUi && <NotificationBell />}
           {session ? (

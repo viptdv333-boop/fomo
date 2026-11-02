@@ -6,6 +6,7 @@ import Link from "next/link";
 import { stripLocale } from "@/lib/i18n/locale-url";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import SkinSwitch from "./SkinSwitch";
 import NotificationBell from "./NotificationBell";
 import MessengerButton from "./MessengerButton";
 import LanguageSelector from "./LanguageSelector";
@@ -104,6 +105,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
 
         {/* Desktop right section */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
+          <SkinSwitch />
           <LanguageSelector />
           <ThemeToggle />
           {session && !appUi && <MessengerButton />}

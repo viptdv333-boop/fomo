@@ -1070,3 +1070,7 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 }
 .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert) > span[class*="rounded-full"] { top: 0; left: calc(50% + 8px); }
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 12px !important; } }
+
+/* the look switch lives in the site header now (next to language and theme): no copies inside the terminal */
+.tvmac-title { display: none !important; }
+[data-tv="toolbar"] .tb-macoffer { display: none !important; }
