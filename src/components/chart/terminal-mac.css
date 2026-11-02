@@ -1024,3 +1024,10 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 }
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 18px !important; } }
 .tvmac [data-tv="toolbar"] { margin-top: 18px; }
+
+/* both rails (tools on the left, panel tabs on the right) use ONE tile size, derived from the height so the 18 left tiles fit without scrolling */
+.tvmac { --tile: clamp(24px, calc((100vh - 245px) / 18 / var(--mz, 1)), 40px); }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) { justify-content: space-between !important; overflow: hidden !important; width: calc(var(--tile) + 18px); }
+.tvmac [data-tv="tools"] > div[data-rk], .tvmac [data-tv="tools"] > button { flex: none !important; max-height: none !important; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn { height: var(--tile) !important; width: calc(var(--tile) + 8px) !important; max-height: none !important; min-height: 0 !important; }
+.tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn .mg { width: calc(var(--tile) * 0.86) !important; height: calc(var(--tile) * 0.86) !important; aspect-ratio: auto; }
