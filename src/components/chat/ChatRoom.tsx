@@ -10,6 +10,7 @@ import AttachMenu from "@/components/shared/AttachMenu";
 import MessageActionSheet, { isInteractiveTarget, isTouchInteraction, type SheetAction } from "@/components/chat/MessageActionSheet";
 import AppRoomThread, { type RoomThreadApi, type RoomInfo } from "@/components/app/chat/AppRoomThread";
 import { roomMembers } from "@/lib/app-chat";
+import { beginEdit, composerParts, editQuote, endEdit, idleEdit, planSubmit, type EditState } from "@/lib/chat-edit";
 
 import { formatMessageTime } from "@/lib/format-message-time";
 import { sendOrQueue } from "@/lib/outbox/send";
@@ -163,6 +164,18 @@ const EMOJI_CATEGORIES = [
   { name: "Символы", labelKey: "msg.symbols", emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "⭐", "🌟", "✨", "⚡", "🔥", "💥", "🎉", "🎊", "💯", "✅", "❌", "⚠️", "🚀"] },
 ] as const;
 
+/** The custom (ticker) emoji slugs of the picker: `:btc:` in a text is one of them, a plain `:word:` is not. */
+const CUSTOM_EMOJI_SLUGS: ReadonlySet<string> = new Set(
+  EMOJI_CATEGORIES.flatMap((c) => c.emojis as readonly string[]).filter((e) => e.length > 2 && e.startsWith(":") && e.endsWith(":")).map((e) => e.slice(1, -1))
+);
+
+/** What the main composer held when editing of a sent message started; it is put back after save / cancel. */
+interface ComposerDraft {
+  text: string;
+  replyTo: Message | null;
+  pending: { url: string; name: string; fileType: string } | null;
+}
+
 /* ── SVG Icons ── */
 function IconBell({ active }: { active?: boolean }) {
   return (
@@ -216,6 +229,14 @@ function IconSend() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
       <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.4} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   );
 }
@@ -297,8 +318,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       .then((data) => { if (data?.roomIds) setNotifyRoomIds(new Set<string>(data.roomIds)); })
       .catch(() => {});
   }, []);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
+  // Editing an own message happens in the MAIN composer (Telegram style): `edit` remembers the composer's draft meanwhile.
+  const [edit, setEdit] = useState<EditState<ComposerDraft>>(() => idleEdit<ComposerDraft>());
+  const editingId = edit.editingId;
+  const editSaving = useRef(false);
+  useEffect(() => {
+    setEdit((cur) => (cur.editingId === null ? cur : idleEdit<ComposerDraft>())); // another room: no edit of the old one carries over
+  }, [roomId]);
   const [uploading, setUploading] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string; fileType: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -400,7 +426,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         if (img.dataset.emoji) return;
         const src = img.getAttribute("src") || "";
         img.remove();
-        if (/^(data|blob):/.test(src)) {
+        if (!editingId && /^(data|blob):/.test(src)) {
           fetch(src)
             .then((r) => r.blob())
             .then((blob) => {
@@ -449,6 +475,10 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   /* ── Send message ── */
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
+    if (editingId) {
+      submitEdit();
+      return;
+    }
     const textToSend = getInputText().trim();
     if ((!textToSend && !pendingAttachment) || !session?.user?.id) return;
 
@@ -553,34 +583,97 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   /* ── Edit / delete own message ── */
+  const canCompose = !accessEnded && !isClosed && !isArchived;
+
+  /** Put a text into the main composer (custom emoji back as images, line breaks as <br>), caret at the end. */
+  function setComposerText(text: string, focus = true) {
+    const el = inputRef.current;
+    setInput(text);
+    setMentionSearch(null);
+    setMentionUsers([]);
+    if (!el) return;
+    el.textContent = "";
+    for (const part of composerParts(text, CUSTOM_EMOJI_SLUGS)) {
+      if (part.k === "br") el.appendChild(document.createElement("br"));
+      else if (part.k === "text") el.appendChild(document.createTextNode(part.v));
+      else {
+        const img = document.createElement("img");
+        img.src = `/icons/instruments/${part.v.slice(1, -1)}.svg`;
+        img.alt = part.v;
+        img.className = "inline-block w-6 h-6 rounded-full align-middle mx-0.5";
+        img.dataset.emoji = part.v;
+        img.contentEditable = "false";
+        el.appendChild(img);
+      }
+    }
+    if (!focus) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    el.scrollTop = el.scrollHeight;
+  }
+
   function startEdit(msg: Message) {
-    if (isPendingId(msg.id)) return;
-    setEditingId(msg.id);
-    setEditText(msg.text);
+    if (isPendingId(msg.id) || msg.isDeleted || !canCompose) return;
+    // the composer's own draft (text, reply, attachment) waits aside; switching from one edit to another keeps the original draft
+    setEdit(beginEdit(edit, msg.id, { text: getInputText(), replyTo, pending: pendingAttachment }));
+    setReplyTo(null);
+    setPendingAttachment(null);
+    setShowEmojiPicker(false);
     setHoveredMsg(null);
+    setComposerText(msg.text);
   }
 
+  /** Leave the edit mode (cancel or after a save): the draft that was in the composer comes back. */
   function cancelEdit() {
-    setEditingId(null);
-    setEditText("");
+    const { state, restore } = endEdit(edit);
+    setEdit(state);
+    setShowEmojiPicker(false);
+    if (!restore) return;
+    setComposerText(restore.text);
+    setReplyTo(restore.replyTo);
+    setPendingAttachment(restore.pending);
   }
 
-  async function submitEdit(messageId: string) {
-    const text = editText.trim();
-    if (!text) return;
+  /** Enter / the check button while editing: the same PATCH as before, the text taken from the composer. */
+  async function submitEdit() {
+    const id = editingId;
+    if (!id || editSaving.current) return;
+    const original = messages.find((m) => m.id === id)?.text ?? "";
+    const plan = planSubmit(original, getInputText());
+    if (plan.kind === "empty") return;
+    if (plan.kind === "unchanged") {
+      cancelEdit();
+      return;
+    }
+    editSaving.current = true;
     try {
-      const res = await fetch(`/api/chat/messages/${messageId}`, {
+      const res = await fetch(`/api/chat/messages/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "edit", text }),
+        body: JSON.stringify({ action: "edit", text: plan.text }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-      }
-    } catch {}
-    setEditingId(null);
-    setEditText("");
+      if (!res.ok) throw new Error(String(res.status));
+      const updated = await res.json();
+      setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      cancelEdit();
+    } catch {
+      // keep the edit open: a long text must not be lost on a failed request
+      showToast(t("chat2.editFailed"));
+    } finally {
+      editSaving.current = false;
+    }
+  }
+
+  /** Reply to a message; a running edit is left first (the reply bar and the edit banner never stack). */
+  function startReply(m: Message) {
+    if (editingId) cancelEdit();
+    setReplyTo(m);
+    inputRef.current?.focus();
   }
 
   async function deleteMessage(messageId: string) {
@@ -737,11 +830,13 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     // attachment, the same as picking it with the paperclip.
     const pasted = getPastedFile(e);
     if (pasted) {
-      uploadAttachment(pasted);
+      // editing changes only the text: a pasted picture does not become a draft attachment then
+      if (!editingId) uploadAttachment(pasted);
       return;
     }
     const text = e.clipboardData.getData("text/plain");
     if (!text) {
+      if (editingId) return;
       const seen = Array.from(e.clipboardData.types || []).join(", ") || "—";
       readClipboardImageDetailed().then(({ file: f, why }) => {
         if (f) uploadAttachment(f);
@@ -773,14 +868,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       myId: session?.user?.id,
       quickReactions: QUICK_REACTIONS,
       onReact: (id, emoji) => toggleReaction(id, emoji),
-      onReply: (m) => { setReplyTo(m as unknown as Message); inputRef.current?.focus(); },
+      onReply: (m) => startReply(m as unknown as Message),
       onMention: (name) => insertEmoji(`@${name} `),
       onStartEdit: (m) => startEdit(m as unknown as Message),
       onDelete: (id) => deleteMessage(id),
       editingId,
-      editText,
-      onEditText: setEditText,
-      onSubmitEdit: submitEdit,
+      editQuote: editingId ? editQuote(messages.find((m) => m.id === editingId)?.text ?? "") : "",
       onCancelEdit: cancelEdit,
       replyTo: replyTo as unknown as RoomThreadApi["replyTo"],
       onClearReply: () => setReplyTo(null),
@@ -793,7 +886,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       inputRef,
       onInput: handleContentInput,
       onPaste: handlePaste,
-      onFocusInput: () => maybeOfferClipboardImage(uploadAttachment),
+      onFocusInput: () => { if (!editingId) maybeOfferClipboardImage(uploadAttachment); },
       onSend: sendMessage,
       emoji: EMOJI_CATEGORIES.map((c) => ({ key: c.name, label: t(c.labelKey), emojis: c.emojis })),
       onInsertEmoji: insertEmoji,
@@ -801,7 +894,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       replyCount: getReplyCount,
       onShowReplies: (id) => {
         const m = messages.find((x) => x.id === id);
-        if (m) { setReplyTo(m); inputRef.current?.focus(); }
+        if (m) startReply(m);
       },
       members: roomMembers(messages),
       // the old page: a name opens the personal dialog with that person
@@ -931,7 +1024,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 <div
                   key={msg.id}
                   className={`animate-fadeIn group relative rounded-lg transition-colors -mx-2 px-2 py-1 ${
-                    selectedMsgId === msg.id
+                    editingId === msg.id
+                      ? "bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300/70 dark:ring-amber-500/40"
+                      : selectedMsgId === msg.id
                       ? "bg-green-50 dark:bg-green-900/20"
                       : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   }`}
@@ -1013,22 +1108,6 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                       {/* Message text — flat style, no bubble */}
                       {msg.isDeleted ? (
                         <p className="text-sm text-gray-400 dark:text-gray-500 italic mt-0.5">{t("msg.deleted")}</p>
-                      ) : editingId === msg.id ? (
-                        <div className="mt-1 flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") { e.preventDefault(); submitEdit(msg.id); }
-                              if (e.key === "Escape") cancelEdit();
-                            }}
-                            autoFocus
-                            className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-800 dark:text-gray-100"
-                          />
-                          <button onClick={() => submitEdit(msg.id)} className="text-xs text-green-600 hover:text-green-700 font-medium shrink-0">{t("common.save")}</button>
-                          <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600 shrink-0">{t("common.cancel")}</button>
-                        </div>
                       ) : (
                         <>
                           {msg.text && (
@@ -1060,7 +1139,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                       {!msg.isDeleted && replyCount > 0 && (
                         <div className="mt-1.5">
                           <button
-                            onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                            onClick={() => startReply(msg)}
                             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
                           >
                             <IconComment />
@@ -1098,7 +1177,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                     {isHovered && !msg.isDeleted && editingId !== msg.id && (
                       <div className="absolute top-0 right-2 flex items-center gap-0.5 bg-white dark:bg-gray-800 shadow-md rounded-lg px-1 py-0.5 border border-gray-200 dark:border-gray-700 z-10">
                         <button
-                          onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                          onClick={() => startReply(msg)}
                           className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
                           title={t("msg.reply")}
                         >
@@ -1123,13 +1202,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                         </button>
                         {msg.user.id === session?.user?.id && (
                           <>
-                            <button
-                              onClick={() => startEdit(msg)}
-                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
-                              title={t("common.edit")}
-                            >
-                              <IconPencil />
-                            </button>
+                            {canCompose && (
+                              <button
+                                onClick={() => startEdit(msg)}
+                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600 transition"
+                                title={t("common.edit")}
+                              >
+                                <IconPencil />
+                              </button>
+                            )}
                             <button
                               onClick={() => deleteMessage(msg.id)}
                               className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-gray-400 hover:text-red-500 transition"
@@ -1170,15 +1251,15 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
           const sel = selectedMsgId ? messages.find((m) => m.id === selectedMsgId) : null;
           if (!sel || sel.isDeleted) return null;
           const actions: SheetAction[] = [
-            { key: "reply", label: t("msg.reply"), icon: <IconReply />, onSelect: () => { setReplyTo(sel); setSelectedMsgId(null); inputRef.current?.focus(); } },
+            { key: "reply", label: t("msg.reply"), icon: <IconReply />, onSelect: () => { setSelectedMsgId(null); startReply(sel); } },
             {
               key: "mention", label: t("chat2.mention"), icon: <span className="text-sm font-bold">@</span>,
               onSelect: () => { setInput((prev) => prev + `@${sel.user.displayName} `); setSelectedMsgId(null); inputRef.current?.focus(); },
             },
           ];
           if (sel.user.id === session?.user?.id) {
+            if (canCompose) actions.push({ key: "edit", label: t("common.edit"), icon: <IconPencil />, onSelect: () => { setSelectedMsgId(null); startEdit(sel); } });
             actions.push(
-              { key: "edit", label: t("common.edit"), icon: <IconPencil />, onSelect: () => { setSelectedMsgId(null); startEdit(sel); } },
               { key: "delete", label: t("common.delete"), icon: <IconTrash />, danger: true, onSelect: () => { setSelectedMsgId(null); deleteMessage(sel.id); } },
             );
           }
@@ -1239,6 +1320,28 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
           </div>
         )}
 
+        {/* ── Editing banner: the message being edited is in the composer below ── */}
+        {editingId && canCompose && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-t border-gray-100 dark:border-gray-800/30 px-4 py-2 flex items-center gap-2 shrink-0">
+            <span className="text-amber-600 dark:text-amber-400 shrink-0"><IconPencil /></span>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-amber-600 dark:text-amber-400 font-semibold">{t("chat2.editingMessage")}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{editQuote(messages.find((m) => m.id === editingId)?.text ?? "")}</div>
+            </div>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              title={t("common.cancel")}
+              aria-label={t("common.cancel")}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 p-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* ── Mention suggestions ── */}
         {mentionSearch !== null && mentionUsers.length > 0 && (
           <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/30 px-4 py-1.5 shrink-0">
@@ -1273,17 +1376,19 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
         ) : (
           <form
             onSubmit={sendMessage}
-            className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex items-center gap-2 shrink-0 relative"
+            className={`bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex ${editingId ? "items-end" : "items-center"} gap-2 shrink-0 relative`}
           >
-            {/* Paperclip / attach */}
-            <AttachMenu
-              onFile={uploadAttachment}
-              uploading={uploading}
-              title={t("msg.attachFile")}
-              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-50"
-            >
-              <IconPaperclip />
-            </AttachMenu>
+            {/* Paperclip / attach (an edit changes only the text, the attachments stay as they are) */}
+            {!editingId && (
+              <AttachMenu
+                onFile={uploadAttachment}
+                uploading={uploading}
+                title={t("msg.attachFile")}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-50"
+              >
+                <IconPaperclip />
+              </AttachMenu>
+            )}
 
             {/* Text input wrapper */}
             <div className="flex-1 relative min-w-0">
@@ -1292,16 +1397,21 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleContentInput}
-                onFocus={() => maybeOfferClipboardImage(uploadAttachment)}
+                onFocus={() => { if (!editingId) maybeOfferClipboardImage(uploadAttachment); }}
                 onPaste={handlePaste}
                 onKeyDown={(e) => {
+                  if (e.key === "Escape" && editingId) {
+                    e.preventDefault();
+                    cancelEdit();
+                    return;
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage(e as any);
                   }
                 }}
                 data-placeholder={t("chat.writeMessage")}
-                className="w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-[20px] text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[42px] max-h-[62px] overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere] [word-break:break-word] [&_img]:inline-block [&_img]:align-middle"
+                className={`w-full pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-[20px] text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500 min-h-[42px] ${editingId ? "max-h-[40vh]" : "max-h-[62px]"} overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere] [word-break:break-word] [&_img]:inline-block [&_img]:align-middle`}
               />
 
               {/* Emoji button inside input */}
@@ -1361,10 +1471,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
             {/* Send button */}
             <button
               type="submit"
-              disabled={!input.trim() && !pendingAttachment}
+              disabled={editingId ? !input.trim() : !input.trim() && !pendingAttachment}
+              title={editingId ? t("common.save") : undefined}
+              aria-label={editingId ? t("common.save") : undefined}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-700 transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 shrink-0"
             >
-              <IconSend />
+              {editingId ? <IconCheck /> : <IconSend />}
             </button>
           </form>
         )}

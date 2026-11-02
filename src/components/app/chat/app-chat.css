@@ -160,9 +160,13 @@ html.app-ui .ac-emobtn { position: absolute; right: 4px; bottom: 4px; width: 28p
 html.app-ui .ac-send { width: 36px; height: 36px; border-radius: 50%; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
 html.app-ui .ac-send:disabled { opacity: 0.55; }
 html.app-ui .ac-closed { flex: none; background: var(--app-nav); border-top: 0.5px solid var(--app-line); padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 14px; color: var(--app-tx2); }
-html.app-ui .ac-edit { display: flex; align-items: center; gap: 8px; }
-html.app-ui .ac-edit input { flex: 1; min-width: 0; height: 30px; border-radius: 8px; border: 1px solid var(--app-line); background: var(--app-card); color: var(--app-tx); padding: 0 8px; font-size: 15px; }
-html.app-ui .ac-edit button { font-size: 13px; font-weight: 600; }
+/* editing an own message: the text is in the main composer (it grows with the text), the bubble keeps the original highlighted */
+html.app-ui .ac-composer[data-editing="1"] .ac-crow { align-items: flex-end; }
+html.app-ui .ac-composer[data-editing="1"] .ac-input { max-height: min(40vh, 280px); }
+html.app-ui .ac-composer[data-editing="1"] .ac-send { margin-bottom: 1px; }
+html.app-ui .ac-quote[data-edit="1"] { border-left-color: var(--app-tx2); }
+html.app-ui .ac-quote[data-edit="1"] > svg { flex: none; color: var(--app-green-tx); }
+html.app-ui .ac-bubble[data-editing="1"] { box-shadow: 0 0 0 2px var(--app-tx2); }
 
 /* ---------- sheets (the design's SH) ---------- */
 html.app-ui .ac-sheet-wrap { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: flex-end; }

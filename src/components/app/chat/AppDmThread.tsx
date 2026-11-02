@@ -315,7 +315,6 @@ export default function AppDmThread({
         onTap={(m) => setSelected(m.id)}
         onReact={(id, emoji) => void patch(id, { action: "react", emoji })}
         editingId={null}
-        editing={{ value: "", onChange: () => {}, onSubmit: () => {}, onCancel: () => {} }}
         empty={t("chat2.startDialog")}
         look={look}
         unreadFromId={unreadFromId}

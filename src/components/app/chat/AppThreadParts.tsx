@@ -75,7 +75,8 @@ export function Bubble({
   onReact: (emoji: string) => void;
   onAuthor?: (userId: string) => void;
   onReplies?: () => void;
-  editing?: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void } | null;
+  /** this message is being edited (its text is in the composer): the bubble keeps the original text, highlighted */
+  editing?: boolean;
 }) {
   const { t } = useT();
   const reacts = m.deleted ? [] : Object.entries(m.reactions || {}).filter(([, ids]) => ids.length > 0);
@@ -85,6 +86,7 @@ export function Bubble({
       <div
         className="ac-bubble"
         data-sel={selected ? "1" : undefined}
+        data-editing={editing ? "1" : undefined}
         onClick={(e) => {
           if (m.deleted || m.pending || editing || interactive(e.target)) return;
           if (typeof window !== "undefined" && window.getSelection()?.toString()) return; // selecting text, not tapping
@@ -109,28 +111,8 @@ export function Bubble({
         {m.reply && <div className="ac-reply">{m.reply}</div>}
         {m.deleted ? (
           <div className="ac-text ac-deleted">{t("msg.deleted")}</div>
-        ) : editing ? (
-          <div className="ac-edit">
-            <input
-              autoFocus
-              value={editing.value}
-              onChange={(e) => editing.onChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  editing.onSubmit();
-                }
-                if (e.key === "Escape") editing.onCancel();
-              }}
-            />
-            <button type="button" onClick={editing.onSubmit}>
-              {t("common.save")}
-            </button>
-            <button type="button" onClick={editing.onCancel}>
-              {t("common.cancel")}
-            </button>
-          </div>
         ) : (
+
           <>
             {m.file && <FileBlock file={m.file} fallback={t("chat2.file")} />}
             {m.text && <div className="ac-text" dangerouslySetInnerHTML={{ __html: messageHtml(m.text) }} />}
@@ -211,7 +193,6 @@ export function Messages({
   onTap,
   onReact,
   editingId,
-  editing,
   empty,
   top,
   look,
@@ -226,7 +207,6 @@ export function Messages({
   onTap: (m: ViewMsg) => void;
   onReact: (id: string, emoji: string) => void;
   editingId: string | null;
-  editing: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void };
   empty: string;
   top?: ReactNode;
   /** background and text size picked in the thread's settings */
@@ -308,7 +288,7 @@ export function Messages({
             onReact={(e) => onReact(it.msg.id, e)}
             onAuthor={onAuthor}
             onReplies={onReplies ? () => onReplies(it.msg.id) : undefined}
-            editing={editingId === it.msg.id ? editing : null}
+            editing={editingId === it.msg.id}
           />
         ),
       )}
@@ -328,9 +308,10 @@ export function DraftChip({ children, onRemove, label }: { children: ReactNode; 
   );
 }
 
-export function QuoteChip({ who, text, onRemove, label }: { who: string; text: string; onRemove: () => void; label: string }) {
+export function QuoteChip({ who, text, onRemove, label, edit }: { who: string; text: string; onRemove: () => void; label: string; edit?: boolean }) {
   return (
-    <div className="ac-quote">
+    <div className="ac-quote" data-edit={edit ? "1" : undefined}>
+      {edit && <AppIcon name="pen" size={16} stroke={1.8} />}
       <div>
         <b>{who}</b>
         <span>{text}</span>

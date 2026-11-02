@@ -70,10 +70,10 @@ export interface RoomThreadApi {
   onMention: (name: string) => void;
   onStartEdit: (m: RoomMsg) => void;
   onDelete: (messageId: string) => void;
+  /** the message being edited: its text is in the main composer, the thread only highlights the bubble */
   editingId: string | null;
-  editText: string;
-  onEditText: (v: string) => void;
-  onSubmitEdit: (messageId: string) => void;
+  /** short one-line quote of the original for the «Редактирование сообщения» banner */
+  editQuote: string;
   onCancelEdit: () => void;
   replyTo: RoomMsg | null;
   onClearReply: () => void;
@@ -159,8 +159,9 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
       list.push({ key: "profile", label: t("appui.chat.openProfile"), icon: <AppIcon name="user" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); window.location.assign(`/profile/${m.user.id}`); } });
     }
     if (own) {
+      // the text is edited in the main composer, so a closed / archived chat (no composer) has no «Редактировать»
+      if (!closed) list.push({ key: "edit", label: t("common.edit"), icon: <AppIcon name="pen" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); api.onStartEdit(m); } });
       list.push(
-        { key: "edit", label: t("common.edit"), icon: <AppIcon name="pen" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); api.onStartEdit(m); } },
         { key: "delete", label: t("common.delete"), icon: <AppIcon name="trash" size={18} stroke={1.8} />, danger: true, onSelect: () => { setSelected(null); api.onDelete(m.id); } },
       );
     }
@@ -227,7 +228,6 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
         onTap={(m) => setSelected(m.id)}
         onReact={api.onReact}
         editingId={api.editingId}
-        editing={{ value: api.editText, onChange: api.onEditText, onSubmit: () => api.editingId && api.onSubmitEdit(api.editingId), onCancel: api.onCancelEdit }}
         empty={t("chat.notFound")}
         look={look}
         onAuthor={api.onOpenAuthor}
@@ -246,8 +246,9 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
           )}
         </div>
       ) : (
-        <form className="ac-composer" onSubmit={api.onSend}>
-          {api.pending && (
+        <form className="ac-composer" data-editing={api.editingId ? "1" : undefined} onSubmit={api.onSend}>
+          {api.editingId && <QuoteChip who={t("chat2.editingMessage")} text={api.editQuote} onRemove={api.onCancelEdit} label={t("common.cancel")} edit />}
+          {!api.editingId && api.pending && (
             <DraftChip onRemove={api.onClearPending} label={t("chat2.removeAttachment")}>
               {api.pending.fileType === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -258,7 +259,7 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
               {t("appui.chat.draft", { name: api.pending.name })}
             </DraftChip>
           )}
-          {api.replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${api.replyTo.user.displayName}`} text={api.replyTo.text} onRemove={api.onClearReply} label={t("common.cancel")} />}
+          {!api.editingId && api.replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${api.replyTo.user.displayName}`} text={api.replyTo.text} onRemove={api.onClearReply} label={t("common.cancel")} />}
           {api.mentionUsers.length > 0 && (
             <div className="ac-mentions">
               {api.mentionUsers.slice(0, 8).map((u) => (
@@ -269,9 +270,11 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
             </div>
           )}
           <div className="ac-crow">
-            <AttachMenu appSheet onFile={api.onFile} uploading={api.uploading} title={t("msg.attachFile")} className="ac-clip">
-              <AppIcon name="clip" size={22} stroke={1.8} />
-            </AttachMenu>
+            {!api.editingId && (
+              <AttachMenu appSheet onFile={api.onFile} uploading={api.uploading} title={t("msg.attachFile")} className="ac-clip">
+                <AppIcon name="clip" size={22} stroke={1.8} />
+              </AttachMenu>
+            )}
             <div className="ac-inwrap" data-emoji="1">
               <div
                 ref={api.inputRef as RefObject<HTMLDivElement>}
@@ -285,6 +288,11 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
                 onFocus={api.onFocusInput}
                 onPaste={api.onPaste}
                 onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+                  if (e.key === "Escape" && api.editingId) {
+                    e.preventDefault();
+                    api.onCancelEdit();
+                    return;
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     api.onSend(e as unknown as FormEvent);
@@ -295,8 +303,8 @@ export default function AppRoomThread({ api }: { api: RoomThreadApi }) {
                 <AppIcon name="smile" size={20} stroke={1.8} />
               </button>
             </div>
-            <button type="submit" className="ac-send" aria-label={t("report.send")}>
-              <AppIcon name="send" size={18} stroke={1.8} />
+            <button type="submit" className="ac-send" aria-label={api.editingId ? t("common.save") : t("report.send")}>
+              <AppIcon name={api.editingId ? "check" : "send"} size={18} stroke={api.editingId ? 2.2 : 1.8} />
             </button>
           </div>
         </form>
