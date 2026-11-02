@@ -216,3 +216,10 @@ html.app-ui.app-desktop .ac-split-detail { min-height: 0; min-width: 0; display:
 html.app-ui.app-desktop .ac-split-detail > .ac-thread { animation: none; }
 html.app-ui.app-desktop .ac-split-detail .ac-tback { display: none; }
 html.app-ui.app-desktop .ac-split-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); font-size: 16px; }
+
+/* ---------- terminal with the web top toolbar (a wide window with a mouse: .app-term[data-tb]) ----------
+   The chart brings its own toolbar, so the timeframe row of the page is gone: the chart fills the first screen, the range and tool rows sit under it. */
+html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-first { grid-template-rows: minmax(0, 1fr) auto; }
+html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-slot { grid-row: 1; }
+html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-ranges,
+html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-first > .app-term-tools { grid-row: 2; }

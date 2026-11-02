@@ -35,6 +35,7 @@ import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopT
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
+import { useAppTopToolbar } from "@/components/app/useAppUi";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
 import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
@@ -95,6 +96,8 @@ interface Props {
   /** App-only terminal page, chart full screen: own toolbar + bottom bar, no phone nav / right panel; `appFullLead` (the close button) goes first in the toolbar. The same chart instance keeps running across the switch. */
   appFull?: boolean;
   appFullLead?: ReactNode;
+  /** App terminal page on a wide window (the web top toolbar is shown): the toolbar's «full screen» takes the page's chart to ITS full screen layer. */
+  appExpand?: () => void;
   /** Told about the engine of this chart (null when it goes away): a chart window lets the indicator windows linked to it follow it. */
   onEngine?: (engine: ChartEngine | null) => void;
   /** A chart window: a new number opens the instrument search of this chart (the window's title, a window that was just made a chart). */
@@ -217,7 +220,7 @@ interface CompareState {
 
 const RANGE_DAYS: Partial<Record<RangeId, number>> = { "1d": 1, "5d": 5, "1m": 30, "3m": 91, "6m": 182, "1y": 365, "5y": 1826 };
 
-export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, onEngine, searchSignal, onSearchHandled }: Props) {
+export default function TradingChart({ ticker, source, name, onSelectSymbol, embedded, compact, storageId, active, toolbarExtra, hub, syncInterval, onIntervalChange, appPage, appHandle, onAppState, appFull, appFullLead, appExpand, onEngine, searchSignal, onSearchHandled }: Props) {
   const { t, locale } = useT();
   const prefsKey = storageId ? `${PREFS_KEY}:${storageId}` : PREFS_KEY;
   const indKey = storageId ? `${INDICATORS_KEY}:${storageId}` : INDICATORS_KEY;
@@ -299,6 +302,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
+  // app UI on a wide window with a mouse: the web terminal's own top toolbar (the same component) instead of the phone-style header of the page
+  const appTb = useAppTopToolbar() && !!appPage && !appFull;
   const [hasSelection, setHasSelection] = useState(false);
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
@@ -1750,7 +1755,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
         {/* chart card */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
-      {!appPage && (
+      {(!appPage || appTb) && (
       <TopToolbar
         instrument={instrument}
         interval={prefs.interval}
@@ -1773,7 +1778,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onToggle={(k: ToggleKey, v: boolean) => update({ [k]: v } as Partial<Prefs>)}
         onResetView={() => engineRef.current?.resetView()}
         onScreenshot={screenshot}
-        onFullscreen={toggleFullscreen}
+        onFullscreen={appTb && appExpand ? appExpand : toggleFullscreen}
         fullscreen={fullscreen}
         onToggleTools={() => setToolsOpen((v) => !v)}
         toolsOpen={toolsOpen}
@@ -1838,7 +1843,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 )}
               </>
             )}
-            {(candlesDelayed || quoteDelayedMark) && !loading && !empty && !appPage && (
+            {(candlesDelayed || quoteDelayedMark) && !loading && !empty && (!appPage || appTb) && (
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>
                 {t("ap.delayed")}
               </div>

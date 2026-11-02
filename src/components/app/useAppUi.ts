@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { isDesktopUi, isNativeUi } from "@/lib/native-app";
+import { APP_TOPBAR_MIN_PX, appTopToolbar } from "@/lib/app-terminal";
 
 const subscribe = () => () => {};
 
@@ -31,6 +32,32 @@ export function useMinWidth(px: number): boolean {
       return () => mq.removeEventListener("change", cb);
     },
     () => typeof window !== "undefined" && !!window.matchMedia && window.matchMedia(`(min-width: ${px}px)`).matches,
+    () => false,
+  );
+}
+
+const TOPBAR_MQ = `(min-width: ${APP_TOPBAR_MIN_PX}px)`;
+const FINE_MQ = "(pointer: fine)";
+const topbarSnapshot = (): boolean => {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return appTopToolbar({ appUi: isNativeUi(), width: window.matchMedia(TOPBAR_MQ).matches ? APP_TOPBAR_MIN_PX : 0, finePointer: window.matchMedia(FINE_MQ).matches, desktopUi: isDesktopUi() });
+};
+
+/**
+ * True when the app UI terminal shows the web terminal's top toolbar: a wide window with a mouse (see appTopToolbar). False on the server and
+ * during hydration, then the real value (live: it follows a resize).
+ */
+export function useAppTopToolbar(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      if (typeof window === "undefined" || !window.matchMedia) return () => {};
+      const list = [window.matchMedia(TOPBAR_MQ), window.matchMedia(FINE_MQ)];
+      for (const mq of list) mq.addEventListener("change", cb);
+      return () => {
+        for (const mq of list) mq.removeEventListener("change", cb);
+      };
+    },
+    topbarSnapshot,
     () => false,
   );
 }

@@ -61,3 +61,16 @@ export function showDelayNote(source: string, chartDelayed: boolean, guest: bool
 
 /** Vertical size of the chart block of the page (CSS length): the design's chart is a ~300px card; the real chart needs room for its own panes. */
 export const APP_TERM_CHART_HEIGHT = "clamp(360px, 46dvh, 480px)";
+
+/** A window at least this wide (and with a mouse) is a desktop-class terminal: it gets the web terminal's top toolbar (see appTopToolbar). */
+export const APP_TOPBAR_MIN_PX = 900;
+
+/**
+ * Does the app UI terminal show the web terminal's own top toolbar (symbol, timeframes, chart type, compare, indicators, add window, alerts,
+ * replay, templates, settings, fullscreen, screenshot) instead of the phone-style header + timeframe row? Only in the app UI, only on a wide
+ * window with a mouse (a fine pointer), or in the desktop window of the app (Windows / macOS: html.app-desktop) whatever the pointer reports.
+ * A phone, a narrow window and a touch tablet keep the phone-style layout.
+ */
+export function appTopToolbar(o: { appUi: boolean; width: number; finePointer: boolean; desktopUi?: boolean }): boolean {
+  return o.appUi && o.width >= APP_TOPBAR_MIN_PX && (o.finePointer || !!o.desktopUi);
+}

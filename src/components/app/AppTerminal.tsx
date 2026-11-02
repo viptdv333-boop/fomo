@@ -40,6 +40,7 @@ import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/
 import { raisesKeyboard } from "@/lib/app-ui";
 import AppIcon from "./AppIcon";
 import { useBackLayer } from "./useBackLayer";
+import { useAppTopToolbar } from "./useAppUi";
 import { holdHtmlClass } from "@/lib/html-class";
 import "./fullscreen.css";
 
@@ -128,6 +129,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const { status } = useSession();
   const guest = status === "unauthenticated";
   const handle = useRef<AppChartHandle | null>(null);
+  // wide window with a mouse: the chart brings the web terminal's top toolbar; the phone-style timeframe row / caption / expand icon / alert icon are not repeated
+  const tb = useAppTopToolbar();
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -305,6 +308,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       appPage={!expanded}
       appFull={expanded}
       appFullLead={closeBtn}
+      appExpand={openFs}
       appHandle={handle}
       onAppState={onAppState}
     />
@@ -325,7 +329,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
 
   return (
     <DemoGate kind="terminal" path="/terminal" layout="flow">
-      <div className="app-term">
+      <div className="app-term" data-tb={tb ? "1" : undefined}>
         <h1 className="sr-only">{t("term2.heading")}</h1>
 
         <div className="app-term-bar">
@@ -342,13 +346,16 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           <button type="button" className="app-term-ico app-term-star" data-on={inList ? "1" : undefined} onClick={toggleFav} aria-pressed={inList} aria-label={t(inList ? "appui.term.unfav" : "appui.term.fav")}>
             {inList ? "★" : "☆"}
           </button>
-          <button type="button" className="app-term-ico" onClick={() => h.current?.openAlerts()} aria-label={t("appui.term.alert")}>
-            <AppIcon name="bell" size={22} stroke={1.8} />
-          </button>
+          {!tb && (
+            <button type="button" className="app-term-ico" onClick={() => h.current?.openAlerts()} aria-label={t("appui.term.alert")}>
+              <AppIcon name="bell" size={22} stroke={1.8} />
+            </button>
+          )}
         </div>
 
         {/* the first screen: sticky symbol bar above; timeframes, chart, range row and tool row fill the whole screen above the dock; the rest is below the fold */}
         <div className="app-term-first">
+        {!tb && (
         <ChartErrorBoundary compact>
           <AppTimeframes
             interval={chart?.interval ?? APP_TERM_TFS[0]}
@@ -358,11 +365,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             onFavs={(list) => h.current?.setFavIntervals(list)}
           />
         </ChartErrorBoundary>
+        )}
 
         {/* the slot keeps the page's height while the chart block is a fixed full-screen layer */}
         <div className="app-term-slot">
           <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
-            {!expanded && (
+            {!expanded && !tb && (
               <div className="app-term-cap">
                 {selected && (
                   <span className="app-term-cap-t">
@@ -373,7 +381,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               </div>
             )}
             <div className="app-term-chartbody">{body}</div>
-            {!expanded && (
+            {!expanded && !tb && (
               <button type="button" className="app-term-expand" onClick={openFs} aria-label={t("appui.term.expand")} title={t("appui.term.expand")}>
                 <FsGlyph on={false} />
               </button>

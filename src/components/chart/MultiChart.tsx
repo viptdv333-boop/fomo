@@ -130,11 +130,13 @@ interface Props {
   /** App terminal page, chart full screen (see TradingChart). */
   appFull?: boolean;
   appFullLead?: ReactNode;
+  /** App terminal page on a wide window: the chart's top toolbar «full screen» opens the page's own full screen layer. */
+  appExpand?: () => void;
 }
 
 export default function MultiChart(props: Props) {
   const { t } = useT();
-  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState, appFull, appFullLead } = props;
+  const { ticker, source, name, onSelectSymbol, appPage, appHandle, onAppState, appFull, appFullLead, appExpand } = props;
   const [state, setState] = useState<MultiState>(() => (typeof window === "undefined" ? DEFAULT_STATE : loadLocal()));
   const [active, setActive] = useState(0);
   const [sharedInterval, setSharedInterval] = useState<string | null>(null);
@@ -273,7 +275,7 @@ export default function MultiChart(props: Props) {
               compact={count > 1 && i === 0}
               storageId={i > 0 ? `p${i}` : undefined}
               active={count === 1 || active === i}
-              toolbarExtra={i === 0 && !appFull ? picker : undefined}
+              toolbarExtra={i === 0 && !appFull && !appPage ? picker : undefined}
               hub={count > 1 ? hub : undefined}
               syncInterval={count > 1 && state.sync.interval ? sharedInterval : null}
               onIntervalChange={(id) => {
@@ -284,6 +286,7 @@ export default function MultiChart(props: Props) {
               onAppState={i === 0 ? onAppState : undefined}
               appFull={appFull}
               appFullLead={i === 0 ? appFullLead : undefined}
+              appExpand={i === 0 ? appExpand : undefined}
             />
           </div>
         );

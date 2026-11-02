@@ -20,7 +20,7 @@ import {
   swipeAxis,
   swipeTargetTab,
 } from "../src/lib/app-ui";
-import { APP_TERM_RANGES, APP_TERM_TFS, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
+import { APP_TERM_RANGES, APP_TERM_TFS, appTopToolbar, changeTone, ideasHref, ideasTotal, pctLabel, pickBoardInstrument, showDelayNote } from "../src/lib/app-terminal";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState, FS_HISTORY_KEY } from "../src/lib/app-fullscreen";
 import { resumeTime, videoFullscreenPlan, videoResumeFrom } from "../src/lib/video-fullscreen";
 import {
@@ -693,3 +693,9 @@ eq("swipe on the terminal site: terminal <-> calculator, the settings tab is ski
 eq("swipe: the settings tab is skipped", swipeTargetTab("/authors", "", 1)?.id, "me");
 eq("swipe: not from a pushed screen, a query screen or a deep page", [swipeTargetTab("/chat/room1", "", 1), swipeTargetTab("/profile", "?tab=finance", -1), swipeTargetTab("/ideas/123", "", 1)], [null, null, null]);
 eq("swipe: locale prefix is ignored", swipeTargetTab("/en/feed", "", 1)?.id, "terminal");
+// --- the web terminal toolbar in the app UI: a wide window with a mouse only
+eq("app toolbar: wide window + mouse in the app UI", appTopToolbar({ appUi: true, width: 1500, finePointer: true }), true);
+eq("app toolbar: 900 is wide enough, 899 is not", [appTopToolbar({ appUi: true, width: 900, finePointer: true }), appTopToolbar({ appUi: true, width: 899, finePointer: true })], [true, false]);
+eq("app toolbar: a phone / a touch tablet keeps the phone-style header", [appTopToolbar({ appUi: true, width: 412, finePointer: false }), appTopToolbar({ appUi: true, width: 1200, finePointer: false })], [false, false]);
+eq("app toolbar: the desktop window of the app shows it whatever the pointer reports", [appTopToolbar({ appUi: true, width: 1200, finePointer: false, desktopUi: true }), appTopToolbar({ appUi: true, width: 600, finePointer: false, desktopUi: true })], [true, false]);
+eq("app toolbar: never outside the app UI (the site has its own toolbar)", appTopToolbar({ appUi: false, width: 1500, finePointer: true, desktopUi: true }), false);
