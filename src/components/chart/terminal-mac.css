@@ -372,3 +372,50 @@ html.dark .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) :is(div, button):n
 .dark [data-tv="toolbar"] .tb-macoffer {
   color: #cdbff0;
 }
+
+/* expiry banner next to the symbol: the warm peach pill of the design */
+.tvmac [data-tv="toolbar"] .tb-roll {
+  height: 40px !important;
+  padding: 0 12px !important;
+  gap: 8px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #f3e5cf, #efd3d3) !important;
+  color: #7a4a1c !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+.tvmac [data-tv="toolbar"] .tb-roll::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d9a24f;
+  flex: none;
+}
+.tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
+  color: #9a4b2c;
+}
+html.dark .tvmac [data-tv="toolbar"] .tb-roll {
+  background: linear-gradient(135deg, rgba(217, 162, 79, 0.28), rgba(196, 106, 120, 0.26)) !important;
+  color: #f0d3a6 !important;
+}
+html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
+  color: #f4a98a;
+}
+
+/* "FOMO - community of traders" card at the bottom of the watchlist */
+.tvmac [data-fomo-community] {
+  background: linear-gradient(135deg, #8a7bc4, #6f86d0) !important;
+  color: #fff !important;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(111, 134, 208, 0.35);
+  padding: 10px 12px;
+}
+.tvmac [data-fomo-community] > span:first-child {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #fff !important;
+  border-radius: 50%;
+}
+.tvmac [data-fomo-community] [class*="text-[var(--tv3-muted)]"] {
+  color: rgba(255, 255, 255, 0.82) !important;
+}

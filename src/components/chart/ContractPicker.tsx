@@ -114,7 +114,7 @@ export default function ContractPicker({
         <button
           onClick={() => pick(next)}
           title={t("ct.roll.title")}
-          className="h-7 px-2 inline-flex items-center gap-1.5 rounded-md shrink-0 text-[11px] font-medium cursor-pointer bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25"
+          className="tb-roll h-7 px-2 inline-flex items-center gap-1.5 rounded-md shrink-0 text-[11px] font-medium cursor-pointer bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25"
         >
           <span>{roll === 0 ? t("ct.roll.today") : t("ct.roll.warn", { n: roll })}</span>
           <span className="underline decoration-dotted">{t("ct.roll.to", { ticker: next.ticker })}</span>
