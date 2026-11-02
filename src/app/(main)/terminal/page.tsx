@@ -197,15 +197,26 @@ export default function TerminalPage() {
   }, []);
 
   // app-only UI (Android app / ?appui=1): the terminal is a scrolling page like the design; the symbol state stays here
-  if (appUi && !mac) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
+  if (appUi && !mac)
+    return (
+      <>
+        <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />
+        {/* a wide app window in the old look: the way to the new one (the phone layout has its own button) */}
+        {wideApp && (
+          <div className="fixed right-14 top-1.5 z-[60]">
+            <SkinSwitch />
+          </div>
+        )}
+      </>
+    );
 
   return (
-    <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>
+    <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} ${mac && appUi ? "tvmac-app" : ""} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
       {/* the app has no site header, so the switch between the new and the old look sits in the corner of the window */}
       {appUi && (
-        <div className="absolute right-4 top-0 z-[60]">
+        <div className="tvmac-app-switch absolute z-[60]">
           <SkinSwitch />
         </div>
       )}

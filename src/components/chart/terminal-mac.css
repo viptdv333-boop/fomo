@@ -1074,3 +1074,8 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 /* the look switch lives in the site header now (next to language and theme): no copies inside the terminal */
 .tvmac-title { display: none !important; }
 [data-tv="toolbar"] .tb-macoffer { display: none !important; }
+
+/* app window: the look switch is a small pill in a free strip above the toolbar (the site header with the switch does not exist there) */
+.tvmac-app-switch { right: 18px; top: 3px; }
+.tvmac-app .tvmac-app-switch button { height: 24px; font-size: 12px; padding-left: 10px; padding-right: 10px; }
+.tvmac-app [data-tv="toolbar"] { margin-top: 24px !important; }
