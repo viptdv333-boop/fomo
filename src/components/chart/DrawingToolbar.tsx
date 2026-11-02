@@ -378,12 +378,13 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         <div
           ref={flyRef}
           role="menu"
+          data-fly={flyGroup.id}
           aria-label={t(flyGroup.labelKey)}
           style={{ position: "fixed", left: flyout.left, top: flyout.top }}
           onKeyDown={onMenuKey}
           className="tv3-pop z-[100] max-h-[calc(100vh-16px)] min-w-[276px] overflow-y-auto rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         >
-          <div className="px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t(flyGroup.labelKey)}</div>
+          <div data-fly-title className="px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t(flyGroup.labelKey)}</div>
           {(flyGroup.sections ?? [{ id: "all", labelKey: flyGroup.labelKey, tools: flyGroup.tools }]).map((sec, si, all) => (
             <div key={sec.id} role="group" aria-label={t(sec.labelKey)}>
               {all.length > 1 && (
@@ -428,6 +429,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                       }`}
                     >
                       <DrawIcon id={tool.id} size={25} filled={isActive} />
+                      <MacGlyph set="cur" k={tool.id} />
                       <span className="truncate">{t(tool.labelKey)}</span>
                     </button>
                   );

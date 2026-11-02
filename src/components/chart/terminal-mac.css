@@ -525,8 +525,8 @@ html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
   flex: none;
   filter: drop-shadow(0 2px 3px var(--mg-glow, transparent));
 }
-.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] button, [data-tv="sidetabs"] button) > svg:not(.mg),
-.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] button, [data-tv="sidetabs"] button) > span:has(> svg):not(.tb-lbl) > svg:not(.mg) {
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button) > svg:not(.mg),
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button) > span:has(> svg):not(.tb-lbl) > svg:not(.mg) {
   display: none !important;
 }
 .tvmac [data-tv="toolbar"] button > span.inline-flex:has(> span > svg):not([class*="rounded-full"]) {
@@ -591,3 +591,149 @@ html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
   width: 34px !important;
   height: 34px !important;
 }
+
+/* ═════════ menus, popovers and dialogs of the skin (they are portaled outside the terminal root, so they are keyed on <html data-tvmac>) ═════════ */
+html[data-tvmac] .tv3 {
+  --tv3-accent: #4f9a74;
+  --tv3-accent-hover: #3f8562;
+  --tv3-accent-soft: rgba(79, 154, 116, 0.14);
+  --tv3-fill: rgba(0, 0, 0, 0.055);
+  --tv3-fill2: rgba(0, 0, 0, 0.075);
+  --tv3-fill3: rgba(0, 0, 0, 0.04);
+  --tv3-fill-on: rgba(0, 0, 0, 0.12);
+  --tv3-hair: rgba(0, 0, 0, 0.09);
+  --tv3-hair2: rgba(0, 0, 0, 0.06);
+  --tv3-hover: rgba(0, 0, 0, 0.06);
+  --tv3-text: #26262b;
+  --tv3-text2: #3a3a42;
+  --tv3-muted: #8e8e93;
+  --tv3-up: #3f9a6a;
+  --tv3-down: #d9685f;
+  --tv3-font: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+html.dark[data-tvmac] .tv3 {
+  --tv3-accent: #6db88f;
+  --tv3-accent-hover: #86c9a3;
+  --tv3-accent-soft: rgba(109, 184, 143, 0.18);
+  --tv3-fill: rgba(255, 255, 255, 0.08);
+  --tv3-fill2: rgba(255, 255, 255, 0.12);
+  --tv3-fill3: rgba(255, 255, 255, 0.05);
+  --tv3-fill-on: rgba(255, 255, 255, 0.18);
+  --tv3-hair: rgba(255, 255, 255, 0.12);
+  --tv3-hair2: rgba(255, 255, 255, 0.07);
+  --tv3-hover: rgba(255, 255, 255, 0.09);
+  --tv3-text: #f2f2f7;
+  --tv3-text2: #d6d6dc;
+}
+html[data-tvmac] .tv3 .tv3-pop {
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 0;
+  border-radius: 14px !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.18), 0 16px 44px rgba(30, 30, 60, 0.28) !important;
+  padding: 6px !important;
+}
+html.dark[data-tvmac] .tv3 .tv3-pop {
+  background: rgba(44, 44, 50, 0.9);
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.16), 0 16px 44px rgba(0, 0, 0, 0.55) !important;
+}
+/* menu rows: 36px, 9px radius, 14px text, a coloured glyph with a glow like the design */
+html[data-tvmac] .tv3 .tv3-pop button {
+  border-radius: 9px;
+  font-size: 14px;
+}
+html[data-tvmac] .tv3 .tv3-pop button[class*="h-10"],
+html[data-tvmac] .tv3 .tv3-pop button[class*="h-9"] {
+  height: 36px !important;
+  min-height: 36px;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  padding: 0 10px !important;
+  gap: 12px !important;
+}
+html[data-tvmac] .tv3 .tv3-pop button[class*="h-10"] > svg,
+html[data-tvmac] .tv3 .tv3-pop button[class*="h-9"] > svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: #5b8fc0;
+  fill: rgba(125, 176, 214, 0.35);
+  filter: drop-shadow(0 2px 3px rgba(91, 143, 192, 0.35));
+}
+html[data-tvmac] .tv3 .tv3-pop button[aria-selected="true"],
+html[data-tvmac] .tv3 .tv3-pop button[class*="tv3-accent-soft"] {
+  background: rgba(79, 154, 116, 0.14);
+}
+/* section captions inside menus */
+html[data-tvmac] .tv3 .tv3-pop [class*="uppercase"] {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  color: #8e8e93 !important;
+}
+
+/* dialogs: the large rounded glass sheet of the design (18px, soft shadow, hairlines) */
+html[data-tvmac] .tv3 [role="dialog"] {
+  border-radius: 18px !important;
+  background: rgba(250, 250, 252, 0.97) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 30px 90px rgba(20, 20, 50, 0.4) !important;
+}
+html.dark[data-tvmac] .tv3 [role="dialog"] {
+  background: rgba(36, 36, 42, 0.97) !important;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.16), 0 30px 90px rgba(0, 0, 0, 0.6) !important;
+}
+html[data-tvmac] .tv3 [role="dialog"] input[type="text"],
+html[data-tvmac] .tv3 [role="dialog"] input:not([type]),
+html[data-tvmac] .tv3 [role="dialog"] input[type="search"] {
+  border-radius: 10px;
+}
+/* primary buttons: the green gradient with a soft glow */
+html[data-tvmac] .tv3 button[class*="bg-[var(--tv3-accent)]"] {
+  background: linear-gradient(180deg, #6db88f, #4f9a74) !important;
+  box-shadow: 0 2px 6px rgba(79, 154, 116, 0.45);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* drawing-tool flyouts: coloured duotone glyphs per group, 34px rows, no double caption */
+html[data-tvmac] .tv3 [data-fly] {
+  width: 300px;
+  min-width: 300px !important;
+  --fc: #4f9a74;
+}
+html[data-tvmac] .tv3 [data-fly] [data-fly-title] { display: none; }
+html[data-tvmac] .tv3 [data-fly="fib"], html[data-tvmac] .tv3 [data-fly="stamps"] { --fc: #cc9446; }
+html[data-tvmac] .tv3 [data-fly="patterns"] { --fc: #8a6db0; }
+html[data-tvmac] .tv3 [data-fly="forecast"] { --fc: #4f9aa0; }
+html[data-tvmac] .tv3 [data-fly="shapes"] { --fc: #c46a78; }
+html[data-tvmac] .tv3 [data-fly="text"] { --fc: #6e73b8; }
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] {
+  height: 34px;
+  padding: 0 10px !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  border-radius: 8px !important;
+  color: var(--tv3-text) !important;
+}
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg {
+  width: 22px !important;
+  height: 22px !important;
+  flex: none;
+  color: var(--fc);
+  fill: color-mix(in srgb, var(--fc) 30%, transparent);
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--fc) 35%, transparent));
+}
+html[data-tvmac] .tv3 [data-fly] button[aria-current="true"] {
+  background: rgba(79, 154, 116, 0.14) !important;
+  font-weight: 600;
+}
+html[data-tvmac] .tv3 [data-fly] [class*="grid-cols-6"] button { width: 40px !important; height: 40px !important; }
+html[data-tvmac] .tv3 [data-fly] [class*="grid-cols-6"] button > svg { width: 25px !important; height: 25px !important; }
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg):has(+ .mg),
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > .mg ~ svg:not(.mg) { display: none !important; }
+html[data-tvmac] .tv3 [data-fly] .mg { display: block; width: 22px; height: 22px; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow, transparent)); }

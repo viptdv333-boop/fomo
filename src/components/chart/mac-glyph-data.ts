@@ -51,3 +51,10 @@ export const TB_GLYPHS: Record<string, Glyph> = {
   screen: ["#7CC29B", "#4F9A74", "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5", "M6 6h12v12H6z"],
   shot: ["#DE96A0", "#C46A78", "M4 8h3l2-3h6l2 3h3v11H4zM12 16a3 3 0 100-6 3 3 0 000 6z", "M4 8h3l2-3h6l2 3h3v11H4z"],
 };
+
+/** The cursor flyout of the design (crosshair / dot / arrow). */
+export const CUR_GLYPHS: Record<string, Glyph> = {
+  cursor_cross: ["#7CC29B", "#4F9A74", "M12 3v18M3 12h18", ""],
+  cursor_dot: ["#7DB0D6", "#5B8FC0", "M12 3a9 9 0 100 18 9 9 0 000-18zM12 9a3 3 0 100 6 3 3 0 000-6z", "M12 9a3 3 0 100 6 3 3 0 000-6z"],
+  cursor_arrow: ["#A78BC9", "#8A6DB0", "M5 3l14 7-6 2-2 6z", "M5 3l14 7-6 2-2 6z"],
+};
