@@ -3,6 +3,8 @@
 import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { openChannel, type Channel } from "@/lib/chart/account-sync";
+import { useRowReorder } from "@/lib/use-row-reorder";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
 import { panelTabIcon } from "./icons";
@@ -38,6 +40,7 @@ import { isTerminalSite } from "@/lib/site-mode";
 import { FomoCommunityCard, FomoIdeasPanel } from "./FomoPanel";
 import "./terminal-v3.css";
 import MacGlyph from "./MacGlyph";
+import { PopupPortal } from "./ModalPortal";
 
 export type PanelTab = "watchlist" | "info" | "ideas" | "news" | "calendar" | "objects" | "alerts" | "orderbook" | "algo";
 
@@ -219,7 +222,9 @@ const WatchRow = memo(function WatchRow({
   locale,
   label,
   contract,
+  rowKey,
 }: {
+  rowKey: string;
   inst: TerminalInstrument;
   q: Quote | undefined;
   spark: number[] | undefined;
@@ -250,7 +255,7 @@ const WatchRow = memo(function WatchRow({
   const sparkUp = spark && spark.length > 1 ? spark[spark.length - 1] >= spark[0] : up;
 
   return (
-    <div className="relative group">
+    <div className="relative group" data-row-key={rowKey}>
       <button
         onClick={() => onSelect(inst)}
         className={`w-full flex items-center gap-2.5 rounded-xl px-2 py-[9px] text-left cursor-pointer ${selected ? "bg-[var(--tv3-fill)]" : "hover:bg-[var(--tv3-fill3)]"}`}
@@ -279,6 +284,7 @@ const WatchRow = memo(function WatchRow({
         </span>
       </button>
       <button
+        data-no-drag
         onClick={() => onRemove(inst)}
         title={removeTitle}
         aria-label={removeTitle}
@@ -316,6 +322,82 @@ export function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   return out;
 }
 
+/* ── extra watchlists ──
+   The main list (below) keeps its own storage and endpoint, as before. Any number of EXTRA lists live next to it in one account document
+   (kind `terminal_watchlists`, synced like the chart state): {v, active, lists: [{id, name, items}]}. `active` is "main" or a list id. */
+const WLS_KEY = "fomo-terminal-watchlists-v1";
+const WLS_MAIN = "main";
+const WLS_MAX_LISTS = 20;
+export interface WatchList {
+  id: string;
+  name: string;
+  items: TerminalInstrument[];
+}
+interface WatchLists {
+  active: string;
+  lists: WatchList[];
+}
+const EMPTY_LISTS: WatchLists = { active: WLS_MAIN, lists: [] };
+
+function parseLists(raw: string | null): WatchLists {
+  if (!raw) return EMPTY_LISTS;
+  try {
+    const j = JSON.parse(raw);
+    const lists: WatchList[] = [];
+    const ids = new Set<string>();
+    for (const l of Array.isArray(j?.lists) ? j.lists : []) {
+      if (!l || typeof l.id !== "string" || typeof l.name !== "string" || ids.has(l.id) || l.id === WLS_MAIN) continue;
+      ids.add(l.id);
+      lists.push({ id: l.id, name: l.name.slice(0, 40) || "—", items: cleanWatchItems(l.items) });
+      if (lists.length >= WLS_MAX_LISTS) break;
+    }
+    const active = typeof j?.active === "string" && (j.active === WLS_MAIN || ids.has(j.active)) ? j.active : WLS_MAIN;
+    return { active, lists };
+  } catch {
+    return EMPTY_LISTS;
+  }
+}
+function packLists(s: WatchLists): string {
+  return JSON.stringify({
+    v: 1,
+    active: s.active,
+    lists: s.lists.map((l) => ({ id: l.id, name: l.name, items: l.items.map((i) => ({ source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name })) })),
+  });
+}
+function readLists(): WatchLists {
+  try {
+    return parseLists(localStorage.getItem(WLS_KEY));
+  } catch {
+    return EMPTY_LISTS;
+  }
+}
+let listsChannel: Channel | null = null;
+function getListsChannel(): Channel {
+  if (!listsChannel) {
+    listsChannel = openChannel({
+      kind: "terminal_watchlists",
+      key: "default",
+      lsKey: WLS_KEY,
+      current: () => {
+        try {
+          return localStorage.getItem(WLS_KEY) ?? "";
+        } catch {
+          return "";
+        }
+      },
+      // the channel has already put the account copy into WLS_KEY: every hook instance re-reads it
+      apply: () => {
+        try {
+          window.dispatchEvent(new Event(WL_EVENT));
+        } catch {}
+      },
+      isEmpty: (j) => !j || parseLists(j).lists.length === 0,
+      emptyJson: "",
+    });
+  }
+  return listsChannel;
+}
+
 /**
  * The user's own list of symbols. Empty until they add some. Signed-in users get it on their account
  * (same list on every device); guests keep it in this browser. The first time a signed-in user opens
@@ -326,6 +408,7 @@ const WL_EVENT = "fomo-watchlist-changed";
 
 export function useWatchlist() {
   const [items, setItems] = useState<TerminalInstrument[]>([]);
+  const [ext, setExt] = useState<WatchLists>(EMPTY_LISTS);
   const mode = useRef<"unknown" | "guest" | "user">("unknown");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -348,10 +431,13 @@ export function useWatchlist() {
       local = cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]"));
     } catch {}
     setItems(local);
+    setExt(readLists());
+    void getListsChannel().start();
     const onChanged = () => {
       try {
         setItems(cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]")));
       } catch {}
+      setExt(readLists());
     };
     window.addEventListener(WL_EVENT, onChanged);
 
@@ -404,13 +490,183 @@ export function useWatchlist() {
       timer.current = setTimeout(() => push(next), 400);
     }
   };
-  return {
-    items,
-    add: (inst: TerminalInstrument) => {
-      if (!items.some((i) => wlKey(i) === wlKey(inst))) commit([...items, inst]);
-    },
-    remove: (inst: TerminalInstrument) => commit(items.filter((i) => wlKey(i) !== wlKey(inst))),
+  const commitExt = (next: WatchLists) => {
+    setExt(next);
+    getListsChannel().changed(packLists(next));
+    try {
+      window.dispatchEvent(new Event(WL_EVENT));
+    } catch {}
   };
+  const activeExt = ext.active === WLS_MAIN ? null : ext.lists.find((l) => l.id === ext.active) ?? null;
+  const shownItems = activeExt ? activeExt.items : items;
+  /** the items of the open list changed: main list through its own endpoint, an extra list through the lists document */
+  const setActiveItems = (next: TerminalInstrument[]) => {
+    if (activeExt) commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === activeExt.id ? { ...l, items: next } : l)) });
+    else commit(next);
+  };
+  return {
+    items: shownItems,
+    add: (inst: TerminalInstrument) => {
+      if (!shownItems.some((i) => wlKey(i) === wlKey(inst))) setActiveItems([...shownItems, inst]);
+    },
+    remove: (inst: TerminalInstrument) => setActiveItems(shownItems.filter((i) => wlKey(i) !== wlKey(inst))),
+    /** drag and drop: the row at `from` goes to position `to` (indexes of the whole open list) */
+    move: (from: number, to: number) => {
+      if (from === to || from < 0 || to < 0 || from >= shownItems.length || to >= shownItems.length) return;
+      const next = shownItems.slice();
+      const [it] = next.splice(from, 1);
+      next.splice(to, 0, it);
+      setActiveItems(next);
+    },
+    /** all lists: the main one first, then the user's own */
+    lists: [{ id: WLS_MAIN, name: "", count: items.length }, ...ext.lists.map((l) => ({ id: l.id, name: l.name, count: l.items.length }))],
+    activeId: activeExt ? activeExt.id : WLS_MAIN,
+    selectList: (id: string) => {
+      if (id === ext.active || (id !== WLS_MAIN && !ext.lists.some((l) => l.id === id))) return;
+      commitExt({ ...ext, active: id });
+    },
+    createList: (name: string) => {
+      const clean = name.trim().slice(0, 40);
+      if (!clean || ext.lists.length >= WLS_MAX_LISTS) return null;
+      const id = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      commitExt({ active: id, lists: [...ext.lists, { id, name: clean, items: [] }] });
+      return id;
+    },
+    renameList: (id: string, name: string) => {
+      const clean = name.trim().slice(0, 40);
+      if (!clean) return;
+      commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === id ? { ...l, name: clean } : l)) });
+    },
+    deleteList: (id: string) => {
+      if (!ext.lists.some((l) => l.id === id)) return;
+      commitExt({ active: ext.active === id ? WLS_MAIN : ext.active, lists: ext.lists.filter((l) => l.id !== id) });
+    },
+  };
+}
+
+/** The list picker above the filter: the open list, a menu with all lists, create / rename / delete. */
+export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState<{ mode: "new" | "rename"; value: string } | null>(null);
+  const [sure, setSure] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 260 });
+  const ref = useRef<HTMLButtonElement | null>(null);
+  const name = (l: { id: string; name: string }) => (l.id === "main" ? t("wl.main") : l.name);
+  const cur = wl.lists.find((l) => l.id === wl.activeId) ?? wl.lists[0];
+  const atLimit = wl.lists.length > WLS_MAX_LISTS;
+  const close = () => {
+    setOpen(false);
+    setEdit(null);
+    setSure(false);
+  };
+  const toggle = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, left: Math.max(6, Math.min(r.left, window.innerWidth - 276)), width: Math.max(250, Math.min(300, r.width + 40)) });
+    setOpen((o) => !o);
+    setEdit(null);
+    setSure(false);
+  };
+  const submit = () => {
+    if (!edit) return;
+    if (edit.mode === "new") wl.createList(edit.value);
+    else wl.renameList(wl.activeId, edit.value);
+    close();
+  };
+  const row = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
+  return (
+    <div className="mb-1.5">
+      <button
+        ref={ref}
+        type="button"
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={t("wl.lists")}
+        className="tv3-press flex h-8 w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[13px] font-semibold text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)] cursor-pointer"
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+        </svg>
+        <span className="min-w-0 flex-1 truncate">{name(cur)}</span>
+        <span className="text-[11px] font-medium text-[var(--tv3-muted)]">{cur.count}</span>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-[var(--tv3-muted)]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <PopupPortal>
+          <div className="fixed inset-0 z-[55]" onClick={close} />
+          <div role="menu" className="tv3-pop fixed z-[56] max-h-[70vh] overflow-y-auto rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]" style={{ top: pos.top, left: pos.left, width: pos.width }}>
+            {wl.lists.map((l) => (
+              <button
+                key={l.id}
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  wl.selectList(l.id);
+                  close();
+                }}
+                className={`${row} ${l.id === wl.activeId ? "font-semibold text-[var(--tv3-accent)]" : ""}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{name(l)}</span>
+                <span className="text-[11px] text-[var(--tv3-muted)]">{l.count}</span>
+                <span className="w-4 text-xs">{l.id === wl.activeId ? "✓" : ""}</span>
+              </button>
+            ))}
+            <div className="my-1 h-px bg-[var(--tv3-hair)]" />
+            {edit ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5">
+                <input
+                  autoFocus
+                  value={edit.value}
+                  maxLength={40}
+                  placeholder={t("wl.namePh")}
+                  onChange={(e) => setEdit({ ...edit, value: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submit();
+                    if (e.key === "Escape") setEdit(null);
+                  }}
+                  className="h-8 min-w-0 flex-1 rounded-[9px] bg-[var(--tv3-fill)] px-2.5 text-[13px] text-[var(--tv3-text)] outline-none focus:ring-2 focus:ring-[var(--tv3-accent)]"
+                />
+                <button type="button" onClick={submit} disabled={!edit.value.trim()} className="h-8 rounded-[9px] bg-[var(--tv3-accent)] px-3 text-[13px] font-semibold text-white cursor-pointer disabled:opacity-40">
+                  {edit.mode === "new" ? t("wl.create") : t("wl.save")}
+                </button>
+              </div>
+            ) : (
+              <>
+                <button role="menuitem" type="button" disabled={atLimit} onClick={() => setEdit({ mode: "new", value: "" })} title={atLimit ? t("wl.limit") : undefined} className={`${row} disabled:opacity-40`}>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  {t("wl.new")}
+                </button>
+                {wl.activeId !== "main" && (
+                  <>
+                    <button role="menuitem" type="button" onClick={() => setEdit({ mode: "rename", value: cur.name })} className={row}>
+                      {t("wl.rename")}
+                    </button>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        if (!sure) return setSure(true);
+                        wl.deleteList(wl.activeId);
+                        close();
+                      }}
+                      className={`${row} text-[var(--tv3-red)]`}
+                    >
+                      {sure ? t("wl.deleteSure") : t("wl.delete")}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </PopupPortal>
+      )}
+    </div>
+  );
 }
 
 function Watchlist({
@@ -421,7 +677,10 @@ function Watchlist({
   selected,
   onSelect,
   visible,
+  wl,
 }: {
+  /** the lists of the account (see useWatchlist) */
+  wl: ReturnType<typeof useWatchlist>;
   items: TerminalInstrument[];
   onAdd: (i: TerminalInstrument) => void;
   onRemove: (i: TerminalInstrument) => void;
@@ -463,10 +722,14 @@ function Watchlist({
   const [addSeed, setAddSeed] = useState("");
 
   const sparks = useSparklines(shown, visible);
+  // drag and drop (mouse and touch): only on the whole list, not on a filtered one
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useRowReorder(boxRef, !needle && items.length > 1, wl.move);
   const btn = "mt-3 inline-flex items-center gap-1 px-3.5 h-8 rounded-[10px] bg-[var(--tv3-accent)] text-white text-[13px] font-semibold hover:bg-[var(--tv3-accent-hover)] cursor-pointer";
   return (
     <div className="flex flex-col min-h-0 flex-1">
       <div className="relative px-2.5 pb-2 shrink-0">
+        <ListSwitch wl={wl} />
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1 min-w-0">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--tv3-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -499,7 +762,7 @@ function Watchlist({
         </div>
         <InstrumentSearchDialog open={adding} mode="watchlist" onClose={() => setAdding(false)} onPick={onAdd} existing={items} onRemove={onRemove} initialQuery={addSeed} />
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
+      <div ref={boxRef} title={items.length > 1 && !needle ? t("wl.dragHint") : undefined} className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">
         {items.length === 0 && (
           <div className="px-4 py-8 text-center">
             <div className="text-[14px] font-semibold text-[var(--tv3-text2)]">{t("shell.watch.emptyList")}</div>
@@ -529,6 +792,7 @@ function Watchlist({
         {shown.map((inst) => (
           <WatchRow
             key={qKey(inst)}
+            rowKey={qKey(inst)}
             inst={inst}
             q={quotes[qKey(inst)]}
             spark={sparks[qKey(inst)]}
@@ -898,7 +1162,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
               </div>
 
               {tab === "watchlist" && (
-                <Watchlist items={watchlist.items} onAdd={watchlist.add} onRemove={watchlist.remove} quotes={quotes} selected={selected} onSelect={onSelect} visible={visible && tab === "watchlist"} />
+                <Watchlist wl={watchlist} items={watchlist.items} onAdd={watchlist.add} onRemove={watchlist.remove} quotes={quotes} selected={selected} onSelect={onSelect} visible={visible && tab === "watchlist"} />
               )}
               {tab === "info" && (
                 <div className="flex-1 min-h-0 overflow-y-auto">

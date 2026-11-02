@@ -209,3 +209,7 @@ html.app-ui .app-mac-fly-i { display: flex; align-items: center; gap: 12px; widt
 html.app-ui .app-mac-fly-i[data-on="1"] { background: rgba(79, 154, 116, 0.14); color: var(--m-green); }
 html.app-ui .app-mac-fly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px 8px; }
 html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding: 10px 0; border-radius: 12px; }
+
+/* watchlists: the list picker under the title of the list screen */
+html.app-ui .app-mac .app-mac-lists { padding: 0 14px 6px; }
+html.app-ui .app-mac .app-mac-rows [data-row-key] { touch-action: pan-y; -webkit-touch-callout: none; user-select: none; }

@@ -15,7 +15,8 @@ import OrderBookPanel from "@/components/chart/OrderBookPanel";
 import AlgoPanel from "@/components/chart/AlgoPanel";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { useFomoIdeas } from "@/components/chart/FomoPanel";
-import { useBatchQuotes, useSparklines, useWatchlist, type Quote } from "@/components/chart/RightPanel";
+import { ListSwitch, useBatchQuotes, useSparklines, useWatchlist, type Quote } from "@/components/chart/RightPanel";
+import { useRowReorder } from "@/lib/use-row-reorder";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import { filterWatch, macActiveTab, macTabAction, macTone, type MacTabId } from "@/lib/app-mac";
@@ -229,6 +230,11 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   // the Список screen of the new look is a layer too: Back returns to the chart
   useBackLayer(mac && macScreen === "list", () => setMacScreen("term"));
   const macSparks = useSparklines(watchlist.items, mac && macScreen === "list");
+  // drag and drop of the list rows (finger: press and hold)
+  const macRowsRef = useRef<HTMLDivElement | null>(null);
+  const clsRowsRef = useRef<HTMLDivElement | null>(null);
+  useRowReorder(macRowsRef, mac && macScreen === "list" && effSeg === "watch" && !macFilter.trim() && watchlist.items.length > 1, watchlist.move, macScreen);
+  useRowReorder(clsRowsRef, !mac && effSeg === "watch" && !hideWatch && watchlist.items.length > 1, watchlist.move);
 
   // Back button (Android system / browser) pops our entry: collapse
   useEffect(() => {
@@ -460,6 +466,11 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   </svg>
                 </button>
               </div>
+              {effSeg === "watch" && (
+                <div className="app-mac-lists">
+                  <ListSwitch wl={watchlist} />
+                </div>
+              )}
               {segBlock}
               {effSeg === "watch" && (
                 <label className="app-mac-filter">
@@ -485,7 +496,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                 </div>
               )}
               {effSeg === "watch" && (
-                <div className="app-mac-rows">
+                <div className="app-mac-rows" ref={macRowsRef}>
                   {watchlist.items.length === 0 ? (
                     <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
                   ) : (
@@ -497,6 +508,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                           key={qKey(i)}
                           type="button"
                           className="app-mac-row"
+                          data-row-key={qKey(i)}
                           data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined}
                           onClick={() => {
                             onSelectSymbol(i);
@@ -747,7 +759,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             <AlgoPanel inst={selected} visible />
           </div>
         )}
-        {!hideWatch && <div className="app-term-watch" hidden={effSeg !== "watch"}>
+        {!hideWatch && <div className="app-term-watch" ref={clsRowsRef} hidden={effSeg !== "watch"}>
+          {!mac && effSeg === "watch" && (
+            <div className="app-term-lists">
+              <ListSwitch wl={watchlist} />
+            </div>
+          )}
           {watchlist.items.length === 0 ? (
             <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
           ) : (
@@ -755,7 +772,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               const q = quotes[qKey(i)];
               const tn = changeTone(q?.changePercent);
               return (
-                <button key={qKey(i)} type="button" className="app-term-wrow" data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined} onClick={() => {
+                <button key={qKey(i)} type="button" className="app-term-wrow" data-row-key={qKey(i)} data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined} onClick={() => {
                     onSelectSymbol(i);
                     // the chart is above the list: bring it into view (the design leaves the scroll as is, but then the tap shows nothing)
                     document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
