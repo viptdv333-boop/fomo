@@ -42,26 +42,27 @@ export default function ImageLightbox({ src, alt, className }: Props) {
             setOpen(false);
           }}
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(false);
-            }}
-            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white text-2xl leading-none hover:bg-white/25"
-            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
-            aria-label={t("common.close")}
-            title={t("common.close")}
-          >
-            ✕
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt={alt || ""}
-            className="max-w-full max-h-full object-contain select-none"
-            onClick={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          {/* the cross sits ON the picture (its top-right corner), not at the edge of the screen */}
+          <div className="relative inline-flex max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={alt || ""}
+              className="max-h-[calc(100vh-2rem)] max-w-full object-contain select-none cursor-default"
+              onContextMenu={(e) => e.preventDefault()}
+            />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-xl leading-none text-white shadow hover:bg-black/80"
+              aria-label={t("common.close")}
+              title={t("common.close")}
+            >
+              ✕
+            </button>
+          </div>
         </div>,
         document.body
       )}
