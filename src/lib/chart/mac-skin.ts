@@ -18,11 +18,19 @@ function stored(): boolean {
   }
 }
 
+function storedApp(): boolean {
+  try {
+    return localStorage.getItem(MAC_SKIN_KEY) !== "classic";
+  } catch {
+    return true;
+  }
+}
+
 /** Chosen by the user (any window size). */
 export function setMacSkin(on: boolean): void {
   try {
-    if (on) localStorage.setItem(MAC_SKIN_KEY, "mac");
-    else localStorage.removeItem(MAC_SKIN_KEY);
+    // an explicit "classic" matters on the phone, where the new look is the default
+    localStorage.setItem(MAC_SKIN_KEY, on ? "mac" : "classic");
   } catch {
     /* storage unavailable: the choice lasts until reload */
   }
@@ -72,7 +80,8 @@ export function useMacSkin(html = false): { on: boolean; canOffer: boolean; chos
  * `allowed` = the screen can wear it (a phone-style layout); the desktop skin above is untouched.
  */
 export function useAppMacSkin(allowed = true): { on: boolean; chosen: boolean; set: (v: boolean) => void } {
-  const chosen = useSyncExternalStore(subscribe, stored, () => false);
+  // on the phone the new look is the DEFAULT: it is off only after the user picked the classic look ("Прежний вид")
+  const chosen = useSyncExternalStore(subscribe, storedApp, () => true);
   const on = chosen && allowed;
   useEffect(() => {
     if (on) ensureMacFont();
