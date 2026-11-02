@@ -53,11 +53,8 @@ html.app-ui.app-mac-on.dark {
   --m-sw-off: rgba(255, 255, 255, 0.22);
 }
 /* the design's bar replaces the dock: the room it takes is the bar's (everything keyed on --app-bottom-inset follows) */
-html.app-ui.app-mac-on:not(.app-kbd) { --app-bottom-inset: calc(var(--app-mac-bar) + env(safe-area-inset-bottom, 0px)); }
-html.app-ui.app-mac-on [data-app-tabbar],
-html.app-ui.app-mac-on .app-dock-bg,
-html.app-ui.app-mac-on .app-dock-track,
-html.app-ui.app-mac-on .app-dock-more { display: none !important; }
+/* the app's own dock STAYS (Терминал / Калькулятор / Настройки / Профиль ... like on every other screen); the design's bar is not shown: its Список / Инструменты live in the quick row */
+html.app-ui .app-mac .app-mac-bar { display: none !important; }
 html.app-ui.app-mac-on body { background: var(--m-bg); }
 /* the dock comes back for the full-screen chart exactly as before (it is hidden by fullscreen.css there) */
 html.app-ui.app-mac-on.app-term-fs .app-mac .app-mac-bar { visibility: hidden; }
@@ -118,7 +115,7 @@ html.app-ui .app-mac .app-mac-range[data-on="1"] { color: var(--m-tx); backgroun
 
 /* the four quick actions */
 html.app-ui .app-mac .app-mac-quick { display: flex; justify-content: space-around; padding: 10px 12px 6px; flex: none; }
-html.app-ui .app-mac .app-mac-q { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 78px; color: var(--m-tx); }
+html.app-ui .app-mac .app-mac-q { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1 1 0; min-width: 0; color: var(--m-tx); }
 html.app-ui .app-mac .app-mac-q span { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 html.app-ui .app-mac .app-mac-q i { position: absolute; top: -2px; left: calc(50% + 8px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--m-tx); color: var(--m-card); font: 700 10px/16px var(--m-font); font-style: normal; text-align: center; }
 

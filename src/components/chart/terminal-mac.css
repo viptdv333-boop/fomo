@@ -978,3 +978,23 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 .tvmac :is([data-tv="toolbar"], [data-tv="tools"], [data-tv="sidetabs"], [data-tv="bottom"], aside) { zoom: var(--mz, 1); }
 .tvmac [data-tv="tools"] .tv3-rbtn { height: clamp(34px, calc((100vh - 230px) / 17 / var(--mz, 1)), 46px); }
 .tvmac-title { zoom: var(--mz, 1); }
+
+/* no separate title row: the way back to the old look sits in row 1 of the toolbar, so the header is one row shorter */
+.tvmac [data-tv="wrap"] { position: relative; }
+.tvmac-title { position: absolute; top: 0; right: 0; height: 0 !important; padding: 0; zoom: var(--mz, 1); z-index: 6; }
+.tvmac-classic { position: absolute; top: 14px; right: 72px; height: 28px; }
+.tvmac [data-tv="toolbar"] { padding-top: 10px !important; }
+@media (max-height: 760px) {
+  .tvmac-title { height: 0 !important; }
+  .tvmac-classic { top: 10px; }
+  .tvmac [data-tv="toolbar"] { padding-top: 6px !important; }
+}
+
+/* the left rail always fits its card: the tiles share the height (no scrolling), up to the design's 44px */
+.tvmac [data-tv="tools"] { overflow: hidden !important; justify-content: space-between; }
+.tvmac [data-tv="tools"] > div[data-rk] { flex: 1 1 0 !important; min-height: 0 !important; max-height: 46px; align-items: stretch !important; }
+.tvmac [data-tv="tools"] > button { flex: 1 1 0 !important; min-height: 0 !important; max-height: 46px; }
+.tvmac [data-tv="tools"] .tv3-rbtn { height: 100% !important; min-height: 0 !important; max-height: 46px; }
+.tvmac [data-tv="tools"] .tv3-rgap { flex: 0 1 3px !important; min-height: 0 !important; }
+.tvmac [data-tv="tools"] .tv3-rbtn .mg { height: min(36px, 86%) !important; width: auto !important; aspect-ratio: 1; }
+.tvmac-classic { white-space: nowrap; }

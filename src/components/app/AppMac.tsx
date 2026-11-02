@@ -10,6 +10,7 @@ import { instName, type TerminalInstrument } from "@/lib/terminal-data";
 import { APP_TABS, appTabHref } from "@/lib/app-ui";
 import { MAC_CHIP_COLORS, macTitle, MAC_QUICK, MAC_ROW_ICONS, MAC_TABS, macGradFor, macIconKey, macTone, sparkPath, type MacGlyphDef, type MacTabId } from "@/lib/app-mac";
 import { hostNavigate } from "./tabhost/store";
+import { useTheme } from "@/lib/theme";
 
 /* Pieces of the phone version of the macOS look (design "FOMO Terminal Mobile"); AppTerminal.tsx wires them to the chart. Styles: app-mac.css. */
 
@@ -99,7 +100,7 @@ export function MacChips({ chips, onOpen }: { chips: AppChip[]; onOpen: () => vo
   );
 }
 
-export function MacQuick({ windows, onCompare, onIndicators, onWindow, onSettings, onAlerts }: { windows: { count: number } | null; onCompare: () => void; onIndicators: () => void; onWindow: () => void; onSettings: () => void; onAlerts: () => void }) {
+export function MacQuick({ windows, onCompare, onIndicators, onWindow, onSettings, onAlerts, onList, onTools }: { windows: { count: number } | null; onCompare: () => void; onIndicators: () => void; onWindow: () => void; onSettings: () => void; onAlerts: () => void; onList: () => void; onTools: () => void }) {
   const { t } = useT();
   const item = (id: string, g: MacGlyphDef & { key: string }, run: () => void, badge?: number) => (
     <button key={id} type="button" className="app-mac-q" onClick={run} data-q={id}>
@@ -114,6 +115,8 @@ export function MacQuick({ windows, onCompare, onIndicators, onWindow, onSetting
       {item("indicators", MAC_QUICK.indicators, onIndicators)}
       {windows ? item("window", MAC_QUICK.window, onWindow, windows.count) : item("settings", MAC_QUICK.settings, onSettings)}
       {item("alerts", MAC_QUICK.alerts, onAlerts)}
+      {item("list", MAC_TABS[1], onList)}
+      {item("tools", MAC_TABS[2], onTools)}
     </div>
   );
 }
@@ -166,6 +169,7 @@ export function MacTabBar({ active, locale, onPick }: { active: MacTabId; locale
 export function MacMenu({ inList, onFav, onSettings, onClassic, locale }: { inList: boolean; onFav: () => void; onSettings: () => void; onClassic: () => void; locale: "ru" | "en" | "cn" }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!open) return;
@@ -198,6 +202,7 @@ export function MacMenu({ inList, onFav, onSettings, onClassic, locale }: { inLi
         <div className="app-mac-pop" role="menu">
           {row("fav", t(inList ? "appui.term.unfav" : "appui.term.fav"), onFav)}
           {row("set", t("mac.lbl.settings"), onSettings)}
+          {row("theme", theme === "light" ? t("common.theme.dark") : t("common.theme.light"), toggleTheme)}
           <div className="app-mac-sep" />
           {APP_TABS.filter((x) => x.id !== "terminal" && x.id !== "settings" && x.id !== "me").map((tab) => {
             const href = appTabHref(locale, tab);

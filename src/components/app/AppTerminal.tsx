@@ -443,6 +443,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               onWindow={() => h.current?.addWindow()}
               onSettings={() => h.current?.openSettings()}
               onAlerts={() => h.current?.openAlerts()}
+              onList={() => onMacTab("list")}
+              onTools={() => onMacTab("tools")}
             />
           </div>
 
