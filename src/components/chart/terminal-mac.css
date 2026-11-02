@@ -410,7 +410,6 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
 .tvmac div:has(> [data-fomo-community]) {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
 }
 .tvmac [data-fomo-community] {
   flex: none;
@@ -772,16 +771,6 @@ html[data-tvmac] .tv3 [data-fly] .mg { display: block; width: 22px; height: 22px
 .tvmac [data-tv="toolbar"] .tb-events::after { content: none !important; }
 .tvmac [data-tv="toolbar"] .tb-events .mg { width: 24px !important; height: 24px !important; }
 
-/* contract chip (futures): same white pill as the symbol, without the tiny "Auto" caption */
-.tvmac [data-tv="toolbar"] button[aria-label][class*="border-[var(--tv3-hair)]"] {
-  height: 40px !important;
-  padding: 0 12px !important;
-  background: var(--m-chart);
-  border: 0 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-.tvmac [data-tv="toolbar"] button[aria-label][class*="border-[var(--tv3-hair)]"] > span:first-child:not(.font-semibold) { display: none; }
 
 /* ═════════ chart settings dialog: the settings sheet of the design ═════════ */
 html[data-tvmac] .tv3 [data-csd] { font-family: var(--tv3-font); }
@@ -885,3 +874,31 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { -
   .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 11px; }
   .tvmac aside [data-testid="right-panel"] { max-width: 280px; }
 }
+
+/* the window title text repeats the chart window's own strip: only the way back to the classic look stays in that bar */
+.tvmac-title { height: 30px; justify-content: flex-end; }
+.tvmac-title-text, .tvmac-title-spacer { display: none; }
+.tvmac-classic { width: auto; padding: 0 12px; }
+
+/* ONE pill: the instrument icon, the exact contract ticker and the exchange; the contract switch is the chevron inside the same pill */
+.tb-sym-mac { display: none; }
+.tvmac [data-tv="toolbar"] .tb-sym-classic,
+.tvmac [data-tv="toolbar"] .tb-sym-search { display: none !important; }
+.tvmac [data-tv="toolbar"] .tb-sym-mac { display: inline; font-weight: 600; font-size: 15px; }
+.tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 34px !important; }
+.tvmac [data-tv="toolbar"] .tb-ct {
+  position: relative;
+  z-index: 1;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  margin-left: -34px;
+  margin-right: 4px;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 9px !important;
+  justify-content: center;
+}
+.tvmac [data-tv="toolbar"] .tb-ct > span { display: none !important; }
+.tvmac [data-tv="toolbar"] .tb-ct > svg { display: block; width: 14px; height: 14px; }

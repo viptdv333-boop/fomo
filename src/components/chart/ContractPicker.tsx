@@ -32,10 +32,13 @@ export default function ContractPicker({
   instrument,
   onPick,
   btn,
+  onShown,
 }: {
   instrument: TerminalInstrument;
   onPick: (inst: TerminalInstrument) => void;
   btn: string;
+  /** The exact contract on the chart (MXZ6 ...), for the symbol pill of the macOS look. */
+  onShown?: (ticker: string | null) => void;
 }) {
   const { t, locale } = useT();
   const [data, setData] = useState<ContractsResponse | null>(null);
@@ -63,6 +66,11 @@ export default function ContractPicker({
   // what the chart is showing right now: the exact contract, or the front one for the auto ticker
   const shown = useMemo(() => all.find((c) => c.ticker === ticker) ?? (source === "moex" ? all.find((c) => c.order === 1) ?? all[0] : all[0]), [all, ticker, source]);
   const icon = useMemo(() => (data ? findInstrument(instrument.source, data.auto)?.emoji ?? instrument.emoji : instrument.emoji), [data, instrument.source, instrument.emoji]);
+
+  const shownTicker = source && data && all.length >= 2 ? (shown?.ticker ?? null) : null;
+  useEffect(() => {
+    onShown?.(shownTicker);
+  }, [onShown, shownTicker]);
 
   if (!source || !data || all.length < 2) return null;
 

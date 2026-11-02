@@ -167,6 +167,7 @@ function Menu({
 export default function TopToolbar(p: Props) {
   const { t } = useT();
   const [, setV] = useState(0);
+  const [ctTicker, setCtTicker] = useState<string | null>(null);
   useEffect(() => p.drawings.subscribe(() => setV((v) => v + 1)), [p.drawings]);
 
   // design v3: grey rounded buttons on the white card, the "on" state is a darker grey (not green)
@@ -207,11 +208,12 @@ export default function TopToolbar(p: Props) {
 
       <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} tb-sym !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
         <InstIcon inst={p.instrument} size={28} />
-        <span className="font-bold text-[16px]">{p.instrument.ticker}</span>
+        <span className="tb-sym-classic font-bold text-[16px]">{p.instrument.ticker}</span>
+        <span className="tb-sym-mac">{ctTicker ?? p.instrument.ticker}</span>
         <span className="hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
-        <span className="text-[var(--tv3-text2)] inline-flex">{I.search}</span>
+        <span className="tb-sym-search text-[var(--tv3-text2)] inline-flex">{I.search}</span>
       </button>
-      {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={btn} />}
+      {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={`${btn} tb-ct`} onShown={setCtTicker} />}
 
       {p.favIntervals && p.onFavIntervals ? (
         <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} />
