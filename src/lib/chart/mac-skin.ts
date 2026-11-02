@@ -12,7 +12,9 @@ const WIDE = "(min-width: 900px) and (min-height: 480px) and (hover: hover) and 
 
 function stored(): boolean {
   try {
-    return localStorage.getItem(MAC_SKIN_KEY) === "mac";
+    const v = localStorage.getItem(MAC_SKIN_KEY);
+    // the desktop apps (app UI on a wide window) wear the new look by default; the website needs the switch
+    return v === "mac" || (v === null && document.documentElement.classList.contains("app-ui"));
   } catch {
     return false;
   }

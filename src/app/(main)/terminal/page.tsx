@@ -23,7 +23,8 @@ import { autoToAsset, itemToInstrument, lookupSecid } from "@/lib/market-client"
 import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
 import { noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
 import { KIND_LAST } from "@/lib/chart/sync-logic";
-import { useAppUi } from "@/components/app/useAppUi";
+import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
+import SkinSwitch from "@/components/layout/SkinSwitch";
 import AppTerminal from "@/components/app/AppTerminal";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
 
@@ -108,7 +109,10 @@ function instrumentFromUrl(): TerminalInstrument {
 export default function TerminalPage() {
   const { t } = useT();
   const appUi = useAppUi();
-  const mac = useMacSkin(!appUi).on && !appUi;
+  // a wide app window (the Windows / macOS app) wears the same new look as the website; a phone-style layout keeps AppTerminal
+  const wideApp = useAppTopToolbar();
+  const deskMac = useMacSkin(!appUi || wideApp);
+  const mac = deskMac.on && (!appUi || wideApp);
   // the design is drawn for a ~1440px window: on a wider screen its chrome (toolbar, rails, panels) is enlarged to keep the same proportions
   const [macZoom, setMacZoom] = useState(1);
   useEffect(() => {
@@ -193,12 +197,18 @@ export default function TerminalPage() {
   }, []);
 
   // app-only UI (Android app / ?appui=1): the terminal is a scrolling page like the design; the symbol state stays here
-  if (appUi) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
+  if (appUi && !mac) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
 
   return (
     <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
+      {/* the app has no site header, so the switch between the new and the old look sits in the corner of the window */}
+      {appUi && (
+        <div className="absolute right-4 top-0 z-[60]">
+          <SkinSwitch />
+        </div>
+      )}
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
       <DemoGate kind="terminal" path="/terminal">
         {selected && (
