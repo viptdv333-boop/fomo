@@ -1056,3 +1056,7 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
   .tvmac [data-tv="bottom"] svg { width: 13px !important; height: 13px !important; }
 }
 .tvmac { padding-bottom: 10px; }
+
+/* the separate contract chevron is not in the design: the pill shows the contract ticker, another contract is picked in the symbol search (or from the expiry banner) */
+.tvmac [data-tv="toolbar"] .tb-ct { display: none !important; }
+.tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 12px !important; }
