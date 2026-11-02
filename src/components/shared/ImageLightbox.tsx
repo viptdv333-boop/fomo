@@ -56,11 +56,13 @@ export default function ImageLightbox({ src, alt, className }: Props) {
                 e.stopPropagation();
                 setOpen(false);
               }}
-              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-xl leading-none text-white shadow hover:bg-black/80"
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700"
               aria-label={t("common.close")}
               title={t("common.close")}
             >
-              ✕
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
             </button>
           </div>
         </div>,
