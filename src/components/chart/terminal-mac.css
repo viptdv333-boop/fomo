@@ -998,3 +998,29 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 .tvmac [data-tv="tools"] .tv3-rgap { flex: 0 1 3px !important; min-height: 0 !important; }
 .tvmac [data-tv="tools"] .tv3-rbtn .mg { height: min(36px, 86%) !important; width: auto !important; aspect-ratio: 1; }
 .tvmac-classic { white-space: nowrap; }
+
+/* ═════════ one-row header (half the height): symbol, intervals and the labelled icons share a single line; it wraps only when the window is too narrow ═════════ */
+.tvmac [data-tv="toolbar"] .tb-break, .tvmac [data-tv="toolbar"] .tb-spacer { display: none !important; }
+.tvmac [data-tv="toolbar"] { padding: 14px 2px 4px !important; gap: 4px 8px; flex-wrap: wrap; align-items: center; }
+@layer utilities {
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) {
+    height: 46px !important;
+    max-width: 84px;
+    gap: 1px !important;
+  }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 11.5px; }
+  .tvmac [data-tv="toolbar"] button .mg { width: 24px !important; height: 24px !important; }
+  .tvmac [data-tv="toolbar"] .tb-sym, .tvmac [data-tv="toolbar"] .tb-roll { height: 36px !important; }
+  .tvmac [data-tv="toolbar"] .tb-events { width: 36px !important; height: 36px !important; }
+  .tvmac [data-tv="toolbar"] > div[class*="bg-[var(--tv3-fill2)]"] button { height: 28px !important; min-width: 32px !important; font-size: 13.5px !important; }
+}
+.tvmac-classic { top: 1px !important; right: 14px !important; height: 18px !important; font-size: 11px; padding: 0 8px; background: transparent; color: var(--m-sub); }
+.tvmac-classic:hover { background: var(--m-seg); }
+@media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 12px !important; } }
+.tvmac [data-tv="toolbar"] { zoom: calc(1 + (var(--mz, 1) - 1) / 2); padding-top: 20px !important; }
+@layer utilities {
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { min-width: 58px; max-width: 80px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 10.5px; letter-spacing: -0.01em; }
+}
+@media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 18px !important; } }
+.tvmac [data-tv="toolbar"] { margin-top: 18px; }
