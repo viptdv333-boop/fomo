@@ -544,124 +544,138 @@ export function useWatchlist() {
   };
 }
 
-/** The list picker above the filter: the open list, a menu with all lists, create / rename / delete. */
+/** The watchlists as TABS above the list: the main list, the user's own lists, «+» to add one. The open own list has a «⋯» (rename / delete). */
 export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const { t } = useT();
-  const [open, setOpen] = useState(false);
-  const [edit, setEdit] = useState<{ mode: "new" | "rename"; value: string } | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [value, setValue] = useState("");
+  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
   const [sure, setSure] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 260 });
-  const ref = useRef<HTMLButtonElement | null>(null);
+  const moreRef = useRef<HTMLButtonElement | null>(null);
+  const atLimit = wl.lists.length > WLS_MAX_LISTS;
   const name = (l: { id: string; name: string }) => (l.id === "main" ? t("wl.main") : l.name);
   const cur = wl.lists.find((l) => l.id === wl.activeId) ?? wl.lists[0];
-  const atLimit = wl.lists.length > WLS_MAX_LISTS;
-  const close = () => {
-    setOpen(false);
-    setEdit(null);
+  const tab = "tv3-press h-7 shrink-0 max-w-[150px] truncate rounded-full px-3 text-[12.5px] font-semibold cursor-pointer";
+  const finish = () => {
+    const v = value.trim();
+    if (adding && v) wl.createList(v);
+    if (renaming && v) wl.renameList(wl.activeId, v);
+    setAdding(false);
+    setRenaming(false);
+    setValue("");
+  };
+  const input = (
+    <input
+      autoFocus
+      value={value}
+      maxLength={40}
+      placeholder={t("wl.namePh")}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={finish}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") finish();
+        if (e.key === "Escape") {
+          setAdding(false);
+          setRenaming(false);
+          setValue("");
+        }
+      }}
+      className="h-7 w-[130px] shrink-0 rounded-full bg-[var(--tv3-fill)] px-3 text-[12.5px] text-[var(--tv3-text)] outline-none focus:ring-2 focus:ring-[var(--tv3-accent)]"
+    />
+  );
+  const closeMenu = () => {
+    setMenu(null);
     setSure(false);
   };
-  const toggle = () => {
-    const r = ref.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 4, left: Math.max(6, Math.min(r.left, window.innerWidth - 276)), width: Math.max(250, Math.min(300, r.width + 40)) });
-    setOpen((o) => !o);
-    setEdit(null);
-    setSure(false);
-  };
-  const submit = () => {
-    if (!edit) return;
-    if (edit.mode === "new") wl.createList(edit.value);
-    else wl.renameList(wl.activeId, edit.value);
-    close();
-  };
-  const row = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
+  const item = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
   return (
-    <div className="mb-1.5">
-      <button
-        ref={ref}
-        type="button"
-        onClick={toggle}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={t("wl.lists")}
-        className="tv3-press flex h-8 w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[13px] font-semibold text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)] cursor-pointer"
-      >
-        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
-        </svg>
-        <span className="min-w-0 flex-1 truncate">{name(cur)}</span>
-        <span className="text-[11px] font-medium text-[var(--tv3-muted)]">{cur.count}</span>
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-[var(--tv3-muted)]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {open && (
+    <div className="mb-1.5 flex items-center gap-1.5">
+      <div role="tablist" aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {wl.lists.map((l) =>
+          renaming && l.id === wl.activeId ? (
+            <span key={l.id}>{input}</span>
+          ) : (
+            <button
+              key={l.id}
+              type="button"
+              role="tab"
+              aria-selected={l.id === wl.activeId}
+              title={`${name(l)} · ${l.count}`}
+              onClick={() => wl.selectList(l.id)}
+              className={`${tab} ${l.id === wl.activeId ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"}`}
+            >
+              {name(l)}
+            </button>
+          ),
+        )}
+        {adding ? (
+          input
+        ) : (
+          <button
+            type="button"
+            disabled={atLimit}
+            onClick={() => {
+              setValue("");
+              setAdding(true);
+            }}
+            title={atLimit ? t("wl.limit") : t("wl.new")}
+            aria-label={t("wl.new")}
+            className="tv3-press flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)] cursor-pointer disabled:opacity-40"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {wl.activeId !== "main" && !renaming && (
+        <button
+          ref={moreRef}
+          type="button"
+          aria-label={t("wl.rename")}
+          aria-haspopup="menu"
+          onClick={() => {
+            const r = moreRef.current?.getBoundingClientRect();
+            if (r) setMenu({ top: r.bottom + 4, left: Math.max(6, Math.min(r.right - 200, window.innerWidth - 206)) });
+          }}
+          className="tv3-press flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)] cursor-pointer"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+            <circle cx="5" cy="12" r="1.7" />
+            <circle cx="12" cy="12" r="1.7" />
+            <circle cx="19" cy="12" r="1.7" />
+          </svg>
+        </button>
+      )}
+      {menu && (
         <PopupPortal>
-          <div className="fixed inset-0 z-[55]" onClick={close} />
-          <div role="menu" className="tv3-pop fixed z-[56] max-h-[70vh] overflow-y-auto rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]" style={{ top: pos.top, left: pos.left, width: pos.width }}>
-            {wl.lists.map((l) => (
-              <button
-                key={l.id}
-                role="menuitem"
-                type="button"
-                onClick={() => {
-                  wl.selectList(l.id);
-                  close();
-                }}
-                className={`${row} ${l.id === wl.activeId ? "font-semibold text-[var(--tv3-accent)]" : ""}`}
-              >
-                <span className="min-w-0 flex-1 truncate">{name(l)}</span>
-                <span className="text-[11px] text-[var(--tv3-muted)]">{l.count}</span>
-                <span className="w-4 text-xs">{l.id === wl.activeId ? "✓" : ""}</span>
-              </button>
-            ))}
-            <div className="my-1 h-px bg-[var(--tv3-hair)]" />
-            {edit ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5">
-                <input
-                  autoFocus
-                  value={edit.value}
-                  maxLength={40}
-                  placeholder={t("wl.namePh")}
-                  onChange={(e) => setEdit({ ...edit, value: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submit();
-                    if (e.key === "Escape") setEdit(null);
-                  }}
-                  className="h-8 min-w-0 flex-1 rounded-[9px] bg-[var(--tv3-fill)] px-2.5 text-[13px] text-[var(--tv3-text)] outline-none focus:ring-2 focus:ring-[var(--tv3-accent)]"
-                />
-                <button type="button" onClick={submit} disabled={!edit.value.trim()} className="h-8 rounded-[9px] bg-[var(--tv3-accent)] px-3 text-[13px] font-semibold text-white cursor-pointer disabled:opacity-40">
-                  {edit.mode === "new" ? t("wl.create") : t("wl.save")}
-                </button>
-              </div>
-            ) : (
-              <>
-                <button role="menuitem" type="button" disabled={atLimit} onClick={() => setEdit({ mode: "new", value: "" })} title={atLimit ? t("wl.limit") : undefined} className={`${row} disabled:opacity-40`}>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  {t("wl.new")}
-                </button>
-                {wl.activeId !== "main" && (
-                  <>
-                    <button role="menuitem" type="button" onClick={() => setEdit({ mode: "rename", value: cur.name })} className={row}>
-                      {t("wl.rename")}
-                    </button>
-                    <button
-                      role="menuitem"
-                      type="button"
-                      onClick={() => {
-                        if (!sure) return setSure(true);
-                        wl.deleteList(wl.activeId);
-                        close();
-                      }}
-                      className={`${row} text-[var(--tv3-red)]`}
-                    >
-                      {sure ? t("wl.deleteSure") : t("wl.delete")}
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+          <div className="fixed inset-0 z-[55]" onClick={closeMenu} />
+          <div role="menu" className="tv3-pop fixed z-[56] w-[200px] rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]" style={{ top: menu.top, left: menu.left }}>
+            <button
+              role="menuitem"
+              type="button"
+              className={item}
+              onClick={() => {
+                setValue(cur.name);
+                setRenaming(true);
+                closeMenu();
+              }}
+            >
+              {t("wl.rename")}
+            </button>
+            <button
+              role="menuitem"
+              type="button"
+              className={`${item} text-[var(--tv3-red)]`}
+              onClick={() => {
+                if (!sure) return setSure(true);
+                wl.deleteList(wl.activeId);
+                closeMenu();
+              }}
+            >
+              {sure ? t("wl.deleteSure") : t("wl.delete")}
+            </button>
           </div>
         </PopupPortal>
       )}
