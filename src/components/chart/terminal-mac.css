@@ -173,7 +173,7 @@ html.dark .tvmac {
 }
 .tvmac [data-tv="toolbar"] .tb-spacer {
   display: block;
-  order: 4;
+  order: 3;
   flex: 1 1 0;
 }
 .tvmac [data-tv="toolbar"] .tb-break {
@@ -406,22 +406,42 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
   color: #f4a98a;
 }
 
-/* "FOMO - community of traders" card at the bottom of the watchlist */
+/* "FOMO - community of traders" card: pinned under the list, exactly like the design (violet gradient, 32px glass icon box, arrow) */
+.tvmac div:has(> [data-fomo-community]) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
 .tvmac [data-fomo-community] {
-  background: linear-gradient(135deg, #8a7bc4, #6f86d0) !important;
-  color: #fff !important;
+  flex: none;
+  margin-top: auto !important;
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
   border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(111, 134, 208, 0.35);
-  padding: 10px 12px;
-}
-.tvmac [data-fomo-community] > span:first-child {
-  background: rgba(255, 255, 255, 0.22) !important;
+  background: linear-gradient(135deg, #7b7fc4, #a47bb5) !important;
   color: #fff !important;
-  border-radius: 50%;
+  box-shadow: 0 5px 14px rgba(110, 100, 170, 0.3);
 }
-.tvmac [data-fomo-community] [class*="text-[var(--tv3-muted)]"] {
-  color: rgba(255, 255, 255, 0.82) !important;
+.tvmac [data-fomo-community] > span:first-child:not(.mg-box),
+.tvmac [data-fomo-community] > svg:not(.mg) { display: none !important; }
+.tvmac [data-fomo-community] .mg-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.22);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: none;
 }
+.tvmac [data-fomo-community] .mg-box .mg { width: 18px; height: 18px; }
+.tvmac [data-fomo-community] .mg-arrow { width: 15px; height: 15px; }
+.tvmac [data-fomo-community] > span:not(.mg-box) > span:first-child { font-size: 13px; font-weight: 600; color: #fff; }
+.tvmac [data-fomo-community] > span:not(.mg-box) > span:last-child { font-size: 11.5px; color: rgba(255, 255, 255, 0.92) !important; }
 
 /* ───────── chart window: a 36px title strip with coloured window buttons (design) ───────── */
 .tvmac [data-win-head] {
@@ -519,17 +539,17 @@ html.dark .tvmac [data-tv="tools"] [data-rk="lock"] { --rc: #9aa0ae; }
 html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
 
 /* ───────── the design's own glyphs replace the classic icons inside the skin ───────── */
-.mg { display: none; }
+.mg, .mg-box { display: none; }
 .tvmac .mg {
   display: block;
   flex: none;
   filter: drop-shadow(0 2px 3px var(--mg-glow, transparent));
 }
-.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button) > svg:not(.mg),
-.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button) > span:has(> svg):not(.tb-lbl) > svg:not(.mg) {
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button):has(> .mg) > svg:not(.mg),
+.tvmac :is([data-tv="toolbar"] button, [data-tv="tools"] > button, [data-tv="tools"] > div > button, [data-tv="sidetabs"] button):has(> .mg) > span:has(> svg):not(.tb-lbl) > svg:not(.mg) {
   display: none !important;
 }
-.tvmac [data-tv="toolbar"] button > span.inline-flex:has(> span > svg):not([class*="rounded-full"]) {
+.tvmac [data-tv="toolbar"] button:has(> .mg) > span.inline-flex:has(> span > svg):not([class*="rounded-full"]) {
   display: none !important;
 }
 .tvmac [data-tv="toolbar"] button .mg {
@@ -737,3 +757,28 @@ html[data-tvmac] .tv3 [data-fly] [class*="grid-cols-6"] button > svg { width: 25
 html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg):has(+ .mg),
 html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > .mg ~ svg:not(.mg) { display: none !important; }
 html[data-tvmac] .tv3 [data-fly] .mg { display: block; width: 22px; height: 22px; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow, transparent)); }
+
+/* the chart-events switch is not in the design's labelled row: it sits as a plain icon at the right end of row 1 */
+.tvmac [data-tv="toolbar"] .tb-events {
+  order: 4 !important;
+  flex: none !important;
+  width: 40px !important;
+  height: 40px !important;
+  max-width: none !important;
+  background: var(--m-chart) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.tvmac [data-tv="toolbar"] .tb-events::after { content: none !important; }
+.tvmac [data-tv="toolbar"] .tb-events .mg { width: 24px !important; height: 24px !important; }
+
+/* contract chip (futures): same white pill as the symbol, without the tiny "Auto" caption */
+.tvmac [data-tv="toolbar"] button[aria-label][class*="border-[var(--tv3-hair)]"] {
+  height: 40px !important;
+  padding: 0 12px !important;
+  background: var(--m-chart);
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.tvmac [data-tv="toolbar"] button[aria-label][class*="border-[var(--tv3-hair)]"] > span:first-child:not(.font-semibold) { display: none; }

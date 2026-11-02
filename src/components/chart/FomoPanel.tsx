@@ -71,12 +71,20 @@ export function FomoCommunityCard() {
           <path d="M17 20h5v-2a3 3 0 00-5.4-1.8M17 20H7m10 0v-2c0-.7-.1-1.4-.4-2M7 20H2v-2a3 3 0 015.4-1.8M7 20v-2c0-.7.1-1.4.4-2m0 0a5 5 0 019.2 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </span>
+      <span className="mg-box" aria-hidden="true">
+        <svg className="mg" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 11a4 4 0 10-8 0 4 4 0 008 0zM4 21c1-4 4-6 8-6s7 2 8 6" />
+        </svg>
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold">{t("termsite.community")}</span>
         <span className="block truncate text-[12px] text-[var(--tv3-muted)]">{t("termsite.community.sub")}</span>
       </span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[var(--tv3-muted)]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />
+      </svg>
+      <svg className="mg mg-arrow" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M7 17L17 7M8 7h9v9" />
       </svg>
     </a>
   );
