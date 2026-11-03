@@ -1465,7 +1465,8 @@ export class ChartEngine {
     // watermark
     if (this.opts.showWatermark && this.opts.symbolLabel && !this.leader) {
       ctx.save();
-      ctx.fillStyle = th.watermark;
+      // as legible as the «fomo.spot» mark under it (the theme's own watermark colour is so faint that the name vanishes behind overlays)
+      ctx.fillStyle = withAlpha(th.text, 0.1);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const size = Math.max(28, Math.min(84, plotW / 9));
