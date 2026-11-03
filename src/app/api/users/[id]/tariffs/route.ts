@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
 import { validateTariffMethods } from "@/lib/payment-link-server";
+import { authorPayDefaults, withPayDefaults } from "@/lib/author-pay-defaults";
 import { activeSubWhere } from "@/lib/subscription-expire";
 import { CHANNEL_ROWS, MAX_PLANS_PER_CHANNEL, defaultPlan, planLabelOf, planViews, subscribersByRoot, validatePlanParent } from "@/lib/tariff-plans";
 import { parseTariffInput, tariffNameKey } from "@/lib/tariff-validation";
@@ -19,11 +20,15 @@ export async function GET(
   const { id } = await params;
   const manage = request.nextUrl.searchParams.get("scope") === "manage" && (await auth())?.user?.id === id;
 
-  const rows = await prisma.subscriptionTariff.findMany({
+  const found = await prisma.subscriptionTariff.findMany({
     where: manage ? { authorId: id, archivedAt: null } : { authorId: id, ...CHANNEL_ROWS, isActive: true },
     orderBy: manage ? { createdAt: "asc" } : { price: "asc" },
     include: { plans: { select: { id: true, name: true, parentId: true, planName: true, price: true, durationDays: true, isActive: true, paymentMethods: true, cardNumber: true, sbpQrUrl: true } } },
   });
+  // Buyers: a plan whose own card / QR is empty shows the author's saved one (the tariff keeps only a copy made at the moment of choosing).
+  // The editor (manage) gets the stored values untouched.
+  const defaults = manage ? null : await authorPayDefaults(id);
+  const rows = defaults ? found.map((r) => ({ ...withPayDefaults(r, defaults), plans: r.plans.map((p) => withPayDefaults(p, defaults)) })) : found;
 
   const rootOfTariff = new Map<string, string>();
   for (const t of rows) {

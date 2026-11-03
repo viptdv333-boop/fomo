@@ -200,8 +200,9 @@ export default function EditChannelPage() {
       price: parseFloat(tr.price) || 0,
       durationDays: parseInt(tr.durationDays),
       paymentMethods: tr.paymentMethods,
-      cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || null : null,
-      sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || null : null,
+      // "card" is ticked but the copied number is empty (ticked before the card was added / by default): take the saved card
+      cardNumber: tr.paymentMethods.includes("card") ? tr.cardNumber.trim() || (savedPaymentMethods.find((m) => m.type === "card" && m.isDefault) ?? savedPaymentMethods.find((m) => m.type === "card"))?.details?.cardNumber?.trim() || null : null,
+      sbpQrUrl: tr.paymentMethods.includes("sbp") ? tr.sbpQrUrl.trim() || savedPaymentMethods.find((m) => m.type === "sbp")?.details?.qrImageUrl || null : null,
       yukassaShopId: tr.paymentMethods.includes("yukassa") ? tr.yukassaShopId.trim() || null : null,
       yukassaSecret: tr.paymentMethods.includes("yukassa") ? tr.yukassaSecret.trim() || null : null,
       isActive: tr.isActive,

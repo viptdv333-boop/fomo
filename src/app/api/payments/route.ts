@@ -6,6 +6,7 @@ import { findActiveSubscription } from "@/lib/subscriptions";
 import { isLifetimeEnd, tooFarAhead } from "@/lib/subscription-renew";
 import { rateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/i18n/server";
+import { authorPayDefaults, withPayDefaults } from "@/lib/author-pay-defaults";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -122,6 +123,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // the card / QR the buyer sees: the plan's own, else the author's saved one
+    const shown = withPayDefaults(tariff, await authorPayDefaults(tariff.authorId));
+
     // Check existing pending payment request
     const existingRequest = await prisma.paymentRequest.findFirst({
       where: { buyerId: userId, sellerId: tariff.authorId, tariffId: tariff.id, status: "PENDING" },
@@ -129,8 +133,8 @@ export async function POST(req: NextRequest) {
     if (existingRequest) {
       return NextResponse.json({
         paymentRequest: existingRequest,
-        sellerCard: tariff.cardNumber || tariff.author.paymentCard,
-        sellerQrUrl: tariff.sbpQrUrl || tariff.author.sbpQrUrl,
+        sellerCard: shown.cardNumber,
+        sellerQrUrl: shown.sbpQrUrl,
         sellerName: tariff.author.displayName,
       });
     }
@@ -161,8 +165,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       paymentRequest,
-      sellerCard: tariff.cardNumber || tariff.author.paymentCard,
-      sellerQrUrl: tariff.sbpQrUrl || tariff.author.sbpQrUrl,
+      sellerCard: shown.cardNumber,
+      sellerQrUrl: shown.sbpQrUrl,
       sellerName: tariff.author.displayName,
     });
   }
