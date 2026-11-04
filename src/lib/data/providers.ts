@@ -27,8 +27,7 @@ export const DATA_PROVIDERS: DataProvider[] = [
   { id: "finam", market: "moex", name: "Финам (Trade API)", needsKey: true, live: false, keyUrl: "https://tradeapi.finam.ru/", gives: ["dp.g.live", "dp.g.trades", "dp.g.moexfx"] },
   { id: "algopack", market: "moex", name: "MOEX ALGOPACK", needsKey: true, live: true, keyUrl: "https://data.moex.com/products/algopack", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.futoi", "dp.g.moexfx"] },
   { id: "binance", market: "crypto", name: "Binance", needsKey: false, live: true, gives: ["dp.g.live"] },
-  // Databento waits for its written answer on a customer's own key behind a terminal
-  { id: "databento", market: "us", name: "Databento", needsKey: true, live: false, keyUrl: "https://databento.com/signup", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.futures", "dp.g.fxcme"] },
+  { id: "databento", market: "us", name: "Databento", needsKey: true, live: true, keyUrl: "https://databento.com/signup", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.futures", "dp.g.fxcme"] },
   { id: "twelvedata", market: "world", name: "Twelve Data", needsKey: true, live: true, keyUrl: "https://twelvedata.com/register", gives: ["dp.g.live", "dp.g.world"] },
 ];
 

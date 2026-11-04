@@ -12,6 +12,7 @@ import { getUserKey } from "@/lib/data/user-key";
 import { tinkoffToken } from "@/lib/data/moex-keys";
 import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdQuote } from "@/lib/data/twelvedata";
+import { dbQuote } from "@/lib/data/databento";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -299,6 +300,14 @@ async function handle(request: NextRequest) {
     const f = await fetchFmpQuote(ticker);
     quote = f.quote;
     fmpErr = f.err;
+  } else if (source === "databento") {
+    // the user's own Databento key; the answer is for him alone
+    const uk = await getUserKey("databento");
+    const priv = { "Cache-Control": "private, no-store", Vary: "Cookie" };
+    if (!uk) return NextResponse.json({ error: "No quote data", provider: "databento", reason: "no-key" }, { status: 404, headers: priv });
+    const db = await dbQuote(uk.userId, uk.key, ticker);
+    if (!db.quote) return NextResponse.json({ error: "No quote data", provider: "databento", reason: db.error ?? "network" }, { status: 404, headers: priv });
+    return NextResponse.json({ ...db.quote, provider: "databento" }, { headers: priv });
   } else if (source === "twelvedata") {
     // the user's own Twelve Data key; the answer is for him alone
     const uk = await getUserKey("twelvedata");

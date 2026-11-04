@@ -153,6 +153,8 @@ const NATIVE: Record<string, string[]> = {
   bybit: ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M", "Y"],
   // Twelve Data time_series: 1 5 15 30 min, 1h, 4h, day, week, month; Y is built from M on the server
   twelvedata: [...COMMON_NATIVE, "30"],
+  // Databento: built on the server from 1-minute, 1-hour and daily bars (data/databento.ts)
+  databento: [...COMMON_NATIVE, "30"],
   // Binance klines: 1m 3m 5m 15m 30m 1h 2h 4h 6h 12h 1d 1w 1M; Y is built from M on the server
   binance: ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M", "Y"],
 };

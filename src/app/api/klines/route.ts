@@ -16,6 +16,7 @@ import { binanceCandles } from "@/lib/binance";
 import { getUserKey } from "@/lib/data/user-key";
 import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdCandles, type TdError } from "@/lib/data/twelvedata";
+import { dbCandles } from "@/lib/data/databento";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -520,6 +521,13 @@ async function handle(request: NextRequest) {
     candles = await fetchBybitCandles(ticker, srcInterval, srcLimit, toMs);
   } else if (source === "binance") {
     candles = await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
+  } else if (source === "databento") {
+    // the user's own Databento key; without one the chart is not served (the client shows the connect window instead)
+    const uk = await getUserKey("databento");
+    if (!uk) return NextResponse.json({ error: "no-key", provider: "databento" }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    const db = await dbCandles(uk.userId, uk.key, ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
+    candles = db.candles;
+    userFeed = { provider: "databento", ...(db.error ? { error: db.error, errorDetail: db.detail } : {}) };
   } else if (source === "twelvedata") {
     // the user's own Twelve Data key; without one the chart is not served (the client shows the connect window instead)
     const uk = await getUserKey("twelvedata");

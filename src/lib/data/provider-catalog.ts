@@ -365,6 +365,30 @@ export function lookupProviderItem(id: string): MarketItem | null {
   return providerItems().find((i) => i.secid.toLowerCase() === s) ?? null;
 }
 
+/** Databento dataset of an exchange (futures venues); US stocks and ETFs sit on DBEQ.BASIC. */
+const DB_DATASET: Record<string, string> = {
+  CME: "GLBX.MDP3",
+  CBOT: "GLBX.MDP3",
+  NYMEX: "GLBX.MDP3",
+  COMEX: "GLBX.MDP3",
+  ICE: "IFUS.IMPACT",
+  "ICE Europe": "IFEU.IMPACT",
+  "ICE Endex": "NDEX.IMPACT",
+  Eurex: "XEUR.EOBI",
+  CFE: "XCBF.PITCH",
+};
+
+/** What the Databento data layer asks for an instrument id of the catalogue: dataset, symbol (a futures root = the continuous front month) and its kind. */
+export function databentoSpecOf(id: string): { dataset: string; symbol: string; stype: "continuous" | "raw_symbol"; future: boolean } | null {
+  const r = DATABENTO.find((x) => x.id.toLowerCase() === id.trim().toLowerCase());
+  if (!r) return null;
+  if (r.group === "future") {
+    const dataset = DB_DATASET[r.exchange];
+    return dataset ? { dataset, symbol: `${r.id}.c.0`, stype: "continuous", future: true } : null;
+  }
+  return { dataset: "DBEQ.BASIC", symbol: r.id, stype: "raw_symbol", future: false };
+}
+
 /** The provider a chart source needs the user's key for (null: the source is served without a key). */
 export function providerOfSource(source: string): ProviderId | null {
   return source === "databento" || source === "twelvedata" ? source : null;
