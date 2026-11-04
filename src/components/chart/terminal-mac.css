@@ -1079,3 +1079,11 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 [data-tv="toolbar"] .tb-macoffer { display: none !important; }
 
 /* app window: the way back to the classic look is the last button of the toolbar (.tb-skin; the site header with the switch does not exist there) */
+
+/* the toolbar is one row: on a mid-width window the gaps tighten so the last button (the way back to the classic look in the app window) stays in the row */
+@layer utilities {
+  @media (max-width: 1799px) {
+    .tvmac [data-tv="toolbar"] { column-gap: 3px !important; }
+  }
+  .tvmac [data-tv="toolbar"] .tb-skin { min-width: 68px !important; }
+}
