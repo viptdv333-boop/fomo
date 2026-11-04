@@ -351,7 +351,8 @@ export function serializeWorkspace(ws: Workspace): unknown {
 
 /**
  * Any stored value -> a valid workspace or null. A broken window is dropped, a repeated / odd id is dropped, a window outside the area is pulled
- * back in, z-orders become 1..n, a missing price chart gets the whole area, more windows than MAX_WINDOWS are cut. Nothing but the price chart: null.
+ * back in, z-orders become 1..n, a missing price chart gets the whole area, more windows than MAX_WINDOWS are cut. Nothing but the price chart (of any
+ * size): null, i.e. it fills the area.
  */
 export function parseWorkspace(raw: unknown): Workspace | null {
   if (!raw || typeof raw !== "object" || !Array.isArray((raw as { wins?: unknown }).wins)) return null;
@@ -388,6 +389,8 @@ export function parseWorkspace(raw: unknown): Workspace | null {
   ranked.forEach((e, k) => (e.w.z = k + 1));
   // a link to a chart that is not there (or to something that is not a chart) is the price chart; no price chart in the list = it was closed
   const wins = relink(list);
+  // the price chart alone, whatever size it was left at (shrunk, moved): the terminal opens with it filling the whole area
+  if (wins.length === 1 && wins[0].id === MAIN_ID) return null;
   return isDefault({ wins }) ? null : { wins };
 }
 
