@@ -490,7 +490,7 @@ async function handle(request: NextRequest) {
   let fx: ForexCandlesResult | undefined;
   let fmp: FmpCandlesResult | undefined;
   /** a feed read with the requester's own provider key: the answer is for him alone */
-  let userFeed: { provider: string; error?: TdError | string; errorDetail?: string } | undefined;
+  let userFeed: { provider: string; error?: TdError | string; errorDetail?: string; live?: string } | undefined;
 
   // ALGOPACK (online ISS gateway) is for entitled requesters only: admins, or everyone with ALGOPACK_PUBLIC=1. Decided here, on
   // the server. Without the key none of this runs (the session is not even read) and the route behaves exactly as before.
@@ -527,7 +527,7 @@ async function handle(request: NextRequest) {
     if (!uk) return NextResponse.json({ error: "no-key", provider: "databento" }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
     const db = await dbCandles(uk.userId, uk.key, ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
     candles = db.candles;
-    userFeed = { provider: "databento", ...(db.error ? { error: db.error, errorDetail: db.detail } : {}) };
+    userFeed = { provider: "databento", ...(db.live ? { live: db.live } : {}), ...(db.error ? { error: db.error, errorDetail: db.detail } : {}) };
   } else if (source === "twelvedata") {
     // the user's own Twelve Data key; without one the chart is not served (the client shows the connect window instead)
     const uk = await getUserKey("twelvedata");
@@ -604,7 +604,7 @@ async function handle(request: NextRequest) {
       // spot FX: who served the bars, whether the volume is a tick count ("tick") or absent ("none"), and a proxy instrument (metals)
       ...(fx ? { provider: fx.provider, volumeKind: fx.volume, ...(fx.proxy ? { proxy: fx.proxy } : {}) } : {}),
       // data through the user's own provider key: who served it and, when empty, why ("key" | "limit" | "plan" | "symbol" | "network")
-      ...(userFeed ? { provider: userFeed.provider, ...(userFeed.error ? { error: userFeed.error, errorDetail: userFeed.errorDetail } : {}) } : {}),
+      ...(userFeed ? { provider: userFeed.provider, ...(userFeed.live ? { live: userFeed.live } : {}), ...(userFeed.error ? { error: userFeed.error, errorDetail: userFeed.errorDetail } : {}) } : {}),
       // FMP: why the answer is empty / incomplete ("limit": request limit exhausted, "plan": symbol or endpoint not in the plan, "network"),
       // `stale`: some bars are cached ones served after a provider failure, `reachedStart`: no older data exists
       ...(fmp

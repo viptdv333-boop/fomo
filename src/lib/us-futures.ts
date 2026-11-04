@@ -138,6 +138,12 @@ export function searchUsFutures(q: string, limit = 30): MarketItem[] {
 }
 
 /** Every US future as search results, in the table order. */
+/**
+ * Is the FMP table of US futures part of the search and the catalogues? Off by default: the US market is served through the user's own Databento key.
+ * FMP_US_CATALOG=1 brings the table back. Saved layouts and watchlists with FMP symbols keep opening either way (lookups and the data layer are untouched).
+ */
+export const fmpCatalogOn = (): boolean => process.env.FMP_US_CATALOG === "1";
+
 export function allUsFutureItems(): MarketItem[] {
   return US_FUTURES.map(usFutureItem);
 }

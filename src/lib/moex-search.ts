@@ -14,7 +14,7 @@ import { getBybitSpotList, looksLikeCoin, pairToItem, POPULAR_CRYPTO, searchCryp
 import { bondItem, currencyItem, fundItem, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
 import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filters } from "./instrument-filters";
 import { arrangeByAsset, classBoost, FUT_ASSETS, moexAssetOrder } from "./futures-assets";
-import { allUsFutureItems, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
+import { allUsFutureItems, fmpCatalogOn, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
 import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
 import { lookupProviderItem, providerItemsOf, searchProviderItems } from "./data/provider-catalog";
 
@@ -236,7 +236,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
   if (group === "future") {
     // Russian and US futures by relevance (RU first on a tie), then the classes ordered by their best hit, RU before US inside a class
     const fut = scoreFutures(await getFortsFamilies(), q);
-    const us = scoreUsFutures(q);
+    const us = fmpCatalogOn() ? scoreUsFutures(q) : [];
     const merged = [...fut, ...us]
       .map((x, i) => {
         const item = tagItem(x.item);
@@ -256,7 +256,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
   ]);
   const fut = all ? scoreFutures(families, q).slice(0, CANDIDATES).map((x) => x.item) : [];
   const exactFut = fut.filter((f) => norm(f.secid) === norm(q));
-  const us = all ? scoreUsFutures(q).slice(0, 30).map((x) => x.item) : [];
+  const us = all && fmpCatalogOn() ? scoreUsFutures(q).slice(0, 30).map((x) => x.item) : [];
   const idx = all ? searchIndexRows(indices, q, 20).map(indexItem) : [];
   const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...us, ...idx, ...cash], q);
   // an exact secid always on top; otherwise futures, indices and cash groups interleave by relevance
@@ -297,7 +297,7 @@ export function futuresCatalog(families: ContractFamily[], provs: readonly strin
   const ru = families
     .map((f) => tagItem(famItem(refreshDays(f))))
     .sort((a, b) => moexAssetOrder(a.asset ?? "") - moexAssetOrder(b.asset ?? "") || (a.asset ?? "").localeCompare(b.asset ?? ""));
-  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem), ...providerItemsOf("future", provs).map(tagItem)]);
+  return arrangeByAsset([...ru, ...(fmpCatalogOn() ? allUsFutureItems() : []).map(tagItem), ...providerItemsOf("future", provs).map(tagItem)]);
 }
 
 type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "index";

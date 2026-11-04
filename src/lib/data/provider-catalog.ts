@@ -11,7 +11,7 @@
  */
 import type { FutAsset, MarketGroup, MarketItem } from "../market-types";
 import { providerById, type DataProvider } from "./providers";
-import { allUsFutureItems } from "../us-futures";
+import { allUsFutureItems, fmpCatalogOn } from "../us-futures";
 
 type ProviderId = Extract<DataProvider["id"], "databento" | "twelvedata">;
 
@@ -325,7 +325,7 @@ let all: MarketItem[] | null = null;
  */
 export function providerItems(): MarketItem[] {
   if (!all) {
-    const served = new Set(allUsFutureItems().map((i) => i.asset));
+    const served = new Set((fmpCatalogOn() ? allUsFutureItems() : []).map((i) => i.asset));
     // a provider whose data is not switched on (providers.ts `live`) is not offered at all: an instrument that cannot open is not listed
     all = (Object.keys(BY_PROVIDER) as ProviderId[]).filter((p) => providerById(p)?.live).flatMap((p) => BY_PROVIDER[p].filter((r) => !(r.group === "future" && r.country === "US" && r.asset && served.has(r.asset))).map((r) => toItem(p, r)));
   }

@@ -4,6 +4,7 @@
  * Instruments of the catalogue: a US stock / ETF (`AAPL`, dataset DBEQ.BASIC) or a futures root (`ES`, continuous front month `ES.c.0` on the
  * dataset of its exchange).
  */
+import { liveOf, type LiveBar, type LiveState } from "./databento-live";
 import { databentoSpecOf } from "./provider-catalog";
 import { memoized } from "./user-key";
 
@@ -21,6 +22,8 @@ export type DbError = "key" | "limit" | "plan" | "symbol" | "network";
 
 export interface DbCandles {
   candles: DbCandle[];
+  /** the live stream: "live" when its minutes are laid over the history, "refused" when the key has no live licence for the dataset */
+  live?: LiveState;
   error?: DbError;
   detail?: string;
 }
@@ -165,6 +168,35 @@ function perDay(schema: Schema, future: boolean): number {
   return 0.72;
 }
 
+/** Bucket start of a live minute for an interval (UTC aligned, like the historical bars). */
+function liveBucket(t: number, bucket: number | "W" | "M", schema: Schema): number {
+  if (schema === "ohlcv-1d") return bucketOf(t, bucket === 0 ? DAY : bucket);
+  return bucket === 0 ? (schema === "ohlcv-1h" ? Math.floor(t / HOUR) * HOUR : Math.floor(t / MIN) * MIN) : bucketOf(t, bucket);
+}
+
+/**
+ * The live minutes newer than the history laid over its bars: a live minute that falls into the last bar extends it, later ones add bars.
+ * `histEnd` is where the historical data stops: nothing before it is added (no minute is counted twice).
+ */
+function overlayLive(rows: DbCandle[], live: LiveBar[], histEnd: number, bucket: number | "W" | "M", schema: Schema): DbCandle[] {
+  const fresh = live.filter((m) => m.timestamp >= histEnd);
+  if (fresh.length === 0) return rows;
+  const out = rows.map((r) => ({ ...r }));
+  for (const m of fresh) {
+    const b = liveBucket(m.timestamp, bucket, schema);
+    const last = out[out.length - 1];
+    if (last && last.timestamp === b) {
+      last.high = Math.max(last.high, m.high);
+      last.low = Math.min(last.low, m.low);
+      last.close = m.close;
+      last.volume += m.volume;
+    } else if (!last || b > last.timestamp) {
+      out.push({ timestamp: b, open: m.open, high: m.high, low: m.low, close: m.close, volume: m.volume });
+    }
+  }
+  return out;
+}
+
 export async function dbCandles(userId: string, key: string, id: string, interval: string, limit: number, toMs?: number): Promise<DbCandles> {
   const spec = databentoSpecOf(id);
   const plan = PLAN[interval];
@@ -188,8 +220,17 @@ export async function dbCandles(userId: string, key: string, id: string, interva
       if (r.error) return { candles: [], error: r.error, detail: r.detail };
       let rows = r.rows;
       if (plan.bucket !== 0) rows = aggregate(rows, plan.bucket);
+      // the live edge: only for the newest page, never for a scroll-back page ending in the past
+      let liveState: LiveState | undefined;
+      if (toMs === undefined) {
+        const lv = liveOf(key, { dataset: spec.dataset, symbol: spec.symbol, stype: spec.stype });
+        liveState = lv.state;
+        // the history ends at its last bar's end; the live minutes start where it stops (a minute bar is complete one minute after it starts)
+        const histEnd = avail !== null ? Math.floor(avail / MIN) * MIN : rows.length ? (rows[rows.length - 1].timestamp + (plan.schema === "ohlcv-1m" ? MIN : plan.schema === "ohlcv-1h" ? HOUR : DAY)) : 0;
+        if (lv.bars.length) rows = overlayLive(rows, lv.bars, histEnd, plan.bucket, plan.schema);
+      }
       if (toMs !== undefined) rows = rows.filter((c) => c.timestamp <= toMs);
-      return { candles: rows.slice(-want) };
+      return { candles: rows.slice(-want), ...(liveState ? { live: liveState } : {}) };
     },
     (v) => !v.error
   );
@@ -226,7 +267,10 @@ export async function dbQuote(userId: string, key: string, id: string): Promise<
       const prev = day.rows.at(-2);
       const last = min.rows.at(-1) ?? d;
       if (!last) return { quote: null, error: "symbol" as DbError };
-      const price = last.close;
+      // the live stream, when it has delivered something newer than the history
+      const lv = liveOf(key, { dataset: spec.dataset, symbol: spec.symbol, stype: spec.stype });
+      const fresher = lv.last > 0 && lv.lastAt > last.timestamp;
+      const price = fresher ? lv.last : last.close;
       const base = prev?.close ?? d?.open ?? price;
       const change = price - base;
       return {
@@ -238,7 +282,7 @@ export async function dbQuote(userId: string, key: string, id: string): Promise<
           volume: d?.volume ?? 0,
           change,
           changePercent: base ? (change / base) * 100 : 0,
-          time: new Date(last.timestamp).toISOString(),
+          time: new Date(fresher ? lv.lastAt : last.timestamp).toISOString(),
           ticker: id,
         },
       };

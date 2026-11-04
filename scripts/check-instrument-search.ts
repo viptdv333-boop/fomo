@@ -1,3 +1,4 @@
+process.env.FMP_US_CATALOG = "1"; // this check covers the FMP table, which stays in the code behind FMP_US_CATALOG
 /* Offline check of the instrument search dialog's pure parts: the asset mapping of the FORTS families (against a captured ISS response), the US futures
    table, grouping / ordering (РФ then США inside an asset), the filters (country / exchange / asset together with the text), the display rows, paging and the
    MOEX index list. No network. Run: npx tsx scripts/check-instrument-search.ts   (exit code 1 on a failed assertion) */
