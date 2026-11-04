@@ -1,12 +1,13 @@
 /**
  * The market-data providers a user can connect with his own key (Settings -> Data providers). Plain data, shared by the page and the API.
- * One provider per market: MOEX -> ALGOPACK, crypto -> Binance (public data, no key), the US market -> Databento.
+ * MOEX: T-Invest (a read-only token of a T-Bank brokerage account) or ALGOPACK; crypto: Binance (public data, no key); the US market: Databento;
+ * the rest of the world: Twelve Data.
  */
 
-export type DataMarket = "moex" | "crypto" | "us";
+export type DataMarket = "moex" | "crypto" | "us" | "world";
 
 export interface DataProvider {
-  id: "algopack" | "binance" | "databento";
+  id: "algopack" | "tinvest" | "binance" | "databento" | "twelvedata";
   market: DataMarket;
   name: string;
   /** a key (token) is pasted by the user; false: the data is public */
@@ -18,9 +19,11 @@ export interface DataProvider {
 }
 
 export const DATA_PROVIDERS: DataProvider[] = [
+  { id: "tinvest", market: "moex", name: "T-Invest (Т-Банк)", needsKey: true, keyUrl: "https://www.tbank.ru/invest/settings/api/", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.seconds"] },
   { id: "algopack", market: "moex", name: "MOEX ALGOPACK", needsKey: true, keyUrl: "https://data.moex.com/products/algopack", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.futoi"] },
   { id: "binance", market: "crypto", name: "Binance", needsKey: false, gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.oi"] },
   { id: "databento", market: "us", name: "Databento", needsKey: true, keyUrl: "https://databento.com/signup", gives: ["dp.g.live", "dp.g.trades", "dp.g.depth", "dp.g.futures"] },
+  { id: "twelvedata", market: "world", name: "Twelve Data", needsKey: true, keyUrl: "https://twelvedata.com/register", gives: ["dp.g.live", "dp.g.world"] },
 ];
 
 export const KEY_PROVIDERS = DATA_PROVIDERS.filter((p) => p.needsKey).map((p) => p.id);

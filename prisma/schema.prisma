@@ -1028,7 +1028,7 @@ model ClientRequest {
 model DataConnection {
   id        String   @id @default(cuid())
   userId    String
-  /// "algopack" | "databento" (src/lib/data/providers.ts)
+  /// "algopack" | "tinvest" | "databento" | "twelvedata" (src/lib/data/providers.ts)
   provider  String
   /// AES-256-GCM: iv.tag.cipher (base64url)
   keyEnc    String

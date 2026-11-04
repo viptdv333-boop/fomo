@@ -15,7 +15,7 @@ interface Conn {
 
 // only what needs a key: the public sources (Binance) work by default and are not listed here
 const KEYED = DATA_PROVIDERS.filter((p) => p.needsKey);
-const MARKETS: DataMarket[] = (["moex", "crypto", "us"] as DataMarket[]).filter((m) => KEYED.some((p) => p.market === m));
+const MARKETS: DataMarket[] = (["moex", "us", "world", "crypto"] as DataMarket[]).filter((m) => KEYED.some((p) => p.market === m));
 
 function ProviderCard({ p, conn, onChanged }: { p: DataProvider; conn: Conn | undefined; onChanged: () => void }) {
   const { t } = useT();
@@ -167,7 +167,7 @@ export default function DataProvidersPage() {
           <section key={m}>
             <h2 className="mb-2.5 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {t(`dp.market.${m}`)}
-              {m === "us" && <span className="ml-2 font-normal normal-case tracking-normal">{t("dp.market.us.sub")}</span>}
+              {(m === "us" || m === "world") && <span className="ml-2 font-normal normal-case tracking-normal">{t(`dp.market.${m}.sub`)}</span>}
             </h2>
             <div className="space-y-3">
               {KEYED.filter((p) => p.market === m).map((p) => (
