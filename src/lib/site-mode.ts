@@ -147,6 +147,8 @@ const TERMINAL_PAGES_EXACT = [
   "/profile",
   // the risk calculator (position size): a terminal tool, MOEX futures specs only (/api/futures/spec), no board / database features
   "/calculator",
+  // the user's own market-data keys (MOEX ALGOPACK, Databento): a terminal setting
+  "/data-providers",
   "/privacy",
   "/terms",
   // the instance owner manages users here (ADMIN / OWNER only, the middleware checks the role); not linked from the navigation
@@ -168,7 +170,7 @@ const TERMINAL_PAGES_CLOSED = ["/terminal/features"];
 export function terminalNeedsLogin(pathname: string): boolean {
   let p = (pathname || "/").split(/[?#]/)[0];
   if (p.length > 1) p = p.replace(/\/+$/, "");
-  return underPrefix(p, "/terminal") || underPrefix(p, "/calendar") || underPrefix(p, "/calculator");
+  return underPrefix(p, "/terminal") || underPrefix(p, "/calendar") || underPrefix(p, "/calculator") || underPrefix(p, "/data-providers");
 }
 
 /** API groups (first segment after /api) open on the terminal site. */
@@ -176,6 +178,7 @@ const TERMINAL_API_PREFIX = [
   "auth", // next-auth, register, send-code, reset-password, change-email, change-password
   "captcha",
   "terminal", // alerts, userdata, watchlist
+  "data", // the user's market-data provider keys (encrypted, never returned)
   "calendar", // reminders (the calendar tab of the terminal)
   "economic-calendar",
   "klines",

@@ -23,6 +23,7 @@ import termfeat from "./termfeat";
 import drawtools from "./drawtools";
 import chartmenu from "./chartmenu";
 import indicators2 from "./indicators2";
+import dataprov from "./dataprov";
 import drawprops from "./drawprops";
 import chartsettings from "./chartsettings";
 import indscripts from "./indscripts";
@@ -50,4 +51,4 @@ import termlegal from "./termlegal";
 import offline from "./offline";
 import appcalc from "./appcalc";
 
-export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, liquidity, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate, forex, instsearch, appui, appch, downloads, termsite, termlegal, appprof, offline, appcalc];
+export const SECTION_DICTS = [auth, feed, channels, chat, profile, payments, instruments, terminal, common, help, legal, seo, notif, notifsettings, api, chartind, chartdraw, chartshell, alerts, indicators2, chartmenu, drawtools, drawprops, chartsettings, indscripts, orderflow, patterns2, elliott, vpro, swings, liquidity, mobilenav, attach, termfeat, contracts, algopack, econcal, termv3, panelv3, calrem, demogate, forex, instsearch, appui, appch, downloads, termsite, termlegal, appprof, offline, appcalc, dataprov];

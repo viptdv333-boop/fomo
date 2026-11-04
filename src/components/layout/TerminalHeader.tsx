@@ -39,6 +39,7 @@ export default function TerminalHeader() {
     { href: "/terminal", label: t("nav.terminal") },
     ...(session ? [{ href: "/calculator", label: t("nav.calculator") }] : []),
     ...(session ? [{ href: "/profile", label: t("profile.profile") }] : []),
+    ...(session ? [{ href: "/data-providers", label: t("nav.dataProviders") }] : []),
   ];
 
   return (

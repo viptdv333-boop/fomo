@@ -69,6 +69,7 @@ model User {
   terminalWatch          TerminalWatchItem[]
   priceAlerts            PriceAlert[]
   terminalUserData       TerminalUserData[]
+  dataConnections        DataConnection[]
   calendarReminders      CalendarReminder[]
   mutedByFeedOf          FeedMute[]     @relation("FeedMuteAuthor")
   education              Education[]
@@ -1021,4 +1022,27 @@ model ClientRequest {
 
   @@unique([userId, clientId])
   @@index([createdAt])
+}
+
+/// A market-data provider key of a user (Settings -> Data providers). The key is stored ENCRYPTED (src/lib/data/crypto.ts), never returned to a browser.
+model DataConnection {
+  id        String   @id @default(cuid())
+  userId    String
+  /// "algopack" | "databento" (src/lib/data/providers.ts)
+  provider  String
+  /// AES-256-GCM: iv.tag.cipher (base64url)
+  keyEnc    String
+  /// last 4 characters, for display
+  keyHint   String
+  enabled   Boolean  @default(true)
+  /// "ok" | "invalid" | "error"
+  status    String   @default("ok")
+  checkedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
 }
