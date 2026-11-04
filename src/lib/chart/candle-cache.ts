@@ -19,7 +19,7 @@ export interface BarsResult {
   tzMin: number;
   delayed: boolean | undefined;
   fx: { provider: string; volumeKind: string; proxy?: string } | undefined;
-  err: "limit" | "plan" | "network" | undefined;
+  err: "limit" | "plan" | "network" | "key" | "symbol" | undefined;
 }
 
 export interface StoredBars {
@@ -214,6 +214,8 @@ async function trim(keep: string): Promise<void> {
 /** Store a fresh answer (best effort, never throws). */
 export async function writeBars(source: string, ticker: string, interval: string, limit: number, res: BarsResult, now: number = Date.now()): Promise<void> {
   if (!storable(res)) return;
+  // bars read with a user's own provider key are not kept on the device: the next person at this browser has no right to them
+  if (source === "twelvedata" || source === "databento") return;
   const e: StoredBars = { key: candleKey(source, ticker, interval, limit), source, ticker, interval, limit, savedAt: now, usedAt: now, bytes: estimateBytes(res), res };
   remember(e);
   const d = await db();

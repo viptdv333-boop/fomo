@@ -151,6 +151,10 @@ const NATIVE: Record<string, string[]> = {
   moex: [...COMMON_NATIVE, "10"],
   // Bybit v5 kline: 1 3 5 15 30 60 120 240 360 720 D W M; Y is built from M on the server
   bybit: ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M", "Y"],
+  // Twelve Data time_series: 1 5 15 30 min, 1h, 4h, day, week, month; Y is built from M on the server
+  twelvedata: [...COMMON_NATIVE, "30"],
+  // Binance klines: 1m 3m 5m 15m 30m 1h 2h 4h 6h 12h 1d 1w 1M; Y is built from M on the server
+  binance: ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M", "Y"],
 };
 
 /** What /api/klines accepts for a source: the native set plus the 30-minute bars the FMP and FX layers also serve themselves. */

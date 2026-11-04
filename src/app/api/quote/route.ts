@@ -8,6 +8,9 @@ import { getViewer } from "@/lib/algopack-access";
 import { getForexQuote } from "@/lib/forex";
 import { fmpRequest, type FmpFailure } from "@/lib/fmp-gate";
 import { ruCaFetch } from "@/lib/algopack-tls";
+import { binanceTicker } from "@/lib/binance";
+import { getUserKey } from "@/lib/data/user-key";
+import { tdQuote } from "@/lib/data/twelvedata";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -284,10 +287,20 @@ export async function GET(request: NextRequest) {
     quote = (realtime ? await fetchTinkoffQuote(ticker) : null) ?? (await fetchIssFallback(ticker));
   } else if (source === "bybit") {
     quote = await fetchBybitQuote(ticker);
+  } else if (source === "binance") {
+    const b = await binanceTicker(ticker.toUpperCase());
+    quote = b ? { ...b, time: new Date().toISOString(), ticker } : null;
   } else if (source === "fmp") {
     const f = await fetchFmpQuote(ticker);
     quote = f.quote;
     fmpErr = f.err;
+  } else if (source === "twelvedata") {
+    // the user's own Twelve Data key; the answer is for him alone
+    const uk = await getUserKey("twelvedata");
+    if (!uk) return NextResponse.json({ error: "No quote data", provider: "twelvedata", reason: "no-key" }, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    const td = await tdQuote(uk.userId, uk.key, ticker);
+    if (!td.quote) return NextResponse.json({ error: "No quote data", provider: "twelvedata", reason: td.error ?? "network" }, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    return NextResponse.json({ ...td.quote, provider: "twelvedata" }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
   } else if (source === "forex") {
     // spot FX (provider layer: cached ~8 s, one upstream request shared by every client)
     const fx = await getForexQuote(ticker);

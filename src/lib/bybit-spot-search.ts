@@ -71,13 +71,13 @@ export function looksLikeCoin(q: string): boolean {
   return /^[A-Za-z0-9]{2,14}$/.test(q.trim());
 }
 
-export function pairToItem(p: SpotPair): MarketItem {
+export function pairToItem(p: SpotPair, source: "bybit" | "binance" = "bybit"): MarketItem {
   return {
     secid: p.symbol,
     ticker: p.symbol,
     name: COINS[p.base]?.name ?? p.base,
     group: "crypto",
-    source: "bybit",
+    source,
     asset: p.base,
   };
 }
@@ -159,8 +159,8 @@ export async function getBybitSpotList(): Promise<SpotPair[]> {
 
 /** Crypto search for the market-search API: query hits over the whole spot list; an empty query gives the popular pairs. */
 export async function searchCrypto(q: string, limit = 30): Promise<MarketItem[]> {
-  if (!q.trim()) return POPULAR_CRYPTO.slice(0, limit).map(pairToItem);
+  if (!q.trim()) return POPULAR_CRYPTO.slice(0, limit).map((p) => pairToItem(p));
   // Bybit unreachable (blocked network): at least the popular pairs stay searchable
   const live = await getBybitSpotList();
-  return searchSpotPairs(live.length ? live : POPULAR_CRYPTO, q, limit).map(pairToItem);
+  return searchSpotPairs(live.length ? live : POPULAR_CRYPTO, q, limit).map((p) => pairToItem(p));
 }

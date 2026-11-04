@@ -5,6 +5,7 @@ import { parseBybitTicker, type BybitCategory } from "./bybit-symbol";
 import { fmpSymbol } from "@/lib/fmp-alias";
 import { fmpRequest } from "@/lib/fmp-gate";
 import { getForexQuotes } from "@/lib/forex";
+import { binanceAllTickers } from "@/lib/binance";
 import { ruCaFetch } from "@/lib/algopack-tls";
 
 /**
@@ -28,7 +29,7 @@ export interface BatchQuote {
 }
 
 export interface QuoteRequest {
-  source: "moex" | "bybit" | "fmp" | "forex";
+  source: "moex" | "bybit" | "binance" | "fmp" | "forex";
   ticker: string;
 }
 
@@ -328,6 +329,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   const staleFmp: string[] = [];
   const fxTickers: string[] = [];
   let needBybit = false;
+  let needBinance = false;
 
   for (const it of items) {
     const key = `${it.source}:${it.ticker}`;
@@ -342,6 +344,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
     }
     if (it.source === "moex") staleMoex.push(it.ticker);
     else if (it.source === "fmp") staleFmp.push(it.ticker);
+    else if (it.source === "binance") needBinance = true;
     else needBybit = true;
   }
 
@@ -416,6 +419,27 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
           if (hit && at - hit.at < QUOTE_TTL_MS) continue; // already answered from cache above
           const bb = parseBybitTicker(it.ticker);
           const q = maps.get(bb.category)?.get(bb.symbol) ?? null;
+          cache.set(key, { at, q });
+          if (q) out[key] = q;
+        }
+      })()
+    );
+  }
+
+  if (needBinance) {
+    jobs.push(
+      (async () => {
+        // one 24 h ticker request covers every pair
+        const all = await binanceAllTickers();
+        const at = Date.now();
+        const time = new Date(at).toISOString();
+        for (const it of items) {
+          if (it.source !== "binance") continue;
+          const key = `binance:${it.ticker}`;
+          const hit = cache.get(key);
+          if (hit && at - hit.at < QUOTE_TTL_MS) continue;
+          const t = all.get(it.ticker.toUpperCase());
+          const q: BatchQuote | null = t ? { price: t.price, change: t.change, changePercent: t.changePercent, volume: t.volume, time, open: t.open, high: t.high, low: t.low } : null;
           cache.set(key, { at, q });
           if (q) out[key] = q;
         }

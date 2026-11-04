@@ -114,6 +114,10 @@ export function tagItem(item: MarketItem): MarketItem {
       out.exchange ??= "Bybit";
       out.sub ??= cryptoQuote(item.ticker, item.asset);
       break;
+    case "binance":
+      out.exchange ??= "Binance";
+      out.sub ??= cryptoQuote(item.ticker, item.asset);
+      break;
     case "forex":
       out.exchange ??= "Forex";
       out.sub ??= fxPair(item.secid)?.kind ?? "cross";

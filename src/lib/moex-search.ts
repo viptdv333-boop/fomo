@@ -9,6 +9,7 @@ import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type Fort
 import { groupOfMarket } from "./moex-resolve";
 import type { GroupTab, MarketGroup, MarketItem, MarketPage } from "./market-types";
 import { FX_PAIRS, parseFxSymbol, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
+import { getBinanceSpotList } from "./binance";
 import { getBybitSpotList, looksLikeCoin, pairToItem, POPULAR_CRYPTO, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
 import { bondItem, currencyItem, fundItem, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
 import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filters } from "./instrument-filters";
@@ -205,8 +206,30 @@ async function searchCandidates(q: string, group: GroupTab): Promise<MarketItem[
   return items;
 }
 
+/** Binance spot pairs matching the query (the popular ones for an empty query); nothing when Binance does not answer. */
+async function searchBinanceSpot(q: string, limit: number): Promise<MarketItem[]> {
+  const list = await getBinanceSpotList();
+  if (!list.length) return [];
+  const pairs = q.trim() ? searchSpotPairs(list, q, limit) : POPULAR_CRYPTO.filter((p) => list.some((x) => x.symbol === p.symbol)).slice(0, limit);
+  return pairs.map((p) => pairToItem(p, "binance"));
+}
+
+/** a1 b1 a2 b2 ...: two ranked lists side by side */
+function zipRows(a: MarketItem[], b: MarketItem[]): MarketItem[] {
+  const out: MarketItem[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (i < a.length) out.push(a[i]);
+    if (i < b.length) out.push(b[i]);
+  }
+  return out;
+}
+
 async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]> {
-  if (group === "crypto") return searchCrypto(q, CANDIDATES); // the whole Bybit spot list (has its own 1 h cache)
+  // the whole Bybit and Binance spot lists (each has its own 1 h cache), a Bybit and a Binance row of the same coin side by side
+  if (group === "crypto") {
+    const [bb, bn] = await Promise.all([searchCrypto(q, CANDIDATES), searchBinanceSpot(q, CANDIDATES)]);
+    return zipRows(bb, bn);
+  }
   if (group === "forex") return searchForex(q, CANDIDATES);
   if (group === "index") return [...searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem), ...searchProviderItems(q, "index")];
 
@@ -242,7 +265,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
   if (group === "stock" || group === "fund" || all) items.push(...searchProviderItems(q, group === "all" ? "all" : group).filter((i) => all ? i.group !== "future" && i.group !== "index" : true).map(tagItem));
   if (all) {
     // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
-    if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map(pairToItem));
+    if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map((p) => pairToItem(p)));
     const have = new Set(items.map((i) => `${i.source}:${i.secid}`));
     items.push(...searchForex(q, FOREX_IN_ALL, 75).filter((i) => !have.has(`${i.source}:${i.secid}`)));
   }
@@ -343,7 +366,13 @@ async function popularCandidates(group: GroupTab, filtered: boolean): Promise<Ma
   if (group === "crypto") {
     const popular = new Set(POPULAR_CRYPTO.map((p) => p.symbol));
     const rest = (await getBybitSpotList()).filter((p) => !popular.has(p.symbol)).sort((a, b) => a.symbol.localeCompare(b.symbol));
-    return [...POPULAR_CRYPTO, ...rest].map(pairToItem).map(tagItem);
+    const bybit = [...POPULAR_CRYPTO, ...rest].map((p) => pairToItem(p)).map(tagItem);
+    const bl = await getBinanceSpotList();
+    if (!bl.length) return bybit;
+    const bpop = POPULAR_CRYPTO.filter((p) => bl.some((x) => x.symbol === p.symbol));
+    const bpopSet = new Set(bpop.map((p) => p.symbol));
+    const binance = [...bpop, ...bl.filter((p) => !bpopSet.has(p.symbol)).sort((a, b) => a.symbol.localeCompare(b.symbol))].map((p) => pairToItem(p, "binance")).map(tagItem);
+    return zipRows(bybit, binance);
   }
   if (group === "all") {
     const groups = ["stock", "bond", "fund", "future", "index", "currency"] as const;

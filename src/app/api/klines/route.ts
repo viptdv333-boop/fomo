@@ -12,6 +12,9 @@ import { getForexCandles, type ForexCandlesResult } from "@/lib/forex";
 import { getFmpFuturesCandles, type FmpCandlesResult } from "@/lib/fmp-futures";
 import { aggregateYearly } from "@/lib/kline-aggregate";
 import { isSecondsInterval, serverIntervals } from "@/lib/chart/timeframes";
+import { binanceCandles } from "@/lib/binance";
+import { getUserKey } from "@/lib/data/user-key";
+import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -479,6 +482,8 @@ export async function GET(request: NextRequest) {
   let tail: TailResult | undefined;
   let fx: ForexCandlesResult | undefined;
   let fmp: FmpCandlesResult | undefined;
+  /** a feed read with the requester's own provider key: the answer is for him alone */
+  let userFeed: { provider: string; error?: TdError | string; errorDetail?: string } | undefined;
 
   // ALGOPACK (online ISS gateway) is for entitled requesters only: admins, or everyone with ALGOPACK_PUBLIC=1. Decided here, on
   // the server. Without the key none of this runs (the session is not even read) and the route behaves exactly as before.
@@ -507,6 +512,15 @@ export async function GET(request: NextRequest) {
     candles = fmp.candles;
   } else if (source === "bybit") {
     candles = await fetchBybitCandles(ticker, srcInterval, srcLimit, toMs);
+  } else if (source === "binance") {
+    candles = await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
+  } else if (source === "twelvedata") {
+    // the user's own Twelve Data key; without one the chart is not served (the client shows the connect window instead)
+    const uk = await getUserKey("twelvedata");
+    if (!uk) return NextResponse.json({ error: "no-key", provider: "twelvedata" }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    const td = await tdCandles(uk.userId, uk.key, ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
+    candles = td.candles;
+    userFeed = { provider: "twelvedata", ...(td.error ? { error: td.error, errorDetail: td.detail } : {}) };
   } else if (source === "forex") {
     // spot FX through the provider layer (FMP, then keyless fallbacks): UTC epoch bars, continuous 24x5, tick volume or none
     fx = await getForexCandles(ticker, srcInterval, undefined, toMs, Math.min(Math.max(srcLimit, 1), 5000));
@@ -524,8 +538,11 @@ export async function GET(request: NextRequest) {
 
   // Return object with metadata + candles
   // No cache for realtime (limit<=5), short cache for full loads
-  const headers: Record<string, string> = privileged
-    ? // online data of a personal subscription: for this requester only, never in a shared cache (and the public answer below
+  const headers: Record<string, string> = userFeed
+    ? // data read with the requester's own provider key: never in a shared cache
+      { ...PRIVATE_HEADERS }
+    : privileged
+    ?// online data of a personal subscription: for this requester only, never in a shared cache (and the public answer below
       // never serves a privileged one: `Vary: Cookie`)
       { ...PRIVATE_HEADERS }
     : limit <= 5
@@ -572,6 +589,8 @@ export async function GET(request: NextRequest) {
       ...(tail ? { delayed: tail.tail === "iss" && !/no-new-data/.test(tail.reason) } : {}),
       // spot FX: who served the bars, whether the volume is a tick count ("tick") or absent ("none"), and a proxy instrument (metals)
       ...(fx ? { provider: fx.provider, volumeKind: fx.volume, ...(fx.proxy ? { proxy: fx.proxy } : {}) } : {}),
+      // data through the user's own provider key: who served it and, when empty, why ("key" | "limit" | "plan" | "symbol" | "network")
+      ...(userFeed ? { provider: userFeed.provider, ...(userFeed.error ? { error: userFeed.error, errorDetail: userFeed.errorDetail } : {}) } : {}),
       // FMP: why the answer is empty / incomplete ("limit": request limit exhausted, "plan": symbol or endpoint not in the plan, "network"),
       // `stale`: some bars are cached ones served after a provider failure, `reachedStart`: no older data exists
       ...(fmp

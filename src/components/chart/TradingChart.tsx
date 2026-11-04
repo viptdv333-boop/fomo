@@ -151,7 +151,7 @@ function lsSet(key: string, value: string) {
 }
 
 /** Why the klines API could not serve a symbol (FMP): shown instead of «Нет данных». */
-type ProviderError = "limit" | "plan" | "network";
+type ProviderError = "limit" | "plan" | "network" | "key" | "symbol";
 
 /** Spot FX facts of a /api/klines answer: who served the bars, what the volume is, a proxy instrument (metals). */
 interface FxInfo {
@@ -177,7 +177,8 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   // `delayed`: the newest bars are the 15-minute delayed ISS ones (no real-time tail was added); absent for scroll-back pages
   const fx: FxInfo | undefined = typeof j.provider === "string" ? { provider: j.provider, volumeKind: String(j.volumeKind ?? "none"), proxy: typeof j.proxy === "string" ? j.proxy : undefined } : undefined;
   // FMP says why a chart is empty: the request limit is used up, the instrument is not in the plan, the provider does not answer
-  const err: ProviderError | undefined = j.error === "limit" || j.error === "plan" || j.error === "network" ? j.error : undefined;
+  // the providers of the user's own key (Twelve Data, Databento) add «the key is not accepted» and «no such symbol»
+  const err: ProviderError | undefined = j.error === "limit" || j.error === "plan" || j.error === "network" || j.error === "key" || j.error === "symbol" ? j.error : undefined;
   return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx, err };
 }
 
@@ -787,7 +788,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       liveMemoRef.current = null;
       refreshInd();
       setEmpty(candles.length === 0);
-      setEmptyWhy(candles.length === 0 && source === "fmp" ? err ?? null : null);
+      setEmptyWhy(candles.length === 0 && (source === "fmp" || source === "twelvedata" || source === "databento") ? err ?? null : null);
       setStoredAt(stored);
       setLoading(false);
       setTransformBox(engine.getTransformBox());
@@ -1904,7 +1905,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             {!loading && empty && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy ? `fmp.err.${emptyWhy}` : "chart.noData")}</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy && emptyWhy !== "key" && emptyWhy !== "symbol" ? `fmp.err.${emptyWhy}` : (source === "twelvedata" || source === "databento") && emptyWhy ? `pv.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} />}

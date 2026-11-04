@@ -199,7 +199,7 @@ export function staticPopular(group: PopularGroup): MarketItem[] {
     case "index":
       return [...popularIndexRows(staticIndexRows()).map((r) => tagItem(indexItem(r))), ...providerItemsOf("index").map(tagItem)];
     case "crypto":
-      return POPULAR_CRYPTO.map(cryptoItem).map(tagItem);
+      return POPULAR_CRYPTO.map((p) => cryptoItem(p)).map(tagItem);
     case "forex":
       return FX_PAIRS.map(fxItem).map(tagItem);
     case "all":

@@ -303,7 +303,7 @@ const WL_KEY = "fomo-terminal-watchlist-v1";
 const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
-const WL_SOURCES = ["moex", "bybit", "fmp", "forex"];
+const WL_SOURCES = ["moex", "bybit", "binance", "fmp", "forex"];
 
 export function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   if (!Array.isArray(raw)) return [];
@@ -1047,7 +1047,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
   // the selected symbol may not be in the list; its quote is still needed for the info card
   const instruments = useMemo(() => {
     const inList = watchlist.items.some((i) => i.source === selected.source && i.dataTicker === selected.dataTicker);
-    return inList || (selected.source !== "moex" && selected.source !== "bybit" && selected.source !== "forex") ? watchlist.items : [...watchlist.items, selected];
+    return inList || (selected.source !== "moex" && selected.source !== "bybit" && selected.source !== "binance" && selected.source !== "forex") ? watchlist.items : [...watchlist.items, selected];
   }, [watchlist.items, selected]);
   const quotes = useBatchQuotes(instruments, visible && instruments.length > 0);
   const quote = quotes[qKey(selected)];

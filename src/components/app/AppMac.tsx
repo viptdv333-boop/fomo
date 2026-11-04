@@ -83,7 +83,7 @@ export function MacHeader({
 }
 
 function exchange(source: string): string {
-  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
+  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "binance" ? "Binance" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
 }
 
 export function MacChips({ chips, onOpen }: { chips: AppChip[]; onOpen: () => void }) {

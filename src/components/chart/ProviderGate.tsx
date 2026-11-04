@@ -10,7 +10,7 @@ import { useConnections } from "@/lib/data/use-connections";
 import KeyForm from "@/components/data/KeyForm";
 
 /** Providers whose chart data layer is live. The others show their catalogue and the connect window, and a «connected, data is being enabled» note. */
-const DATA_READY: Record<string, boolean> = { databento: false, twelvedata: false };
+const DATA_READY: Record<string, boolean> = { databento: false, twelvedata: true };
 
 /**
  * Instead of a chart: the connect window of the data provider an instrument needs. Instruments served without a key (and providers that are
