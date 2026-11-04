@@ -855,6 +855,68 @@ const defs: IndicatorDef[] = [
     },
   },
   {
+    // VSA Volume: the volume columns coloured by the level of the bar's volume (Volume Spread Analysis): low / average / high / ultra high,
+    // against the moving average of volume (dynamic) or against fixed volumes (static)
+    id: "vsa_volume",
+    category: "volume",
+    pane: "own",
+    paneRatio: 0.16,
+    fmt: "vol",
+    keywords: "vsa volume spread analysis ultra high low average climax объем объём впа цветной объем 成交量 量价",
+    params: [
+      sel("vsaMode", "dynamic", [
+        { value: "dynamic", label: "ind.vsa.m.dynamic" },
+        { value: "static", label: "ind.vsa.m.static" },
+      ]),
+      num("vsaMa", 20, 1, 500),
+      num("vsaLow", 0.7, 0.05, 5, 0.05),
+      num("vsaHigh", 1.5, 0.1, 10, 0.05),
+      num("vsaUltra", 2.5, 0.2, 20, 0.1),
+      num("vsaSLow", 1000, 0, 1e12, 1),
+      num("vsaSHigh", 5000, 0, 1e12, 1),
+      num("vsaSUltra", 20000, 0, 1e12, 1),
+      bool("showMa", true),
+      col("vsaCLow", "#2962ff"),
+      col("vsaCAvg", "#787b86"),
+      col("vsaCHigh", "#ff9800"),
+      col("vsaCUltra", "#f23645"),
+      col("colorMa", ORANGE),
+    ],
+    title: (p) => (S(p, "vsaMode") === "static" ? "VSA Volume" : `VSA Volume ${N(p, "vsaMa")}`),
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const dynamic = S(p, "vsaMode") !== "static";
+      const ma = M.sma(cols.v, N(p, "vsaMa"));
+      const cLow = S(p, "vsaCLow");
+      const cAvg = S(p, "vsaCAvg");
+      const cHigh = S(p, "vsaCHigh");
+      const cUltra = S(p, "vsaCUltra");
+      // the limits between low | average | high | ultra high: ratios of the moving average, or volumes
+      const lo = N(p, "vsaLow");
+      const hi = N(p, "vsaHigh");
+      const ul = N(p, "vsaUltra");
+      const sLo = N(p, "vsaSLow");
+      const sHi = N(p, "vsaSHigh");
+      const sUl = N(p, "vsaSUltra");
+      const colors = new Array<string>(cols.n);
+      for (let i = 0; i < cols.n; i++) {
+        const v = cols.v[i];
+        let level: number;
+        if (dynamic) {
+          const m = ma[i];
+          const r = m > 0 ? v / m : 1; // no average yet (the first bars): treated as average
+          level = r >= ul ? 3 : r >= hi ? 2 : r < lo ? 0 : 1;
+        } else {
+          level = v >= sUl ? 3 : v >= sHi ? 2 : v < sLo ? 0 : 1;
+        }
+        colors[i] = level === 3 ? cUltra : level === 2 ? cHigh : level === 1 ? cAvg : cLow;
+      }
+      const plots: PlotSpec[] = [{ key: "Vol", data: cols.v, kind: "hist", color: cAvg, colors, alpha: 0.9, flag: true, colorParams: ["vsaCLow", "vsaCAvg", "vsaCHigh", "vsaCUltra"] }];
+      if (B(p, "showMa") && dynamic) plots.push(line("MA", ma, S(p, "colorMa"), { width: 1.4 }));
+      return { plots };
+    },
+  },
+  {
     id: "obv",
     category: "volume",
     pane: "own",
