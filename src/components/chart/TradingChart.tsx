@@ -49,6 +49,7 @@ import { DESIGN_PATHS, DrawIcon, IND_ICONS, panelTabIcon, ui } from "@/component
 import { CS_ICONS } from "@/components/chart/icons-cs";
 import { aggregateCandles, formatInterval, intervalPlan, isSecondsInterval, isValidInterval, secondsIntervalMs, secondsSupported, usableInterval } from "@/lib/chart/intervals";
 import { BybitTradeStream, foldTrades, type StreamState } from "@/lib/chart/seconds-feed";
+import { BinanceTradeStream } from "@/lib/chart/binance-stream";
 import { MoexSecondsFeed, useMoexSeconds } from "@/lib/chart/moex-seconds-client";
 import { SecondsAgg, type SecReason } from "@/lib/moex-seconds";
 import { setMoexSeconds } from "@/lib/chart/timeframes";
@@ -856,6 +857,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer, reloadTick]);
 
   const badQuoteRef = useRef(0);
+  const tickAtRef = useRef(0);
   /* live price: quotes for the forming bar of EVERY interval, real bars from the API now and then */
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
@@ -875,6 +877,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       const engine = engineRef.current;
       // the chart still shows the previous symbol / interval until its bars have been loaded: its bars must not get this one's price
       if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
+      // the trade stream moved the bar a moment ago: a polled price would only be older than it
+      if (Date.now() - tickAtRef.current < 6000) return;
       // spot FX is closed on the weekend: a quote then would only draw flat bars; during the Sunday evening open the daily / weekly
       // bar is the Monday one (the data layer merges the short Sunday bar into Monday)
       if (source === "forex" && !fxMarketOpen(new Date())) return;
@@ -965,6 +969,91 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       livePokeRef.current = null;
     };
   }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
+
+  /* the forming bar tick by tick: the exchange's trade stream moves the newest bar of every minute-or-longer timeframe as trades happen (Bybit and
+     Binance: the public WebSocket of the browser; MOEX: the server's T-Invest trade feed, the same socket the second candles use). The 4-second quote
+     poll above stays as the fallback and heals what the stream misses; the 60 s bar refresh still replaces the bar with the exchange's own numbers. */
+  useEffect(() => {
+    const iv = prefs.interval;
+    if (!prefsLoaded || !engineReady || replayActive || isSecondsInterval(iv)) return;
+    const moexLive = source === "moex" && moexSec === true && sessionStatus === "authenticated" && !!sessionUserId;
+    if (source !== "bybit" && source !== "binance" && !moexLive) return;
+    const dataKey = `${source}|${ticker}|${iv}`;
+    let stopped = false;
+    // ticks of one frame are folded into one move of the bar: the last price, the extremes and the volume
+    let acc: { price: number; hi: number; lo: number; vol: number } | null = null;
+    let frame: ReturnType<typeof setTimeout> | undefined;
+    let lastInd = 0;
+    const flush = () => {
+      frame = undefined;
+      const a = acc;
+      acc = null;
+      const engine = engineRef.current;
+      if (stopped || !a || !engine || dataKeyRef.current !== dataKey) return;
+      const last = engine.getCandles().at(-1);
+      if (!last) return;
+      const gate = gateQuote(a.price, last.c, badQuoteRef.current);
+      badQuoteRef.current = gate.pending;
+      if (!gate.accept) return;
+      const { tzMs, offsetMs: off } = shiftRef.current;
+      const now = Date.now();
+      const target = liveTarget({ interval: iv, source, now, tzMs, offsetMs: off, last });
+      // a new day on an aggregated interval needs the server's bars: the quote poll above reloads them
+      if (target.kind === "reload" || target.t < last.t) return;
+      let bar = mergeQuote(last, target.t, a.price);
+      if (a.hi > bar.h) bar = { ...bar, h: a.hi };
+      if (a.lo < bar.l) bar = { ...bar, l: a.lo };
+      if (a.vol > 0) bar = { ...bar, v: bar.v + a.vol };
+      engine.upsertCandle(bar);
+      liveMemoRef.current = remember(liveMemoRef.current, bar, a.price, now);
+      tickAtRef.current = now;
+      // the indicators follow the newest bar a few times a second, not on every trade
+      if (now - lastInd >= 250) {
+        lastInd = now;
+        refreshInd();
+      }
+    };
+    const tick = (price: number, hi: number, lo: number, vol: number) => {
+      if (!(price > 0)) return;
+      if (!acc) acc = { price, hi: Math.max(hi, price), lo: Math.min(lo, price), vol };
+      else acc = { price, hi: Math.max(acc.hi, hi, price), lo: Math.min(acc.lo, lo, price), vol: acc.vol + vol };
+      if (!frame) frame = setTimeout(flush, 100);
+    };
+    let stop: () => void = () => {};
+    if (source === "bybit" || source === "binance") {
+      const onTrades = (trades: { t: number; p: number; v: number }[]) => {
+        for (const tr of trades) tick(tr.p, tr.p, tr.p, tr.v);
+      };
+      const stream = source === "bybit" ? new BybitTradeStream(ticker, onTrades, () => {}) : new BinanceTradeStream(ticker, onTrades, () => {});
+      stream.start();
+      stop = () => stream.stop();
+    } else if (sessionUserId) {
+      // the trade feed delivers 1-second bars: every update carries the second's close, extremes and (cumulative) volume
+      const seenVol = new Map<number, number>();
+      const feed = new MoexSecondsFeed(ticker, sessionUserId, {
+        onSnapshot: () => {},
+        onBars: (wire) => {
+          for (const w of wire) {
+            if (!Array.isArray(w) || !(w[4] > 0)) continue;
+            const prev = seenVol.get(w[0]) ?? 0;
+            const vol = Math.max(0, (Number(w[5]) || 0) - prev);
+            seenVol.set(w[0], Number(w[5]) || 0);
+            if (seenVol.size > 400) seenVol.delete(seenVol.keys().next().value as number);
+            tick(w[4], w[2], w[3], vol);
+          }
+        },
+        onState: () => {},
+        onRefused: () => {},
+      });
+      feed.start();
+      stop = () => feed.stop();
+    }
+    return () => {
+      stopped = true;
+      clearTimeout(frame);
+      stop();
+    };
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
 
   /* seconds (1s ... 30s) exist only for instruments with a trade stream; on any other symbol the chart goes back to one minute */
   useEffect(() => {
