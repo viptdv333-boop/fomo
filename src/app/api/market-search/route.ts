@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { lookupMarket, popularMarketPage, searchMarketPage } from "@/lib/moex-search";
 import { ipOf, overLimit } from "@/lib/mem-rate-limit";
+import { connectedProviders } from "@/lib/data/user-key";
 import { isFutAsset } from "@/lib/futures-assets";
 import { GROUP_TABS } from "@/lib/instrument-filters";
 import type { Filters } from "@/lib/instrument-filters";
@@ -46,13 +47,16 @@ export async function GET(req: NextRequest) {
     venue: FILTER_RE.test(venue) ? venue : "",
     asset: group === "future" && isFutAsset(asset) ? asset : "",
   };
-  const opts = { limit, offset, filters };
+  // the catalogues of the data providers this user connected join his search (a guest has none)
+  const provs = await connectedProviders();
+  const opts = { limit, offset, filters, provs };
+  const priv = { "Cache-Control": "private, max-age=20", Vary: "Cookie" };
 
   // nothing typed: every chip has its «popular» list (server cached, curated fallback when ISS is down), so no tab is ever empty
   if (!q) {
     const page = await popularMarketPage(group, opts);
-    return NextResponse.json({ ...page, popular: true }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } });
+    return NextResponse.json({ ...page, popular: true }, { headers: priv });
   }
   const page = await searchMarketPage(q, group, opts);
-  return NextResponse.json(page, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" } });
+  return NextResponse.json(page, { headers: priv });
 }

@@ -13,7 +13,7 @@ import { getBinanceSpotList } from "./binance";
 import { getBybitSpotList, looksLikeCoin, pairToItem, POPULAR_CRYPTO, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
 import { bondItem, currencyItem, fundItem, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
 import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filters } from "./instrument-filters";
-import { arrangeByAsset, classBoost, moexAssetOrder } from "./futures-assets";
+import { arrangeByAsset, classBoost, FUT_ASSETS, moexAssetOrder } from "./futures-assets";
 import { allUsFutureItems, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
 import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
 import { lookupProviderItem, providerItemsOf, searchProviderItems } from "./data/provider-catalog";
@@ -231,7 +231,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
     return zipRows(bb, bn);
   }
   if (group === "forex") return searchForex(q, CANDIDATES);
-  if (group === "index") return [...searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem), ...searchProviderItems(q, "index")];
+  if (group === "index") return searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem);
 
   if (group === "future") {
     // Russian and US futures by relevance (RU first on a tie), then the classes ordered by their best hit, RU before US inside a class
@@ -244,7 +244,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
       })
       .sort((a, b) => b.s - a.s || a.i - b.i)
       .map((x) => x.item);
-    return arrangeByAsset([...merged.slice(0, CANDIDATES * 2), ...searchProviderItems(q, "future").map(tagItem)], true);
+    return arrangeByAsset(merged.slice(0, CANDIDATES * 2), true);
   }
 
   // «Все» and the cash groups (stocks, bonds, funds, currency)
@@ -261,8 +261,6 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
   const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...us, ...idx, ...cash], q);
   // an exact secid always on top; otherwise futures, indices and cash groups interleave by relevance
   const items = [...exactFut, ...rest].slice(0, CANDIDATES);
-  // provider catalogues (Databento, Twelve Data): the rows of this chip (stocks / funds) or of every chip under «Все»
-  if (group === "stock" || group === "fund" || all) items.push(...searchProviderItems(q, group === "all" ? "all" : group).filter((i) => all ? i.group !== "future" && i.group !== "index" : true).map(tagItem));
   if (all) {
     // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
     if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map((p) => pairToItem(p)));
@@ -295,11 +293,11 @@ const SHARE_COLS = "SECID,SHORTNAME,SECNAME,ISIN,SECTYPE";
 const BOND_COLS = "SECID,SHORTNAME,SECNAME,ISIN";
 
 /** The whole «Фьючерсы» catalogue: every FORTS family grouped by asset class (curated order inside a class), the US table after the Russian rows of a class. */
-export function futuresCatalog(families: ContractFamily[]): MarketItem[] {
+export function futuresCatalog(families: ContractFamily[], provs: readonly string[] = []): MarketItem[] {
   const ru = families
     .map((f) => tagItem(famItem(refreshDays(f))))
     .sort((a, b) => moexAssetOrder(a.asset ?? "") - moexAssetOrder(b.asset ?? "") || (a.asset ?? "").localeCompare(b.asset ?? ""));
-  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem), ...providerItemsOf("future").map(tagItem)]);
+  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem), ...providerItemsOf("future", provs).map(tagItem)]);
 }
 
 type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "index";
@@ -312,7 +310,7 @@ async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
       // shares and funds / ETFs trade on the same board: one listing serves both chips
       const rows = await issBoard("stock/markets/shares/boards/TQBR", SHARE_COLS);
       const picked = group === "stock" ? pickStocks(rows).map(stockItem) : pickFunds(rows).map(fundItem);
-      return picked.length ? [...picked.map(tagItem), ...providerItemsOf(group).map(tagItem)] : null;
+      return picked.length ? picked.map(tagItem) : null;
     }
     case "bond": {
       const [ofz, corp] = await Promise.all([issBoard("stock/markets/bonds/boards/TQOB", BOND_COLS), issBoard("stock/markets/bonds/boards/TQCB", BOND_COLS)]);
@@ -329,7 +327,7 @@ async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
     }
     case "index": {
       const rows = await getIndexRows();
-      return [...popularIndexRows(rows).map((r) => tagItem(indexItem(r))), ...providerItemsOf("index").map(tagItem)];
+      return popularIndexRows(rows).map((r) => tagItem(indexItem(r)));
     }
   }
 }
@@ -385,9 +383,35 @@ async function popularCandidates(group: GroupTab, filtered: boolean): Promise<Ma
 }
 
 export interface PageOpts {
+  /** the data providers the requester has connected: their catalogues are part of his search */
+  provs?: readonly string[];
   limit?: number;
   offset?: number;
   filters?: Filters;
+}
+
+/**
+ * The rows of the providers the user has connected, added to a ranked / popular list: a typed query adds the provider instruments that match it
+ * (a futures chip keeps its asset blocks, so a connected provider's «Золото» sits in the gold block next to the Russian and US ones); nothing typed
+ * adds the provider's whole list of the chip.
+ */
+function withProviders(base: MarketItem[], q: string, group: GroupTab, provs: readonly string[]): MarketItem[] {
+  if (provs.length === 0 || group === "forex" || group === "crypto" || group === "currency" || group === "bond") return base;
+  const extra = (q ? searchProviderItems(q, group, 80, provs) : providerItemsOf(group, provs)).map(tagItem);
+  if (extra.length === 0) return base;
+  return group === "future" ? arrangeByAsset([...base, ...extra], !!q) : [...base, ...extra];
+}
+
+/**
+ * A query that names an asset («золото», «нефть», «cocoa»): under «Все» every market's instruments of that asset come first, in one block:
+ * futures (Russian, US, then the rest of the connected markets), then spot (forex, metals), then funds, then the rest.
+ */
+function assetFirst(items: MarketItem[], q: string, group: GroupTab): MarketItem[] {
+  if (group !== "all" || !FUT_ASSETS.some((g) => classBoost(q, g) > 0)) return items;
+  const rank = (i: MarketItem) => (i.group === "future" ? 0 : i.group === "forex" ? 1 : i.group === "fund" ? 2 : 3);
+  const sorted = items.map((it, i) => ({ it, i })).sort((a, b) => rank(a.it) - rank(b.it) || a.i - b.i).map((x) => x.it);
+  const nFut = sorted.filter((i) => i.group === "future").length;
+  return [...arrangeByAsset(sorted.slice(0, nFut), true), ...sorted.slice(nFut)];
 }
 
 /** One page of a list: the filters, the facets of the dropdowns (computed before the country / venue filters) and the cut. */
@@ -405,12 +429,15 @@ export function pageOf(list: MarketItem[], group: GroupTab, opts: PageOpts = {})
 
 /** A typed query on a chip: ranked rows (a page of them), tagged with their venue / country / category and filtered. */
 export async function searchMarketPage(q: string, group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
-  return pageOf(await searchCandidates(q.trim(), group), group, opts);
+  return pageOf(assetFirst(withProviders(await searchCandidates(q.trim(), group), q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
 }
 
 /** Nothing typed: the chip's popular list (a page of it). */
 export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
-  return pageOf(await popularCandidates(group, hasFilters(opts.filters ?? NO_FILTERS)), group, opts);
+  const filtered = hasFilters(opts.filters ?? NO_FILTERS);
+  const base = await popularCandidates(group, filtered);
+  // the short mix of «Все» stays as it is; a filter on «Все» looks through every list, the providers' included
+  return pageOf(group === "all" && !filtered ? base : withProviders(base, "", group, opts.provs ?? []), group, opts);
 }
 
 /** Exact lookup by SECID / ISIN / auto ticker: the item a URL ?symbol= stands for. */

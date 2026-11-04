@@ -30,6 +30,26 @@ export async function getUserKey(provider: DataProvider["id"]): Promise<UserKey 
   }
 }
 
+/** The providers the signed-in user has connected and not switched off (empty for a guest): their catalogues are shown in the search. */
+export async function connectedProviders(): Promise<DataProvider["id"][]> {
+  let userId: string | undefined;
+  try {
+    userId = (await auth())?.user?.id;
+  } catch {
+    return [];
+  }
+  if (!userId) return [];
+  const uid = userId;
+  return memoized(`conn:${uid}`, 10_000, async () => {
+    try {
+      const rows = await prisma.dataConnection.findMany({ where: { userId: uid, enabled: true }, select: { provider: true } });
+      return rows.map((r) => r.provider as DataProvider["id"]);
+    } catch {
+      return [] as DataProvider["id"][];
+    }
+  });
+}
+
 /** Answers of a provider call are kept for a few seconds per user and request, so a chart refresh and a watchlist poll share one upstream call. */
 const memo = new Map<string, { at: number; value: unknown }>();
 

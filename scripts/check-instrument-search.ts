@@ -80,7 +80,7 @@ eq("US search: nothing for an empty / unknown query", [searchUsFutures("").lengt
 eq("US search: scores are descending", scoreUsFutures("s").every((x, i, a) => !i || a[i - 1].s >= x.s), true);
 
 /* ── catalogue: asset header -> РФ rows then США rows ── */
-const fullCat = futuresCatalog(fams);
+const fullCat = futuresCatalog(fams, ["databento", "twelvedata"]);
 // the rows of the user-key providers (Databento) are checked apart below; the Russian + FMP table keeps its own expectations here
 const cat = fullCat.filter((i) => !i.provider);
 const provFut = fullCat.filter((i) => i.provider);

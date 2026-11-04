@@ -332,19 +332,24 @@ export function providerItems(): MarketItem[] {
   return all;
 }
 
-/** The provider rows of one chip ("all" = every group). */
-export function providerItemsOf(group: MarketGroup | "all"): MarketItem[] {
-  return group === "all" ? providerItems() : providerItems().filter((i) => i.group === group);
+/**
+ * The provider rows of one chip ("all" = every group) for the providers the user has connected (`provs`): the catalogue of a provider appears in the
+ * search only after its key is connected. No providers connected: nothing.
+ */
+export function providerItemsOf(group: MarketGroup | "all", provs: readonly string[] = []): MarketItem[] {
+  if (provs.length === 0) return [];
+  const on = new Set(provs);
+  return providerItems().filter((i) => on.has(i.source) && (group === "all" || i.group === group));
 }
 
 const n = (s: string) => s.toLowerCase().replace(/ё/g, "е");
 
 /** Provider rows matching a typed query (ticker first, then name), best first. */
-export function searchProviderItems(q: string, group: MarketGroup | "all", limit = 40): MarketItem[] {
+export function searchProviderItems(q: string, group: MarketGroup | "all", limit = 40, provs: readonly string[] = []): MarketItem[] {
   const s = n(q.trim());
   if (!s) return [];
   const scored: { it: MarketItem; s: number }[] = [];
-  for (const it of providerItemsOf(group)) {
+  for (const it of providerItemsOf(group, provs)) {
     const t = n(it.ticker);
     const nm = n(it.name);
     const en = n(it.nameEn ?? "");
