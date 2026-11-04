@@ -19,6 +19,7 @@
 
 import { cleanCandle } from "./chart/candles";
 import { ruCaFetch } from "./algopack-tls";
+import { keyId, tinkoffToken } from "./data/moex-keys";
 import type { MoexSecurity } from "./moex-resolve";
 
 export interface CandleRow {
@@ -99,7 +100,8 @@ interface Instr {
   lot: number;
 }
 interface State {
-  backoffUntil: number;
+  /** back-off until, per token (a rejected or rate-limited token of one user must not stop the others) */
+  backoff: Map<string, number>;
   useSourceType: boolean;
   instr: Map<string, { at: number; v: Instr | null }>;
   instrInflight: Map<string, Promise<Instr | null>>;
@@ -108,7 +110,7 @@ interface State {
 }
 const G = globalThis as unknown as { __fomoTinkoffCandles?: State };
 const S: State = (G.__fomoTinkoffCandles ??= {
-  backoffUntil: 0,
+  backoff: new Map(),
   useSourceType: true,
   instr: new Map(),
   instrInflight: new Map(),
@@ -181,15 +183,21 @@ async function slot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** back-off of the token this request runs on */
+const backoffOf = (): number => S.backoff.get(keyId(tinkoffToken())) ?? 0;
+
 function backoff(ms: number, why: string) {
+  const id = keyId(tinkoffToken());
   const until = Date.now() + ms;
-  if (until > S.backoffUntil + 1000) console.warn(`[tinkoff-tail] backing off ${Math.round(ms / 1000)}s: ${why}`);
-  S.backoffUntil = Math.max(S.backoffUntil, until);
+  const cur = S.backoff.get(id) ?? 0;
+  if (until > cur + 1000) console.warn(`[tinkoff-tail] backing off ${Math.round(ms / 1000)}s: ${why}`);
+  if (S.backoff.size > 500) S.backoff.clear();
+  S.backoff.set(id, Math.max(cur, until));
 }
 
 async function call(endpoint: string, body: object): Promise<{ status: number; data: any } | null> {
-  const token = process.env.TINKOFF_TOKEN;
-  if (!token || Date.now() < S.backoffUntil) return null;
+  const token = tinkoffToken();
+  if (!token || Date.now() < backoffOf()) return null;
   try {
     const res = await slot(() =>
       ruCaFetch(`${API}.${endpoint}`, {
@@ -528,12 +536,12 @@ export async function applyTinkoffTail(sec: MoexSecurity, moexInterval: number, 
     return r;
   };
   try {
-    if (!process.env.TINKOFF_TOKEN) return fail("no-token");
+    if (!tinkoffToken()) return fail("no-token");
     if (iss.length === 0) return fail("iss-empty");
     if (!level) return fail("unsupported-interval");
-    if (Date.now() < S.backoffUntil) return fail("backoff");
+    if (Date.now() < backoffOf()) return fail("backoff");
     const instr = await resolveInstrument(sec);
-    if (!instr) return fail(Date.now() < S.backoffUntil ? "backoff" : "unknown-instrument");
+    if (!instr) return fail(Date.now() < backoffOf() ? "backoff" : "unknown-instrument");
 
     const now = Date.now();
     const last = iss[iss.length - 1];
@@ -546,7 +554,7 @@ export async function applyTinkoffTail(sec: MoexSecurity, moexInterval: number, 
     if (typeof level === "number" && now - issLastUtc > MAX_BACK_MS) return fail("stale-iss");
 
     const st = await ensureMinutes(instr, since);
-    if (!st) return fail(Date.now() < S.backoffUntil ? "backoff" : "error: no fresh 1m candles");
+    if (!st) return fail(Date.now() < backoffOf() ? "backoff" : "error: no fresh 1m candles");
 
     const bars = [...st.bars.values()].sort((a, b) => a.t - b.t);
     const buckets = bucketBars(bars, level, st.from, { futuresDays: sec.engine === "futures" });

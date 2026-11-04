@@ -1,3 +1,4 @@
+import { withMoexKeys } from "@/lib/data/moex-access";
 import { NextRequest, NextResponse } from "next/server";
 import { aggregateBars } from "@/lib/orderflow/aggregate";
 import { prepareBybit, bybitSupported } from "@/lib/orderflow/bybit";
@@ -32,6 +33,11 @@ function limited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // MOEX trades are served on the requester's own keys (data/moex-access.ts)
+  return withMoexKeys(() => handle(req));
+}
+
+async function handle(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "local";
   if (limited(ip)) return NextResponse.json({ error: "rate limit" }, { status: 429 });
   let body: any;

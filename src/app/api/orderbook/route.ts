@@ -1,3 +1,4 @@
+import { withMoexKeys } from "@/lib/data/moex-access";
 import { NextRequest, NextResponse } from "next/server";
 import { denied, getAlgopackAccess, ipOf, overLimit, PRIVATE_HEADERS } from "@/lib/algopack-access";
 import { loadBook } from "@/lib/algopack-data";
@@ -14,6 +15,11 @@ export const dynamic = "force-dynamic";
 const MAX_LEVELS = 50;
 
 export async function GET(req: NextRequest) {
+  // the order book is served on the requester's own ALGOPACK key (data/moex-access.ts)
+  return withMoexKeys(() => handle(req));
+}
+
+async function handle(req: NextRequest) {
   const access = await getAlgopackAccess();
   if (!access.allowed) return denied(access);
   if (overLimit(`orderbook:${ipOf(req)}`, 90)) return NextResponse.json({ ok: false, reason: "rate-limit" }, { status: 429, headers: { ...PRIVATE_HEADERS, "Retry-After": "10" } });

@@ -80,7 +80,13 @@ eq("US search: nothing for an empty / unknown query", [searchUsFutures("").lengt
 eq("US search: scores are descending", scoreUsFutures("s").every((x, i, a) => !i || a[i - 1].s >= x.s), true);
 
 /* ── catalogue: asset header -> РФ rows then США rows ── */
-const cat = futuresCatalog(fams);
+const fullCat = futuresCatalog(fams);
+// the rows of the user-key providers (Databento) are checked apart below; the Russian + FMP table keeps its own expectations here
+const cat = fullCat.filter((i) => !i.provider);
+const provFut = fullCat.filter((i) => i.provider);
+eq("provider futures exist and carry their provider", provFut.length > 0 && provFut.every((i) => i.source === i.provider), true);
+eq("a US future of the free table is not repeated by a provider", provFut.filter((i) => i.country === "US" && fullCat.some((o) => !o.provider && o.country === "US" && o.asset === i.asset)).length, 0);
+eq("provider rows are not listed twice", new Set(provFut.map((i) => `${i.source}:${i.secid}`)).size, provFut.length);
 const groupsInOrder = [...new Set(cat.map((i) => i.fgroup))];
 eq("the catalogue lists the asset classes in the chip order", groupsInOrder, FUT_ASSETS.filter((g) => groupsInOrder.includes(g)));
 const seq = (g: FutAsset) => cat.filter((i) => i.fgroup === g).map((i) => `${i.country}:${i.ticker}`);

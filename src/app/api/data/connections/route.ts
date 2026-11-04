@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
   const provider = providerById(body?.provider);
   const key = cleanKey(body?.key);
-  if (!provider || !provider.needsKey) return json({ error: "provider" }, 400);
+  if (!provider || !provider.needsKey || !provider.live) return json({ error: "provider" }, 400);
   if (!key) return json({ error: "key-format" }, 400);
 
   const check = await checkKey(provider.id, key);

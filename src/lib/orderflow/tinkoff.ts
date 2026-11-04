@@ -1,24 +1,24 @@
 import { MinuteBook } from "./book";
 import { ruCaFetch } from "../algopack-tls";
+import { keyId, tinkoffToken } from "../data/moex-keys";
 
 /* Real-time MOEX trades from the Tinkoff Invest API (MarketDataService/GetLastTrades: the last hour, with the trade direction).
    The free MOEX ISS trade list is ~15 minutes late, so this fills the newest minutes. Needs TINKOFF_TOKEN (the same token
    /api/quote uses); without it nothing here runs. Quantities are in lots and are converted to shares / contracts. */
 
 const BASE = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
-const TOKEN = process.env.TINKOFF_TOKEN || "";
 const HOUR = 3_600_000;
 const IDLE_MS = 10 * 60_000;
 
 export function tinkoffEnabled(): boolean {
-  return TOKEN.length > 0;
+  return tinkoffToken().length > 0;
 }
 
-async function call(endpoint: string, body: object): Promise<any | null> {
+async function call(token: string, endpoint: string, body: object): Promise<any | null> {
   try {
     const res = await ruCaFetch(`${BASE}.${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(20_000),
@@ -44,6 +44,8 @@ export class TinkoffFeed {
   private seen = new Set<string>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
+  /** the token this feed was opened with (the requester's own, or the server's for an admin): the feed keeps polling on it */
+  private token = tinkoffToken();
 
   constructor(
     private secid: string,
@@ -55,7 +57,7 @@ export class TinkoffFeed {
   }
 
   private async init() {
-    const info = await call("InstrumentsService/GetInstrumentBy", { idType: "INSTRUMENT_ID_TYPE_TICKER", classCode: this.classCode, id: this.secid });
+    const info = await call(this.token, "InstrumentsService/GetInstrumentBy", { idType: "INSTRUMENT_ID_TYPE_TICKER", classCode: this.classCode, id: this.secid });
     const lot = Number(info?.instrument?.lot);
     if (lot > 0) this.lot = lot;
     await this.poll(this.from);
@@ -78,7 +80,7 @@ export class TinkoffFeed {
     try {
       const now = Date.now();
       const from = Math.max(fromMs, now - HOUR + 5000);
-      const data = await call("MarketDataService/GetLastTrades", {
+      const data = await call(this.token, "MarketDataService/GetLastTrades", {
         instrumentId: `${this.secid}_${this.classCode}`,
         from: new Date(from).toISOString(),
         to: new Date(now).toISOString(),
@@ -113,10 +115,11 @@ const feeds: Map<string, TinkoffFeed> = (G.__fomoTinkoff ??= new Map());
 
 export function getTinkoffFeed(secid: string, classCode: string, startFrom: number): TinkoffFeed | null {
   if (!tinkoffEnabled()) return null;
-  const key = `${classCode}:${secid}`;
+  // one feed per instrument AND token: trades read on one person's token are not handed to another person
+  const key = `${keyId(tinkoffToken())}:${classCode}:${secid}`;
   let f = feeds.get(key);
   if (!f) {
-    if (feeds.size >= 6) feeds.clear();
+    if (feeds.size >= 40) feeds.clear();
     f = new TinkoffFeed(secid, classCode, startFrom);
     feeds.set(key, f);
   }

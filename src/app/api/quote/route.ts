@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { frontSecid } from "@/lib/moex-contracts";
 import { issQuote, resolveMoex } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
-import { getViewer } from "@/lib/algopack-access";
 import { getForexQuote } from "@/lib/forex";
 import { fmpRequest, type FmpFailure } from "@/lib/fmp-gate";
 import { ruCaFetch } from "@/lib/algopack-tls";
 import { binanceTicker } from "@/lib/binance";
 import { getUserKey } from "@/lib/data/user-key";
+import { tinkoffToken } from "@/lib/data/moex-keys";
+import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdQuote } from "@/lib/data/twelvedata";
 
 /**
@@ -19,7 +20,6 @@ import { tdQuote } from "@/lib/data/twelvedata";
 
 const TINKOFF_URL =
   "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
-const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
 
 /**
  * Which MOEX tickers are shares (board TQBR) rather than futures (SPBFUT).
@@ -133,7 +133,7 @@ async function tinkoffRequest(endpoint: string, body: object): Promise<any> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${TINKOFF_TOKEN}`,
+      Authorization: `Bearer ${tinkoffToken()}`,
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -270,6 +270,11 @@ async function fetchFmpQuote(ticker: string): Promise<{ quote: Quote | null; err
 }
 
 export async function GET(request: NextRequest) {
+  // MOEX answers are served on the requester's own T-Invest token (data/moex-access.ts)
+  return withMoexKeys(() => handle(request));
+}
+
+async function handle(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
   const ticker = searchParams.get("ticker") || "";
@@ -283,7 +288,7 @@ export async function GET(request: NextRequest) {
 
   if (source === "moex") {
     // real-time T-Invest quote for a signed-in session (or GUEST_REALTIME=1); a guest gets the ISS marketdata (15 min delayed)
-    const { realtime } = await getViewer();
+    const realtime = tinkoffToken().length > 0;
     quote = (realtime ? await fetchTinkoffQuote(ticker) : null) ?? (await fetchIssFallback(ticker));
   } else if (source === "bybit") {
     quote = await fetchBybitQuote(ticker);

@@ -6,6 +6,7 @@ import { fmpSymbol } from "@/lib/fmp-alias";
 import { fmpRequest } from "@/lib/fmp-gate";
 import { getForexQuotes } from "@/lib/forex";
 import { binanceAllTickers } from "@/lib/binance";
+import { tinkoffToken } from "@/lib/data/moex-keys";
 import { ruCaFetch } from "@/lib/algopack-tls";
 
 /**
@@ -34,7 +35,6 @@ export interface QuoteRequest {
 }
 
 const TINKOFF_URL = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
-const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";
 
 const QUOTE_TTL_MS = 2000;
 const CLOSE_TTL_MS = 10 * 60_000;
@@ -55,7 +55,7 @@ async function tinkoff(endpoint: string, body: object): Promise<any> {
   try {
     const res = await ruCaFetch(`${TINKOFF_URL}.${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TINKOFF_TOKEN}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tinkoffToken()}` },
       body: JSON.stringify(body),
       cache: "no-store",
     });

@@ -16,6 +16,22 @@ import { isTerminalSite, siteUrl } from "../src/lib/site-mode";
 
 const prisma = new PrismaClient();
 
+/**
+ * Live MOEX data over the socket (second candles) goes to people who connected their own T-Invest key (Settings -> Data providers) and to
+ * the site admins, who use the server's own token. GUEST_REALTIME=1 / MOEX_SHARED_KEYS=1 bring the old behaviour back: everybody signed in.
+ */
+async function moexEntitled(userId: string): Promise<boolean> {
+  if ((process.env.GUEST_REALTIME ?? "").trim().toLowerCase() === "1" || process.env.MOEX_SHARED_KEYS === "1") return true;
+  try {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (u?.role === "ADMIN" || u?.role === "OWNER") return true;
+    const c = await prisma.dataConnection.findFirst({ where: { userId, provider: "tinvest", enabled: true }, select: { provider: true } });
+    return !!c;
+  } catch {
+    return false;
+  }
+}
+
 // Store io instance globally so API routes can access it
 const globalForIO = globalThis as unknown as { io: SocketIOServer | undefined; onlineUsers: Map<string, number> | undefined };
 
@@ -106,6 +122,7 @@ export function initSocket(httpServer: HTTPServer) {
       if (secCalls.length >= 10) return ack({ ok: false, reason: "limit" });
       secCalls.push(now);
       try {
+        if (!(await moexEntitled(uid))) return ack({ ok: false, reason: "token" });
         ack(await moexSeconds.subscribe(socket, payload?.ticker));
       } catch (e) {
         console.warn("[moex-seconds] subscribe failed:", (e as Error)?.name ?? "error");

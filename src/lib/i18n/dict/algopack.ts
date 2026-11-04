@@ -5,7 +5,7 @@ import type { SectionDict } from "./types";
 const rows: [string, string, string, string][] = [
   /* delayed badge on the chart */
   ["ap.delayed", "задержка 15 мин", "15 min delayed", "延迟15分钟"],
-  ["ap.delayed.tip", "Свечи с публичного ISS Мосбиржи идут с задержкой около 15 минут", "Candles come from the public MOEX ISS feed, about 15 minutes delayed", "K线来自莫斯科交易所公开ISS，约延迟15分钟"],
+  ["ap.delayed.tip", "Свечи с публичного ISS Мосбиржи идут с задержкой около 15 минут. Данные без задержки: подключите свой ключ T-Invest в разделе «Провайдеры данных».", "Candles come from the public MOEX ISS feed, about 15 minutes delayed. For data without delay connect your own T-Invest key in Data providers.", "K线来自莫斯科交易所公开ISS，约延迟15分钟。如需实时数据，请在“数据提供商”中连接您自己的T-Invest密钥。"],
 
   /* right panel tabs */
   ["shell.tab.orderbook", "Стакан", "Order book", "订单簿"],

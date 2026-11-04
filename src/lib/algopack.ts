@@ -20,6 +20,7 @@
  */
 
 import { tableRows } from "./algopack-table";
+import { algopackKey, keyId } from "./data/moex-keys";
 
 export const DEFAULT_BASE = "https://apim.moex.com/iss";
 export const PUBLIC_ISS = "https://iss.moex.com/iss";
@@ -47,8 +48,7 @@ export interface ApOptions {
 
 /** True when a key is configured (cheap; the key itself is never exposed). */
 export function algopackEnabled(): boolean {
-  const k = process.env.ALGOPACK_KEY;
-  return typeof k === "string" && k.trim().length > 0;
+  return algopackKey().length > 0;
 }
 
 /**
@@ -88,8 +88,7 @@ interface State {
   waiters: Array<() => void>;
   stats: { calls: number; ok: number; fail: number };
 }
-const G = globalThis as unknown as { __fomoAlgopack?: State };
-const S: State = (G.__fomoAlgopack ??= {
+const fresh = (): State => ({
   cache: new Map(),
   inflight: new Map(),
   global: { until: 0, reason: "", n: 0 },
@@ -97,6 +96,27 @@ const S: State = (G.__fomoAlgopack ??= {
   active: 0,
   waiters: [],
   stats: { calls: 0, ok: 0, fail: 0 },
+});
+/** every key has its own state (caches, in-flight requests, cool-downs): the data of one person's key is never handed to another, and one rejected key does not stop the rest */
+const G = globalThis as unknown as { __fomoAlgopackByKey?: Map<string, State> };
+const STATES: Map<string, State> = (G.__fomoAlgopackByKey ??= new Map());
+const MAX_STATES = 200;
+function stateOfKey(): State {
+  const id = keyId(algopackKey());
+  let st = STATES.get(id);
+  if (!st) {
+    if (STATES.size >= MAX_STATES) STATES.delete(STATES.keys().next().value as string);
+    STATES.set(id, (st = fresh()));
+  }
+  return st;
+}
+/** the state of the key this request runs on (see data/moex-keys.ts) */
+const S: State = new Proxy({} as State, {
+  get: (_t, k) => (stateOfKey() as any)[k],
+  set: (_t, k, v) => {
+    (stateOfKey() as any)[k] = v;
+    return true;
+  },
 });
 
 const MAX_PAR = 6;
@@ -205,7 +225,7 @@ export function apBlocked(family?: string): string | null {
 }
 
 async function doFetch(url: string, family: string, opts: ApOptions): Promise<ApResult> {
-  const key = process.env.ALGOPACK_KEY?.trim();
+  const key = algopackKey();
   if (!key) return failRes("no-key");
   S.stats.calls++;
   const now = Date.now();

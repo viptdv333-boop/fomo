@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBatchQuotes, type QuoteRequest } from "@/lib/quotes";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { getViewer } from "@/lib/algopack-access";
+import { tinkoffToken } from "@/lib/data/moex-keys";
+import { withMoexKeys } from "@/lib/data/moex-access";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -15,6 +16,11 @@ const MAX_ITEMS = 80;
 const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
 export async function GET(request: NextRequest) {
+  // MOEX quotes are real time on the requester's own T-Invest token (data/moex-access.ts), delayed ISS otherwise
+  return withMoexKeys(() => handle(request));
+}
+
+async function handle(request: NextRequest) {
   const raw = request.nextUrl.searchParams.get("items") || "";
   const items: QuoteRequest[] = [];
   const seen = new Set<string>();
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { realtime } = await getViewer();
+  const realtime = tinkoffToken().length > 0;
   const quotes = await getBatchQuotes(items, { realtime });
   return NextResponse.json(quotes, {
     headers: { "Cache-Control": "no-cache, no-store, must-revalidate", Vary: "Cookie" },

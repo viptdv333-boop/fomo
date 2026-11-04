@@ -10,7 +10,8 @@
  * (`?symbol=`, watchlists, layouts); `dataTicker` is derived from it by the provider's data layer.
  */
 import type { FutAsset, MarketGroup, MarketItem } from "../market-types";
-import type { DataProvider } from "./providers";
+import { providerById, type DataProvider } from "./providers";
+import { allUsFutureItems } from "../us-futures";
 
 type ProviderId = Extract<DataProvider["id"], "databento" | "twelvedata">;
 
@@ -318,9 +319,17 @@ function toItem(p: ProviderId, r: Row): MarketItem {
 
 let all: MarketItem[] | null = null;
 
-/** Every provider instrument as search rows. */
+/**
+ * Every provider instrument as search rows. A US future the terminal already serves without a key (the FMP table: CL, GC, ES ...) is listed once,
+ * as that row: a second «GC» that wants a key would only confuse. The provider rows are the instruments the free table does not have.
+ */
 export function providerItems(): MarketItem[] {
-  return (all ??= (Object.keys(BY_PROVIDER) as ProviderId[]).flatMap((p) => BY_PROVIDER[p].map((r) => toItem(p, r))));
+  if (!all) {
+    const served = new Set(allUsFutureItems().map((i) => i.asset));
+    // a provider whose data is not switched on (providers.ts `live`) is not offered at all: an instrument that cannot open is not listed
+    all = (Object.keys(BY_PROVIDER) as ProviderId[]).filter((p) => providerById(p)?.live).flatMap((p) => BY_PROVIDER[p].filter((r) => !(r.group === "future" && r.country === "US" && r.asset && served.has(r.asset))).map((r) => toItem(p, r)));
+  }
+  return all;
 }
 
 /** The provider rows of one chip ("all" = every group). */

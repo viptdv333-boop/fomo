@@ -1,3 +1,4 @@
+import { withMoexKeys } from "@/lib/data/moex-access";
 import { NextRequest, NextResponse } from "next/server";
 import { denied, getAlgopackAccess, ipOf, overLimit, PRIVATE_HEADERS } from "@/lib/algopack-access";
 import { clampFrom, loadAlerts, loadFutoi, loadHi2, loadSuperCandles, locate } from "@/lib/algopack-data";
@@ -20,6 +21,11 @@ function json(body: unknown, status = 200) {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: string }> }) {
+  // ALGOPACK products are served on the requester's own ALGOPACK key (data/moex-access.ts)
+  return withMoexKeys(() => handle(req, ctx));
+}
+
+async function handle(req: NextRequest, ctx: { params: Promise<{ kind: string }> }) {
   const { kind } = await ctx.params;
   if (!KINDS.has(kind)) return NextResponse.json({ ok: false, reason: "unknown-kind" }, { status: 404 });
   const access = await getAlgopackAccess();

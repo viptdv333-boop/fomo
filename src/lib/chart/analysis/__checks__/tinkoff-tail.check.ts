@@ -118,7 +118,7 @@ globalThis.fetch = (async (url: any, init?: any) => {
 
 function reset() {
   const st = (globalThis as any).__fomoTinkoffCandles;
-  st.backoffUntil = 0;
+  st.backoff.clear();
   st.useSourceType = true;
   st.instr.clear();
   st.instrInflight.clear();

@@ -14,6 +14,7 @@ import { aggregateYearly } from "@/lib/kline-aggregate";
 import { isSecondsInterval, serverIntervals } from "@/lib/chart/timeframes";
 import { binanceCandles } from "@/lib/binance";
 import { getUserKey } from "@/lib/data/user-key";
+import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
@@ -455,6 +456,11 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
 }
 
 export async function GET(request: NextRequest) {
+  // MOEX bars are served on the requester's own keys (data/moex-access.ts); the other sources do not look at them
+  return withMoexKeys(() => handle(request));
+}
+
+async function handle(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
   const ticker = searchParams.get("ticker") || "";

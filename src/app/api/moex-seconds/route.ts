@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getViewer, PRIVATE_HEADERS } from "@/lib/algopack-access";
 import { moexSecondsOn } from "@/lib/moex-seconds";
+import { tinkoffToken } from "@/lib/data/moex-keys";
+import { withMoexKeys } from "@/lib/data/moex-access";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +14,14 @@ export const dynamic = "force-dynamic";
  * The token itself is never part of the answer. Whether the exchange is open is not decided here: a closed market shows an empty chart with a note.
  */
 export async function GET() {
+  // second candles come from the requester's own T-Invest token (data/moex-access.ts)
+  return withMoexKeys(handle);
+}
+
+async function handle() {
   const headers = { ...PRIVATE_HEADERS };
   if (!moexSecondsOn()) return NextResponse.json({ enabled: false, reason: "off" }, { headers });
-  if (!process.env.TINKOFF_TOKEN) return NextResponse.json({ enabled: false, reason: "token" }, { headers });
+  if (!tinkoffToken()) return NextResponse.json({ enabled: false, reason: "token" }, { headers });
   const v = await getViewer();
   if (!v.signedIn) return NextResponse.json({ enabled: false, reason: "guest" }, { headers });
   return NextResponse.json({ enabled: true }, { headers });

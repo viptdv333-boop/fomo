@@ -14,7 +14,7 @@ interface Conn {
 }
 
 // only what needs a key: the public sources (Binance) work by default and are not listed here
-const KEYED = DATA_PROVIDERS.filter((p) => p.needsKey);
+const KEYED = DATA_PROVIDERS.filter((p) => p.needsKey && p.live);
 const MARKETS: DataMarket[] = (["moex", "us", "world", "crypto"] as DataMarket[]).filter((m) => KEYED.some((p) => p.market === m));
 
 function ProviderCard({ p, conn, onChanged }: { p: DataProvider; conn: Conn | undefined; onChanged: () => void }) {

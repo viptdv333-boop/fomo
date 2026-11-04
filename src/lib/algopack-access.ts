@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { algopackEnabled } from "./algopack";
 import { algopackPolicy, type AlgoAccess } from "./algopack-policy";
 import { guestGateAlgopack, realtimeAllowed } from "./guest-delay";
+import { moexKeysOfRequest } from "./data/moex-keys";
 
 /* Server-side access check of the ALGOPACK routes (see algopack-policy.ts for the rule). Never trust the client:
    every route that returns ALGOPACK data calls this first. Without the key it does not even look at the session. */
@@ -26,7 +27,9 @@ export async function getAlgopackAccess(): Promise<AlgoAccess> {
 /** Who is asking, for the routes that serve both real-time and delayed MOEX data: a session user gets real time, a guest the delayed feed. */
 export async function getViewer(): Promise<{ signedIn: boolean; realtime: boolean }> {
   const signedIn = !!(await getSessionUser());
-  return { signedIn, realtime: realtimeAllowed(signedIn) };
+  // inside a MOEX route (data/moex-access.ts) real time is a matter of the requester's own T-Invest token (or the server's, for an admin)
+  const keys = moexKeysOfRequest();
+  return { signedIn, realtime: keys ? keys.tinkoff.length > 0 : realtimeAllowed(signedIn) };
 }
 
 /** Responses carrying ALGOPACK data are for one requester only: never stored by a shared cache. */
