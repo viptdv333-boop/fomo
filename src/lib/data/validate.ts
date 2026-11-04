@@ -17,9 +17,9 @@ async function call(url: string, headers: Record<string, string>, useRuCa = fals
   }
 }
 
-async function callPost(url: string, headers: Record<string, string>, useRuCa = false): Promise<number> {
+async function callPost(url: string, headers: Record<string, string>, useRuCa = false, body = "{}"): Promise<number> {
   try {
-    const init = { method: "POST", headers, body: "{}", signal: AbortSignal.timeout(12_000), cache: "no-store" as const };
+    const init = { method: "POST", headers, body, signal: AbortSignal.timeout(12_000), cache: "no-store" as const };
     const res = await (useRuCa ? ruCaFetch(url, init) : fetch(url, init));
     return res.status;
   } catch {
@@ -46,12 +46,16 @@ export async function checkKey(provider: string, key: string): Promise<KeyCheck>
     status = await call(`${DEFAULT_BASE}/engines.json?iss.meta=off`, { Authorization: `Bearer ${key}` }, true);
   } else if (provider === "tinvest") {
     status = await callPost("https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1/UsersService/GetAccounts", { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, true);
+  } else if (provider === "alor") {
+    status = await callPost(`https://oauth.alor.ru/refresh?token=${encodeURIComponent(key)}`, {});
+  } else if (provider === "finam") {
+    status = await callPost("https://api.finam.ru/v1/sessions", { "Content-Type": "application/json" }, false, JSON.stringify({ secret: key, source_app_id: "fomo-terminal" }));
   } else if (provider === "twelvedata") {
     return checkTwelve(key);
   } else if (provider === "databento") {
     status = await call("https://hist.databento.com/v0/metadata.list_datasets", { Authorization: `Basic ${Buffer.from(`${key}:`).toString("base64")}` });
   } else return "error";
   if (status >= 200 && status < 300) return "ok";
-  if (status === 401 || status === 403) return "invalid";
+  if (status === 401 || status === 403 || ((provider === "alor" || provider === "finam") && status === 400)) return "invalid";
   return "error";
 }
