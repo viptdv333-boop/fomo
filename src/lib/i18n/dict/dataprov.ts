@@ -4,6 +4,12 @@ import type { SectionDict } from "./types";
 const rows: [string, string, string, string][] = [
   ["nav.dataProviders", "Провайдеры данных", "Data providers", "数据提供商"],
   ["seo.dataproviders.title", "Провайдеры данных — FOMO Terminal", "Data providers — FOMO Terminal", "数据提供商 — FOMO Terminal"],
+  ["is.src.provider", "Данные по вашему ключу провайдера", "Data through your provider key", "通过您的提供商密钥获取数据"],
+  ["is.src.providerLocked", "Нужен ключ провайдера: подключите его, чтобы открыть график", "A provider key is needed: connect it to open the chart", "需要提供商密钥：连接后即可打开图表"],
+  ["pg.needs", "Для этого инструмента нужен провайдер {name}", "This instrument needs the {name} data provider", "此品种需要数据提供商 {name}"],
+  ["pg.paste", "Вставьте свой ключ: данные пойдут на ваш аккаунт у провайдера.", "Paste your key: the data comes through your own account with the provider.", "粘贴您的密钥：数据将通过您在提供商处的账户获取。"],
+  ["pg.connected", "Ключ {name} подключён. Загрузка данных этого провайдера включается ближайшим обновлением.", "Your {name} key is connected. Loading this provider's data is being enabled in the next update.", "{name} 密钥已连接。该提供商的数据加载将在下次更新中启用。"],
+  ["pg.all", "Все провайдеры данных", "All data providers", "全部数据提供商"],
   ["dp.title", "Провайдеры данных", "Data providers", "数据提供商"],
   ["dp.lead", "Подключите данные на свой аккаунт: выберите провайдера рынка, вставьте ключ, и терминал получает данные напрямую от него. Ключ хранится зашифрованным и не возвращается в браузер.", "Connect market data on your own account: pick the provider of a market, paste a key and the terminal gets the data from it. The key is stored encrypted and never returned to the browser.", "在您自己的账户上连接行情数据：选择市场的提供商并粘贴密钥，终端即直接从其获取数据。密钥加密存储，不会返回浏览器。"],
   ["dp.market.moex", "МосБиржа", "Moscow Exchange", "莫斯科交易所"],

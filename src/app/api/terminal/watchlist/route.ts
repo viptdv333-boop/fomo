@@ -7,7 +7,7 @@ import { rateLimit } from "@/lib/rate-limit";
 const MAX_ITEMS = 200;
 
 const itemSchema = z.object({
-  source: z.enum(["moex", "bybit", "fmp", "forex"]),
+  source: z.enum(["moex", "bybit", "fmp", "forex", "databento", "twelvedata"]),
   ticker: z.string().min(1).max(40),
   dataTicker: z.string().min(1).max(40),
   name: z.string().max(120).default(""),

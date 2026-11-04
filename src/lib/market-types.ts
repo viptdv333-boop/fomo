@@ -3,7 +3,7 @@
 export type MarketGroup = "stock" | "bond" | "fund" | "future" | "currency" | "index" | "crypto" | "forex" | "other";
 /** the chips of the instrument search dialog ("all" is every group) */
 export type GroupTab = "all" | Exclude<MarketGroup, "other">;
-export type MarketSource = "moex" | "bybit" | "forex" | "fmp";
+export type MarketSource = "moex" | "bybit" | "forex" | "fmp" | "databento" | "twelvedata";
 /** underlying asset class of a futures row (the second chip row of the «Фьючерсы» chip); "other" is only listed under «Все» */
 export type FutAsset = "oil" | "gas" | "gold" | "silver" | "copper" | "platinum" | "palladium" | "index" | "currency" | "bond" | "grain" | "soft" | "livestock" | "crypto" | "stock" | "other";
 export type ContractKind = "perpetual" | "quarterly" | "monthly" | "weekly" | "spot";
@@ -35,6 +35,8 @@ export interface MarketItem {
   isin?: string;
   group: MarketGroup;
   source: MarketSource;
+  /** the data provider whose key this instrument needs (a connect window instead of a chart until it is connected) */
+  provider?: "databento" | "twelvedata";
   /** English name when the row has a curated one (US futures): shown instead of `name` outside the Russian UI */
   nameEn?: string;
   /** venue label on the right of a row: MOEX, CME, NYMEX, COMEX, CBOT, ICE, Bybit, Forex (filled by tagItem) */

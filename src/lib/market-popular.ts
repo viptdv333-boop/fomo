@@ -10,6 +10,7 @@ import { FX_PAIRS, pairToItem as fxItem } from "./forex-meta";
 import { allUsFutureItems } from "./us-futures";
 import { arrangeByAsset } from "./futures-assets";
 import { tagItem } from "./instrument-filters";
+import { providerItemsOf } from "./data/provider-catalog";
 import { indexItem, popularIndexRows, staticIndexRows } from "./moex-indices";
 
 export type PopularGroup = MarketGroup | "all";
@@ -179,24 +180,24 @@ const BRD = (rows: { secid: string; name: string; short: string }[], f: (r: Boar
 /** The «Фьючерсы» list of the chip as the client can build it at once: the curated Russian families and the US table, grouped by asset class (RU first inside a class). */
 function staticFutures(): MarketItem[] {
   const ru = STATIC_FUT.map(([auto, asset, name]) => tagItem({ secid: auto, ticker: auto, name, group: "future", source: "moex", engine: "futures", market: "forts", board: "RFUD", auto: true, asset, kind: "quarterly" } as MarketItem));
-  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem)]);
+  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem), ...providerItemsOf("future").map(tagItem)]);
 }
 
 /** Curated lists shown when ISS is unreachable (and instantly on the client before the live list arrives). Every row is tagged (venue / country / category). */
 export function staticPopular(group: PopularGroup): MarketItem[] {
   switch (group) {
     case "stock":
-      return BRD(STATIC_STOCKS, stockItem).map(tagItem);
+      return [...BRD(STATIC_STOCKS, stockItem).map(tagItem), ...providerItemsOf("stock").map(tagItem)];
     case "bond":
       return BRD(STATIC_OFZ, (r) => bondItem(r, "TQOB")).map(tagItem);
     case "fund":
-      return BRD(STATIC_FUNDS, fundItem).map(tagItem);
+      return [...BRD(STATIC_FUNDS, fundItem).map(tagItem), ...providerItemsOf("fund").map(tagItem)];
     case "currency":
       return STATIC_FX.map((x) => tagItem(currencyItem({ secid: x.secid, shortname: x.ticker, name: x.name, isin: "", sectype: "", turnover: 0 })));
     case "future":
       return staticFutures();
     case "index":
-      return popularIndexRows(staticIndexRows()).map((r) => tagItem(indexItem(r)));
+      return [...popularIndexRows(staticIndexRows()).map((r) => tagItem(indexItem(r))), ...providerItemsOf("index").map(tagItem)];
     case "crypto":
       return POPULAR_CRYPTO.map(cryptoItem).map(tagItem);
     case "forex":

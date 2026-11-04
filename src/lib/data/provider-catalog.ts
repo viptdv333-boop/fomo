@@ -1,0 +1,244 @@
+/**
+ * The ticker catalogues of the data providers that need the user's own key (Settings -> Data providers). Everyone sees these instruments in the
+ * search (so the user can find what a provider offers); opening one without the provider connected shows the connect window instead of a chart
+ * (src/components/chart/ProviderGate.tsx). Pure data + a tiny search; safe on the client and the server.
+ *
+ *   databento   US market: CME / CBOT / NYMEX / COMEX / ICE futures, US stocks and ETFs
+ *   twelvedata  the rest of the world: stocks of Europe and Asia, world indices
+ *
+ * The lists are curated starting sets (the liquid core of each market). Each row's `secid` is the id of the instrument inside the terminal
+ * (`?symbol=`, watchlists, layouts); `dataTicker` is derived from it by the provider's data layer.
+ */
+import type { FutAsset, MarketGroup, MarketItem } from "../market-types";
+import type { DataProvider } from "./providers";
+
+type ProviderId = Extract<DataProvider["id"], "databento" | "twelvedata">;
+
+interface Row {
+  id: string;
+  name: string;
+  nameEn?: string;
+  exchange: string;
+  country: string;
+  group: MarketGroup;
+  fgroup?: FutAsset;
+  /** futures: the root symbol (ES, CL...) the contract rows of the provider hang from */
+  asset?: string;
+  sub?: string;
+}
+
+const fut = (id: string, name: string, nameEn: string, exchange: string, fgroup: FutAsset): Row => ({ id, name, nameEn, exchange, country: "US", group: "future", fgroup, asset: id });
+const stk = (id: string, name: string, exchange: string): Row => ({ id, name, exchange, country: "US", group: "stock" });
+const etf = (id: string, name: string, exchange = "NYSE Arca"): Row => ({ id, name, exchange, country: "US", group: "fund" });
+
+const DATABENTO: Row[] = [
+  // index futures
+  fut("ES", "E-mini S&P 500", "E-mini S&P 500", "CME", "index"),
+  fut("NQ", "E-mini Nasdaq-100", "E-mini Nasdaq-100", "CME", "index"),
+  fut("YM", "E-mini Dow", "E-mini Dow", "CBOT", "index"),
+  fut("RTY", "E-mini Russell 2000", "E-mini Russell 2000", "CME", "index"),
+  fut("MES", "Micro E-mini S&P 500", "Micro E-mini S&P 500", "CME", "index"),
+  fut("MNQ", "Micro E-mini Nasdaq-100", "Micro E-mini Nasdaq-100", "CME", "index"),
+  // energy
+  fut("CL", "Нефть WTI", "Crude Oil WTI", "NYMEX", "oil"),
+  fut("MCL", "Микро нефть WTI", "Micro WTI Crude Oil", "NYMEX", "oil"),
+  fut("NG", "Природный газ", "Natural Gas", "NYMEX", "gas"),
+  fut("RB", "Бензин RBOB", "RBOB Gasoline", "NYMEX", "oil"),
+  fut("HO", "Мазут (ULSD)", "NY Harbor ULSD", "NYMEX", "oil"),
+  // metals
+  fut("GC", "Золото", "Gold", "COMEX", "gold"),
+  fut("MGC", "Микро золото", "Micro Gold", "COMEX", "gold"),
+  fut("SI", "Серебро", "Silver", "COMEX", "silver"),
+  fut("HG", "Медь", "Copper", "COMEX", "copper"),
+  fut("PL", "Платина", "Platinum", "NYMEX", "platinum"),
+  fut("PA", "Палладий", "Palladium", "NYMEX", "palladium"),
+  // rates
+  fut("ZB", "Облигации США 30 лет", "U.S. Treasury Bond", "CBOT", "bond"),
+  fut("ZN", "Облигации США 10 лет", "10-Year T-Note", "CBOT", "bond"),
+  fut("ZF", "Облигации США 5 лет", "5-Year T-Note", "CBOT", "bond"),
+  fut("ZT", "Облигации США 2 года", "2-Year T-Note", "CBOT", "bond"),
+  // currencies
+  fut("6E", "Евро / доллар", "Euro FX", "CME", "currency"),
+  fut("6B", "Фунт / доллар", "British Pound", "CME", "currency"),
+  fut("6J", "Иена / доллар", "Japanese Yen", "CME", "currency"),
+  fut("6A", "Австралийский доллар", "Australian Dollar", "CME", "currency"),
+  fut("6C", "Канадский доллар", "Canadian Dollar", "CME", "currency"),
+  fut("6S", "Швейцарский франк", "Swiss Franc", "CME", "currency"),
+  // agriculture
+  fut("ZC", "Кукуруза", "Corn", "CBOT", "grain"),
+  fut("ZS", "Соя", "Soybeans", "CBOT", "grain"),
+  fut("ZW", "Пшеница", "Wheat", "CBOT", "grain"),
+  fut("KC", "Кофе", "Coffee", "ICE", "soft"),
+  fut("SB", "Сахар", "Sugar No. 11", "ICE", "soft"),
+  fut("CC", "Какао", "Cocoa", "ICE", "soft"),
+  fut("CT", "Хлопок", "Cotton", "ICE", "soft"),
+  fut("LE", "Живой скот", "Live Cattle", "CME", "livestock"),
+  fut("HE", "Свиньи", "Lean Hogs", "CME", "livestock"),
+  // US stocks
+  stk("AAPL", "Apple", "NASDAQ"),
+  stk("MSFT", "Microsoft", "NASDAQ"),
+  stk("NVDA", "NVIDIA", "NASDAQ"),
+  stk("AMZN", "Amazon", "NASDAQ"),
+  stk("GOOGL", "Alphabet (A)", "NASDAQ"),
+  stk("META", "Meta Platforms", "NASDAQ"),
+  stk("TSLA", "Tesla", "NASDAQ"),
+  stk("AVGO", "Broadcom", "NASDAQ"),
+  stk("NFLX", "Netflix", "NASDAQ"),
+  stk("AMD", "Advanced Micro Devices", "NASDAQ"),
+  stk("INTC", "Intel", "NASDAQ"),
+  stk("COST", "Costco", "NASDAQ"),
+  stk("PEP", "PepsiCo", "NASDAQ"),
+  stk("ADBE", "Adobe", "NASDAQ"),
+  stk("CSCO", "Cisco", "NASDAQ"),
+  stk("QCOM", "Qualcomm", "NASDAQ"),
+  stk("JPM", "JPMorgan Chase", "NYSE"),
+  stk("V", "Visa", "NYSE"),
+  stk("MA", "Mastercard", "NYSE"),
+  stk("UNH", "UnitedHealth", "NYSE"),
+  stk("XOM", "Exxon Mobil", "NYSE"),
+  stk("CVX", "Chevron", "NYSE"),
+  stk("JNJ", "Johnson & Johnson", "NYSE"),
+  stk("PG", "Procter & Gamble", "NYSE"),
+  stk("WMT", "Walmart", "NYSE"),
+  stk("HD", "Home Depot", "NYSE"),
+  stk("KO", "Coca-Cola", "NYSE"),
+  stk("DIS", "Walt Disney", "NYSE"),
+  stk("BA", "Boeing", "NYSE"),
+  stk("GS", "Goldman Sachs", "NYSE"),
+  stk("BAC", "Bank of America", "NYSE"),
+  stk("ORCL", "Oracle", "NYSE"),
+  stk("CRM", "Salesforce", "NYSE"),
+  stk("NKE", "Nike", "NYSE"),
+  stk("MCD", "McDonald's", "NYSE"),
+  stk("PFE", "Pfizer", "NYSE"),
+  stk("T", "AT&T", "NYSE"),
+  stk("UBER", "Uber", "NYSE"),
+  stk("PLTR", "Palantir", "NASDAQ"),
+  stk("COIN", "Coinbase", "NASDAQ"),
+  stk("MSTR", "Strategy (MicroStrategy)", "NASDAQ"),
+  // ETFs and funds
+  etf("SPY", "SPDR S&P 500 ETF"),
+  etf("QQQ", "Invesco QQQ (Nasdaq-100)", "NASDAQ"),
+  etf("IWM", "iShares Russell 2000"),
+  etf("DIA", "SPDR Dow Jones"),
+  etf("VTI", "Vanguard Total Stock Market"),
+  etf("GLD", "SPDR Gold Shares"),
+  etf("SLV", "iShares Silver Trust"),
+  etf("TLT", "iShares 20+ Year Treasury"),
+  etf("HYG", "iShares High Yield Corporate Bond"),
+  etf("XLF", "Financial Select Sector SPDR"),
+  etf("XLE", "Energy Select Sector SPDR"),
+  etf("XLK", "Technology Select Sector SPDR"),
+  etf("EEM", "iShares MSCI Emerging Markets"),
+  etf("USO", "United States Oil Fund"),
+  etf("IBIT", "iShares Bitcoin Trust", "NASDAQ"),
+];
+
+const eu = (id: string, name: string, exchange: string, country: string): Row => ({ id, name, exchange, country, group: "stock" });
+const idx = (id: string, name: string, country: string): Row => ({ id, name, exchange: "Index", country, group: "index", sub: "equity" });
+
+const TWELVEDATA: Row[] = [
+  // Europe
+  eu("SAP.XETR", "SAP", "XETRA", "DE"),
+  eu("SIE.XETR", "Siemens", "XETRA", "DE"),
+  eu("ALV.XETR", "Allianz", "XETRA", "DE"),
+  eu("BMW.XETR", "BMW", "XETRA", "DE"),
+  eu("MBG.XETR", "Mercedes-Benz", "XETRA", "DE"),
+  eu("ASML.XAMS", "ASML", "Euronext Amsterdam", "NL"),
+  eu("MC.XPAR", "LVMH", "Euronext Paris", "FR"),
+  eu("OR.XPAR", "L'Oréal", "Euronext Paris", "FR"),
+  eu("TTE.XPAR", "TotalEnergies", "Euronext Paris", "FR"),
+  eu("NESN.XSWX", "Nestlé", "SIX Swiss", "CH"),
+  eu("NOVN.XSWX", "Novartis", "SIX Swiss", "CH"),
+  eu("ROG.XSWX", "Roche", "SIX Swiss", "CH"),
+  eu("SHEL.XLON", "Shell", "LSE", "GB"),
+  eu("HSBA.XLON", "HSBC", "LSE", "GB"),
+  eu("AZN.XLON", "AstraZeneca", "LSE", "GB"),
+  eu("BP.XLON", "BP", "LSE", "GB"),
+  // Asia
+  eu("7203.XTKS", "Toyota Motor", "Tokyo SE", "JP"),
+  eu("6758.XTKS", "Sony Group", "Tokyo SE", "JP"),
+  eu("9984.XTKS", "SoftBank Group", "Tokyo SE", "JP"),
+  eu("005930.XKRX", "Samsung Electronics", "Korea Exchange", "KR"),
+  eu("0700.XHKG", "Tencent", "HKEX", "HK"),
+  eu("9988.XHKG", "Alibaba", "HKEX", "HK"),
+  eu("1299.XHKG", "AIA Group", "HKEX", "HK"),
+  eu("TSM.XNYS", "TSMC (ADR)", "NYSE", "TW"),
+  // world indices
+  idx("SPX", "S&P 500", "US"),
+  idx("NDX", "Nasdaq-100", "US"),
+  idx("DJI", "Dow Jones", "US"),
+  idx("RUT", "Russell 2000", "US"),
+  idx("DAX", "DAX 40", "DE"),
+  idx("CAC", "CAC 40", "FR"),
+  idx("FTSE", "FTSE 100", "GB"),
+  idx("STOXX50E", "Euro Stoxx 50", "EU"),
+  idx("N225", "Nikkei 225", "JP"),
+  idx("HSI", "Hang Seng", "HK"),
+  idx("SSEC", "Shanghai Composite", "CN"),
+  idx("KS11", "KOSPI", "KR"),
+];
+
+const BY_PROVIDER: Record<ProviderId, Row[]> = { databento: DATABENTO, twelvedata: TWELVEDATA };
+
+function toItem(p: ProviderId, r: Row): MarketItem {
+  const ticker = r.id.split(".")[0]; // "SAP.XETR" -> SAP (the exchange suffix keeps ids unique and URL-safe)
+  return {
+    secid: r.id,
+    ticker,
+    name: r.name,
+    ...(r.nameEn ? { nameEn: r.nameEn } : {}),
+    group: r.group,
+    source: p,
+    exchange: r.exchange,
+    country: r.country,
+    ...(r.sub ? { sub: r.sub } : {}),
+    ...(r.fgroup ? { fgroup: r.fgroup } : {}),
+    provider: p,
+  };
+}
+
+let all: MarketItem[] | null = null;
+
+/** Every provider instrument as search rows. */
+export function providerItems(): MarketItem[] {
+  return (all ??= (Object.keys(BY_PROVIDER) as ProviderId[]).flatMap((p) => BY_PROVIDER[p].map((r) => toItem(p, r))));
+}
+
+/** The provider rows of one chip ("all" = every group). */
+export function providerItemsOf(group: MarketGroup | "all"): MarketItem[] {
+  return group === "all" ? providerItems() : providerItems().filter((i) => i.group === group);
+}
+
+const n = (s: string) => s.toLowerCase().replace(/ё/g, "е");
+
+/** Provider rows matching a typed query (ticker first, then name), best first. */
+export function searchProviderItems(q: string, group: MarketGroup | "all", limit = 40): MarketItem[] {
+  const s = n(q.trim());
+  if (!s) return [];
+  const scored: { it: MarketItem; s: number }[] = [];
+  for (const it of providerItemsOf(group)) {
+    const t = n(it.ticker);
+    const nm = n(it.name);
+    const en = n(it.nameEn ?? "");
+    let sc = 0;
+    if (t === s) sc = 100;
+    else if (t.startsWith(s)) sc = 80;
+    else if (nm.startsWith(s) || en.startsWith(s)) sc = 60;
+    else if (nm.includes(s) || en.includes(s)) sc = 40;
+    else if (t.includes(s)) sc = 30;
+    if (sc) scored.push({ it, s: sc });
+  }
+  return scored.sort((a, b) => b.s - a.s).slice(0, limit).map((x) => x.it);
+}
+
+/** Exact lookup by the instrument id (a URL ?symbol=). */
+export function lookupProviderItem(id: string): MarketItem | null {
+  const s = id.trim().toLowerCase();
+  return providerItems().find((i) => i.secid.toLowerCase() === s) ?? null;
+}
+
+/** The provider a chart source needs the user's key for (null: the source is served without a key). */
+export function providerOfSource(source: string): ProviderId | null {
+  return source === "databento" || source === "twelvedata" ? source : null;
+}

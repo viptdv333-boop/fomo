@@ -122,6 +122,10 @@ export function tagItem(item: MarketItem): MarketItem {
       out.exchange ??= "FMP";
       out.country ??= "US";
       break;
+    case "databento":
+    case "twelvedata":
+      // the provider catalogue rows carry their own venue / country (src/lib/data/provider-catalog.ts)
+      break;
   }
   return out;
 }

@@ -15,6 +15,7 @@ import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filt
 import { arrangeByAsset, classBoost, moexAssetOrder } from "./futures-assets";
 import { allUsFutureItems, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
 import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
+import { lookupProviderItem, providerItemsOf, searchProviderItems } from "./data/provider-catalog";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -207,7 +208,7 @@ async function searchCandidates(q: string, group: GroupTab): Promise<MarketItem[
 async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]> {
   if (group === "crypto") return searchCrypto(q, CANDIDATES); // the whole Bybit spot list (has its own 1 h cache)
   if (group === "forex") return searchForex(q, CANDIDATES);
-  if (group === "index") return searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem);
+  if (group === "index") return [...searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem), ...searchProviderItems(q, "index")];
 
   if (group === "future") {
     // Russian and US futures by relevance (RU first on a tie), then the classes ordered by their best hit, RU before US inside a class
@@ -220,7 +221,7 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
       })
       .sort((a, b) => b.s - a.s || a.i - b.i)
       .map((x) => x.item);
-    return arrangeByAsset(merged.slice(0, CANDIDATES * 2), true);
+    return arrangeByAsset([...merged.slice(0, CANDIDATES * 2), ...searchProviderItems(q, "future").map(tagItem)], true);
   }
 
   // «Все» and the cash groups (stocks, bonds, funds, currency)
@@ -237,6 +238,8 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
   const rest = rank([...fut.filter((f) => !exactFut.includes(f)), ...us, ...idx, ...cash], q);
   // an exact secid always on top; otherwise futures, indices and cash groups interleave by relevance
   const items = [...exactFut, ...rest].slice(0, CANDIDATES);
+  // provider catalogues (Databento, Twelve Data): the rows of this chip (stocks / funds) or of every chip under «Все»
+  if (group === "stock" || group === "fund" || all) items.push(...searchProviderItems(q, group === "all" ? "all" : group).filter((i) => all ? i.group !== "future" && i.group !== "index" : true).map(tagItem));
   if (all) {
     // «Все» + a coin-like query («btc», «sol»): a few Bybit spot pairs after the MOEX hits
     if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map(pairToItem));
@@ -273,7 +276,7 @@ export function futuresCatalog(families: ContractFamily[]): MarketItem[] {
   const ru = families
     .map((f) => tagItem(famItem(refreshDays(f))))
     .sort((a, b) => moexAssetOrder(a.asset ?? "") - moexAssetOrder(b.asset ?? "") || (a.asset ?? "").localeCompare(b.asset ?? ""));
-  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem)]);
+  return arrangeByAsset([...ru, ...allUsFutureItems().map(tagItem), ...providerItemsOf("future").map(tagItem)]);
 }
 
 type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "index";
@@ -286,7 +289,7 @@ async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
       // shares and funds / ETFs trade on the same board: one listing serves both chips
       const rows = await issBoard("stock/markets/shares/boards/TQBR", SHARE_COLS);
       const picked = group === "stock" ? pickStocks(rows).map(stockItem) : pickFunds(rows).map(fundItem);
-      return picked.length ? picked.map(tagItem) : null;
+      return picked.length ? [...picked.map(tagItem), ...providerItemsOf(group).map(tagItem)] : null;
     }
     case "bond": {
       const [ofz, corp] = await Promise.all([issBoard("stock/markets/bonds/boards/TQOB", BOND_COLS), issBoard("stock/markets/bonds/boards/TQCB", BOND_COLS)]);
@@ -303,7 +306,7 @@ async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
     }
     case "index": {
       const rows = await getIndexRows();
-      return popularIndexRows(rows).map((r) => tagItem(indexItem(r)));
+      return [...popularIndexRows(rows).map((r) => tagItem(indexItem(r))), ...providerItemsOf("index").map(tagItem)];
     }
   }
 }
@@ -387,6 +390,8 @@ export async function lookupMarket(id: string): Promise<MarketItem | null> {
   if (!id) return null;
   const us = usFutureBySymbol(id);
   if (us) return tagItem(usFutureItem(us));
+  const prov = lookupProviderItem(id);
+  if (prov) return tagItem(prov);
   const fx = parseFxSymbol(id);
   if (fx && /^[A-Za-z]{6}$/.test(id)) return tagItem(fxPairToItem(fx));
   const families = await getFortsFamilies();

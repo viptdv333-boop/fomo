@@ -3,7 +3,7 @@
 import type { MarketGroup } from "./market-types";
 import { FX_PAIRS, fxDigits, fxIcon, fxSlash } from "./forex-meta";
 
-export type ChartSource = "moex" | "fmp" | "bybit" | "forex" | "none";
+export type ChartSource = "moex" | "fmp" | "bybit" | "forex" | "databento" | "twelvedata" | "none";
 
 export interface TerminalInstrument {
   ticker: string;
@@ -157,7 +157,7 @@ export function adHocInstrument(source: ChartSource, ticker: string): TerminalIn
 }
 
 export function exchangeLabel(source: string): string {
-  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : "";
+  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
 }
 
 /** Decimals a price of this instrument is shown with when they are fixed by the market (forex pips); undefined = by magnitude. */

@@ -26,6 +26,7 @@ import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
 import AppTimeframes from "./AppTimeframes";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
+import ProviderGate from "@/components/chart/ProviderGate";
 import { exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
 import {
   APP_TERM_RANGES,
@@ -321,6 +322,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     </button>
   );
   const body = selected ? (
+    <ProviderGate source={selected.source} name={instName(selected, t)}>
     <ChartErrorBoundary>
     <Chart
       ticker={selected.dataTicker}
@@ -336,6 +338,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       onAppState={onAppState}
     />
     </ChartErrorBoundary>
+    </ProviderGate>
   ) : null;
 
   const tone = changeTone(quote?.changePercent);

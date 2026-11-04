@@ -1,5 +1,6 @@
 "use client";
 
+import { useConnections } from "@/lib/data/use-connections";
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useT } from "@/lib/i18n/client";
 import { ALL_INSTRUMENTS, adHocInstrument, type ChartSource, type TerminalInstrument } from "@/lib/terminal-data";
@@ -154,6 +155,8 @@ interface RowProps {
 
 const ResultRow = memo(function ResultRow({ rid, item, mode, active, listed, isCurrent, expandable, expanded, recent, onAct, onHover, onToggle, onRemoveRow, onPickContract, markContract }: RowProps) {
   const { t, locale } = useT();
+  const conns = useConnections();
+  const connected = !!item.provider && conns.on.has(item.provider);
   const inst = useMemo(() => viewInst(item), [item]);
   const key = recent ? `r:${item.source}:${item.secid}` : `${item.source}:${item.secid}`;
   const raw = locale !== "ru" && item.nameEn ? item.nameEn : item.name;
@@ -185,6 +188,17 @@ const ResultRow = memo(function ResultRow({ rid, item, mode, active, listed, isC
             <span className={`truncate text-[14px] font-bold leading-tight ${isCurrent ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-text)]"}`}>{shown}</span>
             {badge && <ContractBadge c={badge} />}
             {item.unit === "%" && <span className="shrink-0 rounded bg-[var(--tv3-fill2)] px-1 text-[10px] text-[var(--tv3-text2)]">%</span>}
+            {item.provider && (
+              <span title={connected ? t("is.src.provider") : t("is.src.providerLocked")} className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[var(--tv3-fill2)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--tv3-text2)]">
+                {item.provider === "databento" ? "Databento" : "Twelve Data"}
+                {!connected && (
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 018 0v3" />
+                  </svg>
+                )}
+              </span>
+            )}
             {item.source === "fmp" && (
               <span title={t("is.src.fmp")} className="shrink-0 rounded bg-[var(--tv3-fill2)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--tv3-text2)]">
                 FMP

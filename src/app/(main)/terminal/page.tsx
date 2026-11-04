@@ -25,6 +25,7 @@ import { noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/char
 import { KIND_LAST } from "@/lib/chart/sync-logic";
 import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
 import SkinSwitch from "@/components/layout/SkinSwitch";
+import ProviderGate from "@/components/chart/ProviderGate";
 import AppTerminal from "@/components/app/AppTerminal";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
 
@@ -67,7 +68,7 @@ function getLastChannel(): Channel {
 function storedSymbol(): { symbol: string; source: ChartSource } | null {
   const ok = (v: unknown): v is { source: ChartSource; dataTicker: string } => {
     const o = v as { source?: unknown; dataTicker?: unknown } | null;
-    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "fmp" || o.source === "forex") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
+    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "fmp" || o.source === "forex" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
   };
   try {
     const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
@@ -93,7 +94,7 @@ function instrumentFromUrl(): TerminalInstrument {
     }
   }
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
-  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" || src === "forex" ? src : null;
+  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "fmp" || src === "forex" || src === "databento" || src === "twelvedata" ? src : null;
   if (source) {
     // a US future (CLUSD, GCUSD ...) opens with its root ticker, name and artwork, like a pick from the search
     const us = source === "fmp" ? usFutureBySymbol(symbol) : undefined;
@@ -217,14 +218,16 @@ export default function TerminalPage() {
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
       <DemoGate kind="terminal" path="/terminal">
         {selected && (
-          <ChartErrorBoundary>
-            <TradingChart
-              ticker={selected.dataTicker}
-              source={selected.source}
-              name={instName(selected, t)}
-              onSelectSymbol={onSelectSymbol}
-            />
-          </ChartErrorBoundary>
+          <ProviderGate source={selected.source} name={instName(selected, t)}>
+            <ChartErrorBoundary>
+              <TradingChart
+                ticker={selected.dataTicker}
+                source={selected.source}
+                name={instName(selected, t)}
+                onSelectSymbol={onSelectSymbol}
+              />
+            </ChartErrorBoundary>
+          </ProviderGate>
         )}
       </DemoGate>
     </div>
