@@ -214,12 +214,6 @@ export default function TerminalPage() {
     <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} ${mac && appUi ? "tvmac-app" : ""} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>
       {/* Screen-reader/crawler heading: the terminal is a full-bleed app shell, so a visible <h1> would break the layout. */}
       <h1 className="sr-only">{t("term2.heading")}</h1>
-      {/* the app has no site header, so the switch between the new and the old look sits in the corner of the window */}
-      {appUi && (
-        <div className="tvmac-app-switch absolute z-[60]">
-          <SkinSwitch />
-        </div>
-      )}
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
       <DemoGate kind="terminal" path="/terminal">
         {selected && (

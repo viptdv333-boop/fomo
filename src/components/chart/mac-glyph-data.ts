@@ -49,6 +49,7 @@ export const TB_GLYPHS: Record<string, Glyph> = {
   settings: ["#E6B877", "#CC9446", "M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4", ""],
   keys: ["#8A8FD0", "#6E73B8", "M3 7h18v10H3zM7 11h1M11 11h1M15 11h1M8 14h8", "M3 7h18v10H3z"],
   screen: ["#7CC29B", "#4F9A74", "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5", "M6 6h12v12H6z"],
+  skin: ["#9AA0AE", "#747B8C", "M4 8h13l-3-3M4 8l3 3M20 16H7l3 3M20 16l-3-3", ""],
   shot: ["#DE96A0", "#C46A78", "M4 8h3l2-3h6l2 3h3v11H4zM12 16a3 3 0 100-6 3 3 0 000 6z", "M4 8h3l2-3h6l2 3h3v11H4z"],
 };
 

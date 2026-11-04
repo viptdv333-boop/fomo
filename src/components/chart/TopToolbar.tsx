@@ -112,6 +112,8 @@ interface Props {
   lead?: ReactNode;
   /** Classic look on a wide window: offers the optional macOS look (src/lib/chart/mac-skin.ts). */
   macOffer?: () => void;
+  /** App window in the new look: the way back to the classic one, as the last button of the toolbar. */
+  appSkin?: () => void;
 }
 
 /* icons live in ./icons */
@@ -196,7 +198,7 @@ export default function TopToolbar(p: Props) {
 
   // labels of the macOS look: drawn by CSS (::after) under the icon, so every button keeps its own markup
   const macLabels = Object.fromEntries(
-    ["compare", "indicators", "window", "alerts", "events", "replay", "type", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot"].map((k) => [`--tbl-${k}`, JSON.stringify(t(`mac.lbl.${k}`))]),
+    ["compare", "indicators", "window", "alerts", "events", "replay", "type", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot", "skin"].map((k) => [`--tbl-${k}`, JSON.stringify(t(`mac.lbl.${k}`))]),
   ) as CSSProperties;
 
   return (
@@ -377,6 +379,11 @@ export default function TopToolbar(p: Props) {
       ) : (
         <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ibtn}>
           {I.camera}
+        </button>
+      )}
+      {p.appSkin && (
+        <button type="button" onClick={p.appSkin} title={t("mac.classicTip")} aria-label={t("mac.classic")} className={`${btn} tb-skin`}>
+          <MacGlyph set="tb" k="skin" alpha="55" width={1.8} />
         </button>
       )}
       {p.macOffer && (

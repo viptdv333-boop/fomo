@@ -191,7 +191,7 @@ html.dark .tvmac {
 }
 
 /* row 2 buttons: icon over a label, spread over the width */
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) {
   position: relative;
   flex: 1 1 0;
   min-width: 0;
@@ -209,13 +209,13 @@ html.dark .tvmac {
   font-weight: 500;
   box-shadow: none;
 }
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot):hover:not(:disabled) {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin):hover:not(:disabled) {
   background: color-mix(in srgb, var(--m-text) 6%, transparent) !important;
 }
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)[aria-pressed="true"] {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)[aria-pressed="true"] {
   background: color-mix(in srgb, var(--tb-c) 16%, transparent) !important;
 }
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) svg {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-typeset, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) svg {
   width: 30px !important;
   height: 30px !important;
   flex: none;
@@ -226,7 +226,7 @@ html.dark .tvmac {
 .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-tpl) > span:not([class*="rounded-full"]) {
   display: none !important;
 }
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after {
   max-width: 100%;
   padding: 0 2px;
   overflow: hidden;
@@ -250,6 +250,7 @@ html.dark .tvmac {
 .tvmac .tb-keys::after { content: var(--tbl-keys); }
 .tvmac .tb-full::after { content: var(--tbl-screen); }
 .tvmac .tb-shot::after { content: var(--tbl-shot); }
+.tvmac .tb-skin::after { content: var(--tbl-skin); }
 /* the chart-type options button has no label of its own (it only exists for some chart types) */
 .tvmac [data-tv="toolbar"] .tb-typeset {
   flex: 0 0 40px;
@@ -275,6 +276,7 @@ html.dark .tvmac {
 .tvmac .tb-keys { order: 23; --tb-c: #6e73b8; }
 .tvmac .tb-full { order: 24; --tb-c: #4f9a74; }
 .tvmac .tb-shot { order: 25; --tb-c: #c46a78; }
+.tvmac .tb-skin { order: 26; --tb-c: #747b8c; }
 html.dark .tvmac .tb-compare { --tb-c: #7db0d6; }
 html.dark .tvmac .tb-ind { --tb-c: #a78bc9; }
 html.dark .tvmac .tb-win { --tb-c: #7cc29b; }
@@ -289,6 +291,7 @@ html.dark .tvmac .tb-set { --tb-c: #e6b877; }
 html.dark .tvmac .tb-keys { --tb-c: #8a8fd0; }
 html.dark .tvmac .tb-full { --tb-c: #7cc29b; }
 html.dark .tvmac .tb-shot { --tb-c: #de96a0; }
+html.dark .tvmac .tb-skin { --tb-c: #9aa0ae; }
 
 /* counters: the pink round badge above the icon */
 .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert) > span[class*="rounded-full"] {
@@ -482,7 +485,7 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
 }
 
 /* ───────── duotone icons (design): the stroke colour plus a soft tint of it inside closed shapes ───────── */
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) svg {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) svg {
   fill: color-mix(in srgb, var(--tb-c) 30%, transparent);
 }
 .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn svg {
@@ -578,7 +581,7 @@ html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
   letter-spacing: -0.003em;
   -webkit-font-smoothing: antialiased;
 }
-.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after {
+.tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-events, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after {
   font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 0;
@@ -865,13 +868,13 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { -
 @media (max-height: 760px) {
   .tvmac { padding-top: 6px; padding-bottom: 8px; }
   .tvmac-title { height: 28px; }
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { height: 46px !important; gap: 1px !important; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) { height: 46px !important; gap: 1px !important; }
   .tvmac [data-tv="toolbar"] button .mg { width: 24px !important; height: 24px !important; }
   .tvmac [data-tv="toolbar"] { padding-bottom: 4px !important; gap: 4px 12px; }
   .tvmac [data-tv="toolbar"] .tb-sym, .tvmac [data-tv="toolbar"] .tb-roll { height: 34px !important; }
 }
 @media (max-width: 1200px) {
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 11px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after { font-size: 11px; }
   .tvmac aside [data-testid="right-panel"] { max-width: 280px; }
 }
 
@@ -1003,12 +1006,12 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 .tvmac [data-tv="toolbar"] .tb-break, .tvmac [data-tv="toolbar"] .tb-spacer { display: none !important; }
 .tvmac [data-tv="toolbar"] { padding: 14px 2px 4px !important; gap: 4px 8px; flex-wrap: wrap; align-items: center; }
 @layer utilities {
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) {
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) {
     height: 46px !important;
     max-width: 84px;
     gap: 1px !important;
   }
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 11.5px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after { font-size: 11.5px; }
   .tvmac [data-tv="toolbar"] button .mg { width: 24px !important; height: 24px !important; }
   .tvmac [data-tv="toolbar"] .tb-sym, .tvmac [data-tv="toolbar"] .tb-roll { height: 36px !important; }
   .tvmac [data-tv="toolbar"] .tb-events { width: 36px !important; height: 36px !important; }
@@ -1019,8 +1022,8 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 12px !important; } }
 .tvmac [data-tv="toolbar"] { zoom: calc(1 + (var(--mz, 1) - 1) / 2); padding-top: 20px !important; }
 @layer utilities {
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { min-width: 58px; max-width: 80px; }
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 10.5px; letter-spacing: -0.01em; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) { min-width: 58px; max-width: 80px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after { font-size: 10.5px; letter-spacing: -0.01em; }
 }
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 18px !important; } }
 .tvmac [data-tv="toolbar"] { margin-top: 18px; }
@@ -1038,8 +1041,8 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 /* header, 20% lower: no extra scaling, smaller buttons and glyphs */
 .tvmac [data-tv="toolbar"] { zoom: 1 !important; padding-top: 16px !important; }
 @layer utilities {
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { height: 38px !important; min-width: 54px; }
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 10.5px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) { height: 38px !important; min-width: 54px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after { font-size: 10.5px; }
   .tvmac [data-tv="toolbar"] button .mg { width: 22px !important; height: 22px !important; }
   .tvmac [data-tv="toolbar"] .tb-sym, .tvmac [data-tv="toolbar"] .tb-roll { height: 32px !important; }
   .tvmac [data-tv="toolbar"] .tb-events { width: 32px !important; height: 32px !important; }
@@ -1063,8 +1066,8 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 
 /* header icons: big, as tall as the header allows (glyph 32px + a 10px caption) */
 @layer utilities {
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot) { height: 46px !important; min-width: 60px; padding: 0 !important; gap: 0 !important; justify-content: space-between; }
-  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot)::after { font-size: 10px; line-height: 12px; height: 12px; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) { height: 46px !important; min-width: 60px; padding: 0 !important; gap: 0 !important; justify-content: space-between; }
+  .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin)::after { font-size: 10px; line-height: 12px; height: 12px; }
   .tvmac [data-tv="toolbar"] button .mg { width: 32px !important; height: 32px !important; margin-top: 1px; }
   .tvmac [data-tv="toolbar"] .tb-events .mg { width: 26px !important; height: 26px !important; margin: 0; }
 }
@@ -1075,7 +1078,4 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 .tvmac-title { display: none !important; }
 [data-tv="toolbar"] .tb-macoffer { display: none !important; }
 
-/* app window: the look switch is a small pill in a free strip above the toolbar (the site header with the switch does not exist there) */
-.tvmac-app-switch { right: 18px; top: 3px; }
-.tvmac-app .tvmac-app-switch button { height: 24px; font-size: 12px; padding-left: 10px; padding-right: 10px; }
-.tvmac-app [data-tv="toolbar"] { margin-top: 24px !important; }
+/* app window: the way back to the classic look is the last button of the toolbar (.tb-skin; the site header with the switch does not exist there) */

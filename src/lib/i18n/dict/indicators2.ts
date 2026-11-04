@@ -136,6 +136,7 @@ const rows: [string, string, string, string][] = [
   ["mac.lbl.keys", "Клавиши", "Keys", "快捷键"],
   ["mac.lbl.screen", "Экран", "Screen", "全屏"],
   ["mac.lbl.shot", "Снимок", "Snapshot", "截图"],
+  ["mac.lbl.skin", "Старый вид", "Classic", "经典"],
   /* phone (app UI) version of the new look */
   ["mac.m.tabTerm", "Терминал", "Terminal", "终端"],
   ["mac.m.tabList", "Список", "Watchlist", "自选"],

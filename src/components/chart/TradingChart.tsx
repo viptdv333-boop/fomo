@@ -36,7 +36,7 @@ import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopT
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState, AppChip } from "@/components/chart/app-bridge";
-import { useAppTopToolbar } from "@/components/app/useAppUi";
+import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
 import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
@@ -485,6 +485,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const macSkin = useMacSkin();
   const macPage = !embedded && !compact && !appPage && !appFull;
   const mac = macSkin.on && macPage;
+  const appWindow = useAppUi();
   useEffect(() => {
     const read = () => setWinCount(indicators.windowCount());
     read();
@@ -1841,6 +1842,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         extra={toolbarExtra}
         appFull={appFull}
         lead={appFull ? appFullLead : undefined}
+        appSkin={mac && appWindow ? () => macSkin.set(false) : undefined}
         macOffer={macPage && !macSkin.on && macSkin.canOffer ? () => macSkin.set(true) : undefined}
       />
       )}
