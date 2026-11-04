@@ -47,6 +47,8 @@ export async function checkKey(provider: string, key: string): Promise<KeyCheck>
   } else if (provider === "tinvest") {
     status = await callPost("https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1/UsersService/GetAccounts", { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, true);
   } else if (provider === "alor") {
+    // Alor's OAuth endpoint takes the refresh token as a QUERY parameter (their documented form). It goes over TLS to oauth.alor.ru only; this URL is never
+    // logged, stored or returned, and errors here carry a status code only. Move it to a body / header if Alor ever documents one.
     status = await callPost(`https://oauth.alor.ru/refresh?token=${encodeURIComponent(key)}`, {});
   } else if (provider === "finam") {
     status = await callPost("https://api.finam.ru/v1/sessions", { "Content-Type": "application/json" }, false, JSON.stringify({ secret: key, source_app_id: "fomo-terminal" }));
