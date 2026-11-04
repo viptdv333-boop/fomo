@@ -1,10 +1,11 @@
 /**
  * Binance spot market data (public, no key): candles, the 24 h ticker, the list of USDT pairs for the search (server only).
- * Hosts: data-api.binance.vision serves market data from anywhere (api.binance.com refuses some countries), api.binance.com is the fallback.
+ * Hosts: api.binance.com, and data-api.binance.vision (market data from anywhere, slower from the production server) when the main one refuses.
  */
 import type { SpotPair } from "./bybit-spot-search";
 
-const HOSTS = ["https://data-api.binance.vision", "https://api.binance.com"];
+// api.binance.com first: from the production server it answers in ~0.6 s, the market-data-only host in ~2 s; the latter is the fallback for networks the main host refuses
+const HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 
 /** the terminal's interval ids -> Binance kline intervals */
 const INTERVAL: Record<string, string> = {
