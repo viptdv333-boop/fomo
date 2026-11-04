@@ -17,11 +17,11 @@ import { isTerminalSite, siteUrl } from "../src/lib/site-mode";
 const prisma = new PrismaClient();
 
 /**
- * Live MOEX data over the socket (second candles) goes to people who connected their own T-Invest key (Settings -> Data providers) and to
- * the site admins, who use the server's own token. GUEST_REALTIME=1 / MOEX_SHARED_KEYS=1 bring the old behaviour back: everybody signed in.
+ * Live MOEX data over the socket (second candles) goes to every signed-in user, as before. MOEX_OWN_KEYS_ONLY=1 limits it to people who
+ * connected their own T-Invest key (Settings -> Data providers) and to the site admins, who use the server's own token.
  */
 async function moexEntitled(userId: string): Promise<boolean> {
-  if ((process.env.GUEST_REALTIME ?? "").trim().toLowerCase() === "1" || process.env.MOEX_SHARED_KEYS === "1") return true;
+  if (process.env.MOEX_OWN_KEYS_ONLY !== "1") return true;
   try {
     const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
     if (u?.role === "ADMIN" || u?.role === "OWNER") return true;

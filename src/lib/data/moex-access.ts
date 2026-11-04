@@ -1,9 +1,10 @@
 /**
- * MOEX data is served on the requester's OWN keys (Settings -> Data providers): the T-Invest token gives him the real-time tail of candles,
- * quotes and trades, the ALGOPACK key the online gateway, order book and the ALGOPACK tab. Everyone else gets the public delayed ISS feed.
- * Site admins (the owner) keep using the server's own keys. Server only.
+ * MOEX data: a user who connected his OWN key (Settings -> Data providers) is served on it (the T-Invest token: real-time tail of candles, quotes
+ * and trades; the ALGOPACK key: online gateway, order book, ALGOPACK tab). Without his own key a signed-in user is served as before, on the
+ * server's keys; a guest gets the public delayed ISS feed. Server only.
  *
- *   GUEST_REALTIME=1 or MOEX_SHARED_KEYS=1   the old behaviour: every (signed-in) requester is served on the server's keys
+ *   MOEX_OWN_KEYS_ONLY=1   the server's keys serve site admins only: everyone else needs his own key
+ *   GUEST_REALTIME=1       guests are served on the server's keys too
  */
 import { getSessionUser } from "@/lib/algopack-access";
 import { guestRealtimeFlag } from "@/lib/guest-delay";
@@ -17,25 +18,29 @@ const serverKeys = (): MoexKeys => ({ tinkoff: (process.env.TINKOFF_TOKEN ?? "")
 const NONE: MoexKeys = { tinkoff: "", algopack: "" };
 
 export async function resolveMoexKeys(): Promise<MoexKeys> {
-  if (guestRealtimeFlag() || process.env.MOEX_SHARED_KEYS === "1") return serverKeys();
+  if (guestRealtimeFlag()) return serverKeys();
   const user = (await getSessionUser()) as { id?: string } | null;
   if (!user) return NONE;
-  if (isAdmin(user)) return serverKeys();
+  const server = serverKeys();
+  if (isAdmin(user)) return server;
   const userId = user.id;
   if (!userId) return NONE;
+  const ownOnly = process.env.MOEX_OWN_KEYS_ONLY === "1";
   // a connection changes rarely and every chart refresh asks: kept for a few seconds
   return memoized(`moexkeys:${userId}`, 15_000, async () => {
     try {
       const rows = await prisma.dataConnection.findMany({ where: { userId, enabled: true, provider: { in: ["tinvest", "algopack"] } }, select: { provider: true, keyEnc: true } });
-      const out: MoexKeys = { tinkoff: "", algopack: "" };
+      // the user's own key first; what he has not connected is served on the server's key, as before
+      const out: MoexKeys = ownOnly ? { tinkoff: "", algopack: "" } : { ...server };
       for (const r of rows) {
         const k = decryptKey(r.keyEnc) ?? "";
+        if (!k) continue;
         if (r.provider === "tinvest") out.tinkoff = k;
         else if (r.provider === "algopack") out.algopack = k;
       }
       return out;
     } catch {
-      return NONE;
+      return ownOnly ? NONE : server;
     }
   });
 }
