@@ -169,7 +169,7 @@ function FeedPage() {
   const [authorOptions, setAuthorOptions] = useState<AuthorOption[]>([]);
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
   const [authorDisplayName, setAuthorDisplayName] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
+  const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
 
   // "Моя доска" — posts from authors you follow or subscribe to, with the
   // channels you're subscribed to pinned above as their own entities (not
@@ -668,9 +668,6 @@ function FeedPage() {
 
         {/* View mode — right side */}
         <div className="app-views ml-auto flex items-center gap-0.5 shrink-0">
-          <button data-on={viewMode === "paragraph" ? "1" : undefined} onClick={() => setViewMode("paragraph")} className={`p-1.5 rounded transition ${viewMode === "paragraph" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewParagraph")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" x2="17" y1="8" y2="8"/><line x1="7" x2="13" y1="12" y2="12"/></svg>
-          </button>
           <button data-on={viewMode === "list" ? "1" : undefined} onClick={() => setViewMode("list")} className={`p-1.5 rounded transition ${viewMode === "list" ? "text-gray-900 dark:text-gray-100" : "text-gray-300 dark:text-gray-600 hover:text-gray-500"}`} title={t("feed2.viewList")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
@@ -775,19 +772,13 @@ function FeedPage() {
       ) : viewMode === "cards" ? (
         <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shownIdeas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact />
-          ))}
-        </div>
-      ) : viewMode === "list" ? (
-        <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
-          {shownIdeas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
+            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact={!appUi} />
           ))}
         </div>
       ) : (
-        <div data-app-grid className="flex flex-col gap-4">
+        <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
           {shownIdeas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} />
+            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
           ))}
         </div>
       )}
