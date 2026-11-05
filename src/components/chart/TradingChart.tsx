@@ -858,6 +858,32 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   const badQuoteRef = useRef(0);
   const tickAtRef = useRef(0);
+  /* the browser tab shows the live quote («XAGUSD 52,596 ▲»): the price now, an arrow against the previous close the quote reported */
+  const refCloseRef = useRef(0);
+  const tabTitleRef = useRef<{ base: string | null; at: number }>({ base: null, at: 0 });
+  const tabQuoteRef = useRef<(price: number) => void>(() => {});
+  tabQuoteRef.current = (price: number) => {
+    const engine = engineRef.current;
+    // only the chart that is in use writes the title (several chart windows: the active one)
+    if (typeof document === "undefined" || !engine || !activeRef.current || !(price > 0)) return;
+    const now = Date.now();
+    const st = tabTitleRef.current;
+    if (now - st.at < 1000) return;
+    st.at = now;
+    if (st.base === null) st.base = document.title;
+    const ref = refCloseRef.current;
+    const arrow = ref > 0 ? (price >= ref ? " ▲" : " ▼") : "";
+    document.title = `${ticker} ${formatPrice(price, engine.getPrecision(), engine.opts.locale)}${arrow}`;
+  };
+  // leaving the chart gives the tab its own title back
+  useEffect(
+    () => () => {
+      const st = tabTitleRef.current;
+      if (st.base !== null && typeof document !== "undefined") document.title = st.base;
+      tabTitleRef.current = { base: null, at: 0 };
+    },
+    [],
+  );
   /* live price: quotes for the forming bar of EVERY interval, real bars from the API now and then */
   useEffect(() => {
     if (!prefsLoaded || source === "none" || replayActive) return;
@@ -922,6 +948,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         const bar = mergeQuote(last, target.t, price);
         engine.upsertCandle(bar);
         liveMemoRef.current = remember(liveMemoRef.current, bar, price, now);
+        if (Number.isFinite(Number(q?.change))) refCloseRef.current = price - Number(q.change);
+        tabQuoteRef.current(price);
         refreshInd();
       } catch {
       } finally {
@@ -1007,6 +1035,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       engine.upsertCandle(bar);
       liveMemoRef.current = remember(liveMemoRef.current, bar, a.price, now);
       tickAtRef.current = now;
+      tabQuoteRef.current(a.price);
       // the indicators follow the newest bar a few times a second, not on every trade
       if (now - lastInd >= 250) {
         lastInd = now;
