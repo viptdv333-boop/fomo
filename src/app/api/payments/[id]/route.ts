@@ -1,3 +1,4 @@
+import { getOrCreateConversation } from "@/lib/direct-conversation";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -128,32 +129,8 @@ export async function PATCH(
         select: { displayName: true },
       });
 
-      // Find or create conversation
-      const existingConv = await prisma.directConversation.findFirst({
-        where: {
-          AND: [
-            { participants: { some: { userId: paymentRequest.buyerId } } },
-            { participants: { some: { userId: paymentRequest.sellerId } } },
-          ],
-        },
-      });
-
-      let conversationId: string;
-      if (existingConv) {
-        conversationId = existingConv.id;
-      } else {
-        const conv = await prisma.directConversation.create({
-          data: {
-            participants: {
-              create: [
-                { userId: paymentRequest.buyerId },
-                { userId: paymentRequest.sellerId },
-              ],
-            },
-          },
-        });
-        conversationId = conv.id;
-      }
+      // Find or create conversation (serialized per pair)
+      const conversationId = (await getOrCreateConversation(paymentRequest.buyerId, paymentRequest.sellerId)).id;
 
       // Auto-written on the seller's behalf — in the buyer's (reader's) language.
       const buyerLocale = await prisma.user.findUnique({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateConversation } from "@/lib/direct-conversation";
 
 // GET: List user's conversations
 export async function GET() {
@@ -78,7 +79,18 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(conversations);
+  // one row per person: empty duplicate conversations of the same pair (left by the old race in creating them) are not listed while the pair has another one
+  const byOther = new Map<string, typeof conversations>();
+  for (const c of conversations) {
+    const k = c.otherUser?.id ?? c.id;
+    byOther.set(k, [...(byOther.get(k) ?? []), c]);
+  }
+  const listed = new Set<string>();
+  for (const group of byOther.values()) {
+    const filled = group.filter((c) => c.lastMessage);
+    for (const c of filled.length > 0 ? filled : group.slice(0, 1)) listed.add(c.id);
+  }
+  return NextResponse.json(conversations.filter((c) => listed.has(c.id)));
 }
 
 // POST: Create or get existing conversation with a user
@@ -108,33 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "User has disabled direct messages" }, { status: 403 });
   }
 
-  // Check if conversation already exists
-  const existing = await prisma.directConversation.findFirst({
-    where: {
-      AND: [
-        { participants: { some: { userId: myId } } },
-        { participants: { some: { userId: targetUserId } } },
-      ],
-    },
-    select: { id: true },
-  });
-
-  if (existing) {
-    return NextResponse.json({ id: existing.id });
-  }
-
-  // Create new conversation
-  const conversation = await prisma.directConversation.create({
-    data: {
-      participants: {
-        create: [
-          { userId: myId },
-          { userId: targetUserId },
-        ],
-      },
-    },
-    select: { id: true },
-  });
-
-  return NextResponse.json({ id: conversation.id }, { status: 201 });
+  // the existing conversation of the pair, or a new one (serialized: two simultaneous requests cannot create two)
+  const conv = await getOrCreateConversation(myId, targetUserId);
+  return NextResponse.json({ id: conv.id }, conv.created ? { status: 201 } : undefined);
 }

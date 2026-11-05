@@ -5,7 +5,7 @@ import { familyOfTariff } from "@/lib/tariff-plans";
 
 // GET — owner picks a site user to add to the channel for free. Lists approved
 // users (optionally filtered by ?q= name / fomo id), leaving out the owner and
-// anyone who already has an active subscription to this channel.
+// anyone who already has an active subscription to this channel. A «#» / «@» in front of the query is ignored.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; tariffId: string }> }
@@ -21,7 +21,8 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const q = (request.nextUrl.searchParams.get("q") || "").trim();
+  // «#fomo_user123» is how an id is shown in the list: the sign is not part of it (nor «@» of a nickname)
+  const q = (request.nextUrl.searchParams.get("q") || "").trim().replace(/^[#@]+/, "").trim();
 
   const activeSubs = await prisma.subscription.findMany({
     where: { tariffId: { in: await familyOfTariff(prisma, tariffId) }, status: "active", endDate: { gt: new Date() } },
@@ -44,7 +45,8 @@ export async function GET(
     },
     select: { id: true, displayName: true, fomoId: true, avatarUrl: true },
     orderBy: { displayName: "asc" },
-    take: 100,
+    // the whole base fits one scrolling list; 100 cut it off alphabetically (nobody after «Михаил» could be picked without typing a name)
+    take: 1000,
   });
 
   return NextResponse.json(users);
