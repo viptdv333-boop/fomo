@@ -65,7 +65,7 @@ import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
 import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
 import type { ChartSyncHub } from "@/lib/chart/sync";
 import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
-import { adHocInstrument, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
+import { adHocInstrument, exchangeLabel, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
 import MacTitleBar from "@/components/chart/MacTitleBar";
 import { useMacSkin } from "@/lib/chart/mac-skin";
@@ -860,7 +860,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const tickAtRef = useRef(0);
   /* the browser tab shows the live quote («XAGUSD 52,596 ▲»): the price now, an arrow against the previous close the quote reported */
   const refCloseRef = useRef(0);
-  const tabTitleRef = useRef<{ base: string | null; at: number }>({ base: null, at: 0 });
+  const tabTitleRef = useRef<{ base: string | null; at: number; prev: number; dir: number }>({ base: null, at: 0, prev: 0, dir: 0 });
   const tabQuoteRef = useRef<(price: number) => void>(() => {});
   tabQuoteRef.current = (price: number) => {
     const engine = engineRef.current;
@@ -873,14 +873,22 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (st.base === null) st.base = document.title;
     const ref = refCloseRef.current;
     const arrow = ref > 0 ? (price >= ref ? " ▲" : " ▼") : "";
-    document.title = `${ticker} ${formatPrice(price, engine.getPrecision(), engine.opts.locale)}${arrow}`;
+    // the dot follows the last move of the price (a tab cannot carry coloured text): green up, red down; before the first move the day's direction
+    if (st.prev > 0 && price !== st.prev) st.dir = price > st.prev ? 1 : -1;
+    else if (st.dir === 0) st.dir = ref > 0 && price < ref ? -1 : 1;
+    st.prev = price;
+    const dot = st.dir > 0 ? "🟢" : "🔴";
+    // the price comes first (a narrow tab shows only the start), then the instrument's name and the exchange
+    const label = name && name !== ticker ? ` · ${name}` : "";
+    const venue = exchangeLabel(source);
+    document.title = `${dot} ${ticker} ${formatPrice(price, engine.getPrecision(), engine.opts.locale)}${arrow}${label}${venue ? ` · ${venue}` : ""}`;
   };
   // leaving the chart gives the tab its own title back
   useEffect(
     () => () => {
       const st = tabTitleRef.current;
       if (st.base !== null && typeof document !== "undefined") document.title = st.base;
-      tabTitleRef.current = { base: null, at: 0 };
+      tabTitleRef.current = { base: null, at: 0, prev: 0, dir: 0 };
     },
     [],
   );
@@ -897,6 +905,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     let barsBusy = false;
     let lastReloadAt = 0;
     badQuoteRef.current = 0;
+    refCloseRef.current = 0;
     setQuoteDelayedMark(false);
 
     const pollQuote = async () => {
@@ -904,7 +913,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       // the chart still shows the previous symbol / interval until its bars have been loaded: its bars must not get this one's price
       if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
       // the trade stream moved the bar a moment ago: a polled price would only be older than it
-      if (Date.now() - tickAtRef.current < 6000) return;
+      // (once per chart the poll still runs, to learn the previous close for the tab title's arrow)
+      if (Date.now() - tickAtRef.current < 6000 && refCloseRef.current !== 0) return;
       // spot FX is closed on the weekend: a quote then would only draw flat bars; during the Sunday evening open the daily / weekly
       // bar is the Monday one (the data layer merges the short Sunday bar into Monday)
       if (source === "forex" && !fxMarketOpen(new Date())) return;
@@ -948,7 +958,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         const bar = mergeQuote(last, target.t, price);
         engine.upsertCandle(bar);
         liveMemoRef.current = remember(liveMemoRef.current, bar, price, now);
-        if (Number.isFinite(Number(q?.change))) refCloseRef.current = price - Number(q.change);
+        refCloseRef.current = Number.isFinite(Number(q?.change)) ? price - Number(q.change) : -1;
         tabQuoteRef.current(price);
         refreshInd();
       } catch {
