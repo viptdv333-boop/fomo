@@ -20,6 +20,8 @@ export interface BarsResult {
   delayed: boolean | undefined;
   fx: { provider: string; volumeKind: string; proxy?: string } | undefined;
   err: "limit" | "plan" | "network" | "key" | "symbol" | undefined;
+  /** the instrument the server actually served (a generic COCOA / BR is the front contract CCX6 / BRZ6) */
+  resolved?: string;
 }
 
 export interface StoredBars {

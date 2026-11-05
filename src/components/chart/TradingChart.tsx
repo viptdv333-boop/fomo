@@ -180,7 +180,7 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
   // FMP says why a chart is empty: the request limit is used up, the instrument is not in the plan, the provider does not answer
   // the providers of the user's own key (Twelve Data, Databento) add «the key is not accepted» and «no such symbol»
   const err: ProviderError | undefined = j.error === "limit" || j.error === "plan" || j.error === "network" || j.error === "key" || j.error === "symbol" ? j.error : undefined;
-  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx, err };
+  return { candles, tzMin: typeof j.serverTzOffsetMin === "number" ? j.serverTzOffsetMin : 0, delayed: typeof j.delayed === "boolean" ? j.delayed : undefined, fx, err, resolved: typeof j.ticker === "string" ? j.ticker : undefined };
 }
 
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
@@ -190,7 +190,7 @@ async function fetchBars(source: string, ticker: string, interval: string, limit
   if (plan.live) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined, err: undefined as ProviderError | undefined };
   if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
   const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
-  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err };
+  return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err, resolved: r.resolved };
 }
 
 /**
@@ -758,7 +758,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     (async () => {
       // the picture goes up from the stored bars (if any), the live answer replaces it as soon as it is here; the live feed waits for the live bars
       const apply = (res: BarsResult, stored: number | null) => {
-      const { candles, tzMin, delayed, fx, err } = res;
+      const { candles, tzMin, delayed, fx, err, resolved } = res;
+      resolvedRef.current = resolved ?? "";
       const tzMs = source === "moex" ? tzMin * 60_000 : 0;
       // labels show the exchange's wall clock: MOEX as parsed on the server, others in the viewer's zone
       const displayShiftMs = source === "moex" ? tzMs : -new Date().getTimezoneOffset() * 60_000;
@@ -860,6 +861,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const tickAtRef = useRef(0);
   /* the browser tab shows the live quote («XAGUSD 52,596 ▲»): the price now, an arrow against the previous close the quote reported */
   const refCloseRef = useRef(0);
+  /** the contract the server served for the chart's ticker (BRZ6 for BR) */
+  const resolvedRef = useRef("");
   const tabTitleRef = useRef<{ base: string | null; at: number; prev: number; dir: number }>({ base: null, at: 0, prev: 0, dir: 0 });
   const tabQuoteRef = useRef<(price: number) => void>(() => {});
   tabQuoteRef.current = (price: number) => {
@@ -878,10 +881,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     else if (st.dir === 0) st.dir = ref > 0 && price < ref ? -1 : 1;
     st.prev = price;
     const dot = st.dir > 0 ? "🟢" : "🔴";
-    // the price comes first (a narrow tab shows only the start), then the instrument's name and the exchange
-    const label = name && name !== ticker ? ` · ${name}` : "";
+    // the price comes first (a narrow tab shows only the start), then the instrument's name and the exchange. The code is the contract the chart shows
+    // (BRZ6, CCX6), the name is said once: not when it only repeats the code
+    const code = resolvedRef.current || ticker;
+    const label = name && name.toLowerCase() !== code.toLowerCase() && name.toLowerCase() !== ticker.toLowerCase() ? ` · ${name}` : "";
     const venue = exchangeLabel(source);
-    document.title = `${dot} ${ticker} ${formatPrice(price, engine.getPrecision(), engine.opts.locale)}${arrow}${label}${venue ? ` · ${venue}` : ""}`;
+    document.title = `${dot} ${code} ${formatPrice(price, engine.getPrecision(), engine.opts.locale)}${arrow}${label}${venue ? ` · ${venue}` : ""}`;
   };
   // leaving the chart gives the tab its own title back
   useEffect(
