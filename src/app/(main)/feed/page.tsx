@@ -131,6 +131,9 @@ function TopIdeaChip({ id }: { id: string }) {
   return appUi ? <UnreadChip entry={u.byIdea[id]} className="app-uchip-row" /> : null;
 }
 
+/** how many of the newest posts come before the «ТОП 1–3» block */
+const TOP_AFTER = 5;
+
 function FeedPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -379,6 +382,38 @@ function FeedPage() {
         ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
     }`;
+
+  // «ТОП 1–3» by likes: the newest posts come first, this block follows them (the old popular posts no longer push the new ones down)
+  const topBlock =
+    board === "mine" || loading || ideas.length < 3 ? null : (
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
+            const labels = [t("top.1"), t("top.2"), t("top.3")];
+            const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
+            return (
+              <TopIdeaLink key={idea.id} idea={idea}
+                data-app-card="top" className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
+                onCopy={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
+                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
+                  <TopIdeaMarks id={idea.id} />
+                  {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
+                </div>
+                <TopIdeaChip id={idea.id} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{idea.author.displayName}</span>
+                  <span>❤️ {idea.voteScore}</span>
+                </div>
+              </TopIdeaLink>
+            );
+          })}
+        </div>
+    );
 
   return (
     <div>
@@ -677,49 +712,6 @@ function FeedPage() {
         </div>
       </div>
 
-      {/* Top 3 ideas — skeleton reserves the same space while loading so this
-          block doesn't pop in and shift everything below it (CLS). Skipped
-          on "Моя доска": with a small personal list it just duplicates the
-          feed right below it. */}
-      {board === "mine" ? null : loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 animate-pulse">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-1" />
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-            </div>
-          ))}
-        </div>
-      ) : ideas.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          {[...ideas].sort((a, b) => b.voteScore - a.voteScore).slice(0, 3).map((idea, i) => {
-            const labels = [t("top.1"), t("top.2"), t("top.3")];
-            const labelColors = ["text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20", "text-green-600 bg-green-50 dark:bg-green-900/20"];
-            return (
-              <TopIdeaLink key={idea.id} idea={idea}
-                data-app-card="top" className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 transition hover:shadow-md select-none"
-                onCopy={(e) => e.preventDefault()}
-                onContextMenu={(e) => e.preventDefault()}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${labelColors[i]}`}>{labels[i]}</span>
-                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{idea.title}</span>
-                  <TopIdeaMarks id={idea.id} />
-                  {isRecentlyPublished(idea.createdAt) && <NewBadge className="shrink-0" />}
-                </div>
-                <TopIdeaChip id={idea.id} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">{idea.preview}</p>
-                <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>{idea.author.displayName}</span>
-                  <span>❤️ {idea.voteScore}</span>
-                </div>
-              </TopIdeaLink>
-            );
-          })}
-        </div>
-      )}
-
       {held && (
         <button
           type="button"
@@ -770,17 +762,37 @@ function FeedPage() {
           )}
         </div>
       ) : viewMode === "cards" ? (
-        <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shownIdeas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact={!appUi} />
-          ))}
-        </div>
+        <>
+          <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {shownIdeas.slice(0, TOP_AFTER).map((idea) => (
+              <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact={!appUi} />
+            ))}
+          </div>
+          {topBlock && <div className="my-6">{topBlock}</div>}
+          {shownIdeas.length > TOP_AFTER && (
+            <div data-app-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {shownIdeas.slice(TOP_AFTER).map((idea) => (
+                <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} compact={!appUi} />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
-          {shownIdeas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
-          ))}
-        </div>
+        <>
+          <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
+            {shownIdeas.slice(0, TOP_AFTER).map((idea) => (
+              <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
+            ))}
+          </div>
+          {topBlock && <div className="my-6">{topBlock}</div>}
+          {shownIdeas.length > TOP_AFTER && (
+            <div data-app-card="list" className="bg-white dark:bg-gray-900 rounded-xl shadow">
+              {shownIdeas.slice(TOP_AFTER).map((idea) => (
+                <IdeaCard key={idea.id} idea={idea} onVote={reloadIdeas} minimal />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {restIdeas.length > shownCount && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
