@@ -21,6 +21,7 @@ const ideaSelect = {
   acceptDonations: true,
   viewCount: true,
   createdAt: true,
+  editedAt: true,
   tariffId: true,
   moderationStatus: true,
   author: {
@@ -273,6 +274,7 @@ export async function GET(request: NextRequest) {
       commentCount: idea._count.comments,
       isPinned: idea.isPinned,
       createdAt: idea.createdAt,
+      editedAt: idea.editedAt,
       moderationStatus: idea.moderationStatus,
       channelId: idea.tariffId,
       author: idea.author,

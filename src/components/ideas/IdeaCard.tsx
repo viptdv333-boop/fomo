@@ -8,8 +8,7 @@ import NewBadge, { isRecentlyPublished, ArchivedBadge } from "@/components/share
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { FomoMark } from "@/components/shared/Watermark";
-import { formatMessageTime } from "@/lib/format-message-time";
-import { agoLabel } from "@/lib/app-ui";
+import { formatDateTime, editedLabel } from "@/lib/format-message-time";
 import { useAppUi } from "@/components/app/useAppUi";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
 import { unreadAccent, unreadLabel } from "@/lib/app-unread";
@@ -61,6 +60,7 @@ interface IdeaCardProps {
     viewCount?: number;
     commentCount?: number;
     createdAt: string;
+    editedAt?: string | null;
     moderationStatus?: string;
     author: {
       id: string;
@@ -170,7 +170,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     });
   })();
 
-  const dateStr = formatMessageTime(idea.createdAt, locale);
+  // the date and the time of publication (absolute), and for an edited post «обновлено» with its own date and time
+  const dateStr = formatDateTime(idea.createdAt, locale);
+  const editedStr = editedLabel(idea.editedAt, locale);
 
   const avatarColor = hashColor(idea.author.id);
   const isNew = isRecentlyPublished(idea.createdAt);
@@ -201,9 +203,10 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         </div>
         {cats && <div className="app-idea-inst">{cats}</div>}
         {idea.preview && <div className="app-idea-prev">{idea.preview}</div>}
+        {editedStr && <div className="text-[11px] opacity-60 mb-1">{editedStr}</div>}
         <div className="app-idea-foot">
           <span className="min-w-0 truncate">
-            {idea.author.displayName} · {agoLabel(idea.createdAt, locale)}
+            {idea.author.displayName} · {dateStr}
           </span>
           <span className="app-idea-r">
             {idea.isPaid && (
@@ -254,7 +257,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
         </Link>
         <FomoMark className="shrink-0" />
         <span className="text-xs text-gray-400 shrink-0">{idea.author.displayName}</span>
-        <span className="text-xs text-gray-400 shrink-0">{dateStr}</span>
+        <span className="text-xs text-gray-400 shrink-0">{dateStr}{editedStr && ` · ${editedStr}`}</span>
         <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -315,7 +318,8 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {idea.title}
           </h3>
         </Link>
-        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{idea.preview}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1 flex-1">{idea.preview}</p>
+        <div className="text-[11px] text-gray-400 mb-2">{dateStr}{editedStr && ` · ${editedStr}`}</div>
         <div className="flex items-center justify-between mt-auto text-xs text-gray-400">
           <div className="flex gap-1 flex-wrap">
             {uniqInstruments.slice(0, 2).map((inst) => (
@@ -445,7 +449,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
 
         {/* Meta: date, views, likes */}
         <div className="flex items-center gap-4 shrink-0 text-gray-400 dark:text-gray-500 text-xs">
-          <span>{dateStr}</span>
+          <span>{dateStr}{editedStr && ` · ${editedStr}`}</span>
 
           {/* Views */}
           <span className="flex items-center gap-1">

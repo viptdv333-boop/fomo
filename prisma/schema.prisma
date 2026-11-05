@@ -235,6 +235,8 @@ model Idea {
   pinnedAt        DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  /// When the author last changed the post itself (text, price, files, instruments). updatedAt moves with every view / like / pin, so it cannot tell an edit.
+  editedAt        DateTime?
 
   attachments Json?
 

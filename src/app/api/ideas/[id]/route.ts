@@ -56,6 +56,7 @@ export async function GET(
       acceptDonations: true,
       viewCount: true,
       createdAt: true,
+      editedAt: true,
       attachments: true,
       updatedAt: true,
       authorId: true,
@@ -170,6 +171,7 @@ export async function GET(
     // A locked paid post must not hand out its files (images / documents) either.
     attachments: locked ? [] : idea.attachments,
     createdAt: idea.createdAt,
+    editedAt: idea.editedAt,
     updatedAt: idea.updatedAt,
     moderationStatus: idea.moderationStatus,
     author: idea.author,
@@ -245,6 +247,8 @@ export async function PATCH(
   if (parsed.data.acceptDonations !== undefined) data.acceptDonations = parsed.data.acceptDonations;
   if (parsed.data.attachments !== undefined) data.attachments = parsed.data.attachments;
   if (parsed.data.moderationStatus !== undefined) data.moderationStatus = parsed.data.moderationStatus;
+  // a change of the post itself is an edit (a pin, an archive, a view or a like is not)
+  if (["title", "preview", "content", "isPaid", "price", "acceptDonations", "attachments", "instrumentIds"].some((k) => (parsed.data as Record<string, unknown>)[k] !== undefined)) data.editedAt = new Date();
   if (parsed.data.isPinned !== undefined) {
     data.isPinned = parsed.data.isPinned;
     data.pinnedAt = parsed.data.isPinned ? new Date() : null;

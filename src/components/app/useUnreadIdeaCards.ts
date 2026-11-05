@@ -15,6 +15,7 @@ export interface UnreadIdeaCard {
   price: number | null;
   acceptDonations?: boolean;
   createdAt: string;
+  editedAt?: string | null;
   moderationStatus?: string;
   viewCount?: number;
   channelId?: string | null;
@@ -40,6 +41,7 @@ function normalize(j: Record<string, unknown>): UnreadIdeaCard | null {
     price: typeof j.price === "number" ? j.price : null,
     acceptDonations: !!j.acceptDonations,
     createdAt: String(j.createdAt ?? ""),
+    editedAt: typeof j.editedAt === "string" ? j.editedAt : null,
     moderationStatus: typeof j.moderationStatus === "string" ? j.moderationStatus : undefined,
     viewCount: typeof j.viewCount === "number" ? j.viewCount : undefined,
     channelId: ch?.id ?? null,
