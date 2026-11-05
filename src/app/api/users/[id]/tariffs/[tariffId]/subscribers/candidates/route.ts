@@ -30,7 +30,10 @@ export async function GET(
   });
   const excluded = [id, ...activeSubs.map((s) => s.subscriberId)];
 
-  const users = await prisma.user.findMany({
+  // pages of PAGE users, the next one by ?cursor= (the last id of the previous page): the list has no upper limit, the picker loads on scroll
+  const PAGE = 100;
+  const cursor = request.nextUrl.searchParams.get("cursor");
+  const rows = await prisma.user.findMany({
     where: {
       status: "APPROVED",
       id: { notIn: excluded },
@@ -44,10 +47,12 @@ export async function GET(
         : {}),
     },
     select: { id: true, displayName: true, fomoId: true, avatarUrl: true },
-    orderBy: { displayName: "asc" },
-    // the whole base fits one scrolling list; 100 cut it off alphabetically (nobody after «Михаил» could be picked without typing a name)
-    take: 1000,
+    orderBy: [{ displayName: "asc" }, { id: "asc" }],
+    take: PAGE + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
+  const more = rows.length > PAGE;
+  const users = more ? rows.slice(0, PAGE) : rows;
 
-  return NextResponse.json(users);
+  return NextResponse.json({ users, next: more ? users[users.length - 1].id : null });
 }

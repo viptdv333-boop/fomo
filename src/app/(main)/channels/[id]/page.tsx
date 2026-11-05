@@ -93,10 +93,12 @@ function ChannelSite() {
   const [candQuery, setCandQuery] = useState("");
   const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
   const [candLoading, setCandLoading] = useState(false);
+  const [candNext, setCandNext] = useState<string | null>(null);
+  const [candMoreLoading, setCandMoreLoading] = useState(false);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [showExpired, setShowExpired] = useState(false);
 
-  // Site users the owner can add for free (debounced search while the picker is open).
+  // Site users the owner can add for free (debounced search while the picker is open); the list has no limit: the next page loads when it is scrolled to the end.
   useEffect(() => {
     if (!showAdd || !channel) return;
     let cancelled = false;
@@ -105,8 +107,10 @@ function ChannelSite() {
       const res = await fetch(
         `/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers/candidates?q=${encodeURIComponent(candQuery)}`
       );
+      const j = res.ok ? await res.json().catch(() => null) : null;
       if (!cancelled) {
-        setCandidates(res.ok ? await res.json() : []);
+        setCandidates(Array.isArray(j?.users) ? j.users : []);
+        setCandNext(typeof j?.next === "string" ? j.next : null);
         setCandLoading(false);
       }
     }, 250);
@@ -115,6 +119,26 @@ function ChannelSite() {
       clearTimeout(timer);
     };
   }, [showAdd, candQuery, channel]);
+
+  async function loadMoreCandidates() {
+    if (!channel || !candNext || candMoreLoading) return;
+    setCandMoreLoading(true);
+    try {
+      const res = await fetch(
+        `/api/users/${channel.author.id}/tariffs/${channel.id}/subscribers/candidates?q=${encodeURIComponent(candQuery)}&cursor=${encodeURIComponent(candNext)}`
+      );
+      const j = res.ok ? await res.json().catch(() => null) : null;
+      if (Array.isArray(j?.users)) {
+        setCandidates((prev) => {
+          const seen = new Set(prev.map((u) => u.id));
+          return [...prev, ...j.users.filter((u: { id: string }) => !seen.has(u.id))];
+        });
+        setCandNext(typeof j.next === "string" ? j.next : null);
+      } else setCandNext(null);
+    } finally {
+      setCandMoreLoading(false);
+    }
+  }
 
   async function addMember() {
     if (!channel || !pickedId) return;
@@ -866,7 +890,13 @@ function ChannelSite() {
                     {t("channel2.pickUserHint", { days: addDays || 0 })}
                   </p>
                 </div>
-                <div className="overflow-y-auto p-2 flex-1">
+                <div
+                  className="overflow-y-auto p-2 flex-1"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) void loadMoreCandidates();
+                  }}
+                >
                   {candLoading ? (
                     <div className="text-sm text-gray-400 text-center py-8">...</div>
                   ) : candidates.length === 0 ? (
@@ -898,6 +928,7 @@ function ChannelSite() {
                       </button>
                     ))
                   )}
+                  {candMoreLoading && <div className="text-xs text-gray-400 text-center py-2">...</div>}
                 </div>
                 <div className="p-3 border-t dark:border-gray-800 shrink-0">
                   <button
