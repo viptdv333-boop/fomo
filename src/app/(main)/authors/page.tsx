@@ -57,7 +57,7 @@ function AuthorsSite() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [ideasFilter, setIdeasFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
+  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("list");
 
   const tick = useChannelsTick();
   useEffect(() => {

@@ -103,7 +103,7 @@ function ChannelsSite() {
   const [priceFilter, setPriceFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [showFilters] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("paragraph");
+  const [viewMode, setViewMode] = useState<"list" | "paragraph" | "cards">("list");
   const [instrumentFilter, setInstrumentFilter] = useState("");
   const [showInstrumentDropdown, setShowInstrumentDropdown] = useState(false);
 

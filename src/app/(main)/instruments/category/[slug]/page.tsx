@@ -45,7 +45,7 @@ export default function CategoryPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [catName, setCatName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"paragraph" | "list" | "cards">("paragraph");
+  const [viewMode, setViewMode] = useState<"paragraph" | "list" | "cards">("list");
   const [search, setSearch] = useState("");
 
   useEffect(() => {

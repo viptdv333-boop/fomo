@@ -33,7 +33,7 @@ export default function CatalogPage() {
   };
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"cards" | "list" | "paragraph">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "list" | "paragraph">("list");
   const [search, setSearch] = useState("");
 
   useEffect(() => {

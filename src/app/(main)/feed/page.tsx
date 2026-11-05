@@ -169,7 +169,7 @@ function FeedPage() {
   const [authorOptions, setAuthorOptions] = useState<AuthorOption[]>([]);
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
   const [authorDisplayName, setAuthorDisplayName] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
+  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
 
   // "Моя доска" — posts from authors you follow or subscribe to, with the
   // channels you're subscribed to pinned above as their own entities (not

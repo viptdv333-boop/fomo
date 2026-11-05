@@ -72,7 +72,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
   const [cSort, setCSort] = useState<{ f: ChannelSort; d: SortDir }>({ f: "subscribers", d: "desc" });
   const [aSort, setASort] = useState<{ f: AuthorSort; d: SortDir }>({ f: "rating", d: "desc" });
   const [instrument, setInstrument] = useState("");
-  const [cView, setCView] = useState<"cards" | "list">("cards");
+  const [cView, setCView] = useState<"cards" | "list">("list");
   const [aView, setAView] = useState<"list" | "cards">("list");
   const [sheet, setSheet] = useState(false);
   const [buying, setBuying] = useState<ChannelItem | null>(null);

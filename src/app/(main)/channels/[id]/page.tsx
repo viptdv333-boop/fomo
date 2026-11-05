@@ -9,7 +9,8 @@ import ChannelDiscussion from "@/components/channels/ChannelDiscussion";
 import ShareButtons from "@/components/shared/ShareButtons";
 import Watermark from "@/components/shared/Watermark";
 import { useT } from "@/lib/i18n/client";
-import { formatMessageTime } from "@/lib/format-message-time";
+import { formatDateTime, editedLabel } from "@/lib/format-message-time";
+import ViewToggle, { type ViewKind } from "@/components/shared/ViewToggle";
 import { canOfferRenewal, formatValidUntil } from "@/lib/subscription-renew";
 import { DEFAULT_KEEP_DAYS, splitMembers } from "@/lib/subscription-expire";
 import { useAppUi } from "@/components/app/useAppUi";
@@ -47,6 +48,7 @@ interface IdeaData {
   price: number | null;
   isPinned?: boolean;
   createdAt: string;
+  editedAt?: string | null;
   voteScore: number;
   instruments: { id: string; name: string; slug: string }[];
 }
@@ -73,6 +75,8 @@ function ChannelSite() {
   const [channel, setChannel] = useState<ChannelData | null>(null);
   const [otherTariffs, setOtherTariffs] = useState<ChannelData[]>([]);
   const [ideas, setIdeas] = useState<IdeaData[]>([]);
+  // a list of titles (the default) or cards with the text of the post
+  const [view, setView] = useState<ViewKind>("list");
   const [loading, setLoading] = useState(true);
   const [ideasLoading, setIdeasLoading] = useState(true);
   const [showBuyModal, setShowBuyModal] = useState(false);
@@ -648,12 +652,15 @@ function ChannelSite() {
             {t("channels.publications")}
             {ideas.length > 0 && <span className="text-sm font-normal text-gray-400 ml-2">{ideas.length}</span>}
           </h2>
-          {isOwner && (
-            <Link href={`/ideas/new?channelId=${channel.id}`}
-              className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
-              {t("channels.publish")}
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            <ViewToggle mode={view} onChange={setView} />
+            {isOwner && (
+              <Link href={`/ideas/new?channelId=${channel.id}`}
+                className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
+                {t("channels.publish")}
+              </Link>
+            )}
+          </div>
         </div>
 
         {ideasLoading ? (
@@ -722,7 +729,7 @@ function ChannelSite() {
                       )}
                     </div>
                     {/* Вход / стоп / тейк прямо на карточке, без раскрытия */}
-                    {idea.content ? (
+                    {view === "list" ? null : idea.content ? (
                       <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line line-clamp-10">
                         {idea.content}
                       </p>
@@ -732,7 +739,7 @@ function ChannelSite() {
                       )
                     )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>{formatMessageTime(idea.createdAt, locale)}</span>
+                      <span>{formatDateTime(idea.createdAt, locale)}{editedLabel(idea.editedAt, locale) && ` · ${editedLabel(idea.editedAt, locale)}`}</span>
                       {idea.instruments.length > 0 && (
                         <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                       )}
@@ -755,7 +762,7 @@ function ChannelSite() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>{formatMessageTime(idea.createdAt, locale)}</span>
+                        <span>{formatDateTime(idea.createdAt, locale)}</span>
                         {idea.instruments.length > 0 && (
                           <span>{idea.instruments.map((i) => i.name).join(", ")}</span>
                         )}

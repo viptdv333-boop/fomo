@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
-import { agoLabel } from "@/lib/app-ui";
+import { formatDateTime, editedLabel } from "@/lib/format-message-time";
+import ViewToggle, { type ViewKind } from "@/components/shared/ViewToggle";
 import { canOfferRenewal, formatValidUntil } from "@/lib/subscription-renew";
 import {
   SHARE_BASE,
@@ -52,6 +53,7 @@ interface PostItem {
   price: number | null;
   isPinned?: boolean;
   createdAt: string;
+  editedAt?: string | null;
   voteScore: number;
   instruments: { id: string; name: string; slug: string }[];
 }
@@ -127,6 +129,8 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const others = useMemo(() => (channel ? (list.items ?? []).filter((c) => c.author.id === channel.author.id && c.id !== channel.id) : []), [list.items, channel]);
 
   const [posts, setPosts] = useState<PostItem[] | null>(null);
+  // a list of titles (the default) or cards with the text of the post
+  const [view, setView] = useState<ViewKind>("list");
   // can the user receive Telegram at all (the old bot account OR the bot from Notification settings); null = not known yet
   const [tgReady, setTgReady] = useState<boolean | null>(null);
   const [tgBusy, setTgBusy] = useState(false);
@@ -434,12 +438,15 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
             {t("channels.publications")}
             {posts && posts.length > 0 ? ` · ${posts.length}` : ""}
           </span>
-          {isOwner && (
-            <button type="button" className="ach-pill" onClick={() => nav.go(`/ideas/new?channelId=${channel.id}`, channel.name)}>
-              <AppIcon name="plus" size={14} stroke={2} />
-              {t("appch.publish")}
-            </button>
-          )}
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <ViewToggle mode={view} onChange={setView} />
+            {isOwner && (
+              <button type="button" className="ach-pill" onClick={() => nav.go(`/ideas/new?channelId=${channel.id}`, channel.name)}>
+                <AppIcon name="plus" size={14} stroke={2} />
+                {t("appch.publish")}
+              </button>
+            )}
+          </span>
         </div>
         {posts === null ? (
           <div className="ach-note">{t("common.loading")}</div>
@@ -486,14 +493,14 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                     )}
                   </div>
                   {canView && <UnreadChip entry={unread.byIdea[p.id]} />}
-                  {(p.content || p.preview) && (
+                  {view === "cards" && (p.content || p.preview) && (
                     <div className="ach-post-body" data-open={p.content ? "1" : undefined} data-locked={canView ? undefined : "1"}>
                       {p.content || p.preview}
                     </div>
                   )}
                   <div className="ach-post-meta">
                     <span>
-                      {[agoLabel(p.createdAt, locale), p.instruments.map((i) => i.name).join(", ")].filter(Boolean).join(" · ")}
+                      {[formatDateTime(p.createdAt, locale), editedLabel(p.editedAt, locale), p.instruments.map((i) => i.name).join(", ")].filter(Boolean).join(" · ")}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
                       {!canView && (
