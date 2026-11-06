@@ -255,6 +255,7 @@ export interface Channel {
   start(): Promise<void>;
   /** The live state changed because of the user: store it locally (stamped) and push it (debounced; `immediate`: the page is closing, send now). */
   changed(json: string, immediate?: boolean): void;
+  recheck(force?: boolean): void;
   dispose(): void;
 }
 
@@ -366,6 +367,8 @@ export function openChannel(o: ChannelOpts): Channel {
       push(json, at, immediate ? 0 : timing.debounce);
       if (immediate) flushPending();
     },
+    /** Ask the account whether it has something newer (`force`: skip the once-a-minute throttle). */
+    recheck: (force?: boolean) => self.recheck(force),
     dispose() {
       disposed = true;
       channels.delete(self);

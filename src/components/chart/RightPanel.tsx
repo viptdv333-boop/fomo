@@ -411,6 +411,8 @@ export function useWatchlist() {
   const [ext, setExt] = useState<WatchLists>(EMPTY_LISTS);
   const mode = useRef<"unknown" | "guest" | "user">("unknown");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** until this moment a refresh must not touch the list: our own push has just gone out */
+  const busyUntil = useRef(0);
 
   const writeLocal = (list: TerminalInstrument[]) => {
     try {
@@ -442,7 +444,11 @@ export function useWatchlist() {
     window.addEventListener(WL_EVENT, onChanged);
 
     let cancelled = false;
-    (async () => {
+    let first = true;
+    // Reads the account list. The first time it also merges what a guest collected; every later time (focus, return to the tab,
+    // network back, every 30 s while visible) it ADOPTS the account list when another device changed it — unless this device
+    // has a change on its way out, which must not be overwritten by an older server copy.
+    const pull = async () => {
       try {
         const r = await fetch("/api/terminal/watchlist", { cache: "no-store" });
         if (cancelled) return;
@@ -456,26 +462,54 @@ export function useWatchlist() {
         if (!r.ok) return;
         const server = cleanWatchItems((await r.json()).items);
         mode.current = "user";
+        if (!first && (timer.current || Date.now() < busyUntil.current)) return; // our own change is in flight
+        let cur: TerminalInstrument[] = [];
+        try {
+          cur = cleanWatchItems(JSON.parse(localStorage.getItem(WL_KEY) || "[]"));
+        } catch {}
         let alreadySynced = false;
         try {
           alreadySynced = localStorage.getItem(WL_SYNCED_KEY) === "1";
         } catch {}
         // after the first sync the account list is the truth (an item removed on another device must not come back)
         const have = new Set(server.map((i) => `${i.source}:${i.dataTicker}`));
-        const merged = alreadySynced ? server : [...server, ...local.filter((i) => !have.has(`${i.source}:${i.dataTicker}`))];
-        setItems(merged);
-        writeLocal(merged);
+        const merged = alreadySynced ? server : [...server, ...cur.filter((i) => !have.has(`${i.source}:${i.dataTicker}`))];
+        first = false;
         try {
           localStorage.setItem(WL_SYNCED_KEY, "1");
         } catch {}
-        if (merged.length !== server.length) push(merged);
+        if (merged.length !== server.length) {
+          busyUntil.current = Date.now() + 3000;
+          push(merged);
+        }
+        if (merged.map(wlKey).join("|") !== cur.map(wlKey).join("|")) {
+          setItems(merged);
+          writeLocal(merged);
+          try {
+            window.dispatchEvent(new Event(WL_EVENT)); // the other hook instances on this page re-read it
+          } catch {}
+        }
       } catch {
         /* offline: keep the local copy */
       }
-    })();
+    };
+    void pull();
+    const refreshAll = () => {
+      if (document.visibilityState === "hidden") return;
+      void pull();
+      getListsChannel().recheck(true); // the extra lists
+    };
+    const iv = setInterval(refreshAll, 30_000);
+    window.addEventListener("focus", refreshAll);
+    window.addEventListener("online", refreshAll);
+    document.addEventListener("visibilitychange", refreshAll);
     return () => {
       cancelled = true;
+      clearInterval(iv);
       window.removeEventListener(WL_EVENT, onChanged);
+      window.removeEventListener("focus", refreshAll);
+      window.removeEventListener("online", refreshAll);
+      document.removeEventListener("visibilitychange", refreshAll);
     };
   }, []);
 
@@ -487,7 +521,11 @@ export function useWatchlist() {
     } catch {}
     if (mode.current === "user") {
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => push(next), 400);
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        busyUntil.current = Date.now() + 3000;
+        push(next);
+      }, 400);
     }
   };
   const commitExt = (next: WatchLists) => {
