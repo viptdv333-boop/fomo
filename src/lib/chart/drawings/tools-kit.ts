@@ -31,8 +31,16 @@ export const UI_TEXT: ToolUi = { color: true, width: true, dash: false, fill: fa
 export const UI_BOX_TEXT: ToolUi = { color: true, width: false, dash: false, fill: true, text: true };
 export const UI_COLOR: ToolUi = { color: true, width: false, dash: false, fill: false, text: false };
 
+/** New drawings start thin (1 px) and black: the old blue / 2 px defaults are replaced here, once, for every tool. The user's own style and saved tool defaults still win. */
+const DEFAULT_INK = "#000000";
+const OLD_BLUE = "#2962ff";
+function inkOf(c: string | undefined): string | undefined {
+  return c && c.toLowerCase() === OLD_BLUE ? DEFAULT_INK : c;
+}
+
 export function mkStyle(color: string, width = 1, dash = "solid", extra: Partial<DrawingStyle> = {}): DrawingStyle {
-  return { color, width, dash, ...extra };
+  void width;
+  return { color: inkOf(color) as string, width: 1, dash, ...extra, ...(extra.fill ? { fill: inkOf(extra.fill) } : {}) };
 }
 
 /* ───────────── translatable strings painted inside drawings ───────────── */

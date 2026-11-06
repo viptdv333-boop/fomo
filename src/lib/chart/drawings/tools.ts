@@ -93,8 +93,16 @@ const UI_LINE: ToolUi = { color: true, width: true, dash: true, fill: false, tex
 const UI_SHAPE: ToolUi = { color: true, width: true, dash: true, fill: true, text: false };
 const UI_TEXT: ToolUi = { color: true, width: true, dash: false, fill: false, text: true };
 
+/** New drawings start thin (1 px) and black: the old blue / 2 px defaults are replaced here, once, for every tool. The user's own style and saved tool defaults still win. */
+const DEFAULT_INK = "#000000";
+const OLD_BLUE = "#2962ff";
+function inkOf(c: string | undefined): string | undefined {
+  return c && c.toLowerCase() === OLD_BLUE ? DEFAULT_INK : c;
+}
+
 function style(color: string, width = 1, dash = "solid", extra: Partial<DrawingStyle> = {}): DrawingStyle {
-  return { color, width, dash, ...extra };
+  void width;
+  return { color: inkOf(color) as string, width: 1, dash, ...extra, ...(extra.fill ? { fill: inkOf(extra.fill) } : {}) };
 }
 
 function lineWidth(d: Drawing, st: DrawState): number {
