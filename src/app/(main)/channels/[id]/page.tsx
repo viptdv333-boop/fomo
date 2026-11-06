@@ -93,6 +93,8 @@ function ChannelSite() {
   // The viewer's own subscription to this channel (for their Telegram toggle).
   const [mySub, setMySub] = useState<{ id: string; tariffId: string | null; planId: string | null; telegramNotify: boolean; endDate: string | null } | null>(null);
   const [showRenewModal, setShowRenewModal] = useState(false);
+  // the viewer's latest payment request for THIS channel: a receipt waiting for the author's check (or refused) is shown on the page, so nobody pays twice or wonders
+  const [myPay, setMyPay] = useState<{ status: string; amount: number; createdAt: string } | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [candQuery, setCandQuery] = useState("");
   const [candidates, setCandidates] = useState<{ id: string; displayName: string; fomoId: string | null; avatarUrl: string | null }[]>([]);
@@ -416,6 +418,23 @@ function ChannelSite() {
     mySub.tariffId === channel.id &&
     canOfferRenewal({ endDate: mySub.endDate, price: Number(channel.price), durationDays: channel.durationDays });
 
+  const myUserId = session?.user?.id;
+  useEffect(() => {
+    if (!channel || !myUserId || myUserId === channel.author.id || showBuyModal || showRenewModal) return;
+    let off = false;
+    fetch("/api/payments?role=buyer", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: { channelId?: string; tariffId?: string | null; status: string; amount: number | string; createdAt: string }[]) => {
+        if (off || !Array.isArray(rows)) return;
+        const last = rows.find((r) => r.tariffId && (r.channelId ?? r.tariffId) === channel.id);
+        setMyPay(last ? { status: last.status, amount: Number(last.amount), createdAt: last.createdAt } : null);
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [channel, myUserId, showBuyModal, showRenewModal]);
+
   const handleBuyFromLock = useCallback(() => {
     setShowBuyModal(true);
   }, []);
@@ -547,6 +566,25 @@ function ChannelSite() {
           <p className="text-gray-600 dark:text-gray-400 mt-4 text-sm leading-relaxed">{channel.description}</p>
         )}
 
+        {/* a receipt that waits for the author, or was refused: the buyer sees where the payment stands */}
+        {!isOwner && myPay?.status === "PENDING" && (
+          <div className="mt-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-900 dark:text-blue-200" data-testid="pay-pending">
+            {t("channel2.payPending", { amount: myPay.amount, date: formatDateTime(myPay.createdAt, locale) })}
+            <Link href="/messages" className="ml-2 text-green-700 dark:text-green-400 hover:underline">{t("channel2.writeAuthor")}</Link>
+          </div>
+        )}
+        {!isOwner && myPay?.status === "REJECTED" && !isSubscribed && (
+          <div className="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200" data-testid="pay-rejected">
+            {t("channel2.payRejected", { amount: myPay.amount, date: formatDateTime(myPay.createdAt, locale) })}
+            <Link href="/messages" className="ml-2 text-green-700 dark:text-green-400 hover:underline">{t("channel2.writeAuthor")}</Link>
+          </div>
+        )}
+        {isSubscribed && !isOwner && mySub?.endDate && daysLeft(mySub.endDate) <= 7 && daysLeft(mySub.endDate) >= 0 && (
+          <div className="mt-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-200" data-testid="expires-soon">
+            ⚠️ {t("channel2.expiresSoon", { days: daysLeft(mySub.endDate) })}
+          </div>
+        )}
+
         <div className="mt-4 flex items-center gap-4 flex-wrap">
           {/* One channel, several plans: every plan on sale with its price and period (the buyer picks one in the payment window) */}
           <div className="flex flex-wrap gap-2" data-testid="plan-line">
@@ -567,8 +605,11 @@ function ChannelSite() {
               onClick={() => setShowBuyModal(true)}
               className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
             >
-              {t("channels.buySubscription")}
+              {(channel.plans?.length ?? 0) > 1 ? t("channel2.subscribe") : t("channel2.subscribeFor", { price: channel.price, days: channel.durationDays })}
             </button>
+          )}
+          {!isOwner && !isSubscribed && (
+            <p className="basis-full text-xs text-gray-500 dark:text-gray-400" data-testid="how-to-pay">{t("channel2.howTo")}</p>
           )}
           {isSubscribed && (
             <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg text-sm font-medium">

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
 import { receiptDmText } from "@/lib/i18n/receipt-dm";
 import { hasLinkRef, validatePaymentLink, type PublicPayLink } from "@/lib/payment-link";
@@ -44,6 +46,9 @@ type Step = "method" | "pay" | "success";
 export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: UnifiedPaymentModalProps) {
   const router = useRouter();
   const { t, locale } = useT();
+  const { status: authStatus } = useSession();
+  // a guest (or an expired session) cannot pay: the payment is tied to the account, so say so up front instead of failing at the last button
+  const needLogin = authStatus === "unauthenticated";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Steps
@@ -140,6 +145,13 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
   })();
 
   // ===== Actions =====
+  /** The text of a failed API answer: a plain "Unauthorized" becomes a sentence the buyer understands. */
+  async function apiError(res: Response): Promise<string> {
+    const msg = await res.json().then((d: { error?: string }) => d?.error).catch(() => undefined);
+    if (res.status === 401 || msg === "Unauthorized") return t("pay.err.login");
+    return msg || t("pay.paymentError");
+  }
+
   async function copyCard(card: string) {
     await navigator.clipboard.writeText(card.replace(/\s/g, ""));
     setCardCopied(true);
@@ -187,7 +199,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           body: JSON.stringify({ ideaId: purpose.ideaId }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || t("pay.paymentError"));
+        if (!res.ok) throw new Error(res.status === 401 || data.error === "Unauthorized" ? t("pay.err.login") : data.error || t("pay.paymentError"));
         if (!data.paymentRequest?.id) throw new Error(t("pay.paymentError"));
         setIdeaPayment({ id: data.paymentRequest.id, sellerCard: data.sellerCard || null, sellerQrUrl: data.sellerQrUrl || null });
       } catch (err: any) {
@@ -222,7 +234,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ideaId: purpose.ideaId }),
           });
-          if (!res.ok) throw new Error((await res.json()).error);
+          if (!res.ok) throw new Error(await apiError(res));
           const data = await res.json();
           paymentId = data.paymentRequest?.id;
         }
@@ -236,7 +248,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
             tariffId: selectedTariff.id,
           }),
         });
-        if (!res.ok) throw new Error((await res.json()).error);
+        if (!res.ok) throw new Error(await apiError(res));
         const data = await res.json();
         paymentId = data.paymentRequest?.id;
       } else if (purpose.type === "donation") {
@@ -281,7 +293,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
       const data = await res.json();
       window.location.href = data.paymentUrl;
     } else {
-      setError((await res.json()).error || t("pay.paymentCreateError"));
+      setError(res.status === 401 ? t("pay.err.login") : (await res.json().catch(() => ({}))).error || t("pay.paymentCreateError"));
       setSubmitting(false);
     }
   }
@@ -349,17 +361,69 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
                     ? t("pay.successRenew")
                     : t("pay.successPayment")}
               </p>
-              <button
-                onClick={() => { onClose(); onSuccess?.(); router.refresh(); }}
-                className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
-              >
-                {t("pay.gotIt")}
-              </button>
+              {purpose.type !== "donation" && (
+                <div className="text-left bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4" data-testid="pay-next">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">{t("pay.nextTitle")}</p>
+                  <ol className="text-xs text-gray-600 dark:text-gray-300 space-y-0.5 list-decimal list-inside">
+                    <li>{t("pay.next1")}</li>
+                    <li>{t("pay.next2")}</li>
+                    <li>{t("pay.next3")}</li>
+                  </ol>
+                </div>
+              )}
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => { onClose(); onSuccess?.(); router.refresh(); }}
+                  className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                >
+                  {t("pay.gotIt")}
+                </button>
+                <Link href="/messages" className="text-xs text-green-600 hover:underline">{t("pay.writeAuthor")}</Link>
+              </div>
+            </div>
+          )}
+
+          {/* a guest cannot pay: sign in first (back to this page afterwards) */}
+          {step !== "success" && needLogin && (
+            <div className="text-center py-4" data-testid="pay-login">
+              <div className="text-3xl mb-2">🔐</div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{t("pay.loginTitle")}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t("pay.loginText")}</p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href={`/login?callbackUrl=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`}
+                  className="bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                >
+                  {t("pay.loginBtn")}
+                </a>
+                <a
+                  href={`/register?callbackUrl=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`}
+                  className="text-sm text-green-600 hover:underline"
+                >
+                  {t("pay.registerBtn")}
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* where the buyer is: method -> transfer and receipt -> done */}
+          {step !== "success" && !needLogin && paymentMethod !== "yukassa" && (
+            <div className="flex items-center gap-1.5 mb-4 text-[11px]" data-testid="pay-steps">
+              {[t("pay.stepN1"), t("pay.stepN2"), t("pay.stepN3")].map((label, i) => {
+                const cur = step === "method" ? 0 : 1;
+                return (
+                  <div key={label} className="flex items-center gap-1.5 min-w-0">
+                    <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center font-semibold ${i <= cur ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500"}`}>{i < cur ? "✓" : i + 1}</span>
+                    <span className={`truncate ${i === cur ? "font-semibold text-gray-900 dark:text-gray-100" : "text-gray-400"}`}>{label}</span>
+                    {i < 2 && <span className="text-gray-300 dark:text-gray-600">›</span>}
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {/* ===== STEP 1: Choose method ===== */}
-          {step === "method" && (
+          {step === "method" && !needLogin && (
             <>
               {/* Product info */}
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
@@ -478,13 +542,19 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
           )}
 
           {/* ===== STEP 2: Card / SBP QR payment ===== */}
-          {step === "pay" && (paymentMethod === "card" || paymentMethod === "sbp" || (paymentMethod === "link" && selectedLink)) && (
+          {step === "pay" && !needLogin && (paymentMethod === "card" || paymentMethod === "sbp" || (paymentMethod === "link" && selectedLink)) && (
             <>
               <button onClick={() => setStep("method")} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 mb-3 inline-flex items-center gap-1">
                 ← {t("common.back")}
               </button>
 
               <ProductInfo purpose={purpose} selectedTariff={selectedTariff} amount={amount} />
+
+              {amount > 0 && (
+                <div className="text-center bg-green-600 text-white rounded-lg py-2 mb-3 text-sm font-semibold" data-testid="pay-exact">
+                  {t("pay.amountExact", { amount: `${amount} ₽` })}
+                </div>
+              )}
 
               {/* Instructions */}
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">
@@ -587,6 +657,7 @@ export default function UnifiedPaymentModal({ purpose, onClose, onSuccess }: Uni
               >
                 {submitting ? t("pay.sending") : t("pay.iPaid")}
               </button>
+              {!receiptFile && <p className="text-xs text-gray-400 text-center mt-2">{t("pay.attachFirst")}</p>}
             </>
           )}
         </div>
