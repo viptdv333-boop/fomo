@@ -120,6 +120,13 @@ function overlaps(b: TagBlock[], r: Map<string, ReturnType<typeof stackTags> ext
   const r3b = stackTags(tight);
   eq("a short pane (8 flags in 200 px): none overlaps, captions give way (some dropped), all inside", [overlaps(tight, r3b), tight.some((x) => !r3b.get(x.id)!.caption), tight.every((x) => { const p = r3b.get(x.id)!; return p.top >= 0 && p.top + (p.caption ? x.capH : 0) + x.bodyH <= 200; })], [false, true, true]);
 
+  // the order on the scale is the order of the prices, whatever the priorities (an indicator never lands above a tag with a higher price)
+  const ordered = [blk("a", 100, 4.003, 0), blk("b", 104, 4.001, 0), blk("c", 108, 4.000, 0), blk("d", 112, 4.004, 0), blk("e", 116, 4.002, 0), blk("last", 120, 0, 0, 16)];
+  const r6 = stackTags(ordered);
+  const byY = ordered.slice().sort((x, y) => x.y - y.y).map((x) => r6.get(x.id)!.top);
+  eq("tags keep the order of their prices", byY.every((t, i) => i === 0 || t > byY[i - 1]), true);
+  eq("... without overlap, the last price in place", [overlaps(ordered, r6), r6.get("last")!.shift], [false, 0]);
+
   const edge = [blk("last", 4, 0, 14, 16)];
   const r4 = stackTags(edge);
   eq("at the top edge the block stays in the pane", r4.get("last")!.top >= 0, true);

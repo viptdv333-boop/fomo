@@ -59,69 +59,91 @@ export interface TagPlace {
 }
 
 const GAP = 1;
-/** A caption is dropped when keeping it would move the tag this many px farther from its price than dropping it does (the tag must stay near its line). */
-const DROP_COST = 36;
 
 /**
- * Stacks the blocks of one price scale: a block keeps its price height unless it would overlap one already placed (lower `prio` first, then by `y`);
- * it then goes to the nearest free slot above or below. A tag whose caption row would not fit near its price loses the caption instead of
- * being pushed away; when the pane is too short for all the captions, the captions of the least important tags go first.
- * Never leaves [lo, hi]; when there is no free slot at all (more tags than room) the block stays at its price height.
+ * Stacks the blocks of one price scale. The ORDER of the tags always follows the order of their prices (a tag never jumps over another one),
+ * and tags that would overlap are spread as a group: the group keeps its centre of gravity on the prices it stands for, so every tag stays as near
+ * to its own price as the neighbours allow. A tag whose caption row would not fit loses the caption first (the least important tags first).
+ * Never leaves [lo, hi]; when there is no room at all (more tags than height) the tags overlap rather than vanish.
  */
 export function stackTags(blocks: TagBlock[]): Map<string, TagPlace> {
   const noCap = new Set<string>();
-  const order = blocks.slice().sort((a, b) => a.prio - b.prio || a.y - b.y);
+  const byPrio = blocks.slice().sort((a, b) => a.prio - b.prio || a.y - b.y);
   for (;;) {
-    const { out, failed } = stackOnce(order, noCap);
+    const { out, failed } = stackOnce(blocks, noCap);
     if (!failed) return out;
-    const victim = order.slice().reverse().find((b) => b.capH > 0 && !noCap.has(b.id));
+    const victim = byPrio.slice().reverse().find((b) => b.capH > 0 && !noCap.has(b.id));
     if (!victim) return out;
     noCap.add(victim.id);
   }
 }
 
-function stackOnce(order: TagBlock[], noCap: Set<string>): { out: Map<string, TagPlace>; failed: boolean } {
+interface Item {
+  b: TagBlock;
+  cap: number;
+  h: number;
+  /** where the block would sit exactly on its price */
+  want: number;
+}
+
+interface Cluster {
+  items: Item[];
+  /** sum of the heights (+ gaps) of the items */
+  total: number;
+  /** top of the cluster */
+  top: number;
+}
+
+function stackOnce(blocks: TagBlock[], noCap: Set<string>): { out: Map<string, TagPlace>; failed: boolean } {
   const out = new Map<string, TagPlace>();
-  const placed: { top: number; bottom: number }[] = [];
-  let failed = false;
-  for (const b of order) {
-    let best: { place: TagPlace; cost: number; h: number; ok: boolean } | null = null;
-    const canCap = b.capH > 0 && !noCap.has(b.id);
-    for (const withCap of canCap ? [true, false] : [false]) {
-      const cap = withCap ? b.capH : 0;
+  const items: Item[] = blocks
+    .map((b) => {
+      const cap = b.capH > 0 && !noCap.has(b.id) ? b.capH : 0;
       const h = cap + b.bodyH + b.extraH;
-      const want = b.y - b.bodyH / 2 - cap; // where the block would sit exactly on its price
-      const minTop = b.lo;
-      const maxTop = Math.max(b.lo, b.hi - h);
-      const clamp = (v: number) => Math.max(minTop, Math.min(maxTop, v));
-      const cands = new Set<number>([clamp(want)]);
-      for (const p of placed) {
-        cands.add(clamp(p.top - GAP - h));
-        cands.add(clamp(p.bottom + GAP));
-      }
-      let top = NaN;
-      let cost = Infinity;
-      for (const c of cands) {
-        if (placed.some((p) => c < p.bottom + GAP && c + h > p.top - GAP)) continue;
-        const d = Math.abs(c - want);
-        if (d < cost) {
-          cost = d;
-          top = c;
-        }
-      }
-      let ok = true;
-      if (!Number.isFinite(top)) {
-        ok = false;
-        top = clamp(want); // no room: overlap rather than vanish
-        cost = Math.abs(top - want) + 1000;
-      }
-      const total = cost + (canCap && !withCap ? DROP_COST : 0);
-      if (!best || total < best.cost) best = { place: { top, caption: withCap, bodyTop: top + cap, shift: top - want }, cost: total, h, ok };
+      return { b, cap, h, want: b.y - b.bodyH / 2 - cap };
+    })
+    .sort((x, y) => x.want - y.want || x.b.prio - y.b.prio);
+
+  let failed = false;
+  const lo = items.length ? Math.min(...items.map((i) => i.b.lo)) : 0;
+  const hi = items.length ? Math.max(...items.map((i) => i.b.hi)) : 0;
+  const clusters: Cluster[] = [];
+  const place = (c: Cluster) => {
+    // the cluster's top that keeps the squared distance of its items from their prices smallest: the mean of (want - offset inside the cluster)
+    let off = 0;
+    let sum = 0;
+    let pinnedTop: number | null = null; // the tag of the last price (prio 0) never leaves its price: the others make room around it
+    for (const it of c.items) {
+      sum += it.want - off;
+      if (pinnedTop === null && it.b.prio <= 0) pinnedTop = it.want - off;
+      off += it.h + GAP;
     }
-    if (!best) continue;
-    if (!best.ok) failed = true;
-    placed.push({ top: best.place.top, bottom: best.place.top + best.h });
-    out.set(b.id, best.place);
+    c.total = off - GAP;
+    const top = pinnedTop ?? sum / c.items.length;
+    const minTop = Math.max(...c.items.map((i) => i.b.lo), lo);
+    const maxTop = Math.min(...c.items.map((i) => i.b.hi), hi) - c.total;
+    if (maxTop < minTop) failed = true;
+    c.top = Math.max(minTop, Math.min(Math.max(minTop, maxTop), top));
+  };
+  for (const it of items) {
+    let cur: Cluster = { items: [it], total: it.h, top: 0 };
+    place(cur);
+    // merge with the previous clusters while they touch (the neighbours move as one group)
+    for (;;) {
+      const prev = clusters[clusters.length - 1];
+      if (!prev || prev.top + prev.total + GAP <= cur.top) break;
+      clusters.pop();
+      cur = { items: [...prev.items, ...cur.items], total: 0, top: 0 };
+      place(cur);
+    }
+    clusters.push(cur);
+  }
+  for (const c of clusters) {
+    let top = c.top;
+    for (const it of c.items) {
+      out.set(it.b.id, { top, caption: it.cap > 0, bodyTop: top + it.cap, shift: top - it.want });
+      top += it.h + GAP;
+    }
   }
   return { out, failed };
 }
