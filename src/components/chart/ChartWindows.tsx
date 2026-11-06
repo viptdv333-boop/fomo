@@ -142,6 +142,8 @@ interface FrameProps {
   closeTitle?: string;
   /** A click in the window: the id of the window whose chart now takes the keyboard (null: the price chart). */
   onFocus?: (id: string | null) => void;
+  /** The price chart only: the real full screen (the same as the toolbar's «Экран»). Used by the ⛶ button while the window already fills the whole area, where "fill the area" would change nothing. */
+  onScreen?: () => void;
   children: ReactNode;
 }
 
@@ -149,8 +151,11 @@ interface FrameProps {
  * The frame of a window. With `rect` null it is a plain wrapper that fills the area (children stay mounted when the workspace switches on or
  * off, the price chart's canvas never gets re-created).
  */
-export function WindowFrame({ id, controller, rect, size, z, maximized = false, title, titleText, hidden = false, actions, onClose, closeTitle, onFocus, children }: FrameProps) {
+export function WindowFrame({ id, controller, rect, size, z, maximized = false, title, titleText, hidden = false, actions, onClose, closeTitle, onFocus, onScreen, children }: FrameProps) {
   const { t } = useT();
+  // a window that already fills the area (the lone price chart): the button takes the chart to the full screen instead of doing nothing
+  const fillsArea = !!rect && rect.w >= size.w - 2 && rect.h >= size.h - 2;
+  const screenMode = !!onScreen && fillsArea && !maximized;
   const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
     if (e.button !== 0 || !rect || maximized) return;
     e.preventDefault();
@@ -232,8 +237,16 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
             <button type="button" data-wb="shrink" className={`${hbtn} disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent`} title={t("win.shrink")} aria-label={t("win.shrink")} disabled={small && !maximized} onClick={() => controller.shrinkWindow(id)}>
               {shrinkIcon}
             </button>
-            <button type="button" data-wb="max" className={hbtn} title={maximized ? t("win.restore") : t("win.maximize")} aria-label={maximized ? t("win.restore") : t("win.maximize")} aria-pressed={maximized} onClick={() => controller.toggleMaximize(id)}>
-              {maximized ? collapseIcon : expandIcon}
+            <button
+              type="button"
+              data-wb="max"
+              className={hbtn}
+              title={screenMode ? t("chart.fullscreen") : maximized ? t("win.restore") : t("win.maximize")}
+              aria-label={screenMode ? t("chart.fullscreen") : maximized ? t("win.restore") : t("win.maximize")}
+              aria-pressed={screenMode ? undefined : maximized}
+              onClick={() => (screenMode ? onScreen?.() : controller.toggleMaximize(id))}
+            >
+              {maximized && !screenMode ? collapseIcon : expandIcon}
             </button>
             {onClose && (
               <button type="button" data-wb="close" className={`${hbtn} hover:!text-red-500`} title={closeTitle} aria-label={closeTitle} onClick={onClose}>

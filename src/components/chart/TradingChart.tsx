@@ -1992,6 +1992,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             z={winGeo.ws?.wins.find((w) => w.id === "main")?.z ?? 1}
             maximized={winGeo.maxId === "main"}
             onFocus={focusChart}
+            onScreen={appFull ? undefined : appTb && appExpand ? appExpand : toggleFullscreen}
             title={<span className="truncate">{mainTitle}</span>}
             titleText={mainTitle}
             onClose={() => indicators.closeWindow("main")}
