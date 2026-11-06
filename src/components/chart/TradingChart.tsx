@@ -1483,7 +1483,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   /* fullscreen */
   useEffect(() => {
-    const onFs = () => setFullscreen(document.fullscreenElement === wrapRef.current);
+    const onFs = () => {
+      const on = document.fullscreenElement === wrapRef.current;
+      setFullscreen(on);
+      if (!on) setFocusMode(false); // left the browser's full screen (Esc): the chart-only mode goes with it
+    };
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
@@ -1491,6 +1495,29 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (document.fullscreenElement) document.exitFullscreen();
     else wrapRef.current?.requestFullscreen?.();
   };
+  /* chart-only mode (the ⛶ of the price chart's window): the toolbar, the drawing tools and the right panel go away, the chart takes the whole screen (the browser's full screen too where it exists). Esc or the same button brings everything back. */
+  const [focusMode, setFocusMode] = useState(false);
+  const zen = focusMode && !appFull && !embedded;
+  const toggleFocus = () => {
+    if (focusMode) {
+      setFocusMode(false);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    } else {
+      setFocusMode(true);
+      try {
+        void wrapRef.current?.requestFullscreen?.()?.catch(() => {});
+      } catch {}
+    }
+  };
+  useEffect(() => {
+    if (!focusMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || [...document.querySelectorAll('[role="dialog"]')].some((d) => d.getClientRects().length > 0)) return;
+      setFocusMode(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [focusMode]);
 
   /** Candles on the chart as a CSV file: time is exchange time for MOEX (Moscow) and UTC for crypto. */
   const exportCandlesCsv = () => {
@@ -1927,14 +1954,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         {/* drawing tools (the toolbar is its own card; on a phone it is a drawer under the top toolbar) */}
         <div
           data-tv="rail"
-          className={`${embedded ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 ${appPage ? "top-0" : "top-[46px]"} md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
+          className={`${embedded || zen ? "!hidden " : ""}${toolsOpen ? "flex" : "hidden"} md:flex absolute md:static left-0 ${appPage ? "top-0" : "top-[46px]"} md:top-auto bottom-0 z-30 md:z-auto shrink-0 min-h-0 bg-[var(--tv3-card)] md:bg-transparent border-r border-[var(--tv3-hair)] md:border-0`}
         >
           <DrawingToolbar controller={drawings} />
         </div>
 
         {/* chart card */}
         <div data-tv="card" className="flex flex-col flex-1 min-w-0 min-h-0 md:rounded-2xl bg-[var(--tv3-card)] overflow-hidden">
-      {(!appPage || appTb) && (
+      {(!appPage || appTb) && !zen && (
       <TopToolbar
         instrument={instrument}
         interval={prefs.interval}
@@ -1992,7 +2019,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             z={winGeo.ws?.wins.find((w) => w.id === "main")?.z ?? 1}
             maximized={winGeo.maxId === "main"}
             onFocus={focusChart}
-            onScreen={appFull ? undefined : appTb && appExpand ? appExpand : toggleFullscreen}
+            onScreen={appFull ? undefined : appTb && appExpand ? appExpand : toggleFocus}
+            screenOn={zen}
             title={<span className="truncate">{mainTitle}</span>}
             titleText={mainTitle}
             onClose={() => indicators.closeWindow("main")}
@@ -2158,11 +2186,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           )}
         </div>
 
-        <div className={embedded || compact || appFull ? "hidden" : "contents"}>
+        <div className={embedded || compact || appFull || zen ? "hidden" : "contents"}>
         <RightPanel
           open={prefs.panelOpen}
           mobileOpen={mobilePanel}
-          visible={panelVisible && !appFull}
+          visible={panelVisible && !appFull && !zen}
           tab={prefs.panelTab}
           onTab={onTab}
           onCollapse={() => update({ panelOpen: false })}
