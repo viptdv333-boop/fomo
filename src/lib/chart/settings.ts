@@ -50,7 +50,7 @@ export interface ScaleSettings {
   highLow: boolean;
   /** A small caption above each tag of the price scale (what it is). */
   tagCaptions: boolean;
-  /** The flags of the indicators on the price scale (Swings, VAH / POC / VAL, MA values...): off by default, a column of them is a fir tree. */
+  /** The flags of the indicators on the price scale (Swings, VAH / POC / VAL, MA values...): a coloured value tag with the name as a chip over the plot (TradingView style). */
   indLabels: boolean;
   fontSize: number;
   marginTop: number;
@@ -119,7 +119,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
     countdown: true,
     highLow: false,
     tagCaptions: true,
-    indLabels: false,
+    indLabels: true,
     fontSize: 12,
     marginTop: 8,
     marginBottom: 8,

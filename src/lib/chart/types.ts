@@ -275,7 +275,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   showCountdown: true,
   showHighLow: false,
   showTagCaptions: true,
-  showIndicatorLabels: false,
+  showIndicatorLabels: true,
   volumeMa: { on: true, length: 20, type: "sma", color: "#ff9800", width: 1.4 },
   scaleFontSize: 12,
   marginTop: 8,
