@@ -49,6 +49,7 @@ import { useBackLayer } from "./useBackLayer";
 import { useAppTopToolbar } from "./useAppUi";
 import { holdHtmlClass } from "@/lib/html-class";
 import "./fullscreen.css";
+import "./ios-chart.css";
 import "./app-mac.css";
 
 // MultiChart wraps the chart(s); here it is one chart whose toolbar / bottom bar / phone nav are replaced by the page's own (appPage)

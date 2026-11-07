@@ -1,0 +1,76 @@
+/*
+ * The phone's full-screen chart in the iOS look (the PC wears the macOS skin: terminal-mac.css). Scope: the app UI on a phone while the chart is full screen
+ * (html.app-ui.app-term-fs, not the wide desktop window). iOS rules used here: system font, translucent blurred surfaces, large rounded corners,
+ * grouped lists with hairlines, 44pt touch targets, menus as sheets that rise from the bottom (never from the top, the toolbar is at the bottom).
+ */
+html.app-ui.app-term-fs:not(.app-desktop) {
+  --ios-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --ios-blue: #0a84ff;
+  --ios-sheet: color-mix(in srgb, var(--tv3-card, #1c1c1e) 84%, transparent);
+  --ios-hair: var(--tv3-hair, rgba(128, 128, 128, 0.28));
+}
+
+/* the design's own coloured glyphs (the PC's) in the drawing drawer, the flyouts and the menus */
+html.app-ui.app-term-fs:not(.app-desktop) .mg { display: block; flex: none; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow, transparent)); }
+html.app-ui.app-term-fs:not(.app-desktop) :is([data-tv="rail"] button, .tv3-pop button, [data-fly] button):has(> .mg) > svg:not(.mg),
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] button:has(> .mg) > span:has(> svg) > svg:not(.mg) { display: none !important; }
+
+/* the drawing drawer: a frosted column of 46px tiles with the coloured glyphs */
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] {
+  background: var(--ios-sheet);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  backdrop-filter: blur(22px) saturate(1.6);
+  border-right: 0.5px solid var(--ios-hair);
+  border-radius: 0 18px 18px 0;
+  padding: 6px 5px;
+  overflow-y: auto;
+  font-family: var(--ios-font);
+}
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn { width: 46px; height: 46px; min-height: 46px; border-radius: 13px; color: var(--tv3-text2); }
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn .mg { width: 32px; height: 32px; }
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-pressed="true"],
+html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-current="true"] { background: color-mix(in srgb, var(--ios-blue) 18%, transparent); }
+
+/* every menu / popover of the chart is a bottom sheet above the icon row */
+html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop {
+  position: fixed !important;
+  top: auto !important;
+  left: 10px !important;
+  right: 10px !important;
+  bottom: calc(var(--app-bottom-inset, 56px) + 76px) !important;
+  width: auto !important;
+  max-height: min(58dvh, 520px) !important;
+  padding: 6px !important;
+  border-radius: 18px !important;
+  background: var(--ios-sheet) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(1.7);
+  backdrop-filter: blur(26px) saturate(1.7);
+  border: 0.5px solid var(--ios-hair);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35) !important;
+  overflow-y: auto;
+  font-family: var(--ios-font);
+}
+html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button,
+html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop [role="menuitem"] { min-height: 46px; font-size: 16.5px; border-radius: 12px; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button + button { border-top: 0.5px solid var(--ios-hair); border-top-left-radius: 0; border-top-right-radius: 0; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button .mg,
+html.app-ui.app-term-fs:not(.app-desktop) [data-fly] button .mg { width: 26px; height: 26px; }
+
+/* the icon row itself: system font, frosted */
+html.app-ui.app-term-fs:not(.app-desktop) .ph-tb {
+  font-family: var(--ios-font);
+  background: var(--ios-sheet);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  backdrop-filter: blur(22px) saturate(1.6);
+}
+html.app-ui.app-term-fs:not(.app-desktop) .ph-cap { font-size: 10px; letter-spacing: 0.01em; }
+
+/* dialogs (indicators, alerts, chart settings): iOS sheets - system font, big radius, frosted */
+html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] {
+  font-family: var(--ios-font);
+  border-radius: 20px !important;
+  background: color-mix(in srgb, var(--tv3-card, #1c1c1e) 92%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(1.6);
+  backdrop-filter: blur(26px) saturate(1.6);
+}
+html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] button { min-height: 40px; }
