@@ -265,7 +265,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   candleStyle: DEFAULT_CANDLE_STYLE,
   priceSource: "close",
   lineWidth: 2,
-  maxLineWidth: 0,
+  maxLineWidth: 0.5,
   scaleMode: "regular",
   invertScale: false,
   lockScale: false,

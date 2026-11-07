@@ -68,7 +68,7 @@ export interface ChartSettings {
   precision: "auto" | number;
   priceSource: PriceSource;
   lineWidth: number;
-  /** Thickest line (px) of indicators, drawings and the price line: 0 = as each line is set, else 0.5 / 1 / 1.5 / 2 (thin lines for small screens). */
+  /** Thickest line (px) of indicators, drawings and the price line: -1 = as each line is set, else 0.5 (the default) / 1 / 1.5 / 2. */
   maxLineWidth: number;
   /** "auto" | "exchange" | "local" | "UTC" | an IANA zone. */
   tz: string;
@@ -102,7 +102,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   precision: "auto",
   priceSource: "close",
   lineWidth: 2,
-  maxLineWidth: 0,
+  maxLineWidth: 0.5,
   tz: "auto",
   status: { symbol: true, ohlc: true, change: true, barChange: true, volume: true, indTitles: true, indValues: true },
   scale: {
@@ -382,7 +382,8 @@ export function normalizeSettings(saved: unknown): ChartSettings {
   if (isObj(saved) && typeof saved.precision === "number") s.precision = Math.max(0, Math.min(10, Math.round(saved.precision)));
   s.footprint = sanitizeFootprint(isObj(saved) ? saved.footprint : undefined);
   s.volumeMa = sanitizeVolumeMa(s.volumeMa);
-  s.maxLineWidth = Number.isFinite(s.maxLineWidth) && s.maxLineWidth > 0 ? Math.max(0.25, Math.min(4, s.maxLineWidth)) : 0;
+  // thin lines for everybody: 0.5 px unless the user picked another cap; -1 = «as each line is set». A stored 0 (the old «no cap» default) becomes 0.5
+  s.maxLineWidth = s.maxLineWidth === -1 ? -1 : Number.isFinite(s.maxLineWidth) && s.maxLineWidth > 0 ? Math.max(0.25, Math.min(4, s.maxLineWidth)) : 0.5;
   // pinned timeframes from an old / foreign copy: only real interval ids, each once
   s.ui = { ...s.ui, favIntervals: [...new Set(s.ui.favIntervals.filter((x): x is string => typeof x === "string" && isValidInterval(x)))] };
   return s;

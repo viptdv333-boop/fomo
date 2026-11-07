@@ -146,6 +146,7 @@ const rows: [string, string, string, string][] = [
   ["mac.m.nav", "Разделы терминала", "Terminal sections", "终端分区"],
   ["mac.m.filter", "Фильтр по тикеру", "Filter by ticker", "按代码筛选"],
   ["mac.m.addList", "Добавить в список", "Add to the list", "添加到自选"],
+  ["mac.m.addSymbol", "Добавить инструмент", "Add a symbol", "添加品种"],
   ["mac.m.promo", "FOMO — сообщество трейдеров", "FOMO, a community of traders", "FOMO 交易者社区"],
   ["mac.m.promoSub", "Идеи, каналы и чат на fomo.spot", "Ideas, channels and chat on fomo.spot", "在 fomo.spot 查看想法、频道和聊天"],
   ["mac.m.sheet", "Инструменты и индикаторы", "Tools and indicators", "工具与指标"],

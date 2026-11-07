@@ -109,6 +109,7 @@ const rows: [string, string, string, string][] = [
   ["ind.vp.o.posTl", "Слева вверху", "Top left", "左上"],
   ["ind.vp.o.posBr", "Справа внизу", "Bottom right", "右下"],
   ["ind.vp.o.posBl", "Слева внизу", "Bottom left", "左下"],
+  ["ind.vp.o.posMl", "Слева посередине", "Middle left", "左中"],
   ["ind.p.vpRHigh", "Строка: High профиля", "Row: Profile High", "行: 分布最高价"],
   ["ind.p.vpRVah", "Строка: Value Area High", "Row: Value Area High", "行: 价值区域上沿"],
   ["ind.p.vpRPoc", "Строка: Point of Control", "Row: Point of Control", "行: 控制点"],

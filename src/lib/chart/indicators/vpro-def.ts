@@ -134,7 +134,7 @@ num(G.zones, "vpZoneAlpha", 16, 3, 70);
 
 /* table */
 bool(G.table, "vpTable", true);
-sel(G.table, "vpTblPos", "tr", [o("tr", "ind.vp.o.posTr"), o("tl", "ind.vp.o.posTl"), o("br", "ind.vp.o.posBr"), o("bl", "ind.vp.o.posBl")]);
+sel(G.table, "vpTblPos", "tr", [o("tr", "ind.vp.o.posTr"), o("tl", "ind.vp.o.posTl"), o("ml", "ind.vp.o.posMl")]);
 sel(G.table, "vpTblSize", "small", [o("tiny", "ind.vp.o.szTiny"), o("small", "ind.vp.o.szSmall"), o("normal", "ind.vp.o.szNormal"), o("large", "ind.vp.o.szLarge")]);
 bool(G.table, "vpTblCompact", false);
 num(G.table, "vpTblAlpha", 88, 10, 100);
@@ -217,7 +217,7 @@ export interface VpCfg {
   nodePct: number;
   zoneAlpha: number;
   table: boolean;
-  tblPos: "tr" | "tl" | "br" | "bl";
+  tblPos: "tr" | "tl" | "ml" | "br" | "bl";
   tblSize: Size;
   tblCompact: boolean;
   tblAlpha: number;
@@ -300,7 +300,7 @@ export function readVpCfg(p: Params): VpCfg {
     nodePct: N(p, "vpNodePct", 7),
     zoneAlpha: N(p, "vpZoneAlpha", 16) / 100,
     table: B(p, "vpTable", true),
-    tblPos: S(p, "vpTblPos", "tr") as VpCfg["tblPos"],
+    tblPos: ((v) => (v === "tl" || v === "ml" ? v : v === "bl" ? "tl" : "tr"))(S(p, "vpTblPos", "tr")) as VpCfg["tblPos"],
     tblSize: S(p, "vpTblSize", "small") as Size,
     tblCompact: B(p, "vpTblCompact", false),
     tblAlpha: N(p, "vpTblAlpha", 88) / 100,

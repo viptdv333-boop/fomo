@@ -161,7 +161,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     }
   }, [mac]);
   const [macAdd, setMacAdd] = useState(false);
-  const [macSegMenu, setMacSegMenu] = useState(false);
   const [macFilter, setMacFilter] = useState("");
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
@@ -373,6 +372,19 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     </ProviderGate>
   ) : null;
 
+  // full-screen chart (phone): the two things a chart needs on a phone, always in reach under it - the drawing tools and «add an indicator»
+  const fsActions = expanded && !tb ? (
+    <div className="app-fs-actions" data-app-fs-actions role="toolbar">
+      <button type="button" onClick={() => handle.current?.toggleDrawTools()}>
+        <AppIcon name="pen" size={20} stroke={1.9} />
+        <span>{t("mac.m.tabTools")}</span>
+      </button>
+      <button type="button" onClick={() => handle.current?.openIndicators()}>
+        <AppIcon name="pulse" size={20} stroke={1.9} />
+        <span>{t("appui.term.addInd")}</span>
+      </button>
+    </div>
+  ) : null;
   const tone = changeTone(quote?.changePercent);
   const delayed = !!selected && showDelayNote(selected.source, !!chart?.delayed, guest);
   const tfLabel = chart ? formatInterval(chart.interval, t) : "";
@@ -440,6 +452,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             <div className="app-term-slot">
               <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
                 <div className="app-term-chartbody">{body}</div>
+                {fsActions}
               </div>
               <div className="app-mac-ranges" role="group" aria-label={t("appui.term.range")}>
                 {APP_TERM_RANGES.map((r) => (
@@ -487,51 +500,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   </div>
                 ) : (
                   <span className="app-mac-lists" />
-                )}
-                <button type="button" className="app-mac-plus" onClick={() => setMacAdd(true)} aria-label={t("mac.m.addList")} title={t("mac.m.addList")}>
-                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
-                  </svg>
-                </button>
-                {/* calendar / order book / ALGOPACK: one icon with a small menu instead of a row of segments over the list */}
-                {(TERMINAL_SITE || algoSegs) && (
-                  <div className="app-mac-menu">
-                    <button type="button" className="app-mac-plus" aria-haspopup="menu" aria-expanded={macSegMenu} onClick={() => setMacSegMenu((v) => !v)} aria-label={t("mac.m.menu")} title={t("mac.m.menu")}>
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
-                        <circle cx="5" cy="12" r="1.8" />
-                        <circle cx="12" cy="12" r="1.8" />
-                        <circle cx="19" cy="12" r="1.8" />
-                      </svg>
-                    </button>
-                    {macSegMenu && (
-                      <div className="app-mac-pop" role="menu">
-                        {(
-                          [
-                            ["watch", t("appui.term.watch"), true],
-                            ["cal", t("nav.calendar"), TERMINAL_SITE],
-                            ["ob", t("shell.tab.orderbook"), algoSegs],
-                            ["algo", t("ap.seg.algo"), algoSegs],
-                          ] as const
-                        )
-                          .filter((x) => x[2])
-                          .map(([k, label]) => (
-                            <button
-                              key={k}
-                              type="button"
-                              role="menuitem"
-                              className="app-mac-mi"
-                              data-on={effSeg === k ? "1" : undefined}
-                              onClick={() => {
-                                setSeg(k);
-                                setMacSegMenu(false);
-                              }}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                      </div>
-                    )}
-                  </div>
                 )}
               </div>
               {effSeg === "watch" && watchlist.items.length > 14 && (
@@ -614,6 +582,14 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   <AppIcon name="chevR" size={18} stroke={1.8} />
                 </a>
               )}
+              {effSeg === "watch" && (
+                <button type="button" className="app-mac-addrow" onClick={() => setMacAdd(true)}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  {t("mac.m.addSymbol")}
+                </button>
+              )}
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
@@ -683,6 +659,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               </div>
             )}
             <div className="app-term-chartbody">{body}</div>
+                {fsActions}
             {!expanded && !tb && (
               <button type="button" className="app-term-expand" onClick={openFs} aria-label={t("appui.term.expand")} title={t("appui.term.expand")}>
                 <FsGlyph on={false} />

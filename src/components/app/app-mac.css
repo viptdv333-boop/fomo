@@ -139,6 +139,7 @@ html.app-ui .app-mac .app-mac-list-h { display: flex; align-items: center; gap: 
 html.app-ui .app-mac .app-mac-list-h .app-mac-lists { flex: 1; min-width: 0; padding: 0; }
 html.app-ui .app-mac .app-mac-list-h .app-mac-lists > div { margin-bottom: 0; }
 html.app-ui .app-mac .app-mac-list-h h2 { flex: 1; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+html.app-ui .app-mac .app-mac-addrow { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 32px); margin: 12px 16px 4px; height: 44px; border-radius: 12px; border: 1px dashed color-mix(in srgb, #4f9a74 55%, transparent); background: color-mix(in srgb, #4f9a74 10%, transparent); color: #4f9a74; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 html.app-ui .app-mac .app-mac-list .app-mac-plus { display: flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; color: var(--m-tx); }
 html.app-ui .app-mac .app-mac-filter { margin: 0 18px 10px; height: 38px; border-radius: 11px; background: var(--m-seg); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 15px; color: var(--m-tx3); }
 html.app-ui .app-mac .app-mac-filter input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; font: inherit; color: var(--m-tx); -webkit-appearance: none; appearance: none; }
@@ -223,8 +224,10 @@ html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding:
 html.app-ui .app-mac .app-mac-lists { padding: 0 14px 6px; }
 /* the watchlists as browser-style tabs, each with its own colour (a dot and a tint; the open one is filled) and a coloured «+» */
 html.app-ui .app-mac .app-mac-lists [role="tablist"] { gap: 4px; align-items: flex-end; padding: 0; border-bottom: 2px solid var(--m-line); }
-html.app-ui .app-mac .app-mac-lists [role="tab"] { --lc: #5b8fc0; flex: none; display: inline-flex; align-items: center; gap: 7px; height: 36px; max-width: 170px; padding: 0 14px 0 12px; border-radius: 12px 12px 0 0; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--lc) 15%, transparent); color: var(--m-tx); font-size: 14px; font-weight: 600; cursor: pointer; }
-html.app-ui .app-mac .app-mac-lists [role="tab"]::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--lc); }
+html.app-ui .app-mac .app-mac-lists [role="tab"] { --lc: #5b8fc0; flex: 1 0 86px; min-width: 86px; max-width: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 10px; border-radius: 12px 12px 0 0; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--lc) 15%, transparent); color: var(--m-tx); font-size: 14px; font-weight: 600; cursor: pointer; }
+html.app-ui .app-mac .app-mac-lists [role="tab"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the coloured flag of TradingView's list tab: a flag with a notch */
+html.app-ui .app-mac .app-mac-lists [role="tab"]::before { content: ""; flex: none; width: 13px; height: 16px; background: var(--lc); clip-path: polygon(0 0, 100% 0, 68% 50%, 100% 100%, 0 100%); }
 html.app-ui .app-mac .app-mac-lists [role="tab"][aria-selected="true"] { margin-bottom: -2px; height: 38px; background: var(--lc); border-color: var(--lc); color: #fff; }
 html.app-ui .app-mac .app-mac-lists [role="tab"][aria-selected="true"]::before { background: #fff; }
 html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n + 2) { --lc: #4f9a74; }

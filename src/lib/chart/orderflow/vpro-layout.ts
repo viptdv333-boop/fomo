@@ -11,7 +11,8 @@ export const LEGEND_ROOM = 440;
 /** Largest font of the compact table, px (the configured size is used when it is smaller). */
 export const NARROW_MAX_FONT = 10;
 
-export type TablePos = "tr" | "tl" | "br" | "bl";
+/** Where the table sits: top right, top left, or the middle of the left edge (the old bottom corners are read as the top ones). */
+export type TablePos = "tr" | "tl" | "ml" | "br" | "bl";
 
 export function isNarrowPlot(plotWidth: number): boolean {
   return plotWidth < VP_TABLE_MIN_WIDTH;
@@ -22,9 +23,9 @@ export function isNarrowPlot(plotWidth: number): boolean {
  * hugs the right edge by default and the table over it would hide the bars it describes.
  */
 export function narrowCorner(pos: TablePos, placement: "left" | "right" | "start" | "end"): TablePos {
-  const histLeft = placement === "left" || placement === "start";
-  const bottom = pos === "br" || pos === "bl";
-  return bottom ? (histLeft ? "br" : "bl") : histLeft ? "tr" : "tl";
+  void placement;
+  // the user chose the place (the phone table is plain text without a plate, it hides little): it is kept
+  return pos;
 }
 
 export interface TableMetrics {
@@ -57,6 +58,7 @@ export interface PlaceIn {
 
 /** Vertical room for the table in its corner (below the legend for the top corners that meet it). */
 export function availableHeight(pos: TablePos, tableW: number, p: PlaceIn): number {
+  if (pos === "ml") return Math.max(0, p.H - 2 * TABLE_MARGIN - p.stack);
   const bottom = pos === "br" || pos === "bl";
   const top = bottom ? 0 : topOffset(pos, tableW, p);
   return Math.max(0, p.H - top - TABLE_MARGIN - p.stack - (bottom ? TABLE_MARGIN : 0));
@@ -80,6 +82,7 @@ export function placeTable(pos: TablePos, w: number, h: number, p: PlaceIn): { x
   const right = pos === "tr" || pos === "br";
   const bottom = pos === "br" || pos === "bl";
   const m = TABLE_MARGIN;
+  if (pos === "ml") return { x: m, y: Math.max(0, Math.round((p.H - h) / 2 + p.stack)) };
   const x = Math.round(right ? p.W - w - m : m);
   const y = Math.round(bottom ? p.H - h - m - p.stack : topOffset(pos, w, p));
   return { x: Math.max(0, x), y: Math.max(0, y) };

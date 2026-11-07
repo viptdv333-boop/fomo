@@ -26,9 +26,9 @@ if (def) {
   check("no signal when the volume is high", !ex.nd.includes(33) && !ex.ns.includes(33));
 }
 
-check("max line width defaults to «as set»", DEFAULT_SETTINGS.maxLineWidth === 0);
+check("max line width defaults to 0.5 px", DEFAULT_SETTINGS.maxLineWidth === 0.5 && normalizeSettings({}).maxLineWidth === 0.5 && normalizeSettings({ maxLineWidth: 0 }).maxLineWidth === 0.5 && normalizeSettings({ maxLineWidth: -1 }).maxLineWidth === -1);
 check("0.5 px survives the settings normaliser", normalizeSettings({ maxLineWidth: 0.5 }).maxLineWidth === 0.5);
-check("a nonsense width falls back to «as set»", normalizeSettings({ maxLineWidth: -3 }).maxLineWidth === 0 && normalizeSettings({ maxLineWidth: "x" }).maxLineWidth === 0);
+check("a nonsense width falls back to 0.5 px", normalizeSettings({ maxLineWidth: -3 }).maxLineWidth === 0.5 && normalizeSettings({ maxLineWidth: "x" }).maxLineWidth === 0.5);
 check("a huge width is cut to 4 px", normalizeSettings({ maxLineWidth: 99 }).maxLineWidth === 4);
 
 console.log(failed ? `\n${failed} failed` : "\nall passed");

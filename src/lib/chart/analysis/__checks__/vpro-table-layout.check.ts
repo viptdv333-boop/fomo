@@ -79,9 +79,9 @@ expect("availableHeight: short plot leaves few rows", fitRows(12, 16, room) < 12
 expect("availableHeight: never negative", availableHeight("tl", 120, { ...P, H: 100 }) === 0);
 
 /* 6. the table goes to the side away from the histogram */
-expect("hist right (default): table left, vertical choice kept", narrowCorner("tr", "right") === "tl" && narrowCorner("br", "right") === "bl" && narrowCorner("tl", "right") === "tl" && narrowCorner("bl", "right") === "bl");
-expect("hist left: table right", narrowCorner("tl", "left") === "tr" && narrowCorner("bl", "left") === "br");
-expect("range-bound placements: start -> right, end -> left", narrowCorner("tr", "start") === "tr" && narrowCorner("tr", "end") === "tl");
+expect("the chosen corner is kept on a phone, whatever side the histogram is", narrowCorner("tr", "right") === "tr" && narrowCorner("tl", "right") === "tl" && narrowCorner("ml", "right") === "ml");
+expect("middle left is kept with the histogram on the left too", narrowCorner("ml", "left") === "ml" && narrowCorner("tl", "left") === "tl");
+expect("range-bound placements keep the chosen corner", narrowCorner("tr", "start") === "tr" && narrowCorner("tl", "end") === "tl");
 
 console.log(failed === 0 ? "\nALL PASS" : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

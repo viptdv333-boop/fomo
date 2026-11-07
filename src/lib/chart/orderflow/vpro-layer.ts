@@ -126,7 +126,7 @@ export class VpLayer implements OverlayLayer {
     const theme = engine.getTheme();
     const font = engine.opts.fontFamily || "Inter, system-ui, sans-serif";
     const spacing = engine.getBarSpacing();
-    const stack: Record<string, number> = { tr: 0, tl: 0, br: 0, bl: 0 };
+    const stack: Record<string, number> = { tr: 0, tl: 0, ml: 0, br: 0, bl: 0 };
     const all = this.controller.list();
     const mainCount = all.filter((i) => this.controller.paneOf(i.uid) === "main").length;
     // legend: the OHLC status line, the collapse button row, one row per indicator
