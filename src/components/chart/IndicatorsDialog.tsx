@@ -152,6 +152,16 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
   const [, force] = useState(0);
   const [section, setSection] = useState<Section>("all");
   const [query, setQuery] = useState("");
+  // phone: the categories are a list of their own; a tap opens that category's indicators over it, «Назад» returns to the categories
+  const [phone, setPhone] = useState(false);
+  const [drill, setDrill] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [favs, setFavs] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
@@ -186,7 +196,7 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
   // focus the search box on open, give focus back on close
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    searchRef.current?.focus();
+    if (!window.matchMedia("(max-width: 639px)").matches) searchRef.current?.focus();
     return () => {
       if (flashTimer.current) clearTimeout(flashTimer.current);
       prev?.focus?.();
@@ -301,7 +311,10 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
       <button
         key={s}
         type="button"
-        onClick={() => setSection(s)}
+        onClick={() => {
+          setSection(s);
+          if (phone) setDrill(true);
+        }}
         aria-current={isOn ? "true" : undefined}
         className={`flex shrink-0 items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] ${
           isOn ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill)]"
@@ -344,6 +357,7 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
                 onChange={(e) => {
                   setQuery(e.target.value);
                   if (section === "active" && e.target.value) setSection("all");
+                  if (phone && e.target.value) setDrill(true);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowDown") {
@@ -374,7 +388,7 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
             {/* left column: categories */}
             <nav
               aria-label={t("ind.categories")}
-              className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--tv3-hair)] p-1.5 sm:w-52 sm:flex-col sm:overflow-y-auto sm:border-b-0 sm:border-r"
+              className={phone ? (drill ? "hidden" : "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2") : "flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--tv3-hair)] p-1.5 sm:w-52 sm:flex-col sm:overflow-y-auto sm:border-b-0 sm:border-r"}
             >
               {navBtn("fav", t("ind2.cat.fav"), IND_ICONS.star(16), favs.length)}
               {navBtn("recent", t("ind2.cat.recent"), IND_ICONS.recent(16))}
@@ -387,7 +401,22 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
             </nav>
 
             {/* right column */}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${phone && !drill ? "hidden" : ""}`}>
+              {phone && drill && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrill(false);
+                    setQuery("");
+                  }}
+                  className="flex shrink-0 items-center gap-1.5 border-b border-[var(--tv3-hair)] px-3 py-2.5 text-left text-[13.5px] font-semibold text-[var(--tv3-accent)]"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
+                  {t("appui.chat.back")}
+                </button>
+              )}
               <div className="min-h-0 flex-1 overflow-y-auto" onKeyDown={onListKey}>
                 {section === "active" ? (
                   <ActiveList active={active} controller={controller} onGoAdd={() => setSection("all")} onSettings={setSettingsUid} />

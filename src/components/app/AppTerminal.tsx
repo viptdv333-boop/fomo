@@ -347,11 +347,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   };
 
   // ONE chart element for both modes (same position in the tree): only appPage / appFull and the block's CSS change, so nothing remounts
-  const closeBtn = (
-    <button type="button" className="app-term-fsclose" onClick={closeFs} aria-label={t("appui.term.collapse")} title={t("appui.term.collapse")}>
-      <FsGlyph on />
-    </button>
-  );
   const body = selected ? (
     <ProviderGate source={selected.source} name={instName(selected, t)}>
     <ChartErrorBoundary>
@@ -362,7 +357,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       onSelectSymbol={onSelectSymbol}
       appPage={!expanded}
       appFull={expanded}
-      appFullLead={closeBtn}
       appExpand={openFs}
       appMac={mac}
       appHandle={handle}
@@ -372,19 +366,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     </ProviderGate>
   ) : null;
 
-  // full-screen chart (phone): the two things a chart needs on a phone, always in reach under it - the drawing tools and «add an indicator»
-  const fsActions = expanded && !tb ? (
-    <div className="app-fs-actions" data-app-fs-actions role="toolbar">
-      <button type="button" onClick={() => handle.current?.toggleDrawTools()}>
-        <AppIcon name="pen" size={20} stroke={1.9} />
-        <span>{t("mac.m.tabTools")}</span>
-      </button>
-      <button type="button" onClick={() => handle.current?.toggleIndicators()}>
-        <AppIcon name="pulse" size={20} stroke={1.9} />
-        <span>{t("appui.term.addInd")}</span>
-      </button>
-    </div>
-  ) : null;
   const tone = changeTone(quote?.changePercent);
   const delayed = !!selected && showDelayNote(selected.source, !!chart?.delayed, guest);
   const tfLabel = chart ? formatInterval(chart.interval, t) : "";
@@ -452,7 +433,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             <div className="app-term-slot">
               <div ref={layerRef} className={`app-term-chart tv3${expanded ? " app-term-fs" : ""}`}>
                 <div className="app-term-chartbody">{body}</div>
-                {fsActions}
               </div>
               <div className="app-mac-ranges" role="group" aria-label={t("appui.term.range")}>
                 {APP_TERM_RANGES.map((r) => (
@@ -659,7 +639,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
               </div>
             )}
             <div className="app-term-chartbody">{body}</div>
-                {fsActions}
             {!expanded && !tb && (
               <button type="button" className="app-term-expand" onClick={openFs} aria-label={t("appui.term.expand")} title={t("appui.term.expand")}>
                 <FsGlyph on={false} />

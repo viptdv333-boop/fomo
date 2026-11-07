@@ -16,6 +16,8 @@ interface Props {
   btnOn: string;
   /** data source of the chart: second timeframes are offered only where a trade stream exists */
   source?: string;
+  /** one button with the current timeframe and the list of the others under it (the phone), instead of the row of pinned ones */
+  single?: boolean;
 }
 
 function group(id: string): "s" | "m" | "h" | "d" {
@@ -25,7 +27,7 @@ function group(id: string): "s" | "m" | "h" | "d" {
 }
 
 /** Favourite intervals as buttons plus a dropdown with every interval, stars and a custom interval form. */
-export default function IntervalControl({ interval: intervalProp, onInterval, favorites, onFavorites, source = "" }: Props) {
+export default function IntervalControl({ interval: intervalProp, onInterval, favorites, onFavorites, source = "", single = false }: Props) {
   const { t } = useT();
   useMoexSeconds(source); // MOEX: the «Секунды» group appears when the server says the feed is there
   const [num, setNum] = useState("");
@@ -59,8 +61,8 @@ export default function IntervalControl({ interval: intervalProp, onInterval, fa
   ];
 
   return (
-    <div className="flex items-center shrink-0 rounded-[11px] bg-[var(--tv3-fill2)] p-0.5">
-      {shown.map((id) => (
+    <div className={`flex items-center shrink-0 ${single ? "" : "rounded-[11px] bg-[var(--tv3-fill2)] p-0.5"}`}>
+      {!single && shown.map((id) => (
         <button
           key={id}
           onClick={() => onInterval(id)}
@@ -70,7 +72,7 @@ export default function IntervalControl({ interval: intervalProp, onInterval, fa
           {formatInterval(id, t)}
         </button>
       ))}
-      <MenuPopover title={t("cs.iv.all")} className="tv3-press px-2 py-[7px] rounded-[9px] shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)]/60" width={230} trigger={<svg viewBox="0 0 24 24" className="h-4 w-4 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>}>
+      <MenuPopover title={t("cs.iv.all")} className={single ? "tv3-press min-h-[31px] px-3 rounded-[11px] shrink-0 cursor-pointer bg-[var(--tv3-fill)] text-[var(--tv3-text)] text-[14px] font-semibold" : "tv3-press px-2 py-[7px] rounded-[9px] shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)]/60"} width={230} trigger={<span className="inline-flex items-center gap-1.5">{single && <span>{formatInterval(interval, t)}</span>}<svg viewBox="0 0 24 24" className="h-4 w-4 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span>}>
         {(close) => (
           <div className="text-[13px]">
             {sections.map((sec) => {
