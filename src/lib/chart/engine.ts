@@ -99,6 +99,7 @@ const WINDOW_OPTION_KEYS = [
   "rightOffset",
   "sessionBreaks",
   "showTagCaptions",
+  "showIndicatorLabels",
   "scaleSide",
   "marginTop",
   "marginBottom",
@@ -2415,7 +2416,7 @@ export class ChartEngine {
     if (!this.leader) this.compareTags(out);
 
     // flags of the indicators, on the pane of each
-    if (!this.transformed()) {
+    if (!this.transformed() && this.opts.showIndicatorLabels) {
       this.panes.forEach((pane, pi) => {
         if (pane.height <= 0) return;
         let k = 0;
