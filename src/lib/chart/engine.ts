@@ -67,6 +67,8 @@ interface EngineTag {
   bg: string;
   fg: string;
   caption?: string;
+  /** an indicator flag: the name is written at the END of the indicator's line (like the volume profile does), not on the scale */
+  lineName?: string;
   /** the row below the price (countdown) */
   extra?: string;
   icon?: "bell" | "lock";
@@ -1635,7 +1637,7 @@ export class ChartEngine {
 
     // keep the axis wide enough for the widest label
     // macOS look: the scale is a wide column, the tags carry their names inside (design: 132px)
-    const need = Math.max(this.opts.macLook && !this.leader ? 120 : this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
+    const need = Math.max(this.opts.macLook && !this.leader ? 88 : this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
     this.naturalAxisW = need;
     // windows of one group ask for one common width (minAxisW), a lone chart keeps its small hysteresis
     const want = Math.max(need, this.minAxisW);
@@ -2457,7 +2459,7 @@ export class ChartEngine {
             if (this.opts.phoneTags && /свинг|swing|摆动/i.test(l.caption ?? "")) continue;
             const y = this.paneY(pane, l.price);
             if (y < 0 || y > pane.height) continue;
-            out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", caption: caps ? l.caption : undefined });
+            out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", lineName: caps ? l.caption : undefined });
             k++;
           }
         }
@@ -2527,7 +2529,7 @@ export class ChartEngine {
           continue;
         }
         // macOS look: one rounded tag with the name on the left and the value on the right (the price tag solid, the others outlined)
-        if (this.opts.macLook && (t.caption || t.id === "last")) {
+        if (this.opts.macLook && (t.caption || t.id === "last" || t.lineName)) {
           const solid = t.id === "last" || t.id.startsWith("layer:");
           const name = (t.caption ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
           ctx.save();
@@ -2619,6 +2621,43 @@ export class ChartEngine {
         if (t.extra) {
           ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
           ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
+        }
+      }
+    }
+    ctx.restore();
+    this.drawLineNames(ctx, tags);
+  }
+
+  /** The names of the indicator flags, written at the end of each indicator's line (right of the last bar, else above the line's end), in the line's colour. */
+  private drawLineNames(ctx: CanvasRenderingContext2D, tags: EngineTag[]) {
+    const named = tags.filter((t) => t.lineName);
+    if (named.length === 0 || this.bars.length === 0) return;
+    const lastX = this.indexToX(this.bars.length - 1);
+    const plotW = this.plotW();
+    if (!isFinite(lastX)) return;
+    const size = Math.max(9, this.opts.scaleFontSize - 2);
+    ctx.save();
+    ctx.font = `600 ${size}px ${this.opts.fontFamily}`;
+    ctx.textBaseline = "middle";
+    for (const pane of new Set(named.map((t) => t.pane))) {
+      const mine = named.filter((t) => t.pane === pane).sort((a, b) => a.y - b.y);
+      const gap = size + 3;
+      let prev = -1e9;
+      for (const t of mine) {
+        let y = pane.top + t.y;
+        if (y - prev < gap) y = prev + gap; // names of lines at the same height stack downwards
+        prev = y;
+        if (y < pane.top + size / 2 || y > pane.top + pane.height - size / 2) continue;
+        const text = t.lineName ?? "";
+        const w = ctx.measureText(text).width;
+        ctx.fillStyle = t.bg;
+        if (lastX + 6 + w <= plotW - 4) {
+          ctx.textAlign = "left";
+          ctx.fillText(text, lastX + 6, y);
+        } else {
+          // no room right of the last bar: the name sits above the end of its line, right-aligned to it (as the volume profile's labels do)
+          ctx.textAlign = "right";
+          ctx.fillText(text, Math.min(lastX, plotW - 4) - 4, y - size / 2 - 2);
         }
       }
     }

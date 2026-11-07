@@ -846,17 +846,9 @@ export const vproDef: IndicatorDef = {
     if (view.prof.approxBars > 0) out.push({ text: view.prof.realBars === 0 ? "≈" : "≈ ½", color: "#f5a623" });
     return out;
   },
-  axisFlags(res, p) {
-    const view = stateOf(res)?.view;
-    if (!view) return [];
-    const c = readVpCfg(p);
-    const out: { price: number; color: string; caption?: string }[] = [];
-    for (const L of c.levels) {
-      if (!L.show || !L.flag) continue;
-      const price = levelValue(view.levels, L.key);
-      if (isFinite(price)) out.push({ price, color: L.color, caption: levelName(L.key) });
-    }
-    return out;
+  // no flags on the scale: every level line already carries its own label («VAL 431,99») at its end, a plate on the scale would only repeat it
+  axisFlags() {
+    return [];
   },
   alertLevels: (res) => vpAlertLevels(res),
 };
