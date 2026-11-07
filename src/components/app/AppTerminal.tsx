@@ -141,7 +141,17 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   // the phone version of the new look (design "FOMO Terminal Mobile"): an opt-in skin, never on a wide window with a mouse (that one has the web toolbar)
   const macSkin = useAppMacSkin(!tb);
   const mac = macSkin.on;
-  const [macScreen, setMacScreen] = useState<"term" | "list">("term");
+  // the phone terminal opens on the watchlist (like TradingView's mobile app): a tap on a row takes that chart full screen, Back returns here.
+  // A deep link that names a symbol or a panel opens the chart page instead.
+  const [macScreen, setMacScreen] = useState<"term" | "list">("list");
+  const fromList = useRef(false); // the full-screen chart was opened from a row of the list
+  useEffect(() => {
+    try {
+      if (/[?&](symbol|panel|ticker)=/.test(window.location.search)) setMacScreen("term");
+    } catch {
+      /* no location */
+    }
+  }, []);
   const [macAdd, setMacAdd] = useState(false);
   const [macFilter, setMacFilter] = useState("");
   const [chart, setChart] = useState<AppChartState | null>(null);
@@ -228,8 +238,13 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   }, []);
   // the Android Back button (window.FomoBack) collapses the chart: through closeFs, i.e. the same history step as the browser's Back
   useBackLayer(expanded, closeFs, "screen");
-  // the Список screen of the new look is a layer too: Back returns to the chart
-  useBackLayer(mac && macScreen === "list", () => setMacScreen("term"));
+  // the full-screen chart that was opened from the list goes back to the list (Back / the close button / Esc)
+  useEffect(() => {
+    if (!expanded && fromList.current) {
+      fromList.current = false;
+      setMacScreen("list");
+    }
+  }, [expanded]);
   const macSparks = useSparklines(watchlist.items, mac && macScreen === "list");
   // drag and drop of the list rows (finger: press and hold)
   const macRowsRef = useRef<HTMLDivElement | null>(null);
@@ -515,7 +530,9 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                           data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined}
                           onClick={() => {
                             onSelectSymbol(i);
+                            fromList.current = true;
                             setMacScreen("term");
+                            openFs(); // the chart of the tapped asset, full screen
                           }}
                         >
                           <MacInstIcon inst={i} size={44} />
