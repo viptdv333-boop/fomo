@@ -221,4 +221,19 @@ html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding:
 
 /* watchlists: the list picker under the title of the list screen */
 html.app-ui .app-mac .app-mac-lists { padding: 0 14px 6px; }
+/* the watchlists as browser-style tabs, each with its own colour (a dot and a tint; the open one is filled) and a coloured «+» */
+html.app-ui .app-mac .app-mac-lists [role="tablist"] { gap: 4px; align-items: flex-end; padding: 0; border-bottom: 2px solid var(--m-line); }
+html.app-ui .app-mac .app-mac-lists [role="tab"] { --lc: #5b8fc0; flex: none; display: inline-flex; align-items: center; gap: 7px; height: 36px; max-width: 170px; padding: 0 14px 0 12px; border-radius: 12px 12px 0 0; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--lc) 15%, transparent); color: var(--m-tx); font-size: 14px; font-weight: 600; cursor: pointer; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--lc); }
+html.app-ui .app-mac .app-mac-lists [role="tab"][aria-selected="true"] { margin-bottom: -2px; height: 38px; background: var(--lc); border-color: var(--lc); color: #fff; }
+html.app-ui .app-mac .app-mac-lists [role="tab"][aria-selected="true"]::before { background: #fff; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n + 2) { --lc: #4f9a74; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n + 3) { --lc: #cc9446; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n + 4) { --lc: #8a6db0; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n + 5) { --lc: #c46a78; }
+html.app-ui .app-mac .app-mac-lists [role="tab"]:nth-child(6n) { --lc: #4fa3a8; }
+html.app-ui .app-mac .app-mac-lists [role="tablist"] > button:not([role="tab"]) { flex: none; width: 32px; height: 32px; margin: 0 0 3px 4px; border-radius: 50%; background: linear-gradient(135deg, #7cc29b, #4f9a74); color: #fff; box-shadow: 0 3px 8px rgba(79, 154, 116, 0.4); }
+html.app-ui .app-mac .app-mac-lists [role="tablist"] > button:not([role="tab"]) svg { width: 16px; height: 16px; }
+html.app-ui .app-mac .app-mac-lists [role="tablist"] input { height: 32px; border-radius: 10px; background: var(--m-seg); color: var(--m-tx); font-size: 14px; }
+html.app-ui .app-mac .app-mac-lists > div > button[aria-haspopup="menu"] { width: 32px; height: 32px; color: var(--m-tx2); background: var(--m-seg); }
 html.app-ui .app-mac .app-mac-rows [data-row-key] { touch-action: pan-y; -webkit-touch-callout: none; user-select: none; }
