@@ -14,8 +14,10 @@ import AppUiGuard from "@/components/app/AppUiGuard";
 import AppTabHost from "@/components/app/tabhost/AppTabHost";
 import OfflineBanner from "@/components/offline/OfflineBanner";
 import OfflineIdentity from "@/components/offline/OfflineIdentity";
+import LiteMode from "@/components/layout/LiteMode";
 import "@/components/app/app.css";
 import "@/components/app/app-desktop.css";
+import "@/components/app/lite.css";
 
 export default async function MainLayout({
   children,
@@ -37,6 +39,7 @@ export default async function MainLayout({
         {terminal ? <TerminalFooter /> : <Footer />}
       </div>
       <OfflineIdentity />
+      <LiteMode />
       <AppTabBar />
       <AppBackHandler />
       <AppUiGuard />

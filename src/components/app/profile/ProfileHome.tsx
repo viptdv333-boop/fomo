@@ -71,6 +71,8 @@ export default function ProfileHome() {
   const { t, user, me, go, open, flash } = useProf();
   const { theme, toggleTheme } = useTheme();
   const [themeSheet, setThemeSheet] = useState(false);
+  const [lookSheet, setLookSheet] = useState(false);
+  const look = useAppMacSkin(true);
   const [langSheet, setLangSheet] = useState(false);
   const langName = useLanguageName();
   const [native, setNative] = useState(false);
@@ -186,6 +188,7 @@ export default function ProfileHome() {
     footer: t("appprof.appFoot"),
     rows: [
       { key: "theme", label: t("appprof.theme"), icon: ico(theme === "dark" ? "moon" : "sun"), value: themeLabel, chev: true, onClick: () => setThemeSheet(true) },
+      { key: "look", label: t("appprof.look"), icon: ico("sliders"), value: look.on ? t("appprof.lookNew") : t("appprof.lookOld"), chev: true, onClick: () => setLookSheet(true) },
       langRow,
       ...(native ? [{ key: "native", label: t("app.settings"), icon: ico("sliders"), chev: true, onClick: () => void openNativeSettings() }] : []),
       { key: "allapp", label: t("appprof.allAppSettings"), icon: ico("phone"), chev: true, onClick: () => go("app") },
@@ -276,6 +279,18 @@ export default function ProfileHome() {
             if (k !== theme) toggleTheme();
           }}
           onClose={() => setThemeSheet(false)}
+        />
+      )}
+      {lookSheet && (
+        <PickerSheet
+          title={t("appprof.look")}
+          value={look.on ? "new" : "old"}
+          options={[
+            { key: "new", label: t("appprof.lookNew") },
+            { key: "old", label: t("appprof.lookOld") },
+          ]}
+          onPick={(k) => look.set(k === "new")}
+          onClose={() => setLookSheet(false)}
         />
       )}
       {langSheet && <LanguageSheet onClose={() => setLangSheet(false)} />}

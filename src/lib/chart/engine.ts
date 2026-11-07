@@ -109,6 +109,7 @@ const WINDOW_OPTION_KEYS = [
   "candleStyle",
   "priceSource",
   "lineWidth",
+  "maxLineWidth",
   "showCountdown",
   "showLastPriceLabel",
   "showPriceLine",
@@ -1831,7 +1832,7 @@ export class ChartEngine {
       }
     };
     ctx.lineJoin = "round";
-    ctx.lineWidth = this.opts.lineWidth;
+    ctx.lineWidth = this.opts.maxLineWidth > 0 ? Math.min(this.opts.lineWidth, this.opts.maxLineWidth) : this.opts.lineWidth;
 
     if (type === "baseline") {
       const yb = sc.paneHeight * (1 - this.opts.baselinePercent / 100);

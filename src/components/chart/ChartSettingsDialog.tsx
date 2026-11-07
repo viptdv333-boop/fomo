@@ -209,6 +209,14 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Row label={t("cs.lineWidth")}>
         <Sel value={s.lineWidth} options={[1, 2, 3, 4].map((n) => ({ id: n, label: `${n} px` }))} onChange={(v) => set((x) => ({ ...x, lineWidth: Number(v) }))} width={90} />
       </Row>
+      <Row label={t("cs.maxLineWidth")} hint={t("cs.maxLineWidthHint")}>
+        <Sel
+          value={s.maxLineWidth}
+          options={[0, 0.5, 1, 1.5, 2].map((n) => ({ id: n, label: n === 0 ? t("cs.maxLineWidthOff") : `${n} px` }))}
+          onChange={(v) => set((x) => ({ ...x, maxLineWidth: Number(v) }))}
+          width={110}
+        />
+      </Row>
       <Row label={t("cs.lineColor")}>
         {sw(theme.line, (c) => col("line", c))}
       </Row>

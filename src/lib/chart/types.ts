@@ -202,6 +202,8 @@ export interface EngineOptions {
   /** Price used by line / area / step / baseline charts. */
   priceSource: PriceSource;
   lineWidth: number;
+  /** Thickest line (px) any indicator, drawing or price line may have; 0 = no limit (every line keeps the width it was given). */
+  maxLineWidth: number;
   scaleMode: ScaleMode;
   invertScale: boolean;
   /** Freeze the price range: no auto-scale, no dragging of the price scale. */
@@ -259,6 +261,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   candleStyle: DEFAULT_CANDLE_STYLE,
   priceSource: "close",
   lineWidth: 2,
+  maxLineWidth: 0,
   scaleMode: "regular",
   invertScale: false,
   lockScale: false,

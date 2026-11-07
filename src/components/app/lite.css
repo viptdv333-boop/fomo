@@ -1,0 +1,82 @@
+/* Light mode (src/lib/lite-mode.ts): `html[data-lite]` switches off everything in the new (macOS) look that burdens a weak video card:
+   blurred glass, filter shadows, the fixed gradient wallpaper, big soft shadows, transitions. Translucent surfaces become solid so text stays readable.
+   Layout, colours and the chart itself are untouched. */
+
+/* no blur, no filter shadows, no transitions anywhere (spinners keep their animation) */
+html[data-lite] *,
+html[data-lite] *::before,
+html[data-lite] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+
+/* the wallpaper: a flat colour instead of a fixed gradient that repaints on every scroll */
+html[data-lite][data-tvmac] {
+  --mac-wall: #c9d1df;
+}
+html.dark[data-lite][data-tvmac] {
+  --mac-wall: #1f2538;
+}
+
+/* the surfaces that were frosted glass: solid */
+html[data-lite][data-tvmac] header[data-app-hide] {
+  background: #f4f4f7 !important;
+}
+html.dark[data-lite][data-tvmac] header[data-app-hide] {
+  background: #1e1e24 !important;
+}
+html[data-lite] .tvmac {
+  --m-win: #f6f6f8;
+  --m-card: #ffffff;
+  --m-card2: #fcfcfd;
+  --m-win-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+  --m-chart-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  --m-seg-on-sh: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+}
+html.dark[data-lite] .tvmac {
+  --m-win: #222226;
+  --m-card: #343439;
+  --m-card2: #2e2e34;
+  --m-win-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+  --m-chart-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  --m-seg-on-sh: 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+}
+html[data-lite] .tv3 {
+  --tv3-pop-bg: #ffffff;
+  --tv3-glass: #ffffff;
+}
+html.dark[data-lite] .tv3 {
+  --tv3-pop-bg: #2c2c32;
+  --tv3-glass: #1c1c1e;
+}
+html[data-lite][data-tvmac] .tv3 .tv3-pop {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.2) !important;
+}
+html.dark[data-lite][data-tvmac] .tv3 .tv3-pop {
+  background: #2c2c32;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.18) !important;
+}
+html[data-lite][data-tvmac] .tv3 [role="dialog"] {
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.25) !important;
+}
+html.dark[data-lite][data-tvmac] .tv3 [role="dialog"] {
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* the phone / app screens: the tab bar and the sheet were glass */
+html[data-lite].app-ui {
+  --app-nav: #ffffff;
+  --m-bar: #ffffff;
+  --m-sheet: #f4f4f7;
+}
+html.dark[data-lite].app-ui {
+  --app-nav: #0e0e11;
+  --m-bar: #16161a;
+  --m-sheet: #1a1a1e;
+}
+html[data-lite].app-ui .app-mac-sheet {
+  box-shadow: none;
+}

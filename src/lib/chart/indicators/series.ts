@@ -544,7 +544,8 @@ export class IndicatorSeries implements Series {
     if (y < -2 || y > sc.paneHeight + 2) return;
     const x0 = l.fromIndex !== undefined ? Math.max(0, sc.x(l.fromIndex) - sc.barSpacing / 2) : 0;
     if (x0 >= sc.paneWidth) return;
-    const w = l.width ?? 1;
+    const cap = sc.options.maxLineWidth;
+    const w = cap > 0 ? Math.min(l.width ?? 1, cap) : l.width ?? 1;
     ctx.strokeStyle = l.color;
     ctx.lineWidth = w;
     ctx.setLineDash(dashFor(l.lineStyle, l.dashed, w));
@@ -602,7 +603,8 @@ export class IndicatorSeries implements Series {
     const band = sc.paneHeight * VOL_BAND;
     const a = Math.max(0, from - off - 1);
     const b = Math.min(data.length - 1, to - off + 1);
-    const width = p.width ?? 1.6;
+    const cap = sc.options.maxLineWidth;
+    const width = cap > 0 && (p.width ?? 1.6) > 0 ? Math.min(p.width ?? 1.6, cap) : p.width ?? 1.6;
     const step = shape === "step";
     const area = shape === "area";
     const base = sc.paneHeight;

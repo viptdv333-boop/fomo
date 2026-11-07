@@ -917,6 +917,99 @@ const defs: IndicatorDef[] = [
     },
   },
   {
+    // VSA No Demand / No Supply: the classic Volume Spread Analysis signals, marked on the price chart.
+    // ND (bearish): an UP bar (closes above the previous close) with a NARROW spread and volume LOWER than the previous bars: the buyers are not there.
+    // NS (bullish): a DOWN bar with a narrow spread and volume lower than the previous bars: the sellers are not there.
+    id: "vsa_nd_ns",
+    category: "volume",
+    pane: "overlay",
+    fixedPane: true,
+    fmt: "price",
+    keywords: "vsa nd ns no demand no supply volume spread analysis нет спроса нет предложения впа 无需求 无供应",
+    params: [
+      num("vsaSpreadN", 20, 2, 200),
+      num("vsaSpreadK", 1, 0.1, 3, 0.05),
+      num("vsaVolBars", 2, 1, 5),
+      bool("vsaLabels", true),
+      col("vsaCND", "#f23645"),
+      col("vsaCNS", "#089981"),
+    ],
+    styleParams: ["vsaCND", "vsaCNS"],
+    title: () => "VSA ND/NS",
+    compute(cs, p) {
+      const cols = toCols(cs);
+      const n = cols.n;
+      const range = new Float64Array(n);
+      for (let i = 0; i < n; i++) range[i] = cols.h[i] - cols.l[i];
+      const avg = M.sma(range, N(p, "vsaSpreadN"));
+      const k = N(p, "vsaSpreadK");
+      const back = Math.max(1, Math.round(N(p, "vsaVolBars")));
+      const nd: number[] = [];
+      const ns: number[] = [];
+      for (let i = Math.max(1, back); i < n; i++) {
+        const a = avg[i];
+        if (!(a > 0) || !(range[i] < a * k)) continue; // not a narrow spread
+        let quiet = true;
+        for (let j = 1; j <= back && quiet; j++) if (!(cols.v[i] < cols.v[i - j])) quiet = false;
+        if (!quiet) continue; // the volume is not lower than the previous bars
+        if (cols.c[i] > cols.c[i - 1]) nd.push(i);
+        else if (cols.c[i] < cols.c[i - 1]) ns.push(i);
+      }
+      return { plots: [], extra: { nd, ns } };
+    },
+    legendItems(res, p) {
+      const ex = res.extra as { nd: number[]; ns: number[] } | undefined;
+      if (!ex) return [];
+      return [
+        { text: `ND ${ex.nd.length}`, color: S(p, "vsaCND") },
+        { text: `NS ${ex.ns.length}`, color: S(p, "vsaCNS") },
+      ];
+    },
+    drawExtra(sc, p, res) {
+      const ex = res?.extra as { nd: number[]; ns: number[] } | undefined;
+      if (!ex) return;
+      const { ctx } = sc;
+      const cs = sc.candles;
+      const labels = B(p, "vsaLabels") && sc.barSpacing >= 9;
+      const sz = Math.max(3, Math.min(5, sc.barSpacing * 0.35));
+      ctx.save();
+      ctx.font = "700 9px Inter, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const mark = (list: number[], up: boolean, color: string, text: string) => {
+        for (const i of list) {
+          if (i < sc.from - 1 || i > sc.to + 1 || i >= cs.length) continue;
+          const c = cs[i];
+          const x = sc.x(i);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          if (up) {
+            // ND: above the high, pointing down
+            const y = sc.y(c.h) - 8;
+            ctx.moveTo(x, y + sz);
+            ctx.lineTo(x + sz, y - sz * 0.8);
+            ctx.lineTo(x - sz, y - sz * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            if (labels) ctx.fillText(text, x, y - sz - 6);
+          } else {
+            // NS: below the low, pointing up
+            const y = sc.y(c.l) + 8;
+            ctx.moveTo(x, y - sz);
+            ctx.lineTo(x + sz, y + sz * 0.8);
+            ctx.lineTo(x - sz, y + sz * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            if (labels) ctx.fillText(text, x, y + sz + 6);
+          }
+        }
+      };
+      mark(ex.nd, true, S(p, "vsaCND"), "ND");
+      mark(ex.ns, false, S(p, "vsaCNS"), "NS");
+      ctx.restore();
+    },
+  },
+  {
     id: "obv",
     category: "volume",
     pane: "own",

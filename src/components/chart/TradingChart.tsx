@@ -8,6 +8,7 @@ import { formatPrice, intervalToMs } from "@/lib/chart/format";
 import { useT } from "@/lib/i18n/client";
 import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
+import { setDrawingWidthCap } from "@/lib/chart/drawings/tools";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import { EventsLayer } from "@/lib/chart/events-layer";
 import { useCalPrefs } from "@/lib/calendar/prefs";
@@ -702,7 +703,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const opts = settingsToEngine(cs, siteDark);
     // app terminal page: the design's chart sits on the page background; a canvas colour the user chose themselves is kept
     if (appPage && opts.theme && cs.preset === "classic" && cs.bgType === "solid" && !cs.colors.bg) opts.theme = { ...opts.theme, bg: macCards ? (siteDark ? "#1a1a1e" : "#ffffff") : siteDark ? "#0a0a0a" : "#f4f4f5" };
+    setDrawingWidthCap(cs.maxLineWidth);
     engine.setOptions(opts);
+    engine.requestOverlayRedraw(); // the drawings read the line-width limit while they are painted
     setTransformBox(engine.getTransformBox());
   }, [engineReady, cs, siteDark, appPage, macCards]);
 
