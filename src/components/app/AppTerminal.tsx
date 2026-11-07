@@ -15,12 +15,12 @@ import OrderBookPanel from "@/components/chart/OrderBookPanel";
 import AlgoPanel from "@/components/chart/AlgoPanel";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { useFomoIdeas } from "@/components/chart/FomoPanel";
-import { ListSwitch, useBatchQuotes, useSparklines, useWatchlist, type Quote } from "@/components/chart/RightPanel";
+import { ListSwitch, useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import { useRowReorder } from "@/lib/use-row-reorder";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import { filterWatch, macActiveTab, macTabAction, macTone, type MacTabId } from "@/lib/app-mac";
-import { MacChips, MacHeader, MacInstIcon, MacMenu, MacQuick, MacSpark, MacTabBar } from "./AppMac";
+import { MacChips, MacHeader, MacInstIcon, MacMenu, MacQuick, MacTabBar } from "./AppMac";
 import type { AppChartHandle, AppChartState } from "@/components/chart/app-bridge";
 import type { RangeId } from "@/components/chart/BottomBar";
 import { formatInterval } from "@/lib/chart/intervals";
@@ -145,13 +145,21 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   // A deep link that names a symbol or a panel opens the chart page instead.
   const [macScreen, setMacScreen] = useState<"term" | "list">("list");
   const fromList = useRef(false); // the full-screen chart was opened from a row of the list
+  const openFsRef = useRef<() => void>(() => {});
+  const deepDone = useRef(false);
   useEffect(() => {
+    if (!mac || deepDone.current) return;
+    deepDone.current = true;
     try {
-      if (/[?&](symbol|panel|ticker)=/.test(window.location.search)) setMacScreen("term");
+      // a deep link that names a symbol: straight to its full-screen chart (Back returns to the list)
+      if (/[?&](symbol|ticker)=/.test(window.location.search)) {
+        fromList.current = true;
+        openFsRef.current();
+      } else if (/[?&]panel=/.test(window.location.search)) setMacScreen("term");
     } catch {
       /* no location */
     }
-  }, []);
+  }, [mac]);
   const [macAdd, setMacAdd] = useState(false);
   const [macFilter, setMacFilter] = useState("");
   const [chart, setChart] = useState<AppChartState | null>(null);
@@ -226,6 +234,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     }
     setExpanded(true);
   }, []);
+  openFsRef.current = openFs;
   const closeFs = useCallback(() => {
     if (!expandedRef.current) return;
     if (pushed.current && isFsHistoryState(window.history.state)) {
@@ -245,7 +254,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       setMacScreen("list");
     }
   }, [expanded]);
-  const macSparks = useSparklines(watchlist.items, mac && macScreen === "list");
   // drag and drop of the list rows (finger: press and hold)
   const macRowsRef = useRef<HTMLDivElement | null>(null);
   const clsRowsRef = useRef<HTMLDivElement | null>(null);
@@ -277,7 +285,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     if (!expanded) return;
     const root = document.documentElement;
     root.classList.add("app-term-fs");
-    const plan = fullscreenPlan({ native: isNativeApp(), nativeImmersive: canSetNativeImmersive(), apiAvailable: typeof root.requestFullscreen === "function" });
+    const plan = fullscreenPlan({ native: isNativeApp(), nativeImmersive: canSetNativeImmersive(), apiAvailable: !mac && typeof root.requestFullscreen === "function" }); // the phone look keeps the dock under the chart: only the CSS layer
     if (plan.immersive) setNativeImmersive(true);
     if (plan.api) {
       try {
@@ -317,7 +325,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       apiFs.current = false;
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
-  }, [expanded, closeFs]);
+  }, [expanded, closeFs, mac]);
   useLayoutEffect(() => {
     if (!expanded) document.querySelector("main")?.scrollTo({ top: scrollTop.current });
   }, [expanded]);
@@ -373,10 +381,19 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     const loc = locale as "ru" | "en" | "cn";
     const onMacTab = (id: MacTabId) => {
       const a = macTabAction(id);
-      if (a === "screen:term") setMacScreen("term");
-      else if (a === "screen:list") setMacScreen("list");
-      else if (a === "sheet:tools") {
-        setMacScreen("term");
+      if (a === "screen:term") {
+        if (!expandedRef.current) {
+          fromList.current = true;
+          openFs();
+        }
+      } else if (a === "screen:list") {
+        if (expandedRef.current) closeFs();
+        else setMacScreen("list");
+      } else if (a === "sheet:tools") {
+        if (!expandedRef.current) {
+          fromList.current = true;
+          openFs();
+        }
         h.current?.openMacSheet("tools");
       } else if (a === "alerts") h.current?.openAlerts();
     };
@@ -475,22 +492,24 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {/* «Список»: a screen of its own over the chart (the chart keeps running under it) */}
           {macScreen === "list" && (
             <div className="app-mac-list" data-app-mac-list>
+              {/* like TradingView's mobile list: lists across the top and a search / add icon; nothing else above the rows */}
               <div className="app-mac-list-h">
-                <h2>{t("mac.m.tabList")}</h2>
+                <h2 className="sr-only">{t("mac.m.tabList")}</h2>
+                {effSeg === "watch" ? (
+                  <div className="app-mac-lists">
+                    <ListSwitch wl={watchlist} />
+                  </div>
+                ) : (
+                  <span className="app-mac-lists" />
+                )}
                 <button type="button" className="app-mac-plus" onClick={() => setMacAdd(true)} aria-label={t("mac.m.addList")} title={t("mac.m.addList")}>
-                  <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#4F9A74" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" style={{ filter: "drop-shadow(0 2px 3px rgba(79,154,116,.35))" }}>
-                    <circle cx="12" cy="12" r="9.5" fill="rgba(124,194,155,.3)" />
-                    <path d="M12 7.5v9M7.5 12h9" />
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
                   </svg>
                 </button>
               </div>
-              {effSeg === "watch" && (
-                <div className="app-mac-lists">
-                  <ListSwitch wl={watchlist} />
-                </div>
-              )}
               {segBlock}
-              {effSeg === "watch" && (
+              {effSeg === "watch" && watchlist.items.length > 14 && (
                 <label className="app-mac-filter">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                     <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
@@ -535,17 +554,15 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                             openFs(); // the chart of the tapped asset, full screen
                           }}
                         >
-                          <MacInstIcon inst={i} size={44} />
+                          <MacInstIcon inst={i} size={40} />
                           <span className="app-mac-row-n">
                             <b>{i.ticker}</b>
-                            <small>
-                              {instName(i, t)} · {exchangeLabel(i.source)}
-                            </small>
+                            <small>{instName(i, t)}</small>
                           </span>
-                          <MacSpark values={macSparks[qKey(i)]} line={c.line} />
                           <span className="app-mac-row-p">
                             <b>{priceText(q, i, locale)}</b>
-                            <span className="app-mac-pill" style={{ background: c.bg, color: c.fg }}>
+                            <span className="app-mac-chg" style={{ color: c.fg }}>
+                              {q && Number.isFinite(q.change) && q.change !== 0 ? `${q.change > 0 ? "+" : "−"}${fmtPrice(Math.abs(q.change), locale, priceDigits(i))}  ` : ""}
                               {pctLabel(q?.changePercent, locale)}
                             </span>
                           </span>
@@ -603,7 +620,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             </div>
           )}
 
-          <MacTabBar active={macActiveTab(macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
+          <MacTabBar active={macActiveTab(expanded ? "term" : macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
           <InstrumentSearchDialog open={macAdd} mode="watchlist" onClose={() => setMacAdd(false)} onPick={watchlist.add} existing={watchlist.items} onRemove={watchlist.remove} />
         </div>
       </DemoGate>
