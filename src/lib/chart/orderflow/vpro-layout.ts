@@ -56,6 +56,8 @@ export interface PlaceIn {
   stack: number;
   /** The phone table: its top-right corner stays at the top edge (it is small and the legend is on the left), whatever the legend height. */
   narrow?: boolean;
+  /** Bottom of the status line (O H L C ...) over the plot, px: the phone table's top-right corner starts under it. */
+  statusBottom?: number;
 }
 
 /** Vertical room for the table in its corner (below the legend for the top corners that meet it). */
@@ -70,7 +72,9 @@ function topOffset(pos: TablePos, tableW: number, p: PlaceIn): number {
   const right = pos === "tr";
   // the legend of the indicators lives at the top left: a table that would reach over it goes below it
   const belowLegend = p.narrow ? !right : !right || p.W - tableW - TABLE_MARGIN < LEGEND_ROOM;
-  return (belowLegend ? p.insetTop : TABLE_MARGIN) + p.stack;
+  // phone, top right: just under the status line (the indicator names are on the left), never over it
+  const top = p.narrow && right ? Math.max(TABLE_MARGIN, (p.statusBottom ?? 0) + 4) : belowLegend ? p.insetTop : TABLE_MARGIN;
+  return top + p.stack;
 }
 
 /** How many data rows (besides the header) fit into `avail` px; never negative, never more than `rows`. */

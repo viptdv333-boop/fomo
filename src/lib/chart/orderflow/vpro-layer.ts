@@ -166,7 +166,7 @@ export class VpLayer implements OverlayLayer {
         // phone: the compact table is shown right away and folds into a chip on tap (the saved "collapsed" flag is for the wide table), on the side away from the histogram
         const tcfg = narrow ? { ...cfg, tblCollapsed: this.narrowClosed.has(it.uid), tblPos: narrowCorner(cfg.tblPos, cfg.placement) } : cfg;
         const corner = tcfg.tblPos;
-        const rect = paintTable(ctx, theme, font, tcfg, rows, title, { W, H, insetTop, stack: stack[corner], narrow });
+        const rect = paintTable(ctx, theme, font, tcfg, rows, title, { W, H, insetTop, stack: stack[corner], narrow, statusBottom: engine.getStatusBottom() });
         stack[corner] += rect.h + 6;
         hit.table = rect;
       }

@@ -1599,6 +1599,29 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     void saveDataUrlAsFile(url, `${ticker}-${prefs.interval}.png`);
   };
 
+  /** Share the chart: its picture through the system share sheet when it can take files, else the link, else the link goes to the clipboard. */
+  const shareChart = async () => {
+    const link = typeof location !== "undefined" ? location.href : "";
+    try {
+      const url = snapshotUrl();
+      if (url && typeof navigator.canShare === "function") {
+        const blob = await (await fetch(url)).blob();
+        const file = new File([blob], `${ticker}-${prefs.interval}.png`, { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: mainTitle, url: link });
+          return;
+        }
+      }
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: mainTitle, url: link });
+        return;
+      }
+      await navigator.clipboard.writeText(link);
+    } catch {
+      /* cancelled or not allowed */
+    }
+  };
+
   const copyScreenshot = async () => {
     const url = snapshotUrl();
     if (!url) return;
@@ -2054,6 +2077,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenShortcuts={() => setShortcutsOpen(true)}
         extra={toolbarExtra}
         appFull={appFull}
+        phone={!!appFull && !wideApp}
+        onExportCsv={exportCandlesCsv}
+        onShare={() => void shareChart()}
         lead={appFull ? appFullLead : undefined}
         appSkin={mac && appWindow ? () => macSkin.set(false) : undefined}
         macOffer={macPage && !macSkin.on && macSkin.canOffer ? () => macSkin.set(true) : undefined}

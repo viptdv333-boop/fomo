@@ -240,3 +240,9 @@ html.app-ui .app-mac .app-mac-lists [role="tablist"] > button:not([role="tab"]) 
 html.app-ui .app-mac .app-mac-lists [role="tablist"] input { height: 32px; border-radius: 10px; background: var(--m-seg); color: var(--m-tx); font-size: 14px; }
 html.app-ui .app-mac .app-mac-lists > div > button[aria-haspopup="menu"] { width: 32px; height: 32px; color: var(--m-tx2); background: var(--m-seg); }
 html.app-ui .app-mac .app-mac-rows [data-row-key] { touch-action: pan-y; -webkit-touch-callout: none; user-select: none; }
+
+/* the dock in the new look: coloured glyphs like the design's bar (the terminal green, the calculator blue, settings amber) */
+html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="terminal"] .app-tab-ico { color: #4f9a74; }
+html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="calculator"] .app-tab-ico { color: #5b8fc0; }
+html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="settings"] .app-tab-ico { color: #cc9446; }
+html.app-ui.app-mac-on .app-tabbar .app-tab[data-active="1"] .app-tab-label { font-weight: 700; }

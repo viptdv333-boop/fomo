@@ -108,3 +108,17 @@ html.app-ui .app-term-fsclose:active { filter: brightness(0.92); }
   html.app-ui .app-sd-card { height: 100dvh; max-height: 100dvh; width: 100%; border-radius: 0; }
   html.app-ui .app-sd-head { max-height: 40dvh; overflow-y: auto; }
 }
+
+/* ---------- the phone's full-screen chart: one row of icons at the bottom, in the PC look (coloured glyphs with a caption) ---------- */
+html.app-ui .ph-tb { height: 66px; align-items: center; border-top: 0.5px solid var(--tv3-hair); }
+html.app-ui .ph-tb > * { flex: none; }
+html.app-ui .ph-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 58px; height: 58px; padding: 0 6px; border-radius: 12px; background: transparent; border: 0; color: var(--tv3-text2, var(--app-tx2)); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+html.app-ui .ph-btn:disabled { opacity: 0.4; }
+html.app-ui .ph-btn:active, html.app-ui .ph-btn.ph-on { background: var(--tv3-fill, var(--app-press)); color: var(--tv3-text, var(--app-tx)); }
+html.app-ui .ph-cap { font-size: 10.5px; font-weight: 600; line-height: 1; }
+html.app-ui .ph-sym { display: inline-flex; align-items: center; gap: 8px; height: 50px; padding: 0 12px 0 6px; border-radius: 14px; background: var(--tv3-fill, var(--app-card2)); border: 0; color: var(--tv3-text, var(--app-tx)); cursor: pointer; }
+html.app-ui .ph-sym-t { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; text-align: left; }
+html.app-ui .ph-sym-t b { font-size: 15px; font-weight: 700; }
+html.app-ui .ph-sym-t small { font-size: 11px; color: var(--tv3-muted, var(--app-tx2)); }
+/* the drawing drawer stops above the row so its own button stays reachable (a second tap closes it) */
+html.app-ui:not(.app-desktop) .app-term-chart.app-term-fs [data-tv="rail"] { top: 0 !important; bottom: 66px !important; }

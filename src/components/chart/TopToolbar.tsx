@@ -1,6 +1,8 @@
 "use client";
 
 import MacGlyph from "./MacGlyph";
+import MacSvg from "./MacSvg";
+import { RAIL_GLYPHS, TB_GLYPHS, type Glyph } from "./mac-glyph-data";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartType } from "@/lib/chart/types";
@@ -110,6 +112,10 @@ interface Props {
   /** App full-screen chart: the close button goes first, the browser-fullscreen and phone-panel buttons are left out, and the row never wraps (it scrolls) so a landscape phone keeps its height for the chart. */
   appFull?: boolean;
   lead?: ReactNode;
+  /** The phone's full-screen chart: its own row of icons in the PC look - asset, timeframe, drawing, indicators, chart type, alerts, settings, data table, screenshot, share. */
+  phone?: boolean;
+  onExportCsv?: () => void;
+  onShare?: () => void;
   /** Classic look on a wide window: offers the optional macOS look (src/lib/chart/mac-skin.ts). */
   macOffer?: () => void;
   /** App window in the new look: the way back to the classic one, as the last button of the toolbar. */
@@ -200,6 +206,82 @@ export default function TopToolbar(p: Props) {
   const macLabels = Object.fromEntries(
     ["compare", "indicators", "window", "alerts", "events", "replay", "type", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot", "skin"].map((k) => [`--tbl-${k}`, JSON.stringify(t(`mac.lbl.${k}`))]),
   ) as CSSProperties;
+
+  if (p.phone) {
+    const G = (g: Glyph) => <MacSvg d={g[2]} fl={g[3]} light={g[0]} stroke={g[1]} size={28} alpha="55" width={1.8} />;
+    const ph = "tv3-press ph-btn";
+    const cap = (s: string) => <span className="ph-cap">{s}</span>;
+    const GLYPH_TABLE: Glyph = ["#7CC29B", "#4F9A74", "M12 4v11M7 11l5 5 5-5M5 20h14", ""];
+    const GLYPH_SHARE: Glyph = ["#7DB0D6", "#5B8FC0", "M12 15V3M8 7l4-4 4 4M5 12v8h14v-8", ""];
+    return (
+      <div data-tv="toolbar" className="ph-tb flex items-stretch gap-1 px-1.5 shrink-0 overflow-x-auto bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className="tv3-press ph-sym">
+          <InstIcon inst={p.instrument} size={30} />
+          <span className="ph-sym-t">
+            <b>{ctTicker ?? p.instrument.ticker}</b>
+            <small>{exchangeLabel(p.instrument.source)}</small>
+          </span>
+        </button>
+        {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn="hidden" onShown={setCtTicker} />}
+        {p.favIntervals && p.onFavIntervals && (
+          <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} single />
+        )}
+        <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${ph} ${p.toolsOpen ? "ph-on" : ""}`}>
+          {G(RAIL_GLYPHS.brush)}
+          {cap(t("mac.m.tabTools"))}
+        </button>
+        <button onClick={p.onOpenIndicators} title={t("shell.indicators")} aria-label={t("shell.indicators")} className={ph}>
+          {G(TB_GLYPHS.indicators)}
+          {cap(t("mac.lbl.indicators"))}
+        </button>
+        <Menu title={t("shell.chartType")} className={ph} width={220} trigger={<>{G(TB_GLYPHS.type)}{cap(t("mac.lbl.type"))}</>}>
+          {(close) =>
+            CHART_TYPES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => {
+                  p.onChartType(c.id);
+                  close();
+                }}
+                className={`tv3-press tv3-hov mx-1 h-10 w-[calc(100%-8px)] rounded-[10px] px-3 flex items-center gap-2.5 text-sm text-left cursor-pointer ${
+                  p.chartType === c.id ? "text-[var(--tv3-accent)] font-semibold bg-[var(--tv3-accent-soft)]" : "font-medium text-[var(--tv3-text)]"
+                }`}
+              >
+                {typeIcon[c.id]}
+                {t(c.key)}
+              </button>
+            ))
+          }
+        </Menu>
+        <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} aria-label={t("shell.alerts")} className={ph}>
+          {G(TB_GLYPHS.alerts)}
+          {cap(t("mac.lbl.alerts"))}
+        </button>
+        {p.onOpenSettings && (
+          <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={ph}>
+            {G(TB_GLYPHS.settings)}
+            {cap(t("mac.lbl.settings"))}
+          </button>
+        )}
+        {p.onExportCsv && (
+          <button onClick={p.onExportCsv} title={t("appui.fs.table")} aria-label={t("appui.fs.table")} className={ph}>
+            {G(GLYPH_TABLE)}
+            {cap(t("appui.fs.table"))}
+          </button>
+        )}
+        <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ph}>
+          {G(TB_GLYPHS.shot)}
+          {cap(t("mac.lbl.shot"))}
+        </button>
+        {p.onShare && (
+          <button onClick={p.onShare} title={t("appui.fs.share")} aria-label={t("appui.fs.share")} className={ph}>
+            {G(GLYPH_SHARE)}
+            {cap(t("appui.fs.share"))}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div data-tv="toolbar" style={macLabels} className={`@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto ${p.appFull ? "" : "md:overflow-visible md:flex-wrap"} border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
