@@ -1,0 +1,46 @@
+/* The watchlists as tabs (RightPanel's ListSwitch: the terminal's side panel and the phone list): equal-size pockets, each with its own coloured flag
+   (like TradingView's list tabs), the open one filled with its colour, and a coloured «+». The phone screen restyles them a little in app-mac.css. */
+div[data-wl-tabs] { gap: 4px; align-items: flex-end; border-bottom: 2px solid var(--tv3-hair, rgba(128, 128, 128, 0.25)); padding-right: 2px; }
+div[data-wl-tabs] > button[role="tab"] {
+  --lc: #5b8fc0;
+  flex: 1 0 74px;
+  min-width: 74px;
+  max-width: none;
+  height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid color-mix(in srgb, var(--lc) 38%, transparent);
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--lc) 16%, transparent);
+  color: var(--tv3-text, inherit);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+div[data-wl-tabs] > button[role="tab"]::before { content: ""; flex: none; width: 11px; height: 13px; background: var(--lc); clip-path: polygon(0 0, 100% 0, 68% 50%, 100% 100%, 0 100%); }
+div[data-wl-tabs] > button[role="tab"]:hover { background: color-mix(in srgb, var(--lc) 26%, transparent); }
+div[data-wl-tabs] > button[role="tab"][aria-selected="true"] { margin-bottom: -2px; height: 32px; background: var(--lc); border-color: var(--lc); color: #fff; }
+div[data-wl-tabs] > button[role="tab"][aria-selected="true"]::before { background: #fff; }
+div[data-wl-tabs] > button[role="tab"]:nth-child(6n + 2) { --lc: #4f9a74; }
+div[data-wl-tabs] > button[role="tab"]:nth-child(6n + 3) { --lc: #cc9446; }
+div[data-wl-tabs] > button[role="tab"]:nth-child(6n + 4) { --lc: #8a6db0; }
+div[data-wl-tabs] > button[role="tab"]:nth-child(6n + 5) { --lc: #c46a78; }
+div[data-wl-tabs] > button[role="tab"]:nth-child(6n) { --lc: #4fa3a8; }
+div[data-wl-tabs] > button[data-wl-add] {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0 0 2px 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7cc29b, #4f9a74);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(79, 154, 116, 0.4);
+}
+div[data-wl-tabs] > button[data-wl-add]:hover { filter: brightness(1.08); background: linear-gradient(135deg, #7cc29b, #4f9a74); }
+div[data-wl-tabs] > button[data-wl-add]:disabled { filter: grayscale(0.6); }
