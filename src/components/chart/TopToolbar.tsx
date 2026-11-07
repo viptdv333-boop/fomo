@@ -204,7 +204,7 @@ export default function TopToolbar(p: Props) {
   return (
     <div data-tv="toolbar" style={macLabels} className={`@container flex items-center gap-x-2 gap-y-1.5 px-2.5 py-[7px] shrink-0 overflow-x-auto ${p.appFull ? "" : "md:overflow-visible md:flex-wrap"} border-b-[0.5px] border-[var(--tv3-hair)] bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
       {p.lead}
-      <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.toolsOpen ? btnOn : ""}`}>
+      <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${btn} md:hidden ${p.appFull ? "!hidden" : ""} ${p.toolsOpen ? btnOn : ""}`}>
         {I.tools}
       </button>
 
