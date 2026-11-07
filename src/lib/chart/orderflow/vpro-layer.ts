@@ -27,6 +27,7 @@ interface Hit {
 }
 
 export class VpLayer implements OverlayLayer {
+  readonly thinLines = true;
   private engine: ChartEngine | null = null;
   private off: (() => void) | null = null;
   private keyOn = false;

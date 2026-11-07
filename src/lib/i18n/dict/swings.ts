@@ -43,7 +43,7 @@ const rows: [string, string, string, string][] = [
   ["ind.p.szW2", "Зигзаг 2: толщина", "Zig zag 2 line width", "之字线 2 线宽"],
   ["ind.p.szLabSize", "Размер текста метки", "Label font size", "标注字号"],
   ["ind.p.szTextAlpha", "Прозрачность текста, %", "Text transparency, %", "文字透明度 %"],
-  ["ind.p.szLevels", "Уровней S/R (последние свинги зигзага 2)", "S/R levels (last swings of zig zag 2)", "支撑阻力位数量 (之字线 2)"],
+  ["ind.p.szLvls", "Уровней S/R (последние свинги зигзага 2)", "S/R levels (last swings of zig zag 2)", "支撑阻力位数量 (之字线 2)"],
   ["ind.p.szLvlExt", "Продление уровней", "Level extension", "水平线延伸"],
   ["ind.sz.ext.broken", "До пробоя", "Until broken", "直到被突破"],
   ["ind.sz.ext.right", "До правого края", "To the right edge", "延伸至右侧"],

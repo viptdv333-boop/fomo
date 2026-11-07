@@ -1,4 +1,5 @@
 import type { ChartEngine } from "./engine";
+import { drawLock } from "./axis-tags";
 import type { LayerAxisTag, OverlayLayer, PointerInfo } from "./types";
 import { alertLevel, type LineLevel, type LineSpec } from "../alerts/evaluate";
 
@@ -53,7 +54,22 @@ export class AlertsLayer implements OverlayLayer {
   }
 
   private dragging = false;
+  /** Pinned alerts: they cannot be dragged (a double click still opens their editor). Set by the chart. */
+  private locked = new Set<string>();
+  /** A double click on an alert's line: the chart opens its editor next to the pointer. */
+  onEdit: ((id: string, clientX: number, clientY: number) => void) | null = null;
 
+  setLocked(ids: Iterable<string>): void {
+    this.locked = new Set(ids);
+    this.engine?.requestOverlayRedraw();
+  }
+
+  dblClick(p: PointerInfo, ev: { clientX: number; clientY: number }): boolean {
+    const m = this.hit(p, true);
+    if (!m || !this.onEdit) return false;
+    this.onEdit(m.id, ev.clientX, ev.clientY);
+    return true;
+  }
   /** Level an alert is shown at: the dragged one follows the pointer, the others sit on their own level. */
   private levelOf(m: AlertMark, now: number): LineLevel {
     if (m.id === this.dragId) return { state: "ok", level: this.dragPrice };
@@ -61,9 +77,9 @@ export class AlertsLayer implements OverlayLayer {
   }
 
   /** The fixed-level alert whose line is within a few px of the pointer (mouse / pen only: a finger pans the chart). */
-  private hit(p: PointerInfo): AlertMark | null {
+  private hit(p: PointerInfo, anyPointer = false): AlertMark | null {
     const e = this.engine;
-    if (!e || p.pointerType === "touch" || p.region !== "plot" || p.paneId !== MAIN) return null;
+    if (!e || (!anyPointer && p.pointerType === "touch") || p.region !== "plot" || p.paneId !== MAIN) return null;
     const now = Date.now();
     let best: AlertMark | null = null;
     let bestD = 7;
@@ -84,6 +100,7 @@ export class AlertsLayer implements OverlayLayer {
     if (p.button !== 0) return false;
     const m = this.hit(p);
     if (!m || !this.engine) return false;
+    if (this.locked.has(m.id)) return false; // pinned: the chart pans as usual
     const lv = this.levelOf(m, Date.now());
     if (lv.state !== "ok") return false;
     this.dragId = m.id;
@@ -123,7 +140,9 @@ export class AlertsLayer implements OverlayLayer {
   }
 
   cursor(p: PointerInfo): string | null {
-    return this.dragging || this.hit(p) ? "ns-resize" : null;
+    if (this.dragging) return "ns-resize";
+    const m = this.hit(p);
+    return m ? (this.locked.has(m.id) ? "pointer" : "ns-resize") : null;
   }
 
   setTimeOffset(ms: number): void {
@@ -167,7 +186,7 @@ export class AlertsLayer implements OverlayLayer {
     for (const m of this.marks) {
       const lv = this.levelOf(m, now);
       if (lv.state !== "ok" || !Number.isFinite(lv.level)) continue;
-      out.push({ price: lv.level, kind: "alert", color: COLOR, textColor: "#1f2937", icon: "bell" });
+      out.push({ price: lv.level, kind: "alert", color: COLOR, textColor: "#1f2937", icon: this.locked.has(m.id) ? "lock" : "bell" });
     }
     return out;
   }
@@ -203,6 +222,7 @@ export class AlertsLayer implements OverlayLayer {
         ctx.lineTo(rect.width, sy);
         ctx.stroke();
         ctx.setLineDash([]);
+        if (this.locked.has(m.id)) drawLock(ctx, 16, sy, COLOR);
       } else {
         const x = engine.timeToX(now + this.offsetMs);
         if (Number.isFinite(x) && x >= -6 && x <= rect.width + 6) {

@@ -50,7 +50,7 @@ function specOf(p: Params, k: 1 | 2): SwingSpec {
 }
 
 function optionsOf(p: Params): ZzOptions {
-  return { spec1: specOf(p, 1), spec2: specOf(p, 2), window: N(p, "szWindow"), levels: N(p, "szLevels"), mergeAtr: N(p, "szMerge") };
+  return { spec1: specOf(p, 1), spec2: specOf(p, 2), window: N(p, "szWindow"), levels: N(p, "szLvls"), mergeAtr: N(p, "szMerge") };
 }
 
 function resultOf(res: IndResult | undefined): ZzResult | null {
@@ -340,7 +340,7 @@ function drawLabels(sc: SeriesContext, r: ZzResult, p: Params) {
 
 /** Broken levels: a segment from the swing to the bar that broke it. */
 function drawBrokenLevels(sc: SeriesContext, r: ZzResult, p: Params) {
-  if (S(p, "szLvlExt") !== "broken" || N(p, "szLevels") <= 0) return;
+  if (S(p, "szLvlExt") !== "broken" || N(p, "szLvls") <= 0) return;
   const { ctx } = sc;
   const color = S(p, "szLvlCol");
   const w = N(p, "szLvlWidth");
@@ -425,7 +425,7 @@ export const SWINGS_DEF: IndicatorDef = {
     num("szW2", 1.5, 1, 4, 0.5),
     num("szLabSize", 11, 8, 18),
     num("szTextAlpha", 0, 0, 100, 5),
-    num("szLevels", 4, 0, 12),
+    num("szLvls", 0, 0, 12),
     sel("szLvlExt", "broken", EXT_OPTIONS),
     num("szMerge", 0.5, 0, 10, 0.1),
     num("szLvlWidth", 1, 1, 4, 0.5),
@@ -456,7 +456,7 @@ export const SWINGS_DEF: IndicatorDef = {
     const st = S(p, "szLvlStyle") as LineStyleName;
     r.levels.forEach((lv, k) => {
       if (ext === "broken" && lv.broken >= 0) return;
-      levels.push({ value: lv.p, color, width: w, lineStyle: st, name: `S/R ${k + 1}`, fromIndex: lv.i, flag: true, scale: false });
+      levels.push({ value: lv.p, color, width: w, lineStyle: st, name: `S/R ${k + 1}`, fromIndex: lv.i, flag: false, scale: false });
     });
     return { plots: [], levels, extra: r };
   },

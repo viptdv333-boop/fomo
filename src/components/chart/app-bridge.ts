@@ -7,6 +7,8 @@ export interface AppChartHandle {
   openSearch: () => void;
   openAlerts: () => void;
   openIndicators: () => void;
+  /** Opens the indicators dialog, or closes it when it is open (the full-screen chart's button). */
+  toggleIndicators: () => void;
   openSettings: () => void;
   /** Adds a window (the same «chart / indicator» window of the web terminal). */
   addWindow: () => void;

@@ -10,6 +10,7 @@ import { indexAtOrAfter } from "./vwapcalc";
 const ID = "avwap";
 
 export class AnchoredVwapLayer implements OverlayLayer {
+  readonly thinLines = true;
   private engine: ChartEngine | null = null;
   private off: (() => void) | null = null;
   private hoverX = -1;

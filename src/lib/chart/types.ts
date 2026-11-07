@@ -350,8 +350,8 @@ export interface LayerAxisTag {
   kind: "alert";
   color: string;
   textColor?: string;
-  /** "bell" is drawn in front of the price. */
-  icon?: "bell";
+  /** "bell" / "lock" (a pinned alert) is drawn in front of the price. */
+  icon?: "bell" | "lock";
 }
 
 /** Volume moving average drawn over the volume bars of the main pane. */
@@ -383,6 +383,10 @@ export interface PointerInfo {
  * Layers are asked first; returning true from pointerDown captures the gesture, so the chart does not pan.
  */
 export interface OverlayLayer {
+  /** Its lines obey the thickest-line setting (indicator layers: the volume profile, anchored VWAP). */
+  thinLines?: boolean;
+  /** A double click on the plot; true = handled (the layer opens its editor). `ev` carries the viewport position. */
+  dblClick?(p: PointerInfo, ev: { clientX: number; clientY: number }): boolean;
   /** Drawn inside the plot area, above candles and below the crosshair. */
   draw?(ctx: CanvasRenderingContext2D, engine: import("./engine").ChartEngine): void;
   /** Tags for the main price scale (stacked with the others, drawn above the plot). */

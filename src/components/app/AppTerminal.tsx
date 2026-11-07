@@ -379,7 +379,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         <AppIcon name="pen" size={20} stroke={1.9} />
         <span>{t("mac.m.tabTools")}</span>
       </button>
-      <button type="button" onClick={() => handle.current?.openIndicators()}>
+      <button type="button" onClick={() => handle.current?.toggleIndicators()}>
         <AppIcon name="pulse" size={20} stroke={1.9} />
         <span>{t("appui.term.addInd")}</span>
       </button>

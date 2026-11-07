@@ -10,6 +10,7 @@ import { IndicatorsController } from "@/lib/chart/indicators/controller";
 import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { setDrawingWidthCap } from "@/lib/chart/drawings/tools";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
+import AlertQuickEdit from "./AlertQuickEdit";
 import { EventsLayer } from "@/lib/chart/events-layer";
 import { useCalPrefs } from "@/lib/calendar/prefs";
 import CalendarRemindersHost from "@/components/chart/calendar/CalendarRemindersHost";
@@ -1377,6 +1378,38 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     };
   }, [alertsLayer, alertUpdate]);
 
+  /* alerts: pinned ones (kept on this device) cannot be dragged; a double click on an alert's line opens its editor */
+  const [lockedAlerts, setLockedAlerts] = useState<string[]>([]);
+  const [alertEdit, setAlertEdit] = useState<{ id: string; x: number; y: number } | null>(null);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("fomo-alert-locks") || "[]");
+      if (Array.isArray(v)) setLockedAlerts(v.filter((x): x is string => typeof x === "string"));
+    } catch {
+      /* no storage */
+    }
+  }, []);
+  const setAlertLock = useCallback((id: string, on: boolean) => {
+    setLockedAlerts((cur) => {
+      const next = on ? [...new Set([...cur, id])] : cur.filter((x) => x !== id);
+      try {
+        localStorage.setItem("fomo-alert-locks", JSON.stringify(next));
+      } catch {
+        /* no storage */
+      }
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    alertsLayer.setLocked(lockedAlerts);
+  }, [alertsLayer, lockedAlerts]);
+  useEffect(() => {
+    alertsLayer.onEdit = (id, x, y) => setAlertEdit({ id, x, y });
+    return () => {
+      alertsLayer.onEdit = null;
+    };
+  }, [alertsLayer]);
+
   /* alerts: paint the active ones of this symbol on the chart */
   const { alerts: allAlerts } = alertsApi;
   useEffect(() => {
@@ -1941,6 +1974,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       openSearch: () => setSearchOpen(true),
       openAlerts: () => openAlerts(null),
       openIndicators: () => setIndOpen(true),
+      toggleIndicators: () => setIndOpen((v) => !v),
       openSettings: () => openSettings(),
       addWindow: () => void indicators.addWindow(),
       toggleDrawTools: () => setToolsOpen((v) => !v),
@@ -2290,6 +2324,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       <InstrumentSearchDialog open={comparePick} mode="compare" onClose={() => setComparePick(false)} onPick={addCompare} current={{ source, ticker }} />
       <DrawingSettingsDialog controller={drawings} id={settingsId} onClose={() => setSettingsId(null)} />
       <InstrumentSearchDialog open={searchOpen} mode="symbol" onClose={() => setSearchOpen(false)} onPick={handleSelect} current={{ source, ticker }} />
+      {alertEdit && (() => {
+        const a = allAlerts.find((x) => x.id === alertEdit.id);
+        return a ? (
+          <AlertQuickEdit alert={a} x={alertEdit.x} y={alertEdit.y} locked={lockedAlerts.includes(a.id)} onLock={(v) => setAlertLock(a.id, v)} onSave={alertsApi.update} onDelete={alertsApi.remove} onClose={() => setAlertEdit(null)} />
+        ) : null;
+      })()}
       <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} windowId={indTarget} />
       {appMac && appPage && (
         <AppMacSheet

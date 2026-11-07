@@ -164,3 +164,16 @@ export function drawBell(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   ctx.fill();
   ctx.restore();
 }
+
+/** A small padlock (closed): a pinned alert. */
+export function drawLock(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 1.6, 2.6, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillRect(cx - 4, cy - 1, 8, 6);
+  ctx.restore();
+}

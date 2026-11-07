@@ -29,7 +29,7 @@ import { WIN_PANE } from "./windows-layout";
 import { cleanCandles, mergeCandle } from "./candles";
 import { withAlpha } from "./settings";
 import { barCountdownMs, countdownUnits, formatCountdown } from "./bar-clock";
-import { drawBell, stackTags, tagCaption, type TagBlock } from "./axis-tags";
+import { drawBell, drawLock, stackTags, tagCaption, type TagBlock } from "./axis-tags";
 import { maByType } from "./indicators/math";
 import { OrderFlowStore } from "./orderflow/store";
 import { AlgoStore } from "./algopack/store";
@@ -69,7 +69,7 @@ interface EngineTag {
   caption?: string;
   /** the row below the price (countdown) */
   extra?: string;
-  icon?: "bell";
+  icon?: "bell" | "lock";
 }
 
 type Region = "plot" | "priceAxis" | "timeAxis" | "separator" | "none";
@@ -226,6 +226,27 @@ export class ChartEngine {
   private fpFrame: FootprintFrame = NO_FRAME;
   /** Right click on a price scale (client coordinates); when set the browser menu is suppressed there. */
   onPriceAxisMenu: ((info: { clientX: number; clientY: number; paneId: string }) => void) | null = null;
+  /** Runs `fn` with `ctx.lineWidth` clamped to the user's thickest-line setting (the volume profile, the swings, anything that sets its own widths). */
+  private withLineCap(ctx: CanvasRenderingContext2D, fn: () => void) {
+    const cap = this.opts.maxLineWidth;
+    const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "lineWidth");
+    if (!(cap > 0) || !desc || !desc.get || !desc.set) {
+      fn();
+      return;
+    }
+    const get = desc.get;
+    const set = desc.set;
+    Object.defineProperty(ctx, "lineWidth", {
+      configurable: true,
+      get: () => get.call(ctx) as number,
+      set: (v: number) => set.call(ctx, Math.min(Number(v) || 0, cap)),
+    });
+    try {
+      fn();
+    } finally {
+      delete (ctx as unknown as Record<string, unknown>).lineWidth;
+    }
+  }
   /** Receives the price / OHLC line when `legendInHead` is on (it is shown in the window's title bar instead of on the canvas). */
   onLegend: ((l: HeadLegend) => void) | null = null;
   private legendKey = "";
@@ -1564,8 +1585,11 @@ export class ChartEngine {
         this.drawCompares(sc);
       }
       if (!transformed) {
-        for (const s of pane.series) s.draw(sc);
-        for (const s of pane.series) s.drawFront?.(sc);
+        // every line an indicator draws obeys the thickest-line setting, whatever the indicator asks for
+        this.withLineCap(ctx, () => {
+          for (const s of pane.series) s.draw(sc);
+          for (const s of pane.series) s.drawFront?.(sc);
+        });
       }
       ctx.restore();
 
@@ -2584,10 +2608,11 @@ export class ChartEngine {
         ctx.fillStyle = t.fg;
         ctx.font = `600 ${fs}px ${ff}`;
         const cy = pl.bodyTop + bodyH / 2 + 0.5;
-        if (t.icon === "bell") {
+        if (t.icon === "bell" || t.icon === "lock") {
           const tw = ctx.measureText(t.text).width;
           const start = x0 + Math.max(2, (w - (tw + 13)) / 2);
-          drawBell(ctx, start + 4.5, cy - 0.5, t.fg);
+          if (t.icon === "lock") drawLock(ctx, start + 4.5, cy - 0.5, t.fg);
+          else drawBell(ctx, start + 4.5, cy - 0.5, t.fg);
           ctx.textAlign = "left";
           ctx.fillText(t.text, start + 13, cy);
         } else ctx.fillText(t.text, x0 + w / 2, cy);
@@ -2661,7 +2686,10 @@ export class ChartEngine {
       ctx.beginPath();
       ctx.rect(0, 0, plotW, plotH);
       ctx.clip();
-      for (const l of this.layers) l.draw?.(ctx, this);
+      for (const l of this.layers) {
+        if (l.thinLines) this.withLineCap(ctx, () => l.draw?.(ctx, this));
+        else l.draw?.(ctx, this);
+      }
       ctx.restore();
     }
 
@@ -3356,8 +3384,12 @@ export class ChartEngine {
 
   private onDblClick = (e: MouseEvent) => {
     const { x, y } = this.local(e);
-    const { region } = this.regionAt(x, y);
+    const { region, pane } = this.regionAt(x, y);
     if (region === "priceAxis") this.setAutoScale(true);
     else if (region === "timeAxis") this.resetView();
+    else {
+      const info: PointerInfo = { x, y, paneId: pane?.id ?? null, region: region as PointerRegion, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey || e.metaKey, altKey: e.altKey, button: e.button, pointerType: "mouse" };
+      for (const l of this.layers) if (l.dblClick?.(info, e)) return;
+    }
   };
 }
