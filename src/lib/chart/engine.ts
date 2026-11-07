@@ -1,6 +1,7 @@
 import {
   type Candle,
   type EngineOptions,
+  type HeadLegend,
   type LegendItem,
   type OverlayLayer,
   type PointerInfo,
@@ -225,6 +226,9 @@ export class ChartEngine {
   private fpFrame: FootprintFrame = NO_FRAME;
   /** Right click on a price scale (client coordinates); when set the browser menu is suppressed there. */
   onPriceAxisMenu: ((info: { clientX: number; clientY: number; paneId: string }) => void) | null = null;
+  /** Receives the price / OHLC line when `legendInHead` is on (it is shown in the window's title bar instead of on the canvas). */
+  onLegend: ((l: HeadLegend) => void) | null = null;
+  private legendKey = "";
   /** The baseline chart's base level was dragged (percent of the pane height from the bottom). */
   onBaselineChange: ((percent: number) => void) | null = null;
   /** A divider between panes was dragged (called when the drag ends): share of the plot height of every indicator pane, by pane id. */
@@ -2425,6 +2429,8 @@ export class ChartEngine {
           if (!labels) continue;
           for (const l of labels) {
             if (!isFinite(l.price)) continue;
+            // phone app: the swings (ZigZag) never put flags on the scale
+            if (this.opts.phoneTags && /свинг|swing|摆动/i.test(l.caption ?? "")) continue;
             const y = this.paneY(pane, l.price);
             if (y < 0 || y > pane.height) continue;
             out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", caption: caps ? l.caption : undefined });
@@ -2852,7 +2858,37 @@ export class ChartEngine {
       const col = (up ? this.candleColors(true) : this.candleColors(false)).body;
       const p = (v: number) => formatPrice(v, this.precision, this.opts.locale);
       const showVol = st.volume && this.opts.showVolume;
-      if (mac && c) {
+      const headLegend = mac && !!c && !!this.opts.legendInHead && !!this.onLegend;
+      if (!headLegend) this.legendKey = "";
+      if (headLegend) {
+        // the line lives in the window's title bar (DOM): report it, paint nothing here, the indicator legend starts at the top
+        const d0 = c.c - prev.c;
+        const sign0 = d0 >= 0 ? "+" : "";
+        const pc0 = prev.c ? (d0 / prev.c) * 100 : 0;
+        const vm = this.opts.volumeMa;
+        const ma = showVol && vm && vm.on ? this.volumeMaData() : null;
+        const mv = ma ? ma[index] : NaN;
+        const parts: string[] = [];
+        if (st.barChange) parts.push(`${sign0}${formatPrice(d0, this.precision, this.opts.locale)}`);
+        if (st.change) parts.push(st.barChange ? `(${sign0}${pc0.toFixed(2)}%)` : `${sign0}${pc0.toFixed(2)}%`);
+        const info: HeadLegend = {
+          price: p(c.c),
+          pct: `${sign0}${pc0.toFixed(2)}%`,
+          color: col,
+          muted: th.textMuted,
+          text: th.text,
+          ohlc: st.ohlc ? [p(c.o), p(c.h), p(c.l), p(c.c)] : null,
+          chg: parts.join(" "),
+          vol: showVol ? formatVolume(c.v, this.opts.locale) : null,
+          volMa: ma && vm && isFinite(mv) ? { label: `MA ${Math.round(vm.length)}`, val: formatVolume(mv, this.opts.locale), color: vm.color } : null,
+        };
+        const key = JSON.stringify(info);
+        if (key !== this.legendKey) {
+          this.legendKey = key;
+          this.onLegend?.(info);
+        }
+        cy = y;
+      } else if (mac && c) {
         // macOS look: the last close big, its change as a soft pill, then the OHLC row on the same line
         const big = p(c.c);
         ctx.font = `600 26px ${this.opts.fontFamily}`;
@@ -2874,7 +2910,7 @@ export class ChartEngine {
         cy = y + 5;
         chipRight = Math.max(chipRight, x);
       }
-      if (st.ohlc || st.barChange || st.change || showVol) {
+      if (!headLegend && (st.ohlc || st.barChange || st.change || showVol)) {
         if (!mac) x = x0;
         ctx.font = `13px ${this.opts.fontFamily}`;
         const put2 = (label: string, val: string) => {
@@ -2936,7 +2972,7 @@ export class ChartEngine {
         chipRight = Math.max(chipRight, x);
         cy += 15;
       }
-      if (mac) cy = y + 36;
+      if (mac) cy = headLegend ? y : y + 36;
       // design v3: the status block sits on a soft rounded chip (drawn behind the text already on this layer)
       if (chipRight > 0 && cy > y && !mac) {
         ctx.globalCompositeOperation = "destination-over";

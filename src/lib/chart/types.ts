@@ -196,6 +196,8 @@ export interface EngineOptions {
   macLook?: boolean;
   /** The phone version of the look (app UI): every pane, the price one included, is a rounded card on the canvas, no symbol caption (the page's header has it). */
   macCards?: boolean;
+  /** Desktop (macOS look, windows on): the price / change / OHLC / volume line goes to the window's title bar (the engine reports it through `onLegend`, the canvas legend starts higher). */
+  legendInHead?: boolean;
   /** Phone (app UI): the flags of the indicators on the price scale are the value in the indicator's colour, no plate, with a small name before the scale. */
   phoneTags?: boolean;
 
@@ -319,6 +321,19 @@ export interface LegendItem {
 }
 
 /** A value flag drawn on a pane's price axis (like the last-price label), e.g. an indicator's latest value. */
+/** The price line of the legend (last / hovered bar), for a window's title bar. */
+export interface HeadLegend {
+  price: string;
+  pct: string;
+  color: string;
+  muted: string;
+  text: string;
+  ohlc: [string, string, string, string] | null;
+  chg: string;
+  vol: string | null;
+  volMa: { label: string; val: string; color: string } | null;
+}
+
 export interface AxisLabel {
   price: number;
   text: string;

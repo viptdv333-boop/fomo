@@ -63,7 +63,7 @@ import { useOnline } from "@/lib/offline/useOnline";
 import { DEFAULT_PREFS, parsePrefs, sanitizePrefs, shownInterval, type Prefs } from "@/lib/chart/prefs";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
 import type { ChartLayoutData, ChartTemplateData } from "@/lib/chart/templates";
-import { isTransformedType, type ScaleMode } from "@/lib/chart/types";
+import { isTransformedType, type HeadLegend, type ScaleMode } from "@/lib/chart/types";
 import type { ChartSyncHub } from "@/lib/chart/sync";
 import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
 import { adHocInstrument, exchangeLabel, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
@@ -701,6 +701,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   useEffect(() => {
     engineRef.current?.setOptions({ phoneTags });
   }, [engineReady, phoneTags]);
+  /* desktop, macOS look with the window title bar: the price / change / OHLC / volume line sits in that bar, right after the chart's name */
+  const [headLegend, setHeadLegend] = useState<HeadLegend | null>(null);
+  const legendInHead = mac && !!winGeo.px.main && !phoneTags;
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.onLegend = legendInHead ? setHeadLegend : null;
+    engine.setOptions({ legendInHead });
+  }, [engineReady, legendInHead]);
 
   /* chart settings: theme, candles, scales, labels ... */
   useEffect(() => {
@@ -2030,7 +2039,36 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             onFocus={focusChart}
             onScreen={appFull ? undefined : appTb && appExpand ? appExpand : toggleFocus}
             screenOn={zen}
-            title={<span className="truncate">{mainTitle}</span>}
+            title={
+              <>
+                <span className="truncate">{mainTitle}</span>
+                {legendInHead && headLegend && (
+                  <span className="flex min-w-0 items-center gap-2.5 overflow-hidden whitespace-nowrap text-[12px] font-normal" data-head-legend>
+                    <span className="text-[14px] font-semibold" style={{ color: headLegend.color }}>{headLegend.price}</span>
+                    <span className="rounded-full px-1.5 py-px text-[11px] font-semibold" style={{ color: headLegend.color, background: `${headLegend.color}29` }}>{headLegend.pct}</span>
+                    {headLegend.ohlc && (["O", "H", "L", "C"] as const).map((k, i) => (
+                      <span key={k}>
+                        <span style={{ color: headLegend.muted }}>{k} </span>
+                        <span className="font-semibold" style={{ color: headLegend.color }}>{headLegend.ohlc![i]}</span>
+                      </span>
+                    ))}
+                    {headLegend.chg && <span className="font-semibold" style={{ color: headLegend.color }}>{headLegend.chg}</span>}
+                    {headLegend.vol && (
+                      <span>
+                        <span style={{ color: headLegend.muted }}>Vol </span>
+                        <span className="font-semibold" style={{ color: headLegend.text }}>{headLegend.vol}</span>
+                      </span>
+                    )}
+                    {headLegend.volMa && (
+                      <span>
+                        <span style={{ color: headLegend.muted }}>{headLegend.volMa.label} </span>
+                        <span className="font-semibold" style={{ color: headLegend.volMa.color }}>{headLegend.volMa.val}</span>
+                      </span>
+                    )}
+                  </span>
+                )}
+              </>
+            }
             titleText={mainTitle}
             onClose={() => indicators.closeWindow("main")}
             closeTitle={t("win.closeMain")}

@@ -246,6 +246,14 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     pushed.current = false;
     setExpanded(false);
   }, []);
+  // a tap on the dock's «Список» tab while the chart is full screen: back to the list
+  useEffect(() => {
+    const home = () => {
+      if (expandedRef.current) closeFs();
+    };
+    window.addEventListener("fomo:terminal-home", home);
+    return () => window.removeEventListener("fomo:terminal-home", home);
+  }, [closeFs]);
   // the Android Back button (window.FomoBack) collapses the chart: through closeFs, i.e. the same history step as the browser's Back
   useBackLayer(expanded, closeFs, "screen");
   // the full-screen chart that was opened from the list goes back to the list (Back / the close button / Esc)
@@ -614,27 +622,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             </div>
           )}
 
-          {/* full-screen chart, like TradingView: the drawing / indicators / alerts / settings panel stays on screen under the chart, over the dock */}
-          {expanded && (
-            <div className="app-mac-fsbar" data-app-fsbar role="toolbar">
-              <button type="button" onClick={() => h.current?.toggleDrawTools()}>
-                <AppIcon name="pen" size={22} stroke={1.8} />
-                <span>{t("mac.m.tabTools")}</span>
-              </button>
-              <button type="button" onClick={() => h.current?.openIndicators()}>
-                <AppIcon name="pulse" size={22} stroke={1.8} />
-                <span>{t("mac.lbl.indicators")}</span>
-              </button>
-              <button type="button" onClick={() => h.current?.openAlerts()}>
-                <AppIcon name="bell" size={22} stroke={1.8} />
-                <span>{t("mac.lbl.alerts")}</span>
-              </button>
-              <button type="button" onClick={() => h.current?.openSettings()}>
-                <AppIcon name="sliders" size={22} stroke={1.8} />
-                <span>{t("mac.lbl.settings")}</span>
-              </button>
-            </div>
-          )}
           <MacTabBar active={macActiveTab(expanded ? "term" : macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
           <InstrumentSearchDialog open={macAdd} mode="watchlist" onClose={() => setMacAdd(false)} onPick={watchlist.add} existing={watchlist.items} onRemove={watchlist.remove} />
         </div>

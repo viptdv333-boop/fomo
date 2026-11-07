@@ -60,11 +60,7 @@ html.app-ui.app-mac-on body { background: var(--m-bg); }
 html.app-ui.app-mac-on.app-term-fs .app-mac .app-mac-bar { visibility: hidden; }
 /* the phone look: the full-screen chart stops above the app's dock, which stays on screen (TradingView keeps its bottom navigation under the chart);
    the dock is z 45, the list z 43, so the layer sits between */
-html.app-ui.app-mac-on .app-term-chart.app-term-fs { z-index: 44; bottom: auto; height: calc(100dvh - var(--app-bottom-inset) - 50px); padding-bottom: 0; }
-/* the panel under the full-screen chart (drawing / indicators / alerts / settings) */
-html.app-ui .app-mac .app-mac-fsbar { position: fixed; left: 0; right: 0; bottom: var(--app-bottom-inset); height: 50px; z-index: 44; display: flex; align-items: stretch; background: var(--m-bar, var(--app-card)); border-top: 0.5px solid var(--m-line, var(--app-line)); font-family: var(--m-font); }
-html.app-ui .app-mac .app-mac-fsbar button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; background: none; border: 0; color: var(--m-tx2); font: inherit; font-size: 10.5px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-html.app-ui .app-mac .app-mac-fsbar button:active { background: var(--m-seg); color: var(--m-tx); }
+html.app-ui.app-mac-on .app-term-chart.app-term-fs { z-index: 44; bottom: auto; height: calc(100dvh - var(--app-bottom-inset)); padding-bottom: 0; }
 /* the window's own title bar (name, collapse, fill, close) is noise on a phone: the chart's legend already names the symbol */
 html.app-ui:not(.app-desktop) .app-term-chart [data-chart-window="main"] > [data-win-head] { display: none; }
 

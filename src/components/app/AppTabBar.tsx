@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
-import { canOpenNativeSettings, nativeBridge, openNativeSettings } from "@/lib/native-app";
+import { nativeBridge } from "@/lib/native-app";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import { APP_TABS, activeAppTab, appTabHref, badgeLabel, dockDragScroll, dockKeyAction, dockKeyTarget, dockWheelDelta, isDockDrag, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
 import { hiddenTabUnread, tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
-import { useAppUi } from "./useAppUi";
+import { useAppTopToolbar, useAppUi } from "./useAppUi";
 import { useTabBadges } from "./useTabBadges";
 import { applyFontStep, readFontStep } from "./fontStep";
 import { hostNavigate, useAppPathname } from "./tabhost/store";
@@ -331,6 +332,9 @@ function TabBar() {
       window.removeEventListener("resize", sync);
     };
   }, [counts]);
+  // the phone look: the terminal tab is the watchlist («Список»), a tap on it from the full-screen chart goes back to the list
+  const wideTb = useAppTopToolbar();
+  const macOn = useAppMacSkin(!wideTb).on;
   return (
     <>
     {/* desktop window: the bar's background spans the whole window while the tabs sit in the centred column (see app-desktop.css) */}
@@ -338,7 +342,8 @@ function TabBar() {
     <nav ref={bar} className="app-tabbar" data-tabs={APP_TABS.length} style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
-        const label = t(tab.labelKey);
+        const asList = tab.id === "terminal" && macOn;
+        const label = asList ? t("mac.m.tabList") : t(tab.labelKey);
         const badge = tabBadgeLabel(counts, tab.id);
         return (
           <Link
@@ -351,17 +356,14 @@ function TabBar() {
             aria-current={on ? "page" : undefined}
             aria-label={badge ? `${label}, ${t("appui.unread", { n: badge })}` : label}
             onClick={(e) => {
-              if (tab.id === "settings" && canOpenNativeSettings()) {
-                e.preventDefault();
-                openNativeSettings();
-                return;
-              }
+              // «Настройки» opens the web screen (theme, look, language, notifications; its first row leads on to the app's own settings)
               try {
                 nativeBridge()?.haptic?.();
               } catch {
                 /* old app build */
               }
               if (on) document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+              if (on && tab.id === "terminal") window.dispatchEvent(new Event("fomo:terminal-home"));
               // the tab host (tabhost/AppTabHost.tsx) shows a tab's screen in place: no server round trip, the screen that was open before is still mounted
               if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && hostNavigate(appTabHref(locale as "ru" | "en" | "cn", tab))) e.preventDefault();
             }}
@@ -377,7 +379,7 @@ function TabBar() {
                   )}
                 </span>
               ) : (
-                <AppIcon name={ICON[tab.id]} size={24} />
+                <AppIcon name={asList ? "list" : ICON[tab.id]} size={24} />
               )}
               {badge && <span className="app-badge">{badge}</span>}
             </span>
