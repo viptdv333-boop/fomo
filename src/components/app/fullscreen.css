@@ -69,6 +69,8 @@ html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-ct { display: no
 html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-mac { display: inline !important; font-weight: 700; font-size: 15px; }
 html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-ex { display: inline !important; }
 
+/* phone: the whole top panel (asset, timeframe, icons) sits at the BOTTOM of the full-screen chart, right above the dock */
+html.app-ui:not(.app-desktop) .app-term-chart.app-term-fs [data-tv="card"] > [data-tv="toolbar"] { order: 99; border-bottom: 0; border-top: 0.5px solid var(--tv3-hair); }
 /* under the full-screen chart (phone): drawing tools and «indicators» always in reach */
 html.app-ui .app-fs-actions { flex: none; display: flex; align-items: stretch; height: 44px; border-top: 0.5px solid var(--app-line); background: var(--tv3-card, var(--app-card)); }
 html.app-ui .app-fs-actions button { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0; background: none; border: 0; color: var(--tv3-text, var(--app-tx)); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
