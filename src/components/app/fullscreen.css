@@ -62,6 +62,13 @@ html.app-ui.app-term-fs [data-app-header] { visibility: hidden; }
 /* the navigation bar (the app's dock) never hides: the full-screen chart stops above it (the dock is z 45) */
 html.app-ui .app-term-chart.app-term-fs { z-index: 44; bottom: auto; height: calc(100dvh - var(--app-bottom-inset)); padding-bottom: 0; }
 
+/* the full-screen chart's toolbar: ONE asset button, as on the PC: icon, the exact contract ticker, the exchange (no second contract button, no search glyph) */
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-classic,
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-search,
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-ct { display: none !important; }
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-mac { display: inline !important; font-weight: 700; font-size: 15px; }
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-ex { display: inline !important; }
+
 /* the close icon: first thing in the chart's toolbar (top-left corner), same look as the toolbar's icon buttons */
 html.app-ui .app-term-fsclose {
   flex: none;

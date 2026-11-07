@@ -99,7 +99,6 @@ const WINDOW_OPTION_KEYS = [
   "rightOffset",
   "sessionBreaks",
   "showTagCaptions",
-  "showIndicatorLabels",
   "phoneTags",
   "scaleSide",
   "marginTop",
@@ -1607,8 +1606,8 @@ export class ChartEngine {
     ctx.restore();
 
     // keep the axis wide enough for the widest label
-    // TradingView style: a narrow scale, the tags are the value only (the name is a chip of the same colour over the plot, left of the tag)
-    const need = Math.max(this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
+    // macOS look: the scale is a wide column, the tags carry their names inside (design: 132px)
+    const need = Math.max(this.opts.macLook && !this.leader ? 120 : this.opts.showTagCaptions ? 58 : 52, Math.ceil(maxLabelW + 18));
     this.naturalAxisW = need;
     // windows of one group ask for one common width (minAxisW), a lone chart keeps its small hysteresis
     const want = Math.max(need, this.minAxisW);
@@ -2417,7 +2416,7 @@ export class ChartEngine {
     if (!this.leader) this.compareTags(out);
 
     // flags of the indicators, on the pane of each
-    if (!this.transformed() && this.opts.showIndicatorLabels) {
+    if (!this.transformed()) {
       this.panes.forEach((pane, pi) => {
         if (pane.height <= 0) return;
         let k = 0;
@@ -2472,10 +2471,13 @@ export class ChartEngine {
           if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, ww, hh, r);
           else ctx.rect(x, y, ww, hh);
         };
-        // phone: the flag of an indicator is plain coloured text (no plate), the small name stands before the scale
+        // phone app only: the flag of an indicator is plain coloured text (no plate), the small name stands before the scale
         if (this.opts.phoneTags && t.id.startsWith("ind:")) {
           ctx.textBaseline = "middle";
           const cyp = pl.bodyTop + bodyH / 2 + 0.5;
+          // the value stands IN the scale column, over the scale's own number at that height: that number is hidden by the canvas colour (not a plate)
+          ctx.fillStyle = this.opts.theme.bg;
+          ctx.fillRect(x0, pl.bodyTop + 2, w, bodyH - 4);
           ctx.fillStyle = t.bg;
           ctx.textAlign = "center";
           ctx.font = `600 ${fs}px ${ff}`;
@@ -2492,6 +2494,54 @@ export class ChartEngine {
             }
             ctx.fillText(text, x0 - 4, cyp);
           }
+          continue;
+        }
+        // macOS look: one rounded tag with the name on the left and the value on the right (the price tag solid, the others outlined)
+        if (this.opts.macLook && (t.caption || t.id === "last")) {
+          const solid = t.id === "last" || t.id.startsWith("layer:");
+          const name = (t.caption ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
+          ctx.save();
+          ctx.beginPath();
+          rr(x0 + 1, pl.bodyTop, w - 2, bodyH, 6);
+          if (solid) {
+            ctx.fillStyle = t.bg;
+            ctx.fill();
+          } else {
+            ctx.fillStyle = withAlpha(this.opts.theme.bg, 0.96);
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = t.bg;
+            ctx.stroke();
+          }
+          ctx.textBaseline = "middle";
+          const ink = solid ? t.fg : t.bg;
+          const cy2 = pl.bodyTop + bodyH / 2 + 0.5;
+          ctx.fillStyle = ink;
+          ctx.textAlign = "right";
+          ctx.font = `600 ${fs}px ${ff}`;
+          ctx.fillText(t.text, x0 + w - 8, cy2);
+          const vw = ctx.measureText(t.text).width;
+          if (name) {
+            ctx.textAlign = "left";
+            ctx.font = `500 ${Math.max(10, fs - 2)}px ${ff}`;
+            ctx.globalAlpha = 0.85;
+            let nm = name;
+            const room = w - 16 - vw - 6;
+            while (nm.length > 1 && ctx.measureText(nm).width > room) nm = nm.slice(0, -1);
+            ctx.fillText(nm, x0 + 8, cy2);
+            ctx.globalAlpha = 1;
+          }
+          if (t.extra) {
+            ctx.beginPath();
+            rr(x0 + 1, pl.bodyTop + bodyH - 3, w - 2, extraH + 3, [0, 0, 6, 6]);
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fill();
+            ctx.textAlign = "center";
+            ctx.fillStyle = t.fg;
+            ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
+            ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
+          }
+          ctx.restore();
           continue;
         }
         // the name chip: its right edge touches the tag, its left edge is where the text ends (never farther than the plot allows)

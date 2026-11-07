@@ -219,8 +219,6 @@ export interface EngineOptions {
   showHighLow: boolean;
   /** Small caption above each tag of the price scale saying what it is (symbol, previous close, alert, indicator ...). */
   showTagCaptions: boolean;
-  /** The flags of the indicators on the price scale. */
-  showIndicatorLabels: boolean;
   /** Moving average line on the volume bars. */
   volumeMa: VolumeMaOptions;
   /** Axis font size, px. */
@@ -277,7 +275,6 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   showCountdown: true,
   showHighLow: false,
   showTagCaptions: true,
-  showIndicatorLabels: true,
   volumeMa: { on: true, length: 20, type: "sma", color: "#ff9800", width: 1.4 },
   scaleFontSize: 12,
   marginTop: 8,

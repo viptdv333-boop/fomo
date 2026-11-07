@@ -212,7 +212,7 @@ export default function TopToolbar(p: Props) {
         <InstIcon inst={p.instrument} size={28} />
         <span className="tb-sym-classic font-bold text-[16px]">{p.instrument.ticker}</span>
         <span className="tb-sym-mac">{ctTicker ?? p.instrument.ticker}</span>
-        <span className="hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
+        <span className="tb-sym-ex hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
         <span className="tb-sym-search text-[var(--tv3-text2)] inline-flex">{I.search}</span>
       </button>
       {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={`${btn} tb-ct`} onShown={setCtTicker} />}

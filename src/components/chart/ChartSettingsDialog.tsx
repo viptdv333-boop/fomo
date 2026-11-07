@@ -284,7 +284,6 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Check checked={sc.countdown} onChange={(v) => setScale("countdown", v)} label={t("cs.lbl.countdown")} />
       <Check checked={sc.highLow} onChange={(v) => setScale("highLow", v)} label={t("cs.lbl.highLow")} />
       <Check checked={sc.tagCaptions} onChange={(v) => setScale("tagCaptions", v)} label={t("cs.lbl.captions")} />
-      <Check checked={sc.indLabels} onChange={(v) => setScale("indLabels", v)} label={t("cs.lbl.indLabels")} />
 
       <Section>{t("cs.sec.sizes")}</Section>
       <Row label={t("cs.fontSize")}>
