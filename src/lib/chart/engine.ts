@@ -100,6 +100,7 @@ const WINDOW_OPTION_KEYS = [
   "sessionBreaks",
   "showTagCaptions",
   "showIndicatorLabels",
+  "phoneTags",
   "scaleSide",
   "marginTop",
   "marginBottom",
@@ -2471,6 +2472,28 @@ export class ChartEngine {
           if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, ww, hh, r);
           else ctx.rect(x, y, ww, hh);
         };
+        // phone: the flag of an indicator is plain coloured text (no plate), the small name stands before the scale
+        if (this.opts.phoneTags && t.id.startsWith("ind:")) {
+          ctx.textBaseline = "middle";
+          const cyp = pl.bodyTop + bodyH / 2 + 0.5;
+          ctx.fillStyle = t.bg;
+          ctx.textAlign = "center";
+          ctx.font = `600 ${fs}px ${ff}`;
+          ctx.fillText(t.text, x0 + w / 2, cyp);
+          if (t.caption) {
+            const small = Math.max(8, fs - 3);
+            ctx.font = `500 ${small}px ${ff}`;
+            ctx.textAlign = "right";
+            const maxW = Math.max(30, Math.min(x0 - 6, this.plotW() * 0.6));
+            let text = t.caption;
+            if (ctx.measureText(text).width > maxW) {
+              while (text.length > 1 && ctx.measureText(text + "…").width > maxW) text = text.slice(0, -1);
+              text += "…";
+            }
+            ctx.fillText(text, x0 - 4, cyp);
+          }
+          continue;
+        }
         // the name chip: its right edge touches the tag, its left edge is where the text ends (never farther than the plot allows)
         if (t.caption) {
           ctx.font = `600 ${capFs}px ${ff}`;

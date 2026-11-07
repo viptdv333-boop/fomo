@@ -196,6 +196,8 @@ export interface EngineOptions {
   macLook?: boolean;
   /** The phone version of the look (app UI): every pane, the price one included, is a rounded card on the canvas, no symbol caption (the page's header has it). */
   macCards?: boolean;
+  /** Phone (app UI): the flags of the indicators on the price scale are the value in the indicator's colour, no plate, with a small name before the scale. */
+  phoneTags?: boolean;
 
   /* ── chart settings (see lib/chart/settings.ts); the defaults keep the previous look ── */
   candleStyle: CandleStyle;

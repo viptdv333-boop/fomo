@@ -15,6 +15,8 @@ import LegacyTelegramBlock from "@/components/profile/LegacyTelegramBlock";
 import { channelConnected } from "@/components/profile/notifications/PrefMatrix";
 import { realApi } from "@/components/profile/notifications/api";
 import { useNotifSettings } from "@/components/profile/notifications/useNotifSettings";
+import { useTheme } from "@/lib/theme";
+import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import AppIcon from "../AppIcon";
 import AppSheet, { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
@@ -37,6 +39,10 @@ export default function NotifScreen() {
   const td = useTerminalNotifyDefaults();
   const [picker, setPicker] = useState<PickerKey | null>(null);
   const [channelSheet, setChannelSheet] = useState<ChannelSheet | null>(null);
+  // the dock's «Настройки» tab opens this screen: the look of the app lives here too (colour theme, new / classic look)
+  const { theme, toggleTheme } = useTheme();
+  const look = useAppMacSkin(true);
+  const [lookPick, setLookPick] = useState<"theme" | "look" | null>(null);
 
   // quiet hours: edited locally, saved shortly after the last change (as the site's card does)
   const [q, setQ] = useState<QuietState | null>(null);
@@ -108,6 +114,15 @@ export default function NotifScreen() {
       });
 
   const sections: SheetSection[] = [];
+
+  sections.push({
+    key: "look",
+    title: t("appprof.look"),
+    rows: [
+      { key: "theme", label: t("appprof.theme"), icon: ico(theme === "dark" ? "moon" : "sun"), value: theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight"), chev: true, onClick: () => setLookPick("theme") },
+      { key: "look", label: t("appprof.lookRow"), icon: ico("sliders"), value: look.on ? t("appprof.lookNew") : t("appprof.lookOld"), chev: true, onClick: () => setLookPick("look") },
+    ],
+  });
 
   sections.push({
     key: "intro",
@@ -221,6 +236,33 @@ export default function NotifScreen() {
         <div className="ap-msg" data-err={n.saveState === "error" ? "1" : undefined} role="status" style={{ marginTop: -8 }}>
           {saveNote}
         </div>
+      )}
+
+      {lookPick === "theme" && (
+        <PickerSheet
+          title={t("appprof.theme")}
+          value={theme}
+          options={[
+            { key: "light", label: t("appprof.themeLight") },
+            { key: "dark", label: t("appprof.themeDark") },
+          ]}
+          onPick={(k) => {
+            if (k !== theme) toggleTheme();
+          }}
+          onClose={() => setLookPick(null)}
+        />
+      )}
+      {lookPick === "look" && (
+        <PickerSheet
+          title={t("appprof.lookRow")}
+          value={look.on ? "new" : "old"}
+          options={[
+            { key: "new", label: t("appprof.lookNew") },
+            { key: "old", label: t("appprof.lookOld") },
+          ]}
+          onPick={(k) => look.set(k === "new")}
+          onClose={() => setLookPick(null)}
+        />
       )}
 
       {channelSheet && (

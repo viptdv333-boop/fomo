@@ -41,7 +41,7 @@ import {
 } from "@/lib/app-terminal";
 import { useDemoGate } from "@/lib/useDemoGate";
 import { calcTickerFor, calculatorHref } from "@/lib/futures-calc";
-import { canSetNativeImmersive, isNativeApp, onNativeImmersiveReset, setNativeImmersive } from "@/lib/native-app";
+import { isNativeApp, onNativeImmersiveReset, setNativeImmersive } from "@/lib/native-app";
 import { collapseOnPop, fsPushState, fullscreenPlan, isFsHistoryState } from "@/lib/app-fullscreen";
 import { raisesKeyboard } from "@/lib/app-ui";
 import AppIcon from "./AppIcon";
@@ -161,6 +161,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     }
   }, [mac]);
   const [macAdd, setMacAdd] = useState(false);
+  const [macSegMenu, setMacSegMenu] = useState(false);
   const [macFilter, setMacFilter] = useState("");
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
@@ -285,7 +286,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     if (!expanded) return;
     const root = document.documentElement;
     root.classList.add("app-term-fs");
-    const plan = fullscreenPlan({ native: isNativeApp(), nativeImmersive: canSetNativeImmersive(), apiAvailable: !mac && typeof root.requestFullscreen === "function" }); // the phone look keeps the dock under the chart: only the CSS layer
+    const plan = fullscreenPlan({ native: isNativeApp(), nativeImmersive: false, apiAvailable: false }); // the navigation bars (Android system bar and the app's dock) never hide: only the CSS layer above the dock
     if (plan.immersive) setNativeImmersive(true);
     if (plan.api) {
       try {
@@ -398,29 +399,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       } else if (a === "alerts") h.current?.openAlerts();
     };
     const rows = filterWatch(watchlist.items, macFilter, (i) => instName(i, t));
-    const segBlock =
-      TERMINAL_SITE || algoSegs ? (
-        <div className="app-term-seg" role="tablist" data-n={1 + (TERMINAL_SITE ? 1 : 0) + (algoSegs ? 2 : 0)}>
-          <button type="button" role="tab" aria-selected={effSeg === "watch"} data-on={effSeg === "watch" ? "1" : undefined} onClick={() => setSeg("watch")}>
-            {algoSegs ? t("mnav.watchlist") : t("appui.term.watch")}
-          </button>
-          {TERMINAL_SITE && (
-            <button type="button" role="tab" aria-selected={effSeg === "cal"} data-on={effSeg === "cal" ? "1" : undefined} onClick={() => setSeg("cal")}>
-              {t("nav.calendar")}
-            </button>
-          )}
-          {algoSegs && (
-            <>
-              <button type="button" role="tab" aria-selected={effSeg === "ob"} data-on={effSeg === "ob" ? "1" : undefined} data-seg-ob onClick={() => setSeg("ob")}>
-                {t("shell.tab.orderbook")}
-              </button>
-              <button type="button" role="tab" aria-selected={effSeg === "algo"} data-on={effSeg === "algo" ? "1" : undefined} data-seg-algo onClick={() => setSeg("algo")}>
-                {t("ap.seg.algo")}
-              </button>
-            </>
-          )}
-        </div>
-      ) : null;
     return (
       <DemoGate kind="terminal" path="/terminal" layout="flow">
         <div className="app-term app-mac" data-screen={macScreen}>
@@ -507,8 +485,47 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                     <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
                   </svg>
                 </button>
+                {/* calendar / order book / ALGOPACK: one icon with a small menu instead of a row of segments over the list */}
+                {(TERMINAL_SITE || algoSegs) && (
+                  <div className="app-mac-menu">
+                    <button type="button" className="app-mac-plus" aria-haspopup="menu" aria-expanded={macSegMenu} onClick={() => setMacSegMenu((v) => !v)} aria-label={t("mac.m.menu")} title={t("mac.m.menu")}>
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="12" r="1.8" />
+                        <circle cx="12" cy="12" r="1.8" />
+                        <circle cx="19" cy="12" r="1.8" />
+                      </svg>
+                    </button>
+                    {macSegMenu && (
+                      <div className="app-mac-pop" role="menu">
+                        {(
+                          [
+                            ["watch", t("appui.term.watch"), true],
+                            ["cal", t("nav.calendar"), TERMINAL_SITE],
+                            ["ob", t("shell.tab.orderbook"), algoSegs],
+                            ["algo", t("ap.seg.algo"), algoSegs],
+                          ] as const
+                        )
+                          .filter((x) => x[2])
+                          .map(([k, label]) => (
+                            <button
+                              key={k}
+                              type="button"
+                              role="menuitem"
+                              className="app-mac-mi"
+                              data-on={effSeg === k ? "1" : undefined}
+                              onClick={() => {
+                                setSeg(k);
+                                setMacSegMenu(false);
+                              }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              {segBlock}
               {effSeg === "watch" && watchlist.items.length > 14 && (
                 <label className="app-mac-filter">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -589,30 +606,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   <AppIcon name="chevR" size={18} stroke={1.8} />
                 </a>
               )}
-              {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
-                <Link
-                  href={calculatorHref(locale as Locale, { ticker: calcTickerFor(selected.source, selected.dataTicker), entry: quote && Number.isFinite(quote.price) ? quote.price : null, from: "terminal" })}
-                  prefetch={false}
-                  className="app-term-ideas"
-                  data-calc-link
-                >
-                  <AppIcon name="calc" size={18} stroke={1.8} />
-                  <span className="app-term-ideas-t">
-                    {t("nav.calculator")}
-                    <span className="app-term-ideas-s">{t("appprof.calcSub")}</span>
-                  </span>
-                  <AppIcon name="chevR" size={18} stroke={1.8} />
-                </Link>
-              )}
-              {TERMINAL_SITE && (
-                <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-mac-promo" data-fomo-community>
-                  <AppIcon name="users" size={26} stroke={1.9} />
-                  <span>
-                    <b>{t("mac.m.promo")}</b>
-                    <small>{t("mac.m.promoSub")}</small>
-                  </span>
-                </a>
-              )}
+              {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
                 {delayed ? ` ${t("appui.term.disc15")}` : ""}
@@ -620,6 +614,27 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             </div>
           )}
 
+          {/* full-screen chart, like TradingView: the drawing / indicators / alerts / settings panel stays on screen under the chart, over the dock */}
+          {expanded && (
+            <div className="app-mac-fsbar" data-app-fsbar role="toolbar">
+              <button type="button" onClick={() => h.current?.toggleDrawTools()}>
+                <AppIcon name="pen" size={22} stroke={1.8} />
+                <span>{t("mac.m.tabTools")}</span>
+              </button>
+              <button type="button" onClick={() => h.current?.openIndicators()}>
+                <AppIcon name="pulse" size={22} stroke={1.8} />
+                <span>{t("mac.lbl.indicators")}</span>
+              </button>
+              <button type="button" onClick={() => h.current?.openAlerts()}>
+                <AppIcon name="bell" size={22} stroke={1.8} />
+                <span>{t("mac.lbl.alerts")}</span>
+              </button>
+              <button type="button" onClick={() => h.current?.openSettings()}>
+                <AppIcon name="sliders" size={22} stroke={1.8} />
+                <span>{t("mac.lbl.settings")}</span>
+              </button>
+            </div>
+          )}
           <MacTabBar active={macActiveTab(expanded ? "term" : macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
           <InstrumentSearchDialog open={macAdd} mode="watchlist" onClose={() => setMacAdd(false)} onPick={watchlist.add} existing={watchlist.items} onRemove={watchlist.remove} />
         </div>

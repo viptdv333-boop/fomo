@@ -695,6 +695,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   useEffect(() => {
     engineRef.current?.setOptions({ macCards });
   }, [engineReady, macCards]);
+  /* the phone app (page or full screen, not the wide window with the web toolbar): indicator flags of the scale are coloured text, no plates */
+  const wideApp = useAppTopToolbar();
+  const phoneTags = (!!appPage || !!appFull) && !wideApp;
+  useEffect(() => {
+    engineRef.current?.setOptions({ phoneTags });
+  }, [engineReady, phoneTags]);
 
   /* chart settings: theme, candles, scales, labels ... */
   useEffect(() => {

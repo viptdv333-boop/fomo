@@ -58,8 +58,9 @@ html.app-ui .app-term-chart.app-term-fs .app-term-chartbody { min-height: 0; fle
 
 /* nothing under the layer takes part while it is open: no scrolling of the page, no dock / header taps or focus */
 html.app-ui.app-term-fs main { overflow: hidden; }
-html.app-ui.app-term-fs:not(.app-mac-on) [data-app-tabbar],
 html.app-ui.app-term-fs [data-app-header] { visibility: hidden; }
+/* the navigation bar (the app's dock) never hides: the full-screen chart stops above it (the dock is z 45) */
+html.app-ui .app-term-chart.app-term-fs { z-index: 44; bottom: auto; height: calc(100dvh - var(--app-bottom-inset)); padding-bottom: 0; }
 
 /* the close icon: first thing in the chart's toolbar (top-left corner), same look as the toolbar's icon buttons */
 html.app-ui .app-term-fsclose {

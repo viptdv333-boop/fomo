@@ -41,23 +41,11 @@ function dataFromShort(v: VpView): string {
 function tableRowsShort(cfg: VpCfg, v: VpView, locale: string): TableRow[] {
   const out: TableRow[] = [];
   const f = (x: number) => formatPrice(x, v.dec, locale);
-  const r = cfg.rows;
   const L = v.levels;
-  const st = v.stats;
-  if (r.High) out.push({ label: "High", value: f(L.high) });
-  if (r.Vah) out.push({ label: "VAH", value: f(L.vah) });
-  if (r.Poc) out.push({ label: "POC", value: f(L.poc) });
-  if (r.Val) out.push({ label: "VAL", value: f(L.val) });
-  if (r.Low) out.push({ label: "Low", value: f(L.low) });
-  if (r.Total) out.push({ label: indT("vp.ts.total", "Volume"), value: fmtVolShort(st.total, locale) });
-  if (r.Avg) out.push({ label: indT("vp.ts.avg", "Avg/bar"), value: fmtVolShort(st.avg, locale) });
-  if (r.Ma) out.push({ label: `MA ${cfg.maLen}`, value: fmtVolShort(st.ma, locale) });
-  if (r.Bars) out.push({ label: indT("vp.ts.bars", "Bars"), value: String(st.bars) });
-  if (r.From) out.push({ label: indT("vp.ts.from", "Data"), value: dataFromShort(v) });
-  if (st.kind !== "approx") {
-    if (r.Delta) out.push({ label: "Δ", value: (st.delta > 0 ? "+" : "") + fmtVolShort(st.delta, locale) });
-    if (r.Buy && isFinite(st.buyPct)) out.push({ label: "Buy%", value: st.buyPct.toFixed(1) });
-  }
+  // phone: only the three levels that matter on a small screen (the other rows stay in the wide table)
+  out.push({ label: "VAH", value: f(L.vah) });
+  out.push({ label: "POC", value: f(L.poc) });
+  out.push({ label: "VAL", value: f(L.val) });
   return out;
 }
 
@@ -153,8 +141,10 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   if (narrow && showRows.length > 0) showRows = showRows.slice(0, fitRows(showRows.length, rowH, availableHeight(cfg.tblPos, w, place)));
   const h = rowH * (1 + showRows.length);
   const { x, y } = placeTable(cfg.tblPos, w, h, place);
-  // background and frame
-  if (col.soft && typeof ctx.roundRect === "function") {
+  // background and frame (the phone table is transparent: just the text over the chart)
+  if (narrow) {
+    /* no plate */
+  } else if (col.soft && typeof ctx.roundRect === "function") {
     // design v3: white rounded card, soft shadow, grey header strip
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.18)";
@@ -190,11 +180,13 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   // rows
   for (let i = 0; i < showRows.length; i++) {
     const ry = y + rowH * (i + 1);
-    ctx.strokeStyle = col.sep;
-    ctx.beginPath();
-    ctx.moveTo(x + (col.soft ? 8 : 1), ry + 0.5);
-    ctx.lineTo(x + w - (col.soft ? 8 : 1), ry + 0.5);
-    ctx.stroke();
+    if (!narrow) {
+      ctx.strokeStyle = col.sep;
+      ctx.beginPath();
+      ctx.moveTo(x + (col.soft ? 8 : 1), ry + 0.5);
+      ctx.lineTo(x + w - (col.soft ? 8 : 1), ry + 0.5);
+      ctx.stroke();
+    }
     ctx.font = `${fs}px ${fontFamily}`;
     ctx.fillStyle = col.soft ? col.muted : col.text;
     ctx.textAlign = "left";
