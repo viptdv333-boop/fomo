@@ -142,8 +142,19 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   const h = rowH * (1 + showRows.length);
   const { x, y } = placeTable(cfg.tblPos, w, h, place);
   // background and frame (the phone table is transparent: just the text over the chart)
+  const bc = col.soft ? rgba(col.text, 0.5) : col.border;
   if (narrow) {
-    /* no plate */
+    // a bordered table on the bare chart: a frame, a line under every row and one between the label and the value columns
+    ctx.strokeStyle = bc;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    if (showRows.length > 0) {
+      const vx = Math.round(x + padX + lw + gap / 2) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(vx, y + rowH);
+      ctx.lineTo(vx, y + h - 1);
+      ctx.stroke();
+    }
   } else if (col.soft && typeof ctx.roundRect === "function") {
     // design v3: white rounded card, soft shadow, grey header strip
     ctx.save();
@@ -180,13 +191,11 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   // rows
   for (let i = 0; i < showRows.length; i++) {
     const ry = y + rowH * (i + 1);
-    if (!narrow) {
-      ctx.strokeStyle = col.sep;
-      ctx.beginPath();
-      ctx.moveTo(x + (col.soft ? 8 : 1), ry + 0.5);
-      ctx.lineTo(x + w - (col.soft ? 8 : 1), ry + 0.5);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = narrow ? bc : col.sep;
+    ctx.beginPath();
+    ctx.moveTo(narrow ? x + 1 : x + (col.soft ? 8 : 1), ry + 0.5);
+    ctx.lineTo(narrow ? x + w - 1 : x + w - (col.soft ? 8 : 1), ry + 0.5);
+    ctx.stroke();
     ctx.font = `${fs}px ${fontFamily}`;
     ctx.fillStyle = col.soft ? col.muted : col.text;
     ctx.textAlign = "left";

@@ -54,6 +54,8 @@ export interface PlaceIn {
   insetTop: number;
   /** Space already used in the same corner by earlier tables; px. */
   stack: number;
+  /** The phone table: its top-right corner stays at the top edge (it is small and the legend is on the left), whatever the legend height. */
+  narrow?: boolean;
 }
 
 /** Vertical room for the table in its corner (below the legend for the top corners that meet it). */
@@ -67,7 +69,7 @@ export function availableHeight(pos: TablePos, tableW: number, p: PlaceIn): numb
 function topOffset(pos: TablePos, tableW: number, p: PlaceIn): number {
   const right = pos === "tr";
   // the legend of the indicators lives at the top left: a table that would reach over it goes below it
-  const belowLegend = !right || p.W - tableW - TABLE_MARGIN < LEGEND_ROOM;
+  const belowLegend = p.narrow ? !right : !right || p.W - tableW - TABLE_MARGIN < LEGEND_ROOM;
   return (belowLegend ? p.insetTop : TABLE_MARGIN) + p.stack;
 }
 

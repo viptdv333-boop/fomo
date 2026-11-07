@@ -98,7 +98,7 @@ const rows: [string, string, string, string][] = [
   ["ind.p.vpZoneAlpha", "Прозрачность зон, %", "Zone opacity, %", "区域不透明度 %"],
 
   /* table */
-  ["ind.p.vpTable", "Таблица статистики профиля", "Profile statistics table", "分布统计表"],
+  ["ind.p.vpTable", "Показывать таблицу статистики", "Show the statistics table", "显示统计表"],
   ["ind.p.vpTblPos", "Положение таблицы", "Table position", "表格位置"],
   ["ind.p.vpTblSize", "Размер текста таблицы", "Table text size", "表格文字大小"],
   ["ind.p.vpTblCompact", "Компактный вид", "Compact mode", "紧凑模式"],
