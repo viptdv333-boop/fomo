@@ -70,7 +70,7 @@ import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
 import { adHocInstrument, exchangeLabel, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
 import MacTitleBar from "@/components/chart/MacTitleBar";
-import { useMacSkin } from "@/lib/chart/mac-skin";
+import { ensureMacFont, useMacSkin } from "@/lib/chart/mac-skin";
 
 export type { ChartSource } from "@/lib/terminal-data";
 import type { ChartSource } from "@/lib/terminal-data";
@@ -699,6 +699,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   /* the phone app (page or full screen, not the wide window with the web toolbar): indicator flags of the scale are coloured text, no plates */
   const wideApp = useAppTopToolbar();
   const phoneTags = (!!appPage || !!appFull) && !wideApp;
+  /* the phone's full-screen chart wears the PC's dialog / menu styling too (the same fonts, colours and glyphs): the skin's `html[data-tvmac]` rules apply while it is open */
+  const phoneFs = !!appFull && !wideApp;
+  useEffect(() => {
+    if (!phoneFs) return;
+    document.documentElement.setAttribute("data-tvmac", "");
+    ensureMacFont();
+    return () => document.documentElement.removeAttribute("data-tvmac");
+  }, [phoneFs]);
   useEffect(() => {
     engineRef.current?.setOptions({ phoneTags });
   }, [engineReady, phoneTags]);

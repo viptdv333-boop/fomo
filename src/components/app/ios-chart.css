@@ -4,7 +4,7 @@
  * grouped lists with hairlines, 44pt touch targets, menus as sheets that rise from the bottom (never from the top, the toolbar is at the bottom).
  */
 html.app-ui.app-term-fs:not(.app-desktop) {
-  --ios-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --ios-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --ios-blue: #0a84ff;
   --ios-sheet: color-mix(in srgb, var(--tv3-card, #1c1c1e) 84%, transparent);
   --ios-hair: var(--tv3-hair, rgba(128, 128, 128, 0.28));
