@@ -2648,7 +2648,7 @@ export class ChartEngine {
         if (y - prev < gap) y = prev + gap; // names of lines at the same height stack downwards
         prev = y;
         if (y < pane.top + size / 2 || y > pane.top + pane.height - size / 2) continue;
-        const text = t.lineName ?? "";
+        const text = (t.lineName ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1"); // «ALMA ALMA 20» -> «ALMA 20"
         const w = ctx.measureText(text).width;
         ctx.fillStyle = t.bg;
         if (lastX + 6 + w <= plotW - 4) {
