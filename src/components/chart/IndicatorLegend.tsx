@@ -33,7 +33,7 @@ interface Props {
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
 const enginePane = (pid: string) => (pid.endsWith(":p") ? "main" : pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 40, winId, ready = true }: Props) {
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 6, winId, ready = true }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
