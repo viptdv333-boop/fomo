@@ -141,3 +141,5 @@ html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child { gap: 8px; padding: 10px 12px; }
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child h2 { font-size: 15px; }
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child button:not([aria-label*="акр"]) { padding-left: 10px !important; padding-right: 10px !important; font-size: 13px !important; white-space: nowrap; }
+/* the legend pill sits under the asset / OHLC strip that the phone chart overlays on its top (the PC chart has that strip above the canvas) */
+html.app-ui:not(.app-desktop) [data-lg-main] { top: 51px !important; left: 10px !important; }
