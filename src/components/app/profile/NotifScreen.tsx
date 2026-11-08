@@ -7,16 +7,12 @@ import { isTerminalSite } from "@/lib/site-mode";
 import { notifEventsFor, quietTimeOptions, minToTime, quietZones } from "@/lib/app-profile";
 import { COOLDOWN_OPTIONS, EXPIRY_OPTIONS, REMINDER_LEAD_OPTIONS, type TerminalNotifyDefaults } from "@/lib/terminal-alert-defaults";
 import { saveTerminalNotifyDefaults, useTerminalNotifyDefaults } from "@/lib/terminal-alert-defaults-client";
-import { openNativeSettings } from "@/lib/native-app";
-import { useNativeSettingsAvailable } from "@/components/shared/NativeSettingsLink";
 import ChannelCards from "@/components/profile/notifications/ChannelCards";
 import { ChannelIcon } from "@/components/profile/notifications/ui";
 import LegacyTelegramBlock from "@/components/profile/LegacyTelegramBlock";
 import { channelConnected } from "@/components/profile/notifications/PrefMatrix";
 import { realApi } from "@/components/profile/notifications/api";
 import { useNotifSettings } from "@/components/profile/notifications/useNotifSettings";
-import { useTheme } from "@/lib/theme";
-import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import AppIcon from "../AppIcon";
 import AppSheet, { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
@@ -35,14 +31,9 @@ type PickerKey = "from" | "to" | "tz" | "repeat" | "cooldown" | "expiry" | "lead
 export default function NotifScreen() {
   const { t, flash } = useProf();
   const n = useNotifSettings(realApi);
-  const native = useNativeSettingsAvailable();
   const td = useTerminalNotifyDefaults();
   const [picker, setPicker] = useState<PickerKey | null>(null);
   const [channelSheet, setChannelSheet] = useState<ChannelSheet | null>(null);
-  // the dock's «Настройки» tab opens this screen: the look of the app lives here too (colour theme, new / classic look)
-  const { theme, toggleTheme } = useTheme();
-  const look = useAppMacSkin(true);
-  const [lookPick, setLookPick] = useState<"theme" | "look" | null>(null);
 
   // quiet hours: edited locally, saved shortly after the last change (as the site's card does)
   const [q, setQ] = useState<QuietState | null>(null);
@@ -114,31 +105,6 @@ export default function NotifScreen() {
       });
 
   const sections: SheetSection[] = [];
-
-  sections.push({
-    key: "look",
-    title: t("appprof.look"),
-    rows: [
-      { key: "theme", label: t("appprof.theme"), icon: ico(theme === "dark" ? "moon" : "sun"), value: theme === "dark" ? t("appprof.themeDark") : t("appprof.themeLight"), chev: true, onClick: () => setLookPick("theme") },
-      { key: "look", label: t("appprof.lookRow"), icon: ico("sliders"), value: look.on ? t("appprof.lookNew") : t("appprof.lookOld"), chev: true, onClick: () => setLookPick("look") },
-    ],
-  });
-
-  sections.push({
-    key: "intro",
-    rows: native
-      ? [
-          {
-            key: "native",
-            label: t("app.settings"),
-            sub: t("app.settings.cardDesc"),
-            icon: ico("sliders"),
-            chev: true,
-            onClick: () => void openNativeSettings(),
-          },
-        ]
-      : [],
-  });
 
   // delivery channels: one row each (status), the channel's own connection card opens in a sheet
   const chRow = (c: ChannelId): SheetRow => {
@@ -236,33 +202,6 @@ export default function NotifScreen() {
         <div className="ap-msg" data-err={n.saveState === "error" ? "1" : undefined} role="status" style={{ marginTop: -8 }}>
           {saveNote}
         </div>
-      )}
-
-      {lookPick === "theme" && (
-        <PickerSheet
-          title={t("appprof.theme")}
-          value={theme}
-          options={[
-            { key: "light", label: t("appprof.themeLight") },
-            { key: "dark", label: t("appprof.themeDark") },
-          ]}
-          onPick={(k) => {
-            if (k !== theme) toggleTheme();
-          }}
-          onClose={() => setLookPick(null)}
-        />
-      )}
-      {lookPick === "look" && (
-        <PickerSheet
-          title={t("appprof.lookRow")}
-          value={look.on ? "new" : "old"}
-          options={[
-            { key: "new", label: t("appprof.lookNew") },
-            { key: "old", label: t("appprof.lookOld") },
-          ]}
-          onPick={(k) => look.set(k === "new")}
-          onClose={() => setLookPick(null)}
-        />
       )}
 
       {channelSheet && (

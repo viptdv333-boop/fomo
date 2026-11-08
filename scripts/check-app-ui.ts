@@ -140,7 +140,7 @@ function eq(name: string, got: unknown, want: unknown) {
 eq("nine tabs in order (the dock carousel): the calculator right after the terminal, settings before the profile, the profile last", APP_TABS.map((t) => t.id), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "settings", "me"]);
 eq("tab hrefs", APP_TABS.map((t) => t.href), ["/feed", "/terminal", "/calculator", "/chat", "/calendar", "/channels", "/authors", "/profile?tab=notifications", "/profile"]);
 eq("tab labels reuse existing keys", APP_TABS.map((t) => t.labelKey), ["nav.feed", "nav.terminal", "nav.calculator", "nav.chat", "nav.calendar", "nav.channels", "nav.authors", "appui.tab.settings", "profile.profile"]);
-eq("terminal site dock: terminal, calculator, settings, profile (the profile last)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calculator", "settings", "me"]);
+eq("terminal site dock: terminal, calculator, calendar (a segment of the terminal), profile (the profile last; no settings tab)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calculator", "calendar", "me"]);
 
 // --- active tab
 const cases: [string, ReturnType<typeof activeAppTab>][] = [
@@ -285,7 +285,7 @@ eq("dock key: no wrap at the ends", [dockKeyTarget(STEP(-1), "/feed"), dockKeyTa
 eq("dock key: a page of no tab has no neighbours", dockKeyTarget(STEP(1), "/help"), null);
 eq("dock key: jump to a tab, not to the open one", [dockKeyTarget({ kind: "jump", index: 5 }, "/feed")?.id, dockKeyTarget({ kind: "jump", index: 0 }, "/feed")], ["channels", null]);
 eq("dock key: jump past the dock does nothing", dockKeyTarget({ kind: "jump", index: 9 }, "/feed"), null);
-eq("dock key on the terminal site (4 tabs): steps and jumps", [dockKeyTarget(STEP(1), "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 3 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 4 }, "/terminal", TERMINAL_APP_TABS)], ["calculator", "settings", "me", null]);
+eq("dock key on the terminal site (4 tabs): steps and jumps", [dockKeyTarget(STEP(1), "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 2 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 3 }, "/terminal", TERMINAL_APP_TABS)?.id, dockKeyTarget({ kind: "jump", index: 4 }, "/terminal", TERMINAL_APP_TABS)], ["calculator", "calendar", "me", null]);
 eq("wheel: vertical turns sideways", [dockWheelDelta(0, 100), dockWheelDelta(0, -53), dockWheelDelta(5, 100)], [100, -53, 100]);
 eq("wheel: line / page modes are scaled", [dockWheelDelta(0, 3, 1), dockWheelDelta(0, 1, 2)], [72, 400]);
 eq("wheel: a sideways gesture is left to the browser", [dockWheelDelta(120, 10), dockWheelDelta(50, 50), dockWheelDelta(0, 0), dockWheelDelta(NaN, 4)], [null, null, null, null]);

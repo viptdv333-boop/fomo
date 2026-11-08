@@ -14,6 +14,7 @@ import { useAppTopToolbar, useAppUi } from "./useAppUi";
 import { useTabBadges } from "./useTabBadges";
 import { applyFontStep, readFontStep } from "./fontStep";
 import { hostNavigate, useAppPathname } from "./tabhost/store";
+import { useTermCal } from "./termCal";
 
 const ICON: Record<AppTabId, AppIconName> = { feed: "board", terminal: "terminal", calculator: "calc", chat: "chat", calendar: "cal", channels: "channels", authors: "users", me: "user", settings: "sliders" };
 
@@ -285,7 +286,11 @@ function useDesktopNav(bar: React.RefObject<HTMLElement | null>) {
 function TabBar() {
   const { t, locale } = useT();
   const pathname = useAppPathname();
-  const active = activeAppTab(pathname);
+  const pathActive = activeAppTab(pathname);
+  // the terminal site's calendar is a segment of the terminal screen: while it is shown the «Календарь» tab is the lit one (not «Список»)
+  const termCal = useTermCal();
+  const calTab = APP_TABS.some((x) => x.id === "calendar" && x.href.startsWith("/terminal"));
+  const active: AppTabId | null = calTab && pathActive === "terminal" && termCal ? "calendar" : pathActive;
   const counts = useTabBadges(active); // red badges: Доска / Терминал / Болталка / Календарь / Каналы (src/lib/app-badges.ts)
   const { data: session } = useSession();
   const me = session?.user as { image?: string | null; name?: string | null } | undefined;
@@ -363,7 +368,13 @@ function TabBar() {
                 /* old app build */
               }
               if (on) document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
-              if (on && tab.id === "terminal") window.dispatchEvent(new Event("fomo:terminal-home"));
+              // «Список»: back to the watchlist (closes the full-screen chart, leaves the calendar); «Календарь» while the terminal is open: its calendar segment
+              if (tab.id === "terminal" && pathActive === "terminal") window.dispatchEvent(new Event("fomo:terminal-home"));
+              if (tab.id === "calendar" && calTab && pathActive === "terminal") {
+                e.preventDefault();
+                window.dispatchEvent(new Event("fomo:terminal-calendar"));
+                return;
+              }
               // the tab host (tabhost/AppTabHost.tsx) shows a tab's screen in place: no server round trip, the screen that was open before is still mounted
               if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && hostNavigate(appTabHref(locale as "ru" | "en" | "cn", tab))) e.preventDefault();
             }}

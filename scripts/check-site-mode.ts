@@ -148,9 +148,9 @@ eq("events: the money group is called «Система» on the terminal site on
 
 // --- dock ---------------------------------------------------------------------------------------------------------
 eq("dock: main has 9 tabs", MAIN_APP_TABS.map((t) => t.id), ["feed", "terminal", "calculator", "chat", "calendar", "channels", "authors", "settings", "me"]);
-eq("dock: terminal has 4 tabs (the calculator after the terminal; no calendar tab: the calendar is inside the terminal)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calculator", "settings", "me"]);
+eq("dock: terminal has 4 tabs (the calculator after the terminal, the calendar tab opens the terminal on its calendar segment, no settings tab)", TERMINAL_APP_TABS.map((t) => t.id), ["terminal", "calculator", "calendar", "me"]);
 eq("dock: the terminal dock's calculator tab is a path the terminal site serves (behind the login)", TERMINAL_APP_TABS.filter((t) => t.id === "calculator").map((t) => [routeAllowed("terminal", t.href, false), terminalNeedsLogin(t.href)]), [[true, true]]);
-eq("dock: the terminal dock has no /calendar", TERMINAL_APP_TABS.some((t) => t.href === "/calendar" || t.match.includes("/calendar")), false);
+eq("dock: the terminal dock has no /calendar page (its calendar tab points into the terminal)", TERMINAL_APP_TABS.some((t) => t.href === "/calendar" || t.match.includes("/calendar")), false);
 eq("dock: the terminal dock has no board, chat or channels", TERMINAL_APP_TABS.some((t) => t.href === "/feed" || t.href === "/chat" || t.href === "/channels"), false);
 
 // --- terminal SEO: search-engine verification from the environment, comparison data, landing copy ---------------------------

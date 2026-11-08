@@ -11,6 +11,7 @@ import { isTerminalSite } from "@/lib/site-mode";
 import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { localZone } from "@/lib/chart/settings";
 import CalendarPanel from "@/components/chart/calendar/CalendarPanel";
+import { setTermCal } from "./termCal";
 import OrderBookPanel from "@/components/chart/OrderBookPanel";
 import AlgoPanel from "@/components/chart/AlgoPanel";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
@@ -156,7 +157,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
       if (/[?&](symbol|ticker)=/.test(window.location.search)) {
         fromList.current = true;
         openFsRef.current();
-      } else if (/[?&]panel=/.test(window.location.search)) setMacScreen("term");
+      } else if (/[?&]panel=/.test(window.location.search) && !/[?&]panel=calendar/.test(window.location.search)) setMacScreen("term"); // (?panel=calendar: the list screen, where the calendar segment is)
     } catch {
       /* no location */
     }
@@ -208,6 +209,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   const algoSegs = algoAllowed === true && !wide && selected?.source === "moex";
   const effSeg: "watch" | "cal" | "ob" | "algo" = (seg === "ob" || seg === "algo") && !algoSegs ? "watch" : seg === "cal" && !TERMINAL_SITE ? "watch" : seg;
   const hideWatch = wide && effSeg === "watch";
+  // the dock lights its «Календарь» tab while the calendar is what the screen shows
+  const calShown = TERMINAL_SITE && effSeg === "cal" && !expanded && (!mac || macScreen === "list");
+  useEffect(() => {
+    setTermCal(calShown);
+    return () => setTermCal(false);
+  }, [calShown]);
   const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
@@ -250,9 +257,21 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   useEffect(() => {
     const home = () => {
       if (expandedRef.current) closeFs();
+      setSeg("watch");
+      setMacScreen("list");
+    };
+    // the dock's «Календарь» tab while the terminal is open: the calendar segment of the list screen
+    const cal = () => {
+      if (expandedRef.current) closeFs();
+      setMacScreen("list");
+      setSeg("cal");
     };
     window.addEventListener("fomo:terminal-home", home);
-    return () => window.removeEventListener("fomo:terminal-home", home);
+    window.addEventListener("fomo:terminal-calendar", cal);
+    return () => {
+      window.removeEventListener("fomo:terminal-home", home);
+      window.removeEventListener("fomo:terminal-calendar", cal);
+    };
   }, [closeFs]);
   // the Android Back button (window.FomoBack) collapses the chart: through closeFs, i.e. the same history step as the browser's Back
   useBackLayer(expanded, closeFs, "screen");

@@ -39,7 +39,8 @@ function cleanPath(pathname: string): string {
 /** The tab whose ROOT screen this path is (/feed, /chat ... exactly: pushed screens such as /ideas/<id> or /channels/<id> are no roots), or null. */
 export function hostTabForPath(pathname: string, tabs: readonly AppTabDef[] = APP_TABS): HostScreenId | null {
   const clean = cleanPath(pathname);
-  for (const t of tabs) if (HOST_ROOT[t.id] === clean) return t.id;
+  // (a tab with no paths of its own, like the terminal site's «Календарь» that opens the terminal on a segment, is not a root screen)
+  for (const t of tabs) if (t.match.length > 0 && HOST_ROOT[t.id] === clean) return t.id;
   return null;
 }
 

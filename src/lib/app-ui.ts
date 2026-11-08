@@ -30,9 +30,12 @@ export const MAIN_APP_TABS: readonly AppTabDef[] = [
   { id: "me", href: "/profile", labelKey: "profile.profile", match: ["/profile", "/payments", "/subscriptions"] },
 ];
 
-/** The dock of the terminal site (terminal.fomo.spot): four tabs (the terminal, the calculator behind the login, settings, profile). The calendar is not a tab there: it lives inside the terminal next to the watchlist. */
-export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calculator", "settings", "me"].includes(tab.id)).map((tab) =>
-  tab.id === "me" ? { ...tab, match: ["/profile"] } : tab
+/**
+ * The dock of the terminal site (terminal.fomo.spot): four tabs - the terminal (the watchlist), the calculator, the calendar, the profile. The calendar has no page of its own
+ * there: its tab opens the terminal on its calendar segment (the dock lights it while that segment is shown, see AppTabBar). There is no «Настройки» tab: the profile holds them.
+ */
+export const TERMINAL_APP_TABS: readonly AppTabDef[] = MAIN_APP_TABS.filter((tab) => ["terminal", "calculator", "calendar", "me"].includes(tab.id)).map((tab) =>
+  tab.id === "me" ? { ...tab, match: ["/profile"] } : tab.id === "calendar" ? { ...tab, href: "/terminal?panel=calendar", match: [] } : tab
 );
 
 /** The tabs of THIS site: the nine of the board site, or the four of the terminal site (SITE_MODE=terminal). */
@@ -101,7 +104,7 @@ export function swipeAxis(dx: number, dy: number): "h" | "v" | null {
 export function swipeTargetTab(pathname: string, search: string, dir: -1 | 1, tabs: readonly AppTabDef[] = APP_TABS): AppTabDef | null {
   if (search && search !== "?") return null;
   const clean = stripLocale((pathname || "/").split(/[?#]/)[0]).path.replace(/\/+$/, "") || "/";
-  const order = tabs.filter((t) => t.id !== "settings");
+  const order = tabs.filter((t) => t.id !== "settings" && t.match.length > 0); // (a tab without paths of its own, the terminal site's «Календарь», is no swipe target either)
   const i = order.findIndex((t) => t.href.split("?")[0] === clean);
   if (i < 0) return null;
   return order[i + dir] ?? null;

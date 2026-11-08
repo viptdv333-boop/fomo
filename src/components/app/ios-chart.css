@@ -6,8 +6,11 @@
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) {
   --ios-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --ios-blue: #0a84ff;
-  --ios-sheet: color-mix(in srgb, var(--tv3-card, #1c1c1e) 84%, transparent);
-  --ios-hair: var(--tv3-hair, rgba(128, 128, 128, 0.28));
+}
+/* the surfaces take the colours of the chart's own theme (--tv3-* live on .tv3, not on <html>: declared on the root they fell back to the dark values in the light theme) */
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 {
+  --ios-sheet: color-mix(in srgb, var(--tv3-card) 88%, transparent);
+  --ios-hair: var(--tv3-hair);
 }
 
 /* the design's own coloured glyphs (the PC's) in the drawing drawer, the flyouts and the menus */

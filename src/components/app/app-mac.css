@@ -245,4 +245,5 @@ html.app-ui .app-mac .app-mac-rows [data-row-key] { touch-action: pan-y; -webkit
 html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="terminal"] .app-tab-ico { color: #4f9a74; }
 html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="calculator"] .app-tab-ico { color: #5b8fc0; }
 html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="settings"] .app-tab-ico { color: #cc9446; }
+html.app-ui.app-mac-on .app-tabbar .app-tab[data-tab="calendar"] .app-tab-ico { color: #cc9446; }
 html.app-ui.app-mac-on .app-tabbar .app-tab[data-active="1"] .app-tab-label { font-weight: 700; }
