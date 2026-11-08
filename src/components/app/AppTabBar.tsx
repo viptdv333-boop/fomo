@@ -347,7 +347,8 @@ function TabBar() {
     <nav ref={bar} className="app-tabbar" data-tabs={APP_TABS.length} style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
-        const asList = tab.id === "terminal" && macOn;
+        // «Список» only on the terminal site (the dock there is the terminal's own); on fomo.spot the tab stays «Терминал»
+        const asList = tab.id === "terminal" && macOn && calTab;
         const label = asList ? t("mac.m.tabList") : t(tab.labelKey);
         const badge = tabBadgeLabel(counts, tab.id);
         return (
