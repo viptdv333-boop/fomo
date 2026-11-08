@@ -33,7 +33,7 @@ interface Props {
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
 const enginePane = (pid: string) => (pid.endsWith(":p") ? "main" : pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 51, winId, ready = true }: Props) {
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 40, winId, ready = true }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -410,7 +410,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     <>
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
         {!winId && mainUids.length > 0 && (
-          <div ref={mainRef} data-lg-main className="absolute left-2.5 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
+          <div ref={mainRef} data-lg-main className="absolute left-1 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
             {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
             <div className="pointer-events-auto flex items-center">
               <button
