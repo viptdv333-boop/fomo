@@ -3,7 +3,7 @@
  * (html.app-ui.app-term-fs, not the wide desktop window). iOS rules used here: system font, translucent blurred surfaces, large rounded corners,
  * grouped lists with hairlines, 44pt touch targets, menus as sheets that rise from the bottom (never from the top, the toolbar is at the bottom).
  */
-html.app-ui.app-term-fs:not(.app-desktop) {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) {
   --ios-font: "Golos Text", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --ios-blue: #0a84ff;
   --ios-sheet: color-mix(in srgb, var(--tv3-card, #1c1c1e) 84%, transparent);
@@ -11,12 +11,12 @@ html.app-ui.app-term-fs:not(.app-desktop) {
 }
 
 /* the design's own coloured glyphs (the PC's) in the drawing drawer, the flyouts and the menus */
-html.app-ui.app-term-fs:not(.app-desktop) .mg { display: block; flex: none; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow, transparent)); }
-html.app-ui.app-term-fs:not(.app-desktop) :is([data-tv="rail"] button, .tv3-pop button, [data-fly] button):has(> .mg) > svg:not(.mg),
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] button:has(> .mg) > span:has(> svg) > svg:not(.mg) { display: none !important; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .mg { display: block; flex: none; fill: none !important; filter: drop-shadow(0 2px 3px var(--mg-glow, transparent)); }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) :is([data-tv="rail"] button, .tv3-pop button, [data-fly] button):has(> .mg) > svg:not(.mg),
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] button:has(> .mg) > span:has(> svg) > svg:not(.mg) { display: none !important; }
 
 /* the drawing drawer: a frosted column of 46px tiles with the coloured glyphs */
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] {
   background: var(--ios-sheet);
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
   backdrop-filter: blur(22px) saturate(1.6);
@@ -26,22 +26,22 @@ html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] {
   overflow-y: auto;
   font-family: var(--ios-font);
 }
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn { width: 46px; height: 46px; min-height: 46px; border-radius: 13px; color: var(--tv3-text2); }
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn .mg { width: 32px; height: 32px; }
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-pressed="true"],
-html.app-ui.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-current="true"] { background: color-mix(in srgb, var(--ios-blue) 18%, transparent); }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn { width: 46px; height: 46px; min-height: 46px; border-radius: 13px; color: var(--tv3-text2); }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn .mg { width: 32px; height: 32px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-pressed="true"],
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-current="true"] { background: color-mix(in srgb, var(--ios-blue) 18%, transparent); }
 
 /* every menu / popover of the chart is a bottom sheet above the icon row */
-html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop {
   position: fixed !important;
   top: auto !important;
   left: 10px !important;
   right: 10px !important;
-  bottom: calc(var(--app-bottom-inset, 56px) + 78px) !important;
+  bottom: calc(var(--app-bar-h, 56px) + env(safe-area-inset-bottom, 0px) + 78px) !important;
   width: auto !important;
   max-width: none !important;
-  height: min(60dvh, 540px) !important;
-  max-height: min(60dvh, 540px) !important;
+  height: min(70dvh, 620px) !important;
+  max-height: min(70dvh, 620px) !important;
   margin: 0 !important;
   transform: none !important;
   padding: 6px !important;
@@ -54,33 +54,33 @@ html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop {
   overflow-y: auto;
   font-family: var(--ios-font);
 }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button,
-html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop [role="menuitem"] { min-height: 46px; font-size: 16.5px; border-radius: 12px; }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button + button { border-top: 0.5px solid var(--ios-hair); border-top-left-radius: 0; border-top-right-radius: 0; }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop button .mg,
-html.app-ui.app-term-fs:not(.app-desktop) [data-fly] button .mg { width: 26px; height: 26px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button,
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop [role="menuitem"] { min-height: 46px; font-size: 16.5px; border-radius: 12px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button + button { border-top: 0.5px solid var(--ios-hair); border-top-left-radius: 0; border-top-right-radius: 0; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button .mg,
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-fly] button .mg { width: 26px; height: 26px; }
 
 /* the icon row itself: system font, frosted */
-html.app-ui.app-term-fs:not(.app-desktop) .ph-tb {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .ph-tb {
   font-family: var(--ios-font);
   background: var(--ios-sheet);
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
   backdrop-filter: blur(22px) saturate(1.6);
 }
-html.app-ui.app-term-fs:not(.app-desktop) .ph-cap { font-size: 10px; letter-spacing: 0.01em; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .ph-cap { font-size: 10px; letter-spacing: 0.01em; }
 
 /* dialogs (indicators, alerts, chart settings): iOS sheets - system font, big radius, frosted */
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] {
   /* every window of the chart (menus above, dialogs here) is the same sheet: same width, same height, same place, clear of the icon row */
   position: fixed !important;
   top: auto !important;
   left: 10px !important;
   right: 10px !important;
-  bottom: calc(var(--app-bottom-inset, 56px) + 78px) !important;
+  bottom: calc(var(--app-bar-h, 56px) + env(safe-area-inset-bottom, 0px) + 78px) !important;
   width: auto !important;
   max-width: none !important;
-  height: min(60dvh, 540px) !important;
-  max-height: min(60dvh, 540px) !important;
+  height: min(70dvh, 620px) !important;
+  max-height: min(70dvh, 620px) !important;
   margin: 0 !important;
   transform: none !important;
   font-family: var(--ios-font);
@@ -89,19 +89,33 @@ html.app-ui.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] {
   -webkit-backdrop-filter: blur(26px) saturate(1.6);
   backdrop-filter: blur(26px) saturate(1.6);
 }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] button:not([role="switch"]):not([class*="h-8"]):not([class*="h-7"]) { min-height: 40px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] button:not([role="switch"]):not([class*="h-8"]):not([class*="h-7"]) { min-height: 40px; }
 
 /* the dimming layer under a menu / dialog stops above the icon row and the dock: the lit button of the open window stays in front, not in the shade */
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 div.fixed[class*="inset-0"] { bottom: calc(var(--app-bottom-inset, 56px) + 66px) !important; }
-html.app-ui.app-term-fs:not(.app-desktop) .ph-btn[aria-expanded="true"],
-html.app-ui.app-term-fs:not(.app-desktop) .ph-btn.ph-on,
-html.app-ui.app-term-fs:not(.app-desktop) .ph-sym.ph-on { background: var(--tv3-fill, rgba(128, 128, 128, 0.2)); color: var(--tv3-text, inherit); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ios-blue) 55%, transparent); }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 div.fixed[class*="inset-0"] { bottom: calc(var(--app-bar-h, 56px) + env(safe-area-inset-bottom, 0px) + 66px) !important; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .ph-btn[aria-expanded="true"],
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .ph-btn.ph-on,
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .ph-sym.ph-on { background: var(--tv3-fill, rgba(128, 128, 128, 0.2)); color: var(--tv3-text, inherit); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ios-blue) 55%, transparent); }
 
 /* chart settings on the phone: iOS switches and fields (the PC skin''s sizes are laid out for a wide window) */
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] { transform: none; width: 51px; height: 31px; min-height: 31px; border-radius: 999px; flex: none; }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] > span { width: 27px; height: 27px; }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] select,
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="number"],
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="text"] { background: var(--tv3-fill) !important; color: var(--tv3-text) !important; border: 0 !important; border-radius: 10px !important; height: 38px; font-size: 15px; }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] { min-height: 46px; border-bottom: 0.5px solid var(--ios-hair); }
-html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] > span { font-size: 16px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] { transform: none; width: 51px; height: 31px; min-height: 31px; border-radius: 999px; flex: none; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] > span { width: 27px; height: 27px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] select,
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="number"],
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="text"] { background: var(--tv3-fill) !important; color: var(--tv3-text) !important; border: 0 !important; border-radius: 10px !important; height: 38px; font-size: 15px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] { min-height: 46px; border-bottom: 0.5px solid var(--ios-hair); }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] > span { font-size: 16px; }
+
+/* chart settings on the phone: the tab row is the whole width (scrolls), the footer is two clean rows */
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] [data-csd-nav] { width: auto !important; max-width: none !important; flex-direction: row !important; gap: 6px; padding: 8px 10px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] [data-csd-nav] button { flex: none; height: 38px; border-radius: 12px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last-child { gap: 8px; padding: 10px 12px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last-child > div:first-child { flex: 1 1 100%; width: 100%; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last-child > div:first-child select { flex: 1 1 auto; width: auto !important; min-width: 0; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last-child > div:last-child { flex: 1 1 100%; justify-content: flex-end; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [data-csd] > div:last-child button { height: 40px; }
+
+/* the header row of every dialog: compact, the title never squeezed to nothing */
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child { gap: 8px; padding: 10px 12px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child h2 { font-size: 15px; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] > div:first-child button:not([aria-label*="акр"]) { padding-left: 10px !important; padding-right: 10px !important; font-size: 13px !important; white-space: nowrap; }
