@@ -37,9 +37,13 @@ html.app-ui.app-term-fs:not(.app-desktop) .tv3-pop {
   top: auto !important;
   left: 10px !important;
   right: 10px !important;
-  bottom: calc(var(--app-bottom-inset, 56px) + 76px) !important;
+  bottom: calc(var(--app-bottom-inset, 56px) + 78px) !important;
   width: auto !important;
-  max-height: min(58dvh, 520px) !important;
+  max-width: none !important;
+  height: min(60dvh, 540px) !important;
+  max-height: min(60dvh, 540px) !important;
+  margin: 0 !important;
+  transform: none !important;
   padding: 6px !important;
   border-radius: 18px !important;
   background: var(--ios-sheet) !important;
@@ -67,6 +71,18 @@ html.app-ui.app-term-fs:not(.app-desktop) .ph-cap { font-size: 10px; letter-spac
 
 /* dialogs (indicators, alerts, chart settings): iOS sheets - system font, big radius, frosted */
 html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] {
+  /* every window of the chart (menus above, dialogs here) is the same sheet: same width, same height, same place, clear of the icon row */
+  position: fixed !important;
+  top: auto !important;
+  left: 10px !important;
+  right: 10px !important;
+  bottom: calc(var(--app-bottom-inset, 56px) + 78px) !important;
+  width: auto !important;
+  max-width: none !important;
+  height: min(60dvh, 540px) !important;
+  max-height: min(60dvh, 540px) !important;
+  margin: 0 !important;
+  transform: none !important;
   font-family: var(--ios-font);
   border-radius: 20px !important;
   background: color-mix(in srgb, var(--tv3-card, #1c1c1e) 92%, transparent);
