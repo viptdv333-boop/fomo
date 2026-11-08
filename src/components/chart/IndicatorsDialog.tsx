@@ -96,6 +96,8 @@ interface Props {
   onClose: () => void;
   /** The catalogue was opened from an indicator window: every pick adds a NEW indicator into that window (no on / off, no «already added»). */
   windowId?: string | null;
+  /** A bell in the row of an active indicator: an alert on its value (the chart opens the form on that indicator). */
+  onAlertFor?: (uid: string) => void;
 }
 
 /** ё = е, lower case; every word of the query must appear as a word start/stem ("объемный профиль" finds "Профиль объёма"). */
@@ -147,7 +149,7 @@ function readRecent(): string[] {
   }
 }
 
-function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { onEditScript: (scriptId: string) => void }) {
+function DialogBody({ controller, onClose, onEditScript, windowId, onAlertFor }: Props & { onEditScript: (scriptId: string) => void }) {
   const { t } = useT();
   const [, force] = useState(0);
   const [section, setSection] = useState<Section>("all");
@@ -419,7 +421,7 @@ function DialogBody({ controller, onClose, onEditScript, windowId }: Props & { o
               )}
               <div className="min-h-0 flex-1 overflow-y-auto" onKeyDown={onListKey}>
                 {section === "active" ? (
-                  <ActiveList active={active} controller={controller} onGoAdd={() => setSection("all")} onSettings={setSettingsUid} />
+                  <ActiveList active={active} controller={controller} onGoAdd={() => setSection("all")} onSettings={setSettingsUid} onAlert={onAlertFor} />
                 ) : section === "scripts" ? (
                   <ScriptsList controller={controller} query={q} scripts={scriptList} onEdit={onEditScript} />
                 ) : shown.length === 0 ? (
@@ -647,11 +649,13 @@ function ActiveList({
   controller,
   onGoAdd,
   onSettings,
+  onAlert,
 }: {
   active: IndicatorInstance[];
   controller: IndicatorsController;
   onGoAdd: () => void;
   onSettings: (uid: string) => void;
+  onAlert?: (uid: string) => void;
 }) {
   const { t } = useT();
   if (active.length === 0) {
@@ -700,6 +704,13 @@ function ActiveList({
               <button type="button" data-nav className={iconBtn} aria-label={t("ind.settings")} title={t("ind.settings")} onClick={() => onSettings(inst.uid)}>
                 {IND_ICONS.gear(16)}
               </button>
+              {onAlert && (
+                <button type="button" data-nav className={iconBtn} aria-label={t("indal.title")} title={t("indal.title")} onClick={() => onAlert(inst.uid)}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4" />
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
                 data-nav

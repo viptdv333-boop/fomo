@@ -12,6 +12,8 @@ export interface AlertMark {
   kind: string;
   price: number | null;
   line: LineSpec | null;
+  /** An alert on an indicator value: the pane of that indicator (the level is a value on ITS scale). Absent = the price chart. */
+  paneId?: string;
 }
 
 /**
@@ -79,15 +81,15 @@ export class AlertsLayer implements OverlayLayer {
   /** The fixed-level alert whose line is within a few px of the pointer (mouse / pen only: a finger pans the chart). */
   private hit(p: PointerInfo, anyPointer = false): AlertMark | null {
     const e = this.engine;
-    if (!e || (!anyPointer && p.pointerType === "touch") || p.region !== "plot" || p.paneId !== MAIN) return null;
+    if (!e || (!anyPointer && p.pointerType === "touch") || p.region !== "plot" || !p.paneId) return null;
     const now = Date.now();
     let best: AlertMark | null = null;
     let bestD = 7;
     for (const m of this.marks) {
-      if (m.kind === "line") continue;
+      if (m.kind === "line" || (m.paneId ?? MAIN) !== p.paneId) continue;
       const lv = this.levelOf(m, now);
       if (lv.state !== "ok") continue;
-      const d = Math.abs(e.priceToY(MAIN, lv.level) - p.y);
+      const d = Math.abs(e.priceToY(m.paneId ?? MAIN, lv.level) - p.y);
       if (d <= bestD) {
         best = m;
         bestD = d;
@@ -158,7 +160,8 @@ export class AlertsLayer implements OverlayLayer {
   pointerMove(p: PointerInfo): boolean {
     const e = this.engine;
     if (this.dragging && e) {
-      const raw = e.yToPrice(MAIN, p.y);
+      const dm = this.marks.find((m) => m.id === this.dragId);
+      const raw = e.yToPrice(dm?.paneId ?? MAIN, p.y);
       if (Number.isFinite(raw) && raw > 0) this.dragPrice = Number(raw.toFixed(e.getPrecision()));
       this.pointerPrice = this.dragPrice;
       e.requestOverlayRedraw();
@@ -184,6 +187,7 @@ export class AlertsLayer implements OverlayLayer {
     const now = Date.now();
     const out: LayerAxisTag[] = [];
     for (const m of this.marks) {
+      if (m.paneId && m.paneId !== MAIN) continue; // an indicator's alert is a line in its own pane
       const lv = this.levelOf(m, now);
       if (lv.state !== "ok" || !Number.isFinite(lv.level)) continue;
       out.push({ price: lv.level, kind: "alert", color: COLOR, textColor: "#1f2937", icon: this.locked.has(m.id) ? "lock" : "bell" });
@@ -193,23 +197,28 @@ export class AlertsLayer implements OverlayLayer {
 
   draw(ctx: CanvasRenderingContext2D, engine: ChartEngine): void {
     if (engine !== this.engine || this.marks.length === 0) return;
-    const rect = engine.getPaneRect(MAIN);
-    if (!rect) return;
     const theme = engine.getTheme();
     const now = Date.now();
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, rect.top, rect.width, rect.height);
-    ctx.clip();
-    ctx.font = `600 11px ${engine.opts.fontFamily}`;
-    ctx.textBaseline = "middle";
-
     for (const m of this.marks) {
+      const rect = engine.getPaneRect(m.paneId ?? MAIN);
+      if (!rect) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, rect.top, rect.width, rect.height);
+      ctx.clip();
+      ctx.font = `600 11px ${engine.opts.fontFamily}`;
+      ctx.textBaseline = "middle";
       const lv = this.levelOf(m, now);
-      if (lv.state !== "ok") continue;
-      const y = engine.priceToY(MAIN, lv.level);
-      if (!Number.isFinite(y) || y < rect.top - 20 || y > rect.top + rect.height + 20) continue;
+      if (lv.state !== "ok") {
+        ctx.restore();
+        continue;
+      }
+      const y = engine.priceToY(m.paneId ?? MAIN, lv.level);
+      if (!Number.isFinite(y) || y < rect.top - 20 || y > rect.top + rect.height + 20) {
+        ctx.restore();
+        continue;
+      }
       const isLine = m.kind === "line";
 
       if (!isLine) {
@@ -235,7 +244,7 @@ export class AlertsLayer implements OverlayLayer {
           ctx.stroke();
         }
       }
+      ctx.restore();
     }
-    ctx.restore();
   }
 }

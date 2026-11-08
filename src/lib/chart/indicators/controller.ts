@@ -386,6 +386,25 @@ export class IndicatorsController implements IndicatorsControllerLike {
     return this.snapshot;
   }
 
+  /** Current value of every flagged plot of every shown indicator (what the terminal's own alerts on indicator values watch). */
+  indicatorValues(): { uid: string; id: string; title: string; pane: string; plots: { name: string; value: number }[] }[] {
+    const out: { uid: string; id: string; title: string; pane: string; plots: { name: string; value: number }[] }[] = [];
+    for (const it of this.items) {
+      const data = this.dataOf(it);
+      const candles = data ? data.getCandles() : [];
+      if (candles.length === 0) continue;
+      let labels: { price: number; caption?: string }[] = [];
+      try {
+        labels = it.series.axisLabels(candles, candles.length - 1);
+      } catch {
+        continue;
+      }
+      const title = it.series.title();
+      const plots = labels.filter((l) => Number.isFinite(l.price)).map((l) => ({ name: l.caption || title, value: l.price }));
+      if (plots.length > 0) out.push({ uid: it.inst.uid, id: it.inst.id, title, pane: it.pane ?? "main", plots });
+    }
+    return out;
+  }
   private find(uid: string): Item | undefined {
     return this.items.find((x) => x.inst.uid === uid);
   }

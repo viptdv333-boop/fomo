@@ -11,6 +11,8 @@ import { DrawingsController } from "@/lib/chart/drawings/controller";
 import { setDrawingWidthCap } from "@/lib/chart/drawings/tools";
 import { AlertsLayer } from "@/lib/chart/alerts-layer";
 import AlertQuickEdit from "./AlertQuickEdit";
+import { IndicatorAlertDialog, IndicatorAlertToasts, useIndicatorAlerts } from "./IndicatorAlerts";
+import { updateIndAlert } from "@/lib/chart/indicator-alerts";
 import { EventsLayer } from "@/lib/chart/events-layer";
 import { useCalPrefs } from "@/lib/calendar/prefs";
 import CalendarRemindersHost from "@/components/chart/calendar/CalendarRemindersHost";
@@ -1392,7 +1394,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   /* alerts: a fixed-level alert dragged with the mouse saves its new level (a refused save puts the line back) */
   const alertUpdate = alertsApi.update;
   useEffect(() => {
-    alertsLayer.onMove = async (id, price) => (await alertUpdate(id, { price })).ok;
+    // an alert on an indicator value lives in this terminal (localStorage): its new level is saved here; a price alert goes to the server
+    alertsLayer.onMove = async (id, price) => {
+      if (id.startsWith("ind:")) {
+        updateIndAlert(id, { level: price, lastSide: 0, status: "active" });
+        return true;
+      }
+      return (await alertUpdate(id, { price })).ok;
+    };
     return () => {
       alertsLayer.onMove = null;
     };
@@ -1401,6 +1410,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   /* alerts: pinned ones (kept on this device) cannot be dragged; a double click on an alert's line opens its editor */
   const [lockedAlerts, setLockedAlerts] = useState<string[]>([]);
   const [alertEdit, setAlertEdit] = useState<{ id: string; x: number; y: number } | null>(null);
+  /* alerts on indicator values (RSI = 20 ...): the terminal's own, evaluated here on the values it computes */
+  const [indAlertUi, setIndAlertUi] = useState<{ uid: string | null; editId: string | null } | null>(null);
+  const indAlerts = useIndicatorAlerts(indicators, source, ticker, engineReady);
   useEffect(() => {
     try {
       const v = JSON.parse(localStorage.getItem("fomo-alert-locks") || "[]");
@@ -1424,7 +1436,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     alertsLayer.setLocked(lockedAlerts);
   }, [alertsLayer, lockedAlerts]);
   useEffect(() => {
-    alertsLayer.onEdit = (id, x, y) => setAlertEdit({ id, x, y });
+    alertsLayer.onEdit = (id, x, y) => (id.startsWith("ind:") ? setIndAlertUi({ uid: null, editId: id }) : setAlertEdit({ id, x, y }));
     return () => {
       alertsLayer.onEdit = null;
     };
@@ -1437,8 +1449,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       allAlerts
         .filter((a) => a.status === "active" && a.source === source && a.dataTicker === ticker)
         .map((a) => ({ id: a.id, kind: a.kind, price: a.price, line: a.line }))
+        .concat(
+          indAlerts.here
+            .filter((a) => a.status === "active")
+            .map((a) => ({ id: a.id, kind: "price", price: a.level, line: null, paneId: indicators.indicatorValues().find((v) => v.id === a.indId)?.pane ?? "main" })),
+        ),
     );
-  }, [allAlerts, source, ticker, alertsLayer]);
+  }, [allAlerts, source, ticker, alertsLayer, indAlerts.here, indicators, indKey]);
 
   /* economic calendar events on the time axis (chart time = real UTC + offsetMs; the layer fetches the visible range lazily) */
   useEffect(() => {
@@ -2377,7 +2394,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           <AlertQuickEdit alert={a} x={alertEdit.x} y={alertEdit.y} locked={lockedAlerts.includes(a.id)} onLock={(v) => setAlertLock(a.id, v)} onSave={alertsApi.update} onDelete={alertsApi.remove} onClose={() => setAlertEdit(null)} />
         ) : null;
       })()}
-      <IndicatorsDialog controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} windowId={indTarget} />
+      <IndicatorAlertToasts fired={indAlerts.fired} onDismiss={indAlerts.dismiss} />
+      <IndicatorAlertDialog open={!!indAlertUi} onClose={() => setIndAlertUi(null)} controller={indicators} source={source} dataTicker={ticker} ticker={instrument.ticker} presetUid={indAlertUi?.uid} editId={indAlertUi?.editId} />
+      <IndicatorsDialog onAlertFor={(uid) => { setIndOpen(false); setIndAlertUi({ uid, editId: null }); }} controller={indicators} open={indOpen} onClose={() => setIndOpen(false)} windowId={indTarget} />
       {appMac && appPage && (
         <AppMacSheet
           seg={macSheet}
