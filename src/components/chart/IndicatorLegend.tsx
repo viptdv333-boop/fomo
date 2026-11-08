@@ -5,8 +5,7 @@ import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useT } from "@/lib/i18n/client";
 import type { ChartEngine } from "@/lib/chart/engine";
 import type { IndicatorsController } from "@/lib/chart/indicators/controller";
-import MacSvg from "./MacSvg";
-import { TB_GLYPHS } from "./mac-glyph-data";
+import MacGlyph from "./MacGlyph";
 import { getIndicatorDef } from "@/lib/chart/indicators/registry";
 import { setIndTranslator } from "@/lib/chart/indicators/ind-text";
 import { WIN_PANE, WIN_PREFIX } from "@/lib/chart/windows-layout";
@@ -422,7 +421,13 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 title={`${t("v3.indicators", { n: list.length })} — ${collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}`}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                <MacSvg d={TB_GLYPHS.indicators[2]} fl={TB_GLYPHS.indicators[3]} light={TB_GLYPHS.indicators[0]} stroke={TB_GLYPHS.indicators[1]} size={26} alpha="55" width={1.8} />
+                <span className="relative inline-flex">
+                  <svg className="lg-classic" viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="#8a6db0" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M3.5 17L9 11l4 3.5L20 6.5M15.5 6.5H20V11" />
+                  </svg>
+                  <MacGlyph set="tb" k="indicators" alpha="55" width={1.8} />
+                  <span className="absolute -right-2 -top-2 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#d8506b] px-[3px] text-[9.5px] font-bold leading-none text-white">{list.length}</span>
+                </span>
                 <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="opacity-60" aria-hidden>
                   <path d={collapsed ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
                 </svg>

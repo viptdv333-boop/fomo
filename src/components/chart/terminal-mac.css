@@ -542,6 +542,8 @@ html.dark .tvmac [data-tv="tools"] [data-rk="eye"] { --rc: #a78bc9; }
 
 /* ───────── the design's own glyphs replace the classic icons inside the skin ───────── */
 .mg, .mg-box { display: none; }
+.tvmac [data-lg-main] .lg-classic { display: none; }
+.tvmac [data-lg-main] .mg { width: 28px; height: 28px; fill: none !important; }
 .tvmac .mg {
   display: block;
   flex: none;
