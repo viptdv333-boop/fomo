@@ -15,6 +15,7 @@ export default function MenuPopover({
   maxHeight,
   onOpenChange,
   phKey,
+  dataPh,
 }: {
   title: string;
   trigger: ReactNode;
@@ -28,6 +29,8 @@ export default function MenuPopover({
   onOpenChange?: (open: boolean) => void;
   /** The phone's icon row: this menu closes when another button of the row is pressed (the row announces it with `fomo:ph-open`). */
   phKey?: string;
+  /** data-ph of the trigger (the phone row announces the pressed button with it). */
+  dataPh?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number }>({ top: 0, left: 0 });
@@ -68,7 +71,7 @@ export default function MenuPopover({
 
   return (
     <>
-      <button ref={ref} onClick={toggle} title={title} aria-label={title} aria-expanded={open} className={className}>
+      <button ref={ref} onClick={toggle} title={title} aria-label={title} aria-expanded={open} className={className} data-ph={dataPh}>
         {trigger}
       </button>
       {open && (

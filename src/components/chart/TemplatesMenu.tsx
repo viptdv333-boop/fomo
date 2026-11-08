@@ -1,7 +1,7 @@
 "use client";
 
 import MacGlyph from "./MacGlyph";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
 import { CS_ICONS } from "./icons-cs";
@@ -16,6 +16,9 @@ interface Props {
   applyLayout: (d: ChartLayoutData) => void;
   /** Replace the indicators of the chart (the ready-made sets). */
   applyIndicators?: (json: string) => void;
+  /** The phone's icon row: its own trigger (glyph + caption) and key. */
+  phoneTrigger?: ReactNode;
+  phKey?: string;
 }
 
 const field = "h-8 flex-1 min-w-0 rounded-[9px] border border-[#e5e5ea] dark:border-[#3a3a3c] bg-transparent px-2 text-[13px] outline-none focus:border-[var(--tv3-accent)]";
@@ -135,7 +138,7 @@ function Panel({ close, getTemplate, applyTemplate, getLayout, applyLayout, appl
 }
 
 /** Save / open chart layouts (symbol + interval + look) and templates (look only). */
-export default function TemplatesMenu({ btn, ...rest }: Props) {
+export default function TemplatesMenu({ btn, phoneTrigger, phKey, ...rest }: Props) {
   const { t } = useT();
   return (
     <MenuPopover
@@ -143,12 +146,16 @@ export default function TemplatesMenu({ btn, ...rest }: Props) {
       className={btn}
       width={290}
       align="right"
+      phKey={phKey}
+      dataPh={phKey}
       trigger={
+        phoneTrigger ?? (
         <>
           {CS_ICONS.layout}
           <MacGlyph set="tb" k="templates" alpha="55" width={1.8} />
           <span>{t("cs.tpl.short")}</span>
         </>
+        )
       }
     >
       {(close) => <Panel close={close} {...rest} />}

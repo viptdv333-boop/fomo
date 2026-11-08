@@ -164,7 +164,7 @@ function Menu({
   const close = () => setOpen(false);
   return (
     <>
-      <button ref={ref} onClick={toggle} title={title} aria-label={title} aria-expanded={open} className={className}>
+      <button ref={ref} onClick={toggle} title={title} aria-label={title} aria-expanded={open} className={className} data-ph={phKey}>
         {trigger}
       </button>
       {open && (
@@ -284,6 +284,7 @@ export default function TopToolbar(p: Props) {
             {cap(t("mac.lbl.settings"))}
           </button>
         )}
+        {p.templates && <TemplatesMenu btn={ph} phKey="tpl" phoneTrigger={<>{G(TB_GLYPHS.templates)}{cap(t("mac.lbl.templates"))}</>} {...p.templates} />}
         {p.onExportCsv && (
           <button data-ph="csv" onClick={p.onExportCsv} title={t("appui.fs.table")} aria-label={t("appui.fs.table")} className={ph}>
             {G(GLYPH_TABLE)}
