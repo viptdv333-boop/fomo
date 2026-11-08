@@ -423,7 +423,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               >
                 <span className="relative inline-flex">
                   <svg className="lg-classic" viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="#8a6db0" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M4 17a8 8 0 1116 0M12 16l3.6-5M7.2 8.4l.9.9M12 6.2v1.3M16.8 8.4l-.9.9" />
+                    <path d="M3.5 12a8.5 8.5 0 1017 0 8.5 8.5 0 10-17 0M12 12l4-4M12 5.2v1.5M5.2 12h1.5M18.8 12h-1.5M12 12.01v.01" />
                   </svg>
                   <MacGlyph set="tb" k="indicators" alpha="55" width={1.8} />
                   <span className="absolute -right-2 -top-2 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#d8506b] px-[3px] text-[9.5px] font-bold leading-none text-white">{list.length}</span>
