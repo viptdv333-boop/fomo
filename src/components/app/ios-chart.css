@@ -70,7 +70,7 @@ html.app-ui.app-term-fs:not(.app-desktop) .ph-tb {
 html.app-ui.app-term-fs:not(.app-desktop) .ph-cap { font-size: 10px; letter-spacing: 0.01em; }
 
 /* dialogs (indicators, alerts, chart settings): iOS sheets - system font, big radius, frosted */
-html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] {
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] {
   /* every window of the chart (menus above, dialogs here) is the same sheet: same width, same height, same place, clear of the icon row */
   position: fixed !important;
   top: auto !important;
@@ -89,4 +89,19 @@ html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] {
   -webkit-backdrop-filter: blur(26px) saturate(1.6);
   backdrop-filter: blur(26px) saturate(1.6);
 }
-html.app-ui.app-term-fs:not(.app-desktop) [role="dialog"] button { min-height: 40px; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [role="dialog"] button:not([role="switch"]):not([class*="h-8"]):not([class*="h-7"]) { min-height: 40px; }
+
+/* the dimming layer under a menu / dialog stops above the icon row and the dock: the lit button of the open window stays in front, not in the shade */
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 div.fixed[class*="inset-0"] { bottom: calc(var(--app-bottom-inset, 56px) + 66px) !important; }
+html.app-ui.app-term-fs:not(.app-desktop) .ph-btn[aria-expanded="true"],
+html.app-ui.app-term-fs:not(.app-desktop) .ph-btn.ph-on,
+html.app-ui.app-term-fs:not(.app-desktop) .ph-sym.ph-on { background: var(--tv3-fill, rgba(128, 128, 128, 0.2)); color: var(--tv3-text, inherit); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ios-blue) 55%, transparent); }
+
+/* chart settings on the phone: iOS switches and fields (the PC skin''s sizes are laid out for a wide window) */
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] { transform: none; width: 51px; height: 31px; min-height: 31px; border-radius: 999px; flex: none; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] [role="switch"] > span { width: 27px; height: 27px; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] select,
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="number"],
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd] input[type="text"] { background: var(--tv3-fill) !important; color: var(--tv3-text) !important; border: 0 !important; border-radius: 10px !important; height: 38px; font-size: 15px; }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] { min-height: 46px; border-bottom: 0.5px solid var(--ios-hair); }
+html.app-ui.app-term-fs:not(.app-desktop) .tv3 [data-csd-row] > span { font-size: 16px; }

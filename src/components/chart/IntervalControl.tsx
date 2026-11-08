@@ -72,7 +72,7 @@ export default function IntervalControl({ interval: intervalProp, onInterval, fa
           {formatInterval(id, t)}
         </button>
       ))}
-      <MenuPopover title={t("cs.iv.all")} className={single ? "tv3-press min-h-[31px] px-3 rounded-[11px] shrink-0 cursor-pointer bg-[var(--tv3-fill)] text-[var(--tv3-text)] text-[14px] font-semibold" : "tv3-press px-2 py-[7px] rounded-[9px] shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)]/60"} width={230} trigger={<span className="inline-flex items-center gap-1.5">{single && <span>{formatInterval(interval, t)}</span>}<svg viewBox="0 0 24 24" className="h-4 w-4 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span>}>
+      <MenuPopover phKey={single ? "tf" : undefined} title={t("cs.iv.all")} className={single ? "tv3-press min-h-[31px] px-3 rounded-[11px] shrink-0 cursor-pointer bg-[var(--tv3-fill)] text-[var(--tv3-text)] text-[14px] font-semibold" : "tv3-press px-2 py-[7px] rounded-[9px] shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)]/60"} width={230} trigger={<span className="inline-flex items-center gap-1.5">{single && <span>{formatInterval(interval, t)}</span>}<svg viewBox="0 0 24 24" className="h-4 w-4 opacity-70" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span>}>
         {(close) => (
           <div className="text-[13px]">
             {sections.map((sec) => {

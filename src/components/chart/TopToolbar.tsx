@@ -112,6 +112,8 @@ interface Props {
   /** App full-screen chart: the close button goes first, the browser-fullscreen and phone-panel buttons are left out, and the row never wraps (it scrolls) so a landscape phone keeps its height for the chart. */
   appFull?: boolean;
   lead?: ReactNode;
+  /** Which window of the phone's icon row is open now ("ind" | "alerts" | "settings" | "asset"): its button stays lit. */
+  phOpen?: string | null;
   /** The phone's full-screen chart: its own row of icons in the PC look - asset, timeframe, drawing, indicators, chart type, alerts, settings, data table, screenshot, share. */
   phone?: boolean;
   onExportCsv?: () => void;
@@ -134,7 +136,9 @@ function Menu({
   children,
   width = 200,
   className = "",
+  phKey,
 }: {
+  phKey?: string;
   title: string;
   trigger: ReactNode;
   children: (close: () => void) => ReactNode;
@@ -144,6 +148,14 @@ function Menu({
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!phKey) return;
+    const on = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== phKey) setOpen(false);
+    };
+    window.addEventListener("fomo:ph-open", on);
+    return () => window.removeEventListener("fomo:ph-open", on);
+  }, [phKey]);
   const toggle = () => {
     const r = ref.current?.getBoundingClientRect();
     if (r) setPos({ top: r.bottom + 4, left: Math.max(4, Math.min(r.left, window.innerWidth - width - 4)) });
@@ -214,8 +226,15 @@ export default function TopToolbar(p: Props) {
     const GLYPH_TABLE: Glyph = ["#7CC29B", "#4F9A74", "M12 4v11M7 11l5 5 5-5M5 20h14", ""];
     const GLYPH_SHARE: Glyph = ["#7DB0D6", "#5B8FC0", "M12 15V3M8 7l4-4 4 4M5 12v8h14v-8", ""];
     return (
-      <div data-tv="toolbar" className="ph-tb flex items-stretch gap-1 px-1.5 shrink-0 overflow-x-auto bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className="tv3-press ph-sym">
+      <div
+        data-tv="toolbar"
+        onPointerDownCapture={(e) => {
+          const k = (e.target as HTMLElement).closest("[data-ph]")?.getAttribute("data-ph");
+          if (k) window.dispatchEvent(new CustomEvent("fomo:ph-open", { detail: k }));
+        }}
+        className="ph-tb flex items-stretch gap-1 px-1.5 shrink-0 overflow-x-auto bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <button data-ph="asset" onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`tv3-press ph-sym ${p.phOpen === "asset" ? "ph-on" : ""}`}>
           <InstIcon inst={p.instrument} size={30} />
           <span className="ph-sym-t">
             <b>{ctTicker ?? p.instrument.ticker}</b>
@@ -226,15 +245,15 @@ export default function TopToolbar(p: Props) {
         {p.favIntervals && p.onFavIntervals && (
           <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} single />
         )}
-        <button onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${ph} ${p.toolsOpen ? "ph-on" : ""}`}>
+        <button data-ph="tools" onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${ph} ${p.toolsOpen ? "ph-on" : ""}`}>
           {G(RAIL_GLYPHS.brush)}
           {cap(t("mac.m.tabTools"))}
         </button>
-        <button onClick={p.onOpenIndicators} title={t("shell.indicators")} aria-label={t("shell.indicators")} className={ph}>
+        <button data-ph="ind" onClick={p.onOpenIndicators} title={t("shell.indicators")} aria-label={t("shell.indicators")} className={`${ph} ${p.phOpen === "ind" ? "ph-on" : ""}`}>
           {G(TB_GLYPHS.indicators)}
           {cap(t("mac.lbl.indicators"))}
         </button>
-        <Menu title={t("shell.chartType")} className={ph} width={220} trigger={<>{G(TB_GLYPHS.type)}{cap(t("mac.lbl.type"))}</>}>
+        <Menu phKey="type" title={t("shell.chartType")} className={ph} width={220} trigger={<>{G(TB_GLYPHS.type)}{cap(t("mac.lbl.type"))}</>}>
           {(close) =>
             CHART_TYPES.map((c) => (
               <button
@@ -253,28 +272,28 @@ export default function TopToolbar(p: Props) {
             ))
           }
         </Menu>
-        <button onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} aria-label={t("shell.alerts")} className={ph}>
+        <button data-ph="alerts" onClick={p.onOpenAlerts} disabled={!p.onOpenAlerts} title={t("shell.alerts")} aria-label={t("shell.alerts")} className={`${ph} ${p.phOpen === "alerts" ? "ph-on" : ""}`}>
           {G(TB_GLYPHS.alerts)}
           {cap(t("mac.lbl.alerts"))}
         </button>
         {p.onOpenSettings && (
-          <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={ph}>
+          <button data-ph="settings" onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={`${ph} ${p.phOpen === "settings" ? "ph-on" : ""}`}>
             {G(TB_GLYPHS.settings)}
             {cap(t("mac.lbl.settings"))}
           </button>
         )}
         {p.onExportCsv && (
-          <button onClick={p.onExportCsv} title={t("appui.fs.table")} aria-label={t("appui.fs.table")} className={ph}>
+          <button data-ph="csv" onClick={p.onExportCsv} title={t("appui.fs.table")} aria-label={t("appui.fs.table")} className={ph}>
             {G(GLYPH_TABLE)}
             {cap(t("appui.fs.table"))}
           </button>
         )}
-        <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ph}>
+        <button data-ph="shot" onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ph}>
           {G(TB_GLYPHS.shot)}
           {cap(t("mac.lbl.shot"))}
         </button>
         {p.onShare && (
-          <button onClick={p.onShare} title={t("appui.fs.share")} aria-label={t("appui.fs.share")} className={ph}>
+          <button data-ph="share" onClick={p.onShare} title={t("appui.fs.share")} aria-label={t("appui.fs.share")} className={ph}>
             {G(GLYPH_SHARE)}
             {cap(t("appui.fs.share"))}
           </button>

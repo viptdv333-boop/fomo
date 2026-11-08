@@ -703,6 +703,18 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const phoneFs = !!appFull && !wideApp;
   useEffect(() => {
     if (!phoneFs) return;
+    const on = (e: Event) => {
+      const k = (e as CustomEvent<string>).detail;
+      if (k !== "ind") setIndOpen(false);
+      if (k !== "alerts") setAlertsOpen(false);
+      if (k !== "settings") setCsOpen(false);
+      if (k !== "asset") setSearchOpen(false);
+    };
+    window.addEventListener("fomo:ph-open", on);
+    return () => window.removeEventListener("fomo:ph-open", on);
+  }, [phoneFs]);
+  useEffect(() => {
+    if (!phoneFs) return;
     document.documentElement.setAttribute("data-tvmac", "");
     ensureMacFont();
     return () => document.documentElement.removeAttribute("data-tvmac");
@@ -2054,11 +2066,11 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         }}
         chartType={prefs.chartType}
         onChartType={(c) => update({ chartType: c })}
-        onOpenSearch={() => setSearchOpen(true)}
+        onOpenSearch={() => (phoneFs ? setSearchOpen((v) => !v) : setSearchOpen(true))}
         onPickInstrument={handleSelect}
-        onOpenIndicators={() => setIndOpen(true)}
+        onOpenIndicators={() => (phoneFs ? setIndOpen((v) => !v) : setIndOpen(true))}
         windows={{ available: winGeo.available, count: winCount, canAdd: indicators.canAddWindow(), onAdd: () => void indicators.addWindow() }}
-        onOpenAlerts={() => (isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
+        onOpenAlerts={() => (phoneFs && alertsOpen ? setAlertsOpen(false) : isDesktop && !embedded && !compact ? onTab("alerts") : openAlerts(null))}
         alertCount={alertsApi.activeCount}
         indicatorCount={indCount}
         replay={replay}
@@ -2075,7 +2087,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         panelOpen={mobilePanel}
         favIntervals={cs.ui.favIntervals}
         onFavIntervals={(list) => csApi.update((x) => ({ ...x, ui: { ...x.ui, favIntervals: list } }))}
-        onOpenSettings={() => openSettings()}
+        onOpenSettings={() => (phoneFs && csOpen ? setCsOpen(false) : openSettings())}
         onOpenCompare={() => setComparePick(true)}
         compareCount={compares.length}
         settingsApi={csApi}
@@ -2086,6 +2098,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         extra={toolbarExtra}
         appFull={appFull}
         phone={!!appFull && !wideApp}
+        phOpen={indOpen ? "ind" : alertsOpen ? "alerts" : csOpen ? "settings" : searchOpen ? "asset" : null}
         onExportCsv={exportCandlesCsv}
         onShare={() => void shareChart()}
         lead={appFull ? appFullLead : undefined}

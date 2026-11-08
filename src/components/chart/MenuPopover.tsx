@@ -14,6 +14,7 @@ export default function MenuPopover({
   up = false,
   maxHeight,
   onOpenChange,
+  phKey,
 }: {
   title: string;
   trigger: ReactNode;
@@ -25,10 +26,20 @@ export default function MenuPopover({
   up?: boolean;
   maxHeight?: number;
   onOpenChange?: (open: boolean) => void;
+  /** The phone's icon row: this menu closes when another button of the row is pressed (the row announces it with `fomo:ph-open`). */
+  phKey?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number }>({ top: 0, left: 0 });
   const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!phKey) return;
+    const on = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== phKey) setOpen(false);
+    };
+    window.addEventListener("fomo:ph-open", on);
+    return () => window.removeEventListener("fomo:ph-open", on);
+  }, [phKey]);
 
   const toggle = () => {
     const r = ref.current?.getBoundingClientRect();
