@@ -417,13 +417,17 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 onClick={toggleCollapsed}
                 className="tv3-press flex cursor-pointer items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-semibold text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
                 aria-expanded={!collapsed}
-                title={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
+                title={`${t("v3.indicators", { n: list.length })} — ${collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}`}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3l9 5-9 5-9-5 9-5z" />
+                  <path d="M3 13l9 5 9-5" />
+                </svg>
+                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d={collapsed ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
                 </svg>
-                <span>{t("v3.indicators", { n: list.length })}</span>
+                <span className="sr-only">{t("v3.indicators", { n: list.length })}</span>
               </button>
             </div>
             {/* many indicators: the list scrolls inside the chart (it stops above the time scale / the first sub-pane) instead of running off the screen */}
