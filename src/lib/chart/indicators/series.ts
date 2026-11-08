@@ -605,14 +605,15 @@ export class IndicatorSeries implements Series {
     const a = Math.max(0, from - off - 1);
     const b = Math.min(data.length - 1, to - off + 1);
     const cap = sc.options.maxLineWidth;
-    const width = !p.widthSet && cap > 0 && (p.width ?? 1.6) > 0 ? Math.min(p.width ?? 1.6, cap) : p.width ?? 1.6;
+    // an indicator's line is drawn as wide as its Style tab says (the dialog shows the real width); the global cap is for drawings and the rest
+    const width = p.volBand && cap > 0 ? Math.min(p.width ?? 1.6, cap) : p.width ?? 1.6;
     const step = shape === "step";
     const area = shape === "area";
     const base = sc.paneHeight;
     const fill = area ? new Path2D() : null;
     ctx.strokeStyle = p.color;
     ctx.lineWidth = width;
-    if (p.widthSet) {
+    if (!vb) {
       // the engine clamps ctx.lineWidth on the instance (global cap); a width the user chose goes through the native setter
       const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "lineWidth");
       d?.set?.call(ctx, width);
