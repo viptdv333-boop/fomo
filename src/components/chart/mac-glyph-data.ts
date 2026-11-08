@@ -36,7 +36,7 @@ export const SIDE_GLYPHS: Record<string, Glyph> = {
 
 export const TB_GLYPHS: Record<string, Glyph> = {
   compare: ["#7DB0D6", "#5B8FC0", "M4 7h6l4 10h6M4 17h6l4-10h6", "M4 7h6l4 10h6M4 17h6l4-10h6"],
-  indicators: ["#A78BC9", "#8A6DB0", "M3 17l6-6 4 4 8-9", "M3 17l6-6 4 4 8-9"],
+  indicators: ["#A78BC9", "#8A6DB0", "M4 17a8 8 0 1116 0M12 16l3.6-5M7.2 8.4l.9.9M12 6.2v1.3M16.8 8.4l-.9.9", "M4 17a8 8 0 1116 0z"],
   window: ["#7CC29B", "#4F9A74", "M12 5v14M5 12h14", ""],
   alerts: ["#E6B877", "#CC9446", "M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4", "M6 16V11a6 6 0 0112 0v5l2 2H4z"],
   events: ["#E8A47C", "#D98A5A", "M4 6h16v14H4zM4 11h16M8 3v4M16 3v4", "M4 6h16v5H4z"],
