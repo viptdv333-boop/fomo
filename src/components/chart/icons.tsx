@@ -528,7 +528,7 @@ const g = (d: string, size = 20, sw = 1.8) => ui(<path d={d} />, size, sw);
 
 /* Glyph paths shared by several places (top toolbar 20px, right-hand buttons 21px, rail 26px) */
 export const DESIGN_PATHS = {
-  indicators: "M3.5 12a8.5 8.5 0 1017 0 8.5 8.5 0 10-17 0M12 12l4-4M12 5.2v1.5M5.2 12h1.5M18.8 12h-1.5M12 12.01v.01",
+  indicators: "M4.5 14h3v6h-3zM10.5 11h3v9h-3zM16.5 8h3v12h-3zM3.5 9.5l5-4 4 2.5 6-4.5M15 3.5h3.5V7",
   compare: "M3 17l5-5 4 3 8-9M3 7l5 5 4-3 8 8",
   alert: `${P.bell}${P.bellClapper}`,
   templates: `${rr(3.5, 3.5, 7.5, 7.5, 2)}${rr(13, 3.5, 7.5, 7.5, 2)}${rr(3.5, 13, 7.5, 7.5, 2)}${rr(13, 13, 7.5, 7.5, 2)}`,
