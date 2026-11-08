@@ -612,6 +612,11 @@ export class IndicatorSeries implements Series {
     const fill = area ? new Path2D() : null;
     ctx.strokeStyle = p.color;
     ctx.lineWidth = width;
+    if (p.widthSet) {
+      // the engine clamps ctx.lineWidth on the instance (global cap); a width the user chose goes through the native setter
+      const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "lineWidth");
+      d?.set?.call(ctx, width);
+    }
     ctx.setLineDash(dashFor(p.lineStyle, p.dashed, width));
     ctx.beginPath();
     let started = false;

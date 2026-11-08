@@ -420,11 +420,10 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 title={`${t("v3.indicators", { n: list.length })} — ${collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}`}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
               >
-                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M12 3l9 5-9 5-9-5 9-5z" />
-                  <path d="M3 13l9 5 9-5" />
+                <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3.5 17L9 11l4 3.5L20 6.5M15.5 6.5H20V11" />
                 </svg>
-                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="opacity-60" aria-hidden>
                   <path d={collapsed ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
                 </svg>
                 <span className="sr-only">{t("v3.indicators", { n: list.length })}</span>
