@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html,body{margin:0;height:100%;background:#F2F2F7}
+a{color:#17804D;text-decoration:none}a:hover{color:#0F6038}
+::-webkit-scrollbar{width:0;height:0}
+input::placeholder{color:#8E8E93}
+select{font-family:inherit}
+</style>
+</helmet>
+<div style="height:100vh;min-height:640px;min-width:960px;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;color:#1C1C1E;overflow:hidden;position:relative">
+
+
+<div style="flex:1;min-height:0;display:flex;gap:8px;padding:8px">
+
+<div style="flex:none;width:46px;background:#fff;border-radius:16px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;overflow-y:auto">
+<sc-for list="{{ rail }}" as="r" hint-placeholder-count="14">
+<div onClick="{{ r.tap }}" title="{{ r.title }}" style="flex:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ r.bg }};margin-top:{{ r.mt }}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ r.fg }}" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="{{ r.d }}"/></svg>
+</div>
+</sc-for>
+</div>
+
+<div style="flex:1;min-width:0;background:#fff;border-radius:16px;display:flex;flex-direction:column;position:relative;overflow:hidden">
+
+<div style="flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:7px 10px;border-bottom:.5px solid #E5E5EA;white-space:nowrap">
+<div onClick="{{ toggleSym }}" style="display:flex;align-items:center;gap:7px;padding:4px 10px 4px 5px;border-radius:10px;background:#F2F2F7;cursor:pointer">
+<div style="width:24px;height:24px;border-radius:12px;background:{{ up }};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ cur.ini }}</div>
+<span style="font-size:15px;font-weight:700">{{ cur.t }}</span><span style="font-size:12px;color:#8E8E93">{{ cur.m }}</span>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+</div>
+<div style="display:flex;background:#E9E9EE;border-radius:9px;padding:2px">
+<sc-for list="{{ tfs }}" as="f" hint-placeholder-count="8">
+<div onClick="{{ f.tap }}" style="padding:4px 9px;font-size:13px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ f.bg }};box-shadow:{{ f.sh }}">{{ f.t }}</div>
+</sc-for>
+</div>
+<sc-for list="{{ tbBtns }}" as="b" hint-placeholder-count="6">
+<div onClick="{{ b.tap }}" title="{{ b.title }}" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:{{ b.bg }};font-size:13px;font-weight:600;cursor:pointer;opacity:{{ b.op }}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="{{ b.d }}"/></svg>
+<sc-if value="{{ b.hasLabel }}" hint-placeholder-val="{{ true }}"><span>{{ b.label }}</span></sc-if>
+<sc-if value="{{ b.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="min-width:17px;height:17px;border-radius:9px;background:#1C1C1E;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-sizing:border-box">{{ b.badge }}</span></sc-if>
+</div>
+</sc-for>
+<div style="flex:1"></div>
+<sc-for list="{{ tbRight }}" as="b" hint-placeholder-count="3">
+<div onClick="{{ b.tap }}" title="{{ b.title }}" style="width:32px;height:32px;border-radius:9px;background:{{ b.bg }};display:flex;align-items:center;justify-content:center;cursor:pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="{{ b.d }}"/></svg>
+</div>
+</sc-for>
+</div>
+
+<div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden" ref="{{ chartRef }}">
+<svg width="{{ cw }}" height="{{ ch }}" viewBox="0 0 {{ cw }} {{ ch }}" fontFamily="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif" style="display:block;position:absolute;left:0;top:0;cursor:{{ cursor }};user-select:none" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}" onClick="{{ onClick }}" onWheel="{{ onWheel }}" onMouseDown="{{ onDown }}" onMouseUp="{{ onUp }}">
+<rect x="0" y="0" width="{{ cw }}" height="{{ ch }}" fill="#fff"/>
+<sc-if value="{{ setGrid }}" hint-placeholder-val="{{ true }}">
+<g>
+<sc-for list="{{ vgrid }}" as="t" hint-placeholder-count="0"><line x1="{{ t.x }}" x2="{{ t.x }}" y1="0" y2="{{ timeLine }}" stroke="#F4F4F8" strokeWidth="1"/></sc-for>
+<sc-for list="{{ grid }}" as="g" hint-placeholder-count="0"><line x1="0" x2="{{ plotW }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="#F0F0F4" strokeWidth="1"/></sc-for>
+</g>
+</sc-if>
+<sc-for list="{{ grid }}" as="g" hint-placeholder-count="0"><text x="{{ axisX }}" y="{{ g.ty }}" textAnchor="end" fontSize="12" fill="#8E8E93">{{ g.label }}</text></sc-for>
+<sc-for list="{{ tlabels }}" as="t" hint-placeholder-count="0"><text x="{{ t.x }}" y="{{ timeY }}" textAnchor="middle" fontSize="12" fill="#8E8E93">{{ t.label }}</text></sc-for>
+<sc-if value="{{ setWm }}" hint-placeholder-val="{{ true }}"><text x="{{ wmX }}" y="{{ wmY }}" textAnchor="middle" fontSize="84" fontWeight="700" fill="#1C1C1E" opacity=".04">{{ cur.n }}</text></sc-if>
+
+<sc-for list="{{ under }}" as="p" hint-placeholder-count="0"><path d="{{ p.d }}" fill="{{ p.fill }}" stroke="{{ p.color }}" strokeWidth="{{ p.w }}" strokeDasharray="{{ p.dash }}" opacity="{{ p.op }}"/></sc-for>
+<sc-for list="{{ profile }}" as="b" hint-placeholder-count="0"><g><rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.sw }}" height="{{ b.h }}" fill="#FF9F0A" opacity="{{ b.op }}"/><rect x="{{ b.bx }}" y="{{ b.y }}" width="{{ b.bw }}" height="{{ b.h }}" fill="#0A84FF" opacity="{{ b.op }}"/></g></sc-for>
+<sc-for list="{{ vols }}" as="v" hint-placeholder-count="0"><rect x="{{ v.x }}" y="{{ v.y }}" width="{{ v.w }}" height="{{ v.h }}" fill="{{ v.color }}" opacity=".35"/></sc-for>
+<sc-if value="{{ showVolNote }}" hint-placeholder-val="{{ true }}"><text x="{{ volNoteX }}" y="{{ volNoteY }}" textAnchor="end" fontSize="12" fill="#FF9F0A">часть баров = оценка</text></sc-if>
+<sc-for list="{{ candles }}" as="c" hint-placeholder-count="0"><g><line x1="{{ c.cx }}" x2="{{ c.cx }}" y1="{{ c.wy1 }}" y2="{{ c.wy2 }}" stroke="{{ c.color }}" strokeWidth="1"/><rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" fill="{{ c.color }}"/></g></sc-for>
+<sc-for list="{{ obars }}" as="c" hint-placeholder-count="0"><path d="{{ c.d }}" stroke="{{ c.color }}" strokeWidth="1.2" fill="none"/></sc-for>
+<sc-for list="{{ over }}" as="p" hint-placeholder-count="0"><path d="{{ p.d }}" fill="{{ p.fill }}" stroke="{{ p.color }}" strokeWidth="{{ p.w }}" strokeDasharray="{{ p.dash }}" strokeLinejoin="round" strokeLinecap="round" opacity="{{ p.op }}"/></sc-for>
+<sc-for list="{{ rects }}" as="r" hint-placeholder-count="0"><rect x="{{ r.x }}" y="{{ r.y }}" width="{{ r.w }}" height="{{ r.h }}" fill="{{ r.fill }}" stroke="{{ r.stroke }}" strokeWidth="1"/></sc-for>
+<sc-for list="{{ lines }}" as="l" hint-placeholder-count="0"><g><line x1="{{ l.x1 }}" x2="{{ l.x2 }}" y1="{{ l.y1 }}" y2="{{ l.y2 }}" stroke="{{ l.color }}" strokeWidth="1.25" strokeDasharray="{{ l.dash }}"/><text x="{{ l.tx }}" y="{{ l.ty }}" textAnchor="end" fontSize="12" fontWeight="600" fill="{{ l.color }}">{{ l.label }}</text></g></sc-for>
+<sc-for list="{{ ztags }}" as="z" hint-placeholder-count="0"><g><rect x="{{ z.x }}" y="{{ z.y }}" width="48" height="17" rx="4" fill="#FFE55C"/><text x="{{ z.tx }}" y="{{ z.ty }}" textAnchor="middle" fontSize="12" fontWeight="600" fill="#1C1C1E">{{ z.label }}</text></g></sc-for>
+<sc-for list="{{ circs }}" as="z" hint-placeholder-count="0"><g><circle cx="{{ z.x }}" cy="{{ z.y }}" r="9" fill="#fff" stroke="#D63AA8" strokeWidth="1.5"/><text x="{{ z.x }}" y="{{ z.ty }}" textAnchor="middle" fontSize="12" fontWeight="700" fill="#D63AA8">{{ z.n }}</text></g></sc-for>
+<sc-for list="{{ texts }}" as="t" hint-placeholder-count="0"><text x="{{ t.x }}" y="{{ t.y }}" fontSize="13" fontWeight="600" fill="{{ t.color }}">{{ t.t }}</text></sc-for>
+<line x1="0" x2="{{ plotW }}" y1="{{ lastY }}" y2="{{ lastY }}" stroke="{{ chgFg }}" strokeWidth="1" strokeDasharray="3 3"/>
+<sc-for list="{{ atags }}" as="a" hint-placeholder-count="0"><g><rect x="{{ plotW }}" y="{{ a.y }}" width="60" height="20" rx="5" fill="{{ a.bg }}"/><text x="{{ tagTx }}" y="{{ a.ty }}" textAnchor="middle" fontSize="12" fontWeight="600" fill="#fff">{{ a.label }}</text></g></sc-for>
+
+<sc-for list="{{ subs }}" as="s" hint-placeholder-count="0">
+<g>
+<line x1="0" x2="{{ cw }}" y1="{{ s.y0 }}" y2="{{ s.y0 }}" stroke="#E5E5EA" strokeWidth="1"/>
+<sc-for list="{{ s.bands }}" as="b" hint-placeholder-count="0"><rect x="0" y="{{ b.y }}" width="{{ plotW }}" height="{{ b.h }}" fill="{{ s.color }}" opacity=".07"/></sc-for>
+<sc-for list="{{ s.ticks }}" as="k" hint-placeholder-count="0"><g><line x1="0" x2="{{ plotW }}" y1="{{ k.y }}" y2="{{ k.y }}" stroke="#D1D1D6" strokeWidth="1" strokeDasharray="3 3"/><text x="{{ axisX }}" y="{{ k.ty }}" textAnchor="end" fontSize="12" fill="#8E8E93">{{ k.label }}</text></g></sc-for>
+<path d="{{ s.d }}" fill="none" stroke="{{ s.color }}" strokeWidth="1.6" strokeLinejoin="round" opacity="{{ s.op }}"/>
+<rect x="{{ plotW }}" y="{{ s.tagY }}" width="60" height="20" rx="5" fill="{{ s.color }}"/>
+<text x="{{ tagTx }}" y="{{ s.tagTy }}" textAnchor="middle" fontSize="12" fontWeight="600" fill="#fff">{{ s.val }}</text>
+</g>
+</sc-for>
+
+<sc-if value="{{ hoverOn }}" hint-placeholder-val="{{ false }}">
+<g>
+<line x1="{{ hoverX }}" x2="{{ hoverX }}" y1="0" y2="{{ timeLine }}" stroke="#8E8E93" strokeWidth="1" strokeDasharray="3 3"/>
+<line x1="0" x2="{{ plotW }}" y1="{{ hoverY }}" y2="{{ hoverY }}" stroke="#8E8E93" strokeWidth="1" strokeDasharray="3 3"/>
+<rect x="{{ plotW }}" y="{{ hoverTagY }}" width="60" height="20" rx="5" fill="#1C1C1E"/>
+<text x="{{ tagTx }}" y="{{ hoverTextY }}" textAnchor="middle" fontSize="12" fontWeight="600" fill="#fff">{{ hoverPrice }}</text>
+<rect x="{{ hoverLabX }}" y="{{ timeLine }}" width="150" height="22" rx="5" fill="#1C1C1E"/>
+<text x="{{ hoverLabCx }}" y="{{ hoverLabY }}" textAnchor="middle" fontSize="12" fontWeight="600" fill="#fff">{{ hoverTime }}</text>
+</g>
+</sc-if>
+</svg>
+
+<div style="position:absolute;left:10px;top:8px;display:flex;flex-direction:column;gap:3px;max-width:60%">
+<div style="pointer-events:none;background:rgba(255,255,255,.9);padding:4px 9px;border-radius:10px;display:flex;flex-direction:column;gap:1px;align-self:flex-start">
+<div style="font-size:14px;font-weight:600">{{ cur.n }} · {{ tfLabel }}</div>
+<div style="display:flex;gap:9px;font-size:13px;font-variant-numeric:tabular-nums">
+<sc-for list="{{ legend }}" as="l" hint-placeholder-count="6"><span><span style="color:#8E8E93">{{ l.k }}</span> <span style="font-weight:600;color:{{ l.c }}">{{ l.v }}</span></span></sc-for>
+</div>
+</div>
+<div onClick="{{ toggleLegend }}" style="align-self:flex-start;display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9px;background:rgba(242,242,247,.95);font-size:13px;font-weight:600;cursor:pointer">
+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="{{ legendChev }}"/></svg>Индикаторы ({{ nInd }})</div>
+<sc-if value="{{ legendOpen }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;background:rgba(255,255,255,.95);border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.12);padding:4px 0">
+<sc-for list="{{ activeInd }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:13px;white-space:nowrap">
+<span style="width:8px;height:8px;border-radius:4px;background:{{ r.dot }}"></span><span style="min-width:150px;opacity:{{ r.op }}">{{ r.label }}</span>
+<span onClick="{{ r.eye }}" title="Скрыть" style="cursor:pointer;color:#3C3C43;font-size:12px;padding:0 4px">{{ r.eyeT }}</span>
+<span onClick="{{ r.off }}" title="Удалить" style="cursor:pointer;color:#FF3B30;font-size:15px;padding:0 4px;line-height:1">×</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+
+<sc-for list="{{ paneBtns }}" as="p" hint-placeholder-count="0">
+<div style="position:absolute;left:{{ p.left }}px;top:{{ p.top }}px;display:flex;gap:2px;background:rgba(255,255,255,.9);border-radius:8px;padding:0 3px">
+<span onClick="{{ p.eye }}" title="{{ p.eyeT }}" style="cursor:pointer;width:22px;height:20px;display:flex;align-items:center;justify-content:center;opacity:{{ p.eyeOp }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z"/></svg></span>
+<span onClick="{{ p.off }}" title="Закрыть панель" style="cursor:pointer;width:22px;height:20px;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+</div>
+</sc-for>
+
+<div style="position:absolute;right:{{ rightPad }}px;top:8px;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+<sc-if value="{{ ellCard }}" hint-placeholder-val="{{ false }}">
+<div style="width:210px;background:rgba(255,255,255,.94);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:8px 10px;font-size:12px;line-height:1.35">
+<div style="font-weight:700;font-size:13px;margin-bottom:2px">Эллиотт</div>
+<div style="color:#8E8E93">{{ ellText }}</div><div style="color:#8E8E93">Гипотеза, а не прогноз.</div>
+</div>
+</sc-if>
+<sc-if value="{{ profOn }}" hint-placeholder-val="{{ false }}">
+<div style="width:250px;background:rgba(255,255,255,.94);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;font-size:12px">
+<div onClick="{{ toggleProf }}" style="display:flex;align-items:center;gap:6px;padding:7px 10px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(242,242,247,.9)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="{{ profChev }}"/></svg>Профиль объёма · 70%</div>
+<sc-if value="{{ profOpen }}" hint-placeholder-val="{{ true }}">
+<div style="padding:4px 10px 6px">
+<sc-for list="{{ pRows }}" as="r" hint-placeholder-count="12"><div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0"><span style="color:#8E8E93">{{ r.k }}</span><span style="font-weight:600;font-variant-numeric:tabular-nums;text-align:right">{{ r.v }}</span></div></sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ textEditOn }}" hint-placeholder-val="{{ false }}">
+<input value="{{ textVal }}" onInput="{{ onTextInput }}" onKeyDown="{{ onTextKey }}" autoFocus="true" placeholder="Текст" style="position:absolute;left:{{ textX }}px;top:{{ textY }}px;width:160px;border:none;outline:2px solid {{ up }};border-radius:8px;padding:6px 10px;font-size:14px;font-family:inherit;box-shadow:0 4px 16px rgba(0,0,0,.2)"/>
+</sc-if>
+
+<div style="position:absolute;left:10px;bottom:10px;display:flex;background:rgba(255,255,255,.94);border-radius:11px;box-shadow:0 2px 12px rgba(0,0,0,.14);overflow:hidden">
+<sc-for list="{{ zoomBtns }}" as="z" hint-placeholder-count="4"><div onClick="{{ z.tap }}" title="{{ z.title }}" style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;font-weight:600;color:#3C3C43">{{ z.t }}</div></sc-for>
+</div>
+
+<sc-if value="{{ hintOn }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(28,28,30,.9);color:#fff;font-size:13px;padding:7px 14px;border-radius:999px;pointer-events:none">{{ hintText }}</div>
+</sc-if>
+
+<sc-if value="{{ replayOn }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(28,28,30,.92);color:#fff;border-radius:999px;padding:5px 8px;font-size:13px">
+<span style="padding:0 8px;color:#C7C7CC">Симулятор · осталось {{ replayLeft }}</span>
+<sc-for list="{{ replayBtns }}" as="b" hint-placeholder-count="3"><span onClick="{{ b.tap }}" title="{{ b.title }}" style="cursor:pointer;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-weight:600">{{ b.t }}</span></sc-for>
+</div>
+</sc-if>
+</div>
+
+<div style="flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:6px 10px;border-top:.5px solid #E5E5EA;white-space:nowrap">
+<div style="display:flex;background:#E9E9EE;border-radius:9px;padding:2px">
+<sc-for list="{{ ranges }}" as="f" hint-placeholder-count="9">
+<div onClick="{{ f.tap }}" style="padding:3px 8px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ f.bg }};box-shadow:{{ f.sh }}">{{ f.t }}</div>
+</sc-for>
+</div>
+<div onClick="{{ toggleDate }}" style="display:flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;background:#E9E9EE"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4"/></svg>К дате</div>
+<div style="flex:1"></div>
+<span style="font-size:12px;color:#3C3C43;font-variant-numeric:tabular-nums">{{ clock }} UTC+3</span>
+<div onClick="{{ togglePct }}" style="padding:3px 10px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ pctBg }}">%</div>
+<div onClick="{{ toggleLog }}" style="padding:3px 10px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ logBg }}">Лог</div>
+<div onClick="{{ toggleAuto }}" style="padding:3px 10px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ autoBg }}">Авто</div>
+</div>
+
+<sc-if value="{{ dateOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:12px;bottom:44px;background:rgba(255,255,255,.97);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.1);padding:12px;z-index:7;display:flex;gap:8px;align-items:center">
+<input type="date" value="{{ dateVal }}" onInput="{{ onDate }}" style="border:none;background:#E9E9EE;border-radius:9px;padding:7px 10px;font-size:14px;font-family:inherit"/>
+<div onClick="{{ goDate }}" style="padding:7px 14px;border-radius:9px;background:{{ up }};color:#fff;font-size:14px;font-weight:600;cursor:pointer">Перейти</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ symOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:10px;top:48px;width:340px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.1);padding:10px;z-index:7">
+<input value="{{ q }}" onInput="{{ onQ }}" placeholder="Тикер или название" style="width:100%;box-sizing:border-box;border:none;outline:none;background:#E9E9EE;border-radius:10px;padding:9px 12px;font-size:15px;font-family:inherit"/>
+<div style="margin-top:6px">
+<sc-for list="{{ symList }}" as="s" hint-placeholder-count="6">
+<div onClick="{{ s.tap }}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;background:{{ s.bg }}"><div style="flex:1"><div style="font-size:15px;font-weight:600">{{ s.t }}</div><div style="font-size:12px;color:#8E8E93">{{ s.n }}</div></div><span style="font-size:12px;color:#8E8E93">{{ s.m }}</span></div>
+</sc-for>
+<sc-if value="{{ symEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 8px;color:#8E8E93;font-size:14px">Ничего не найдено</div></sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ popOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:{{ popLeft }};right:{{ popRight }};top:48px;width:320px;max-height:70%;overflow-y:auto;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.1);padding:6px 0;z-index:7">
+<div style="padding:8px 14px 4px;font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:.3px">{{ popTitle }}</div>
+<sc-for list="{{ popRows }}" as="r" hint-placeholder-count="6">
+<div onClick="{{ r.tap }}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;border-top:{{ r.bt }}">
+<div style="width:10px;height:10px;border-radius:5px;background:{{ r.dot }};flex:none"></div>
+<div style="flex:1"><div style="font-size:14px;font-weight:500">{{ r.label }}</div><div style="font-size:12px;color:#8E8E93">{{ r.sub }}</div></div>
+<sc-if value="{{ r.sw }}" hint-placeholder-val="{{ false }}"><div style="width:42px;height:26px;border-radius:13px;background:{{ r.track }};display:flex;align-items:center;justify-content:{{ r.jc }};padding:2px;box-sizing:border-box"><div style="width:22px;height:22px;border-radius:11px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25)"></div></div></sc-if>
+<sc-if value="{{ r.ck }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ up }}" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7"/></svg></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ popFootOn }}" hint-placeholder-val="{{ false }}"><div onClick="{{ popFootTap }}" style="margin:6px 10px 4px;padding:9px;border-radius:10px;background:{{ up }};color:#fff;font-size:14px;font-weight:600;text-align:center;cursor:pointer">{{ popFoot }}</div></sc-if>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ true }}">
+<div style="flex:none;width:{{ panelW }}px;background:#fff;border-radius:16px;display:flex;flex-direction:column;min-height:0">
+<div style="flex:none;display:flex;align-items:center;gap:8px;padding:12px 12px 8px">
+<span style="flex:1;font-size:13px;font-weight:700;letter-spacing:.5px;color:#3C3C43">{{ panelTitle }}</span>
+<sc-if value="{{ pCal }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:4px">
+<span onClick="{{ calRefresh }}" title="Обновить" style="cursor:pointer;width:28px;height:28px;border-radius:8px;background:#F2F2F7;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"/></svg></span>
+<span onClick="{{ togglePanelWide }}" title="Развернуть" style="cursor:pointer;width:28px;height:28px;border-radius:8px;background:#F2F2F7;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span>
+</div>
+</sc-if>
+<span onClick="{{ togglePanel }}" title="Свернуть" style="cursor:pointer;width:28px;height:28px;border-radius:8px;background:#F2F2F7;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+
+<div style="flex:1;min-height:0;overflow-y:auto;padding:0 10px 10px">
+
+<sc-if value="{{ pList }}" hint-placeholder-val="{{ false }}">
+<div>
+<sc-for list="{{ watchRows }}" as="r" hint-placeholder-count="6">
+<div onClick="{{ r.tap }}" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;cursor:pointer;background:{{ r.bg }}">
+<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">{{ r.t }}</div><div style="font-size:12px;color:#8E8E93">{{ r.n }}</div></div>
+<svg width="52" height="24" viewBox="0 0 64 28"><path d="{{ r.spark }}" fill="none" stroke="{{ r.color }}" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/></svg>
+<div style="width:86px;text-align:right"><div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">{{ r.price }}</div><div style="font-size:12px;font-weight:600;color:{{ r.color }}">{{ r.chg }}</div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ pInfo }}" hint-placeholder-val="{{ false }}">
+<div>
+<sc-for list="{{ infoRows }}" as="r" hint-placeholder-count="8"><div style="display:flex;justify-content:space-between;padding:9px 8px;border-bottom:.5px solid #F0F0F4;font-size:14px"><span style="color:#8E8E93">{{ r.k }}</span><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ r.v }}</span></div></sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ pIdeas }}" hint-placeholder-val="{{ false }}">
+<div style="padding:8px"><div style="background:#F7F7FA;border-radius:14px;padding:14px;font-size:14px;line-height:1.45">Торговые идеи и обсуждения по {{ cur.t }} на доске FOMO.<div style="margin-top:10px"><a href="https://fomo.spot/feed" style="font-weight:600">Открыть доску</a></div></div></div>
+</sc-if>
+
+<sc-if value="{{ pObj }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="font-size:12px;font-weight:600;color:#8E8E93;padding:6px 8px">РИСУНКИ</div>
+<sc-if value="{{ noDraw }}" hint-placeholder-val="{{ false }}"><div style="padding:6px 8px 10px;color:#8E8E93;font-size:14px">Нет рисунков</div></sc-if>
+<sc-for list="{{ drawRows }}" as="r" hint-placeholder-count="0"><div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:#F7F7FA;margin-bottom:4px"><span style="flex:1;font-size:14px">{{ r.name }}</span><span onClick="{{ r.del }}" style="cursor:pointer;color:#FF3B30;font-size:18px;line-height:1;padding:0 4px">×</span></div></sc-for>
+<div style="font-size:12px;font-weight:600;color:#8E8E93;padding:12px 8px 6px">ИНДИКАТОРЫ</div>
+<sc-for list="{{ activeInd }}" as="r" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:#F7F7FA;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:4px;background:{{ r.dot }}"></span><span style="flex:1;font-size:14px;opacity:{{ r.op }}">{{ r.label }}</span><span onClick="{{ r.eye }}" style="cursor:pointer;font-size:12px;color:#3C3C43;padding:0 4px">{{ r.eyeT }}</span><span onClick="{{ r.off }}" style="cursor:pointer;color:#FF3B30;font-size:18px;line-height:1;padding:0 4px">×</span></div></sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ pAlerts }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 8px 8px"><span onClick="{{ addAlert }}" style="font-size:14px;color:#17804D;font-weight:600;cursor:pointer">+ Создать</span><span onClick="{{ toggleEdit }}" style="font-size:14px;color:#17804D;font-weight:600;cursor:pointer">{{ editLabel }}</span></div>
+<sc-if value="{{ noAlerts }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 8px;color:#8E8E93;font-size:14px;line-height:1.4">Оповещений нет.</div></sc-if>
+<sc-for list="{{ alertRows }}" as="a" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:10px;padding:9px 8px">
+<sc-if value="{{ a.edit }}" hint-placeholder-val="{{ false }}"><div onClick="{{ a.del }}" style="flex:none;width:20px;height:20px;border-radius:10px;background:#FF3B30;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="width:9px;height:2px;background:#fff"></div></div></sc-if>
+<div style="flex:1"><div style="font-size:15px;font-weight:600">{{ a.t }}</div><div style="font-size:12px;color:#8E8E93">Цена {{ a.dir }} {{ a.price }}</div></div>
+<div onClick="{{ a.tap }}" style="width:42px;height:26px;border-radius:13px;background:{{ a.track }};display:flex;align-items:center;justify-content:{{ a.jc }};padding:2px;box-sizing:border-box;cursor:pointer"><div style="width:22px;height:22px;border-radius:11px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25)"></div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ pCal }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-if value="{{ hasCountdown }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:10px;padding:7px 10px;font-size:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 3h6"/></svg><span style="color:#8E8E93">Следующее событие через</span><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ countdown }}</span></div></sc-if>
+<div style="display:flex;background:#E9E9EE;border-radius:9px;padding:2px">
+<sc-for list="{{ calDaysTabs }}" as="f" hint-placeholder-count="5"><div onClick="{{ f.tap }}" style="flex:1;text-align:center;padding:4px 0;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:{{ f.bg }};box-shadow:{{ f.sh }}">{{ f.t }}</div></sc-for>
+</div>
+<div style="display:flex;align-items:center;gap:8px">
+<div style="display:flex;gap:6px;padding:4px 8px;background:#F2F2F7;border-radius:10px">
+<sc-for list="{{ impDots }}" as="i" hint-placeholder-count="3"><span onClick="{{ i.tap }}" title="Важность" style="width:14px;height:14px;border-radius:7px;background:{{ i.bg }};border:2px solid {{ i.c }};box-sizing:border-box;cursor:pointer"></span></sc-for>
+</div>
+<select value="{{ ctry }}" onChange="{{ onCtry }}" style="flex:1;border:none;background:#F2F2F7;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600;outline:none">
+<option value="Все">Все страны</option><option value="Россия">Россия</option><option value="США">США</option>
+</select>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ chips }}" as="c" hint-placeholder-count="4"><span onClick="{{ c.tap }}" style="padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }}">{{ c.t }}</span></sc-for>
+</div>
+<input value="{{ calQ }}" onInput="{{ onCalQ }}" placeholder="Поиск события" style="border:none;outline:none;background:#F2F2F7;border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit"/>
+<sc-if value="{{ calEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:14px 4px;color:#8E8E93;font-size:14px">Событий нет</div></sc-if>
+<sc-for list="{{ calDays }}" as="d" hint-placeholder-count="2">
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:#8E8E93;padding:4px 4px 6px;letter-spacing:.3px"><span>{{ d.title }}</span><span>{{ d.count }}</span></div>
+<sc-for list="{{ d.items }}" as="e" hint-placeholder-count="1">
+<div style="padding:9px 10px;border-radius:12px;background:#F7F7FA;margin-bottom:6px">
+<div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:#8E8E93;font-variant-numeric:tabular-nums">{{ e.time }}</span>
+<span style="display:flex;flex:none;width:16px;height:11px;border-radius:2px;overflow:hidden;flex-direction:column"><span style="flex:1;background:{{ e.f1 }}"></span><span style="flex:1;background:{{ e.f2 }}"></span><span style="flex:1;background:{{ e.f3 }}"></span></span>
+<span style="font-size:14px;font-weight:500;flex:1">{{ e.title }}</span><span style="width:8px;height:8px;border-radius:4px;background:{{ e.imp }};flex:none"></span></div>
+<sc-if value="{{ e.hasNums }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:18px;margin:6px 0 0 36px;font-size:12px;color:#8E8E93"><span>ФАКТ <b style="color:#1C1C1E">{{ e.fact }}</b></span><span>ПРОГН <b style="color:#1C1C1E">{{ e.fc }}</b></span><span>ПРЕД <b style="color:#1C1C1E">{{ e.prev }}</b></span></div></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<div style="flex:none;padding:8px 14px 10px;font-size:11px;color:#8E8E93;border-top:.5px solid #F0F0F4">Источник: TradingView · Мосбиржа. Не является инвестиционной рекомендацией.</div>
+</div>
+</sc-if>
+
+<div style="flex:none;width:46px;background:#fff;border-radius:16px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px">
+<sc-for list="{{ panelRail }}" as="r" hint-placeholder-count="6">
+<div onClick="{{ r.tap }}" title="{{ r.title }}" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ r.bg }}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ r.fg }}" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="{{ r.d }}"/></svg>
+</div>
+</sc-for>
+</div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:40;background:rgba(28,28,30,.94);color:#fff;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:500;white-space:nowrap">{{ toastText }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900},&quot;up&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#1E9E4A&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Цвета логотипа&quot;},&quot;down&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#E5322D&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Цвета логотипа&quot;}}">
+class Component extends DCLogic {
+  syms = [
+    { t: 'SBER', ini: 'С', n: 'Сбербанк', m: 'MOEX', c: '₽', base: 279.74, dec: 2 },
+    { t: 'GAZP', ini: 'Г', n: 'Газпром', m: 'MOEX', c: '₽', base: 128.9, dec: 2 },
+    { t: 'YDEX', ini: 'Я', n: 'Яндекс', m: 'MOEX', c: '₽', base: 4310, dec: 0 },
+    { t: 'Si-12.26', ini: 'Si', n: 'Доллар/рубль, фьючерс', m: 'MOEX', c: '₽', base: 98450, dec: 0 },
+    { t: 'BTCUSDT', ini: '₿', n: 'Bitcoin', m: 'Bybit', c: '$', base: 94210.5, dec: 1 },
+    { t: 'AAPL', ini: 'A', n: 'Apple', m: 'США', c: '$', base: 231.4, dec: 2 }
+  ];
+  tfl = ['1м', '5м', '15м', '1ч', '4ч', 'Д', 'Н', 'М'];
+  tfMin = [1, 5, 15, 60, 240, 1440, 10080, 43200];
+  rl = ['1Д', '5Д', '1М', '3М', '6М', 'YTD', '1Г', '5Л', 'Все'];
+  rb = [40, 70, 110, 160, 220, 300, 420, 600, 900];
+  NMAX = 2000; OFF = 210;
+  ctypes = [['candles', 'Свечи'], ['bars', 'Бары'], ['ha', 'Хейкин-Аши'], ['line', 'Линия'], ['area', 'Область']];
+  inds = [
+    ['ma', 'SMA 20', 'Скользящая средняя', '#FF9F0A'], ['ema', 'EMA 50', 'Экспоненциальная средняя', '#0A84FF'], ['ma200', 'SMA 200', 'Долгая средняя', '#E0457B'],
+    ['vwap', 'VWAP', 'Средневзвешенная по объёму', '#AF52DE'], ['zz', 'ZigZag', 'Пивоты с ценами', '#1C1C1E'], ['ell', 'Волны Эллиотта', 'Разметка по пивотам', '#D63AA8'],
+    ['chan', 'Канал регрессии', '±2σ за 90 баров', '#E0457B'], ['prof', 'Объёмный профиль', 'POC, зона стоимости 70%', '#0A84FF'], ['vol', 'Объёмы', 'Гистограмма под ценой', '#8E8E93'],
+    ['cvd', 'CVD', 'Накопленная дельта', '#0A84FF'], ['rsi', 'RSI 14', 'Индекс относительной силы', '#8E5CF7']
+  ];
+  evs = [
+    { at: [2026, 8, 30, 19, 0], title: 'Уровень безработицы', imp: 3, c: 'RU', tags: [], nums: ['2,2%', '2,4%', '2,3%'] },
+    { at: [2026, 9, 1, 9, 0], title: 'Индекс деловой активности (PMI) в промышленности', imp: 2, c: 'RU', tags: ['moex'] },
+    { at: [2026, 9, 1, 15, 30], title: 'Заявки на пособие по безработице', imp: 2, c: 'US', tags: [] },
+    { at: [2026, 9, 2, 10, 0], title: 'Индекс потребительских цен', imp: 3, c: 'RU', tags: [] },
+    { at: [2026, 9, 5, 10, 30], title: 'Индекс деловой активности (PMI) в сфере услуг', imp: 2, c: 'RU', tags: ['moex'] },
+    { at: [2026, 9, 5, 15, 0], title: 'Выступление главы ЦБ', imp: 3, c: 'RU', tags: ['moex'] },
+    { at: [2026, 9, 7, 17, 30], title: 'Запасы нефти (EIA)', imp: 2, c: 'US', tags: ['oil'] }
+  ];
+  state = {
+    sym: 0, tf: 3, range: 3, shift: 0, ctype: 'candles', log: false, pct: false, auto: true, edit: false, toast: null,
+    pop: null, symOpen: false, dateOpen: false, dateVal: '', q: '', hover: null, cw: 900, ch: 560,
+    panelOpen: typeof window === 'undefined' || window.innerWidth >= 1200, panelWide: false, ptab: 'cal', tool: 'cursor', pending: null, hideDraw: false, lock: false, magnet: false, keep: false,
+    drawings: {}, redo: {}, ind: { ma: true, ema: true, ma200: true, vwap: false, zz: true, ell: true, chan: true, prof: true, vol: true, cvd: true, rsi: true },
+    hid: {}, legendOpen: false, profOpen: null, cmp: null, replay: null, now: Date.now(), textEdit: null, brush: null,
+    tpls: [{ name: 'Стандартный', ind: { ma: true, ema: true, ma200: true, zz: true, ell: true, chan: true, prof: true, vol: true, cvd: true, rsi: true } }, { name: 'Минимальный', ind: { vol: true } }],
+    set: { grid: true, wm: true, piv: true, al: true },
+    cal: { day: 'week', imp: { 3: true, 2: true, 1: true }, ctry: 'Россия', chips: {}, q: '' },
+    alerts: [{ id: 1, sym: 0, price: 285, dir: 'выше', on: true }, { id: 2, sym: 4, price: 90000, dir: 'ниже', on: false }]
+  };
+  nid = 10; _c = {}; _ic = {};
+  geo = { step: 5, V: 160, top: 50, ph: 200, hi: 1, lo: 0, log: false, mainH: 300, plotW: 800, sh: 0 };
+
+  componentDidMount() {
+    this._measure = () => { const el = this._el; if (el) { const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight); if (w && h && (w !== this.state.cw || h !== this.state.ch)) this.setState({ cw: w, ch: h }); } };
+    this._ro = new ResizeObserver(this._measure);
+    if (this._el) this._ro.observe(this._el);
+    this._measure();
+    this._clk = setInterval(() => this.setState({ now: Date.now() }), 1000);
+  }
+  componentWillUnmount() { this._ro && this._ro.disconnect(); clearInterval(this._clk); clearInterval(this._rp); }
+  chartRef = el => { this._el = el; if (el && this._ro) { this._ro.observe(el); this._measure && this._measure(); } };
+
+  gen(si, tf, N) {
+    let a = (si + 1) * 7919 + tf * 104729;
+    const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const out = []; let p = 100; const dr = (rnd() - 0.5) * 0.0004;
+    for (let i = 0; i < N; i++) {
+      const o = p, c = o * (1 + (rnd() - 0.5) * 0.008 + dr + Math.sin(i / 17) * 0.0007 + Math.sin(i / 61) * 0.0006);
+      const h = Math.max(o, c) * (1 + rnd() * 0.0028), l = Math.min(o, c) * (1 - rnd() * 0.0028);
+      const v = 40 + rnd() * 120 * (1 + Math.abs(c - o) / o * 90);
+      out.push({ o, h, l, c, v }); p = c;
+    }
+    const k = this.syms[si].base / out[N - 1].c;
+    return out.map(d => ({ o: d.o * k, h: d.h * k, l: d.l * k, c: d.c * k, v: d.v }));
+  }
+  series(si, tf) { const k = si + '_' + tf; return this._c[k] || (this._c[k] = this.gen(si, tf, this.NMAX)); }
+  fmt(n, d) { return n.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  fmtK(n) { const a = Math.abs(n); return a >= 1e6 ? this.fmt(n / 1e6, 2) + 'M' : a >= 1e3 ? this.fmt(n / 1e3, 2) + 'K' : this.fmt(n, 0); }
+  smaArr(arr, n) { const out = []; let s = 0; for (let i = 0; i < arr.length; i++) { s += arr[i]; if (i >= n) s -= arr[i - n]; out.push(i >= n - 1 ? s / n : null); } return out; }
+  emaArr(arr, n) { const k = 2 / (n + 1); let e = null; return arr.map((x, i) => { e = e === null ? x : x * k + e * (1 - k); return i < n - 1 ? null : e; }); }
+  rsiArr(arr, n) {
+    const out = arr.map(() => null); let g = 0, l = 0;
+    for (let i = 1; i < arr.length; i++) {
+      const df = arr[i] - arr[i - 1], u = Math.max(df, 0), dn = Math.max(-df, 0);
+      if (i <= n) { g += u / n; l += dn / n; } else { g = (g * (n - 1) + u) / n; l = (l * (n - 1) + dn) / n; }
+      if (i >= n) out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    }
+    return out;
+  }
+  ic(si, tf) {
+    const k = si + '_' + tf; if (this._ic[k]) return this._ic[k];
+    const s = this.series(si, tf), cl = s.map(x => x.c); let c = 0;
+    return this._ic[k] = { ma: this.smaArr(cl, 20), ema: this.emaArr(cl, 50), ma200: this.smaArr(cl, 200), rsi: this.rsiArr(cl, 14), cvd: s.map(x => (c += x.c >= x.o ? x.v : -x.v) * 10000) };
+  }
+  pathOf(vals, X, Y) { let d = '', s = false; vals.forEach((v, i) => { if (v === null || v === undefined) return; d += (s ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); s = true; }); return d; }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: null }), 1900); }
+  inv(y) { const g = this.geo, f = p => g.log ? Math.log(p) : p, fh = f(g.hi), fl = f(g.lo), v = fh - (y - g.top) / g.ph * (fh - fl); return g.log ? Math.exp(v) : v; }
+  zigzag(vis, dev) {
+    const pv = []; let dir = 0, hiI = 0, hiP = vis[0].h, loI = 0, loP = vis[0].l;
+    for (let i = 1; i < vis.length; i++) {
+      const c = vis[i];
+      if (dir === 0) { if (c.h > hiP) { hiP = c.h; hiI = i; } if (c.l < loP) { loP = c.l; loI = i; } if ((hiP - loP) / loP > dev) { if (hiI > loI) { pv.push({ i: loI, p: loP, t: 'l' }); dir = 1; } else { pv.push({ i: hiI, p: hiP, t: 'h' }); dir = -1; } hiP = c.h; hiI = i; loP = c.l; loI = i; } }
+      else if (dir === 1) { if (c.h > hiP) { hiP = c.h; hiI = i; } else if ((hiP - c.l) / hiP > dev) { pv.push({ i: hiI, p: hiP, t: 'h' }); dir = -1; loP = c.l; loI = i; } }
+      else { if (c.l < loP) { loP = c.l; loI = i; } else if ((c.h - loP) / loP > dev) { pv.push({ i: loI, p: loP, t: 'l' }); dir = 1; hiP = c.h; hiI = i; } }
+    }
+    if (dir === 1) pv.push({ i: hiI, p: hiP, t: 'h' }); else if (dir === -1) pv.push({ i: loI, p: loP, t: 'l' });
+    return pv;
+  }
+  shEff() { const st = this.state; return st.shift + (st.replay ? st.replay.hidden : 0); }
+  pushDraw(dw) { const st = this.state, cur = st.drawings[st.sym] || []; this.setState({ drawings: { ...st.drawings, [st.sym]: [...cur, { ...dw, id: this.nid++ }] }, redo: { ...st.redo, [st.sym]: [] }, tool: st.keep ? st.tool : 'cursor', pending: null }); }
+  pt(e) {
+    const g = this.geo, r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const i = Math.max(0, Math.min(g.V - 1, Math.floor(x / g.step)));
+    let p = this.inv(y);
+    if (this.state.magnet && g.vis) { const c = g.vis[i], cs = [c.o, c.h, c.l, c.c]; p = cs.reduce((b, v) => Math.abs(v - p) < Math.abs(b - p) ? v : b, cs[0]); }
+    return { x, y, i, back: g.V - 1 - i + g.sh, p };
+  }
+  onDown(e) {
+    const st = this.state, g = this.geo, r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left;
+    this._moved = false;
+    if (st.tool === 'brush') { const q = this.pt(e); if (q.x <= g.plotW && q.y >= g.top && q.y <= g.top + g.ph) this.setState({ brush: [{ back: q.back, p: q.p }] }); return; }
+    if (st.tool === 'cursor' && x <= g.plotW) this._drag = { x0: e.clientX, s0: st.shift };
+  }
+  onMove(e) {
+    const g = this.geo, st = this.state, r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, i = Math.floor(x / g.step);
+    if (this._drag) {
+      const dx = e.clientX - this._drag.x0; if (Math.abs(dx) > 3) this._moved = true;
+      const ns = Math.max(0, Math.min(500, this._drag.s0 + Math.round(dx / g.step)));
+      if (ns !== st.shift) this.setState({ shift: ns });
+    }
+    const nh = x <= g.plotW && i >= 0 && i < g.V ? { i, y: e.clientY - r.top } : null;
+    if (st.brush && nh && nh.y >= g.top && nh.y <= g.top + g.ph) { const q = this.pt(e); this.setState({ hover: nh, brush: [...st.brush, { back: q.back, p: q.p }] }); } else this.setState({ hover: nh });
+  }
+  onUp() {
+    const st = this.state; this._drag = null;
+    if (st.brush) { if (st.brush.length > 2) this.pushDraw({ type: 'brush', pts: st.brush }); this.setState({ brush: null }); }
+  }
+  onClickChart(e) {
+    const st = this.state, g = this.geo; if (this._moved) { this._moved = false; return; }
+    if (st.tool === 'cursor' || st.tool === 'brush') return;
+    if (st.lock) return this.flash('Рисунки заблокированы');
+    const q = this.pt(e); if (q.x > g.plotW || q.y < g.top || q.y > g.top + g.ph) return;
+    if (st.tool === 'h') return this.pushDraw({ type: 'h', p1: q.p });
+    if (st.tool === 'text') return this.setState({ textEdit: { x: q.x, y: q.y, back: q.back, p: q.p, val: '' } });
+    if (!st.pending) return this.setState({ pending: { back: q.back, p: q.p } });
+    this.pushDraw({ type: st.tool, b1: st.pending.back, p1: st.pending.p, b2: q.back, p2: q.p });
+  }
+  startReplay() { this.stopReplay(); this.setState({ replay: { hidden: 40, play: false }, shift: 0, pop: null }); this.flash('Симулятор: бары открываются по одному'); }
+  stopReplay() { clearInterval(this._rp); this._rp = null; }
+  playReplay() { const st = this.state; if (!st.replay) return; if (this._rp) { this.stopReplay(); return this.setState({ replay: { ...st.replay, play: false } }); } this.setState({ replay: { ...st.replay, play: true } }); this._rp = setInterval(() => { const r = this.state.replay; if (!r || r.hidden <= 0) { this.stopReplay(); this.setState({ replay: r ? { ...r, play: false } : null }); return; } this.setState({ replay: { ...r, hidden: r.hidden - 1 } }); }, 450); }
+  shot() {
+    const svg = this._el && this._el.querySelector('svg'); if (!svg) return;
+    const s = new XMLSerializer().serializeToString(svg), img = new Image(), w = svg.clientWidth, h = svg.clientHeight;
+    img.onload = () => { const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2; const x = cv.getContext('2d'); x.scale(2, 2); x.drawImage(img, 0, 0); cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = this.syms[this.state.sym].t + '.png'; a.click(); }); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s); this.flash('Снимок сохранён');
+  }
+  addAlert() {
+    const st = this.state, s = this.syms[st.sym], k = Math.pow(10, s.dec), p = Math.round(s.base * 1.01 * k) / k;
+    this.setState({ alerts: [...st.alerts, { id: this.nid++, sym: st.sym, price: p, dir: 'выше', on: true }], ptab: 'alerts', panelOpen: true });
+    this.flash('Оповещение: ' + s.t + ' выше ' + this.fmt(p, s.dec));
+  }
+
+  renderVals() {
+    const st = this.state, P = this.props, I = st.ind, H = st.hid, S = st.set, sy = this.syms[st.sym], d = sy.dec;
+    const UP = P.up ?? '#1E9E4A', DN = P.down ?? '#E5322D', set = o => this.setState(o);
+    const on = k => I[k] && !H[k];
+    const AX = 60, cw = st.cw, ch = st.ch, plotW = Math.max(200, cw - AX);
+    const V = this.rb[st.range], step = plotW / V, sh = this.shEff(), NM = this.NMAX;
+    const all = this.series(st.sym, st.tf), cache = this.ic(st.sym, st.tf);
+    const s0 = NM - sh - V, s1 = NM - sh, vis = all.slice(s0, s1);
+    const slc = a => a.slice(s0, s1);
+    const timeH = 28, total = ch - timeH, sC = I.cvd, sR = I.rsi, nSub = (sC ? 1 : 0) + (sR ? 1 : 0);
+    const mainH = nSub === 2 ? total * 0.56 : nSub === 1 ? total * 0.72 : total, subH = nSub === 2 ? total * 0.22 : nSub === 1 ? total * 0.28 : 0;
+    const top = 50, vH = on('vol') ? Math.round(mainH * 0.13) : 0, ph = Math.max(80, mainH - top - vH - 16), plotBottom = mainH;
+    let hi0 = Math.max(...vis.map(x => x.h)), lo0 = Math.min(...vis.map(x => x.l));
+    if (!st.auto) { hi0 = Math.max(...all.slice(NM - 900 - sh, NM).map(x => x.h)); lo0 = Math.min(...all.slice(NM - 900 - sh, NM).map(x => x.l)); }
+    const pad = (hi0 - lo0) * 0.08, hi = hi0 + pad, lo = lo0 - pad;
+    const f = p => st.log ? Math.log(p) : p, fh = f(hi), fl = f(lo);
+    const Y = p => top + (fh - f(p)) / (fh - fl) * ph, inv = y => { const v = fh - (y - top) / ph * (fh - fl); return st.log ? Math.exp(v) : v; };
+    const X = i => i * step + step / 2;
+    this.geo = { step, V, top, ph, hi, lo, log: st.log, mainH, plotW, sh, vis };
+    const last = vis[V - 1], first = vis[0], chg = (last.c / first.o - 1) * 100, upc = chg >= 0, lastY = Y(last.c);
+    const ref = first.c, lab = p => st.pct ? ((p / ref - 1) * 100 >= 0 ? '+' : '') + this.fmt((p / ref - 1) * 100, 2) + '%' : this.fmt(p, d);
+    const maxV = Math.max(...vis.map(x => x.v));
+    const clampTag = y => Math.min(Math.max(y - 10, 0), mainH - 20);
+    const grid = [0, 1, 2, 3, 4, 5].map(i => { const y = top + ph * i / 5; return { y, ty: y - 4, label: lab(inv(y)) }; });
+
+    const end = new Date(2026, 9, 2, 18, 45).getTime(), mins = this.tfMin[st.tf], p2 = n => String(n).padStart(2, '0');
+    const tm = i => new Date(end - (V - 1 - i + sh) * mins * 60000), mon = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'], wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    const tstr = (t, f2) => f2 ? wd[t.getDay()] + ', ' + t.getDate() + ' ' + mon[t.getMonth()] + ' ' + String(t.getFullYear()).slice(2) + ' г.' + (mins < 1440 ? ', ' + p2(t.getHours()) + ':' + p2(t.getMinutes()) : '') : mins < 1440 && V <= 160 ? p2(t.getHours()) + ':' + p2(t.getMinutes()) : p2(t.getDate()) + '.' + p2(t.getMonth() + 1);
+    const tl = [], vgrid = [];
+    for (let k = 0; k < 8; k++) { const i = Math.round((V - 1) * (k + 0.5) / 8); tl.push({ x: X(i), label: tstr(tm(i), false) }); vgrid.push({ x: X(i) }); }
+    const bw = Math.max(step * 0.66, 1);
+
+    let dv = vis;
+    if (st.ctype === 'ha') { const pre = all.slice(s0 - 1, s1); let po = pre[0].o, pc = pre[0].c; dv = vis.map((c, i) => { const cl = (c.o + c.h + c.l + c.c) / 4, op = (po + pc) / 2; po = op; pc = cl; return { o: op, c: cl, h: Math.max(c.h, op, cl), l: Math.min(c.l, op, cl), v: c.v }; }); }
+    const cc = c => c.c >= c.o ? UP : DN;
+    const candles = st.ctype === 'candles' || st.ctype === 'ha' ? dv.map((c, i) => { const o = Y(c.o), cl = Y(c.c); return { cx: X(i), wy1: Y(c.h), wy2: Y(c.l), x: X(i) - bw / 2, w: bw, y: Math.min(o, cl), h: Math.max(Math.abs(o - cl), 1), color: cc(c) }; }) : [];
+    const obars = st.ctype === 'bars' ? vis.map((c, i) => ({ d: 'M' + X(i) + ' ' + Y(c.h) + 'V' + Y(c.l) + 'M' + (X(i) - bw / 2) + ' ' + Y(c.o) + 'H' + X(i) + 'M' + X(i) + ' ' + Y(c.c) + 'H' + (X(i) + bw / 2), color: cc(c) })) : [];
+    const vols = on('vol') ? vis.map((c, i) => { const h = c.v / maxV * vH; return { x: X(i) - bw / 2, w: bw, y: plotBottom - h, h, color: cc(c) }; }) : [];
+
+    const under = [], over = [], lines = [], rects = [], texts = [], ztags = [], circs = [], atags = [];
+    const mk = (d2, color, w, o2) => ({ d: d2, color, w: w || 1.5, fill: 'none', dash: '', op: o2 || 1 });
+    const lineP = this.pathOf(vis.map(c => c.c), X, Y);
+    if (st.ctype === 'line' || st.ctype === 'area') { if (st.ctype === 'area') under.push({ d: lineP + 'L' + X(V - 1).toFixed(1) + ' ' + (top + ph) + 'L' + X(0).toFixed(1) + ' ' + (top + ph) + 'Z', color: 'none', w: 0, fill: UP + '22', dash: '', op: 1 }); over.push(mk(lineP, UP, 2)); }
+    if (on('chan')) {
+      const n = Math.min(90, V), ys = vis.slice(V - n).map(c => c.c), mx = (n - 1) / 2, my = ys.reduce((a, b) => a + b, 0) / n;
+      let sxy = 0, sxx = 0; ys.forEach((y, i) => { sxy += (i - mx) * (y - my); sxx += (i - mx) * (i - mx); });
+      const b = sxy / sxx, a = my - b * mx, sd = Math.sqrt(ys.reduce((s, y, i) => s + Math.pow(y - (a + b * i), 2), 0) / n) * 2, xs = X(V - n), xe = X(V - 1);
+      const pU = a + sd, pL = a - sd, qU = a + b * (n - 1) + sd, qL = a + b * (n - 1) - sd;
+      under.push({ d: 'M' + xs + ' ' + Y(pU) + 'L' + xe + ' ' + Y(qU) + 'L' + xe + ' ' + Y(qL) + 'L' + xs + ' ' + Y(pL) + 'Z', color: '#E0457B', w: 1, fill: 'rgba(224,69,123,.07)', dash: '4 3', op: 1 });
+    }
+    if (on('ma')) over.push(mk(this.pathOf(slc(cache.ma), X, Y), '#FF9F0A'));
+    if (on('ema')) over.push(mk(this.pathOf(slc(cache.ema), X, Y), '#0A84FF'));
+    if (on('ma200')) over.push(mk(this.pathOf(slc(cache.ma200), X, Y), '#E0457B', 1.8));
+    if (on('vwap')) { let pv = 0, cv = 0; over.push(mk(this.pathOf(vis.map(c => { pv += (c.h + c.l + c.c) / 3 * c.v; cv += c.v; return pv / cv; }), X, Y), '#AF52DE')); }
+    if (st.cmp !== null && st.cmp !== st.sym) { const cs = this.series(st.cmp, st.tf).slice(s0, s1), k = first.c / cs[0].c; over.push(mk(this.pathOf(cs.map(c => c.c * k), X, Y), '#00B8A9', 1.6)); }
+    const pivs = (on('zz') || on('ell')) ? this.zigzag(vis, Math.max(0.006, (hi0 - lo0) / lo0 * 0.07)) : [];
+    if (on('zz') && pivs.length > 1) {
+      over.push(mk(pivs.map((p, k) => (k ? 'L' : 'M') + X(p.i).toFixed(1) + ' ' + Y(p.p).toFixed(1)).join(''), '#1C1C1E', 1.4));
+      if (S.piv) pivs.forEach(p => { const x = X(p.i), y = p.t === 'h' ? Y(p.p) - 21 : Y(p.p) + 4; if (x < 24 || x > plotW - 24) return; if (ztags.some(z => Math.abs(z.tx - x) < 54 && Math.abs(z.y - y) < 19)) return; ztags.push({ x: x - 24, y, tx: x, ty: y + 13, label: this.fmt(p.p, d) }); });
+    }
+    let ellText = 'Нет текущей разметки.';
+    if (on('ell') && pivs.length >= 4) {
+      const lp = pivs.slice(-4); over.push(mk(lp.map((p, k) => (k ? 'L' : 'M') + X(p.i).toFixed(1) + ' ' + Y(p.p).toFixed(1)).join(''), '#D63AA8', 2));
+      lp.slice(1).forEach((p, k) => circs.push({ x: X(p.i), y: Y(p.p), ty: Y(p.p) + 4, n: k + 1 })); ellText = 'Разметка по последним пивотам.';
+    }
+
+    let profile = [], pRows = [];
+    if (on('prof')) {
+      const B = 40, buy = new Array(B).fill(0), sell = new Array(B).fill(0), bh = ph / B, W = 90, bp = k => hi - (k + 0.5) / B * (hi - lo);
+      vis.forEach(c => { const k = Math.min(B - 1, Math.max(0, Math.floor((hi - (c.h + c.l + c.c) / 3) / (hi - lo) * B))); (c.c >= c.o ? buy : sell)[k] += c.v; });
+      const tot = buy.map((v, k) => v + sell[k]), mb = Math.max(...tot), poc = tot.indexOf(mb); let a = poc, b = poc, acc = mb; const sum = tot.reduce((s, v) => s + v, 0);
+      while (acc < sum * 0.7 && (a > 0 || b < B - 1)) { const ua = a > 0 ? tot[a - 1] : -1, ub = b < B - 1 ? tot[b + 1] : -1; if (ua >= ub) { a--; acc += tot[a]; } else { b++; acc += tot[b]; } }
+      profile = tot.map((v, k) => { const w = v / mb * W, bwid = v ? buy[k] / v * w : 0; return { y: top + k * bh + 0.5, h: bh - 1, op: k === poc ? 0.8 : (k >= a && k <= b ? 0.45 : 0.22), x: plotW - w, sw: w - bwid, bx: plotW - bwid, bw: bwid }; });
+      const vahP = hi - a / B * (hi - lo), valP = hi - (b + 1) / B * (hi - lo), pocP = bp(poc), nz = tot.map((v, k) => ({ v, k })).filter(o => o.v > 0), mnK = nz.length ? nz[nz.length - 1].k : B - 1, mxK = nz.length ? nz[0].k : 0;
+      [['VAH', vahP, '#0A84FF'], ['VAL', valP, '#0A84FF'], ['POC', pocP, '#E5322D']].forEach(([n, p, col]) => { lines.push({ x1: 0, x2: plotW, y1: Y(p), y2: Y(p), color: col, dash: n === 'POC' ? '' : '', label: '', tx: 0, ty: 0 }); atags.push({ y: clampTag(Y(p)), ty: clampTag(Y(p)) + 14, label: lab(p), bg: col }); });
+      const tv = sum * 10000, bs = buy.reduce((s, v) => s + v, 0), l21 = vis.slice(-21).reduce((s, c) => s + c.v, 0) / 21 * 10000;
+      pRows = [['Макс. профиля', this.fmt(bp(mxK), d)], ['Верх зоны стоимости', this.fmt(vahP, d)], ['Точка контроля', this.fmt(pocP, d)], ['Низ зоны стоимости', this.fmt(valP, d)], ['Мин. профиля', this.fmt(bp(mnK), d)], ['Общий объём в диапазоне', this.fmtK(tv)], ['Ср. объём / бар', this.fmtK(tv / V)], ['MA объёма (21)', this.fmtK(l21)], ['Число баров', String(V)], ['Данные', 'сделки 3% баров, остальное — оценка'], ['Дельта', (bs * 2 - sum >= 0 ? '+' : '') + this.fmtK((bs * 2 - sum) * 10000)], ['Покупки, %', this.fmt(bs / sum * 100, 1) + '%']].map(([k, v]) => ({ k, v }));
+    }
+
+    const bx = back => X(V - 1 - (back - sh)), cx = x => Math.min(plotW, Math.max(0, x));
+    const dws = st.hideDraw ? [] : (st.drawings[st.sym] || []).slice();
+    const hv = st.hover && st.hover.i < V ? st.hover : null;
+    if (st.pending && hv && hv.y > top && hv.y < top + ph) dws.push({ type: st.tool, b1: st.pending.back, p1: st.pending.p, b2: V - 1 - hv.i + sh, p2: inv(hv.y), temp: true });
+    dws.forEach(w => {
+      const dash = w.temp ? '4 3' : '';
+      if (w.type === 'h') { lines.push({ x1: 0, x2: plotW, y1: Y(w.p1), y2: Y(w.p1), color: '#0A84FF', dash: '', label: this.fmt(w.p1, d), tx: plotW - 6, ty: Y(w.p1) - 4 }); atags.push({ y: clampTag(Y(w.p1)), ty: clampTag(Y(w.p1)) + 14, label: lab(w.p1), bg: '#0A84FF' }); }
+      else if (w.type === 'fib') { const xs = cx(Math.min(bx(w.b1), bx(w.b2))); [0, 0.236, 0.382, 0.5, 0.618, 1].forEach(l => { const p = w.p1 + (w.p2 - w.p1) * l; lines.push({ x1: xs, x2: plotW, y1: Y(p), y2: Y(p), color: '#AF52DE', dash: l === 0 || l === 1 ? dash : '4 3', label: l + ' · ' + this.fmt(p, d), tx: plotW - 6, ty: Y(p) - 3 }); }); }
+      else if (w.type === 'trend') { const x1 = bx(w.b1), x2 = bx(w.b2), y1 = Y(w.p1), y2 = Y(w.p2), s = x2 === x1 ? 0 : (y2 - y1) / (x2 - x1), xs = cx(x1); lines.push({ x1: xs, x2: plotW, y1: y1 + s * (xs - x1), y2: y1 + s * (plotW - x1), color: '#FF9F0A', dash, label: '', tx: 0, ty: 0 }); }
+      else if (w.type === 'rect') { const xa = bx(w.b1), xb = bx(w.b2), ya = Y(w.p1), yb = Y(w.p2); rects.push({ x: Math.min(xa, xb), y: Math.min(ya, yb), w: Math.abs(xb - xa), h: Math.abs(yb - ya), fill: 'rgba(10,132,255,.12)', stroke: '#0A84FF' }); }
+      else if (w.type === 'brush') over.push(mk(w.pts.map((q, k) => (k ? 'L' : 'M') + bx(q.back).toFixed(1) + ' ' + Y(q.p).toFixed(1)).join(''), '#AF52DE', 2));
+      else if (w.type === 'text') texts.push({ x: bx(w.b1), y: Y(w.p1), t: w.text, color: '#1C1C1E' });
+      else if (w.type === 'measure') { const xa = bx(w.b1), xb = bx(w.b2), ya = Y(w.p1), yb = Y(w.p2), dp = w.p2 - w.p1, col = dp >= 0 ? UP : DN; rects.push({ x: Math.min(xa, xb), y: Math.min(ya, yb), w: Math.abs(xb - xa), h: Math.abs(yb - ya), fill: dp >= 0 ? UP + '22' : DN + '22', stroke: col }); texts.push({ x: Math.min(xa, xb) + 6, y: Math.min(ya, yb) - 6, t: (dp >= 0 ? '+' : '') + this.fmt(dp, d) + ' (' + (dp >= 0 ? '+' : '') + this.fmt(dp / w.p1 * 100, 2) + '%) · ' + Math.abs(Math.round(w.b2 - w.b1)) + ' бар.', color: col }); }
+    });
+    if (st.brush && st.brush.length > 1) over.push(mk(st.brush.map((q, k) => (k ? 'L' : 'M') + bx(q.back).toFixed(1) + ' ' + Y(q.p).toFixed(1)).join(''), '#AF52DE', 2));
+    if (S.al) st.alerts.filter(a => a.sym === st.sym && a.on).forEach(a => { if (a.price > lo && a.price < hi) { lines.push({ x1: 0, x2: plotW, y1: Y(a.price), y2: Y(a.price), color: '#17804D', dash: '6 3', label: 'Оповещение ' + this.fmt(a.price, d), tx: plotW - 6, ty: Y(a.price) - 4 }); atags.push({ y: clampTag(Y(a.price)), ty: clampTag(Y(a.price)) + 14, label: lab(a.price), bg: '#17804D' }); } });
+    atags.push({ y: clampTag(lastY), ty: clampTag(lastY) + 14, label: lab(last.c), bg: upc ? UP : DN });
+
+    const subs = [], paneBtns = []; let sy0 = mainH;
+    if (sC) {
+      const cv = slc(cache.cvd), mn = Math.min(...cv), mx = Math.max(...cv), y0 = sy0, a = y0 + 30, h = subH - 38, YY = v => a + (mx - v) / (mx - mn || 1) * h;
+      subs.push({ y0, tagY: Math.min(Math.max(YY(cv[V - 1]) - 10, y0 + 2), y0 + subH - 22), tagTy: Math.min(Math.max(YY(cv[V - 1]) - 10, y0 + 2), y0 + subH - 22) + 14, val: this.fmtK(cv[V - 1]), color: '#0A84FF', op: H.cvd ? 0.25 : 1, d: this.pathOf(cv, X, YY), bands: [], ticks: [mx, (mx + mn) / 2, mn].map(v => ({ y: YY(v), ty: YY(v) - 3, label: this.fmtK(v) })) });
+      texts.push({ x: 10, y: y0 + 18, t: 'CVD ' + this.fmtK(cv[V - 1]), color: '#0A84FF' }); paneBtns.push({ left: 20 + ('CVD ' + this.fmtK(cv[V - 1])).length * 7.2, top: y0 + 4, key: 'cvd' }); sy0 += subH;
+    }
+    if (sR) {
+      const rv = slc(cache.rsi), y0 = sy0, a = y0 + 30, h = subH - 38, YY = v => a + (100 - v) / 100 * h;
+      subs.push({ y0, tagY: Math.min(Math.max(YY(rv[V - 1]) - 10, y0 + 2), y0 + subH - 22), tagTy: Math.min(Math.max(YY(rv[V - 1]) - 10, y0 + 2), y0 + subH - 22) + 14, val: this.fmt(rv[V - 1], 2), color: '#8E5CF7', op: H.rsi ? 0.25 : 1, d: this.pathOf(rv, X, YY), bands: [{ y: YY(70), h: YY(30) - YY(70) }], ticks: [100, 70, 30, 0].map(v => ({ y: YY(v), ty: YY(v) - 3, label: String(v) })) });
+      texts.push({ x: 10, y: y0 + 18, t: 'RSI 14 close ' + this.fmt(rv[V - 1], 2), color: '#8E5CF7' }); paneBtns.push({ left: 20 + ('RSI 14 close ' + this.fmt(rv[V - 1], 2)).length * 7.2, top: y0 + 4, key: 'rsi' });
+    }
+    paneBtns.forEach(p => { p.eyeT = H[p.key] ? 'Показать' : 'Скрыть'; p.eyeOp = H[p.key] ? 0.4 : 1; p.eye = () => set({ hid: { ...H, [p.key]: !H[p.key] } }); p.off = () => set({ ind: { ...I, [p.key]: false } }); });
+
+    const hc = hv ? vis[hv.i] : last, hcol = cc(hc), hy = hv ? hv.y : 0, inMain = hv && hy >= top && hy <= top + ph;
+    const legend = [['O', hc.o], ['H', hc.h], ['L', hc.l], ['C', hc.c]].map(([k, v]) => ({ k, v: this.fmt(v, d), c: hcol }));
+    legend.push({ k: '', v: (hc.c >= hc.o ? '+' : '') + this.fmt(hc.c - hc.o, d) + ' (' + (hc.c >= hc.o ? '+' : '') + this.fmt((hc.c / hc.o - 1) * 100, 2) + '%)', c: hcol }, { k: 'Vol', v: this.fmtK(hc.v * 10000), c: '#1C1C1E' });
+    if (st.cmp !== null) legend.push({ k: 'vs', v: this.syms[st.cmp].t, c: '#00B8A9' });
+
+    const nInd = Object.values(I).filter(Boolean).length;
+    const activeInd = this.inds.filter(x => I[x[0]]).map(x => ({ label: x[1], dot: x[3], op: H[x[0]] ? 0.4 : 1, eyeT: H[x[0]] ? 'показать' : 'скрыть', eye: () => set({ hid: { ...H, [x[0]]: !H[x[0]] } }), off: () => set({ ind: { ...I, [x[0]]: false } }) }));
+    const bt = i => i ? '.5px solid #E5E5EA' : 'none';
+    const row = (label, sub, dot, i, o) => ({ label, sub, dot, bt: bt(i), sw: !!o.sw, ck: !!o.ck, track: o.on ? '#34C759' : '#E5E5EA', jc: o.on ? 'flex-end' : 'flex-start', tap: o.tap });
+    let popRows = [], popTitle = '', popFoot = '', popFootTap = null, popFootOn = false, popLeft = '10px', popRight = 'auto';
+    if (st.pop === 'type') { popTitle = 'ТИП ГРАФИКА'; popRows = this.ctypes.map(([k, n], i) => row(n, '', '#C7C7CC', i, { ck: st.ctype === k, on: false, tap: () => set({ ctype: k, pop: null }) })); }
+    if (st.pop === 'cmp') { popTitle = 'СРАВНИТЬ С'; popRows = this.syms.map((s, i) => ({ s, i })).filter(o => o.i !== st.sym).map((o, k) => row(o.s.t, o.s.n, '#00B8A9', k, { ck: st.cmp === o.i, on: false, tap: () => set({ cmp: st.cmp === o.i ? null : o.i, pop: null }) })); }
+    if (st.pop === 'ind') { popTitle = 'ИНДИКАТОРЫ'; popRows = this.inds.map((x, i) => row(x[1], x[2], x[3], i, { sw: true, on: I[x[0]], tap: () => set({ ind: { ...I, [x[0]]: !I[x[0]] } }) })); }
+    if (st.pop === 'tpl') { popTitle = 'ШАБЛОНЫ ИНДИКАТОРОВ'; popRows = st.tpls.map((t, i) => row(t.name, Object.keys(t.ind).length + ' инд.', '#8E8E93', i, { on: false, tap: () => { set({ ind: { ...t.ind }, hid: {}, pop: null }); this.flash('Шаблон применён: ' + t.name); } })); popFootOn = true; popFoot = 'Сохранить текущий'; popFootTap = () => set({ tpls: [...st.tpls, { name: 'Шаблон ' + (st.tpls.length + 1), ind: { ...I } }] }); }
+    if (st.pop === 'set') { popTitle = 'НАСТРОЙКИ ГРАФИКА'; popLeft = 'auto'; popRight = '10px'; popRows = [['grid', 'Сетка'], ['wm', 'Водяной знак'], ['piv', 'Цены пивотов'], ['al', 'Оповещения на графике']].map(([k, n], i) => row(n, '', '#8E8E93', i, { sw: true, on: S[k], tap: () => set({ set: { ...S, [k]: !S[k] } }) })); }
+
+    const drs = st.drawings[st.sym] || [], names = { h: 'Горизонтальная линия', trend: 'Трендовая линия', fib: 'Уровни Фибоначчи', rect: 'Прямоугольник', brush: 'Кисть', text: 'Текст', measure: 'Линейка' };
+    const drawRows = drs.map(w => ({ name: names[w.type] + (w.text ? ': ' + w.text : ''), del: () => st.lock ? this.flash('Рисунки заблокированы') : set({ drawings: { ...st.drawings, [st.sym]: drs.filter(x => x.id !== w.id) } }) }));
+    const T = st.tool, rd = st.redo[st.sym] || [];
+    const rl = (title, dd, onn, tap, mt) => ({ title, d: dd, tap, mt: mt || 0, bg: onn ? 'rgba(30,158,74,.16)' : 'transparent', fg: onn ? '#17804D' : '#3C3C43' });
+    const pick = (k, msg) => () => { set({ tool: T === k ? 'cursor' : k, pending: null, textEdit: null }); if (T !== k && msg) this.flash(msg); };
+    const rail = [
+      rl('Курсор', 'M12 4v16M4 12h16', T === 'cursor', () => set({ tool: 'cursor', pending: null })),
+      rl('Трендовая линия', 'M4 20L20 4M4 20h.01M20 4h.01', T === 'trend', pick('trend', 'Нажмите две точки на графике')),
+      rl('Горизонтальная линия', 'M3 12h18M7 12h.01M17 12h.01', T === 'h', pick('h', 'Нажмите на график, чтобы поставить уровень')),
+      rl('Уровни Фибоначчи', 'M3 5h18M3 11h12M3 16h18M3 21h12', T === 'fib', pick('fib', 'Нажмите две точки на графике')),
+      rl('Прямоугольник', 'M5 7h14v10H5z', T === 'rect', pick('rect', 'Нажмите два угла')),
+      rl('Кисть', 'M14 4l6 6-9 9H5v-6z', T === 'brush', pick('brush', 'Зажмите кнопку мыши и рисуйте')),
+      rl('Текст', 'M5 6V4h14v2M12 4v16M9 20h6', T === 'text', pick('text', 'Нажмите, где поставить текст')),
+      rl('Линейка', 'M3 17L17 3l4 4L7 21zM8 12l2 2M11 9l2 2M14 6l2 2', T === 'measure', pick('measure', 'Нажмите две точки')),
+      rl('Избранное', 'M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z', !!this._fav, () => { this._fav = !this._fav; this.flash(this._fav ? sy.t + ' добавлен в избранное' : 'Убрано из избранного'); }, 6),
+      rl('Магнит к OHLC', 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4z', st.magnet, () => set({ magnet: !st.magnet })),
+      rl('Оставаться в режиме рисования', 'M4 20l4-1 11-11-3-3L5 16z', st.keep, () => set({ keep: !st.keep })),
+      rl('Заблокировать рисунки', 'M6 11h12v9H6zM8 11V8a4 4 0 018 0v3', st.lock, () => set({ lock: !st.lock })),
+      rl(st.hideDraw ? 'Показать рисунки' : 'Скрыть рисунки', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z', st.hideDraw, () => set({ hideDraw: !st.hideDraw })),
+      rl('Удалить все рисунки', 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13', false, () => st.lock ? this.flash('Рисунки заблокированы') : set({ drawings: { ...st.drawings, [st.sym]: [] }, pending: null }))
+    ];
+
+    const tbb = (title, label, dd, tap, o) => ({ title, label, hasLabel: !!label, d: dd, tap, bg: (o && o.on) ? '#D9D9DF' : '#F2F2F7', op: (o && o.dis) ? 0.4 : 1, hasBadge: !!(o && o.badge), badge: o && o.badge });
+    const typeIc = { candles: 'M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z', bars: 'M7 4v16M4 8h3M7 15h3M17 4v16M14 6h3M17 12h3', ha: 'M7 4v3M7 17v3M5 7h4v10H5zM17 8v3M17 18v2M15 11h4v7h-4z', line: 'M3 17l5-5 4 3 8-9', area: 'M3 17l5-5 4 3 8-9v11H3z' };
+    const tbBtns = [
+      tbb('Тип графика', '', typeIc[st.ctype], () => set({ pop: st.pop === 'type' ? null : 'type', symOpen: false, dateOpen: false }), { on: st.pop === 'type' }),
+      tbb('Сравнить', 'Сравнить', 'M3 17l5-5 4 3 8-9M3 7l5 5 4-3 8 8', () => set({ pop: st.pop === 'cmp' ? null : 'cmp', symOpen: false, dateOpen: false }), { on: st.pop === 'cmp' || st.cmp !== null }),
+      tbb('Индикаторы', 'Индикаторы', 'M3 16l5-6 4 3 5-8 4 4', () => set({ pop: st.pop === 'ind' ? null : 'ind', symOpen: false, dateOpen: false }), { on: st.pop === 'ind', badge: String(nInd) }),
+      tbb('Оповещения', 'Оповещения', 'M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0', () => set({ panelOpen: true, ptab: 'alerts' }), { on: st.panelOpen && st.ptab === 'alerts' }),
+      tbb('Шаблоны', '', 'M3 5h8v8H3zM13 5h8v4h-8zM13 11h8v8h-8zM3 15h8v4H3z', () => set({ pop: st.pop === 'tpl' ? null : 'tpl', symOpen: false, dateOpen: false }), { on: st.pop === 'tpl' }),
+      tbb('Симулятор рынка', 'Симулятор рынка', 'M12 6v6l4 2M4 12a8 8 0 108-8M4 4v4h4', () => st.replay ? (this.stopReplay(), set({ replay: null })) : this.startReplay(), { on: !!st.replay }),
+      tbb('Отменить', '', 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', () => { if (st.lock) return this.flash('Рисунки заблокированы'); if (!drs.length) return; set({ drawings: { ...st.drawings, [st.sym]: drs.slice(0, -1) }, redo: { ...st.redo, [st.sym]: [...rd, drs[drs.length - 1]] } }); }, { dis: !drs.length }),
+      tbb('Повторить', '', 'M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3', () => { if (!rd.length) return; set({ drawings: { ...st.drawings, [st.sym]: [...drs, rd[rd.length - 1]] }, redo: { ...st.redo, [st.sym]: rd.slice(0, -1) } }); }, { dis: !rd.length })
+    ];
+    const tbRight = [
+      { title: 'Настройки', d: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.7h4l.4-2.7a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z', tap: () => set({ pop: st.pop === 'set' ? null : 'set', symOpen: false }), bg: st.pop === 'set' ? '#D9D9DF' : '#F2F2F7' },
+      { title: 'Полный экран', d: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', tap: () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }, bg: '#F2F2F7' },
+      { title: 'Снимок графика', d: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z', tap: () => this.shot(), bg: '#F2F2F7' }
+    ];
+
+    const seg = (items, cur, fn) => items.map((t, i) => ({ t, bg: i === cur ? '#fff' : 'transparent', sh: i === cur ? '0 1px 3px rgba(0,0,0,.18)' : 'none', tap: () => fn(i) }));
+    const q = st.q.trim().toLowerCase();
+    const symList = this.syms.map((s, i) => ({ ...s, i })).filter(s => !q || (s.t + ' ' + s.n).toLowerCase().includes(q)).map(s => ({ t: s.t, n: s.n, m: s.m, bg: s.i === st.sym ? '#F2F2F7' : 'transparent', tap: () => set({ sym: s.i, symOpen: false, q: '', pending: null, cmp: st.cmp === s.i ? null : st.cmp }) }));
+    const watchRows = this.syms.map((s, i) => {
+      const g = this.series(i, 5).slice(-30), mn = Math.min(...g.map(x => x.c)), mx = Math.max(...g.map(x => x.c)), c2 = (g[29].c / g[0].o - 1) * 100;
+      return { t: s.t, n: s.n + ' · ' + s.m, color: c2 >= 0 ? UP : DN, bg: i === st.sym ? '#F2F2F7' : 'transparent', price: this.fmt(s.base, s.dec) + ' ' + s.c, chg: (c2 >= 0 ? '+' : '') + this.fmt(c2, 2) + '%', spark: this.pathOf(g.map(x => x.c), j => j * 64 / 29, p => 26 - (p - mn) / (mx - mn || 1) * 24), tap: () => set({ sym: i, pending: null }) };
+    });
+    const alertRows = st.alerts.map(a => ({ t: this.syms[a.sym].t, dir: a.dir, price: this.fmt(a.price, this.syms[a.sym].dec) + ' ' + this.syms[a.sym].c, edit: st.edit, track: a.on ? '#34C759' : '#E5E5EA', jc: a.on ? 'flex-end' : 'flex-start', tap: () => set({ alerts: st.alerts.map(x => x.id === a.id ? { ...x, on: !x.on } : x) }), del: () => set({ alerts: st.alerts.filter(x => x.id !== a.id) }) }));
+
+    // calendar
+    const now = new Date(st.now), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), DAY = 864e5, dow = (t0.getDay() + 6) % 7, wk0 = t0.getTime() - dow * DAY;
+    const ranges = { yest: [t0.getTime() - DAY, t0.getTime()], today: [t0.getTime(), t0.getTime() + DAY], tom: [t0.getTime() + DAY, t0.getTime() + 2 * DAY], week: [wk0, wk0 + 7 * DAY], next: [wk0 + 7 * DAY, wk0 + 14 * DAY] }, C = st.cal;
+    const evAt = e => new Date(e.at[0], e.at[1], e.at[2], e.at[3], e.at[4]).getTime();
+    const flags = { RU: ['#fff', '#2B5DD6', '#E5322D'], US: ['#E5322D', '#fff', '#2B5DD6'] };
+    const cq = C.q.trim().toLowerCase(), anyC = ['RU', 'US'].some(k => C.chips[k]), anyT = ['oil', 'moex'].some(k => C.chips[k]);
+    const evl = this.evs.filter(e => { const t = evAt(e), r = ranges[C.day]; return t >= r[0] && t < r[1] && C.imp[e.imp] && (C.ctry === 'Все' || (C.ctry === 'Россия' ? e.c === 'RU' : e.c === 'US')) && (!anyC || C.chips[e.c]) && (!anyT || e.tags.some(x => C.chips[x])) && (!cq || e.title.toLowerCase().includes(cq)); }).sort((a, b) => evAt(a) - evAt(b));
+    const groups = {}; evl.forEach(e => { const t = new Date(evAt(e)), key = t.getFullYear() + '-' + t.getMonth() + '-' + t.getDate(); (groups[key] = groups[key] || { t, items: [] }).items.push(e); });
+    const calDays = Object.values(groups).map(g => ({ title: g.t.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase(), count: g.items.length, items: g.items.map(e => ({ time: p2(e.at[3]) + ':' + p2(e.at[4]), title: e.title, imp: e.imp === 3 ? '#E5322D' : e.imp === 2 ? '#FF9F0A' : '#C7C7CC', f1: flags[e.c][0], f2: flags[e.c][1], f3: flags[e.c][2], hasNums: !!e.nums, fact: e.nums ? e.nums[0] : '', fc: e.nums ? e.nums[1] : '', prev: e.nums ? e.nums[2] : '' })) }));
+    const nxt = this.evs.map(evAt).filter(t => t > st.now).sort((a, b) => a - b)[0], df = nxt ? nxt - st.now : 0;
+    const countdown = nxt ? Math.floor(df / DAY) + 'д ' + p2(Math.floor(df % DAY / 36e5)) + ':' + p2(Math.floor(df % 36e5 / 6e4)) + ':' + p2(Math.floor(df % 6e4 / 1e3)) : '';
+    const setCal = o => set({ cal: { ...C, ...o } });
+    const chipDefs = [['RU', 'RU'], ['US', 'US'], ['oil', 'Нефть и газ'], ['moex', 'Мосбиржа']];
+
+    const info = [['Тикер', sy.t], ['Рынок', sy.m], ['Валюта', sy.c], ['Открытие', this.fmt(first.o, d)], ['Максимум', this.fmt(hi0, d)], ['Минимум', this.fmt(lo0, d)], ['Закрытие', this.fmt(last.c, d)], ['Изменение', (upc ? '+' : '') + this.fmt(chg, 2) + '%'], ['Баров на экране', String(V)]].map(([k, v]) => ({ k, v }));
+    const ptabsDef = [['list', 'СПИСОК НАБЛЮДЕНИЯ', 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'], ['info', 'СВЕДЕНИЯ', 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8h.01M11 12h1v4h1'], ['ideas', 'ИДЕИ', 'M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6'], ['cal', 'КАЛЕНДАРЬ СОБЫТИЙ', 'M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4'], ['obj', 'ОБЪЕКТЫ', 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5'], ['alerts', 'ОПОВЕЩЕНИЯ', 'M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0']];
+    const panelRail = ptabsDef.map(([k, , dd]) => { const a = st.panelOpen && st.ptab === k; return { title: ptabsDef.find(x => x[0] === k)[1], d: dd, bg: a ? 'rgba(30,158,74,.16)' : 'transparent', fg: a ? '#17804D' : '#3C3C43', tap: () => set(a ? { panelOpen: false } : { panelOpen: true, ptab: k }) }; });
+    const navItems = [['Доска', 'feed'], ['Каналы', 'channels'], ['Авторы', 'authors'], ['Болталка', 'chat'], ['Терминал', 'terminal'], ['Календарь', 'calendar'], ['Калькулятор', 'calculator'], ['Как пользоваться', 'help']];
+    const nav = navItems.map(([t, h]) => ({ t, href: 'https://fomo.spot/' + h, w: h === 'terminal' ? 600 : 500, bg: h === 'terminal' ? 'rgba(30,158,74,.14)' : 'transparent', fg: h === 'terminal' ? '#17804D' : '#3C3C43' }));
+    const te = st.textEdit, hintOn = st.tool !== 'cursor' && !!st.pending, rp = st.replay;
+    const rngSet = i => set({ range: i, shift: Math.min(st.shift, 500) });
+    const dmy = new Date(end);
+
+    return {
+      up: UP, down: DN, nav, rail, cur: sy, tfLabel: this.tfl[st.tf],
+      tfs: seg(this.tfl, st.tf, i => set({ tf: i })).map((x, i) => ({ ...x, t: this.tfl[i] })), tbBtns, tbRight,
+      ranges: seg(this.rl, st.range, rngSet).map((x, i) => ({ ...x, t: this.rl[i] })), chgFg: upc ? UP : DN,
+      chartRef: this.chartRef, cw, ch, plotW, axisX: cw - 6, tagTx: plotW + 30, timeY: total + 19, timeLine: total, cursor: st.tool === 'cursor' ? 'crosshair' : 'copy',
+      setGrid: S.grid, setWm: S.wm, wmX: plotW / 2, wmY: top + ph / 2 + 20,
+      grid, tlabels: tl, vgrid, profile, vols, candles, obars, under, over, rects, lines, ztags, circs, texts, atags, subs, lastY,
+      showVolNote: on('vol'), volNoteX: plotW - 8, volNoteY: plotBottom - 4,
+      legend, hoverOn: !!hv, hoverX: hv ? X(hv.i) : 0, hoverY: hy, hoverTagY: Math.max(0, hy - 10), hoverTextY: Math.max(0, hy - 10) + 14, hoverPrice: inMain ? lab(inv(hy)) : '',
+      hoverLabX: hv ? Math.min(Math.max(X(hv.i) - 75, 0), cw - 150) : 0, hoverLabCx: hv ? Math.min(Math.max(X(hv.i) - 75, 0), cw - 150) + 75 : 0, hoverLabY: total + 15, hoverTime: hv ? tstr(tm(hv.i), true) : '',
+      hintOn, hintText: 'Нажмите вторую точку',
+      onMove: e => this.onMove(e), onLeave: () => { this._drag = null; set({ hover: null }); }, onClick: e => this.onClickChart(e), onDown: e => this.onDown(e), onUp: () => this.onUp(),
+      onWheel: e => { const n = Math.max(0, Math.min(this.rb.length - 1, st.range + (e.deltaY > 0 ? 1 : -1))); if (n !== st.range) set({ range: n }); },
+      nInd, legendOpen: st.legendOpen, legendChev: st.legendOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6', toggleLegend: () => set({ legendOpen: !st.legendOpen }), activeInd, paneBtns,
+      rightPad: 70, ellCard: on('ell') && cw >= 1100, ellText, profOn: on('prof'), profOpen: st.profOpen ?? cw >= 1100, profChev: (st.profOpen ?? cw >= 1100) ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6', toggleProf: () => set({ profOpen: !(st.profOpen ?? cw >= 1100) }), pRows,
+      textEditOn: !!te, textX: te ? te.x : 0, textY: te ? te.y : 0, textVal: te ? te.val : '', onTextInput: e => set({ textEdit: { ...te, val: e.target.value } }),
+      onTextKey: e => { if (e.key === 'Enter' && te.val.trim()) { this.pushDraw({ type: 'text', b1: te.back, p1: te.p, text: te.val.trim() }); set({ textEdit: null }); } else if (e.key === 'Escape') set({ textEdit: null }); },
+      zoomBtns: [{ t: '−', title: 'Отдалить', tap: () => set({ range: Math.min(this.rb.length - 1, st.range + 1) }) }, { t: '+', title: 'Приблизить', tap: () => set({ range: Math.max(0, st.range - 1) }) }, { t: '»', title: 'К последней свече', tap: () => set({ shift: 0 }) }, { t: '↻', title: 'Сбросить масштаб', tap: () => set({ range: 3, shift: 0 }) }],
+      replayOn: !!rp, replayLeft: rp ? rp.hidden : 0, replayBtns: rp ? [{ t: rp.play ? 'Пауза' : 'Пуск', title: 'Воспроизвести', tap: () => this.playReplay() }, { t: 'Шаг', title: 'Следующий бар', tap: () => rp.hidden > 0 && set({ replay: { ...rp, hidden: rp.hidden - 1 } }) }, { t: 'Выход', title: 'Выйти', tap: () => { this.stopReplay(); set({ replay: null }); } }] : [],
+      clock: p2(now.getHours()) + ':' + p2(now.getMinutes()) + ':' + p2(now.getSeconds()),
+      logBg: st.log ? 'rgba(30,158,74,.18)' : '#E9E9EE', pctBg: st.pct ? 'rgba(30,158,74,.18)' : '#E9E9EE', autoBg: st.auto ? 'rgba(30,158,74,.18)' : '#E9E9EE',
+      toggleLog: () => set({ log: !st.log }), togglePct: () => set({ pct: !st.pct }), toggleAuto: () => set({ auto: !st.auto }),
+      dateOpen: st.dateOpen, toggleDate: () => set({ dateOpen: !st.dateOpen, pop: null, symOpen: false }), dateVal: st.dateVal, onDate: e => set({ dateVal: e.target.value }),
+      goDate: () => { const t = new Date(st.dateVal).getTime(); if (!t) return; const sh2 = Math.max(0, Math.min(500, Math.round((end - t) / (mins * 60000)))); set({ shift: sh2, dateOpen: false }); this.flash(sh2 >= 500 ? 'Данные доступны не глубже 500 баров' : 'Переход выполнен'); },
+      symOpen: st.symOpen, toggleSym: () => set({ symOpen: !st.symOpen, pop: null, dateOpen: false }), q: st.q, onQ: e => set({ q: e.target.value }), symList, symEmpty: symList.length === 0,
+      popOpen: !!st.pop, popRows, popTitle, popFoot, popFootTap, popFootOn, popLeft, popRight,
+      panelOpen: st.panelOpen, panelW: st.panelWide ? 480 : 340, togglePanel: () => set({ panelOpen: false }), togglePanelWide: () => set({ panelWide: !st.panelWide }), panelTitle: ptabsDef.find(x => x[0] === st.ptab)[1], panelRail,
+      pList: st.ptab === 'list', pInfo: st.ptab === 'info', pIdeas: st.ptab === 'ideas', pCal: st.ptab === 'cal', pObj: st.ptab === 'obj', pAlerts: st.ptab === 'alerts',
+      watchRows, infoRows: info, drawRows, noDraw: drs.length === 0, alertRows, noAlerts: st.alerts.length === 0, addAlert: () => this.addAlert(), editLabel: st.edit ? 'Готово' : 'Изменить', toggleEdit: () => set({ edit: !st.edit }),
+      hasCountdown: !!nxt, countdown, calDaysTabs: seg(['Вчера', 'Сегодня', 'Завтра', 'Неделя', 'След.'], ['yest', 'today', 'tom', 'week', 'next'].indexOf(C.day), i => setCal({ day: ['yest', 'today', 'tom', 'week', 'next'][i] })).map((x, i) => ({ ...x, t: ['Вчера', 'Сегодня', 'Завтра', 'Неделя', 'След.'][i] })),
+      impDots: [3, 2, 1].map(k => ({ c: k === 3 ? '#E5322D' : k === 2 ? '#FF9F0A' : '#8E8E93', bg: C.imp[k] ? (k === 3 ? '#E5322D' : k === 2 ? '#FF9F0A' : '#8E8E93') : '#fff', tap: () => setCal({ imp: { ...C.imp, [k]: !C.imp[k] } }) })),
+      ctry: C.ctry, onCtry: e => setCal({ ctry: e.target.value }), chips: chipDefs.map(([k, n]) => ({ t: n, bg: C.chips[k] ? '#1C1C1E' : '#F2F2F7', fg: C.chips[k] ? '#fff' : '#3C3C43', tap: () => setCal({ chips: { ...C.chips, [k]: !C.chips[k] } }) })),
+      calQ: C.q, onCalQ: e => setCal({ q: e.target.value }), calDays, calEmpty: calDays.length === 0, calRefresh: () => this.flash('Календарь обновлён'),
+      toast: !!st.toast, toastText: st.toast || ''
+    };
+  }
+}
+</script>
+</body>
+</html>

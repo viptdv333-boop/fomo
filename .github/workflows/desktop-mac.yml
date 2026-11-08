@@ -1,0 +1,70 @@
+name: Desktop macOS
+
+# Builds the macOS apps of desktop/ (Electron shell around fomo.spot and terminal.fomo.spot) on a GitHub Mac runner,
+# because a .dmg cannot be built on Windows. Run it by hand: Actions -> "Desktop macOS" -> Run workflow, then open the run
+# and download the artifacts `fomo-mac` and `fomo-terminal-mac`.
+#
+# The builds are universal (Apple Silicon + Intel), ad-hoc signed and NOT notarized (no Apple Developer account), so
+# macOS Gatekeeper asks to confirm the first launch (see desktop/README.md). Each artifact holds:
+#   FOMO[-Terminal]-<version>-mac.dmg / .zip   as built
+#   site/FOMO.dmg | site/FOMO-Terminal.dmg      the same dmg under the name the site links to (/app/dl/...)
+# To show the macOS tile on the sites: put site/*.dmg into C:\Users\viptd\tools\downloads and run scripts/publish-downloads.ps1
+# (docs/downloads.md). A tag desktop-v<version> (e.g. desktop-v1.0.1) starts the build too.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [main, terminal]
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      DESKTOP_OUT: ${{ github.workspace }}/desktop/dist
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build (universal dmg + zip)
+        run: node build/dist.js ${{ matrix.flavor }} --mac
+
+      - name: Name the dmg the way the site links to it
+        run: |
+          mkdir -p dist/site
+          if [ "${{ matrix.flavor }}" = "terminal" ]; then name=FOMO-Terminal.dmg; else name=FOMO.dmg; fi
+          cp dist/*.dmg "dist/site/$name"
+          ls -l dist dist/site
+          shasum -a 256 "dist/site/$name"
+          size=$(stat -f%z "dist/site/$name")
+          echo "### ${{ matrix.flavor }}: $name, $size bytes" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$size" -gt 99000000 ]; then echo "Over 99 MB: GitHub will not take it in the downloads branch, copy it to the server with scp (docs/downloads.md)." >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.flavor == 'terminal' && 'fomo-terminal-mac' || 'fomo-mac' }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/site/*.dmg
+          if-no-files-found: error
+          retention-days: 30

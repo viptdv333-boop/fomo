@@ -255,9 +255,10 @@ export default function TopToolbar(p: Props) {
         </button>
         <Menu phKey="type" title={t("shell.chartType")} className={ph} width={220} trigger={<>{G(TB_GLYPHS.type)}{cap(t("mac.lbl.type"))}</>}>
           {(close) =>
-            CHART_TYPES.map((c) => (
+            CHART_TYPES.map((c, ci) => (
               <button
                 key={c.id}
+                aria-current={p.chartType === c.id ? "true" : undefined}
                 onClick={() => {
                   p.onChartType(c.id);
                   close();
@@ -267,6 +268,7 @@ export default function TopToolbar(p: Props) {
                 }`}
               >
                 {typeIcon[c.id]}
+                <MacGlyph set="type" k={String(ci)} />
                 {t(c.key)}
               </button>
             ))
