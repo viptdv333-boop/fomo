@@ -50,6 +50,8 @@ export interface IndicatorStyle {
   tf?: Partial<Record<"seconds" | "minutes" | "hours" | "days" | "weeks" | "months", boolean>>;
   /** Placement override: draw on the main pane or in its own pane. Missing = the definition's default. */
   pane?: "main" | "own";
+  /** false = no labels of this indicator on the price scale at all (lines, levels, flags). Missing = shown. */
+  scaleLabels?: boolean;
 }
 
 export interface IndicatorInstance {

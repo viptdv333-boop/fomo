@@ -357,6 +357,7 @@ export class IndicatorSeries implements Series {
     if (!r || n === 0) return [];
     if (index < 0) index = 0;
     if (index > n - 1) index = n - 1;
+    if (this.style?.scaleLabels === false) return [];
     const out: AxisLabel[] = [];
     // what a flag says: the indicator ("RSI 14"); with several flags the line's own name ("BB Upper")
     let title = "";

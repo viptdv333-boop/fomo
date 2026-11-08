@@ -378,7 +378,6 @@ function StyleTab({
   const patchLevel = (i: number, patch: LevelStyle) => onStyle({ ...style, levels: { ...style.levels, [String(i)]: { ...style.levels?.[String(i)], ...patch } } });
   const patchBand = (patch: FillStyle) => onStyle({ ...style, band: { ...style.band, ...patch } });
 
-  const nothing = desc.plots.length === 0 && desc.fills.length === 0 && desc.levels.length === 0 && !(def.styleParams && def.styleParams.length);
   const canMove = controller.canMove(uid);
   const pane = style.pane === "own" ? "own" : "main";
 
@@ -391,7 +390,18 @@ function StyleTab({
 
   return (
     <div className="pb-40">
-      {nothing && !canMove && <p className="py-6 text-center text-xs text-[var(--tv3-muted)]">{t("ind2.set.noStyle")}</p>}
+      <div className="mb-4 rounded border border-[var(--tv3-hair)] px-2 py-2">
+        <Check
+          checked={style.scaleLabels !== false}
+          onChange={(v) => {
+            const next: IndicatorStyle = { ...style };
+            if (v) delete next.scaleLabels;
+            else next.scaleLabels = false;
+            onStyle(next);
+          }}
+          label={t("ind2.st.scaleAll")}
+        />
+      </div>
 
       {desc.plots.length > 0 &&
         section(

@@ -79,6 +79,7 @@ export function sanitizeStyle(raw: unknown): IndicatorStyle | undefined {
     band: fillStyle(raw.band),
     tf,
     pane: raw.pane === "main" || raw.pane === "own" ? raw.pane : undefined,
+    scaleLabels: bool(raw.scaleLabels) === false ? false : undefined,
   });
 }
 

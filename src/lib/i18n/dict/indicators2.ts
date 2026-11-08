@@ -55,6 +55,7 @@ const rows: [string, string, string, string][] = [
   ["ind2.st.bg", "Фон между уровнями", "Background between levels", "水平线之间的背景"],
   ["ind2.st.colors", "Цвета", "Colors", "颜色"],
   ["ind2.st.pane", "Расположение", "Placement", "位置"],
+  ["ind2.st.scaleAll", "Отображать на ценовой шкале", "Show on the price scale", "在价格轴上显示"],
   ["ind2.st.paneMain", "На основной панели", "On the main pane", "主图"],
   ["ind2.st.paneOwn", "В отдельной панели", "In its own pane", "独立窗格"],
   ["ind2.st.priceLine", "Линия цены", "Price line", "价格线"],
