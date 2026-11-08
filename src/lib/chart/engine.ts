@@ -2459,7 +2459,7 @@ export class ChartEngine {
             if (this.opts.phoneTags && /свинг|swing|摆动/i.test(l.caption ?? "")) continue;
             const y = this.paneY(pane, l.price);
             if (y < 0 || y > pane.height) continue;
-            out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", lineName: caps ? l.caption : undefined });
+            out.push({ id: `ind:${pi}:${k}`, pane, y, prio: 4 + k * 0.001, text: l.text, bg: l.color, fg: l.textColor ?? "#fff", lineName: l.caption || undefined });
             k++;
           }
         }
@@ -2531,7 +2531,7 @@ export class ChartEngine {
         // macOS look: one rounded tag with the name on the left and the value on the right (the price tag solid, the others outlined)
         if (this.opts.macLook && (t.caption || t.id === "last" || t.lineName)) {
           const solid = t.id === "last" || t.id.startsWith("layer:");
-          const name = (t.caption ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
+          const name = (t.caption ?? t.lineName ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
           ctx.save();
           ctx.beginPath();
           rr(x0 + 1, pl.bodyTop, w - 2, bodyH, 6);
