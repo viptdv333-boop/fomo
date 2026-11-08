@@ -60,6 +60,8 @@ export interface PlotSpec {
   lineStyle?: LineStyleName;
   /** Not drawn, not in the legend, not in the scale (set by the Style tab). */
   hidden?: boolean;
+  /** The width was chosen by the user in the Style tab: the global "max line width" cap does not apply. */
+  widthSet?: boolean;
   /** Horizontal line at the last value. */
   priceLine?: boolean;
   /** Join the points across NaN gaps (ZigZag). */

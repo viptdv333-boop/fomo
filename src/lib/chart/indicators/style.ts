@@ -117,7 +117,10 @@ export function applyStyle(res: IndResult, style: IndicatorStyle | undefined): I
         const q = { ...p };
         if (st.visible === false) q.hidden = true;
         if (st.color && !p.colors) q.color = st.color;
-        if (st.width !== undefined) q.width = st.width;
+        if (st.width !== undefined) {
+          q.width = st.width;
+          q.widthSet = true;
+        }
         if (st.lineStyle) q.lineStyle = st.lineStyle;
         else if (p.dashed && !p.lineStyle) q.lineStyle = "dashed";
         if (st.type) q.shape = st.type;

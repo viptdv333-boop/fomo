@@ -605,7 +605,7 @@ export class IndicatorSeries implements Series {
     const a = Math.max(0, from - off - 1);
     const b = Math.min(data.length - 1, to - off + 1);
     const cap = sc.options.maxLineWidth;
-    const width = cap > 0 && (p.width ?? 1.6) > 0 ? Math.min(p.width ?? 1.6, cap) : p.width ?? 1.6;
+    const width = !p.widthSet && cap > 0 && (p.width ?? 1.6) > 0 ? Math.min(p.width ?? 1.6, cap) : p.width ?? 1.6;
     const step = shape === "step";
     const area = shape === "area";
     const base = sc.paneHeight;
