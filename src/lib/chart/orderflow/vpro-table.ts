@@ -143,44 +143,16 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   const { x, y } = placeTable(cfg.tblPos, w, h, place);
   // background and frame (the phone table is transparent: just the text over the chart)
   const bc = col.soft ? rgba(col.text, 0.5) : col.border;
-  if (narrow) {
-    // a bordered table on the bare chart: a frame, a line under every row and one between the label and the value columns
-    ctx.strokeStyle = bc;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    if (showRows.length > 0) {
-      const vx = Math.round(x + padX + lw + gap / 2) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(vx, y + rowH);
-      ctx.lineTo(vx, y + h - 1);
-      ctx.stroke();
-    }
-  } else if (col.soft && typeof ctx.roundRect === "function") {
-    // design v3: white rounded card, soft shadow, grey header strip
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.18)";
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 2;
-    ctx.fillStyle = col.bg;
+  // a bordered table on the bare chart (transparent): a frame, a line under every row and one between the label and the value columns
+  ctx.strokeStyle = bc;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  if (showRows.length > 0) {
+    const vx = Math.round(x + padX + lw + gap / 2) + 0.5;
     ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 12);
-    ctx.fill();
-    ctx.restore();
-    if (col.head) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 12);
-      ctx.clip();
-      ctx.fillStyle = col.head;
-      ctx.fillRect(x, y, w, rowH);
-      ctx.restore();
-    }
-  } else {
-    ctx.fillStyle = col.bg;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = col.border;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.moveTo(vx, y + rowH);
+    ctx.lineTo(vx, y + h - 1);
+    ctx.stroke();
   }
   ctx.textBaseline = "middle";
   // header
@@ -191,10 +163,10 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   // rows
   for (let i = 0; i < showRows.length; i++) {
     const ry = y + rowH * (i + 1);
-    ctx.strokeStyle = narrow ? bc : col.sep;
+    ctx.strokeStyle = bc;
     ctx.beginPath();
-    ctx.moveTo(narrow ? x + 1 : x + (col.soft ? 8 : 1), ry + 0.5);
-    ctx.lineTo(narrow ? x + w - 1 : x + w - (col.soft ? 8 : 1), ry + 0.5);
+    ctx.moveTo(x + 1, ry + 0.5);
+    ctx.lineTo(x + w - 1, ry + 0.5);
     ctx.stroke();
     ctx.font = `${fs}px ${fontFamily}`;
     ctx.fillStyle = col.soft ? col.muted : col.text;
