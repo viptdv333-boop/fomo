@@ -2235,7 +2235,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 setCompares((l) => l.map((x) => (x.id === id ? { ...x, mode } : x)));
               }}
             />
-            {cs.navButtons !== "never" && !(appFull && !wideApp) && (
+            {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
                 className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
                   cs.scale.side === "left" ? "left-[76px]" : "left-2.5"
