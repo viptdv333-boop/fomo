@@ -463,6 +463,12 @@ const defs: IndicatorDef[] = [
     compute(cs, p) {
       const cols = toCols(cs);
       const st = M.supertrend(cols.h, cols.l, cols.c, N(p, "period"), N(p, "mult"));
+      // at a reversal the new line starts at the old line's last point, so the two lines join into one unbroken line
+      for (let i = 1; i < st.dir.length; i++) {
+        if (st.dir[i] === 0 || st.dir[i - 1] === 0 || st.dir[i] === st.dir[i - 1]) continue;
+        if (st.dir[i] === -1) st.down[i - 1] = st.up[i - 1];
+        else st.up[i - 1] = st.down[i - 1];
+      }
       return {
         plots: [line("Up", st.up, S(p, "colorUp"), { width: 2 }), line("Down", st.down, S(p, "colorDown"), { width: 2 })],
       };
