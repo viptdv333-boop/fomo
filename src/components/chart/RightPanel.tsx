@@ -224,8 +224,13 @@ const WatchRow = memo(function WatchRow({
   label,
   contract,
   rowKey,
+  pinned,
+  onMenu,
 }: {
   rowKey: string;
+  pinned: boolean;
+  /** the icon was pressed: open the row menu under it */
+  onMenu: (inst: TerminalInstrument, r: DOMRect) => void;
   inst: TerminalInstrument;
   q: Quote | undefined;
   spark: number[] | undefined;
@@ -238,6 +243,8 @@ const WatchRow = memo(function WatchRow({
   /** exact futures contract: kind / order for the badge next to the ticker */
   contract?: ContractBadgeInfo;
 }) {
+  const { t: tr } = useT();
+  const menuTitle = tr("wl.rowMenu");
   const prev = useRef<number | undefined>(undefined);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
   const price = q?.price;
@@ -261,6 +268,33 @@ const WatchRow = memo(function WatchRow({
         onClick={() => onSelect(inst)}
         className={`w-full flex items-center gap-2.5 rounded-xl px-2 py-[9px] text-left cursor-pointer ${selected ? "bg-[var(--tv3-fill)]" : "hover:bg-[var(--tv3-fill3)]"}`}
       >
+        <span
+          role="button"
+          tabIndex={0}
+          data-no-drag
+          title={menuTitle}
+          aria-label={menuTitle}
+          aria-haspopup="menu"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMenu(inst, (e.currentTarget as HTMLElement).getBoundingClientRect());
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onMenu(inst, (e.currentTarget as HTMLElement).getBoundingClientRect());
+            }
+          }}
+          className="relative shrink-0 rounded-full hover:ring-2 hover:ring-[var(--tv3-accent)]"
+        >
+          <InstIcon inst={inst} size={30} />
+          {pinned && (
+            <svg viewBox="0 0 24 24" className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-[var(--tv3-card)] p-[1.5px] text-[var(--tv3-accent)]" fill="currentColor" aria-hidden>
+              <path d="M9 3h6l-1 6 3 3v2h-4v6l-1 1-1-1v-6H7v-2l3-3z" />
+            </svg>
+          )}
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold leading-tight text-[var(--tv3-text)]">{inst.ticker}</span>
           <span className="flex items-center gap-1 text-[12px] leading-tight text-[var(--tv3-muted)]">
@@ -340,6 +374,24 @@ interface WatchLists {
 }
 const EMPTY_LISTS: WatchLists = { active: WLS_MAIN, lists: [] };
 
+/** pinned rows per list: { [listId]: ["source:ticker", ...] }, this device only */
+const PINS_KEY = "fomo-terminal-wl-pins-v1";
+function pinsRead(listId: string): Set<string> {
+  try {
+    const j = JSON.parse(localStorage.getItem(PINS_KEY) || "{}");
+    return new Set(Array.isArray(j?.[listId]) ? j[listId].filter((x: unknown) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+function pinsWrite(listId: string, set: Set<string>) {
+  try {
+    const j = JSON.parse(localStorage.getItem(PINS_KEY) || "{}");
+    j[listId] = [...set];
+    localStorage.setItem(PINS_KEY, JSON.stringify(j));
+  } catch {}
+}
+
 function parseLists(raw: string | null): WatchLists {
   if (!raw) return EMPTY_LISTS;
   try {
@@ -410,6 +462,7 @@ const WL_EVENT = "fomo-watchlist-changed";
 export function useWatchlist() {
   const [items, setItems] = useState<TerminalInstrument[]>([]);
   const [ext, setExt] = useState<WatchLists>(EMPTY_LISTS);
+  const [, setPinTick] = useState(0);
   const mode = useRef<"unknown" | "guest" | "user">("unknown");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** until this moment a refresh must not touch the list: our own push has just gone out */
@@ -556,6 +609,38 @@ export function useWatchlist() {
       const [it] = next.splice(from, 1);
       next.splice(to, 0, it);
       setActiveItems(next);
+    },
+    /** the item is in the list `id` */
+    has: (id: string, inst: TerminalInstrument) => (id === WLS_MAIN ? items : ext.lists.find((l) => l.id === id)?.items ?? []).some((i) => wlKey(i) === wlKey(inst)),
+    /** put the item into another list (the open one stays open) */
+    addTo: (id: string, inst: TerminalInstrument) => {
+      if (id === WLS_MAIN) {
+        if (!items.some((i) => wlKey(i) === wlKey(inst))) commit([...items, inst]);
+        return;
+      }
+      commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === id && !l.items.some((i) => wlKey(i) === wlKey(inst)) ? { ...l, items: [...l.items, inst] } : l)) });
+    },
+    /** a new list with this item in it (the open list stays open) */
+    createListWith: (name: string, inst: TerminalInstrument) => {
+      const clean = name.trim().slice(0, 40);
+      if (!clean || ext.lists.length >= WLS_MAX_LISTS) return null;
+      const id = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      commitExt({ ...ext, lists: [...ext.lists, { id, name: clean, items: [inst] }] });
+      return id;
+    },
+    /** pinned rows of the open list (kept on this device); a pinned row stands at the top of the list */
+    pinned: (inst: TerminalInstrument) => pinsRead(activeExt ? activeExt.id : WLS_MAIN).has(wlKey(inst)),
+    togglePin: (inst: TerminalInstrument) => {
+      const lid = activeExt ? activeExt.id : WLS_MAIN;
+      const set = pinsRead(lid);
+      const k = wlKey(inst);
+      if (set.has(k)) set.delete(k);
+      else {
+        set.add(k);
+        setActiveItems([inst, ...shownItems.filter((i) => wlKey(i) !== k)]);
+      }
+      pinsWrite(lid, set);
+      setPinTick((n) => n + 1);
     },
     /** all lists: the main one first, then the user's own */
     lists: [{ id: WLS_MAIN, name: "", count: items.length }, ...ext.lists.map((l) => ({ id: l.id, name: l.name, count: l.items.length }))],
@@ -774,6 +859,15 @@ function Watchlist({
     [items, needle, t]
   );
   const [addSeed, setAddSeed] = useState("");
+  const [rowMenu, setRowMenu] = useState<{ inst: TerminalInstrument; top: number; left: number; sub: boolean; naming: boolean } | null>(null);
+  const [newName, setNewName] = useState("");
+  const removeLabel = t("shell.watch.remove");
+  const closeRowMenu = () => {
+    setRowMenu(null);
+    setNewName("");
+  };
+  const openRowMenu = (inst: TerminalInstrument, r: DOMRect) =>
+    setRowMenu({ inst, top: Math.min(r.bottom + 4, window.innerHeight - 260), left: Math.max(6, Math.min(r.left, window.innerWidth - 236)), sub: false, naming: false });
 
   const sparks = useSparklines(shown, visible);
   // drag and drop (mouse and touch): only on the whole list, not on a filtered one
@@ -857,8 +951,88 @@ function Watchlist({
             locale={locale}
             label={instName(inst, t)}
             contract={inst.source === "moex" ? contractInfo[inst.dataTicker] : undefined}
+            pinned={wl.pinned(inst)}
+            onMenu={openRowMenu}
           />
         ))}
+        {rowMenu && (
+          <PopupPortal>
+            <div className="fixed inset-0 z-[55]" onClick={closeRowMenu} onContextMenu={(e) => { e.preventDefault(); closeRowMenu(); }} />
+            <div role="menu" className="tv3-pop fixed z-[56] w-[228px] rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]" style={{ top: rowMenu.top, left: rowMenu.left }}>
+              {(() => {
+                const mi = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
+                const inst = rowMenu.inst;
+                const isPinned = wl.pinned(inst);
+                return (
+                  <>
+                    <button role="menuitem" type="button" className={mi} onClick={() => { wl.togglePin(inst); closeRowMenu(); }}>
+                      {isPinned ? t("wl.unpin") : t("wl.pin")}
+                    </button>
+                    <button role="menuitem" type="button" className={`${mi} justify-between`} aria-expanded={rowMenu.sub} onClick={() => setRowMenu({ ...rowMenu, sub: !rowMenu.sub, naming: false })}>
+                      {t("wl.addTo")}
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d={rowMenu.sub ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
+                      </svg>
+                    </button>
+                    {rowMenu.sub && (
+                      <div className="mx-2 mb-1 rounded-xl bg-[var(--tv3-fill)] py-1">
+                        {wl.lists.map((l) => {
+                          const inIt = wl.has(l.id, inst);
+                          return (
+                            <button
+                              key={l.id}
+                              role="menuitem"
+                              type="button"
+                              disabled={inIt}
+                              className="tv3-press tv3-hov flex h-8 w-full items-center gap-2 px-3 text-left text-[13px] cursor-pointer disabled:cursor-default disabled:opacity-60"
+                              onClick={() => { wl.addTo(l.id, inst); closeRowMenu(); }}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{l.id === "main" ? t("wl.main") : l.name}</span>
+                              {inIt && (
+                                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[var(--tv3-accent)]" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                  <path d="M5 12l5 5 9-10" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {rowMenu.naming ? (
+                          <input
+                            autoFocus
+                            value={newName}
+                            maxLength={40}
+                            placeholder={t("wl.namePh")}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && newName.trim()) {
+                                wl.createListWith(newName, inst);
+                                closeRowMenu();
+                              }
+                              if (e.key === "Escape") closeRowMenu();
+                            }}
+                            className="mx-2 my-1 h-8 w-[calc(100%-16px)] rounded-lg bg-[var(--tv3-card)] px-2.5 text-[13px] text-[var(--tv3-text)] outline-none focus:ring-2 focus:ring-[var(--tv3-accent)]"
+                          />
+                        ) : (
+                          <button
+                            role="menuitem"
+                            type="button"
+                            className="tv3-press tv3-hov flex h-8 w-full items-center gap-2 px-3 text-left text-[13px] font-semibold text-[var(--tv3-accent)] cursor-pointer"
+                            onClick={() => setRowMenu({ ...rowMenu, naming: true })}
+                          >
+                            + {t("wl.createNew")}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <button role="menuitem" type="button" className={`${mi} text-[var(--tv3-red)]`} onClick={() => { onRemove(inst); closeRowMenu(); }}>
+                      {removeLabel}
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </PopupPortal>
+        )}
         {TERMINAL_SITE && <FomoCommunityCard />}
       </div>
     </div>
