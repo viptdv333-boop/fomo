@@ -305,7 +305,7 @@ export function readVpCfg(p: Params): VpCfg {
     tblCompact: B(p, "vpTblCompact", false),
     tblAlpha: N(p, "vpTblAlpha", 88) / 100,
     tblAuto: B(p, "vpTblAuto", true),
-    tblCollapsed: B(p, "vpTblCollapsed", false),
+    tblCollapsed: false,
     rows,
     maLen: N(p, "vpMaLen", 21),
     c,
