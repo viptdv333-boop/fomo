@@ -340,7 +340,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
           }}
           title={info.tfHidden ? t("ind2.lg.tfHidden") : info.tip}
         >
-          <span className="truncate font-medium" style={{ color: "var(--tv3-text)" }}>
+          <span className="truncate" style={{ color: "var(--tv3-text)" }}>
             {info.title}
           </span>
           {info.error && (
@@ -416,7 +416,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="tv3-press flex cursor-pointer items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-semibold text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
+                className="tv3-press flex cursor-pointer items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-medium text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
                 aria-expanded={!collapsed}
                 title={`${t("v3.indicators", { n: list.length })} — ${collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}`}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}

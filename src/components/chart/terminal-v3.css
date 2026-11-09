@@ -142,8 +142,7 @@
 .tv3 [role="switch"]:focus-visible,
 .tv3 select:focus-visible,
 .tv3 summary:focus-visible {
-  outline: 2px solid var(--tv3-accent);
-  outline-offset: 1px;
+  outline: none;
 }
 
 /* translucent blurred surface of popovers / menus (iOS "material"), hairline border */

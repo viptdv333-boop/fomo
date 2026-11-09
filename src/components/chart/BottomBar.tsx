@@ -113,8 +113,8 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
   const clock = useExchangeClock(source, zone);
 
   // design v3: grey pills (segmented ranges + tiny buttons), the active toggle is tinted green
-  const btn = "tv3-press px-3 py-1 rounded-[9px] text-[13px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
-  const seg = "tv3-press px-2.5 py-1 rounded-[9px] text-[13px] font-semibold shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
+  const btn = "tv3-press px-3 py-1 rounded-[9px] text-[13px] font-medium shrink-0 cursor-pointer text-[var(--tv3-text)] bg-[var(--tv3-fill2)] hover:brightness-95 dark:hover:brightness-110";
+  const seg = "tv3-press px-2.5 py-1 rounded-[9px] text-[13px] font-medium shrink-0 cursor-pointer text-[var(--tv3-text)] hover:bg-[var(--tv3-card)] hover:shadow-[0_1px_3px_rgba(0,0,0,.18)]";
   const on = "!bg-[var(--tv3-accent-soft)]"; // design: only the tint (rgba(30,158,74,.18)), the label keeps its colour
 
   return (

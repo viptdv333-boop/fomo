@@ -1499,9 +1499,9 @@ export class ChartEngine {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const size = Math.max(28, Math.min(84, plotW / 9));
-      ctx.font = `700 ${size}px ${ff}`;
+      ctx.font = `600 ${size}px ${ff}`;
       ctx.fillText(this.opts.symbolLabel, plotW / 2, main.height / 2 - size * 0.2);
-      ctx.font = `600 ${size * 0.34}px ${ff}`;
+      ctx.font = `500 ${size * 0.34}px ${ff}`;
       ctx.fillText(this.opts.intervalLabel, plotW / 2, main.height / 2 + size * 0.45);
       ctx.restore();
     }
@@ -1517,7 +1517,7 @@ export class ChartEngine {
       ctx.fillStyle = th.text;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `700 ${size}px ${ff}`;
+      ctx.font = `600 ${size}px ${ff}`;
       ctx.fillText("fomo.spot", plotW / 2, main.height / 2 + (symbolWm ? bigSize * 1.2 : 0));
       ctx.restore();
     }
@@ -2090,7 +2090,7 @@ export class ChartEngine {
   private drawBadge(ctx: CanvasRenderingContext2D, text: string, warn: boolean, fromBottom: number) {
     const th = this.opts.theme;
     ctx.save();
-    ctx.font = `600 10px ${this.opts.fontFamily}`;
+    ctx.font = `500 10px ${this.opts.fontFamily}`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     const w = ctx.measureText(text).width + 12;
@@ -2318,7 +2318,7 @@ export class ChartEngine {
           loI = i;
         }
       }
-      ctx.font = `600 ${fs}px ${this.opts.fontFamily}`;
+      ctx.font = `500 ${fs}px ${this.opts.fontFamily}`;
       ctx.fillStyle = th.text;
       ctx.textAlign = "center";
       const put = (i: number, price: number, above: boolean) => {
@@ -2512,7 +2512,7 @@ export class ChartEngine {
           ctx.fillRect(x0, pl.bodyTop + 2, w, bodyH - 4);
           ctx.fillStyle = t.bg;
           ctx.textAlign = "center";
-          ctx.font = `600 ${fs}px ${ff}`;
+          ctx.font = `500 ${fs}px ${ff}`;
           ctx.fillText(t.text, x0 + w / 2, cyp);
           if (t.caption) {
             const small = Math.max(8, fs - 3);
@@ -2550,7 +2550,7 @@ export class ChartEngine {
           const cy2 = pl.bodyTop + bodyH / 2 + 0.5;
           ctx.fillStyle = ink;
           ctx.textAlign = "right";
-          ctx.font = `600 ${fs}px ${ff}`;
+          ctx.font = `500 ${fs}px ${ff}`;
           ctx.fillText(t.text, x0 + w - 8, cy2);
           const vw = ctx.measureText(t.text).width;
           if (name) {
@@ -2570,7 +2570,7 @@ export class ChartEngine {
             ctx.fill();
             ctx.textAlign = "center";
             ctx.fillStyle = t.fg;
-            ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
+            ctx.font = `500 ${Math.max(10, fs - 1)}px ${ff}`;
             ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
           }
           ctx.restore();
@@ -2578,7 +2578,7 @@ export class ChartEngine {
         }
         // the name chip: its right edge touches the tag, its left edge is where the text ends (never farther than the plot allows)
         if (t.caption) {
-          ctx.font = `600 ${capFs}px ${ff}`;
+          ctx.font = `500 ${capFs}px ${ff}`;
           const maxW = Math.max(30, Math.min(x0 - 6, this.plotW() * 0.6));
           let text = t.caption;
           if (ctx.measureText(text).width + 12 > maxW) {
@@ -2608,7 +2608,7 @@ export class ChartEngine {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = t.fg;
-        ctx.font = `600 ${fs}px ${ff}`;
+        ctx.font = `500 ${fs}px ${ff}`;
         const cy = pl.bodyTop + bodyH / 2 + 0.5;
         if (t.icon === "bell" || t.icon === "lock") {
           const tw = ctx.measureText(t.text).width;
@@ -2619,7 +2619,7 @@ export class ChartEngine {
           ctx.fillText(t.text, start + 13, cy);
         } else ctx.fillText(t.text, x0 + w / 2, cy);
         if (t.extra) {
-          ctx.font = `600 ${Math.max(10, fs - 1)}px ${ff}`;
+          ctx.font = `500 ${Math.max(10, fs - 1)}px ${ff}`;
           ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
         }
       }
@@ -2637,7 +2637,7 @@ export class ChartEngine {
     if (!isFinite(lastX)) return;
     const size = Math.max(9, this.opts.scaleFontSize - 2);
     ctx.save();
-    ctx.font = `600 ${size}px ${this.opts.fontFamily}`;
+    ctx.font = `500 ${size}px ${this.opts.fontFamily}`;
     ctx.textBaseline = "middle";
     for (const pane of new Set(named.map((t) => t.pane))) {
       const mine = named.filter((t) => t.pane === pane).sort((a, b) => a.y - b.y);
@@ -2667,7 +2667,7 @@ export class ChartEngine {
   private axisLabel(ctx: CanvasRenderingContext2D, text: string, y: number, bg: string, fg: string, pane?: Pane) {
     ctx.save();
     const fs = this.opts.scaleFontSize;
-    ctx.font = `600 ${fs}px ${this.opts.fontFamily}`;
+    ctx.font = `500 ${fs}px ${this.opts.fontFamily}`;
     const h = Math.max(20, fs + 8); // design: 20px high tags
     const lo = pane ? pane.top : 0;
     const hi = pane ? pane.top + pane.height : this.plotH();
@@ -2786,7 +2786,7 @@ export class ChartEngine {
       const intraday = this.opts.intervalMs < 86_400_000;
       const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday, this.opts.intervalMs < 60_000);
       ctx.save();
-      ctx.font = `600 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
+      ctx.font = `500 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
       const w = ctx.measureText(text).width + 16;
       const x = Math.max(0, Math.min(plotW - w, cx - w / 2));
       ctx.fillStyle = th.labelBg;
@@ -2875,7 +2875,7 @@ export class ChartEngine {
       const intraday = this.opts.intervalMs < 86_400_000;
       const text = formatCrosshairTime(t, this.shiftFor(t), this.opts.locale, intraday, this.opts.intervalMs < 60_000);
       ctx.save();
-      ctx.font = `600 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
+      ctx.font = `500 ${this.opts.scaleFontSize}px ${this.opts.fontFamily}`;
       const w = ctx.measureText(text).width + 16;
       const lx = Math.max(0, Math.min(plotW - w, cx - w / 2));
       ctx.fillStyle = th.labelBg;
@@ -2958,13 +2958,13 @@ export class ChartEngine {
       } else if (mac && c) {
         // macOS look: the last close big, its change as a soft pill, then the OHLC row on the same line
         const big = p(c.c);
-        ctx.font = `600 26px ${this.opts.fontFamily}`;
+        ctx.font = `500 26px ${this.opts.fontFamily}`;
         ctx.fillStyle = col;
         ctx.fillText(big, x0, y - 4);
         x = x0 + ctx.measureText(big).width + 12;
         const d0 = c.c - prev.c;
         const chip = `${d0 >= 0 ? "+" : ""}${(prev.c ? (d0 / prev.c) * 100 : 0).toFixed(2)}%`;
-        ctx.font = `600 13px ${this.opts.fontFamily}`;
+        ctx.font = `500 13px ${this.opts.fontFamily}`;
         const cw = ctx.measureText(chip).width + 18;
         ctx.fillStyle = withAlpha(col, 0.16);
         ctx.beginPath();
@@ -2986,7 +2986,7 @@ export class ChartEngine {
           ctx.fillText(label, x, cy);
           x += ctx.measureText(label).width + 4;
           ctx.fillStyle = col;
-          ctx.font = `600 13px ${this.opts.fontFamily}`;
+          ctx.font = `500 13px ${this.opts.fontFamily}`;
           ctx.fillText(val, x, cy);
           x += ctx.measureText(val).width + 9;
         };
@@ -3005,7 +3005,7 @@ export class ChartEngine {
           if (st.barChange) parts.push(`${sign}${formatPrice(diff, this.precision, this.opts.locale)}`);
           if (st.change) parts.push(st.barChange ? `(${sign}${pct.toFixed(2)}%)` : `${sign}${pct.toFixed(2)}%`);
           const chg = parts.join(" ");
-          ctx.font = `600 13px ${this.opts.fontFamily}`;
+          ctx.font = `500 13px ${this.opts.fontFamily}`;
           ctx.fillText(chg, x, cy);
           x += ctx.measureText(chg).width + 12;
         }
@@ -3015,7 +3015,7 @@ export class ChartEngine {
           ctx.fillText("Vol", x, cy);
           x += ctx.measureText("Vol").width + 4;
           ctx.fillStyle = th.text;
-          ctx.font = `600 13px ${this.opts.fontFamily}`;
+          ctx.font = `500 13px ${this.opts.fontFamily}`;
           ctx.fillText(formatVolume(c.v, this.opts.locale), x, cy);
           x += ctx.measureText(formatVolume(c.v, this.opts.locale)).width;
           // the average of the volume (same colour as its line)
@@ -3030,7 +3030,7 @@ export class ChartEngine {
             ctx.fillText(lab, x, cy);
             x += ctx.measureText(lab).width + 4;
             ctx.fillStyle = vm.color;
-            ctx.font = `600 13px ${this.opts.fontFamily}`;
+            ctx.font = `500 13px ${this.opts.fontFamily}`;
             const val = formatVolume(mv, this.opts.locale);
             ctx.fillText(val, x, cy);
             x += ctx.measureText(val).width;
