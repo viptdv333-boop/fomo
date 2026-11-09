@@ -115,7 +115,6 @@ const vwapDef: IndicatorDef = {
     const anchor = S(p, "anchor") as VwapAnchor;
     if (B(p, "hideHigher") && (env?.intervalMs ?? 0) >= ANCHOR_MS[anchor]) return { plots: [] };
     const r = computeVwap(cs, { anchor, source: S(p, "source") as PriceSourceId, useTrades: B(p, "useTrades"), store: env?.flow });
-    breakSessions(r, cs, []);
     const plots: PlotSpec[] = [line("VWAP", r.vwap, S(p, "color"), { width: 1.8 })];
     const fills: FillSpec[] = [];
     bandsFor(p, r, cs.length, S(p, "colorBands"), plots, fills);
