@@ -229,6 +229,8 @@ interface Ctx {
 
 /** Every merged leg (one that swallows smaller swings of the same degree) costs a little: fewer free parameters = more trust. */
 const MERGE_PENALTY = 0.96;
+/** Weight of the momentum components of an impulse. */
+const MOM_W = 14;
 
 function mk(ctx: Ctx, kind: CountKind, idx: number[], labels: string[], complete: boolean, forming: boolean, score: number, conf: number, ratios: RatioInfo[], truncated = false): WaveCount {
   const piv = idx.map((j) => ctx.P[j]);
@@ -436,6 +438,26 @@ function evalImpulse(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
     }
   }
   if (m >= 3) acc.add(8, legShare(t));
+  // momentum: wave 3 is the strongest move (not slower than wave 1), corrections are slower than the motive wave before them.
+  // Random swings do the opposite: a bigger swing is a slower one, a smaller one is faster.
+  if (m >= 3 && !diag) {
+    const vel = (j: number) => Math.abs(q[j] - q[j - 1]) / Math.max(1, t[j] - t[j - 1]);
+    const v1 = vel(1);
+    // an extended wave 3 holds its own pullbacks: its momentum is that of its fastest subwave
+    let vmax = vel(3);
+    for (let j = idx[2] + 1; j <= idx[3]; j += 2) {
+      vmax = Math.max(vmax, Math.abs(P[j].p - P[j - 1].p) / Math.max(1, P[j].i - P[j - 1].i));
+    }
+    const v3 = vmax;
+    if (!(forming && m === 3) || x3 >= 1) acc.add(MOM_W, clamp01((v3 / v1 - 0.5) / 0.5));
+    let cs = clamp01((1.7 - vel(2) / v1) / 0.7);
+    let cn = 1;
+    if (m >= 5 || (m === 4 && !forming)) {
+      cs += clamp01((1.7 - vel(4) / v3) / 0.7);
+      cn++;
+    }
+    acc.add(MOM_W * 0.6, cs / cn);
+  }
   // extension: normally wave 3 is the extended one
   if (m >= 3 && !diag) {
     let s: number;
@@ -467,7 +489,9 @@ function evalImpulse(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
   const score = acc.score();
   let conf = calib(score) * EVIDENCE[m];
   if (trunc) conf *= 0.85;
-  if (diag) conf = Math.min(75, conf * (expanding ? 0.7 : 0.78) * (forming ? 0.92 : 1));
+  // a count whose last wave is still running has one confirmed pivot less than its label count suggests
+  if (forming && m >= 4 && !diag) conf *= 0.9;
+  if (diag) conf = Math.min(75, conf * (expanding ? 0.7 : kind === "ending_diagonal" ? 0.78 : 0.68) * (forming ? 0.92 : 1));
   const labels = ["1", "2", "3", "4", "5"];
   return mk(ctx, kind, idx, labels, m === 5, forming, score, conf, acc.ratios, trunc);
 }

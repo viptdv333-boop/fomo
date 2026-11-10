@@ -158,7 +158,7 @@ const cBear = build(mirror(bull), barsBull, 0.004, 3);
   let high = 0;
   let liveShown = 0;
   let maxConf = 0;
-  const runs = 40;
+  const runs = 120;
   const hist: number[] = [];
   for (let s = 1; s <= runs; s++) {
     const r = rng(1000 + s);
@@ -174,7 +174,7 @@ const cBear = build(mirror(bull), barsBull, 0.004, 3);
       const live = res.degrees[0].live;
       if (live) {
         hist.push(live.count.conf);
-        if (live.count.conf >= 55) liveShown++;
+        if (live.count.conf >= 55) { liveShown++; if (process.env.EW_DBG) console.log("RW", live.count.kind, live.count.labels.join(""), live.count.forming ? "forming" : "done", live.count.conf, live.count.score, live.proj.phase); }
         if (live.count.conf >= 75) high++;
         maxConf = Math.max(maxConf, live.count.conf);
       }
@@ -183,7 +183,7 @@ const cBear = build(mirror(bull), barsBull, 0.004, 3);
   hist.sort((a, b) => a - b);
   const med = hist[Math.floor(hist.length / 2)] ?? 0;
   console.log(`\n== (c) random walk: ${runs * 3} runs, live counts >=55: ${liveShown}, >=75: ${high}, max=${maxConf}, median=${med}`);
-  expect("c: random walk rarely >= 55 (<= 15%)", liveShown <= runs * 3 * 0.15);
+  expect("c: random walk rarely >= 55 (<= 9%)", liveShown <= runs * 3 * 0.09);
   expect("c: random walk never >= 75", high === 0);
 }
 

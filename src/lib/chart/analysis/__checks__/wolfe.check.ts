@@ -70,6 +70,7 @@ for (const flip of [false, true]) {
   if (p) {
     ok(classic(p) === "", "classic rules hold" + (classic(p) ? ": " + classic(p) : ""));
     ok(p.variant === "classic", "variant classic");
+    ok(p.confidence >= 70, `confidence >= 70 (${p.confidence})`);
     ok(p.etaApex && p.eta === APEX, `ETA = apex bar ${APEX} (got ${p.eta})`);
     const epa = flip ? 200 - EPA : EPA;
     ok(Math.abs(p.epa - epa) < 1e-6, `EPA = 1-4 line at the apex ${epa.toFixed(3)} (got ${p.epa.toFixed(3)})`);
@@ -81,8 +82,10 @@ for (const flip of [false, true]) {
   // live: cut at point 5 (still the running extreme) and before it reaches the 1-3 line
   const forming = detectWolfe(path(TEXT, flip, 81), O).find((q) => q.dir === dir && at(q, [20, 35, 50, 65]));
   ok(!!forming && forming.status === "forming" && forming.eta === APEX, `cut at point 5: forming, ETA ${forming?.eta}`);
+  ok(!!forming && forming.confidence >= 70, `forming: confidence >= 70 (${forming?.confidence})`);
   const setup = detectWolfe(path(TEXT, flip, 73), O).find((q) => q.dir === dir && at(q, [20, 35, 50, 65]));
   ok(!!setup && setup.status === "setup" && setup.pts.length === 4 && setup.eta === APEX, `cut before the 1-3 line: setup with 4 points, ETA ${setup?.eta}`);
+  ok(!!setup && setup.confidence >= 70, `setup: confidence >= 70 (${setup?.confidence})`);
 }
 
 /* ───── 2. point 4 outside wave 1-2 ───── */
@@ -111,6 +114,7 @@ console.log("\n== parallel channel variant");
     ok(!p.etaApex && p.cross === Infinity && p.eta === 80 + 30, `no apex, ETA estimated = point 5 + (3->5) = 110 (got ${p.eta})`);
     const cl = detectWolfe(path(TEXT), O).find((q) => q.dir === 1)!;
     ok(p.confidence < cl.confidence, `scored lower than the classic one (${p.confidence} < ${cl.confidence})`);
+    ok(p.confidence >= 70, `confidence >= 70 (${p.confidence})`);
   }
   ok(!detectWolfe(path(PAR), { ...O, parallel: false }).some((q) => q.dir === 1 && q.pts[0].i === 20), "parallel: false -> not reported");
   // a widening channel is neither
@@ -127,6 +131,7 @@ console.log("\n== inner pullback inside wave 2-3 (pivot skipping)");
   const p = res.find((q) => q.dir === 1 && at(q, [20, 35, 58, 73, 88]));
   ok(!!p, "found on 20-35-58-73-88 (swings 42 / 47 absorbed by wave 2-3)");
   if (p) ok(classic(p) === "", "classic rules hold" + (classic(p) ? ": " + classic(p) : ""));
+  if (p) ok(p.confidence >= 70, `confidence >= 70 (${p.confidence})`);
   const res0 = detectWolfe(path(PULL), { ...O, maxSkip: 0 });
   ok(!res0.some((q) => q.dir === 1), "maxSkip: 0 (five consecutive swings only) does not find it");
   const resM = detectWolfe(path(PULL, true), O);
@@ -192,7 +197,7 @@ console.log("\n== random walks (3000 candles x 30 seeds)");
   console.log(`  ${total} patterns in 30 walks (${JSON.stringify(kinds)}), mean ${(sum / 30).toFixed(2)} ms, worst ${worst.toFixed(2)} ms per call`);
   ok(!crashed, "no crash" + (crashed ? ": " + crashed : ""));
   ok(!bad, "every reported pattern obeys the classic rules" + (bad ? ": " + bad : ""));
-  ok(total / 30 <= 25, `few detections: ${(total / 30).toFixed(1)} per 3000 candles (non-overlapping, min confidence 50)`);
+  ok(total / 30 <= 5, `few detections: ${(total / 30).toFixed(1)} per 3000 candles (non-overlapping, min confidence 50)`);
   ok(worst < 50, `fast enough: worst ${worst.toFixed(1)} ms for 3000 candles`);
   // degenerate input
   ok(detectWolfe([]).length === 0 && detectWolfe(path([[0, 100], [200, 100]])).length === 0, "empty / flat series: nothing, no crash");

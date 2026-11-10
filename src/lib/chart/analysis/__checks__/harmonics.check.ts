@@ -132,6 +132,8 @@ console.log("\n== Gartley with pullbacks inside XA and CD");
   for (const p of res) console.log("  " + show(p));
   const hit = res.find((p) => p.type === "gartley");
   ok(!!hit && hit.pts[0].i === 20 && hit.pts[1].i === 40 && hit.pts[4].i === 88, "X and D are the real extremes, the pullbacks are skipped");
+  const clean = detectHarmonics(path(shape("gartley", [110, 118])), O).find((p) => p.type === "gartley");
+  ok(!!hit && !!clean && hit.confidence < clean.confidence - 10, `swallowed pullbacks cost confidence (${hit?.confidence} vs ${clean?.confidence})`);
   ok(!detectHarmonics(path(pts), { ...O, maxSkip: 0 }).some((p) => p.type === "gartley" && p.pts[0].i === 20), "maxSkip = 0 does not skip");
 }
 
@@ -191,6 +193,9 @@ console.log("\n== random walks (3000 candles x 30 seeds)");
       if (res.length > 4) bad = `more than maxShown (${res.length})`;
       const ids = new Set(res.map((q) => q.id));
       if (ids.size !== res.length) bad = "duplicate ids";
+      // a five-point pattern and an AB=CD never share the C-D leg
+      for (const q of res)
+        if (q.type === "abcd" && res.some((v) => v.type !== "abcd" && v.dir === q.dir && v.pts[3].i === q.pts[2].i && (v.pts[4].projected || q.pts[3].projected || v.pts[4].i === q.pts[3].i))) bad = `AB=CD next to a five-point pattern on the same C-D: ${show(q)}`;
       for (const q of res) {
         kinds[q.type] = (kinds[q.type] ?? 0) + 1;
         stat[q.status] = (stat[q.status] ?? 0) + 1;
@@ -209,6 +214,10 @@ console.log("\n== random walks (3000 candles x 30 seeds)");
   console.log(`  mean ${(sum / calls).toFixed(2)} ms, worst ${worst.toFixed(2)} ms per call`);
   ok(!bad, bad || "all outputs sane");
   ok(sum / calls < 8, "fast enough for every tick");
+  // random data must score low: few patterns pass the default threshold, next to none of them look "strong"
+  ok(total / calls <= 0.5, `at most 0.5 patterns per snapshot (${(total / calls).toFixed(2)})`);
+  ok(strong <= 0.1 * total, `at most 10 % of them at >= 85 % (${strong} of ${total})`);
+  ok((kinds.abcd ?? 0) <= 0.36 * total, `AB=CD is no more than about a third of them (${kinds.abcd ?? 0} of ${total})`);
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL OK");

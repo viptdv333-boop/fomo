@@ -1,4 +1,4 @@
-import { zigzag, type Pivot, type SwingCandle } from "./swings";
+import { atrSeries, zigzag, type Pivot, type SwingCandle } from "./swings";
 
 /* Harmonic patterns on the zigzag swings: AB=CD, Gartley, Bat, Butterfly, Crab, Deep Crab, Shark, Cypher (bullish and bearish).
 
@@ -17,6 +17,13 @@ import { zigzag, type Pivot, type SwingCandle } from "./swings";
 
    Every window is widened by the tolerance (a share of the ratio). The CD/BC projection is a confirming number: it does not
    reject a pattern, it only costs confidence (it is arithmetically incompatible with the XA ratios for part of the BC range).
+
+   Confidence is 100 minus what the pattern loses on every count (weights in `W`): the graded distance of each ratio from its
+   ideal value (the defining ratios weigh most), the proportions in time (every leg a fair share, AB like CD, XA against A..D),
+   the clarity of the legs (the smallest one against the zigzag reversal, the pullbacks a leg swallows) and, for AB=CD, the
+   symmetry in time, a BC of 0.618 / 0.786 and an impulse into A. Calibrated on random walks: an average random candidate
+   ends up near 35-45, far under the default threshold of 60, a textbook pattern above 85. An AB=CD that shares its C-D leg
+   with a five-point pattern is dropped: it is the same move read twice.
 
    PRZ (potential reversal zone) = the allowed window of D. While the C->D leg is still running the pattern is "forming" and D is
    projected; once the provisional extreme is inside the PRZ the status is "prz"; a confirmed D makes it "complete", after which
@@ -164,10 +171,60 @@ function err(r: number, w: Rng, tol: number): number {
   return 0;
 }
 
+/** Fibonacci numbers a ratio inside a window is expected to sit on. */
+const FIB = [0.382, 0.5, 0.618, 0.707, 0.786, 0.886, 1, 1.13, 1.272, 1.414, 1.618, 2, 2.24, 2.618, 3.14, 3.618];
+
+/** Graded distance of a ratio from its ideal value: 0 = exact, 1 = at the edge of the tolerance, -1 = outside.
+    A single-value window is measured from that value. Inside a wide window the ratio is measured from the nearest Fibonacci
+    number of the window (worth at most `IN_WINDOW`: the window is the textbook rule), on the tolerance fringe from the edge
+    of the window, which is a Fibonacci number itself. */
+const IN_WINDOW = 0.65;
+function grade(r: number, w: Rng, tol: number): number {
+  const e = err(r, w, tol);
+  if (e < 0) return -1;
+  if (w[0] === w[1]) return Math.min(1, Math.abs(r - w[0]) / (w[0] * tol));
+  if (e > 0) return e;
+  let best = 1;
+  for (const f of FIB) {
+    if (f < w[0] - 1e-9 || f > w[1] + 1e-9) continue;
+    const d = Math.abs(r - f) / (f * tol * 2);
+    if (d < best) best = d;
+  }
+  return IN_WINDOW * best;
+}
+
+/* Weights of the confidence score: the points a component costs when it is as bad as it may be. The defining ratios (D, a
+   single-value B, the XC extension of the Cypher) weigh most. `base` is the flat deduction that puts an average random
+   candidate well under the default threshold: a textbook pattern loses next to nothing elsewhere and stays above 85. */
+const W = {
+  d: 34, // completion ratio (AD/XA, CD/XC, CD/AB)
+  bPoint: 26, // AB/XA of the patterns defined by one number (Gartley, Butterfly, Deep Crab)
+  bWin: 14, // AB/XA window
+  c: 10, // BC/AB window
+  cExt: 20, // BC/AB of the Shark: an extension beyond A, the mark of the pattern
+  xc: 22, // XC/XA of the Cypher
+  cd: 8, // CD/BC projection (confirming)
+  share: 10, // every leg takes a fair share of the time
+  sym: 10, // AB and CD alike in time
+  xaad: 8, // XA vs A..D in time
+  prom: 10, // the smallest leg against the reversal the zigzag asks for
+  pull: 20, // the deepest pullback swallowed by a leg, as a share of the leg
+  skip: 4, // per swallowed pullback
+  abT: 30, // AB=CD: time symmetry
+  abC: 16, // AB=CD: BC at 0.618 / 0.786
+  abLead: 14, // AB=CD: the impulse into A
+  forming: 16, // D is not there yet: its ratio is unknown
+  abForming: 26, // AB=CD without D: neither the ratio nor the symmetry is known
+  base: 2,
+  abBase: 10, // AB=CD has one point and two ratios less to get wrong
+};
+
 interface Raw {
   pat: HarmonicPattern;
   /** Pivot indexes x, a, b, c, d (-1 = no such point / projected). */
   k: number[];
+  /** The pivot the C-D leg ends on (the running extreme while forming). */
+  cd: number;
   rank: number;
   forming: boolean;
   prov: boolean;
@@ -189,6 +246,9 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
   const pv: Pivot[] = zigzag(c, o.mode === "pct" ? { atrMult: 0, minPct: Math.max(1e-6, o.devPct) } : { atrMult: Math.max(1e-6, o.devAtr) });
   const m = pv.length;
   if (m < 4) return [];
+  const atr = atrSeries(c, 14);
+  /** The reversal the zigzag asks for at candle i: the yardstick of a prominent leg. */
+  const thr = (i: number, price: number) => (o.mode === "pct" ? (Math.abs(price) * Math.max(1e-6, o.devPct)) / 100 : atr[i] * Math.max(1e-6, o.devAtr));
   const tol = clamp(o.tol, 0.005, 0.2);
   const span = 2 * clamp(Math.round(o.maxSkip) || 0, 0, 3) + 1;
   const minBars = Math.max(3, o.minBars);
@@ -207,6 +267,14 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
       if (up ? v <= a.p || v >= b.p : v >= a.p || v <= b.p) return false;
     }
     return true;
+  };
+
+  /** The pullbacks a leg swallows: how many, and the deepest one as a share of the leg. */
+  const inner = (i: number, j: number): [number, number] => {
+    if (j - i < 3) return [0, 0];
+    let mx = 0;
+    for (let q = i + 1; q + 1 < j; q += 2) mx = Math.max(mx, Math.abs(pv[q].p - pv[q + 1].p));
+    return [(j - i - 1) / 2, mx / (Math.abs(pv[j].p - pv[i].p) || 1)];
   };
 
   const raws: Raw[] = [];
@@ -229,21 +297,24 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
     const CD = uC - uD;
     const XC = X ? uC - uX : 0;
     if (!(AB > 0 && BC > 0 && CD > 0) || (X && !(XA > 0))) return;
-    const errs: number[] = [];
+    const isAbcd = !X;
+    let pen = isAbcd ? W.abBase : W.base;
     if (spec.b) {
-      const e = err(AB / XA, spec.b, tol);
+      const e = grade(AB / XA, spec.b, tol);
       if (e < 0) return;
-      errs.push(e);
+      pen += (spec.b[0] === spec.b[1] ? W.bPoint : W.bWin) * e;
     }
     if (spec.c) {
-      const e = err(BC / AB, spec.c, tol);
+      const r = BC / AB;
+      const e = grade(r, spec.c, tol);
       if (e < 0) return;
-      errs.push(e);
+      // AB=CD: the pullback is 0.618 or 0.786 of AB, anything else in the window is second best
+      pen += isAbcd ? W.abC * clamp(Math.min(Math.abs(r - 0.618), Math.abs(r - 0.786)) / 0.12, 0, 1) : (spec.c[0] > 1 ? W.cExt : W.c) * e;
     }
     if (spec.xc) {
-      const e = err(XC / XA, spec.xc, tol);
+      const e = grade(XC / XA, spec.xc, tol);
       if (e < 0) return;
-      errs.push(e);
+      pen += W.xc * e;
     }
     const baseLen = spec.base === "xa" ? XA : spec.base === "xc" ? XC : AB;
     const from = spec.base === "xa" ? uA : uC;
@@ -262,8 +333,9 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
       if (!(den > 0) || CD / den < 0.3) return;
       forming = true;
       gap = wLo - rD;
+      pen += isAbcd ? W.abForming : W.forming;
     } else {
-      errs.push(err(rD, spec.d, tol));
+      pen += W.d * grade(rD, spec.d, tol);
     }
     // time: the pattern must have a sane shape
     const first = X ?? A;
@@ -276,17 +348,52 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
     if (total < minBars || total > o.maxBars) return;
     const mn = Math.max(1, Math.min(...legs));
     if (Math.max(...legs) / mn > 10) return;
-    const q = forming ? Math.min(legs[0], tAB) / Math.max(legs[0], tAB, 1) : Math.min(tAB, tCD) / Math.max(tAB, tCD, 1);
+    // AB against CD in time; while D is ahead: XA against AB, and for AB=CD the running leg once it has outlasted AB
+    const q = !forming ? Math.min(tAB, tCD) / Math.max(tAB, tCD, 1) : X ? Math.min(legs[0], tAB) / Math.max(legs[0], tAB, 1) : Math.min(1, tAB / Math.max(1, n - 1 - C.i));
     // AB=CD is a pattern of symmetry, in time as well
-    if (!X && !forming && q < 0.4) return;
+    if (isAbcd && q < 0.4) return;
 
-    let conf = 100 - 32 * (errs.reduce((a, b) => a + b, 0) / Math.max(1, errs.length));
     const rCD = CD / BC;
-    if (spec.cd && !forming && (rCD < spec.cd[0] * (1 - 2 * tol) || rCD > spec.cd[1] * (1 + 2 * tol))) conf -= 10;
-    // AB=CD is equal legs in time as well as in price, so it is judged harder
-    conf -= X ? 14 * (1 - clamp((q - 0.15) / 0.45, 0, 1)) : 4 + 20 * (1 - clamp((q - 0.4) / 0.4, 0, 1));
-    if (forming) conf -= 6;
-    const confidence = Math.round(clamp(conf, 0, 100));
+    if (spec.cd && !isAbcd && !forming && (rCD < spec.cd[0] * (1 - 2 * tol) || rCD > spec.cd[1] * (1 + 2 * tol))) pen += W.cd;
+    // every leg a fair share of the pattern in time (an even split is 1)
+    const share = (mn * legs.length) / Math.max(1, total);
+    pen += W.share * clamp((0.7 - share) / 0.4, 0, 1);
+    if (isAbcd) {
+      // equal legs in time (with CD = AB the slopes then match as well); a Fibonacci 0.618 of time is the second best
+      pen += W.abT * Math.min(clamp((0.85 - q) / 0.35, 0, 1), 0.45 + Math.abs(q - 0.618) / 0.06);
+      // the impulse into A: AB=CD corrects a move, it does not hang in a range
+      let lead = 0;
+      for (let k = ai - 1; k >= 0 && ai - k <= span; k -= 2) {
+        if (k + 1 < ai && s * pv[k + 1].p >= uA) break;
+        lead = Math.max(lead, uA - s * pv[k].p);
+      }
+      pen += W.abLead * clamp((0.786 - lead / AB) / 0.4, 0, 1);
+    } else {
+      pen += W.sym * clamp((0.6 - q) / 0.4, 0, 1);
+      if (!forming) {
+        // A..D against XA in time: anything from 0.5 to 3 is a proportion, beyond that the pattern is lopsided
+        const r = (D.i - A.i) / Math.max(1, A.i - X!.i);
+        pen += W.xaad * clamp(Math.abs(Math.log(r / 1.272)) / Math.log(2.5) - 1, 0, 1);
+      }
+    }
+    // leg clarity: the smallest leg against the reversal the zigzag asks for, and the pullbacks the legs swallow
+    const end = forming ? C : D;
+    const unit = thr(Math.min(n - 1, end.i), end.p);
+    let small = Math.min(AB, BC);
+    if (X) small = Math.min(small, XA);
+    if (!forming) small = Math.min(small, CD);
+    if (unit > 0) pen += W.prom * clamp(2 - small / unit, 0, 1);
+    let skipped = 0;
+    let pull = 0;
+    const seq = X ? [xi, ai, bi, ci, di] : [ai, bi, ci, di];
+    for (let k = 1; k < seq.length; k++) {
+      const [cnt, deep] = inner(seq[k - 1], seq[k]);
+      skipped += cnt;
+      if (deep > pull) pull = deep;
+    }
+    pen += W.skip * skipped + W.pull * clamp(pull / 0.5, 0, 1);
+
+    const confidence = Math.round(clamp(100 - pen, 0, 100));
     if (confidence < o.minConf) return;
 
     // geometry in prices
@@ -333,7 +440,7 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
       startIdx: first.i + off,
       endIdx: (forming ? n - 1 : D.i) + off,
     };
-    raws.push({ pat, k: [xi, ai, bi, ci, forming ? -1 : di], rank: confidence + (X ? 4 : 0), forming, prov, gap, uD, uT1, uT2, uInv });
+    raws.push({ pat, k: [xi, ai, bi, ci, forming ? -1 : di], cd: di, rank: confidence + (X ? 4 : 0), forming, prov, gap, uD, uT1, uT2, uInv });
   };
 
   for (let d = 3; d < m; d++) {
@@ -356,6 +463,11 @@ export function detectHarmonics(all: SwingCandle[], opts: Partial<HarmonicOption
     }
   }
   if (raws.length === 0) return [];
+
+  // a five-point pattern and an AB=CD on the same C-D leg: the five-point one is the reading
+  const five = new Set<string>();
+  for (const r of raws) if (r.k[0] >= 0) five.add(`${r.pat.dir}:${r.k[3]}:${r.cd}`);
+  if (five.size > 0) for (let k = raws.length - 1; k >= 0; k--) if (raws[k].k[0] < 0 && five.has(`${raws[k].pat.dir}:${raws[k].k[3]}:${raws[k].cd}`)) raws.splice(k, 1);
 
   // forming: of the patterns that may still complete from the same C a five-point one goes before AB=CD, then the nearest PRZ
   raws.sort(

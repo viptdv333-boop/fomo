@@ -15,6 +15,7 @@ for (const [name, sc] of Object.entries(SCENARIOS)) {
   const line = res.map((p) => `${p.type}/${p.status}/${p.confidence}%/b${p.bias}/T${p.target?.toFixed(1) ?? "-"}/S${p.stop?.toFixed(1) ?? "-"}`).join(" | ");
   let ok = !!hit && hit.bias === sc.bias && hit.target !== null && hit.level !== null && Math.sign(hit.target - hit.level) === sc.bias;
   if (ok && sc.role && hit!.role !== sc.role) ok = false;
+  if (ok && sc.minConf !== undefined && hit!.confidence < sc.minConf) ok = false;
   if (!ok && sc.required) fails++;
   console.log(`${ok ? "PASS" : sc.required ? "FAIL" : "info"} ${name.padEnd(18)} (${ms.toFixed(1)} ms) -> ${line || "nothing"}${sc.role ? ` [role ${hit?.role ?? "-"}]` : ""}`);
 }
@@ -33,6 +34,23 @@ for (const [name, ng] of Object.entries(NEGATIVES)) {
   }
   if (bad) fails++;
   console.log(`${bad ? "FAIL" : "PASS"} negative ${name} -> ${bad || "not reported"}`);
+}
+
+// a V-reversal is one move in and one move out: once the price starts to swing in a range after the turn (here the
+// first leg of the symmetrical triangle) no V may be reported, with the other families switched off as well
+{
+  const cs = SCENARIOS.tri_sym.cs;
+  const vOnly = { enabled: Object.fromEntries(["double", "triple", "hs", "tri", "wedge", "flag", "pennant", "rect", "channel", "broad", "cup", "round", "diamond", "island", "drives", "barr"].map((g) => [g, false])) };
+  let bad = "";
+  // bar 108 is the second low of the triangle (60 lead-in bars + 25 + 8 + 8 + 8, minus one)
+  for (let end = 110; end <= cs.length && !bad; end++) {
+    for (const extra of [{}, vOnly]) {
+      const hit = detectPatterns(cs.slice(0, end), { ...OPT, minConfidence: 30, maxShown: 40, ...extra }).find((p) => p.group === "vrev" && p.i1 < 100);
+      if (hit) bad = `${hit.type}/${hit.status}/${hit.confidence}% at ${end}`;
+    }
+  }
+  if (bad) fails++;
+  console.log(`${bad ? "FAIL" : "PASS"} negative v_bottom_into_triangle -> ${bad || "not reported"}`);
 }
 
 // forming states: cut before the breakout, a target must be projected and the status must be "forming"

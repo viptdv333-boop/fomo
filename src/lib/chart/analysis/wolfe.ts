@@ -14,6 +14,8 @@
  * Swings come from the shared ATR / percent zigzag (analysis/swings). The last swing is the running extreme (not confirmed), which is
  * what makes a LIVE pattern: point 5 is still forming (or, before the line is pierced, a "setup" with points 1-4 only).
  * A leg may absorb inner pullbacks (it spans 1, 3 or 5 zigzag swings) as long as its end points are the extremes of the leg.
+ * Confidence: graded marks (convergence, time symmetry, point 5 in the sweet zone, proportions, the move into point 1, leg clarity,
+ * distance to the target) combined as a weighted geometric mean with a baseline subtracted, see score().
  * Cost: one zigzag pass (O(n)) + a pruned search over the swing combinations (at most 81 per starting swing, nearly all of them
  * cut by the first comparisons); only geometrically valid patterns are walked bar by bar.
  */
@@ -144,36 +146,86 @@ interface ScoreIn {
   /** Channel width at point 5 / at point 2 (classic), ignored for the parallel variant. */
   narrow: number;
   parallel: boolean;
-  /** Point 5 beyond the 1-3 line (price), depth of the sweet zone there, channel width at point 4. */
+  /** Point 5 against the 1-3 line (price, > 0: pierced, < 0: short of it), depth of the sweet zone there, channel width at point 4. */
   depth: number;
   zoneDepth: number;
   W: number;
+  /** Distance from point 5 to the target, ATR at point 5. */
   reach: number;
+  atr: number;
+  /** Point 5 is not there yet (setup) / is still the running extreme (its leg is not finished). */
   setup: boolean;
+  live: boolean;
+  /** Move into point 1: fall from the highest price of the bars before it, how far those bars went beyond point 1 (price);
+   *  bars looked at (0: no history, the trend is unknown). */
+  drop: number;
+  under: number;
+  prior: number;
 }
 
-/** Score 0..100 of a geometrically valid pattern (y-space: bullish orientation). */
+/** 0 up to a, 1 from b on, linear in between. */
+const ramp = (v: number, a: number, b: number) => clamp01((v - a) / (b - a));
+/** 1 inside [b, c], falls to 0 at a and at d. */
+const trap = (v: number, a: number, b: number, c: number, d: number) => (v < b ? ramp(v, a, b) : v > c ? 1 - ramp(v, c, d) : 1);
+
+/** Weights of the score components (sum 1): the mark is their weighted geometric mean, so one bad component cannot be bought back by the others. */
+const W_CONV = 0.16;
+const W_TIME = 0.2;
+const W_PIERCE = 0.12;
+const W_SHAPE = 0.2;
+const W_TREND = 0.14;
+const W_CLEAR = 0.12;
+const W_REACH = 0.06;
+/** Floor of a component (keeps the product from collapsing to 0). */
+const C_MIN = 0.03;
+/** Baseline: the geometric mean a weak random candidate still collects (measured on random walks: median 0.5, lower quartile 0.4);
+ *  it is subtracted, the rest is stretched to 0..1. */
+const BASE = 0.3;
+/** Score factor of a setup (point 5 is not there yet: its components are not judged). */
+const SETUP_FACTOR = 0.88;
+
+/** Score 0..100 of a geometrically valid pattern (y-space: bullish orientation). Every component is graded 0..1 by how far it is from
+ *  the textbook picture; a random zigzag that merely passes the rules lands well under 50. */
 function score(y: number[], idx: number[], g: ScoreIn): number {
-  const legs = [idx[1] - idx[0], idx[2] - idx[1], idx[3] - idx[2], idx[4] - idx[3]];
-  const lo = Math.min(...legs);
-  const hi = Math.max(...legs);
-  // convergence: the channel has narrowed by 30..80 % at point 5 (the parallel channel gets a low fixed mark)
-  const conv = g.parallel ? 0.25 : clamp01((1 - g.narrow) / 0.55);
-  // time: waves 1-2 and 3-4 symmetric (the classic requirement), the other legs comparable
-  const sym = Math.min(legs[0], legs[2]) / Math.max(1, legs[0], legs[2]);
-  const timing = 0.6 * clamp01(sym / 0.6) + 0.4 * clamp01(lo / Math.max(1, hi) / 0.4);
-  // point 5: inside the sweet zone is ideal, a bare touch is weak, the farther beyond the zone the closer to a break
+  const full = !g.setup && !g.live; // leg 4-5 is finished
+  const l12 = idx[1] - idx[0];
+  const l23 = idx[2] - idx[1];
+  const l34 = idx[3] - idx[2];
+  const l45 = idx[4] - idx[3];
+  // 1) convergence: the channel has narrowed to 20..65 % of its width by point 5 (apex neither on top of point 5 nor far away)
+  const conv = g.parallel ? 0.55 : trap(g.narrow, 0.02, 0.2, 0.65, 1);
+  // 2) time: waves 1-2 and 3-4 equal (the classic requirement), no leg much shorter than the others, 1->3 and 3->5 comparable
+  const sym = Math.min(l12, l34) / Math.max(1, l12, l34);
+  const lo = full ? Math.min(l12, l23, l34, l45) : Math.min(l12, l23, l34);
+  const hi = full ? Math.max(l12, l23, l34, l45) : Math.max(l12, l23, l34);
+  const half = full ? Math.min(l12 + l23, l34 + l45) / Math.max(1, l12 + l23, l34 + l45) : 1;
+  const timing = ramp(sym, 0.3, 0.8) * ramp(lo / Math.max(1, hi), 0.15, 0.55) * ramp(half, 0.3, 0.7);
+  // 3) point 5: inside the sweet zone is ideal, a bare touch is weaker, short of the line weaker still; beyond the zone it turns into a break
   const zEff = Math.max(g.zoneDepth, 0.25 * g.W, 1e-12);
   const rel = g.depth / zEff;
   const far = Math.max(1.0001, g.W / zEff);
-  const pierce = g.setup ? 0.35 : rel < 0.05 ? clamp01(0.5 + rel * 10) : rel <= 1 ? 1 : clamp01(1 - (0.7 * (rel - 1)) / (far - 1));
-  // point 4 retraces 35..85 % of the 2-3 leg (not a flat top, not a new extreme)
-  const retr = (y[3] - y[2]) / Math.max(1e-12, y[1] - y[2]);
-  const p4 = retr >= 0.35 && retr <= 0.85 ? 1 : clamp01(1 - Math.min(Math.abs(retr - 0.35), Math.abs(retr - 0.85)) / 0.35);
-  // the target is worth taking: at least 2 ATR away from point 5
+  const pierce = g.setup ? 1 : rel < 0 ? 0.5 : rel < 0.1 ? 0.7 + 3 * rel : rel <= 1 ? 1 : clamp01(1 - (0.8 * (rel - 1)) / (far - 1));
+  // 4) proportions: 3 a modest new low under 1, 4 retraces 35..80 % of wave 2-3, 5 extends wave 3-4 by 1.15..2.2, no dwarf leg
+  const h12 = y[1] - y[0];
+  const h23 = y[1] - y[2];
+  const h34 = y[3] - y[2];
+  const h45 = y[3] - y[4];
+  const d3 = trap((y[0] - y[2]) / Math.max(1e-12, h12), 0, 0.15, 0.7, 1.4);
+  const p4 = trap(h34 / Math.max(1e-12, h23), 0.15, 0.35, 0.8, 1);
+  const e5 = g.setup ? 1 : trap(h45 / Math.max(1e-12, h34), 1, 1.15, 2.2, 3.2);
+  const hMin = g.setup ? Math.min(h12, h23, h34) : Math.min(h12, h23, h34, h45);
+  const range = y[1] - Math.min(y[2], g.setup ? y[2] : y[4]);
+  const share = ramp(hMin / Math.max(1e-12, range), 0.1, 0.28);
+  const shape = d3 * p4 * e5 * share;
+  // 5) prior trend: the pattern ends a move, so price fell into point 1 at least by the height of wave 1-2 and point 1 is its low
+  const trend = g.prior < 3 ? 0.6 : ramp(g.drop / Math.max(1e-12, h12), 0.35, 1.05) * (1 - 0.8 * ramp(g.under / Math.max(1e-12, h12), 0, 0.5));
+  // 6) clarity: every leg stands out of the noise
+  const clear = ramp(hMin / g.atr, 1.5, 4.5);
+  // 7) the target is worth taking: at least 2 ATR away from point 5
   const reach = clamp01(g.reach / 2);
-  const s = 0.22 * conv + 0.22 * timing + 0.24 * pierce + 0.14 * p4 + 0.18 * reach;
-  return Math.round(100 * clamp01(0.15 + 0.85 * s) * (g.parallel ? PARALLEL_FACTOR : 1));
+  const f = (c: number, w: number) => Math.pow(Math.max(C_MIN, c), w);
+  const q = f(conv, W_CONV) * f(timing, W_TIME) * f(pierce, W_PIERCE) * f(shape, W_SHAPE) * f(trend, W_TREND) * f(clear, W_CLEAR) * f(reach, W_REACH);
+  return Math.round(100 * clamp01((q - BASE) / (1 - BASE)) * (g.parallel ? PARALLEL_FACTOR : 1) * (g.setup ? SETUP_FACTOR : 1));
 }
 
 function evaluate(dir: WolfeDir, P: Pivot[], cs: SwingCandle[], atr: number[], o: WolfeOptions): WolfePattern | null {
@@ -248,7 +300,32 @@ function evaluate(dir: WolfeDir, P: Pivot[], cs: SwingCandle[], atr: number[], o
   const epa = at(T, eta);
   const reach = (epa - y[4]) / a;
   if (!(reach > 0.5)) return null;
-  const conf = score(y, idx, { narrow: g5 / g2, parallel, depth: Math.max(0, depth), zoneDepth, W, reach, setup: status === "setup" });
+  // the move into point 1: the bars before it, half a pattern long
+  const look = Math.max(8, Math.round(span / 2));
+  const from = Math.max(0, idx[0] - look);
+  let hiBefore = -Infinity;
+  let loBefore = Infinity;
+  for (let j = from; j < idx[0]; j++) {
+    const h = dir === 1 ? cs[j].h : -cs[j].l;
+    const l = dir === 1 ? cs[j].l : -cs[j].h;
+    if (h > hiBefore) hiBefore = h;
+    if (l < loBefore) loBefore = l;
+  }
+  const prior = idx[0] - from;
+  const conf = score(y, idx, {
+    narrow: g5 / g2,
+    parallel,
+    depth,
+    zoneDepth,
+    W,
+    reach,
+    atr: a,
+    setup: status === "setup",
+    live,
+    drop: prior > 0 ? hiBefore - y[0] : 0,
+    under: prior > 0 ? Math.max(0, y[0] - loBefore) : 0,
+    prior,
+  });
 
   // what happened after point 5 (y-space: bullish orientation; a live pattern has the current price only)
   let hitIdx = -1;

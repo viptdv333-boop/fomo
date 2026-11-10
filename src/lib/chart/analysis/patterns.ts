@@ -307,6 +307,11 @@ interface Cand {
   forced?: { x: number; dir: 1 | -1 };
   /** Own outline instead of the default "two lines" / "neckline" (indexes local to the window). */
   custom?: (end: number, forming: boolean) => { segs: PatternSeg[]; poly?: PatternPoint[] };
+  /**
+   * Figures that are a single uninterrupted move (the V): after the breakout the price may not come back through the
+   * breakout level, and the target has to be reached by bar `by`; otherwise the move has turned into a base (dropped).
+   */
+  hold?: { by: number };
 }
 
 interface Ev {
@@ -694,6 +699,7 @@ class Analyzer {
 
     /* flags / pennants: a strong pole into the first pivot */
     const pole = this.pole(cf, s, len);
+    let pennant = false;
     if (pole && n <= 8) {
       const flagSlopeOk = pole.dir > 0 ? du <= 0.15 && dl <= 0.15 : du >= -0.15 && dl >= -0.15;
       const meanSlope = (du + dl) / 2;
@@ -721,6 +727,7 @@ class Analyzer {
           });
         } else if (pennSlopeOk && cr <= 0.7 && w1 > 0.5 * A && !wedgeLike) {
           const d: 1 | -1 = pole.dir > 0 ? 1 : -1;
+          pennant = true;
           out.push({
             ...base,
             type: d > 0 ? "pennant_bull" : "pennant_bear",
@@ -749,16 +756,32 @@ class Analyzer {
 
     const mk = (type: PatternType, bias: -1 | 0 | 1, extra: Partial<Cand>) => out.push({ ...base, type, bias, trend: 0.5, prop: 0.5, target: (l, d) => l + d * w0, stop: stopOf, ...extra } as Cand);
 
+    // Triangles. Six alternating touches (three on each line) are a complete triangle (Murphy: four reversal points are the
+    // minimum, six the usual count), so the touch score is full from six pivots, not from eight as for the open-ended
+    // figures. The window ends at the last pivot before the breakout, which in a textbook triangle sits half to
+    // three quarters of the way to the apex: any width ratio of 0.2-0.6 is a proper shape, not only 0.45.
+    const geomTri = geom + 0.4 * ((n >= 6 ? 1 : touch) - touch);
+    const shapeTri = cr < 0.2 ? clamp(cr / 0.2, 0, 1) : cr <= 0.6 ? 1 : 1 - clamp((cr - 0.6) / 0.3, 0, 1);
+    const propTri = 0.45 * shapeTri + 0.2 * apexScore + 0.35 * lenScore;
+
     if (conv && apexOk) {
       if (flat(du) && dl >= 0.25) {
         const t = this.trend(x0, hs[0].p, 1, len);
-        mk("tri_asc", 1, { prop: propConv, trend: 0.35 + 0.65 * t });
+        mk("tri_asc", 1, { geom: geomTri, prop: propTri, trend: 0.35 + 0.65 * t });
       } else if (flat(dl) && du <= -0.25) {
         const t = this.trend(x0, ls[0].p, -1, len);
-        mk("tri_desc", -1, { prop: propConv, trend: 0.35 + 0.65 * t });
+        mk("tri_desc", -1, { geom: geomTri, prop: propTri, trend: 0.35 + 0.65 * t });
       } else if (du <= -0.2 && dl >= 0.2) {
+        // a small symmetrical triangle right after a pole is a pennant: it is reported as one above, not twice
+        // (the same holds for the window that starts one swing later, inside the pennant)
+        if (pennant) return;
+        if (s >= 1 && n <= 8) {
+          const lead = cf[s].i - cf[s - 1].i;
+          const pp = this.pole(cf, s - 1, len + lead);
+          if (pp && w0 <= 0.55 * pp.h && len + lead <= Math.max(12, 3 * pp.bars + 10)) return;
+        }
         const tb = this.trendBoth(x0, (hs[0].p + ls[0].p) / 2, len);
-        mk("tri_sym", tb.s >= 0.3 ? tb.dir : 0, { prop: propConv, trend: 0.3 + 0.7 * tb.s });
+        mk("tri_sym", tb.s >= 0.3 ? tb.dir : 0, { geom: geomTri, prop: propTri, trend: 0.3 + 0.7 * tb.s });
       } else if (du >= 0.2 && dl >= 0.2) {
         // rising wedge: always resolves down. After an uptrend (or as the uptrend itself) it is a reversal,
         // inside a downtrend it is a corrective rally, i.e. a continuation
@@ -1154,6 +1177,9 @@ class Analyzer {
    * V top / bottom (Murphy: the "spike"): a steep, uninterrupted leg, a turn without any base and an equally fast move back.
    * There is no neckline, so the figure is taken as confirmed when the price gives back half of the spike about as fast as
    * it was made; the objective is a full retracement to the start of the spike, the figure is void beyond the tip.
+   * A V has no base on the way out either: once half of the spike is given back the price may not close back through that
+   * half-way level, and the full retracement has to come in about the time the spike took (see `Cand.hold`). A sharp drop
+   * and bounce that then starts to swing in a narrowing range is the first leg of a triangle, not a V.
    */
   private vReversals(pv: Pv[], out: Cand[]) {
     const n = this.n;
@@ -1234,6 +1260,7 @@ class Analyzer {
         neckFrom: P.i,
         volA: S.i,
         volB: P.i,
+        hold: { by: P.i + Math.max(2 * bars, bars + 6) },
       });
     }
   }
@@ -1565,6 +1592,9 @@ class Analyzer {
         ev = x;
         break;
       }
+      // single-move figures: back through the breakout level, or too slow to the target = a base has formed, so it
+      // never was a V (not a "failed" V either: that is a close beyond the tip, handled above)
+      if (cd.hold && (back < -0.5 * this.A[x] || x > cd.hold.by) && !(dir > 0 ? k.h >= T : k.l <= T)) return null;
       if (dir > 0 ? k.h >= T : k.l <= T) {
         status = "target";
         ev = x;

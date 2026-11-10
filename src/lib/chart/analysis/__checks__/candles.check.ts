@@ -128,7 +128,7 @@ P.island_top = [1, [[1.0, 1.3], [1.3, 1.1], [1.1, 1.25], [0.6, 0.1]]];
 const TWINS: [CandleId, CandleId][] = [
   ["window_down", "window_up"], ["counter_bear", "counter_bull"], ["separating_bear", "separating_bull"], ["matching_high", "matching_low"],
   ["tasuki_down", "tasuki_up"], ["tristar_bear", "tristar_bull"], ["strike_bear", "strike_bull"], ["breakaway_bear", "breakaway_bull"],
-  ["island_bottom", "island_top"],
+  ["island_bottom", "island_top"], ["stick_sandwich_bear", "stick_sandwich"], ["mathold_bear", "mathold"],
 ];
 for (const [id, src] of TWINS) {
   const [d, rows] = P[src]!;
@@ -138,10 +138,10 @@ for (const [id, src] of TWINS) {
 const MAIN = new Set<CandleId>([
   "counter_bull", "counter_bear", "tasuki_up", "tasuki_down", "tristar_bull", "tristar_bear", "two_crows", "upgap_two_crows", "three_river",
   "strike_bull", "strike_bear", "concealing_swallow", "mathold", "ladder_bottom", "breakaway_bull", "breakaway_bear", "island_top", "island_bottom",
-  "advance_block", "deliberation", "stick_sandwich", "sidebyside_bull", "sidebyside_bear",
+  "advance_block", "deliberation", "stick_sandwich", "stick_sandwich_bear", "mathold_bear", "sidebyside_bull", "sidebyside_bear",
 ]);
 const NEW_IDS = Object.keys(P) as CandleId[];
-expect("33 new patterns have a sequence", NEW_IDS.length === 33, `n=${NEW_IDS.length}`);
+expect("35 new patterns have a sequence", NEW_IDS.length === 35, `n=${NEW_IDS.length}`);
 for (const id of NEW_IDS) {
   const m = CANDLE_BY_ID[id];
   expect(`${id}: catalogue entry with ru / en / cn texts`, !!m && [m.name, m.short, m.desc].every((s) => s.length === 3 && s.every((w) => w.length > 0)));
@@ -173,6 +173,12 @@ for (const id of NEW_IDS) {
   no("window without a price gap", "window_up", 1, [[0.2, 0.7]]);
   no("mat hold whose pause falls below the first open", "mathold", 1, [[0, 1.5], [1.8, 2.1], [2.0, 0.6], [0.6, -0.3], [-0.2, 2.8]]);
   no("stick sandwich with a different last close", "stick_sandwich", -1, [[0, -1.0], [-0.8, 0.2], [0.3, -0.6]]);
+  no("bearish mat hold whose pause rises above the first open", "mathold_bear", -1, flip([[0, 1.5], [1.8, 2.1], [2.0, 0.6], [0.6, -0.3], [-0.2, 2.8]]));
+  no("bearish mat hold without the gap down", "mathold_bear", -1, flip([[0, 1.5], [1.3, 1.6], [1.5, 1.2], [1.2, 0.9], [1.0, 2.8]]));
+  no("bearish stick sandwich with a different last close", "stick_sandwich_bear", 1, flip([[0, -1.0], [-0.8, 0.2], [0.3, -0.6]]));
+  no("bearish stick sandwich in a downtrend", "stick_sandwich_bear", -1, P.stick_sandwich_bear![1]);
+  no("bullish mat hold is not the bearish one", "mathold_bear", 1, P.mathold![1]);
+  no("bullish stick sandwich is not the bearish one", "stick_sandwich_bear", -1, P.stick_sandwich![1]);
 }
 
 // island reversal: 1 to 5 candles on the island, the hit starts on the candle before the first gap

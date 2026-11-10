@@ -14,9 +14,9 @@ export type CandleId =
   | "window_up" | "window_down" | "counter_bull" | "counter_bear" | "separating_bull" | "separating_bear"
   | "onneck" | "inneck" | "thrusting" | "homing_pigeon" | "matching_low" | "matching_high"
   | "tasuki_up" | "tasuki_down" | "sidebyside_bull" | "sidebyside_bear" | "tristar_bull" | "tristar_bear"
-  | "advance_block" | "deliberation" | "two_crows" | "upgap_two_crows" | "three_river" | "stick_sandwich"
+  | "advance_block" | "deliberation" | "two_crows" | "upgap_two_crows" | "three_river" | "stick_sandwich" | "stick_sandwich_bear"
   | "strike_bull" | "strike_bear" | "concealing_swallow"
-  | "mathold" | "ladder_bottom" | "breakaway_bull" | "breakaway_bear" | "island_top" | "island_bottom";
+  | "mathold" | "mathold_bear" | "ladder_bottom" | "breakaway_bull" | "breakaway_bear" | "island_top" | "island_bottom";
 
 export type CandleBias = "bull" | "bear" | "flat";
 export type Tri = [string, string, string];
@@ -411,9 +411,15 @@ export const CANDLE_META: CandleMeta[] = [
   },
   {
     id: "stick_sandwich", bars: 3, bias: "bull", trend: -1, prio: 68,
-    name: ["Сэндвич", "Stick sandwich", "条形三明治"],
-    short: ["Сэндв", "Sandw", "三明治"],
+    name: ["Сэндвич (бычий)", "Bullish stick sandwich", "看涨条形三明治"],
+    short: ["Сэндв↑", "Sandw↑", "三明治↑"],
     desc: ["Бычья свеча между двумя медвежьими с одинаковым закрытием после снижения: уровень закрытия дважды устоял и стал поддержкой, возможен разворот вверх.", "A bullish candle between two bearish ones with the same close after a decline: the closing level held twice and became support, a reversal up is possible.", "下跌后一根阳线夹在两根收盘价相同的阴线之间：该收盘价两度守住成为支撑，可能向上反转。"],
+  },
+  {
+    id: "stick_sandwich_bear", bars: 3, bias: "bear", trend: 1, prio: 68,
+    name: ["Сэндвич (медвежий)", "Bearish stick sandwich", "看跌条形三明治"],
+    short: ["Сэндв↓", "Sandw↓", "三明治↓"],
+    desc: ["Медвежья свеча между двумя бычьими с одинаковым закрытием после роста: уровень закрытия дважды не был пройден и стал сопротивлением, возможен разворот вниз.", "A bearish candle between two bullish ones with the same close after a rise: the closing level capped the price twice and became resistance, a reversal down is possible.", "上涨后一根阴线夹在两根收盘价相同的阳线之间：该收盘价两度未被突破成为阻力，可能向下反转。"],
   },
 
   /* ───── four candles ───── */
@@ -451,9 +457,15 @@ export const CANDLE_META: CandleMeta[] = [
   },
   {
     id: "mathold", bars: 5, bias: "bull", trend: 1, prio: 87,
-    name: ["Удержание на татами", "Mat hold", "铺垫形态"],
-    short: ["Татами", "MatH", "铺垫"],
+    name: ["Удержание на татами (бычье)", "Bullish mat hold", "看涨铺垫形态"],
+    short: ["Татами↑", "MatH↑", "铺垫↑"],
     desc: ["Длинная бычья свеча, маленькая свеча с разрывом вверх, ещё две маленькие с небольшим снижением выше открытия первой и новая бычья свеча выше их максимумов: покупатели удержали позиции, рост продолжается.", "A long bullish candle, a small candle gapping up, two more small ones drifting lower but above the open of the first, and a new bullish candle above their highs: buyers held their ground, the rise goes on.", "长阳线、向上跳空的小K线、再两根小幅回落但高于首根开盘价的小K线、最后一根高于它们最高价的阳线：多头守住阵地，涨势延续。"],
+  },
+  {
+    id: "mathold_bear", bars: 5, bias: "bear", trend: -1, prio: 87,
+    name: ["Удержание на татами (медвежье)", "Bearish mat hold", "看跌铺垫形态"],
+    short: ["Татами↓", "MatH↓", "铺垫↓"],
+    desc: ["Длинная медвежья свеча, маленькая свеча с разрывом вниз, ещё две маленькие с небольшим подъёмом ниже открытия первой и новая медвежья свеча ниже их минимумов: продавцы удержали позиции, снижение продолжается.", "A long bearish candle, a small candle gapping down, two more small ones drifting higher but below the open of the first, and a new bearish candle below their lows: sellers held their ground, the decline goes on.", "长阴线、向下跳空的小K线、再两根小幅回升但低于首根开盘价的小K线、最后一根低于它们最低价的阴线：空头守住阵地，跌势延续。"],
   },
   {
     id: "ladder_bottom", bars: 5, bias: "bull", trend: -1, prio: 86,

@@ -461,6 +461,9 @@ function makeMatcher(x: Ctx, opts: CandleOptions): (at: number, out: Match[]) =>
         if (bull(q) && en("sidebyside_bear") && clearDown(a, b) && clearDown(a, q) && Math.abs(o[q] - o[b]) <= eqb && body[q] >= 0.6 * body[b] && body[q] <= 1.67 * body[b]) add("sidebyside_bear", a);
         // stick sandwich: a white candle that trades above the close of the first black one, then a black one back to that very close
         if (bear(q) && en("stick_sandwich") && body[a] >= 0.5 * A && l[b] > c[a] && o[q] >= c[b] && Math.abs(c[q] - c[a]) <= eq) add("stick_sandwich", a);
+      } else if (bull(a) && bear(b) && bull(q)) {
+        // bearish stick sandwich, the mirror: a black candle that trades below the close of the first white one, then a white one back to that very close
+        if (en("stick_sandwich_bear") && body[a] >= 0.5 * A && h[b] < c[a] && o[q] <= c[b] && Math.abs(c[q] - c[a]) <= eq) add("stick_sandwich_bear", a);
       } else if (bull(a) && bear(b) && bear(q) && long(a) && bot[b] > top[a] && (!price || l[b] > h[a])) {
         // two crows: the second crow opens inside the first and closes inside the white body; upside-gap two crows: it engulfs the first crow but stays above the white body
         if (o[q] > o[b] && c[q] < c[b] && c[q] > c[a]) {
@@ -523,6 +526,13 @@ function makeMatcher(x: Ctx, opts: CandleOptions): (at: number, out: Match[]) =>
         )
           add("breakaway_bear", s);
       } else if (bear(s)) {
+        // bearish mat hold, the mirror: a small candle gaps down, two more small ones drift higher but stay below the open of the first, a black candle closes below their lows
+        if (
+          en("mathold_bear") && long(s) && bear(q) && top[s + 1] < bot[s] && (!price || h[s + 1] < l[s]) &&
+          body[s + 1] <= 0.6 * body[s] && body[s + 2] <= 0.6 * body[s] && body[s + 3] <= 0.6 * body[s] &&
+          c[s + 2] > bot[s + 1] && c[s + 3] > c[s + 1] && top[s + 2] < o[s] && top[s + 3] < o[s] && c[q] < Math.min(l[s + 1], l[s + 2], l[s + 3])
+        )
+          add("mathold_bear", s);
         if (
           en("breakaway_bull") && long(s) && bull(q) && long(q) && bear(s + 1) && bear(s + 3) && clearDown(s, s + 1) && c[s + 2] < c[s + 1] && c[s + 3] < c[s + 2] &&
           c[q] > top[s + 1] && c[q] < c[s]
