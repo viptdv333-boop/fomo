@@ -1,5 +1,5 @@
 /* Sanity checks for the Elliott engine. Run: npx tsx src/lib/chart/analysis/__checks__/elliott.check.ts [--real] */
-import { analyze, DEFAULT_OPTIONS, alertLevels, type ElliottOptions, type ElliottResult, type WaveCount } from "../elliott";
+import { analyze, collectCandidates, resetElliottCache, DEFAULT_OPTIONS, alertLevels, type ElliottOptions, type ElliottResult, type WaveCount } from "../elliott";
 import type { SwingCandle } from "../swings";
 
 function rng(seed: number) {
@@ -105,6 +105,52 @@ const cBear = build(mirror(bull), barsBull, 0.004, 3);
   expect("d: phase w3", live?.proj.phase === "w3", live ? live.proj.phase : "");
   const t = live?.proj.levels.find((l) => l.tag === "1.618");
   expect("d: 1.618 target = 108.4 + 1.618*20 = 140.76", !!t && Math.abs(t.price - 140.76) < 2.5, t ? t.price.toFixed(2) : "");
+}
+
+/* (e..k) the rarer structures: every case is a set of turning points + a tail leg that confirms the last one */
+{
+  interface Case {
+    name: string;
+    pts: number[];
+    /** Indices into `pts` of the expected wave pivots (others are subwaves that must be merged). */
+    at: number[];
+    kinds: string[];
+    minConf: number;
+    truncated?: boolean;
+    complex?: boolean;
+  }
+  const cases: Case[] = [
+    { name: "e: extended wave 3 with visible subwaves", pts: [100, 112, 105, 118, 113, 135, 129, 142, 133, 145, 136], at: [0, 1, 2, 7, 8, 9], kinds: ["impulse"], minConf: 55 },
+    { name: "f: ending diagonal after a rally", pts: [80, 110, 104, 116, 109, 119, 114.5, 121, 110], at: [2, 3, 4, 5, 6, 7], kinds: ["ending_diagonal"], minConf: 40 },
+    { name: "f2: expanding diagonal", pts: [100, 106, 102, 110, 104.5, 115, 106], at: [0, 1, 2, 3, 4, 5], kinds: ["expanding_leading_diagonal", "expanding_ending_diagonal"], minConf: 30 },
+    { name: "g: contracting triangle", pts: [140, 100, 120, 106, 116, 109, 114, 104], at: [1, 2, 3, 4, 5, 6], kinds: ["triangle"], minConf: 40 },
+    { name: "g2: expanding triangle", pts: [140, 100, 108, 98, 111, 95, 115, 105], at: [1, 2, 3, 4, 5, 6], kinds: ["triangle_expanding"], minConf: 30 },
+    { name: "g3: running triangle", pts: [140, 105, 120, 101, 116, 106, 113, 103], at: [1, 2, 3, 4, 5, 6], kinds: ["triangle_running"], minConf: 30 },
+    { name: "h: running flat", pts: [100, 130, 122, 134, 127, 137], at: [1, 2, 3, 4], kinds: ["running_flat"], minConf: 25 },
+    { name: "h2: expanded flat", pts: [100, 130, 122, 134, 118, 128], at: [1, 2, 3, 4], kinds: ["expanded_flat"], minConf: 30 },
+    { name: "i: truncated fifth", pts: [100, 110, 105, 125, 118, 124, 113], at: [0, 1, 2, 3, 4, 5], kinds: ["impulse"], minConf: 45, truncated: true },
+    { name: "j: double zigzag W-X-Y", pts: [150, 140, 145, 134, 142, 131, 136, 124, 134], at: [0, 3, 4, 7], kinds: ["double_zigzag"], minConf: 30, complex: true },
+    { name: "k: triple zigzag W-X-Y-X-Z", pts: [200, 188, 194, 180, 189, 177, 183, 169, 178, 166, 172, 158, 170], at: [0, 3, 4, 7, 8, 11], kinds: ["triple_zigzag"], minConf: 25, complex: true },
+  ];
+  for (const cs of cases) {
+    for (const flip of [false, true]) {
+      const pts = flip ? cs.pts.map((v) => 300 - v) : cs.pts;
+      const bars = pts.slice(1).map((v, i) => Math.max(8, Math.round(Math.abs(v - pts[i]) * 1.2)));
+      const data = build(pts, bars, 0.003, 13);
+      resetElliottCache();
+      let res: ElliottResult | null = null;
+      const cands = collectCandidates(() => {
+        res = analyze(data, opt({ degree: "minor", maxCounts: 3, minConfidence: 20, allowComplex: !!cs.complex }), false);
+      });
+      const want = cs.at.map((j) => pts[j]);
+      const hit = cands
+        .filter((c) => cs.kinds.includes(c.kind) && c.pivots.length === want.length && c.pivots.every((p, j) => Math.abs(p.p - want[j]) < 2.2) && !!c.truncated === !!cs.truncated)
+        .sort((a, b) => b.conf - a.conf)[0];
+      const tag = `${cs.name}${flip ? " (mirror)" : ""}`;
+      if (!hit) show(tag, res!);
+      expect(tag, !!hit && hit.conf >= cs.minConf, hit ? `${hit.kind} conf=${hit.conf}` : "not found");
+    }
+  }
 }
 
 /* (c) random walks must not give high-confidence counts */

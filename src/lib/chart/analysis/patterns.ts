@@ -32,11 +32,61 @@ export type PatternType =
   | "broadening"
   | "cup"
   | "rounding_bottom"
-  | "rounding_top";
+  | "rounding_top"
+  | "diamond_top"
+  | "diamond_bottom"
+  | "cup_inv"
+  | "broad_wedge_asc"
+  | "broad_wedge_desc"
+  | "broad_ra_asc"
+  | "broad_ra_desc"
+  | "v_top"
+  | "v_bottom"
+  | "island_top"
+  | "island_bottom"
+  | "drives_top"
+  | "drives_bottom"
+  | "barr_top"
+  | "barr_bottom";
 
-export type PatternGroup = "double" | "triple" | "hs" | "tri" | "wedge" | "flag" | "pennant" | "rect" | "channel" | "broad" | "cup" | "round";
+export type PatternGroup =
+  | "double"
+  | "triple"
+  | "hs"
+  | "tri"
+  | "wedge"
+  | "flag"
+  | "pennant"
+  | "rect"
+  | "channel"
+  | "broad"
+  | "cup"
+  | "round"
+  | "diamond"
+  | "vrev"
+  | "island"
+  | "drives"
+  | "barr";
 
-export const PATTERN_GROUPS: readonly PatternGroup[] = ["double", "triple", "hs", "tri", "wedge", "flag", "pennant", "rect", "channel", "broad", "cup", "round"];
+export const PATTERN_GROUPS: readonly PatternGroup[] = [
+  "double",
+  "triple",
+  "hs",
+  "tri",
+  "wedge",
+  "flag",
+  "pennant",
+  "rect",
+  "channel",
+  "broad",
+  "cup",
+  "round",
+  "diamond",
+  "vrev",
+  "island",
+  "drives",
+  "barr",
+];
 
 export const TYPE_GROUP: Record<PatternType, PatternGroup> = {
   double_top: "double",
@@ -61,6 +111,21 @@ export const TYPE_GROUP: Record<PatternType, PatternGroup> = {
   cup: "cup",
   rounding_bottom: "round",
   rounding_top: "round",
+  diamond_top: "diamond",
+  diamond_bottom: "diamond",
+  cup_inv: "cup",
+  broad_wedge_asc: "broad",
+  broad_wedge_desc: "broad",
+  broad_ra_asc: "broad",
+  broad_ra_desc: "broad",
+  v_top: "vrev",
+  v_bottom: "vrev",
+  island_top: "island",
+  island_bottom: "island",
+  drives_top: "drives",
+  drives_bottom: "drives",
+  barr_top: "barr",
+  barr_bottom: "barr",
 };
 
 export type PatternStatus = "forming" | "breakout" | "target" | "failed";
@@ -147,6 +212,10 @@ export interface DetectedPattern {
   segs: PatternSeg[];
   /** Fitted bowl (cups, rounding). */
   curve: PatternPoint[];
+  /** Closed outline to fill when the figure is not "two lines" or "path + neckline" (diamond, island); else empty. */
+  poly: PatternPoint[];
+  /** Wedges: reversal (the wedge ends a trend of its own direction) or continuation (it corrects the opposite trend). */
+  role?: "reversal" | "continuation";
   /** Breakout level (price) and the bar its line starts at. */
   level: number | null;
   levelIdx: number;
@@ -233,6 +302,11 @@ interface Cand {
   /** Fixed breakout reference for volume (index range of the pattern body). */
   volA: number;
   volB: number;
+  role?: "reversal" | "continuation";
+  /** The breakout is part of the figure itself (the second gap of an island): no scan, this bar and direction. */
+  forced?: { x: number; dir: 1 | -1 };
+  /** Own outline instead of the default "two lines" / "neckline" (indexes local to the window). */
+  custom?: (end: number, forming: boolean) => { segs: PatternSeg[]; poly?: PatternPoint[] };
 }
 
 interface Ev {
@@ -252,6 +326,8 @@ interface Ev {
 
 /** Confidence calibration (logistic centre / steepness); exported for tuning scripts. */
 export const CAL = { c: 0.72, k: 13 };
+/** Reversal figures: the move into the figure must be at least this many pattern heights (it starts beyond the neckline). */
+const PRIOR = 1.25;
 const DEG: Record<Degree, number[]> = { fine: [1.7], normal: [2.6], coarse: [4.2], auto: [1.7, 2.6, 4.2] };
 
 class Analyzer {
@@ -306,6 +382,29 @@ class Analyzer {
     return { dir: d > 0.05 ? -1 : 0, s: d };
   }
 
+  /**
+   * Size (in price) of the move that brought the market to `p0` at bar `i0` going in direction `dir`: the distance from the
+   * opposite extreme of the lookback, counted only since the price was last beyond `p0` (so it is a trend that ends at p0).
+   * Reversal figures need it: a double top is a top only if the price came up to it from well below its neckline.
+   */
+  priorMove(i0: number, p0: number, dir: 1 | -1, len: number): number {
+    const lb = clamp(Math.round(len * 3), 30, 300);
+    const a = Math.max(0, i0 - lb);
+    const slack = 0.25 * this.A[Math.min(this.n - 1, Math.max(0, i0))];
+    let ext = p0;
+    for (let x = Math.min(this.n - 1, i0) - 1; x >= a; x--) {
+      const k = this.c[x];
+      if (dir > 0) {
+        if (k.h > p0 + slack) break;
+        if (k.l < ext) ext = k.l;
+      } else {
+        if (k.l < p0 - slack) break;
+        if (k.h > ext) ext = k.h;
+      }
+    }
+    return (p0 - ext) * dir;
+  }
+
   /** Contraction score 0..1 (1 = volume dries up from the first half to the second); 0.5 without volume data. */
   volContraction(a: number, b: number): number {
     if (!this.hasVol || b - a < 4) return 0.5;
@@ -341,6 +440,8 @@ class Analyzer {
       const gap1 = p1.i - p0.i;
       const gap2 = p2.i - p1.i;
       const tsym = Math.min(gap1, gap2) / Math.max(gap1, gap2);
+      // a reversal figure: the price must have come to the first extreme from beyond the neckline
+      if (this.priorMove(p0.i, p0.p, sgn as 1 | -1, len) < PRIOR * height) continue;
       const ts = this.trend(p0.i, p0.p, sgn as 1 | -1, len);
       const extremeP = top ? Math.max(p0.p, p2.p) : Math.min(p0.p, p2.p);
       const neckP = p1.p;
@@ -400,6 +501,7 @@ class Analyzer {
       if (spreadM > tol * 1.6 || spreadM > 0.3 * height) continue;
       const eq = 1 - spreadE / Math.min(tol * 1.2, 0.22 * height);
       const eq2 = 1 - spreadM / Math.min(tol * 1.6, 0.3 * height);
+      if (this.priorMove(q[0].i, q[0].p, sgn as 1 | -1, len) < PRIOR * height) continue;
       const ts = this.trend(q[0].i, q[0].p, sgn as 1 | -1, len);
       const extremeP = top ? Math.max(...exts) : Math.min(...exts);
       let vol = 0.5;
@@ -460,6 +562,8 @@ class Analyzer {
       const tr = (hd.i - ls.i) / Math.max(1, rs.i - hd.i);
       if (tr < 0.4 || tr > 2.5) continue;
       const tsym = tr < 1 ? tr : 1 / tr;
+      // prior trend: the price came to the left shoulder from beyond the neckline
+      if (this.priorMove(ls.i, ls.p, sgn as 1 | -1, len) < (ls.p - at(neck, ls.i)) * sgn + (PRIOR - 1) * height) continue;
       const ts = this.trend(ls.i, ls.p, sgn as 1 | -1, len);
       let vol = 0.5;
       if (this.hasVol) {
@@ -597,6 +701,8 @@ class Analyzer {
       const shallow = w0 <= 0.55 * pole.h;
       const retr = pole.dir > 0 ? pole.top - Math.min(...ls.map((q) => q.p)) : Math.max(...hs.map((q) => q.p)) - pole.top;
       const retrOk = retr <= 0.65 * pole.h;
+      // both lines clearly slanted the same way over five or more swings: that is a wedge (reported below), not a pennant
+      const wedgeLike = n >= 5 && apexOk0 && ((du >= 0.2 && dl >= 0.2) || (du <= -0.2 && dl <= -0.2));
       if ((flagSlopeOk || pennSlopeOk) && shallow && retrOk && len <= Math.max(12, 3 * pole.bars + 10)) {
         const poleScore = clamp((pole.h / (A * Math.sqrt(pole.bars)) - 1.5) / 3.5, 0, 1);
         const retrScore = 1 - clamp(retr / (0.65 * pole.h), 0, 1) * 0.6;
@@ -613,7 +719,7 @@ class Analyzer {
             height: pole.h,
             bonus: 6,
           });
-        } else if (pennSlopeOk && cr <= 0.7 && w1 > 0.5 * A) {
+        } else if (pennSlopeOk && cr <= 0.7 && w1 > 0.5 * A && !wedgeLike) {
           const d: 1 | -1 = pole.dir > 0 ? 1 : -1;
           out.push({
             ...base,
@@ -654,25 +760,27 @@ class Analyzer {
         const tb = this.trendBoth(x0, (hs[0].p + ls[0].p) / 2, len);
         mk("tri_sym", tb.s >= 0.3 ? tb.dir : 0, { prop: propConv, trend: 0.3 + 0.7 * tb.s });
       } else if (du >= 0.2 && dl >= 0.2) {
-        const t = this.trend(x0, ls[0].p, 1, len);
-        if (t >= 0.25) {
-          const startP = at(L, x0);
-          mk("wedge_rising", -1, {
-            prop: propConv,
-            trend: t,
-            target: (lvl, dir, a) => (dir < 0 && lvl - startP > 0.5 * a ? startP : lvl + dir * w0),
-          });
-        }
+        // rising wedge: always resolves down. After an uptrend (or as the uptrend itself) it is a reversal,
+        // inside a downtrend it is a corrective rally, i.e. a continuation
+        const tb = this.trendBoth(x0, win[0].p, len);
+        const cont = tb.dir < 0 && tb.s >= 0.2;
+        const startP = at(L, x0);
+        mk("wedge_rising", -1, {
+          prop: propConv,
+          trend: cont ? 0.35 + 0.65 * tb.s : tb.dir > 0 ? 0.3 + 0.7 * tb.s : 0.3,
+          role: cont ? "continuation" : "reversal",
+          target: (lvl, dir, a) => (dir < 0 && lvl - startP > 0.5 * a ? startP : lvl + dir * w0),
+        });
       } else if (du <= -0.2 && dl <= -0.2) {
-        const t = this.trend(x0, hs[0].p, -1, len);
-        if (t >= 0.25) {
-          const startP = at(U, x0);
-          mk("wedge_falling", 1, {
-            prop: propConv,
-            trend: t,
-            target: (lvl, dir, a) => (dir > 0 && startP - lvl > 0.5 * a ? startP : lvl + dir * w0),
-          });
-        }
+        const tb = this.trendBoth(x0, win[0].p, len);
+        const cont = tb.dir > 0 && tb.s >= 0.2;
+        const startP = at(U, x0);
+        mk("wedge_falling", 1, {
+          prop: propConv,
+          trend: cont ? 0.35 + 0.65 * tb.s : tb.dir < 0 ? 0.3 + 0.7 * tb.s : 0.3,
+          role: cont ? "continuation" : "reversal",
+          target: (lvl, dir, a) => (dir > 0 && startP - lvl > 0.5 * a ? startP : lvl + dir * w0),
+        });
       }
     } else if (par) {
       if (flat(du) && flat(dl)) {
@@ -683,14 +791,30 @@ class Analyzer {
       } else if (n >= 6 && du <= -0.35 && dl <= -0.35) {
         mk("channel_down", -1, { prop: propPar, trend: clamp((-(du + dl) / 2) / 1.5, 0, 1), vol: 0.5, bonus: -2 });
       }
-    } else if (div && n >= 6 && cr >= 1.5 && U.b > 0 && L.b < 0 && du >= 0.1 && dl <= -0.1) {
-      mk("broadening", 0, {
+    } else if (div && n >= 6 && cr >= 1.5) {
+      // slopes in units of the final (widest) width: the start of a broadening figure is too narrow to measure against
+      const eu = (U.b * len) / w1;
+      const el = (L.b * len) / w1;
+      const ex: Partial<Cand> = {
         prop: 0.55 * clamp((cr - 1.3) / 1.0, 0, 1) + 0.45 * lenScore,
-        trend: 0.5,
         vol: 1 - volC,
         target: (l, d) => l + d * w1,
         height: w1,
-      });
+      };
+      const tb = this.trendBoth(x0, win[0].p, len);
+      if (Math.abs(el) <= 0.1 && eu >= 0.3) {
+        // right-angled ascending: flat bottom, rising top; the horizontal side is the one that gives way (Bulkowski)
+        mk("broad_ra_asc", -1, { ...ex, trend: 0.35 + 0.65 * tb.s });
+      } else if (Math.abs(eu) <= 0.1 && el <= -0.3) {
+        mk("broad_ra_desc", 1, { ...ex, trend: 0.35 + 0.65 * tb.s });
+      } else if (U.b > 0 && L.b < 0 && du >= 0.1 && dl <= -0.1) {
+        mk("broadening", 0, { ...ex, trend: 0.5 });
+      } else if (el >= 0.12 && eu > el) {
+        // ascending broadening wedge: both lines rise, the upper one faster; breaks down
+        mk("broad_wedge_asc", -1, { ...ex, trend: tb.dir > 0 ? 0.35 + 0.65 * tb.s : 0.35 });
+      } else if (eu <= -0.12 && el < eu) {
+        mk("broad_wedge_desc", 1, { ...ex, trend: tb.dir < 0 ? 0.35 + 0.65 * tb.s : 0.35 });
+      }
     }
   }
 
@@ -764,25 +888,31 @@ class Analyzer {
       const level = bowl ? Math.max(rl.p, rr.p) : Math.min(rl.p, rr.p);
       let type: PatternType = bowl ? "rounding_bottom" : "rounding_top";
       let handleLow = NaN;
-      if (bowl && !rr.prov) {
-        // handle: a shallow pullback after the right rim, before any breakout
+      if (!rr.prov) {
+        // handle: a shallow pullback after the right rim, before any breakout (a bounce for the inverted cup)
         let hi = -1;
-        let lowV = Infinity;
+        let extV = Infinity;
         for (let x = rr.i + 1; x < this.n; x++) {
-          if (this.c[x].c > level + this.buf(x, level)) break;
-          if (this.c[x].l < lowV) {
-            lowV = this.c[x].l;
+          if ((this.c[x].c - level) * sgn > this.buf(x, level)) break;
+          const v = (bowl ? this.c[x].l : this.c[x].h) * sgn;
+          if (v < extV) {
+            extV = v;
             hi = x;
           }
         }
-        const hd = rr.p - lowV;
+        const hd = rr.p * sgn - extV;
         if (hi > 0 && hd >= 0.06 * depth && hd <= 0.5 * depth && hi - rr.i <= 0.5 * len + 5 && hi - rr.i >= 2) {
-          type = "cup";
-          handleLow = lowV;
+          type = bowl ? "cup" : "cup_inv";
+          handleLow = extV * sgn;
         }
       }
-      if (type !== "cup" && fit.r2 < 0.8) continue;
-      const ts = this.trend(rl.i, rl.p, sgn as 1 | -1, len);
+      const handled = type === "cup" || type === "cup_inv";
+      if (!handled && fit.r2 < 0.8) continue;
+      // rounding top / bottom are reversals: the price must have come to the turn from beyond the rims
+      // (a cup with a handle is a continuation and is scored by the trend into the left rim instead)
+      const pm = handled ? 0 : this.priorMove(bt.i, bt.p, (-sgn) as 1 | -1, len);
+      if (!handled && pm < PRIOR * depth) continue;
+      const ts = handled ? this.trend(rl.i, rl.p, sgn as 1 | -1, len) : clamp((pm / depth - 1) / 1.2, 0.15, 1);
       const symm = 1 - Math.abs(tpos - 0.5) / 0.22;
       const geom = 0.5 * clamp((fit.r2 - 0.65) / 0.3, 0, 1) + 0.25 * clamp(symm, 0, 1) + 0.25 * (1 - rimDiff / (0.22 * depth));
       const curve: PatternPoint[] = [];
@@ -796,7 +926,7 @@ class Analyzer {
         type,
         bias: sgn as 1 | -1,
         i0: rl.i,
-        iLast: type === "cup" ? rr.i : rr.i,
+        iLast: rr.i,
         piv: [rl, bt, rr],
         neck: { a: level, b: 0 },
         neckDir: sgn as 1 | -1,
@@ -804,12 +934,12 @@ class Analyzer {
         invDir: (-sgn) as 1 | -1,
         geom,
         prop: 0.5 * clamp(len / 40, 0, 1) + 0.5 * clamp(1 - Math.abs(tpos - 0.5) / 0.3, 0, 1),
-        trend: type === "rounding_top" ? ts : 0.4 + 0.6 * ts,
+        trend: handled ? 0.4 + 0.6 * ts : ts,
         vol: 0.5,
         height: depth,
         target: (lvl, dir) => lvl + dir * depth,
-        stop: () => (type === "cup" ? handleLow - 0.2 * A : level - sgn * 0.5 * depth),
-        bonus: type === "cup" ? 4 : 0,
+        stop: () => (handled ? handleLow - sgn * 0.2 * A : level - sgn * 0.5 * depth),
+        bonus: handled ? 4 : 0,
         provisional: rr.prov,
         curve,
         path: [],
@@ -876,6 +1006,486 @@ class Analyzer {
     return { a, b, c, r2: Math.max(0, 1 - ssRes / ssTot), r2v: Math.max(0, 1 - ssV / ssTot) };
   }
 
+  /* ───────── diamond ───────── */
+
+  /**
+   * Diamond top / bottom (Bulkowski, Edwards-Magee): a broadening first half (higher highs, lower lows) that turns into a
+   * symmetrical triangle (lower highs, higher lows). The breakout is through the right-hand lines, the target is the
+   * widest height of the figure projected from the breakout.
+   */
+  private diamonds(pv: Pv[], out: Cand[]) {
+    const o = this.o;
+    const cf: Pv[] = [];
+    for (const q of pv) if (!q.prov) cf.push(q);
+    const m = cf.length;
+    for (let e = 5; e < m; e++) {
+      for (let cnt = 6; cnt <= 10 && e - cnt + 1 >= 0; cnt++) {
+        const s = e - cnt + 1;
+        const x0 = cf[s].i;
+        const xe = cf[e].i;
+        const len = xe - x0;
+        if (len > o.maxBars) break;
+        if (len < Math.max(o.minBars, 12)) continue;
+        const hs: Pv[] = [];
+        const ls: Pv[] = [];
+        for (let j = s; j <= e; j++) (cf[j].H ? hs : ls).push(cf[j]);
+        if (hs.length < 3 || ls.length < 3) continue;
+        let hi = 0;
+        let li = 0;
+        for (let j = 1; j < hs.length; j++) if (hs[j].p > hs[hi].p) hi = j;
+        for (let j = 1; j < ls.length; j++) if (ls[j].p < ls[li].p) li = j;
+        if (hi === 0 || hi === hs.length - 1 || li === 0 || li === ls.length - 1) continue;
+        const Hm = hs[hi];
+        const Lm = ls[li];
+        const h1 = hs[0];
+        const hN = hs[hs.length - 1];
+        const l1 = ls[0];
+        const lN = ls[ls.length - 1];
+        const height = Hm.p - Lm.p;
+        const A = this.A[xe];
+        if (height < 3.5 * A) continue;
+        const th = (Hm.i - x0) / len;
+        const tl = (Lm.i - x0) / len;
+        if (th < 0.2 || th > 0.8 || tl < 0.2 || tl > 0.8 || Math.abs(th - tl) > 0.4) continue;
+        const w0 = h1.p - l1.p;
+        const w1 = hN.p - lN.p;
+        if (!(w0 > 0.3 * A) || !(w1 > 0.3 * A) || w0 > 0.72 * height || w1 > 0.72 * height) continue;
+        // each corner clearly inside the widest part
+        const mIn = 0.12 * height;
+        if (Hm.p - h1.p < mIn || Hm.p - hN.p < mIn || l1.p - Lm.p < mIn || lN.p - Lm.p < mIn) continue;
+        const UL = lnOf(h1.i, h1.p, Hm.i, Hm.p);
+        const UR = lnOf(Hm.i, Hm.p, hN.i, hN.p);
+        const LL = lnOf(l1.i, l1.p, Lm.i, Lm.p);
+        const LR = lnOf(Lm.i, Lm.p, lN.i, lN.p);
+        const up = (x: number) => (x <= Hm.i ? at(UL, x) : at(UR, x));
+        const dn = (x: number) => (x <= Lm.i ? at(LL, x) : at(LR, x));
+        const tol = o.tolAtr * A;
+        // inner pivots: not beyond the outline, and not far inside it either (they are the touches)
+        let dev = 0;
+        let bad = false;
+        for (const q of hs) {
+          const d = q.p - up(q.i);
+          if (d > tol || d < -0.3 * height) bad = true;
+          dev += Math.abs(d);
+        }
+        for (const q of ls) {
+          const d = q.p - dn(q.i);
+          if (d < -tol || d > 0.3 * height) bad = true;
+          dev += Math.abs(d);
+        }
+        if (bad) continue;
+        const xa = Math.min(h1.i, l1.i);
+        let viol = 0;
+        for (let x = Math.max(h1.i, l1.i); x <= xe; x++) {
+          const k = this.c[x];
+          if (k.h > up(x) + tol || k.l < dn(x) - tol) viol++;
+        }
+        if (viol > 0.08 * (len + 1)) continue;
+        if (!(UR.b < LR.b)) continue;
+        const apex = (LR.a - UR.a) / (UR.b - LR.b);
+        if (!(apex > xe) || apex - xe > Math.max(1.2 * len, 20)) continue;
+        // a top ends an advance, a bottom ends a decline
+        const tb = this.trendBoth(xa, cf[s].p, len);
+        const upMove = this.priorMove(Hm.i, Hm.p, 1, len);
+        const dnMove = this.priorMove(Lm.i, Lm.p, -1, len);
+        const top = upMove >= PRIOR * height && upMove >= dnMove;
+        const bot = !top && dnMove >= PRIOR * height;
+        if (!top && !bot) continue;
+        const sym = 1 - clamp((Math.abs(th - 0.5) + Math.abs(tl - 0.5)) / 0.5, 0, 1);
+        const narrow = 1 - clamp((w0 + w1) / (1.44 * height), 0, 1);
+        const geom = 0.3 * clamp((cnt - 6) / 3, 0, 1) + 0.3 * (1 - clamp(dev / cnt / (0.3 * height), 0, 1)) + 0.2 * sym + 0.2 * narrow;
+        const lenScore = len < 20 ? len / 20 : 1;
+        const sg: 1 | -1 = top ? 1 : -1;
+        const tsc = tb.dir === sg ? tb.s : 0;
+        out.push({
+          type: top ? "diamond_top" : "diamond_bottom",
+          bias: (-sg) as 1 | -1,
+          i0: x0,
+          iLast: xe,
+          piv: cf.slice(s, e + 1),
+          upper: UR,
+          lower: LR,
+          apex,
+          geom,
+          prop: 0.5 * lenScore + 0.5 * (1 - clamp(Math.abs(th - tl) / 0.4, 0, 1)),
+          trend: 0.35 + 0.65 * Math.max(tsc, clamp(((top ? upMove : dnMove) / height - 1) / 1.5, 0, 1)),
+          vol: this.volContraction(x0, xe),
+          height,
+          target: (lvl, dir) => lvl + dir * height,
+          stop: (dir) => (dir > 0 ? lN.p - 0.2 * A : hN.p + 0.2 * A),
+          bonus: 2,
+          provisional: false,
+          volA: x0,
+          volB: xe,
+          custom: (end, forming) => {
+            const segs: PatternSeg[] = [
+              { i0: h1.i, p0: h1.p, i1: Hm.i, p1: Hm.p, kind: "line" },
+              { i0: Hm.i, p0: Hm.p, i1: end, p1: at(UR, end), kind: "line" },
+              { i0: l1.i, p0: l1.p, i1: Lm.i, p1: Lm.p, kind: "line" },
+              { i0: Lm.i, p0: Lm.p, i1: end, p1: at(LR, end), kind: "line" },
+            ];
+            if (forming) {
+              const proj = Math.min(Math.max(0, Math.floor(apex - end)), Math.max(4, Math.round(len * 0.2)));
+              if (proj > 1) {
+                segs.push({ i0: end, p0: at(UR, end), i1: end + proj, p1: at(UR, end + proj), kind: "ext" });
+                segs.push({ i0: end, p0: at(LR, end), i1: end + proj, p1: at(LR, end + proj), kind: "ext" });
+              }
+            }
+            return {
+              segs,
+              poly: [
+                { i: h1.i, p: h1.p },
+                { i: Hm.i, p: Hm.p },
+                { i: end, p: at(UR, end) },
+                { i: end, p: at(LR, end) },
+                { i: Lm.i, p: Lm.p },
+                { i: l1.i, p: l1.p },
+              ],
+            };
+          },
+        });
+      }
+    }
+  }
+
+  /* ───────── V-reversal ───────── */
+
+  /**
+   * V top / bottom (Murphy: the "spike"): a steep, uninterrupted leg, a turn without any base and an equally fast move back.
+   * There is no neckline, so the figure is taken as confirmed when the price gives back half of the spike about as fast as
+   * it was made; the objective is a full retracement to the start of the spike, the figure is void beyond the tip.
+   */
+  private vReversals(pv: Pv[], out: Cand[]) {
+    const n = this.n;
+    for (let k = 1; k < pv.length; k++) {
+      const S = pv[k - 1];
+      const P = pv[k];
+      const sgn: 1 | -1 = P.H ? 1 : -1;
+      const bars = P.i - S.i;
+      if (bars < 3 || bars > 45) continue;
+      const h = (P.p - S.p) * sgn;
+      const A0 = this.A[S.i];
+      if (h < 6 * A0) continue;
+      const z = h / (A0 * Math.sqrt(bars));
+      if (z < 2.6) continue;
+      // the spike ends a move: nothing beyond the tip shortly before it
+      if (this.priorMove(P.i, P.p, sgn, bars) < h) continue;
+      const level = P.p - sgn * 0.5 * h;
+      const limit = P.i + Math.max(4, Math.round(0.9 * bars)) + 1;
+      // the way back: one leg, no base and no second attempt at the tip
+      let ext = P.p;
+      let extI = P.i;
+      let xb = -1;
+      let bad = false;
+      for (let x = P.i + 1; x < n && x <= limit + 1; x++) {
+        const kx = this.c[x];
+        const v = sgn > 0 ? kx.l : kx.h;
+        if ((ext - v) * sgn > 0) {
+          ext = v;
+          extI = x;
+        }
+        if ((kx.c - P.p) * sgn > 0.15 * this.A[x] || (kx.c - ext) * sgn > 0.25 * h) {
+          bad = true;
+          break;
+        }
+        if ((level - kx.c) * sgn > this.buf(x, level)) {
+          xb = x;
+          break;
+        }
+      }
+      if (bad) continue;
+      const back = (P.p - ext) * sgn;
+      // not a V yet: the return leg has to be under way
+      if (xb < 0 && back < 0.25 * h) continue;
+      const outBars = (xb >= 0 ? xb : extI) - P.i;
+      const speedIn = h / bars;
+      const speedOut = back / Math.max(1, outBars);
+      const sp = Math.min(speedIn, speedOut) / Math.max(speedIn, speedOut);
+      if (sp < 0.35) continue;
+      let vol = 0.5;
+      if (this.hasVol) {
+        const body = this.meanVol(S.i, P.i);
+        const tip = this.meanVol(Math.max(S.i, P.i - 1), Math.min(n - 1, P.i + 1));
+        if (body > 0) vol = clamp((tip / body - 0.8) / 1.0, 0, 1);
+      }
+      const third: PatternPoint = xb >= 0 ? { i: xb, p: level } : { i: extI, p: ext };
+      const startP = S.p;
+      out.push({
+        type: sgn > 0 ? "v_top" : "v_bottom",
+        bias: (-sgn) as 1 | -1,
+        i0: S.i,
+        iLast: P.i,
+        piv: [S, P],
+        neck: { a: level, b: 0 },
+        neckDir: (-sgn) as 1 | -1,
+        inv: P.p + sgn * 0.15 * A0,
+        invDir: sgn,
+        apex: limit,
+        geom: 0.6 * clamp((z - 2.4) / 2.6, 0, 1) + 0.4 * clamp((sp - 0.35) / 0.5, 0, 1),
+        prop: 0.5 * clamp(h / (12 * A0), 0, 1) + 0.5 * clamp(back / (0.5 * h), 0, 1),
+        trend: clamp((z - 2.0) / 2.6, 0, 1),
+        vol,
+        height: h,
+        target: () => startP,
+        stop: () => P.p + sgn * 0.15 * A0,
+        bonus: 0,
+        provisional: P.prov,
+        path: [{ i: S.i, p: S.p }, { i: P.i, p: P.p }, third],
+        neckFrom: P.i,
+        volA: S.i,
+        volB: P.i,
+      });
+    }
+  }
+
+  /* ───────── island reversal ───────── */
+
+  /**
+   * Island reversal: a cluster of bars cut off from the rest of the chart by two gaps at about the same level, an
+   * exhaustion gap in the direction of the trend and a breakaway gap against it. The second gap is the signal, so the
+   * figure is never "forming"; it fails when the price closes back inside the island (the gap is filled). Target
+   * (Bulkowski): the height of the island projected from its edge.
+   */
+  private islands(out: Cand[]) {
+    const c = this.c;
+    const n = this.n;
+    const MAXLEN = 25;
+    for (let g1 = 1; g1 < n - 1; g1++) {
+      const A = this.A[g1 - 1];
+      const minGap = 0.15 * A;
+      const up = c[g1].l - c[g1 - 1].h > minGap;
+      const dn = c[g1 - 1].l - c[g1].h > minGap;
+      if (!up && !dn) continue;
+      const sgn: 1 | -1 = up ? 1 : -1; // direction of the first gap: an island top after a gap up
+      const edge1 = up ? c[g1 - 1].h : c[g1 - 1].l;
+      let near = up ? Infinity : -Infinity; // the side of the island that faces the gaps
+      let far = up ? -Infinity : Infinity;
+      for (let g2 = g1 + 1; g2 < n && g2 - g1 <= MAXLEN; g2++) {
+        const k = c[g2 - 1];
+        if (up) {
+          if (k.l < near) near = k.l;
+          if (k.h > far) far = k.h;
+        } else {
+          if (k.h > near) near = k.h;
+          if (k.l < far) far = k.l;
+        }
+        // the first gap got filled: no island from this gap any more
+        if ((near - edge1) * sgn <= minGap) break;
+        const edge2 = up ? c[g2].h : c[g2].l;
+        const gap2 = (near - edge2) * sgn;
+        if (gap2 <= minGap) continue;
+        const gap1 = (near - edge1) * sgn;
+        const isl = (far - near) * sgn;
+        const bars = g2 - g1;
+        const tr = this.trend(g1 - 1, edge1, sgn, Math.max(15, bars * 3));
+        const pm = this.priorMove(g1 - 1, edge1, sgn, 20);
+        if (pm < Math.max(2.5 * A, isl)) break;
+        const hgt = Math.max(isl, 0.5 * A);
+        const lo0 = Math.min(near, far);
+        const hi0 = Math.max(near, far);
+        const mid = (near + far) / 2;
+        const nearV = near;
+        out.push({
+          type: up ? "island_top" : "island_bottom",
+          bias: (-sgn) as 1 | -1,
+          i0: g1,
+          iLast: g2 - 1,
+          piv: [],
+          neck: { a: nearV, b: 0 },
+          neckDir: (-sgn) as 1 | -1,
+          forced: { x: g2, dir: (-sgn) as 1 | -1 },
+          geom: 0.6 * clamp(Math.min(gap1, gap2) / (0.8 * A), 0, 1) + 0.4 * (1 - clamp(Math.abs(gap1 - gap2) / (gap1 + gap2), 0, 1)),
+          prop: 0.5 * clamp(1 - (bars - 1) / MAXLEN, 0, 1) + 0.5 * clamp(isl / (2 * A), 0, 1),
+          trend: 0.3 + 0.7 * tr,
+          vol: 0.5,
+          height: hgt,
+          target: (lvl, dir) => lvl + dir * hgt,
+          stop: () => (Math.abs(mid - nearV) >= 0.5 * A ? mid : nearV + sgn * 0.5 * A),
+          bonus: 6,
+          provisional: false,
+          neckFrom: g1,
+          volA: g1,
+          volB: g2 - 1,
+          custom: (end) => ({
+            segs: [{ i0: g1 - 1, p0: nearV, i1: end, p1: nearV, kind: "neck" }],
+            poly: [
+              { i: g1 - 0.5, p: hi0 },
+              { i: g2 - 0.5, p: hi0 },
+              { i: g2 - 0.5, p: lo0 },
+              { i: g1 - 0.5, p: lo0 },
+            ],
+          }),
+        });
+        break;
+      }
+    }
+  }
+
+  /* ───────── three drives ───────── */
+
+  /**
+   * Three drives to a top / bottom: three successive pushes in the trend direction, each correction retracing
+   * 0.618-0.786 of the drive before it and each next drive being a 1.272-1.618 extension of that correction, with
+   * comparable sizes and durations. Entry on the break of the line through the two corrections; invalid once the third
+   * drive runs beyond its 1.618 extension.
+   */
+  private drives(pv: Pv[], out: Cand[]) {
+    const o = this.o;
+    const fib = (r: number) => Math.min(Math.abs(r - 1.272), Math.abs(r - 1.618)) / r;
+    for (let k = 5; k < pv.length; k++) {
+      const q = [pv[k - 5], pv[k - 4], pv[k - 3], pv[k - 2], pv[k - 1], pv[k]];
+      const sgn: 1 | -1 = q[5].H ? 1 : -1;
+      const len = q[5].i - q[0].i;
+      if (len < Math.max(o.minBars, 12) || len > o.maxBars) continue;
+      const d1 = (q[1].p - q[0].p) * sgn;
+      const c1 = (q[1].p - q[2].p) * sgn;
+      const d2 = (q[3].p - q[2].p) * sgn;
+      const c2 = (q[3].p - q[4].p) * sgn;
+      const d3 = (q[5].p - q[4].p) * sgn;
+      if ((q[3].p - q[1].p) * sgn <= 0 || (q[5].p - q[3].p) * sgn <= 0 || (q[4].p - q[2].p) * sgn <= 0 || (q[2].p - q[0].p) * sgn <= 0) continue;
+      const A = this.A[q[5].i];
+      if (c1 < 1.5 * A || c2 < 1.5 * A) continue;
+      const r1 = c1 / d1;
+      const r2 = c2 / d2;
+      if (r1 < 0.45 || r1 > 0.9 || r2 < 0.45 || r2 > 0.9) continue;
+      const e2 = d2 / c1;
+      const e3 = d3 / c2;
+      if (e2 < 1.13 || e2 > 1.8 || e3 < 1.13 || e3 > 1.8) continue;
+      if (fib(e2) > 0.12 || fib(e3) > 0.12) continue;
+      const cs = c2 / c1;
+      const ds = d3 / d2;
+      if (cs < 0.55 || cs > 1.8 || ds < 0.55 || ds > 1.8) continue;
+      const t2 = q[3].i - q[2].i;
+      const t3 = q[5].i - q[4].i;
+      const tc1 = q[2].i - q[1].i;
+      const tc2 = q[4].i - q[3].i;
+      const tsD = Math.min(t2, t3) / Math.max(t2, t3);
+      const tsC = Math.min(tc1, tc2) / Math.max(tc1, tc2);
+      if (tsD < 0.35 || tsC < 0.3) continue;
+      const neck = lnOf(q[2].i, q[2].p, q[4].i, q[4].p);
+      const total = (q[5].p - q[0].p) * sgn;
+      const zt = total / (A * Math.sqrt(len));
+      const retr = (r: number) => 1 - clamp(Math.min(Math.abs(r - 0.618), Math.abs(r - 0.786)) / 0.2, 0, 1);
+      const p2 = q[2].p;
+      const p5 = q[5].p;
+      out.push({
+        type: sgn > 0 ? "drives_top" : "drives_bottom",
+        bias: (-sgn) as 1 | -1,
+        i0: q[0].i,
+        iLast: q[5].i,
+        piv: q,
+        neck,
+        neckDir: (-sgn) as 1 | -1,
+        inv: p5 + sgn * Math.max(0.3 * A, (1.8 - e3) * c2),
+        invDir: sgn,
+        geom: 0.6 * (1 - clamp((fib(e2) + fib(e3)) / 0.2, 0, 1)) + 0.4 * ((retr(r1) + retr(r2)) / 2),
+        prop: 0.4 * tsD + 0.3 * tsC + 0.3 * (1 - clamp(Math.abs(Math.log(ds)) / 0.6, 0, 1)),
+        trend: clamp((zt - 0.8) / 2.2, 0, 1),
+        vol: 0.5,
+        height: total,
+        // back to where the second drive started (the usual objective), or one correction if that is too close
+        target: (lvl, dir, a) => (dir === -sgn && (lvl - p2) * sgn > 0.5 * a ? p2 : lvl + dir * c2),
+        stop: () => p5 + sgn * 0.25 * A,
+        bonus: 4,
+        provisional: q[5].prov,
+        path: q.map((x) => ({ i: x.i, p: x.p })),
+        neckFrom: q[2].i,
+        volA: q[0].i,
+        volB: q[5].i,
+      });
+    }
+  }
+
+  /* ───────── bump-and-run reversal ───────── */
+
+  /**
+   * Bump-and-run reversal (Bulkowski): a lead-in phase along a moderate trendline, then the "bump", a fast move away from
+   * the line to at least twice the lead-in height, a rounded turn back and the "run" after the trendline gives way.
+   * Breakout: a close through the lead-in trendline; minimum target: the lead-in height from the breakout.
+   */
+  private barr(pv: Pv[], out: Cand[]) {
+    const o = this.o;
+    const n = this.n;
+    for (let k = 3; k < pv.length; k++) {
+      const M = pv[k];
+      if (M.prov) continue;
+      const sgn: 1 | -1 = M.H ? 1 : -1;
+      const A = this.A[M.i];
+      const tol = o.tolAtr * A;
+      // the bump is over: nothing beyond its extreme later on
+      let later = false;
+      for (let j = k + 2; j < pv.length; j += 2) if ((pv[j].p - M.p) * sgn > 0.1 * A) later = true;
+      if (later) continue;
+      for (let bi = k - 1; bi >= 1 && bi >= k - 5; bi -= 2) {
+        const lb = pv[bi];
+        const bumpBars = M.i - lb.i;
+        if (bumpBars < 3) continue;
+        for (let ai = bi - 2; ai >= 0 && ai >= bi - 8; ai -= 2) {
+          const la = pv[ai];
+          const lead = lb.i - la.i;
+          if (lead < Math.max(10, o.minBars)) continue;
+          if (M.i - la.i > o.maxBars) break;
+          if (bumpBars > 2.5 * lead) continue;
+          const rise = (lb.p - la.p) * sgn;
+          if (rise < 1.0 * A) continue;
+          const T = lnOf(la.i, la.p, lb.i, lb.p);
+          const hB = (M.p - at(T, M.i)) * sgn;
+          if (hB < 4 * A) continue;
+          // the line may not be steeper than the bump itself
+          if (rise / lead > (0.6 * (M.p - lb.p) * sgn) / bumpBars) continue;
+          // pivots of the trendline side between the two anchors stay on the right side of it
+          let touches = 2;
+          let bad = false;
+          for (let j = ai + 2; j < bi; j += 2) {
+            const d = (pv[j].p - at(T, pv[j].i)) * sgn;
+            if (d < -tol) {
+              bad = true;
+              break;
+            }
+            if (d <= tol) touches++;
+          }
+          if (bad) continue;
+          // lead-in height: the widest distance from the line before the bump starts
+          let hL = 0;
+          let viol = 0;
+          for (let x = la.i; x <= lb.i; x++) {
+            const kx = this.c[x];
+            const d = ((sgn > 0 ? kx.h : kx.l) - at(T, x)) * sgn;
+            if (d > hL) hL = d;
+            if ((kx.c - at(T, x)) * sgn < -tol) viol++;
+          }
+          if (viol > 1 || hL < 1.0 * A) continue;
+          if (hB < 2 * hL) continue;
+          for (let x = lb.i + 1; x <= M.i && !bad; x++) if ((this.c[x].c - at(T, x)) * sgn < -tol) bad = true;
+          if (bad) continue;
+          const zt = ((M.p - la.p) * sgn) / (A * Math.sqrt(M.i - la.i));
+          out.push({
+            type: sgn > 0 ? "barr_top" : "barr_bottom",
+            bias: (-sgn) as 1 | -1,
+            i0: la.i,
+            iLast: M.i,
+            piv: [la, lb, M],
+            neck: T,
+            neckDir: (-sgn) as 1 | -1,
+            geom: 0.45 * clamp((hB / hL - 2) / 2, 0, 1) + 0.3 * clamp((touches - 2) / 2, 0, 1) + 0.25 * clamp(hB / (8 * A), 0, 1),
+            prop: 0.5 * clamp(lead / 25, 0, 1) + 0.5 * (1 - clamp(Math.abs(Math.log(bumpBars / lead)) / 1.2, 0, 1)),
+            trend: clamp((zt - 0.8) / 2.2, 0, 1),
+            vol: 0.5,
+            height: hL,
+            target: (lvl, dir) => lvl + dir * hL,
+            stop: () => at(T, M.i) + sgn * hL,
+            bonus: 2,
+            provisional: false,
+            path: [{ i: la.i, p: la.p }, { i: lb.i, p: lb.p }, { i: M.i, p: M.p }],
+            neckFrom: la.i,
+            volA: lb.i,
+            volB: M.i,
+          });
+        }
+      }
+    }
+  }
+
   /* ───────── evaluation ───────── */
 
   private boundary(cd: Cand, dir: number, x: number): number {
@@ -892,7 +1502,11 @@ class Analyzer {
     let brk = -1;
     let dir: -1 | 0 | 1 = 0;
     let failedAt = -1;
-    for (let x = cd.iLast + 1; x < n; x++) {
+    if (cd.forced) {
+      brk = cd.forced.x;
+      dir = cd.forced.dir;
+    }
+    for (let x = cd.iLast + 1; x < n && !cd.forced; x++) {
       if (cd.apex !== undefined && x > cd.apex + 1 && brk < 0) return null; // ran past the apex without a breakout
       for (const d of [1, -1] as const) {
         const lvl = this.boundary(cd, d, x);
@@ -1023,7 +1637,12 @@ class Analyzer {
     const segs: PatternSeg[] = [];
     const end = ev.end;
     const x0 = cd.i0;
-    if (cd.upper && cd.lower) {
+    let poly: PatternPoint[] = [];
+    if (cd.custom) {
+      const cu = cd.custom(end, ev.status === "forming");
+      for (const g of cu.segs) segs.push({ ...g, i0: g.i0 + lo, i1: g.i1 + lo });
+      poly = (cu.poly ?? []).map((q) => ({ i: q.i + lo, p: q.p }));
+    } else if (cd.upper && cd.lower) {
       segs.push({ i0: x0 + lo, p0: at(cd.upper, x0), i1: end + lo, p1: at(cd.upper, end), kind: "line" });
       segs.push({ i0: x0 + lo, p0: at(cd.lower, x0), i1: end + lo, p1: at(cd.lower, end), kind: "line" });
       if (ev.status === "forming") {
@@ -1056,6 +1675,8 @@ class Analyzer {
       path: (cd.path ?? []).map((q) => ({ i: q.i + lo, p: q.p })),
       segs,
       curve: (cd.curve ?? []).map((q) => ({ i: q.i + lo, p: q.p })),
+      poly,
+      role: cd.role,
       level: ev.level,
       levelIdx: ev.levelIdx >= 0 ? ev.levelIdx + lo : -1,
       target: ev.target,
@@ -1073,7 +1694,7 @@ class Analyzer {
 
   /* ───────── driver ───────── */
 
-  collect(pv: Pv[], lo: number, deg: number, out: Map<string, { pat: DetectedPattern; rank: number }>) {
+  collect(pv: Pv[], lo: number, deg: number, out: Map<string, { pat: DetectedPattern; rank: number }>, first = true) {
     const en = this.o.enabled;
     const cands: Cand[] = [];
     if (en.double !== false) this.doubles(pv, cands);
@@ -1081,6 +1702,12 @@ class Analyzer {
     if (en.hs !== false) this.headShoulders(pv, cands);
     if (en.cup !== false || en.round !== false) this.cups(pv, cands);
     if (en.tri !== false || en.wedge !== false || en.flag !== false || en.pennant !== false || en.rect !== false || en.channel !== false || en.broad !== false) this.lineWindows(pv, cands);
+    if (en.diamond !== false) this.diamonds(pv, cands);
+    if (en.vrev !== false) this.vReversals(pv, cands);
+    if (en.drives !== false) this.drives(pv, cands);
+    if (en.barr !== false) this.barr(pv, cands);
+    // islands are made of gaps, not of swings: one pass is enough
+    if (en.island !== false && first) this.islands(cands);
     for (const cd of cands) {
       if (en[TYPE_GROUP[cd.type]] === false) continue;
       const r = this.finish(cd, lo, deg);
@@ -1133,12 +1760,16 @@ function run(all: readonly SwingCandle[], o: PatternOptions): DetectedPattern[] 
   const an = new Analyzer(cs, o, atr);
   const found = new Map<string, { pat: DetectedPattern; rank: number }>();
   const mults = DEG[o.degree] ?? DEG.normal;
+  let first = true;
   for (const m of mults) {
     const pv = toPv(zigzag(cs, { atrMult: m }));
     if (pv.length < 4) continue;
-    an.collect(pv, lo, m, found);
+    an.collect(pv, lo, m, found, first);
+    first = false;
   }
-  const list = [...found.values()].sort((a, b) => b.rank - a.rank);
+  // a V-reversal has no structure of its own, it is the fallback reading: any other figure over the same bars goes first
+  const late = (r: { pat: DetectedPattern }) => (r.pat.group === "vrev" ? 1 : 0);
+  const list = [...found.values()].sort((a, b) => late(a) - late(b) || b.rank - a.rank);
 
   // overlapping patterns: keep the best, drop the rest
   const picked: { pat: DetectedPattern; rank: number }[] = [];

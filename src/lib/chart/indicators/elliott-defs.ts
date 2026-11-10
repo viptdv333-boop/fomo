@@ -33,6 +33,10 @@ const PHASE_EN: Record<Phase, string> = {
   wX: "Wave X (forming)",
   wY: "Wave Y (forming)",
   wYdone: "W-X-Y complete",
+  wD: "Wave D (forming)",
+  wXX: "Second wave X (forming)",
+  wZ: "Wave Z (forming)",
+  wZdone: "W-X-Y-X-Z complete",
 };
 const NEXT_EN: Record<Phase, string> = {
   w2: "Wave 2 should end, then wave 3 {dir}",
@@ -48,6 +52,10 @@ const NEXT_EN: Record<Phase, string> = {
   wX: "Wave X, then wave Y {dir}",
   wY: "Y should end, then the trend resumes",
   wYdone: "The main trend should resume",
+  wD: "Wave D, then wave E, then a breakout with the trend",
+  wXX: "Second wave X, then wave Z {dir}",
+  wZ: "Z should end, then the trend resumes",
+  wZdone: "The main trend should resume",
 };
 const KIND_EN: Record<string, string> = {
   impulse: "Impulse",
@@ -56,8 +64,17 @@ const KIND_EN: Record<string, string> = {
   zigzag: "Zigzag",
   flat: "Flat",
   expanded_flat: "Expanded flat",
-  triangle: "Triangle",
-  wxy: "Double three W-X-Y",
+  expanding_leading_diagonal: "Expanding leading diagonal",
+  expanding_ending_diagonal: "Expanding ending diagonal",
+  running_flat: "Running flat",
+  triangle: "Contracting triangle",
+  triangle_barrier: "Barrier triangle",
+  triangle_running: "Running triangle",
+  triangle_expanding: "Expanding triangle",
+  double_zigzag: "Double zigzag",
+  double_three: "Double three",
+  triple_zigzag: "Triple zigzag",
+  triple_three: "Triple three",
 };
 const DEG_EN: Record<ElliottDegree, string> = { minor: "Minor", intermediate: "Intermediate", primary: "Primary" };
 
@@ -130,7 +147,7 @@ function summaryOf(r: ElliottResult, locale: string): Summary | null {
 function countLine(c: WaveCount): string {
   const arrow = c.dir > 0 ? "▲" : "▼";
   const ratios = c.ratios.map((x) => `${x.k} ${x.v}`).join(", ");
-  return `${kindText(c.kind)} ${arrow} ${c.labels.join("-")}${c.forming ? "?" : ""} · ${c.conf}%${ratios ? ` (${ratios})` : ""}`;
+  return `${kindText(c.kind)}${c.truncated ? ` (${indT("ind.ew.trunc", "truncated")})` : ""} ${arrow} ${c.labels.join("-")}${c.forming ? "?" : ""} · ${c.conf}%${ratios ? ` (${ratios})` : ""}`;
 }
 
 const MUTED = "#787b86";
@@ -188,7 +205,7 @@ interface Colors {
 }
 
 function colorOf(c: WaveCount, k: Colors): string {
-  if (c.kind === "impulse" || c.kind === "leading_diagonal" || c.kind === "ending_diagonal") return c.dir > 0 ? k.up : k.down;
+  if (c.kind === "impulse" || c.kind.endsWith("diagonal")) return c.dir > 0 ? k.up : k.down;
   return k.corr;
 }
 
@@ -312,7 +329,7 @@ function drawChannel(sc: SeriesContext, c: WaveCount, color: string) {
   ctx.setLineDash([5, 4]);
   ctx.strokeStyle = rgba(color, 0.65);
   ctx.fillStyle = rgba(color, 0.035);
-  if (c.kind === "triangle" && pts.length >= 5) {
+  if (c.kind.startsWith("triangle") && pts.length >= 5) {
     const up = [1, 3, 5].filter((i) => pts[i]);
     const lo = [0, 2, 4].filter((i) => pts[i]);
     const dirUpFirst = c.dir > 0;

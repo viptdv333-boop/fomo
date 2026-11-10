@@ -13,7 +13,30 @@
 import { atrSeries, zigzag, type Pivot, type SwingCandle } from "./swings";
 
 export type ElliottDegree = "minor" | "intermediate" | "primary";
-export type CountKind = "impulse" | "leading_diagonal" | "ending_diagonal" | "zigzag" | "flat" | "expanded_flat" | "triangle" | "wxy";
+export type CountKind =
+  | "impulse"
+  | "leading_diagonal"
+  | "ending_diagonal"
+  | "expanding_leading_diagonal"
+  | "expanding_ending_diagonal"
+  | "zigzag"
+  | "flat"
+  | "expanded_flat"
+  | "running_flat"
+  | "triangle"
+  | "triangle_barrier"
+  | "triangle_running"
+  | "triangle_expanding"
+  | "double_zigzag"
+  | "double_three"
+  | "triple_zigzag"
+  | "triple_three";
+
+export const isMotive = (k: CountKind) => k === "impulse" || k.endsWith("diagonal");
+export const isDiagonal = (k: CountKind) => k.endsWith("diagonal");
+export const isTriangle = (k: CountKind) => k.startsWith("triangle");
+export const isComplex = (k: CountKind) => k.startsWith("double") || k.startsWith("triple");
+export const isAbc = (k: CountKind) => k === "zigzag" || k.endsWith("flat");
 
 export const DEGREES: readonly ElliottDegree[] = ["minor", "intermediate", "primary"];
 /** Zigzag reversal threshold, in ATRs, of each degree at sensitivity 5. */
@@ -74,6 +97,8 @@ export interface WaveCount {
   /** Pivot index range inside the degree's pivot list. */
   startK: number;
   endK: number;
+  /** Truncated fifth / truncated C: the last wave failed to pass the end of the previous same-direction wave. */
+  truncated?: boolean;
 }
 
 export interface ProjLevel {
@@ -84,7 +109,7 @@ export interface ProjLevel {
   core: boolean;
 }
 
-export type Phase = "w2" | "w3" | "w4" | "w5" | "w5done" | "wB" | "wC" | "wCdone" | "wE" | "wEdone" | "wX" | "wY" | "wYdone";
+export type Phase = "w2" | "w3" | "w4" | "w5" | "w5done" | "wB" | "wC" | "wCdone" | "wD" | "wE" | "wEdone" | "wX" | "wY" | "wYdone" | "wXX" | "wZ" | "wZdone";
 
 export interface Projection {
   phase: Phase;
@@ -196,14 +221,23 @@ function legShare(t: number[]): number {
 interface Ctx {
   degree: ElliottDegree;
   P: Pivot[];
+  /** Bar indices of the pivots of the next finer zigzag (sorted): used to count the subwaves of a leg. */
+  F: number[];
   allowDiagonals: boolean;
   allowComplex: boolean;
 }
 
-function mk(ctx: Ctx, kind: CountKind, k: number, m: number, labels: string[], complete: boolean, forming: boolean, score: number, conf: number, ratios: RatioInfo[]): WaveCount {
-  const piv = ctx.P.slice(k, k + m + 1);
-  return {
-    key: `${ctx.degree}|${kind}|${piv[0].i}|${piv[m].i}`,
+/** Every merged leg (one that swallows smaller swings of the same degree) costs a little: fewer free parameters = more trust. */
+const MERGE_PENALTY = 0.96;
+
+function mk(ctx: Ctx, kind: CountKind, idx: number[], labels: string[], complete: boolean, forming: boolean, score: number, conf: number, ratios: RatioInfo[], truncated = false): WaveCount {
+  const piv = idx.map((j) => ctx.P[j]);
+  const m = idx.length - 1;
+  let merged = 0;
+  for (let j = 1; j <= m; j++) if (idx[j] - idx[j - 1] > 1) merged++;
+  const cf = conf * Math.pow(MERGE_PENALTY, merged);
+  const wc: WaveCount = {
+    key: `${ctx.degree}|${kind}|${piv.map((p) => p.i).join(",")}`,
     degree: ctx.degree,
     kind,
     dir: piv[0].type === "L" ? 1 : -1,
@@ -212,22 +246,81 @@ function mk(ctx: Ctx, kind: CountKind, k: number, m: number, labels: string[], c
     forming,
     complete,
     score: Math.round(score),
-    conf: Math.max(0, Math.min(100, Math.round(conf))),
+    conf: Math.max(0, Math.min(100, Math.round(cf))),
     ratios,
-    startK: k,
-    endK: k + m,
+    startK: idx[0],
+    endK: idx[m],
   };
+  if (truncated) wc.truncated = true;
+  return wc;
 }
 
-function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount | null {
+/** Number of subwaves of the leg between pivots a and b: the swings of the same degree inside it, or (if more) those of the finer zigzag. Always odd. */
+function subLegs(ctx: Ctx, a: number, b: number): number {
+  const span = b - a;
+  const lo = ctx.P[a].i;
+  const hi = ctx.P[b].i;
+  const F = ctx.F;
+  // first index with F > lo
+  let l = 0, r = F.length;
+  while (l < r) {
+    const mid = (l + r) >> 1;
+    if (F[mid] <= lo) l = mid + 1;
+    else r = mid;
+  }
+  let cnt = 0;
+  for (let j = l; j < F.length && F[j] < hi; j++) cnt++;
+  let fine = cnt + 1;
+  if (fine % 2 === 0) fine -= 1;
+  return Math.max(span, fine, 1);
+}
+
+/** How well a subwave count fits a motive leg (5, or 9 / 13 with an extension). 1 subwave = unknown (null). */
+function motiveFit(n: number): number | null {
+  if (n <= 1) return null;
+  if (n === 5) return 1;
+  if (n === 9 || n === 13) return 0.85;
+  if (n === 3) return 0.25;
+  return n >= 15 ? 0.6 : 0.3;
+}
+/** Same for a corrective leg (3, or 7 / 11 for a double / triple). */
+function corrFit(n: number): number | null {
+  if (n <= 1) return null;
+  if (n === 3) return 1;
+  if (n === 7 || n === 11) return 0.8;
+  if (n === 5) return 0.3;
+  return 0.6;
+}
+/** Adds the internal-structure components: `want[j]` is "5" (motive) or "3" (corrective) for leg j+1. The forming leg is skipped. */
+function addStructure(acc: Acc, ctx: Ctx, idx: number[], want: string, forming: boolean, w = 4): void {
+  const m = idx.length - 1;
+  for (let j = 1; j <= m; j++) {
+    if (forming && j === m) continue;
+    const ch = want[j - 1];
+    if (!ch) break;
+    const n = subLegs(ctx, idx[j - 1], idx[j]);
+    const s = ch === "5" ? motiveFit(n) : ch === "3" ? corrFit(n) : n > 1 ? 0.8 : null;
+    if (s !== null) acc.add(w, s);
+  }
+}
+
+function series(ctx: Ctx, idx: number[]): { d: 1 | -1; q: number[]; t: number[] } {
   const P = ctx.P;
-  const d = P[k].type === "L" ? 1 : -1;
+  const d = P[idx[0]].type === "L" ? 1 : -1;
   const q: number[] = [];
   const t: number[] = [];
-  for (let j = 0; j <= m; j++) {
-    q.push(d * P[k + j].p);
-    t.push(P[k + j].i);
+  for (const j of idx) {
+    q.push(d * P[j].p);
+    t.push(P[j].i);
   }
+  return { d, q, t };
+}
+
+function evalImpulse(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
+  const P = ctx.P;
+  const k = idx[0];
+  const m = idx.length - 1;
+  const { d, q, t } = series(ctx, idx);
   const forming = live;
   const w1 = q[1] - q[0];
   if (!(w1 > 0)) return null;
@@ -260,6 +353,17 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
     x5 = w5 / w1;
     if (w3 < w1 && w3 < w5) return null; // wave 3 is never the shortest
   }
+  // a diagonal is a wedge: contracting (1 > 3 > 5, 2 > 4) or expanding (1 < 3 < 5, 2 < 4); anything else with an overlap is no motive wave
+  let expanding = false;
+  if (diag) {
+    const con = w3 < w1 && w4 < w2 && (m < 5 || w5 < w3);
+    const exp = w3 > w1 && w4 > w2 && (m < 5 || forming || (w5 > w3 && q[5] > q[3]));
+    if (!con && !exp) return null;
+    expanding = !con;
+  }
+  // truncated fifth: only a finished wave 5 can be called that, and only after a strong, extended wave 3
+  const trunc = m === 5 && !forming && q[5] <= q[3];
+  if (trunc && (diag || !(w3 >= w1 && w3 >= w5 && x3 >= 1.382))) return null;
 
   const acc = new Acc();
   // wave 2
@@ -277,6 +381,8 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
     else if (x3 >= 1) s = x3 < 1.618 ? 0.45 + (0.55 * (x3 - 1)) / 0.618 : Math.max(0.4, 1 - (0.5 * (x3 - 2.618)) / 1.618);
     else s = x3 > 0.6 ? (0.45 * (x3 - 0.6)) / 0.4 : 0;
     if (f && x3 < 1.618) s = Math.max(s, 0.55); // may still extend
+    // a wedge: every motive leg is a fair fraction (contracting) or multiple (expanding) of the one before
+    if (diag) s = expanding ? trap(x3, 1, 1.05, 1.7, 2.3) : trap(x3, 0.45, 0.6, 0.95, 1);
     acc.add(22, s, "w3/w1", x3);
   }
   // wave 4
@@ -294,6 +400,11 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
     const y = net > 0 ? w5 / net : 0;
     let s = Math.max(near(x5, 1, 0.35), near(x5, 0.618, 0.2), y >= 0.382 && y <= 1 ? 0.85 : 0, 0.8 * near(x5, 1.618, 0.3));
     if (forming && x5 < 0.618) s = Math.max(s, 0.6);
+    if (diag) {
+      const z = w5 / w3;
+      s = expanding ? trap(z, 1, 1.05, 1.7, 2.3) : trap(z, 0.4, 0.55, 0.95, 1);
+      if (forming) s = Math.max(s, 0.6);
+    }
     acc.add(14, s, "w5/w1", x5);
   }
   // channel parallelism of the 0-2-4 and 1-3-5 lines
@@ -308,11 +419,10 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
   }
   if (diag) {
     // a wedge: contracting (1 > 3 > 5) or expanding, with converging boundary lines 1-3-5 and 2-4
-    const contracting = w3 < w1 && (m < 5 || w5 < w3);
     const sU = nslope(t, q, m >= 5 ? [1, 3, 5] : [1, 3], H, T);
     const sL = nslope(t, q, [2, 4], H, T);
-    const converge = sL > sU ? 1 : 0.2;
-    acc.add(14, 0.5 * (contracting ? 1 : 0.4) + 0.5 * converge);
+    const shape = expanding ? sL < sU : sL > sU;
+    acc.add(14, (expanding ? 0.4 : 0.5) + (shape ? 0.5 : 0.1));
   }
   // time proportions
   if (m >= 3) {
@@ -327,7 +437,7 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
   }
   if (m >= 3) acc.add(8, legShare(t));
   // extension: normally wave 3 is the extended one
-  if (m >= 3) {
+  if (m >= 3 && !diag) {
     let s: number;
     if (m === 3) s = forming ? (x3 >= 1.618 ? 1 : 0.6) : x3 >= 1.2 ? 1 : 0.3;
     else if (m === 4) s = w3 >= w1 ? 1 : 0.35;
@@ -335,50 +445,72 @@ function evalImpulse(ctx: Ctx, k: number, m: number, live: boolean): WaveCount |
     acc.add(8, s);
   }
 
-  const score = acc.score();
-  let conf = calib(score) * EVIDENCE[m];
-  const trunc = m >= 5 && q[5] <= q[3];
-  if (trunc) conf *= 0.88;
-  if (diag) conf = Math.min(75, conf * 0.85);
   let kind: CountKind = "impulse";
   if (diag) {
-    // ending diagonals follow a strong advance in the same direction, leading ones start a move
+    // ending diagonals (wave 5 / C) follow a strong advance in the same direction that was only partly retraced; leading ones (wave 1 / A) start a move
     const prior = k >= 2 ? d * (P[k - 1].p - P[k - 2].p) : 0;
-    kind = prior >= 0.8 * (q[m] - q[0]) ? "ending_diagonal" : "leading_diagonal";
+    const pull = k >= 1 ? d * (P[k - 1].p - P[k].p) : 0;
+    const ending = prior >= 0.8 * (q[m] - q[0]) && pull < 0.8 * prior;
+    kind = ending ? (expanding ? "expanding_ending_diagonal" : "ending_diagonal") : expanding ? "expanding_leading_diagonal" : "leading_diagonal";
+    // ending: 3-3-3-3-3; leading: 5-3-5-3-5 or all threes (only the corrective legs are checked)
+    addStructure(acc, ctx, idx, ending ? "33333" : " 3 3 ", forming);
+  } else {
+    addStructure(acc, ctx, idx, "53535", forming);
+    // alternation of structure: a simple wave 2 against a complex wave 4 (or the reverse)
+    if (m >= 5 || (m === 4 && !forming)) {
+      const n2 = subLegs(ctx, idx[1], idx[2]);
+      const n4 = subLegs(ctx, idx[3], idx[4]);
+      if (n2 > 1 || n4 > 1) acc.add(3, n2 !== n4 ? 1 : 0.5);
+    }
   }
+
+  const score = acc.score();
+  let conf = calib(score) * EVIDENCE[m];
+  if (trunc) conf *= 0.85;
+  if (diag) conf = Math.min(75, conf * (expanding ? 0.7 : 0.78) * (forming ? 0.92 : 1));
   const labels = ["1", "2", "3", "4", "5"];
-  return mk(ctx, kind, k, m, labels, m === 5, forming, score, conf, acc.ratios);
+  return mk(ctx, kind, idx, labels, m === 5, forming, score, conf, acc.ratios, trunc);
 }
 
 /* ───────────────────────── corrections ───────────────────────── */
 
-function evalCorrective(ctx: Ctx, k: number, m: number, live: boolean): WaveCount | null {
-  const P = ctx.P;
-  const d = P[k].type === "L" ? 1 : -1;
-  const q: number[] = [];
-  const t: number[] = [];
-  for (let j = 0; j <= m; j++) {
-    q.push(d * P[k + j].p);
-    t.push(P[k + j].i);
-  }
+function evalCorrective(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
+  const m = idx.length - 1;
+  const { q, t } = series(ctx, idx);
   const a = q[1] - q[0];
   if (!(a > 0)) return null;
   const b = q[1] - q[2];
   if (!(b > 0)) return null;
   const rb = b / a;
-  if (rb > 1.65 || rb < 0.15) return null;
-  let kind: CountKind = rb < 0.9 ? "zigzag" : rb <= 1.0 ? "flat" : "expanded_flat";
+  if (rb > 2.0 || rb < 0.15) return null;
+  // zigzag: B retraces a part of A; flat: B returns to the start of A (0.9..1.05); expanded / running flat: B goes beyond it
+  let kind: CountKind = rb < 0.9 ? "zigzag" : rb <= 1.05 ? "flat" : "expanded_flat";
   const forming = live;
   const acc = new Acc();
   let rc = NaN;
+  let trunc = false;
+  let mult = 1;
   if (m === 3) {
     const c = q[3] - q[2];
     if (!(c > 0)) return null;
     rc = c / a;
     const e = (q[3] - q[1]) / a; // how far C ends beyond the end of A
     if (!forming) {
-      if (kind === "zigzag" && e <= 0) return null; // C beyond A is mandatory (no truncation modelled)
-      if (kind !== "zigzag" && e < -0.12) return null;
+      if (kind === "zigzag" && e <= 0) {
+        // truncated C: rare, and only when C is still a fair part of A
+        if (rc < 0.618) return null;
+        trunc = true;
+        mult = 0.8;
+      } else if (kind === "flat" && e < -0.12) {
+        if (rc < 0.618) return null;
+        trunc = true;
+        mult = 0.8;
+      } else if (kind === "expanded_flat" && e <= 0) {
+        // running flat: B beyond the start of A, C fails to reach the end of A
+        if (rc < 0.5) return null;
+        kind = "running_flat";
+        mult = 0.85;
+      }
     }
     if (kind === "flat" && e > 0.25) kind = "expanded_flat";
   }
@@ -392,6 +524,10 @@ function evalCorrective(ctx: Ctx, k: number, m: number, live: boolean): WaveCoun
       acc.add(10, trap((t[3] - t[2]) / Math.max(1, t[1] - t[0]), 0.2, 0.5, 2, 5));
       acc.add(15, q[3] > q[1] ? 1 : 0.3);
     }
+  } else if (kind === "running_flat") {
+    acc.add(35, trap(rb, 1.0, 1.05, 1.382, 2.0), "B/A", rb);
+    acc.add(40, trap(rc, 0.5, 0.618, 1.0, 1.3), "C/A", rc);
+    acc.add(10, trap((t[3] - t[2]) / Math.max(1, t[1] - t[0]), 0.2, 0.5, 2, 5));
   } else if (kind === "flat") {
     acc.add(35, 0.2 + 0.8 * near(rb, 0.95, 0.12), "B/A", rb);
     if (m === 3) {
@@ -400,7 +536,7 @@ function evalCorrective(ctx: Ctx, k: number, m: number, live: boolean): WaveCoun
       acc.add(10, trap((t[3] - t[2]) / Math.max(1, t[1] - t[0]), 0.2, 0.5, 2, 5));
     }
   } else {
-    acc.add(35, trap(rb, 1.0, 1.05, 1.382, 1.65), "B/A", rb);
+    acc.add(35, trap(rb, 1.0, 1.05, 1.382, 2.0), "B/A", rb);
     if (m === 3) {
       let s = trap(rc, 1.0, 1.272, 2.0, 2.8);
       if (f && rc < 1.272) s = Math.max(s, 0.5);
@@ -409,82 +545,152 @@ function evalCorrective(ctx: Ctx, k: number, m: number, live: boolean): WaveCoun
     }
   }
   if (m === 3) acc.add(8, legShare(t));
+  // internal structure: zigzag 5-3-5, flats 3-3-5
+  addStructure(acc, ctx, idx, kind === "zigzag" ? "535" : "335", forming, 6);
   const score = acc.score();
-  const conf = calib(score) * (m === 2 ? CORR_EVIDENCE[2] : CORR_EVIDENCE[3]);
-  return mk(ctx, kind, k, m, ["A", "B", "C"], m === 3, forming, score, conf, acc.ratios);
+  const conf = calib(score) * (m === 2 ? CORR_EVIDENCE[2] : CORR_EVIDENCE[3]) * mult;
+  return mk(ctx, kind, idx, ["A", "B", "C"], m === 3, forming, score, conf, acc.ratios, trunc);
 }
 
-/** Double three / double zigzag W-X-Y: the fallback reading of a 3-leg move that is not a clean A-B-C. */
-function evalWxy(ctx: Ctx, k: number, m: number, live: boolean): WaveCount | null {
-  const P = ctx.P;
-  const d = P[k].type === "L" ? 1 : -1;
-  const q: number[] = [];
-  const t: number[] = [];
-  for (let j = 0; j <= m; j++) {
-    q.push(d * P[k + j].p);
-    t.push(P[k + j].i);
-  }
+/**
+ * Combinations: W-X-Y (double zigzag / double three) and W-X-Y-X-Z (triple). "Zigzag" combinations make progress (every X is a
+ * partial retracement, Y and Z pass the previous ends); "threes" go sideways. m = 2..5 known legs; m = 3 and m = 5 are complete.
+ */
+function evalComplex(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
+  const m = idx.length - 1;
+  const { q, t } = series(ctx, idx);
   const w = q[1] - q[0];
   const x = q[1] - q[2];
   if (!(w > 0) || !(x > 0)) return null;
   const rx = x / w;
-  if (rx < 0.3 || rx > 1.05) return null;
+  if (rx < 0.3 || rx > 1.4) return null;
   const acc = new Acc();
-  acc.add(35, trap(rx, 0.3, 0.5, 0.9, 1.05), "X/W", rx);
-  let ry = NaN;
-  if (m === 3) {
+  let known = 0;
+  const nW = subLegs(ctx, idx[0], idx[1]);
+  const sW = corrFit(nW);
+  if (sW !== null) {
+    acc.add(8, sW);
+    known++;
+  }
+  acc.add(25, trap(rx, 0.3, 0.5, 0.9, 1.4), "X/W", rx);
+  let sharp = rx < 0.9;
+  if (m >= 3) {
     const y = q[3] - q[2];
     if (!(y > 0)) return null;
-    ry = y / w;
-    let s = near(ry, 1, 0.5);
-    if (live && ry < 0.8) s = Math.max(s, 0.5);
-    acc.add(40, s, "Y/W", ry);
+    const ry = y / w;
+    const fY = live && m === 3;
+    const nY = fY ? 1 : subLegs(ctx, idx[2], idx[3]);
+    if (nW === 5 && nY === 5) return null; // two fives joined by a three: that is a plain zigzag
+    const sY = corrFit(nY);
+    if (sY !== null) {
+      acc.add(8, sY);
+      known++;
+    }
+    let s = Math.max(near(ry, 1, 0.5), 0.8 * near(ry, 1.618, 0.3), 0.8 * near(ry, 0.618, 0.2));
+    if (fY && ry < 0.8) s = Math.max(s, 0.5);
+    acc.add(30, s, "Y/W", ry);
     acc.add(10, trap((t[3] - t[2]) / Math.max(1, t[1] - t[0]), 0.2, 0.6, 1.8, 4));
+    if (!fY && q[3] <= q[1]) sharp = false;
   }
+  if (m >= 4) {
+    const xx = q[3] - q[4];
+    if (!(xx > 0)) return null;
+    const rxx = xx / (q[3] - q[2]);
+    if (rxx < 0.3 || rxx > 1.4) return null;
+    if (q[4] <= Math.min(q[0], q[2]) - 0.4 * w) return null;
+    acc.add(15, trap(rxx, 0.3, 0.5, 0.9, 1.4), "XX/Y", rxx);
+    if (rxx >= 0.9) sharp = false;
+  }
+  if (m === 5) {
+    const z = q[5] - q[4];
+    if (!(z > 0)) return null;
+    const rz = z / w;
+    let s = Math.max(near(rz, 1, 0.5), 0.8 * near(rz, 0.618, 0.2), 0.8 * near(rz, 1.618, 0.3));
+    if (live && rz < 0.8) s = Math.max(s, 0.5);
+    acc.add(20, s, "Z/W", rz);
+    if (!live) {
+      const sZ = corrFit(subLegs(ctx, idx[4], idx[5]));
+      if (sZ !== null) {
+        acc.add(8, sZ);
+        known++;
+      }
+      if (q[5] <= q[3]) sharp = false;
+    }
+  }
+  if (m >= 3) acc.add(8, legShare(t));
+  const triple = m >= 4;
+  const kind: CountKind = triple ? (sharp ? "triple_zigzag" : "triple_three") : sharp ? "double_zigzag" : "double_three";
   const score = acc.score();
-  const conf = Math.min(60, calib(score) * (m === 2 ? CORR_EVIDENCE[2] : CORR_EVIDENCE[3]) - 4);
-  return mk(ctx, "wxy", k, m, ["W", "X", "Y"], m === 3, live, score, conf, acc.ratios);
+  const ev = m === 2 ? CORR_EVIDENCE[2] : m === 3 ? CORR_EVIDENCE[3] : m === 4 ? 0.6 : 0.7;
+  // a combination is the fallback reading: it never outranks a clean simple count, least of all when its inner structure is unknown
+  const cap = triple ? 55 : known > 0 ? 65 : 50;
+  const conf = Math.min(cap, calib(score) * ev - 4);
+  return mk(ctx, kind, idx, ["W", "X", "Y", "X", "Z"], m === 3 || m === 5, live, score, conf, acc.ratios);
 }
 
-/** Contracting triangle A-B-C-D-E (m = 4 means E has not started, m = 5 E is forming / finished). */
-function evalTriangle(ctx: Ctx, k: number, m: number, live: boolean): WaveCount | null {
+/**
+ * Triangle A-B-C-D-E (m = 4: D forming, m = 5: E forming / finished): contracting, barrier (one flat boundary), running
+ * (B beyond the start of A) or expanding (every wave longer than the previous one).
+ */
+function evalTriangle(ctx: Ctx, idx: number[], live: boolean): WaveCount | null {
   const P = ctx.P;
-  const d = P[k].type === "L" ? 1 : -1;
-  const q: number[] = [];
-  const t: number[] = [];
-  for (let j = 0; j <= m; j++) {
-    q.push(d * P[k + j].p);
-    t.push(P[k + j].i);
-  }
+  const k = idx[0];
+  const m = idx.length - 1;
+  const { q, t } = series(ctx, idx);
   // q0 start, q1 high (A), q2 low (B), q3 high (C), q4 low (D), q5 high (E)
   const a = q[1] - q[0];
   const b = q[1] - q[2];
   const c = q[3] - q[2];
   const dd = q[3] - q[4];
   if (!(a > 0) || !(b > 0) || !(c > 0) || !(dd > 0)) return null;
-  if (q[2] <= q[0]) return null; // B stays inside A
-  if (q[3] >= q[1]) return null; // lower high
-  if (q[4] <= q[2]) return null; // higher low
+  const tol = 0.06 * a;
   const rc = c / a;
   const rd = dd / b;
-  if (rc < 0.4 || rc > 0.9 || rd < 0.4 || rd > 0.9) return null;
+  let kind: CountKind;
+  const formingD = live && m === 4;
+  if (q[2] < q[0] && q[3] > q[1] && (formingD || q[4] < q[2])) {
+    kind = "triangle_expanding";
+    if (rc < 1.05 || rc > 2.2 || (!formingD && (rd < 1.05 || rd > 2.2))) return null;
+  } else {
+    if (q[3] > q[1] + tol || q[4] < q[2] - tol) return null;
+    const flatTop = Math.abs(q[3] - q[1]) <= tol;
+    const flatBot = Math.abs(q[4] - q[2]) <= tol && !formingD;
+    if (flatTop && flatBot) return null; // a rectangle, not a triangle
+    if (q[2] < q[0]) {
+      if (b / a > 1.5 || flatTop || flatBot) return null;
+      kind = "triangle_running";
+    } else kind = flatTop || flatBot ? "triangle_barrier" : "triangle";
+    if (rc < 0.38 || (kind !== "triangle_running" && rc > 1.02) || rd < 0.38 || rd > 1.02) return null;
+  }
+  const exp = kind === "triangle_expanding";
   const acc = new Acc();
-  acc.add(30, near(rc, 0.65, 0.3), "C/A", rc);
-  acc.add(30, near(rd, 0.65, 0.3), "D/B", rd);
+  const fit = (r: number) => (exp ? trap(r, 1.02, 1.15, 1.7, 2.2) : trap(r, 0.36, 0.5, 0.85, 1.02));
+  // a running triangle has an oversized B: C is measured against B there
+  acc.add(26, fit(kind === "triangle_running" ? c / b : rc), "C/A", rc);
+  acc.add(26, formingD ? Math.max(fit(rd), 0.5) : fit(rd), "D/B", rd);
   if (m === 5) {
     const e = q[5] - q[4];
     if (!(e > 0)) return null;
-    if (q[5] >= q[3] && !live) return null;
-    if (q[5] > q[3]) return null;
     const re = e / c;
-    let s = near(re, 0.65, 0.3);
-    if (live && re < 0.65) s = Math.max(s, 0.5);
-    acc.add(30, s, "E/C", re);
+    if (exp) {
+      if (!live && q[5] <= q[3]) return null;
+      if (re > 2.2) return null;
+    } else if (q[5] > q[3] + (kind === "triangle_barrier" ? tol : 0)) return null;
+    let s = fit(re);
+    if (live && (exp ? re < 1.15 : re < 0.5)) s = Math.max(s, 0.5);
+    acc.add(26, s, "E/C", re);
   }
-  acc.add(10, 0.6);
+  // position: a triangle corrects a larger move, so the leg that leads into it is not smaller than wave A
+  const prev = k >= 1 ? Math.abs(P[k].p - P[k - 1].p) : NaN;
+  if (isFinite(prev)) {
+    if (!exp && prev < 0.9 * a) return null;
+    acc.add(10, clamp01(prev / a / 1.5));
+  } else acc.add(10, 0.5);
+  acc.add(6, legShare(t));
+  addStructure(acc, ctx, idx, "33333", live, 3);
   const score = acc.score();
-  const conf = Math.min(80, calib(score) * (m === 4 ? 0.6 : 0.75));
-  return mk(ctx, "triangle", k, m, ["A", "B", "C", "D", "E"], m === 5, live, score, conf, acc.ratios);
+  const conf = Math.min(80, calib(score) * (m === 4 ? 0.6 : 0.75) * (exp ? 0.85 : kind === "triangle_running" ? 0.9 : 1));
+  return mk(ctx, kind, idx, ["A", "B", "C", "D", "E"], m === 5, live, score, conf, acc.ratios);
 }
 
 /* ───────────────────────── projections ───────────────────────── */
@@ -521,7 +727,7 @@ export function project(c: WaveCount): Projection {
     next: pickNext(levels, travel, last.p),
   });
 
-  if (c.kind === "impulse" || c.kind === "leading_diagonal" || c.kind === "ending_diagonal") {
+  if (isMotive(c.kind)) {
     const diag = c.kind !== "impulse";
     const p = (j: number) => piv[j].p;
     const w1 = Math.abs(p(1) - p(0));
@@ -557,7 +763,7 @@ export function project(c: WaveCount): Projection {
     return wrap("w5", "target", d, piv[4], lv, { price: p(4), fromI: piv[4].i });
   }
 
-  if (c.kind === "zigzag" || c.kind === "flat" || c.kind === "expanded_flat") {
+  if (isAbc(c.kind)) {
     const A = Math.abs(piv[1].p - piv[0].p);
     if (m === 2) {
       const lv = mkLevels(piv[1].p, -d, A, [[0.382, false], [0.5, true], [0.618, true], [0.786, false]]);
@@ -571,21 +777,41 @@ export function project(c: WaveCount): Projection {
     return wrap("wC", "target", d, piv[2], lv, { price: piv[2].p, fromI: piv[2].i });
   }
 
-  if (c.kind === "wxy") {
+  if (isComplex(c.kind)) {
     const W = Math.abs(piv[1].p - piv[0].p);
+    const sharp = c.kind.endsWith("zigzag");
     if (m === 2) {
       const lv = mkLevels(piv[1].p, -d, W, [[0.382, false], [0.5, true], [0.618, true], [0.786, false]]);
-      return wrap("wX", "retrace", (-d) as 1 | -1, piv[1], lv, { price: piv[0].p, fromI: piv[0].i });
+      return wrap("wX", "retrace", (-d) as 1 | -1, piv[1], lv, sharp ? { price: piv[0].p, fromI: piv[0].i } : null);
     }
-    if (!c.forming) return { ...none("wYdone"), invalid: { price: piv[3].p, fromI: piv[3].i } };
-    const lv = mkLevels(piv[2].p, d, W, [[0.618, false], [1.0, true], [1.618, true]]);
-    return wrap("wY", "target", d, piv[2], lv, { price: piv[2].p, fromI: piv[2].i });
+    if (m === 3) {
+      if (!c.forming) return { ...none("wYdone"), invalid: { price: piv[3].p, fromI: piv[3].i } };
+      const lv = mkLevels(piv[2].p, d, W, [[0.618, false], [1.0, true], [1.618, true]]);
+      return wrap("wY", "target", d, piv[2], lv, { price: piv[2].p, fromI: piv[2].i });
+    }
+    if (m === 4) {
+      const Y = Math.abs(piv[3].p - piv[2].p);
+      const lv = mkLevels(piv[3].p, -d, Y, [[0.382, false], [0.5, true], [0.618, true], [0.786, false]]);
+      return wrap("wXX", "retrace", (-d) as 1 | -1, piv[3], lv, sharp ? { price: piv[2].p, fromI: piv[2].i } : null);
+    }
+    if (!c.forming) return { ...none("wZdone"), invalid: { price: piv[5].p, fromI: piv[5].i } };
+    const lv = mkLevels(piv[4].p, d, W, [[0.618, false], [1.0, true], [1.618, true]]);
+    return wrap("wZ", "target", d, piv[4], lv, { price: piv[4].p, fromI: piv[4].i });
   }
 
-  // triangle
-  if (c.kind === "triangle") {
-    if (m === 4) return { ...none("wE"), invalid: { price: piv[3].p, fromI: piv[3].i } };
-    return { ...none(c.forming ? "wE" : "wEdone"), invalid: { price: piv[3].p, fromI: piv[3].i } };
+  if (isTriangle(c.kind)) {
+    const exp = c.kind === "triangle_expanding";
+    if (m === 4) {
+      // D is forming; in a contracting triangle it may not pass the end of B
+      return { ...none("wD"), dir: (-d) as 1 | -1, invalid: exp ? null : { price: piv[2].p, fromI: piv[2].i } };
+    }
+    // after E the thrust goes against wave A (in the direction of the move the triangle corrects); measured by the widest wave
+    const A = Math.abs(piv[1].p - piv[0].p);
+    const width = exp ? Math.abs(piv[5].p - piv[4].p) : A;
+    const lv = mkLevels(piv[5].p, -d, width, [[0.618, true], [1.0, true], [1.618, false]]);
+    const inv = exp ? null : { price: piv[3].p, fromI: piv[3].i };
+    if (c.forming) return { ...none("wE"), invalid: inv };
+    return wrap("wEdone", "target", (-d) as 1 | -1, piv[5], lv, exp ? { price: piv[5].p, fromI: piv[5].i } : inv);
   }
   return none("w5done");
 }
@@ -599,62 +825,121 @@ interface DegreeMemo {
 const memo = new Map<string, DegreeMemo>();
 const MEMO_LIMIT = 24;
 
+/** A wave may span 1, 3 or 5 swings of the zigzag (its own subwaves), so a count is a COMBINATION of pivots, not a run of consecutive ones. */
+const SPANS = [1, 3, 5];
+/** Longest count, in zigzag swings. */
+const MAX_SPAN = 21;
+/** Finished counts weaker than this are not worth caching. */
+const STABLE_FLOOR = 12;
+
+/** A merged leg is valid only when every swing inside it stays strictly between the leg's two ends. */
+function legOk(P: Pivot[], a: number, s: number): boolean {
+  if (s === 1) return true;
+  const pa = P[a].p;
+  const pb = P[a + s].p;
+  const lo = Math.min(pa, pb);
+  const hi = Math.max(pa, pb);
+  for (let j = a + 1; j < a + s; j++) if (!(P[j].p > lo && P[j].p < hi)) return false;
+  return true;
+}
+
+function evalTuple(ctx: Ctx, idx: number[], isLive: boolean, out: WaveCount[]): void {
+  const m = idx.length - 1;
+  const push = (c: WaveCount | null) => {
+    if (c && (isLive || c.conf >= STABLE_FLOOR)) out.push(c);
+  };
+  if (isLive || m === 5) push(evalImpulse(ctx, idx, isLive));
+  if (m <= 3 && (isLive || m === 3)) push(evalCorrective(ctx, idx, isLive));
+  if (ctx.allowComplex && (isLive || m === 3 || m === 5)) push(evalComplex(ctx, idx, isLive));
+  if ((m === 4 || m === 5) && (isLive || m === 5)) push(evalTriangle(ctx, idx, isLive));
+}
+
+/** Every pivot combination starting at `from`..: finished patterns ending at or before `to` (live = false) or patterns ending at the last pivot (live = true). */
 function candidates(ctx: Ctx, from: number, to: number, live: boolean): WaveCount[] {
   const P = ctx.P;
   const n = P.length;
   const out: WaveCount[] = [];
-  for (let k = Math.max(0, from); k <= n - 3; k++) {
-    for (let e = k + 2; e <= Math.min(n - 1, k + 5); e++) {
-      if (live ? e !== n - 1 : e === n - 1 || e > to) continue;
-      const m = e - k;
-      const isLive = e === n - 1;
-      if (m <= 5 && (isLive || m === 5)) {
-        const c = evalImpulse(ctx, k, m, isLive);
-        if (c) out.push(c);
-      }
-      if (m <= 3 && (isLive || m === 3)) {
-        const c = evalCorrective(ctx, k, m, isLive);
-        if (c) out.push(c);
-        if (ctx.allowComplex) {
-          const w = evalWxy(ctx, k, m, isLive);
-          if (w) out.push(w);
-        }
-      }
-      if ((m === 4 || m === 5) && (isLive || m === 5)) {
-        const c = evalTriangle(ctx, k, m, isLive);
-        if (c) out.push(c);
-      }
+  const idx: number[] = [];
+  const dfs = (k0: number): void => {
+    const cur = idx[idx.length - 1];
+    const m = idx.length - 1;
+    if (m >= 2) {
+      const isLive = cur === n - 1;
+      if (live ? isLive : !isLive && cur <= to) evalTuple(ctx, idx.slice(), isLive, out);
     }
+    if (m === 5) return;
+    for (const s of SPANS) {
+      const nx = cur + s;
+      if (nx > n - 1 || nx - k0 > MAX_SPAN) break;
+      if (!live && nx > to) break;
+      if (!legOk(P, cur, s)) continue;
+      idx.push(nx);
+      dfs(k0);
+      idx.pop();
+    }
+  };
+  for (let k = Math.max(0, from); k <= n - 3; k++) {
+    idx.length = 0;
+    idx.push(k);
+    dfs(k);
   }
   return out;
 }
 
-/** A correction that starts where a strong, finished impulse of the opposite direction ended is far more believable. */
+/**
+ * Wave grammar. A correction that starts where a strong, finished motive wave of the opposite direction ended is far more
+ * believable (unless it retraces beyond that wave's origin: then it corrects nothing); a motive wave that starts where such
+ * a correction ended, in the direction of the motive wave before it, continues the sequence.
+ */
 function applyContext(list: WaveCount[]): WaveCount[] {
-  const ends = new Map<number, number>();
+  const ends = new Map<number, { conf: number; origin: number; dir: 1 | -1 }>();
   for (const x of list) {
-    if ((x.kind === "impulse" || x.kind === "ending_diagonal" || x.kind === "leading_diagonal") && x.complete && !x.forming) {
+    if (isMotive(x.kind) && x.complete && !x.forming) {
       const prev = ends.get(x.endK);
-      if (prev === undefined || x.conf > prev) ends.set(x.endK, x.conf);
+      if (!prev || x.conf > prev.conf) ends.set(x.endK, { conf: x.conf, origin: x.pivots[0].p, dir: x.dir });
     }
   }
+  const follows = (x: WaveCount) => {
+    const mo = ends.get(x.startK);
+    if (!mo || mo.conf < 60 || mo.dir === x.dir) return null;
+    for (const p of x.pivots) if (x.dir * (p.p - mo.origin) > 0) return null;
+    return mo;
+  };
+  const corrEnds = new Map<number, 1 | -1>();
+  for (const x of list) {
+    if (isMotive(x.kind) || !x.complete || x.forming || x.conf < 25) continue;
+    const mo = follows(x);
+    if (mo) corrEnds.set(x.endK, mo.dir);
+  }
   return list.map((x) => {
-    if (x.kind !== "zigzag" && x.kind !== "flat" && x.kind !== "expanded_flat" && x.kind !== "wxy") return x;
-    const ic = ends.get(x.startK);
-    if (ic === undefined || ic < 60) return x;
+    if (isMotive(x.kind)) {
+      return corrEnds.get(x.startK) === x.dir ? { ...x, conf: Math.min(100, Math.round(x.conf * 1.1)) } : x;
+    }
+    if (isTriangle(x.kind) || !follows(x)) return x;
     const m = x.labels.length;
+    if (isComplex(x.kind)) {
+      const cap = m >= 4 ? 60 : 70;
+      const k = m === 2 ? CORR_EVIDENCE.ctx2 / CORR_EVIDENCE[2] : m === 3 ? CORR_EVIDENCE.ctx3 / CORR_EVIDENCE[3] : 1.15;
+      return { ...x, conf: Math.min(cap, Math.round(x.conf * k)) };
+    }
     const base = CORR_EVIDENCE[m === 2 ? 2 : 3];
     const boosted = CORR_EVIDENCE[m === 2 ? "ctx2" : "ctx3"];
-    const cap = x.kind === "wxy" ? 60 : 100;
-    return { ...x, conf: Math.min(cap, Math.round((x.conf / base) * boosted)) };
+    return { ...x, conf: Math.min(100, Math.round((x.conf / base) * boosted)) };
   });
 }
+
+/** What the higher degree expects from its forming wave: lower-degree motive waves that start inside it should go the same way. */
+export interface DegreeBias {
+  fromI: number;
+  dir: 1 | -1;
+}
+
 
 export function emptyDegree(degree: ElliottDegree): DegreeResult {
   return { degree, pivotCount: 0, counts: [], alt: null, live: null };
 }
 
-export function analyzeDegree(c: SwingCandle[], o: ElliottOptions, degree: ElliottDegree): DegreeResult {
+export function analyzeDegree(c: SwingCandle[], o: ElliottOptions, degree: ElliottDegree, bias?: DegreeBias | null): DegreeResult {
   const n = c.length;
   if (n < 10) return emptyDegree(degree);
   // the window start is quantised so that the zigzag (ATR warm-up) stays stable while new bars arrive
@@ -673,7 +958,14 @@ export function analyzeDegree(c: SwingCandle[], o: ElliottOptions, degree: Ellio
   piv = piv.filter((p) => isFinite(p.p));
   const len = piv.length;
   if (len < 3) return { ...emptyDegree(degree), pivotCount: len };
-  const ctx: Ctx = { degree, P: piv, allowDiagonals: o.allowDiagonals, allowComplex: o.allowComplex };
+  // the next finer zigzag: its swings are the subwaves of this degree's legs
+  let F: number[] = [];
+  try {
+    F = zigzag(slice, { atrMult: mult / 2, atrPeriod: 14 }).map((p) => p.i + start);
+  } catch {
+    F = [];
+  }
+  const ctx: Ctx = { degree, P: piv, F, allowDiagonals: o.allowDiagonals, allowComplex: o.allowComplex };
 
   // candidates that only use confirmed pivots (complete patterns ending before the last pivot) are cached between ticks
   const lastConf = len >= 2 ? piv[len - 2] : piv[0];
@@ -689,8 +981,13 @@ export function analyzeDegree(c: SwingCandle[], o: ElliottOptions, degree: Ellio
       if (first !== undefined) memo.delete(first);
     }
   }
-  const liveCands = candidates(ctx, Math.max(0, len - 6), len - 1, true);
-  const withCtx = applyContext([...cached.stable, ...liveCands]);
+  const liveCands = candidates(ctx, Math.max(0, len - 1 - MAX_SPAN), len - 1, true);
+  let withCtx = applyContext([...cached.stable, ...liveCands]);
+  if (debugSink) debugSink.push(...withCtx);
+  if (bias) {
+    // degree consistency: a motive wave inside the forming wave of the higher degree should travel with it
+    withCtx = withCtx.map((x) => (isMotive(x.kind) && x.pivots[0].i >= bias.fromI ? { ...x, conf: Math.min(100, Math.round(x.conf * (x.dir === bias.dir ? 1.08 : 0.8))) } : x));
+  }
   const all = withCtx.filter((x) => x.conf >= o.minConfidence);
 
   // live pick: ends at the last pivot, or is a complete pattern that ended at the last confirmed pivot
@@ -754,9 +1051,13 @@ export function analyze(c: SwingCandle[], o: ElliottOptions, multi: boolean): El
     for (const dg of list) degrees.push(emptyDegree(dg));
     return base();
   }
+  let bias: DegreeBias | null = null;
   for (const dg of list) {
     try {
-      degrees.push(analyzeDegree(clean, o, dg));
+      const r = analyzeDegree(clean, o, dg, bias);
+      degrees.push(r);
+      const pr = r.live?.proj;
+      if (pr && pr.mode === "target" && r.live!.count.conf >= 60) bias = { fromI: pr.anchorI, dir: pr.dir };
     } catch {
       degrees.push(emptyDegree(dg));
     }
@@ -806,6 +1107,18 @@ export function alertLevels(r: ElliottResult | undefined | null): number[] {
   if (live.proj.invalid && isFinite(live.proj.invalid.price)) out.push(live.proj.invalid.price);
   if (live.proj.next && isFinite(live.proj.next.price)) out.push(live.proj.next.price);
   return out;
+}
+
+let debugSink: WaveCount[] | null = null;
+/** Test hook: runs `fn` and returns every candidate count the analysis looked at meanwhile. */
+export function collectCandidates(fn: () => void): WaveCount[] {
+  debugSink = [];
+  try {
+    fn();
+    return debugSink;
+  } finally {
+    debugSink = null;
+  }
 }
 
 /** Test hook: drops the cache. */

@@ -1,5 +1,6 @@
 import type { SectionDict } from "./types";
 import { CANDLE_META } from "../../chart/analysis/candle-meta";
+import { PATTERN_EXTRA_ROWS } from "./patterns-extra";
 
 // "Chart Patterns (auto)" indicator: catalog category, name, description, parameter labels and select options.
 // Rows are [key, ru, en, cn]; ru is the source language.
@@ -65,9 +66,9 @@ const rows: [string, string, string, string][] = [
   ["ind.wolfe.name", "Волны Вульфа (авто)", "Wolfe Waves (auto)", "沃尔夫波浪(自动)"],
   [
     "ind.wolfe.desc",
-    "Бычьи и медвежьи волны Вульфа по 5 точкам: сходящиеся линии 1-3 и 2-4, зона проникновения точки 5 и целевая линия 1→4 (EPA) с ожидаемым временем",
-    "Bullish and bearish five-point Wolfe waves: converging 1-3 and 2-4 lines, the sweet zone for point 5 and the 1→4 target line (EPA) with the estimated arrival",
-    "五点看涨/看跌沃尔夫波浪：收敛的 1-3 与 2-4 线、第5点甜蜜区以及 1→4 目标线 (EPA) 与预计到达时间",
+    "Бычьи и медвежьи волны Вульфа по классическим правилам: точка 3 за точкой 1, точка 4 внутри волны 1-2, точка 5 прокалывает линию 1-3 (сладкая зона). Цель (EPA) — линия 1-4 в момент схождения линий 1-3 и 2-4 (ETA). Параллельный канал — отдельный, более слабый вариант",
+    "Bullish and bearish Wolfe waves by the classic rules: point 3 beyond point 1, point 4 inside wave 1-2, point 5 piercing the 1-3 line (sweet zone). The target (EPA) is the 1-4 line at the bar where the 1-3 and 2-4 lines meet (ETA). The parallel channel is a separate, weaker variant",
+    "按经典规则识别看涨/看跌沃尔夫波浪：第3点越过第1点，第4点位于 1-2 浪区间内，第5点刺穿 1-3 线 (甜蜜区)。目标价 (EPA) 为 1-4 线在 1-3 线与 2-4 线交汇时刻 (ETA) 的价位。平行通道为单独的较弱变体",
   ],
   ["ind.p.wfBull", "Бычьи волны (вверх)", "Bullish waves (up)", "看涨波浪 (向上)"],
   ["ind.p.wfBear", "Медвежьи волны (вниз)", "Bearish waves (down)", "看跌波浪 (向下)"],
@@ -78,28 +79,31 @@ const rows: [string, string, string, string][] = [
   ["ind.p.wfDevPct", "Отклонение свинга, %", "Swing deviation, %", "摆动偏差 (%)"],
   ["ind.p.wfTol", "Допуск касания линии 1-3, ATR", "Touch tolerance of the 1-3 line, ATR", "触及 1-3 线的容差 (ATR)"],
   ["ind.p.wfLegRatio", "Макс. разброс длины волн (раз)", "Max leg length ratio (times)", "各波最大长度比 (倍)"],
+  ["ind.p.wfSym", "Симметрия волн 1-2 и 3-4 по времени, не более (раз)", "Time symmetry of waves 1-2 and 3-4, at most (times)", "1-2 浪与 3-4 浪的时间对称性, 最多 (倍)"],
+  ["ind.p.wfSkip", "Внутренних откатов внутри одной волны (0-2)", "Inner pullbacks inside one wave (0-2)", "单浪内允许的内部回调数 (0-2)"],
+  ["ind.p.wfParallel", "Вариант «параллельный канал» (без схождения линий)", "Parallel channel variant (lines do not converge)", "“平行通道”变体 (两线不收敛)"],
   ["ind.p.wfMinBars", "Мин. длина 1→5, баров", "Min length 1→5, bars", "1→5 最小长度 (根)"],
   ["ind.p.wfMaxBars", "Макс. длина 1→5, баров", "Max length 1→5, bars", "1→5 最大长度 (根)"],
   ["ind.p.wfMinConf", "Мин. уверенность, %", "Min confidence, %", "最低置信度 %"],
   ["ind.p.wfMax", "Макс. волн на экране", "Max waves on screen", "屏幕最多波浪数"],
   ["ind.p.wfWindow", "Окно анализа, последних баров", "Analysis window, last bars", "分析窗口 (最近 K 线数)"],
   ["ind.p.wfDone", "Показывать завершённые (бледно)", "Show finished waves (faded)", "显示已结束的波浪 (淡色)"],
-  ["ind.p.wfTarget", "Целевая линия 1→4 (EPA)", "Target line 1→4 (EPA)", "目标线 1→4 (EPA)"],
-  ["ind.p.wfZone", "Зона проникновения точки 5 (sweet zone)", "Sweet zone of point 5", "第5点甜蜜区"],
+  ["ind.p.wfTarget", "Линия 1-4: цель (EPA) и время (ETA)", "Line 1-4: target (EPA) and time (ETA)", "1-4 线: 目标价 (EPA) 与时间 (ETA)"],
+  ["ind.p.wfZone", "Сладкая зона точки 5 (sweet zone)", "Sweet zone of point 5", "第5点甜蜜区"],
   ["ind.p.wfLines", "Линии 1-3 и 2-4 и их продолжение", "Lines 1-3 and 2-4 and their extension", "1-3 与 2-4 线及其延伸"],
   ["ind.p.wfNumbers", "Номера точек 1-5", "Point numbers 1-5", "显示点位编号 1-5"],
   ["ind.p.wfLabels", "Подпись волны", "Wave label", "显示波浪标签"],
   ["ind.p.wfColUp", "Цвет: бычья", "Colour: bullish", "颜色: 看涨"],
   ["ind.p.wfColDown", "Цвет: медвежья", "Colour: bearish", "颜色: 看跌"],
   ["ind.p.wfColTarget", "Цвет: цель (EPA)", "Colour: target (EPA)", "颜色: 目标 (EPA)"],
-  ["ind.p.wfColZone", "Цвет: зона точки 5", "Colour: point 5 zone", "颜色: 第5点区域"],
+  ["ind.p.wfColZone", "Цвет: сладкая зона", "Colour: sweet zone", "颜色: 甜蜜区"],
   /* Candlestick patterns (classic) */
   ["ind.candle_patterns.name", "Свечные паттерны (классика)", "Candlestick Patterns (classic)", "经典K线形态"],
   [
     "ind.candle_patterns.desc",
-    "Классические японские свечные паттерны по 1, 2, 3 и 5 свечам: доджи, молот, поглощение, харами, звёзды, солдаты и вороны и др. с трендом, фильтром по ATR и надёжностью",
-    "Classic Japanese candlestick patterns of 1, 2, 3 and 5 candles: doji, hammer, engulfing, harami, stars, soldiers and crows and more, with trend context, an ATR size filter and reliability",
-    "经典日本蜡烛图形态（1、2、3、5 根）：十字星、锤头、吞没、孕线、星线、红三兵与三只乌鸦等，含趋势背景、ATR 大小过滤与可靠度",
+    "Классические японские свечные паттерны от 1 до 5 свечей и больше: доджи, молот, поглощение, харами, звёзды, солдаты и вороны, окна, разрывы тасуки, три метода, островной разворот и др. с трендом, фильтром по ATR и надёжностью",
+    "Classic Japanese candlestick patterns of 1 to 5 candles and more: doji, hammer, engulfing, harami, stars, soldiers and crows, windows, Tasuki gaps, three methods, island reversals and more, with trend context, an ATR size filter and reliability",
+    "经典日本蜡烛图形态（1 至 5 根及以上）：十字星、锤头、吞没、孕线、星线、红三兵与三只乌鸦、窗口、跳空并列阴阳线、三法、岛形反转等，含趋势背景、ATR 大小过滤与可靠度",
   ],
   ["ind.cp.g.main", "Основное", "Main", "基本"],
   ["ind.cp.g.show", "Отображение", "Display", "显示"],
@@ -111,11 +115,13 @@ const rows: [string, string, string, string][] = [
   ["ind.cp.g.2bear", "2 свечи - медвежьи", "2 candles - bearish", "2 根 - 看跌"],
   ["ind.cp.g.3bull", "3 свечи - бычьи", "3 candles - bullish", "3 根 - 看涨"],
   ["ind.cp.g.3bear", "3 свечи - медвежьи", "3 candles - bearish", "3 根 - 看跌"],
-  ["ind.cp.g.5bull", "5 свечей - бычьи", "5 candles - bullish", "5 根 - 看涨"],
-  ["ind.cp.g.5bear", "5 свечей - медвежьи", "5 candles - bearish", "5 根 - 看跌"],
+  ["ind.cp.g.4bull", "4 свечи - бычьи", "4 candles - bullish", "4 根 - 看涨"],
+  ["ind.cp.g.4bear", "4 свечи - медвежьи", "4 candles - bearish", "4 根 - 看跌"],
+  ["ind.cp.g.5bull", "5 свечей и больше - бычьи", "5 candles and more - bullish", "5 根及以上 - 看涨"],
+  ["ind.cp.g.5bear", "5 свечей и больше - медвежьи", "5 candles and more - bearish", "5 根及以上 - 看跌"],
   ["ind.cp.o.list", "По списку ниже", "By the list below", "按下方列表"],
-  ["ind.cp.o.main", "Основные (7)", "Main (7)", "主要 (7)"],
-  ["ind.cp.o.all", "Все (39)", "All (39)", "全部 (39)"],
+  ["ind.cp.o.main", `Основные (${CANDLE_META.filter((m) => m.main).length})`, `Main (${CANDLE_META.filter((m) => m.main).length})`, `主要 (${CANDLE_META.filter((m) => m.main).length})`],
+  ["ind.cp.o.all", `Все (${CANDLE_META.length})`, `All (${CANDLE_META.length})`, `全部 (${CANDLE_META.length})`],
   ["ind.cp.o.gbody", "Тело за телом (24ч)", "Body beyond body (24h)", "实体越实体 (24小时)"],
   ["ind.cp.o.gprice", "Реальный гэп (биржа)", "Real gap (exchange)", "真实缺口 (交易所)"],
   ["ind.cp.o.slope", "Наклон за N баров", "Slope over N bars", "N 根斜率"],
@@ -166,6 +172,8 @@ const rows: [string, string, string, string][] = [
 
 // checklist of the candlestick indicator: one row per pattern, taken from the catalogue
 for (const m of CANDLE_META) rows.push([`ind.p.cp_${m.id}`, m.name[0], m.name[1], m.name[2]]);
+
+rows.push(...PATTERN_EXTRA_ROWS);
 
 const dict: SectionDict = { ru: {}, en: {}, cn: {} };
 for (const [key, ru, en, cn] of rows) {

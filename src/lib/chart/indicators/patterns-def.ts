@@ -15,7 +15,8 @@ import {
 } from "../analysis/patterns";
 
 /* "Chart Patterns (auto)": double / triple tops and bottoms, head and shoulders, triangles, wedges, flags, pennants,
-   rectangles, channels, broadening formations, cup and handle, rounding. Detection lives in analysis/patterns.ts;
+   rectangles, channels, broadening formations and wedges, cup and handle (and inverted), rounding, diamonds, V-reversals,
+   island reversals, three drives, bump-and-run. Detection lives in analysis/patterns.ts;
    this file is the parameter schema, the cache and the canvas painter. */
 
 const N = (p: Params, k: string) => p[k] as number;
@@ -39,6 +40,11 @@ const GROUP_KEY: Record<PatternGroup, string> = {
   broad: "paBroad",
   cup: "paCup",
   round: "paRound",
+  diamond: "paDiamond",
+  vrev: "paVrev",
+  island: "paIsland",
+  drives: "paDrives",
+  barr: "paBarr",
 };
 
 /* ───────────── texts (canvas + legend; the React dictionary is not reachable from here) ───────────── */
@@ -69,6 +75,26 @@ const NAMES: Record<PatternType, [string, string, string]> = {
   cup: ["Чашка с ручкой", "Cup & handle", "杯柄形态"],
   rounding_bottom: ["Круглое дно", "Rounding bottom", "圆弧底"],
   rounding_top: ["Круглая вершина", "Rounding top", "圆弧顶"],
+  diamond_top: ["Бриллиант (алмаз) — вершина", "Diamond top", "钻石顶"],
+  diamond_bottom: ["Бриллиант (алмаз) — дно", "Diamond bottom", "钻石底"],
+  cup_inv: ["Перевёрнутая чашка с ручкой", "Inverted cup & handle", "倒杯柄形态"],
+  broad_wedge_asc: ["Расширяющийся клин (восх.)", "Ascending broadening wedge", "上升扩散楔形"],
+  broad_wedge_desc: ["Расширяющийся клин (нисх.)", "Descending broadening wedge", "下降扩散楔形"],
+  broad_ra_asc: ["Расширяющаяся формация с прямым углом (восх.)", "Right-angled ascending broadening", "直角上升扩散形态"],
+  broad_ra_desc: ["Расширяющаяся формация с прямым углом (нисх.)", "Right-angled descending broadening", "直角下降扩散形态"],
+  v_top: ["V-образный разворот (вершина)", "V-top reversal", "倒V形反转"],
+  v_bottom: ["V-образный разворот (дно)", "V-bottom reversal", "V形反转"],
+  island_top: ["Островной разворот (вершина)", "Island reversal top", "顶部岛形反转"],
+  island_bottom: ["Островной разворот (дно)", "Island reversal bottom", "底部岛形反转"],
+  drives_top: ["Три движения (Three Drives) — вершина", "Three drives top", "三推顶"],
+  drives_bottom: ["Три движения (Three Drives) — дно", "Three drives bottom", "三推底"],
+  barr_top: ["Bump-and-Run (BARR) — вершина", "Bump-and-run reversal top", "碰撞反转顶 (BARR)"],
+  barr_bottom: ["Bump-and-Run (BARR) — дно", "Bump-and-run reversal bottom", "碰撞反转底 (BARR)"],
+};
+
+const ROLE: Record<"reversal" | "continuation", [string, string, string]> = {
+  reversal: ["разворот", "reversal", "反转"],
+  continuation: ["продолжение", "continuation", "持续"],
 };
 
 const STATUS: Record<PatternStatus, [string, string, string]> = {
@@ -87,6 +113,13 @@ const WORDS: Record<string, [string, string, string]> = {
 export function patternName(type: PatternType, locale: string): string {
   const l = langOf(locale);
   return NAMES[type][l === "ru" ? 0 : l === "zh" ? 2 : 1];
+}
+/** Name with the role where the figure can be either (a wedge is a reversal or a continuation, by the prior trend). */
+function titleOf(pt: DetectedPattern, locale: string): string {
+  const nm = patternName(pt.type, locale);
+  if (!pt.role || pt.group !== "wedge") return nm;
+  const l = langOf(locale);
+  return `${nm} (${ROLE[pt.role][l === "ru" ? 0 : l === "zh" ? 2 : 1]})`;
 }
 const statusText = (s: PatternStatus, locale: string) => STATUS[s][langOf(locale) === "ru" ? 0 : langOf(locale) === "zh" ? 2 : 1];
 const word = (k: string, locale: string) => WORDS[k][langOf(locale) === "ru" ? 0 : langOf(locale) === "zh" ? 2 : 1];
@@ -298,12 +331,23 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
       if (q.p > top) top = q.p;
       if (q.p < bottom) bottom = q.p;
     }
+    for (const q of pt.poly) {
+      if (q.p > top) top = q.p;
+      if (q.p < bottom) bottom = q.p;
+    }
 
     if (bracketOk) {
       ctx.globalAlpha = dim;
       // soft body between the boundaries
       const lines = pt.segs.filter((s) => s.kind === "line");
-      if (lines.length === 2) {
+      if (pt.poly.length >= 3) {
+        // figures with an outline of their own (diamond, island)
+        ctx.fillStyle = rgba(col, dark ? 0.08 : 0.06);
+        ctx.beginPath();
+        pt.poly.forEach((q, k) => (k === 0 ? ctx.moveTo(sc.x(q.i), sc.y(q.p)) : ctx.lineTo(sc.x(q.i), sc.y(q.p))));
+        ctx.closePath();
+        ctx.fill();
+      } else if (lines.length === 2) {
         const [a, b] = lines;
         ctx.fillStyle = rgba(col, dark ? 0.07 : 0.05);
         ctx.beginPath();
@@ -486,8 +530,8 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
   labelJobs.sort((a, b) => b.pt.endIdx - a.pt.endIdx || b.pt.confidence - a.pt.confidence);
   for (const j of labelJobs) {
     const pt = j.pt;
-    const nm = patternName(pt.type, locale);
-    let text = `${nm} · ${statusText(pt.status, locale)} · ${pt.confidence}%`;
+    const nm = titleOf(pt, locale);
+    let text = `${nm} ·${statusText(pt.status, locale)} · ${pt.confidence}%`;
     if (pt.rr !== null && pt.target !== null && pt.stop !== null && pt.status !== "failed") text += ` · R:R ${pt.rr.toFixed(1)}`;
     ctx.font = labFont;
     const w = Math.ceil(ctx.measureText(text).width) + 18;
@@ -530,7 +574,7 @@ export const patternsAutoDef: IndicatorDef = {
   fixedPane: true,
   fmt: "price",
   keywords:
-    "chart patterns auto double top bottom triple head shoulders triangle wedge flag pennant rectangle channel broadening megaphone cup handle rounding targets graphic recognition формации паттерны фигуры графические треугольник клин флаг вымпел голова плечи",
+    "chart patterns auto double top bottom triple head shoulders triangle wedge flag pennant rectangle channel broadening megaphone cup handle rounding diamond island reversal v-top v-bottom spike three drives bump and run barr broadening wedge right-angled targets graphic recognition формации паттерны фигуры графические треугольник клин флаг вымпел голова плечи бриллиант алмаз островной разворот v-образный три движения расширяющийся клин",
   params: [
     bool("paDouble", true),
     bool("paTriple", true),
@@ -544,6 +588,11 @@ export const patternsAutoDef: IndicatorDef = {
     bool("paBroad", true),
     bool("paCup", true),
     bool("paRound", true),
+    bool("paDiamond", true),
+    bool("paVrev", true),
+    bool("paIsland", true),
+    bool("paDrives", true),
+    bool("paBarr", true),
     sel("paDegree", "auto", DEGREES),
     num("paMinConf", 55, 0, 100),
     num("paMinBars", 8, 3, 300),
@@ -599,7 +648,7 @@ export const patternsAutoDef: IndicatorDef = {
     const fmt = (v: number) => formatPrice(v, ex.prec, locale);
     const sorted = ex.patterns.slice().sort((a, b) => b.confidence - a.confidence);
     for (const pt of sorted.slice(0, 3)) {
-      let text = `${patternName(pt.type, locale)} · ${statusText(pt.status, locale)} · ${pt.confidence}%`;
+      let text = `${titleOf(pt, locale)} · ${statusText(pt.status, locale)} · ${pt.confidence}%`;
       if (pt.target !== null && pt.status !== "failed") text += ` · ${word("target", locale)} ${fmt(pt.target)}`;
       out.push({ text, color: pt.bias > 0 ? S(p, "paColUp") : pt.bias < 0 ? S(p, "paColDown") : S(p, "paColFlat") });
     }

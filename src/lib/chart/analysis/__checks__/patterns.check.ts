@@ -1,7 +1,7 @@
 /* Run: npx tsx src/lib/chart/analysis/__checks__/patterns.check.ts  — synthetic textbook cases + random walk + robustness. */
 import { detectPatterns, type DetectedPattern } from "../patterns";
 import type { SwingCandle } from "../swings";
-import { SCENARIOS, makeRng } from "./synth";
+import { NEGATIVES, SCENARIOS, makeRng } from "./synth";
 
 const OPT = { minConfidence: 50, maxShown: 12, window: 1500 };
 let fails = 0;
@@ -14,8 +14,25 @@ for (const [name, sc] of Object.entries(SCENARIOS)) {
   const hit: DetectedPattern | undefined = res.find((p) => sc.want.includes(p.type));
   const line = res.map((p) => `${p.type}/${p.status}/${p.confidence}%/b${p.bias}/T${p.target?.toFixed(1) ?? "-"}/S${p.stop?.toFixed(1) ?? "-"}`).join(" | ");
   let ok = !!hit && hit.bias === sc.bias && hit.target !== null && hit.level !== null && Math.sign(hit.target - hit.level) === sc.bias;
+  if (ok && sc.role && hit!.role !== sc.role) ok = false;
   if (!ok && sc.required) fails++;
-  console.log(`${ok ? "PASS" : sc.required ? "FAIL" : "info"} ${name.padEnd(14)} (${ms.toFixed(1)} ms) -> ${line || "nothing"}`);
+  console.log(`${ok ? "PASS" : sc.required ? "FAIL" : "info"} ${name.padEnd(18)} (${ms.toFixed(1)} ms) -> ${line || "nothing"}${sc.role ? ` [role ${hit?.role ?? "-"}]` : ""}`);
+}
+
+// prior-trend rule: a reversal figure without the trend it should reverse is not reported at any confidence
+for (const [name, ng] of Object.entries(NEGATIVES)) {
+  let bad = "";
+  // at every moment of the life of the figure, not only at the end
+  for (let end = 100; end <= ng.cs.length; end += 2) {
+    const res = detectPatterns(ng.cs.slice(0, end), { ...OPT, minConfidence: 0, maxShown: 40 });
+    const hit = res.find((p) => ng.never.includes(p.type));
+    if (hit) {
+      bad = `${hit.type}/${hit.status}/${hit.confidence}% at ${end}`;
+      break;
+    }
+  }
+  if (bad) fails++;
+  console.log(`${bad ? "FAIL" : "PASS"} negative ${name} -> ${bad || "not reported"}`);
 }
 
 // forming states: cut before the breakout, a target must be projected and the status must be "forming"

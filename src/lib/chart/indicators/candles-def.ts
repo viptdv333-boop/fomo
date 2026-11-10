@@ -4,7 +4,7 @@ import { CANDLE_BY_ID, CANDLE_DISCLAIMER, CANDLE_META, MAIN_IDS, type CandleBias
 import { DEFAULT_CANDLES, detectCandles, type CandleHit, type CandleOptions } from "../analysis/candles";
 import { isDark, langOf, rgba } from "./patterns-def";
 
-/* "Candlestick patterns (classic)": single, two, three and five candle patterns from OHLC only (analysis/candles.ts; the catalogue with names
+/* "Candlestick patterns (classic)": one to five candle patterns (plus the variable-length three methods and island reversals) from OHLC only (analysis/candles.ts; the catalogue with names
    and meanings in analysis/candle-meta.ts). Each pattern is a frame with a translucent fill over exactly its candles and a solid pill with its
    name on the frame edge, joined to the frame by a short stem; everything is drawn in `drawFront`, after all the other indicators of the pane, and
    the pills keep off each other and off the labels the other indicators have put there (sc.labelBoxes). The legend row follows the crosshair: the
@@ -449,7 +449,9 @@ function legendTipOf(res: IndResult, p: Params, locale: string, index?: number):
   const lines: string[] = [];
   if (hit) {
     const m = CANDLE_BY_ID[hit.id];
-    lines.push(`${candleName(hit.id, locale)} (${m.bars} ${w("candles", locale)})`);
+    // the real length of this hit: three methods and island reversals take a variable number of candles
+    const len = m.span ? hit.i - hit.start + 1 : m.bars;
+    lines.push(`${candleName(hit.id, locale)} (${len} ${w("candles", locale)})`);
     lines.push(candleDesc(hit.id, locale));
     lines.push(`${w("strength", locale)}: ${hit.strength}/100 (${w("how", locale)})`);
     if (hit.others.length) lines.push(`${w("also", locale)}: ${hit.others.map((id) => candleName(id, locale)).join(", ")}`);
@@ -522,6 +524,9 @@ export const candlesDef: IndicatorDef = {
   fmt: "price",
   keywords:
     "candlestick candlesticks candle candles patterns pattern japanese doji hammer inverted hanging man shooting star marubozu spinning top engulfing harami cross piercing dark cloud tweezer kicker belt hold morning evening star three white soldiers black crows inside outside up down rising falling three methods abandoned baby reversal " +
+    "tasuki gap three line strike mat hold counterattack meeting lines on-neck in-neck thrusting separating tri-star advance block deliberation stalled two crows upside gap unique three river bottom ladder concealing baby swallow homing pigeon matching low high breakaway stick sandwich side by side white lines rising falling window island " +
+    "тасуки три линейных удара удержание на татами контратака встречные линии у линии шеи в линии шеи толчок разделяющие три звезды отбитое наступление торможение две вороны взлетевшие дно трех рек лестница сокрытие ласточки домашний голубь одинаковые минимумы максимумы отрыв сэндвич смежные белые окно гэп разрыв островной остров " +
+    "跳空 窗口 反击线 分手线 颈上线 颈内线 插入线 三星 前进受阻 停顿 两只乌鸦 三川底 梯形底部 藏婴吞没 家鸽 三线打击 铺垫 脱离 三明治 并列阳线 岛形反转 平头 上升三法 下降三法 " +
     "свеча свечи свечной свечные свечных японские японских паттерн паттерны фигуры разворот доджи додж молот перевернутый повешенный падающая звезда марубозу волчок поглощение харами кросс проникающая завеса темных облаков пинцет кикер захват пояс утренняя вечерняя три солдата вороны внутри снаружи метода брошенный младенец " +
     "蜡烛 K线 烛台 形态 十字星 锤头 上吊 流星 吞没 孕线 启明星 黄昏星 红三兵 三只乌鸦",
   params: [

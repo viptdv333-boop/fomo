@@ -5,7 +5,8 @@ import { detectWolfe, lineAt, type WolfeOptions, type WolfePattern, type WolfeSt
 import { isDark, langOf, place, pill, precisionOf, rgba, type Box } from "./patterns-def";
 
 /* "Wolfe Waves (auto)": bullish and bearish five-point Wolfe waves from the zigzag swings (analysis/wolfe.ts): points 1-5, the converging
-   1-3 / 2-4 lines extended, the sweet zone beyond the 1-3 line, the 1->4 target line (EPA) with the estimated arrival (ETA).
+   1-3 / 2-4 lines extended to their apex, the sweet zone (between the 1-3 line and the parallel to 2-4 through point 3), the 1->4 target
+   line with EPA at ETA (the apex bar). The parallel-channel variant is labelled as such and has an estimated ETA.
    A pattern whose point 5 is still forming is drawn in full colour, the finished ones are faded. This file is the parameter schema,
    the legend and the canvas painter. */
 
@@ -33,9 +34,12 @@ const STATUS: Record<WolfeStatus, [string, string, string]> = {
   failed: ["не отработала", "failed", "失败"],
 };
 const WORDS: Record<string, [string, string, string]> = {
-  epa: ["цель EPA", "EPA target", "目标 EPA"],
+  epa: ["цель (EPA)", "target (EPA)", "目标 (EPA)"],
+  eta: ["время (ETA)", "time (ETA)", "时间 (ETA)"],
+  bars: ["бар.", "bars", "根"],
   none: ["волн Вульфа нет", "no Wolfe waves", "无沃尔夫波浪"],
-  zone: ["зона", "sweet zone", "甜蜜区"],
+  parallel: ["параллельный канал", "parallel channel", "平行通道"],
+  inZone: ["точка 5 в сладкой зоне", "point 5 in the sweet zone", "第5点在甜蜜区"],
 };
 
 export function wolfeName(dir: 1 | -1, locale: string): string {
@@ -45,6 +49,15 @@ export function wolfeStatusText(s: WolfeStatus, locale: string): string {
   return STATUS[s][idx3(locale)];
 }
 const word = (k: string, locale: string) => WORDS[k][idx3(locale)];
+/** "Wolfe wave ↑ (parallel channel)": the variant is part of the name wherever the pattern is named. */
+export function wolfeTitle(pt: WolfePattern, locale: string): string {
+  return pt.variant === "parallel" ? `${wolfeName(pt.dir, locale)} (${word("parallel", locale)})` : wolfeName(pt.dir, locale);
+}
+/** Bars left to ETA: "+12" when the ETA is the apex of the 1-3 and 2-4 lines, "≈+12" when it is only estimated; "" once it has passed. */
+function etaText(pt: WolfePattern, lastIdx: number): string {
+  const left = pt.eta - lastIdx;
+  return left > 0 ? `${pt.etaApex ? "" : "≈"}+${left}` : "";
+}
 
 /** Not over yet: the pattern is still open (point 5 is coming or forming). */
 export const isLive = (pt: WolfePattern) => pt.status === "setup" || pt.status === "forming";
@@ -54,6 +67,8 @@ export const isLive = (pt: WolfePattern) => pt.status === "setup" || pt.status =
 interface Extra {
   patterns: WolfePattern[];
   prec: number;
+  /** Index of the last candle (bars left to ETA). */
+  lastIdx: number;
 }
 
 function optionsOf(p: Params): Partial<WolfeOptions> {
@@ -63,6 +78,9 @@ function optionsOf(p: Params): Partial<WolfeOptions> {
     devPct: N(p, "wfDevPct"),
     tolAtr: N(p, "wfTol"),
     maxLegRatio: N(p, "wfLegRatio"),
+    symRatio: N(p, "wfSym"),
+    maxSkip: N(p, "wfSkip"),
+    parallel: B(p, "wfParallel"),
     minBars: N(p, "wfMinBars"),
     maxBars: N(p, "wfMaxBars"),
     minConf: N(p, "wfMinConf"),
@@ -118,9 +136,10 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
     const last = pt.pts[pt.pts.length - 1];
     const first = pt.pts[0];
     const x1 = sc.x(first.i);
-    // the lines go on a bit to the right of the last point, never past the place where they meet
+    // the lines go on to their apex when it is the ETA, otherwise a bit to the right of the last point (never past the place where they meet)
     const reach = Math.max(6, Math.round((last.i - first.i) * 0.28));
-    const iEnd = Math.min(Math.round(pt.cross) - 1, last.i + reach);
+    const near = Math.min(Math.round(pt.cross) - 1, last.i + reach);
+    const iEnd = pt.etaApex ? Math.round(pt.cross) : near;
     const targetEnd = pt.hitIdx >= 0 ? pt.hitIdx : pt.eta;
     const xFar = sc.x(Math.max(iEnd, showTarget ? targetEnd : iEnd));
     if (xFar < -20 || x1 > pw + 20) continue;
@@ -130,7 +149,7 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
     const p4 = pt.pts[3];
     ctx.globalAlpha = alpha;
 
-    // wedge body (between the 1-3 and the 2-4 line) and the sweet zone (beyond the 1-3 line)
+    // wedge body (between the 1-3 and the 2-4 line) and the sweet zone (from point 3: between the 1-3 line and the parallel to 2-4)
     if (showLines) {
       ctx.fillStyle = rgba(col, dark ? 0.08 : 0.06);
       ctx.beginPath();
@@ -142,22 +161,22 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
       ctx.fill();
     }
     if (showZone) {
-      const z0 = p4.i;
-      const off = -pt.dir * pt.zone;
+      const z0 = p3.i;
+      const z1 = Math.max(z0 + 1, Math.min(iEnd, last.i + reach));
       ctx.fillStyle = rgba(cZone, dark ? 0.16 : 0.12);
       ctx.beginPath();
       ctx.moveTo(...P(z0, lineAt(pt.l13, z0)));
-      ctx.lineTo(...P(iEnd, lineAt(pt.l13, iEnd)));
-      ctx.lineTo(...P(iEnd, lineAt(pt.l13, iEnd) + off));
-      ctx.lineTo(...P(z0, lineAt(pt.l13, z0) + off));
+      ctx.lineTo(...P(z1, lineAt(pt.l13, z1)));
+      ctx.lineTo(...P(z1, lineAt(pt.lz, z1)));
+      ctx.lineTo(...P(z0, lineAt(pt.lz, z0)));
       ctx.closePath();
       ctx.fill();
       ctx.setLineDash([3, 3]);
       ctx.strokeStyle = rgba(cZone, 0.75);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(...P(z0, lineAt(pt.l13, z0) + off));
-      ctx.lineTo(...P(iEnd, lineAt(pt.l13, iEnd) + off));
+      ctx.moveTo(...P(z0, lineAt(pt.lz, z0)));
+      ctx.lineTo(...P(z1, lineAt(pt.lz, z1)));
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -204,6 +223,17 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
       ctx.stroke();
       ctx.setLineDash([]);
       const [tx, ty] = P(targetEnd, lineAt(pt.l14, targetEnd));
+      // classic ETA: the vertical from the apex of the 1-3 / 2-4 lines up (down) to the 1->4 line
+      if (pt.etaApex && pt.hitIdx < 0) {
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = rgba(cTarget, 0.6);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(tx, sc.y(lineAt(pt.l13, pt.cross)));
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.fillStyle = cTarget;
       ctx.beginPath();
       ctx.moveTo(tx, ty - 5);
@@ -217,7 +247,9 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
       const bw = sc.x(1) - sc.x(0);
       const clip = tx > pw - 8 && bw > 0;
       const tagY = clip ? sc.y(lineAt(pt.l14, (pw - 8 - sc.x(0)) / bw)) : ty;
-      tags.push({ x: clip ? pw - 8 : tx, y: tagY, text: `${pt.hitIdx >= 0 ? "✓ " : "≈ "}${word("epa", locale)} ${fmt(price)}`, col: cTarget });
+      const left = pt.hitIdx >= 0 ? "" : etaText(pt, ex.lastIdx);
+      const text = `${pt.hitIdx >= 0 ? "✓ " : ""}${word("epa", locale)} ${fmt(price)}${left ? ` · ETA ${left}` : ""}`;
+      tags.push({ x: clip ? pw - 8 : tx, y: tagY, text, col: cTarget });
     }
 
     // numbered points
@@ -272,7 +304,7 @@ function paint(sc: SeriesContext, p: Params, res?: IndResult): void {
   labels.sort((a, b) => b.pt.endIdx - a.pt.endIdx || b.pt.confidence - a.pt.confidence);
   for (const j of labels) {
     const pt = j.pt;
-    const text = `${wolfeName(pt.dir, locale)} · ${wolfeStatusText(pt.status, locale)} · ${pt.confidence}%`;
+    const text = `${wolfeTitle(pt, locale)} · ${wolfeStatusText(pt.status, locale)} · ${pt.confidence}%`;
     ctx.font = labFont;
     const w = Math.ceil(ctx.measureText(text).width) + 18;
     const h = 18;
@@ -305,7 +337,7 @@ export const wolfeDef: IndicatorDef = {
   fixedPane: true,
   fmt: "price",
   keywords:
-    "wolfe wave wolf waves pattern 1-5 epa eta sweet zone target converging wedge pattern reversal волны вульфа волна вульфа вулфа паттерн паттерны фигура разворот цель",
+    "wolfe wave wolf waves pattern 1-5 epa eta sweet zone target converging wedge parallel channel pattern reversal волны вульфа волна вульфа вулфа паттерн паттерны фигура разворот цель сладкая зона параллельный канал",
   params: [
     bool("wfBull", true),
     bool("wfBear", true),
@@ -314,6 +346,9 @@ export const wolfeDef: IndicatorDef = {
     num("wfDevPct", 1, 0.1, 20, 0.1),
     num("wfTol", 0.3, 0, 2, 0.05),
     num("wfLegRatio", 6, 2, 20, 0.5),
+    num("wfSym", 3, 1.5, 10, 0.5),
+    num("wfSkip", 2, 0, 2),
+    bool("wfParallel", true),
     num("wfMinBars", 12, 6, 200),
     num("wfMaxBars", 400, 20, 2000),
     num("wfMinConf", 50, 0, 100),
@@ -333,14 +368,14 @@ export const wolfeDef: IndicatorDef = {
   styleParams: ["wfColUp", "wfColDown", "wfColTarget", "wfColZone"],
   title: (p) => `Wolfe ${S(p, "wfMode") === "pct" ? `${N(p, "wfDevPct")}%` : `ATR${N(p, "wfDevAtr")}`} ≥${N(p, "wfMinConf")}%`,
   compute(cs, p) {
-    if (cs.length < 40) return { plots: [], extra: { patterns: [], prec: 2 } satisfies Extra };
+    if (cs.length < 40) return { plots: [], extra: { patterns: [], prec: 2, lastIdx: cs.length - 1 } satisfies Extra };
     let patterns: WolfePattern[] = [];
     try {
       patterns = detectWolfe(cs, optionsOf(p));
     } catch {
       patterns = [];
     }
-    return { plots: [], extra: { patterns, prec: precisionOf(cs) } satisfies Extra };
+    return { plots: [], extra: { patterns, prec: precisionOf(cs), lastIdx: cs.length - 1 } satisfies Extra };
   },
   drawExtra(sc, p, res) {
     paint(sc, p, res);
@@ -358,8 +393,13 @@ export const wolfeDef: IndicatorDef = {
     const fmt = (v: number) => formatPrice(v, ex.prec, locale);
     const sorted = ex.patterns.slice().sort((a, b) => Number(isLive(b)) - Number(isLive(a)) || b.endIdx - a.endIdx);
     for (const pt of sorted.slice(0, 3)) {
-      let text = `${wolfeName(pt.dir, locale)} · ${wolfeStatusText(pt.status, locale)} · ${pt.confidence}%`;
-      if (pt.status !== "failed" && pt.status !== "hit") text += ` · ${word("epa", locale)} ${fmt(pt.epa)}`;
+      let text = `${wolfeTitle(pt, locale)} · ${wolfeStatusText(pt.status, locale)} · ${pt.confidence}%`;
+      if (pt.status === "forming" && pt.zonePos >= 0 && pt.zonePos <= 1) text += ` · ${word("inZone", locale)}`;
+      if (pt.status !== "failed" && pt.status !== "hit") {
+        text += ` · ${word("epa", locale)} ${fmt(pt.epa)}`;
+        const left = etaText(pt, ex.lastIdx);
+        if (left) text += ` · ${word("eta", locale)} ${left} ${word("bars", locale)}`;
+      }
       out.push({ text, color: pt.dir > 0 ? S(p, "wfColUp") : S(p, "wfColDown") });
     }
     if (sorted.length > 3) out.push({ text: `+${sorted.length - 3}`, color: S(p, "wfColZone") });
