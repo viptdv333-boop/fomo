@@ -831,7 +831,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       if (hov && !hov.locked && !hov.hidden && !this.tool && !this.pending) {
         const def = getToolDef(hov.tool);
         const P = this.pxPoints(hov);
-        if (def && P) defaultHandles(def, env, hov, P).forEach((h) => this.paintHandle(ctx, env, h.x, h.y, hov.style.color, false, true));
+        if (def && P) defaultHandles(def, env, hov, P).forEach((h, i) => this.paintHandle(ctx, env, h.x, h.y, hov.style.color, i === this.hoverHandle, i !== this.hoverHandle));
       }
     }
 
@@ -891,7 +891,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
 
   private paintHandle(ctx: CanvasRenderingContext2D, env: Env, x: number, y: number, color: string, hot: boolean, small: boolean) {
     const base = this.ptype === "touch" ? HANDLE_R_TOUCH : HANDLE_R;
-    const r = small ? base - 1.5 : hot ? base + 1.5 : base;
+    const r = small ? base - 1.5 : base;
     ctx.save();
     ctx.setLineDash([]);
     ctx.beginPath();
@@ -960,6 +960,18 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       }
     }
     const hit = this.topHit(env, p.x, p.y, p.pointerType);
+    // an end point of a drawing that is not selected yet: one press selects it and drags the point (not the whole drawing)
+    if (hit && !hit.locked && !additive && !this.sel.includes(hit.id)) {
+      const h = this.handleAt(env, hit, p.x, p.y, p.pointerType);
+      if (h) {
+        this.sel = [hit.id];
+        this.hoverHandle = h.index;
+        this.changed();
+        this.startDrag("handle", hit, h, p);
+        this.captured = true;
+        return true;
+      }
+    }
     if (!hit) {
       // Ctrl/Shift + drag on empty space: rubber-band selection
       if (additive && p.pointerType !== "touch") {
@@ -1094,7 +1106,11 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
             hoverHandle = h.index;
           }
         }
-        if (!hoverId) hoverId = this.topHit(env, p.x, p.y, p.pointerType)?.id ?? null;
+        if (!hoverId) {
+          const hit = this.topHit(env, p.x, p.y, p.pointerType);
+          hoverId = hit?.id ?? null;
+          if (hit && !hit.locked && !this.sel.includes(hit.id)) hoverHandle = this.handleAt(env, hit, p.x, p.y, p.pointerType)?.index ?? -1;
+        }
       }
     }
     if (hoverId !== this.hoverId || hoverHandle !== this.hoverHandle) {
@@ -1157,7 +1173,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     if (this.pending || this.tool) return "crosshair";
     if (this.hoverId) {
       const d = this.drawings.find((x) => x.id === this.hoverId);
-      return d?.locked ? "default" : "move";
+      return d?.locked ? "default" : "pointer";
     }
     if (this.cursorStyle === "cursor_dot") return DOT_CURSOR;
     if (this.cursorStyle === "cursor_arrow") return "default";
@@ -1446,7 +1462,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     return type === "touch" ? 16 : type === "pen" ? 12 : 9;
   }
   private handleHitFor(type?: string): number {
-    return type === "touch" ? 22 : type === "pen" ? 14 : 10;
+    return type === "touch" ? 22 : type === "pen" ? 14 : 12;
   }
 
   /** The drawing under the point: what the pointer is on wins (selected first, then topmost), fills only when nothing else is there. */

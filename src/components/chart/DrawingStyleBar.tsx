@@ -140,6 +140,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
   return (
     <div
       role="toolbar"
+      data-tv="drawbar"
       aria-label={t("draw.style.bar")}
       className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-2 py-1 shadow-lg"
     >
@@ -287,7 +288,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
             title={t("alerts.createFromLine")}
             aria-label={t("alerts.createFromLine")}
             onClick={onCreateAlert}
-            className="h-7 shrink-0 rounded-lg px-2 text-xs font-medium text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)]"
+            className="dsb-alert h-7 shrink-0 rounded-lg px-2 text-xs font-medium text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill)]"
           >
             {t("alerts.create")}
           </button>
