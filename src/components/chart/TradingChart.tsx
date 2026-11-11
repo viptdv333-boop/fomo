@@ -862,6 +862,20 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         void writeBars(source, ticker, iv, 600, { ...fresh, candles: fresh.candles.slice() });
         apply(fresh, null);
         retryRef.current = 0;
+        // a synthesised interval (MOEX 15m / 5m are built from 1-minute rows) comes back with only ~3 days of bars (~220 at 15m): long indicators
+        // (ALMA / SMA 200) would start a few bars before the end. Top the series up with older pages (the same ones a scroll to the left loads)
+        // until there is a warm-up worth having; stops at once when the history ends.
+        void (async () => {
+          for (let k = 0; k < 4; k++) {
+            // a page the chart asked for itself (the view reached the left edge) may be on its way: wait for it, then see how many bars there are
+            for (let w = 0; w < 60 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
+            if (cancelled || gen !== genRef.current) return;
+            const have = engine.getCandles().length;
+            if (have >= 600 || have === 0) return;
+            await engine.onNeedHistory?.();
+            if (engine.getCandles().length <= have && !loadingHistory.current) return;
+          }
+        })();
       } else if (!hit && !reload) {
         apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: undefined }, null);
       }
