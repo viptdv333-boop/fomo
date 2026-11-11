@@ -414,8 +414,9 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
    (rows 1-2) and the tab rail (full height) are separate grid items and row 3 is free for one continuous strip. */
 html[data-tvmac] .tvmac aside { display: contents; }
 html[data-tvmac] .tvmac [data-tv="row"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
-html[data-tvmac] .tvmac [data-testid="right-panel"] { grid-column: 3; grid-row: 2; min-height: 0; zoom: var(--mz, 1); }
+html[data-tvmac] .tvmac [data-testid="right-panel"] { grid-column: 3; grid-row: 2; min-height: 0; }
 html[data-tvmac] .tvmac [data-tv="sidetabs"] { grid-column: 4; grid-row: 2 / 4; min-height: 0; }
+/* (the scale --mz still comes from <aside>: its zoom is inherited through display:contents, so the panel must not set it again) */
 /* the two halves of the strip meet in the gap between the columns: square inner corners, no seam line */
 html[data-tvmac] .tvmac [data-tv="row"]:has([data-fomo-strip]) [data-tv="bottom"] { border-radius: 11px 0 0 11px !important; clip-path: inset(-2px 0 -2px -2px); }
 .tvmac [data-fomo-strip] {
