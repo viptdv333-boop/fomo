@@ -889,7 +889,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         // The first answer is only a window of the history (a synthesised MOEX interval, 15m / 5m, is built from 1-minute rows: ~3 days, ~220 bars),
         // and the rest used to come only while scrolling left: long indicators (ALMA / SMA 200) started a few bars before the end. Load ALL the
         // older history in the background, page after page, until the exchange has no more (or HISTORY_CAP bars); the view stays where it is.
-        void (async () => {
+        // only for the free public feeds: the keyed ones (Twelve Data, Databento, FMP, forex) count every page against a quota, they keep loading on scroll
+        if (source === "moex" || source === "bybit" || source === "binance") void (async () => {
           let pages = 0;
           for (;;) {
             // a page the chart asked for itself (the view reached the left edge) may be on its way: let it finish first
