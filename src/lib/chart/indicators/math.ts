@@ -113,25 +113,35 @@ export function vwma(src: ArrayLike<number>, vol: ArrayLike<number>, n: number):
   return out;
 }
 
-/** Arnaud Legoux moving average (Gaussian-weighted). */
+/**
+ * Arnaud Legoux moving average (Gaussian-weighted).
+ * Where fewer than `n` bars exist yet (the start of the loaded history) the window is shortened to the bars there are, with the same
+ * offset / sigma shape, so a long ALMA (200) is drawn over the whole chart instead of a stub that starts `n` bars in.
+ */
 export function alma(src: ArrayLike<number>, n: number, offset = 0.85, sigma = 6): F64 {
   const len = src.length;
   const out = nanArray(len);
   n = Math.max(1, Math.floor(n));
   const s0 = firstValid(src);
-  if (s0 < 0 || len - s0 < n) return out;
-  const m = offset * (n - 1);
-  const s = n / sigma;
-  const w = new Float64Array(n);
-  let norm = 0;
-  for (let i = 0; i < n; i++) {
-    w[i] = Math.exp(-((i - m) * (i - m)) / (2 * s * s));
-    norm += w[i];
-  }
-  for (let i = s0 + n - 1; i < len; i++) {
+  if (s0 < 0 || len - s0 < 2) return out;
+  const weights = (k: number): { w: Float64Array; norm: number } => {
+    const m = offset * (k - 1);
+    const sg = k / sigma;
+    const w = new Float64Array(k);
+    let norm = 0;
+    for (let i = 0; i < k; i++) {
+      w[i] = Math.exp(-((i - m) * (i - m)) / (2 * sg * sg));
+      norm += w[i];
+    }
+    return { w, norm };
+  };
+  const full = weights(n);
+  for (let i = s0 + 1; i < len; i++) {
+    const k = Math.min(n, i - s0 + 1);
+    const { w, norm } = k === n ? full : weights(k);
     let acc = 0;
-    const base = i - n + 1;
-    for (let j = 0; j < n; j++) acc += w[j] * src[base + j];
+    const base = i - k + 1;
+    for (let j = 0; j < k; j++) acc += w[j] * src[base + j];
     out[i] = acc / norm;
   }
   return out;
