@@ -122,6 +122,8 @@ const drawingsKey = (source: string, ticker: string) => `fomo-chart-drawings:${s
 const LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
 const MSK_MS = 3 * 3_600_000;
 const DAY_MS = 86_400_000;
+/** the background load of older history stops here (the exchange may have more: scrolling to the left keeps loading it) */
+const HISTORY_CAP = 150_000;
 
 function loadPrefs(key: string = PREFS_KEY, fallbackKey?: string): Prefs {
   try {
@@ -796,6 +798,28 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       retryRef.current = 0;
     }
 
+    /** One page of older bars in front of the series. quiet: the caller refreshes indicators itself (a long background load does not redo them per page).
+     *  Returns the number of bars added, 0 when the history has ended, -1 when nothing was done (busy / replay / gone). */
+    const loadOlder = async (quiet: boolean): Promise<number> => {
+      if (loadingHistory.current || cancelled || replayRef.current.mode !== "off") return -1;
+      const first = engine.getCandles()[0];
+      if (!first) return -1;
+      loadingHistory.current = true;
+      try {
+        const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1);
+        if (cancelled || gen !== genRef.current) return -1;
+        const before = engine.getCandles().length;
+        engine.prependCandles(candles);
+        if (!quiet) {
+          refreshInd();
+          extendComparesRef.current();
+        }
+        return Math.max(0, engine.getCandles().length - before);
+      } finally {
+        loadingHistory.current = false;
+      }
+    };
+
     (async () => {
       // the picture goes up from the stored bars (if any), the live answer replaces it as soon as it is here; the live feed waits for the live bars
       const apply = (res: BarsResult, stored: number | null) => {
@@ -862,18 +886,31 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         void writeBars(source, ticker, iv, 600, { ...fresh, candles: fresh.candles.slice() });
         apply(fresh, null);
         retryRef.current = 0;
-        // a synthesised interval (MOEX 15m / 5m are built from 1-minute rows) comes back with only ~3 days of bars (~220 at 15m): long indicators
-        // (ALMA / SMA 200) would start a few bars before the end. Top the series up with older pages (the same ones a scroll to the left loads)
-        // until there is a warm-up worth having; stops at once when the history ends.
+        // The first answer is only a window of the history (a synthesised MOEX interval, 15m / 5m, is built from 1-minute rows: ~3 days, ~220 bars),
+        // and the rest used to come only while scrolling left: long indicators (ALMA / SMA 200) started a few bars before the end. Load ALL the
+        // older history in the background, page after page, until the exchange has no more (or HISTORY_CAP bars); the view stays where it is.
         void (async () => {
-          for (let k = 0; k < 4; k++) {
-            // a page the chart asked for itself (the view reached the left edge) may be on its way: wait for it, then see how many bars there are
-            for (let w = 0; w < 60 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
+          let pages = 0;
+          for (;;) {
+            // a page the chart asked for itself (the view reached the left edge) may be on its way: let it finish first
+            for (let w = 0; w < 100 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
             if (cancelled || gen !== genRef.current) return;
-            const have = engine.getCandles().length;
-            if (have >= 600 || have === 0) return;
-            await engine.onNeedHistory?.();
-            if (engine.getCandles().length <= have && !loadingHistory.current) return;
+            if (engine.getCandles().length === 0 || engine.getCandles().length >= HISTORY_CAP) break;
+            if (replayRef.current.mode !== "off") {
+              await new Promise((r) => setTimeout(r, 1000));
+              continue;
+            }
+            const added = await loadOlder(true);
+            if (added === 0) break; // the history ends here
+            if (added > 0 && ++pages % 5 === 0) {
+              refreshInd();
+              extendComparesRef.current();
+            }
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          if (!cancelled && gen === genRef.current) {
+            refreshInd();
+            extendComparesRef.current();
           }
         })();
       } else if (!hit && !reload) {
@@ -889,20 +926,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     })();
 
     engine.onNeedHistory = async () => {
-      if (loadingHistory.current || cancelled || replayRef.current.mode !== "off") return;
-      const first = engine.getCandles()[0];
-      if (!first) return;
-      loadingHistory.current = true;
-      try {
-        const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1);
-        if (!cancelled && gen === genRef.current) {
-          engine.prependCandles(candles);
-          refreshInd();
-          extendComparesRef.current();
-        }
-      } finally {
-        loadingHistory.current = false;
-      }
+      await loadOlder(false);
     };
 
     return () => {
