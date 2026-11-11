@@ -409,41 +409,63 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
   color: #f4a98a;
 }
 
-/* "FOMO - community of traders" card: pinned under the list, exactly like the design (violet gradient, 32px glass icon box, arrow) */
-.tvmac div:has(> [data-fomo-community]) {
-  display: flex;
-  flex-direction: column;
-}
-.tvmac [data-fomo-community] {
-  flex: none;
-  margin-top: auto !important;
-  position: sticky;
-  bottom: 0;
+/* "FOMO - community of traders" plaque, built into the service strip: the strip under the chart (ranges, clock, scales) runs on to the right
+   under the panel, up to the vertical tab rail, and ends in the violet plaque. <aside> dissolves into the row grid so the panel card
+   (rows 1-2) and the tab rail (full height) are separate grid items and row 3 is free for one continuous strip. */
+html[data-tvmac] .tvmac aside { display: contents; }
+html[data-tvmac] .tvmac [data-tv="row"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+html[data-tvmac] .tvmac [data-testid="right-panel"] { grid-column: 3; grid-row: 2; min-height: 0; zoom: var(--mz, 1); }
+html[data-tvmac] .tvmac [data-tv="sidetabs"] { grid-column: 4; grid-row: 2 / 4; min-height: 0; }
+/* the two halves of the strip meet in the gap between the columns: square inner corners, no seam line */
+html[data-tvmac] .tvmac [data-tv="row"]:has([data-fomo-strip]) [data-tv="bottom"] { border-radius: 11px 0 0 11px !important; clip-path: inset(-2px 0 -2px -2px); }
+.tvmac [data-fomo-strip] {
+  grid-column: 3;
+  grid-row: 3;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
-  border-radius: 14px;
+  height: 30px;
+  margin: 6px 0 0 -11px;
+  padding: 0 6px 0 17px;
+  background: var(--m-card);
+  box-shadow: var(--m-ring);
+  border-radius: 0 11px 11px 0;
+  clip-path: inset(-2px -2px -2px 0);
+  contain: inline-size;
+  min-width: 0;
+  overflow: hidden;
+}
+.tvmac [data-fomo-community]:not([data-fomo-strip-card]) { display: none !important; }
+.tvmac [data-fomo-strip-card] {
+  flex: 1;
+  min-width: 0;
+  margin: 0 !important;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 3px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #7b7fc4, #a47bb5) !important;
   color: #fff !important;
-  box-shadow: 0 5px 14px rgba(110, 100, 170, 0.3);
+  box-shadow: 0 2px 6px rgba(110, 100, 170, 0.28);
 }
-.tvmac [data-fomo-community] > span:first-child:not(.mg-box),
-.tvmac [data-fomo-community] > svg:not(.mg) { display: none !important; }
-.tvmac [data-fomo-community] .mg-box {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+.tvmac [data-fomo-strip-card] > span:first-child:not(.mg-box),
+.tvmac [data-fomo-strip-card] > svg:not(.mg) { display: none !important; }
+.tvmac [data-fomo-strip-card] .mg-box {
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.22);
   display: flex !important;
   align-items: center;
   justify-content: center;
   flex: none;
 }
-.tvmac [data-fomo-community] .mg-box .mg { width: 18px; height: 18px; }
-.tvmac [data-fomo-community] .mg-arrow { width: 15px; height: 15px; }
-.tvmac [data-fomo-community] > span:not(.mg-box) > span:first-child { font-size: 13px; font-weight: 600; color: #fff; }
-.tvmac [data-fomo-community] > span:not(.mg-box) > span:last-child { font-size: 11.5px; color: rgba(255, 255, 255, 0.92) !important; }
+.tvmac [data-fomo-strip-card] .mg-box .mg { width: 11px; height: 11px; }
+.tvmac [data-fomo-strip-card] .mg-arrow { width: 12px; height: 12px; flex: none; }
+.tvmac [data-fomo-strip-card] > span:not(.mg-box) { display: flex; align-items: center; min-width: 0; flex: 1; }
+.tvmac [data-fomo-strip-card] > span:not(.mg-box) > span:first-child { font-size: 12px; font-weight: 600; color: #fff; line-height: 1; }
+.tvmac [data-fomo-strip-card] > span:not(.mg-box) > span:last-child { display: none; }
 
 /* ───────── chart window: a 36px title strip with coloured window buttons (design) ───────── */
 .tvmac [data-win-head] {

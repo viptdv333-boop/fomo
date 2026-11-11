@@ -56,15 +56,17 @@ export function useFomoIdeas(sym: SymbolLike | null, enabled = true): FomoIdeasA
 
 const ext = { target: "_blank", rel: "noopener" } as const;
 
-/** The small «FOMO — сообщество трейдеров» card under the watchlist of the desktop right panel. */
-export function FomoCommunityCard() {
+/** The small «FOMO — сообщество трейдеров» card under the watchlist of the desktop right panel. `strip`: the copy built into the service strip under the chart (new look). */
+export function FomoCommunityCard({ strip = false }: { strip?: boolean } = {}) {
   const { t } = useT();
   return (
     <a
       {...ext}
       href={FOMO_COMMUNITY_URL}
       data-fomo-community
-      className="tv3-press mt-2 flex items-center gap-2.5 rounded-[14px] bg-[var(--tv3-fill3)] px-3 py-2.5 text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]"
+      data-fomo-strip-card={strip ? "" : undefined}
+      title={`${t("termsite.community")} — ${t("termsite.community.sub")}`}
+      className={`tv3-press ${strip ? "" : "mt-2 "}flex items-center gap-2.5 rounded-[14px] bg-[var(--tv3-fill3)] px-3 py-2.5 text-[var(--tv3-text)] hover:bg-[var(--tv3-fill)]`}
     >
       <span className="h-8 w-8 shrink-0 rounded-full bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)] flex items-center justify-center" aria-hidden="true">
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

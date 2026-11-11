@@ -1454,6 +1454,13 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
             );
           })}
         </div>
+
+        {/* new look: the service strip under the chart runs on under the panel, up to the tab rail, and ends in this plaque (terminal-mac.css; hidden in the classic look) */}
+        {TERMINAL_SITE && open && (
+          <div data-fomo-strip className="hidden">
+            <FomoCommunityCard strip />
+          </div>
+        )}
       </aside>
     </>
   );
