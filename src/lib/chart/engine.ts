@@ -509,7 +509,12 @@ export class ChartEngine {
     const before = this.bars.length;
     this.candles = fresh.concat(this.candles);
     this.rebuildDisplay();
-    this.r += this.bars.length - before;
+    const shift = this.bars.length - before;
+    this.r += shift;
+    // the bar indices the running gestures are anchored to moved by the same amount: without this a smooth zoom / a pinch snaps the view back by the
+    // number of bars that were just added in front (the background history load adds pages all the time), and the candles «disappear»
+    if (this.zoomAnchor) this.zoomAnchor.index += shift;
+    if (this.pinch) this.pinch.index += shift;
     this.invalidate();
     for (const f of this.followers) f.adopt(this, false);
   }
