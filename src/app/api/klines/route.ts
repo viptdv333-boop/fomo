@@ -461,6 +461,36 @@ export async function GET(request: NextRequest) {
   return withMoexKeys(() => handle(request));
 }
 
+// A scroll-back page (`to` in the past) of a free feed is the same for everybody and does not change. The chart now loads the whole older history in the
+// background, page after page, so the same pages would otherwise go to the exchange again for every chart that opens: kept in memory (and concurrent
+// identical requests share one fetch). The page that ends within the last day or so may still get bars: a short life only.
+const PAGE_MEMO = new Map<string, { at: number; ttl: number; v: Promise<unknown> }>();
+const PAGE_MEMO_MAX = 800;
+function pageMemo<T>(key: string, toMs: number, make: () => Promise<T>, worth: (v: T) => boolean): Promise<T> {
+  const now = Date.now();
+  const hit = PAGE_MEMO.get(key);
+  if (hit && now - hit.at < hit.ttl) {
+    PAGE_MEMO.delete(key); // LRU: re-insert at the end
+    PAGE_MEMO.set(key, hit);
+    return hit.v as Promise<T>;
+  }
+  const ttl = now - toMs > 36 * 3_600_000 ? 12 * 3_600_000 : 10 * 60_000;
+  const p = make();
+  PAGE_MEMO.set(key, { at: now, ttl, v: p });
+  p.then(
+    (v) => {
+      if (!worth(v)) PAGE_MEMO.delete(key); // an empty / failed answer is asked for again
+    },
+    () => PAGE_MEMO.delete(key),
+  );
+  while (PAGE_MEMO.size > PAGE_MEMO_MAX) {
+    const first = PAGE_MEMO.keys().next().value;
+    if (first === undefined) break;
+    PAGE_MEMO.delete(first);
+  }
+  return p;
+}
+
 async function handle(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
@@ -507,7 +537,10 @@ async function handle(request: NextRequest) {
   const srcLimit = yearly ? Math.min(Math.max(limit, 1) * 12 + 12, 1500) : limit;
 
   if (source === "moex") {
-    const result = await fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime);
+    const result =
+      toMs !== undefined && !privileged
+        ? await pageMemo(`moex|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime), (r) => r.candles.length > 0)
+        : await fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime);
     candles = result.candles;
     resolvedTicker = result.resolvedTicker;
     sec = result.sec;
@@ -518,9 +551,15 @@ async function handle(request: NextRequest) {
     fmp = await getFmpFuturesCandles(ticker, interval, { to: toMs, limit: Math.min(Math.max(limit, 1), 5000) });
     candles = fmp.candles;
   } else if (source === "bybit") {
-    candles = await fetchBybitCandles(ticker, srcInterval, srcLimit, toMs);
+    candles =
+      toMs !== undefined
+        ? await pageMemo(`bybit|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => fetchBybitCandles(ticker, srcInterval, srcLimit, toMs), (c) => c.length > 0)
+        : await fetchBybitCandles(ticker, srcInterval, srcLimit, toMs);
   } else if (source === "binance") {
-    candles = await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
+    candles =
+      toMs !== undefined
+        ? await pageMemo(`binance|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs), (c) => c.length > 0)
+        : await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
   } else if (source === "databento") {
     // the user's own Databento key; without one the chart is not served (the client shows the connect window instead)
     const uk = await getUserKey("databento");

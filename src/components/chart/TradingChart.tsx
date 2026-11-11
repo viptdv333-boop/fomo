@@ -61,7 +61,7 @@ import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { KIND_DRAWINGS, KIND_INDICATORS, KIND_PREFS, drawingsKey as drawingsAccountKey, fitDrawings, isEmptyDrawings, isEmptyIndicators, paneKey } from "@/lib/chart/sync-logic";
 import { cleanCandles } from "@/lib/chart/candles";
 import { gateQuote, isIntraday, keepLive, liveTarget, mergeQuote, onChartGrid, quoteDelayed, quoteMoment, remember, retryDelayMs, secondsBasis, type LiveMemo } from "@/lib/chart/live-bar";
-import { candleKey, clockLabel, freshness, peekBars, readBars, writeBars, type BarsResult } from "@/lib/chart/candle-cache";
+import { candleKey, clockLabel, freshness, peekBars, readBars, readHistory, writeBars, writeHistory, type BarsResult } from "@/lib/chart/candle-cache";
 import { useOnline } from "@/lib/offline/useOnline";
 import { DEFAULT_PREFS, parsePrefs, sanitizePrefs, shownInterval, type Prefs } from "@/lib/chart/prefs";
 import { composeTheme, normalizeSettings, resolveZone, settingsToEngine } from "@/lib/chart/settings";
@@ -892,11 +892,26 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         // only for the free public feeds: the keyed ones (Twelve Data, Databento, FMP, forex) count every page against a quota, they keep loading on scroll
         if (source === "moex" || source === "bybit" || source === "binance") void (async () => {
           let pages = 0;
+          // what an earlier visit already loaded (kept on the device): put in as soon as the series has grown back to it, no download for that part
+          let stored: Candle[] | null = await readHistory(source, ticker, iv).catch(() => null);
           for (;;) {
             // a page the chart asked for itself (the view reached the left edge) may be on its way: let it finish first
             for (let w = 0; w < 100 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
             if (cancelled || gen !== genRef.current) return;
             if (engine.getCandles().length === 0 || engine.getCandles().length >= HISTORY_CAP) break;
+            if (stored) {
+              const firstT = engine.getCandles()[0].t;
+              if (firstT <= stored[stored.length - 1].t) {
+                const older = stored.filter((c) => c.t < firstT);
+                stored = null;
+                if (older.length > 0) {
+                  engine.prependCandles(older);
+                  refreshInd();
+                  extendComparesRef.current();
+                  continue;
+                }
+              }
+            }
             if (replayRef.current.mode !== "off") {
               await new Promise((r) => setTimeout(r, 1000));
               continue;
@@ -907,11 +922,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               refreshInd();
               extendComparesRef.current();
             }
+            // an interrupted visit keeps what it has loaded so far
+            if (added > 0 && pages % 25 === 0) void writeHistory(source, ticker, iv, engine.getCandles());
             await new Promise((r) => setTimeout(r, 120));
           }
           if (!cancelled && gen === genRef.current) {
             refreshInd();
             extendComparesRef.current();
+            // nothing new was downloaded (everything came from the device): nothing to write back
+            if (pages > 0) void writeHistory(source, ticker, iv, engine.getCandles());
           }
         })();
       } else if (!hit && !reload) {

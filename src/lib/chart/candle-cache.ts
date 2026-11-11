@@ -116,6 +116,11 @@ export function usable(e: Pick<StoredBars, "savedAt">, now: number): boolean {
 
 const DB_NAME = "fomo-candles";
 const STORE = "bars";
+/** the whole older history of a symbol (loaded in the background, see TradingChart): its own store, bigger entries, fewer of them */
+const HIST_STORE = "hist";
+export const HIST_MAX_SYMBOLS = 8;
+/** ~56 bytes a bar: 250 000 bars */
+export const HIST_MAX_ENTRY_BYTES = 14 * 1024 * 1024;
 const MEM_MAX = 6;
 const mem = new Map<string, StoredBars>();
 let dbp: Promise<IDBDatabase | null> | null = null;
@@ -125,9 +130,10 @@ function db(): Promise<IDBDatabase | null> {
   dbp = new Promise((resolve) => {
     try {
       if (typeof indexedDB === "undefined") return resolve(null);
-      const req = indexedDB.open(DB_NAME, 1);
+      const req = indexedDB.open(DB_NAME, 2);
       req.onupgradeneeded = () => {
         if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE, { keyPath: "key" });
+        if (!req.result.objectStoreNames.contains(HIST_STORE)) req.result.createObjectStore(HIST_STORE, { keyPath: "key" });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
@@ -237,6 +243,51 @@ export async function clearBars(): Promise<void> {
   if (!d) return;
   try {
     d.transaction(STORE, "readwrite").objectStore(STORE).clear();
+    if (d.objectStoreNames.contains(HIST_STORE)) d.transaction(HIST_STORE, "readwrite").objectStore(HIST_STORE).clear();
+  } catch {
+    /* ignore */
+  }
+}
+
+interface StoredHist {
+  key: string;
+  savedAt: number;
+  usedAt: number;
+  bytes: number;
+  candles: Candle[];
+}
+
+const histKey = (source: string, ticker: string, interval: string) => `${source}|${ticker.toUpperCase()}|${interval}`;
+
+/** The stored whole-history series of a symbol / interval (ascending), or null. Never blocks the chart: best effort. */
+export async function readHistory(source: string, ticker: string, interval: string, now: number = Date.now()): Promise<Candle[] | null> {
+  const d = await db();
+  if (!d || !d.objectStoreNames.contains(HIST_STORE)) return null;
+  try {
+    const e = await reqDone<StoredHist | undefined>(d.transaction(HIST_STORE, "readonly").objectStore(HIST_STORE).get(histKey(source, ticker, interval)));
+    if (!e || !usable(e, now) || !Array.isArray(e.candles) || e.candles.length === 0) return null;
+    return e.candles;
+  } catch {
+    return null;
+  }
+}
+
+/** Keep the whole loaded series of a symbol / interval on the device (the next open continues from it instead of downloading it all again). */
+export async function writeHistory(source: string, ticker: string, interval: string, candles: readonly Candle[], now: number = Date.now()): Promise<void> {
+  if (candles.length === 0 || source === "twelvedata" || source === "databento") return;
+  const bytes = candles.length * 56 + 200;
+  if (bytes > HIST_MAX_ENTRY_BYTES) return;
+  const d = await db();
+  if (!d || !d.objectStoreNames.contains(HIST_STORE)) return;
+  try {
+    const key = histKey(source, ticker, interval);
+    const tx = d.transaction(HIST_STORE, "readwrite");
+    const st = tx.objectStore(HIST_STORE);
+    st.put({ key, savedAt: now, usedAt: now, bytes, candles: candles.slice() } satisfies StoredHist);
+    // least recently saved symbols go first
+    const all = await reqDone<StoredHist[]>(st.getAll());
+    const extra = (all ?? []).filter((x) => x.key !== key).sort((a, b) => b.usedAt - a.usedAt).slice(Math.max(0, HIST_MAX_SYMBOLS - 1));
+    for (const x of extra) st.delete(x.key);
   } catch {
     /* ignore */
   }
