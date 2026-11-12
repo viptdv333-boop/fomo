@@ -20,17 +20,31 @@ interface Props {
   onRemove: (id: string) => void;
   onColor: (id: string, color: string) => void;
   onMode: (id: string, mode: "percent" | "own") => void;
+  /** Open the symbol as a candlestick chart in a window of its own (undefined: not possible now). */
+  onWindow?: (id: string) => void;
   /** Px from the right edge of the chart (leave room for the price scale). */
   right: number;
+  /** Only the chips (no corner of their own): the caller puts them in its own row (next to the indicators pill). */
+  inline?: boolean;
+}
+
+/** A candlestick in a window: «open as a chart of its own». */
+export function CompareWindowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="3" />
+      <path d="M9 8v8M15 8v8M7.5 10.5h3v3h-3zM13.5 9.5h3v4h-3z" />
+    </svg>
+  );
 }
 
 /** Chips for the symbols compared with the main one: colour, visibility, own scale, remove. */
-export default function CompareLegend({ items, onToggle, onRemove, onColor, onMode, right }: Props) {
+export default function CompareLegend({ items, onToggle, onRemove, onColor, onMode, onWindow, right, inline = false }: Props) {
   const { t } = useT();
   if (items.length === 0) return null;
   const labels = { opacity: t("cs.color.opacity"), custom: t("cs.color.custom"), recent: t("cs.color.recent") };
-  return (
-    <div className="absolute top-2 z-10 flex flex-col items-end gap-1 pointer-events-none" style={{ right }}>
+  const chips = (
+    <>
       {items.map((c) => (
         <div
           key={c.id}
@@ -50,11 +64,22 @@ export default function CompareLegend({ items, onToggle, onRemove, onColor, onMo
           <button onClick={() => onToggle(c.id)} title={t("cs.cmp.toggle")} className="w-6 h-6 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
             {c.visible ? CS_ICONS.eye : CS_ICONS.eyeOff}
           </button>
+          {onWindow && (
+            <button onClick={() => onWindow(c.id)} title={t("cs.cmp.window")} className="w-6 h-6 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
+              <CompareWindowIcon />
+            </button>
+          )}
           <button onClick={() => onRemove(c.id)} title={t("cs.cmp.remove")} className="w-6 h-6 inline-flex items-center justify-center rounded text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] cursor-pointer">
             {CS_ICONS.close}
           </button>
         </div>
       ))}
+    </>
+  );
+  if (inline) return chips;
+  return (
+    <div className="absolute top-2 z-10 flex flex-col items-end gap-1 pointer-events-none" style={{ right }}>
+      {chips}
     </div>
   );
 }

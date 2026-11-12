@@ -28,12 +28,14 @@ interface Props {
   winId?: string;
   /** The engine exists (the legend listens to its crosshair). */
   ready?: boolean;
+  /** Chips that sit in the row of the «Indicators» pill, right of it (the compared symbols): they must not cover the indicators' own tables. */
+  trailing?: ReactNode;
 }
 
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
 const enginePane = (pid: string) => (pid.endsWith(":p") ? "main" : pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 6, winId, ready = true }: Props) {
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 6, winId, ready = true, trailing }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -433,6 +435,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 </svg>
                 <span className="sr-only">{t("v3.indicators", { n: list.length })}</span>
               </button>
+              {trailing && <div className="ml-1.5 flex min-w-0 flex-wrap items-center gap-1">{trailing}</div>}
             </div>
             {/* many indicators: the list scrolls inside the chart (it stops above the time scale / the first sub-pane) instead of running off the screen */}
             {!collapsed && (
@@ -445,6 +448,12 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               </div>
             )}
             {!collapsed && menuUid && menuPos && mainUids.includes(menuUid) && renderMenu(menuUid, "absolute z-30", { left: menuPos.left, top: menuPos.top })}
+          </div>
+        )}
+        {/* no indicators on the price chart: the chips stand alone in the same corner */}
+        {!winId && mainUids.length === 0 && trailing && (
+          <div className="pointer-events-auto absolute left-1 flex max-w-[calc(100%-80px)] flex-wrap items-center gap-1" style={{ top: mainTop }}>
+            {trailing}
           </div>
         )}
         {(winId || !collapsed) && others.map(([pid, uids]) =>

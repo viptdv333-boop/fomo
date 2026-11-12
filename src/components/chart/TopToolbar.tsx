@@ -14,6 +14,7 @@ import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
 import IntervalControl from "./IntervalControl";
 import ContractPicker from "./ContractPicker";
 import ChartTypeSettings from "./ChartTypeSettings";
+import { CompareWindowIcon, type CompareItem } from "./CompareLegend";
 import TemplatesMenu from "./TemplatesMenu";
 import ChartEventsButton from "./calendar/ChartEventsMenu";
 import type { ChartSettingsApi } from "./useChartSettings";
@@ -87,6 +88,16 @@ interface Props {
   onOpenSettings?: () => void;
   onOpenCompare?: () => void;
   compareCount?: number;
+  /** The symbols compared with the main one: the Compare button opens this list (remove, hide, scale, a candlestick window) when it is not empty. */
+  compareMenu?: {
+    items: CompareItem[];
+    onToggle: (id: string) => void;
+    onRemove: (id: string) => void;
+    onMode: (id: string, mode: "percent" | "own") => void;
+    onWindow: (id: string) => void;
+    canWindow: boolean;
+    onClear: () => void;
+  };
   settingsApi?: ChartSettingsApi;
   transformBox?: number;
   templates?: {
@@ -361,13 +372,93 @@ export default function TopToolbar(p: Props) {
       {p.settingsApi && <ChartTypeSettings type={p.chartType} api={p.settingsApi} box={p.transformBox ?? 0} btn={`${btn} tb-typeset`} source={p.instrument.source} />}
 
       <span className="tb-break" aria-hidden />
-      {p.onOpenCompare && (
-        <button onClick={p.onOpenCompare} title={t("cs.compare")} className={`${btn} tb-compare`}>
-          {CS_ICONS.compare}
-          <MacGlyph set="tb" k="compare" alpha="55" width={1.8} />
-          <span className={lbl}>{t("cs.compareShort")}</span>
-          {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
-        </button>
+      {p.onOpenCompare && p.compareMenu && p.compareMenu.items.length > 0 ? (
+        <Menu
+          title={t("cs.cmp.list")}
+          width={330}
+          className={`${btn} tb-compare`}
+          trigger={
+            <>
+              {CS_ICONS.compare}
+              <MacGlyph set="tb" k="compare" alpha="55" width={1.8} />
+              <span className={lbl}>{t("cs.compareShort")}</span>
+              {badge(p.compareMenu.items.length)}
+            </>
+          }
+        >
+          {(close) => {
+            const m = p.compareMenu!;
+            const ib = "w-7 h-7 shrink-0 inline-flex items-center justify-center rounded-md text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] cursor-pointer disabled:opacity-40 disabled:cursor-default";
+            return (
+              <div className="px-1.5">
+                <div className="px-2 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--tv3-muted)]">{t("cs.cmp.list")}</div>
+                {m.items.map((c) => (
+                  <div key={c.id} className={`flex items-center gap-1 h-9 pl-2 pr-0.5 rounded-lg hover:bg-[var(--tv3-hover)] ${c.visible ? "" : "opacity-60"}`}>
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c.color }} />
+                    <span className="flex-1 min-w-0 truncate text-[13px] font-semibold ml-1.5">{c.label}</span>
+                    {c.loading && <span className="inline-block w-3 h-3 border-2 border-[var(--tv3-fill2)] border-t-[var(--tv3-accent)] rounded-full animate-spin" />}
+                    {c.failed && (
+                      <span className="text-red-500 font-bold" title={t("cs.cmp.failed")}>
+                        !
+                      </span>
+                    )}
+                    <button type="button" onClick={() => m.onMode(c.id, c.mode === "percent" ? "own" : "percent")} title={c.mode === "percent" ? t("cs.cmp.toOwn") : t("cs.cmp.toPercent")} className={`${ib} text-[11px] font-semibold`}>
+                      {c.mode === "percent" ? "%" : t("cs.cmp.own")}
+                    </button>
+                    <button type="button" onClick={() => m.onToggle(c.id)} title={t("cs.cmp.toggle")} className={ib}>
+                      {c.visible ? CS_ICONS.eye : CS_ICONS.eyeOff}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!m.canWindow}
+                      onClick={() => {
+                        m.onWindow(c.id);
+                        close();
+                      }}
+                      title={m.canWindow ? t("cs.cmp.window") : t("cs.cmp.noRoom")}
+                      className={ib}
+                    >
+                      <CompareWindowIcon />
+                    </button>
+                    <button type="button" onClick={() => m.onRemove(c.id)} title={t("cs.cmp.remove")} className={`${ib} hover:!text-[var(--tv3-red)]`}>
+                      {CS_ICONS.close}
+                    </button>
+                  </div>
+                ))}
+                <div className="mx-1 my-1.5 h-px bg-[var(--tv3-hair)]" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    p.onOpenCompare?.();
+                  }}
+                  className="tv3-hov flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-semibold text-[var(--tv3-accent)] cursor-pointer"
+                >
+                  + {t("cs.cmp.add")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    m.onClear();
+                    close();
+                  }}
+                  className="tv3-hov flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] text-[var(--tv3-red)] cursor-pointer"
+                >
+                  {t("cs.cmp.clear")}
+                </button>
+              </div>
+            );
+          }}
+        </Menu>
+      ) : (
+        p.onOpenCompare && (
+          <button onClick={p.onOpenCompare} title={t("cs.compare")} className={`${btn} tb-compare`}>
+            {CS_ICONS.compare}
+            <MacGlyph set="tb" k="compare" alpha="55" width={1.8} />
+            <span className={lbl}>{t("cs.compareShort")}</span>
+            {(p.compareCount ?? 0) > 0 && badge(p.compareCount ?? 0)}
+          </button>
+        )
       )}
       <button onClick={p.onOpenIndicators} title={t("shell.indicators")} data-tv3-anchor="indicators" className={`${btn} tb-ind`}>
         {I.indicators}

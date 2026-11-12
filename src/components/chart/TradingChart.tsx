@@ -1888,6 +1888,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   };
   compareList.current = compares;
 
+  const toggleCompare = (id: string) => {
+    const c = compareList.current.find((x) => x.id === id);
+    if (!c) return;
+    engineRef.current?.updateCompare(id, { visible: !c.visible });
+    setCompares((l) => l.map((x) => (x.id === id ? { ...x, visible: !x.visible } : x)));
+  };
+  const setCompareMode = (id: string, mode: "percent" | "own") => {
+    engineRef.current?.updateCompare(id, { mode });
+    setCompares((l) => l.map((x) => (x.id === id ? { ...x, mode } : x)));
+  };
+
   const removeCompare = (id: string) => {
     engineRef.current?.removeCompare(id);
     compareData.current.delete(id);
@@ -1934,6 +1945,31 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     }, 60_000);
     return () => clearInterval(id);
   }, [compares, prefs.interval, replayActive]);
+
+  /** The compared symbol as a candlestick chart in a window of its own (the chart windows of «Окно»). */
+  const compareToWindow = (id: string) => {
+    const c = compareList.current.find((x) => x.id === id);
+    if (!c || !indicators.canAddWindow() || !indicators.canMakeChart()) return;
+    const wid = indicators.addWindow();
+    if (wid) indicators.makeChart(wid, c.source, c.ticker);
+  };
+  const compareToWindowOk = winGeo.available && indicators.canAddWindow() && indicators.canMakeChart();
+
+  const compareLegend = (inline: boolean) => (
+    <CompareLegend
+      inline={inline}
+      items={compareItems}
+      right={cs.scale.side === "left" ? 12 : 84}
+      onToggle={toggleCompare}
+      onWindow={compareToWindowOk ? compareToWindow : undefined}
+      onRemove={removeCompare}
+      onColor={(id, color) => {
+        engineRef.current?.updateCompare(id, { color });
+        setCompares((l) => l.map((x) => (x.id === id ? { ...x, color } : x)));
+      }}
+      onMode={setCompareMode}
+    />
+  );
 
   const compareItems: CompareItem[] = compares.map((c) => ({ id: c.id, label: c.label, color: c.color, mode: c.mode, visible: c.visible, loading: c.loading, failed: c.failed }));
 
@@ -2165,6 +2201,15 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onOpenSettings={() => (phoneFs && csOpen ? setCsOpen(false) : openSettings())}
         onOpenCompare={() => setComparePick(true)}
         compareCount={compares.length}
+        compareMenu={{
+          items: compareItems,
+          onToggle: toggleCompare,
+          onRemove: removeCompare,
+          onMode: setCompareMode,
+          onWindow: compareToWindow,
+          canWindow: compareToWindowOk,
+          onClear: () => compares.forEach((c) => removeCompare(c.id)),
+        }}
         settingsApi={csApi}
         transformBox={transformBox}
         templates={{ getTemplate, applyTemplate, getLayout, applyLayout, applyIndicators: (json) => indicators.restore(json) }}
@@ -2273,26 +2318,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy && emptyWhy !== "key" && emptyWhy !== "symbol" ? `fmp.err.${emptyWhy}` : (source === "twelvedata" || source === "databento") && emptyWhy ? `pv.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
-            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} />}
-            <CompareLegend
-              items={compareItems}
-              right={cs.scale.side === "left" ? 12 : 84}
-              onToggle={(id) => {
-                const c = compares.find((x) => x.id === id);
-                if (!c) return;
-                engineRef.current?.updateCompare(id, { visible: !c.visible });
-                setCompares((l) => l.map((x) => (x.id === id ? { ...x, visible: !x.visible } : x)));
-              }}
-              onRemove={removeCompare}
-              onColor={(id, color) => {
-                engineRef.current?.updateCompare(id, { color });
-                setCompares((l) => l.map((x) => (x.id === id ? { ...x, color } : x)));
-              }}
-              onMode={(id, mode) => {
-                engineRef.current?.updateCompare(id, { mode });
-                setCompares((l) => l.map((x) => (x.id === id ? { ...x, mode } : x)));
-              }}
-            />
+            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
+            {isTransformedType(prefs.chartType) && compareLegend(false)}
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
                 className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
