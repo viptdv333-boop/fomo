@@ -1082,6 +1082,9 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
   .tvmac [data-tv="bottom"] button { height: 22px !important; min-height: 0 !important; padding: 0 8px !important; border-radius: 7px !important; line-height: 1; }
   .tvmac [data-tv="bottom"] > div:first-child { padding: 2px !important; border-radius: 9px !important; }
   .tvmac [data-tv="bottom"] svg { width: 13px !important; height: 13px !important; }
+  /* a pressed toggle (Лог / Авто / %): the button's own `!bg-[accent-soft]` is a layered !important and beat the solid green of the rule above, which left white text on a pale tint
+     (unreadable in the light theme). Same layer, higher specificity: solid green + white text, always together. */
+  .tvmac [data-tv="bottom"] button[aria-pressed="true"] { background: #5fa37e !important; color: #fff !important; }
 }
 .tvmac { padding-bottom: 10px; }
 
