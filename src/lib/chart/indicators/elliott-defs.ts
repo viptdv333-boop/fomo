@@ -40,17 +40,17 @@ const PHASE_EN: Record<Phase, string> = {
 };
 const NEXT_EN: Record<Phase, string> = {
   w2: "Wave 2 should end, then wave 3 {dir}",
-  w3: "Wave 3 should end, then a pullback (wave 4)",
+  w3: "Wave 3 should end, then a pullback (wave 4) {dir}",
   w4: "Wave 4 should end, then wave 5 {dir}",
-  w5: "Wave 5 should end, then an A-B-C correction",
+  w5: "Wave 5 should end, then an A-B-C correction {dir}",
   w5done: "An A-B-C correction against the trend",
   wB: "Wave B, then wave C {dir}",
-  wC: "C should end, then the trend resumes",
+  wC: "C should end, then the trend resumes {dir}",
   wCdone: "The main trend should resume",
   wE: "A breakout of the triangle with the trend",
   wEdone: "A breakout of the triangle with the trend",
   wX: "Wave X, then wave Y {dir}",
-  wY: "Y should end, then the trend resumes",
+  wY: "Y should end, then the trend resumes {dir}",
   wYdone: "The main trend should resume",
   wD: "Wave D, then wave E, then a breakout with the trend",
   wXX: "Second wave X, then wave Z {dir}",
@@ -133,7 +133,8 @@ function summaryOf(r: ElliottResult, locale: string): Summary | null {
     nextText = (pj.mode === "target" ? indT("ind.ew.target", "target") : indT("ind.ew.zone", "zone")) + ` ${pj.next.tag} = ${fmtP(r, locale, pj.next.price)}`;
   }
   return {
-    state: prefix + phaseText(pj.phase),
+    // the forming wave says where it goes: «Волна 5 (в развитии) ▲ вверх» (a finished count has no forming wave)
+    state: prefix + phaseText(pj.phase) + (/done$/.test(pj.phase) ? "" : ` ${pj.dir > 0 ? "▲" : "▼"} ${dirText(pj.dir)}`),
     conf: c.conf,
     nextText,
     nextTag,
@@ -159,7 +160,7 @@ function legendItems(res: IndResult, p: Params, locale: string): { text: string;
   if (!sum) return [{ text: indT("ind.ew.none", "no count ≥ {min}%", { min: r.minConfidence }), color: MUTED }];
   const count = sum.count as WaveCount;
   const color = count.kind === "impulse" || count.kind.endsWith("diagonal") ? (count.dir > 0 ? S(p, "ewColUp") : S(p, "ewColDown")) : S(p, "ewColCorr");
-  const parts = [sum.state, `${sum.conf}%`];
+  const parts = [sum.state, indT("ind.ew.conf", "confidence {n}%", { n: sum.conf })];
   if (sum.nextText) parts.push(sum.nextText);
   return [{ text: parts.join(" · "), color }];
 }
@@ -535,13 +536,14 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
     lines.push({ text: indT("ind.ew.none", "no count ≥ {min}%", { min: r.minConfidence }), color: theme.textMuted });
   } else {
     const count = sum.count as WaveCount;
-    lines.push({ text: `${sum.state} · ${sum.conf}%`, color: colorOf(count, k), bold: true });
+    lines.push({ text: `${sum.state} · ${indT("ind.ew.conf", "confidence {n}%", { n: sum.conf })}`, color: colorOf(count, k), bold: true });
     lines.push({ text: indT("ind.ew.nextLabel", "Next") + ": " + sum.nextExpected, color: theme.text });
     const live = r.degrees[r.focus]?.live;
     if (live?.proj.next && B(p, "ewTargets")) lines.push({ text: sum.nextText, color: k.target });
     if (sum.invalidText && B(p, "ewInvalid")) lines.push({ text: `${indT("ind.ew.invalid", "Invalidation")}: ${sum.invalidText}`, color: k.invalid });
   }
   lines.push({ text: indT("ind.ew.hyp", "A hypothesis, not a forecast."), color: theme.textMuted, size: 12 });
+  if (sum) lines.push({ text: indT("ind.ew.confNote", "Confidence: fit to the wave rules, not a probability"), color: theme.textMuted, size: 11 });
   ctx.save();
   let w = 0;
   for (const l of lines) {
