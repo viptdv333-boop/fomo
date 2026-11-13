@@ -119,7 +119,7 @@ export interface TablePlace extends PlaceIn {
  * Paints the table (or, collapsed, its header chip) and returns its rectangle. `title` is the header text.
  * Layout follows the TradingView table: label on the left, value on the right, a thin line between rows.
  */
-export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fontFamily: string, cfg: VpCfg, rows: TableRow[], title: string, place: TablePlace): Rect {
+export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fontFamily: string, cfg: VpCfg, rows: TableRow[], title: string, place: TablePlace): Rect & { headH: number } {
   const narrow = !!place.narrow;
   const col = tableColors(cfg, theme);
   const { fontPx: fs, rowH, padX, gap } = tableMetrics(SIZE_PX[cfg.tblSize], cfg.tblCompact, narrow);
@@ -178,5 +178,5 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
     ctx.fillText(showRows[i].value, x + w - padX, ry + rowH / 2 + 0.5);
   }
   ctx.restore();
-  return { x, y, w, h };
+  return { x, y, w, h, headH: rowH };
 }

@@ -21,6 +21,8 @@ type Edge = "start" | "end";
 
 interface Hit {
   table: Rect | null;
+  /** Height of the table's header row: on a wide chart only the header folds / unfolds the table (a click in the body must not fold it by accident). */
+  headH: number;
   /** Screen x of the range edges (null = not draggable / off screen). */
   xs: number | null;
   xe: number | null;
@@ -133,6 +135,7 @@ export class VpLayer implements OverlayLayer {
     // legend: the OHLC status line, the collapse button row, one row per indicator
     const insetTop = Math.max(engine.getStatusBottom(), 40) + 30 + Math.min(mainCount, 12) * 18;
     const seen = new Set<string>();
+    const keep = new Set<string>();
     let idx = 0;
     for (const it of this.list()) {
       if (!this.shown(it, engine)) continue;
@@ -140,7 +143,7 @@ export class VpLayer implements OverlayLayer {
       const cfg = readVpCfg(it.params);
       const view = this.viewOf(it, engine);
       this.notifyLegend(it.uid, view ? view.legendSig : "-");
-      const hit: Hit = { table: null, xs: null, xe: null };
+      const hit: Hit = { table: null, headH: 0, xs: null, xe: null };
       this.hits.set(it.uid, hit);
       if (!view) continue;
       const [a, b] = view.range;
@@ -169,9 +172,14 @@ export class VpLayer implements OverlayLayer {
         const rect = paintTable(ctx, theme, font, tcfg, rows, title, { W, H, insetTop, stack: stack[corner], narrow, statusBottom: engine.getStatusBottom() });
         stack[corner] += rect.h + 6;
         hit.table = rect;
+        hit.headH = rect.headH;
+        engine.setKeepOut(`vp:${it.uid}`, rect);
+        keep.add(`vp:${it.uid}`);
       }
       idx++;
     }
+    for (const k of Array.from(this.keepKeys)) if (!keep.has(k)) engine.setKeepOut(k, null);
+    this.keepKeys = keep;
     for (const k of Array.from(this.hits.keys())) if (!seen.has(k)) this.hits.delete(k);
     for (const k of Array.from(this.narrowClosed)) if (!seen.has(k)) this.narrowClosed.delete(k);
 
@@ -208,6 +216,9 @@ export class VpLayer implements OverlayLayer {
       ctx.restore();
     }
   }
+
+  /** the keep-out rectangles this layer registered on the engine (so a hidden / removed table releases its place) */
+  private keepKeys = new Set<string>();
 
   private paintEdge(ctx: CanvasRenderingContext2D, x: number, H: number, yMid: number, hover: boolean, dragging: boolean) {
     const active = hover || dragging;
@@ -267,8 +278,11 @@ export class VpLayer implements OverlayLayer {
     for (const [uid, h] of this.hits) {
       const t = h.table;
       // a finger needs a bigger target than a mouse: the phone chip is only ~16 px high
-      const pad = this.engine && isNarrowPlot(this.engine.getPlotSize().width) ? 8 : 0;
-      if (t && x >= t.x - pad && x <= t.x + t.w + pad && y >= t.y - pad && y <= t.y + t.h + pad) return uid;
+      const narrow = !!this.engine && isNarrowPlot(this.engine.getPlotSize().width);
+      const pad = narrow ? 8 : 0;
+      // wide: the header row only; phone: the whole chip / table
+      const hh = narrow ? t?.h ?? 0 : h.headH;
+      if (t && x >= t.x - pad && x <= t.x + t.w + pad && y >= t.y - pad && y <= t.y + hh + pad) return uid;
     }
     return null;
   }

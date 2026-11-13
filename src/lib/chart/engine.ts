@@ -779,6 +779,22 @@ export class ChartEngine {
   requestOverlayRedraw() {
     this.invalidateOver();
   }
+  /* Rectangles of the main pane that an overlay layer occupies (the volume profile table): painters of the base layer that place a card
+     (Elliott) read them through SeriesContext.keepOut. A change repaints the base once, an unchanged rectangle costs nothing. */
+  private keepOut = new Map<string, { x: number; y: number; w: number; h: number }>();
+  setKeepOut(key: string, r: { x: number; y: number; w: number; h: number } | null) {
+    const cur = this.keepOut.get(key);
+    if (!r) {
+      if (cur) {
+        this.keepOut.delete(key);
+        this.invalidate();
+      }
+      return;
+    }
+    if (cur && cur.x === r.x && cur.y === r.y && cur.w === r.w && cur.h === r.h) return;
+    this.keepOut.set(key, { x: r.x, y: r.y, w: r.w, h: r.h });
+    this.invalidate();
+  }
   requestRedraw() {
     this.invalidate();
   }
@@ -1427,6 +1443,7 @@ export class ChartEngine {
       theme: this.opts.theme,
       options: this.opts,
       flow: (this.leader ?? this).flow,
+      keepOut: pane.id === "main" ? Array.from(this.keepOut.values()) : undefined,
     };
   }
 

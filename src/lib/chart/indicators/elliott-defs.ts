@@ -567,6 +567,8 @@ function drawCard(sc: SeriesContext, r: ElliottResult, p: Params, k: Colors, avo
   for (const c of corners) {
     let cost = 0;
     for (const a of avoid) cost += overlapArea(c, a) * 6;
+    // another overlay's table (the volume profile): a corner it covers is the last choice
+    for (const a of sc.keepOut ?? []) cost += overlapArea(c, a) * 60;
     for (let i = from; i <= to; i++) {
       const cx = sc.x(i);
       if (cx < c.x - 4 || cx > c.x + c.w + 4) continue;

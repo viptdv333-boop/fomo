@@ -313,6 +313,8 @@ export interface SeriesContext {
   flow?: OrderFlowStore;
   /** Rectangles of the text labels already put on this pane in this frame (pills, zone labels): a painter that runs later keeps its own labels off them. */
   labelBoxes?: { x: number; y: number; w: number; h: number }[];
+  /** Rectangles on the main pane that other overlays occupy (the tables of the order-flow layers): a card that picks its corner keeps clear of them. */
+  keepOut?: { x: number; y: number; w: number; h: number }[];
 }
 
 export interface LegendItem {
