@@ -113,6 +113,8 @@ export function tableColors(cfg: VpCfg, theme: ChartTheme): TableColors {
 export interface TablePlace extends PlaceIn {
   /** Phone-width plot: small font, tight spacing, rows cut to the room that is left. */
   narrow?: boolean;
+  /** The pointer is over the header: its fold button lights up. */
+  hover?: boolean;
 }
 
 /**
@@ -123,10 +125,16 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   const narrow = !!place.narrow;
   const col = tableColors(cfg, theme);
   const { fontPx: fs, rowH, padX, gap } = tableMetrics(SIZE_PX[cfg.tblSize], cfg.tblCompact, narrow);
-  const head = `${cfg.tblCollapsed ? "▸" : "▾"} ${title}`;
+  // the fold control: a green chevron in a soft round button (not a text glyph), in the colour of the site
+  const dark = isDark(theme.bg);
+  const accent = dark ? "#7fd1a2" : "#1f9d5c";
+  const arrow = dark ? "#b4ecd0" : "#0f7a45"; // the chevron itself: darker than the disc so it reads at once
+  const btnS = Math.round(fs * 1.5);
+  const btnGap = 6;
+  const head = title;
   ctx.save();
   ctx.font = `600 ${fs}px ${fontFamily}`;
-  const headW = ctx.measureText(head).width;
+  const headW = ctx.measureText(head).width + btnS + btnGap;
   ctx.font = `${fs}px ${fontFamily}`;
   let lw = 0;
   let vw = 0;
@@ -146,7 +154,19 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   // a bordered table on the bare chart (transparent): a frame, a line under every row and one between the label and the value columns
   ctx.strokeStyle = bc;
   ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  if (cfg.tblCollapsed) {
+    // folded: a rounded chip that reads as a button
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, 8);
+    else ctx.rect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.fillStyle = col.bg;
+    ctx.fill();
+    ctx.strokeStyle = place.hover ? accent : rgba(col.text, 0.22);
+    ctx.stroke();
+    ctx.strokeStyle = bc;
+  } else {
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
   if (showRows.length > 0) {
     const vx = Math.round(x + padX + lw + gap / 2) + 0.5;
     ctx.beginPath();
@@ -159,7 +179,32 @@ export function paintTable(ctx: CanvasRenderingContext2D, theme: ChartTheme, fon
   ctx.font = `600 ${fs}px ${fontFamily}`;
   ctx.fillStyle = col.soft ? col.text : col.muted;
   ctx.textAlign = "left";
-  ctx.fillText(head, x + padX, y + rowH / 2 + 0.5);
+  ctx.fillText(head, x + padX + btnS + btnGap, y + rowH / 2 + 0.5);
+  // the fold button: soft green disc + chevron (points right when folded, down when open)
+  {
+    const bx = x + padX + btnS / 2;
+    const by = y + rowH / 2;
+    ctx.beginPath();
+    ctx.arc(bx, by, btnS / 2, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(accent, place.hover ? 0.42 : 0.26);
+    ctx.fill();
+    const k = btnS * 0.22;
+    ctx.beginPath();
+    if (cfg.tblCollapsed) {
+      ctx.moveTo(bx - k * 0.6, by - k * 1.1);
+      ctx.lineTo(bx + k * 0.6, by);
+      ctx.lineTo(bx - k * 0.6, by + k * 1.1);
+    } else {
+      ctx.moveTo(bx - k * 1.1, by - k * 0.5);
+      ctx.lineTo(bx, by + k * 0.7);
+      ctx.lineTo(bx + k * 1.1, by - k * 0.5);
+    }
+    ctx.strokeStyle = arrow;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }
   // rows
   for (let i = 0; i < showRows.length; i++) {
     const ry = y + rowH * (i + 1);
