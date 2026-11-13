@@ -714,35 +714,6 @@ function ChannelSite() {
           <div className="space-y-3">
             {ideas.map((idea) => (
               <div key={idea.id} className="relative">
-                {isOwner && (
-                  // In-flow toolbar, not an overlay: an absolutely-positioned
-                  // top-right box needed permanent padding reserved on every
-                  // line of the card to avoid it, which on a narrow phone left
-                  // almost no width for the post text (wrapped to ~1 word/line).
-                  <div className="flex items-center justify-end gap-3 mb-1.5 px-1">
-                    <button
-                      onClick={() => togglePin(idea.id, !idea.isPinned)}
-                      disabled={pinningId === idea.id}
-                      className={`text-xs font-medium disabled:opacity-50 ${idea.isPinned ? "text-amber-600 hover:text-amber-800" : "text-gray-400 hover:text-amber-600"}`}
-                      title={idea.isPinned ? t("msg.unpin") : t("channel2.pinTop")}
-                    >
-                      {pinningId === idea.id ? "..." : idea.isPinned ? t("channel2.unpinBtn") : t("channel2.pinBtn")}
-                    </button>
-                    <Link
-                      href={`/ideas/${idea.id}/edit`}
-                      className="text-xs text-green-600 hover:text-green-800 font-medium"
-                    >
-                      {t("common.edit")}
-                    </Link>
-                    <button
-                      onClick={() => deleteIdea(idea.id)}
-                      disabled={deletingId === idea.id}
-                      className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
-                    >
-                      {deletingId === idea.id ? "..." : t("common.delete")}
-                    </button>
-                  </div>
-                )}
                 {canView ? (
                   /* Unlocked idea card */
                   <Link
@@ -754,7 +725,48 @@ function ChannelSite() {
                     onContextMenu={(e) => e.preventDefault()}
                   >
                     <Watermark variant="card" />
-                    <div className="flex items-start justify-between gap-3">
+                    {/* the owner's pin / edit / delete: icons in the corner of the post itself (they used to sit above it and it was unclear which post they belonged to) */}
+                    {isOwner && (
+                      <span className="absolute top-2 right-2 z-10 flex items-center gap-0.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <button
+                          type="button"
+                          onClick={() => togglePin(idea.id, !idea.isPinned)}
+                          disabled={pinningId === idea.id}
+                          title={idea.isPinned ? t("channel2.unpinBtn") : t("channel2.pinBtn")}
+                          aria-label={idea.isPinned ? t("channel2.unpinBtn") : t("channel2.pinBtn")}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 ${idea.isPinned ? "text-amber-600" : "text-gray-400 hover:text-amber-600"}`}
+                        >
+                          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill={idea.isPinned ? "currentColor" : "none"} fillOpacity={idea.isPinned ? 0.2 : 0} stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                          </svg>
+                        </button>
+                        {/* a button, not a link: the card itself is a link and anchors cannot nest */}
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/ideas/${idea.id}/edit`)}
+                          title={t("common.edit")}
+                          aria-label={t("common.edit")}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-green-600 dark:hover:bg-gray-800"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteIdea(idea.id)}
+                          disabled={deletingId === idea.id}
+                          title={t("common.delete")}
+                          aria-label={t("common.delete")}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50 dark:hover:bg-gray-800"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </span>
+                    )}
+                    <div className={`flex items-start justify-between gap-3 ${isOwner ? "pr-[104px]" : ""}`}>
                       <div className="flex-1 min-w-0 flex items-center gap-1.5">
                         {idea.isPinned && (
                           <span className="shrink-0 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded" title={t("channel2.pinnedTitle")}>

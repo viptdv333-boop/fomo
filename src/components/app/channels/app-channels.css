@@ -151,10 +151,16 @@ html.app-ui .ach-post-body[data-locked="1"] { filter: blur(4px); user-select: no
 html.app-ui .ach-post-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; font-size: 13px; color: var(--app-tx2); }
 html.app-ui .ach-post-meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.app-ui .ach-lock { display: flex; align-items: center; gap: 4px; color: var(--app-tx); font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--app-card2); white-space: nowrap; }
-html.app-ui .ach-postacts { display: flex; gap: 8px; margin: -4px 0 0; padding: 0 4px; }
-html.app-ui .ach-postacts button { height: 30px; padding: 0 12px; border-radius: 8px; background: var(--app-card2); font-size: 13px; font-weight: 600; }
-html.app-ui .ach-postacts button[data-tone="danger"] { color: var(--app-red); }
-html.app-ui .ach-postacts button:disabled { opacity: 0.5; }
+/* the owner's pin / edit / delete: icons in the corner of the post (they used to be text buttons above it, and it was unclear which post they belonged to) */
+html.app-ui .ach-post-acts { position: absolute; top: 6px; right: 6px; z-index: 2; display: flex; gap: 2px; }
+html.app-ui .ach-post-acts button { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: var(--app-tx2); background: transparent; }
+html.app-ui .ach-post-acts button:hover { background: var(--app-card2); color: var(--app-tx); }
+html.app-ui .ach-post-acts button[data-on="1"] { color: var(--app-green-tx); }
+html.app-ui .ach-post-acts button[data-on="1"] svg { fill: currentColor; fill-opacity: 0.18; }
+html.app-ui .ach-post-acts button[data-tone="danger"]:hover { color: var(--app-red); }
+html.app-ui .ach-post-acts button:disabled { opacity: 0.45; }
+/* the title leaves the corner free for the three icons */
+html.app-ui .ach-post[data-own="1"] .ach-post-title { padding-right: 104px; }
 html.app-ui .ach-seeall { text-align: center; padding: 10px; font-size: 15px; color: var(--app-green-tx); font-weight: 600; }
 
 /* ---------- author page ---------- */

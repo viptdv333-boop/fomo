@@ -456,25 +456,13 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
           <div className="ach-posts">
             {shownPosts.map((p) => (
               <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {isOwner && (
-                  <div className="ach-postacts">
-                    <button type="button" disabled={busyPost === p.id} onClick={() => void togglePin(p)}>
-                      {p.isPinned ? t("appch.unpin") : t("appch.pin")}
-                    </button>
-                    <button type="button" onClick={() => nav.go(`/ideas/${p.id}/edit`, channel.name)}>
-                      {t("common.edit")}
-                    </button>
-                    <button type="button" data-tone="danger" disabled={busyPost === p.id} onClick={() => void deletePost(p)}>
-                      {t("common.delete")}
-                    </button>
-                  </div>
-                )}
                 <div
                   role="link"
                   tabIndex={0}
                   className="ach-post"
                   data-unread={canView ? unreadAccent(unread.byIdea[p.id]) : undefined}
                   data-pinned={p.isPinned ? "1" : undefined}
+                  data-own={isOwner ? "1" : undefined}
                   onClick={() => (canView ? nav.go(`/ideas/${p.id}`, channel.name) : subs.loggedIn ? setBuying(true) : needLogin())}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") (e.currentTarget as HTMLElement).click();
@@ -483,6 +471,20 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
                   onContextMenu={canView ? (e) => e.preventDefault() : undefined}
                 >
                   {canView && <Watermark variant="card" />}
+                  {/* the owner's actions live on the post itself, as icons in its corner: pin / edit / delete */}
+                  {isOwner && (
+                    <div className="ach-post-acts" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <button type="button" data-on={p.isPinned ? "1" : undefined} disabled={busyPost === p.id} title={p.isPinned ? t("appch.unpin") : t("appch.pin")} aria-label={p.isPinned ? t("appch.unpin") : t("appch.pin")} onClick={() => void togglePin(p)}>
+                        <AppIcon name="pin" size={17} stroke={1.9} />
+                      </button>
+                      <button type="button" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => nav.go(`/ideas/${p.id}/edit`, channel.name)}>
+                        <AppIcon name="pen" size={17} stroke={1.9} />
+                      </button>
+                      <button type="button" data-tone="danger" disabled={busyPost === p.id} title={t("common.delete")} aria-label={t("common.delete")} onClick={() => void deletePost(p)}>
+                        <AppIcon name="trash" size={17} stroke={1.9} />
+                      </button>
+                    </div>
+                  )}
                   <div className="ach-post-title">
                     {p.isPinned && <span className="ach-rank">{"\u{1F4CC}"}</span>}
                     <span>{p.title}</span>
