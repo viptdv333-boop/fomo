@@ -392,6 +392,10 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma, de
       return { ok: true, result: "pulled", profile: profileFromUser(user as Record<string, unknown>) };
     }
 
+    case "userdata":
+      // applied by userdata-mirror-server.ts (the route dispatches it before this function; this branch only keeps the switch exhaustive)
+      return { ok: true, result: "noop" };
+
     case "profile": {
       // Display fields only (never role, status, e-mail, password), so this is applied to ANY role, an ADMIN / OWNER included: the owner's own
       // profile edits must reach the other site. The e-mail is matched without regard to case, like the login.

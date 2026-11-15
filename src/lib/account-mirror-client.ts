@@ -29,6 +29,7 @@ import {
   type MirrorResult,
 } from "./account-mirror";
 import { siteMode } from "./site-mode";
+import { MIRROR_DATA_MAX_JSON, isMirroredKind } from "./userdata-sync";
 
 type Outcome = {
   delivered: boolean;
@@ -431,6 +432,18 @@ export function mirrorReset(userId: string, email: string, passwordHash: string)
 /** E-mail change: the other site renames its account found by the OLD address, if that account has the same current hash. */
 export function mirrorEmail(userId: string, oldEmail: string, newEmail: string, passwordHash: string): void {
   send({ op: "email", email: oldEmail, newEmail, passwordHash }, userId);
+}
+
+/**
+ * One blob of the user's terminal data was written / removed on THIS site: copy it to the other one (settings, indicators, drawings ...; the list is
+ * src/lib/userdata-sync.ts). `at` is the instant stored with the row, the other site keeps the NEWER copy. Too big for the mirror body = not sent
+ * (the reconcile script covers it).
+ */
+export function mirrorUserData(userId: string, email: string | null | undefined, kind: string, key: string, change: { at: number; data?: unknown; deleted?: boolean }): void {
+  if (!email || !isMirroredKind(kind)) return;
+  if (!change.deleted && JSON.stringify(change.data ?? null).length > MIRROR_DATA_MAX_JSON) return;
+  const msg: MirrorMessage = change.deleted ? { op: "userdata", email, kind, key, at: change.at, deleted: true } : { op: "userdata", email, kind, key, at: change.at, data: change.data };
+  void send(msg, userId);
 }
 
 /** Profile edit: `changed` is the set of columns that was written (anything outside the whitelist is dropped here). */

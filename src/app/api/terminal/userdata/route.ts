@@ -3,6 +3,8 @@ import { z } from "zod/v4";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { mirrorUserData } from "@/lib/account-mirror-client";
+import { KIND_MAX_BYTES, MAX_BYTES, MAX_PER_KIND, upsertUserData } from "@/lib/userdata-store";
 
 /**
  * Per-user JSON blobs of the terminal (drawing templates, indicator scripts, layouts, synced drawings…).
@@ -14,14 +16,8 @@ import { rateLimit } from "@/lib/rate-limit";
 
 const KIND = z.string().regex(/^[a-z_]{1,32}$/);
 const KEY = z.string().min(1).max(120);
-const MAX_BYTES = 512 * 1024;
-const MAX_PER_KIND = 300;
-/**
- * Chart state that follows the account (src/lib/chart/account-sync.ts): small per-kind byte caps, and drawings keep the
- * newest 200 symbols (the oldest is evicted instead of refusing the write, so the limit never shows up as an error).
- */
-const KIND_MAX_BYTES: Record<string, number> = { chart_prefs: 16 * 1024, chart_indicators: 64 * 1024, chart_drawings: 400 * 1024, terminal_last: 2 * 1024 };
-const EVICT_KINDS: Record<string, number> = { chart_drawings: 200 };
+/* The limits (small per-kind byte caps for the chart state, drawings keep the newest 200 symbols) live in src/lib/userdata-store.ts, shared with the copy
+   that arrives from the other site. Every write / removal here is also copied to the other site at once (the account mirror, op "userdata"). */
 
 const putSchema = z.object({ kind: KIND, key: KEY, data: z.unknown() });
 
@@ -62,20 +58,11 @@ export async function PUT(request: NextRequest) {
   const { kind, key, data } = parsed.data;
   if (raw.length > (KIND_MAX_BYTES[kind] ?? MAX_BYTES)) return NextResponse.json({ error: "Too large" }, { status: 413 });
 
-  const exists = await prisma.terminalUserData.findUnique({ where: { userId_kind_key: { userId, kind, key } }, select: { id: true } });
-  if (!exists) {
-    const count = await prisma.terminalUserData.count({ where: { userId, kind } });
-    const evictAt = EVICT_KINDS[kind];
-    if (evictAt !== undefined && count >= evictAt) {
-      const oldest = await prisma.terminalUserData.findMany({ where: { userId, kind }, orderBy: { updatedAt: "asc" }, take: count - evictAt + 1, select: { id: true } });
-      await prisma.terminalUserData.deleteMany({ where: { id: { in: oldest.map((r) => r.id) } } });
-    } else if (count >= MAX_PER_KIND) return NextResponse.json({ error: "Limit reached" }, { status: 409 });
-  }
-  await prisma.terminalUserData.upsert({
-    where: { userId_kind_key: { userId, kind, key } },
-    create: { userId, kind, key, data: data as object },
-    update: { data: data as object },
-  });
+  // the instant of this write: stored here and sent to the other site, which keeps the newer copy
+  const at = new Date();
+  const written = await upsertUserData(prisma, userId, kind, key, data, at);
+  if (written === "limit") return NextResponse.json({ error: "Limit reached" }, { status: 409 });
+  mirrorUserData(userId, session.user.email, kind, key, { at: at.getTime(), data });
   return NextResponse.json({ ok: true });
 }
 
@@ -86,5 +73,6 @@ export async function DELETE(request: NextRequest) {
   const key = KEY.safeParse(request.nextUrl.searchParams.get("key"));
   if (!kind.success || !key.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   await prisma.terminalUserData.deleteMany({ where: { userId: session.user.id, kind: kind.data, key: key.data } });
+  mirrorUserData(session.user.id, session.user.email, kind.data, key.data, { at: Date.now(), deleted: true });
   return NextResponse.json({ ok: true });
 }
