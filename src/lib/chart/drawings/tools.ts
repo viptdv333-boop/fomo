@@ -105,15 +105,10 @@ function style(color: string, width = 1, dash = "solid", extra: Partial<DrawingS
   return { color: inkOf(color) as string, width: 1, dash, ...extra, ...(extra.fill ? { fill: inkOf(extra.fill) } : {}) };
 }
 
-/** The user's «thickest line» setting (0 = none): drawings never get thicker than this, and may go below 1 px. Set by the chart from its settings. */
-let widthCap = 0;
-export function setDrawingWidthCap(px: number): void {
-  widthCap = Number.isFinite(px) && px > 0 ? px : 0;
-}
-
+/* The «max line width» chart setting (0.5 px by default) limits indicator lines and the price line, NOT the drawings: a drawing is painted with the width and colour
+   the user picked in its style bar. (It used to cap drawings too: every line stayed a pale 0.5 px, and only the hover +1 px showed the chosen look.) */
 function lineWidth(d: Drawing, st: DrawState): number {
-  const base = widthCap > 0 ? Math.min(Math.max(1, d.style.width), widthCap) : Math.max(1, d.style.width);
-  return base + (st.hover && !st.selected ? 1 : 0);
+  return Math.max(1, d.style.width) + (st.hover && !st.selected ? 1 : 0);
 }
 
 function dashArray(kind: string, w: number): number[] {
