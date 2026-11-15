@@ -14,7 +14,7 @@ import {
   verifyRequest,
 } from "@/lib/account-mirror";
 import { applyMirrorMessage } from "@/lib/account-mirror-server";
-import { applyUserDataMessage } from "@/lib/userdata-mirror-server";
+import { applyUserDataMessage, applyWatchlistMessage } from "@/lib/userdata-mirror-server";
 import { siteMode } from "@/lib/site-mode";
 
 // Server-to-server only: the other instance of this site (fomo.spot <-> terminal.fomo.spot) copies accounts here. See docs/terminal-instance.md.
@@ -101,7 +101,12 @@ export async function POST(req: NextRequest) {
 
   try {
     // user data (settings, indicators ...) is applied by BOTH sites; every other operation goes through the account rules
-    const reply = parsed.data.op === "userdata" ? await applyUserDataMessage(parsed.data) : await applyMirrorMessage(parsed.data);
+    const reply =
+      parsed.data.op === "userdata"
+        ? await applyUserDataMessage(parsed.data)
+        : parsed.data.op === "watchlist"
+          ? await applyWatchlistMessage(parsed.data)
+          : await applyMirrorMessage(parsed.data);
     console.log(`[account-mirror] ${parsed.data.op}: ${reply.result}${reply.reason ? `/${reply.reason}` : ""}${reply.skipped?.length ? ` (skipped: ${reply.skipped.join(",")})` : ""}${reply.fomoIdChanged ? " (fomoId changed)" : ""}`);
     return NextResponse.json(reply, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

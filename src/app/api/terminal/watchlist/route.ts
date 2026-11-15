@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { mirrorWatchlist } from "@/lib/account-mirror-client";
 
 const MAX_ITEMS = 200;
 
@@ -46,11 +47,14 @@ export async function PUT(request: NextRequest) {
     return true;
   });
 
+  // the instant of this change is the createdAt of the rows here and on the other site (the account mirror copies the list; the newer list wins there)
+  const at = Date.now();
   await prisma.$transaction([
     prisma.terminalWatchItem.deleteMany({ where: { userId } }),
     prisma.terminalWatchItem.createMany({
-      data: items.map((i, idx) => ({ userId, source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name, sortOrder: idx })),
+      data: items.map((i, idx) => ({ userId, source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name, sortOrder: idx, createdAt: new Date(at) })),
     }),
   ]);
+  mirrorWatchlist(userId, session.user.email, at, items);
   return NextResponse.json({ ok: true, count: items.length });
 }

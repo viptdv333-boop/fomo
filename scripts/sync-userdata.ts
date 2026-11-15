@@ -57,7 +57,7 @@ async function main() {
     const pairs = [...mBy.entries()].filter(([e]) => tBy.has(e) && !dup.has(e)).map(([e, mid]) => ({ mid, tid: tBy.get(e) as string }));
     console.log(`accounts on both sites: ${pairs.length} (main ${mUsers.length}, terminal ${tUsers.length}); duplicated addresses skipped: ${dup.size}`);
 
-    const stats = { toTerminal: 0, toMain: 0, newerMain: 0, newerTerminal: 0, same: 0, conflicts: 0, skippedSize: 0, skippedLimit: 0, accountsChanged: 0, errors: 0 };
+    const stats = { toTerminal: 0, toMain: 0, newerMain: 0, newerTerminal: 0, same: 0, conflicts: 0, skippedSize: 0, skippedLimit: 0, accountsChanged: 0, errors: 0, lists: 0 };
     for (const { mid, tid } of pairs) {
       const sel = { kind: true, key: true, data: true, updatedAt: true, createdAt: true } as const;
       const mRows = (await main.terminalUserData.findMany({ where: { userId: mid, kind: { in: [...MIRRORED_KINDS] } }, select: sel })) as Row[];
@@ -68,6 +68,35 @@ async function main() {
       for (const r of mRows) counts.main.set(r.kind, (counts.main.get(r.kind) ?? 0) + 1);
       for (const r of tRows) counts.term.set(r.kind, (counts.term.get(r.kind) ?? 0) + 1);
       let changed = 0;
+
+      // the MAIN watchlist (table TerminalWatchItem): the whole list; its instant is the newest createdAt of its rows; the newer list is copied to the other side
+      // (an empty side has no instant: it only receives, a list is never emptied here)
+      {
+        const wsel = { source: true, ticker: true, dataTicker: true, name: true, sortOrder: true, createdAt: true } as const;
+        const mL = await main.terminalWatchItem.findMany({ where: { userId: mid }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: wsel });
+        const tL = await term.terminalWatchItem.findMany({ where: { userId: tid }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: wsel });
+        const at = (l: typeof mL) => (l.length ? Math.max(...l.map((r) => r.createdAt.getTime())) : null);
+        const sig = (l: typeof mL) => l.map((r) => `${r.source}:${r.dataTicker}`).join(",");
+        const side = newerSide(at(mL), at(tL));
+        const copy = async (db: PrismaClient, userId: string, from: typeof mL, st: "toTerminal" | "toMain") => {
+          if (APPLY) {
+            const when = new Date(Math.max(...from.map((r) => r.createdAt.getTime())));
+            await db.$transaction([
+              db.terminalWatchItem.deleteMany({ where: { userId } }),
+              db.terminalWatchItem.createMany({ data: from.map((r, idx) => ({ userId, source: r.source, ticker: r.ticker, dataTicker: r.dataTicker, name: r.name, sortOrder: idx, createdAt: when })) }),
+            ]);
+          }
+          stats.lists++;
+          void st;
+          changed++;
+        };
+        try {
+          if (side === "a" && (sig(mL) !== sig(tL) || at(mL) !== at(tL))) await copy(term, tid, mL, "toTerminal");
+          else if (side === "b" && (sig(mL) !== sig(tL) || at(mL) !== at(tL))) await copy(main, mid, tL, "toMain");
+        } catch {
+          stats.errors++;
+        }
+      }
 
       const write = async (db: PrismaClient, userId: string, src: Row, side: "main" | "term") => {
         const bytes = canon(src.data).length;
@@ -123,6 +152,7 @@ async function main() {
     console.log(`  both sides, terminal newer -> main updated:   ${stats.newerTerminal}`);
     console.log(`  identical already: ${stats.same}; same instant but different data (left alone): ${stats.conflicts}`);
     console.log(`  skipped (over the size cap): ${stats.skippedSize}; skipped (drawings limit of the target): ${stats.skippedLimit}; errors: ${stats.errors}`);
+    console.log(`  main watchlists copied (the newer list wins): ${stats.lists}`);
     console.log(`  accounts touched: ${stats.accountsChanged}`);
     process.exit(stats.errors ? 1 : 0);
   } finally {

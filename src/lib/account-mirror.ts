@@ -51,7 +51,7 @@ export function backoffFor(op: string): readonly number[] {
 }
 /** Inbound rate limit buckets (per minute): profile / login-copy noise can never starve a password reset or a sign-up. */
 export function inboundBucket(op: string): { key: string; limit: number } {
-  if (op === "userdata") return { key: "account-mirror:in:userdata", limit: 600 }; // drawings are edited often; a bucket of their own
+  if (op === "userdata" || op === "watchlist") return { key: "account-mirror:in:userdata", limit: 600 }; // drawings are edited often; a bucket of their own
   if (op === "verify") return { key: "account-mirror:in:verify", limit: 120 }; // plus the login limits per e-mail and per source (account-mirror-server.ts)
   return isCriticalOp(op) ? { key: "account-mirror:in:critical", limit: 60 } : { key: "account-mirror:in", limit: 300 };
 }
@@ -384,6 +384,23 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("pull"), email: emailSchema }),
   // USER DATA: one blob of the user's terminal data (settings, indicators, drawings ...) edited on the sending site, copied at once (src/lib/userdata-sync.ts).
   // `at` = ms of the edit (the same instant is stored on both sites; the newer copy wins), `deleted` = the row was removed. Applied by BOTH sites.
+  // MAIN WATCHLIST: the whole list in its order (the terminal sends it after every change), `at` = ms of the change (stored as the createdAt of its rows on both
+  // sites: the newer list wins). Applied by BOTH sites.
+  z.object({
+    op: z.literal("watchlist"),
+    email: emailSchema,
+    at: z.number().int().positive(),
+    items: z
+      .array(
+        z.object({
+          source: z.enum(["moex", "bybit", "binance", "fmp", "forex", "databento", "twelvedata"]),
+          ticker: z.string().min(1).max(40),
+          dataTicker: z.string().min(1).max(40),
+          name: z.string().max(120),
+        }),
+      )
+      .max(200),
+  }),
   z.object({
     op: z.literal("userdata"),
     email: emailSchema,

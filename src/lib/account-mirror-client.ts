@@ -446,6 +446,12 @@ export function mirrorUserData(userId: string, email: string | null | undefined,
   void send(msg, userId);
 }
 
+/** The MAIN watchlist was replaced on THIS site: copy the whole list to the other one (the newer list wins there). `at` is stored as the createdAt of the rows here too. */
+export function mirrorWatchlist(userId: string, email: string | null | undefined, at: number, items: { source: string; ticker: string; dataTicker: string; name: string }[]): void {
+  if (!email) return;
+  void send({ op: "watchlist", email, at, items } as MirrorMessage, userId);
+}
+
 /** Profile edit: `changed` is the set of columns that was written (anything outside the whitelist is dropped here). */
 export function mirrorProfile(userId: string, email: string | null | undefined, changed: Record<string, unknown>): void {
   if (!email) return;

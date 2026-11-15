@@ -9,6 +9,29 @@ import { KIND_MAX_BYTES, MAX_BYTES, upsertUserData } from "./userdata-store";
 
 export type UserDataMessage = Extract<MirrorMessage, { op: "userdata" }>;
 export type UserDataMirrorDb = Pick<typeof prisma, "user" | "terminalUserData">;
+export type WatchlistMessage = Extract<MirrorMessage, { op: "watchlist" }>;
+export type WatchlistMirrorDb = Pick<typeof prisma, "user" | "terminalWatchItem" | "$transaction">;
+
+/** The main watchlist of the other site: replaces ours only when it is strictly newer (our instant = the newest createdAt of our rows). */
+export async function applyWatchlistMessage(msg: WatchlistMessage, db: WatchlistMirrorDb = prisma): Promise<MirrorReply> {
+  const user = await db.user.findFirst({ where: { email: { equals: msg.email, mode: "insensitive" } }, select: { id: true } });
+  if (!user) return { ok: true, result: "not_found" };
+  const newest = await db.terminalWatchItem.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+  if (!incomingWins(newest?.createdAt.getTime(), msg.at)) return { ok: true, result: "noop" };
+  const seen = new Set<string>();
+  const items = msg.items.filter((i) => {
+    const k = `${i.source}:${i.dataTicker}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  const at = new Date(msg.at);
+  await db.$transaction([
+    db.terminalWatchItem.deleteMany({ where: { userId: user.id } }),
+    db.terminalWatchItem.createMany({ data: items.map((i, idx) => ({ userId: user.id, source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name, sortOrder: idx, createdAt: at })) }),
+  ]);
+  return { ok: true, result: "updated" };
+}
 
 export async function applyUserDataMessage(msg: UserDataMessage, db: UserDataMirrorDb = prisma): Promise<MirrorReply> {
   if (!isMirroredKind(msg.kind)) return { ok: true, result: "skipped" };

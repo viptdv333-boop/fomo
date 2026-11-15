@@ -4,10 +4,11 @@
  *
  * Every edit of one of these blobs on one site is copied to the other site at once (the same signed server-to-server channel as the account).
  * The newer copy wins (`updatedAt`, the user's own write and its copy carry the same instant), so a repeated or reordered message is harmless
- * and no message ever bounces back. Watchlists and notification devices stay per site on purpose.
+ * and no message ever bounces back. Notification devices stay per site on purpose. The MAIN watchlist (table TerminalWatchItem) travels in its own
+ * message (op "watchlist": the whole list, its instant is the `createdAt` its rows carry on both sites).
  */
 
-/** Settings, indicators, drawings, templates, layouts, scripts, favourites, last symbol, calendar and terminal preferences. */
+/** Settings, indicators, drawings, templates, layouts, scripts, favourites, last symbol, calendar and terminal preferences, extra watchlists. */
 export const MIRRORED_KINDS: readonly string[] = [
   "chart_settings",
   "chart_prefs",
@@ -20,6 +21,7 @@ export const MIRRORED_KINDS: readonly string[] = [
   "indicator_favorites",
   "terminal_last",
   "terminal_prefs",
+  "terminal_watchlists", // the EXTRA watchlists (the main list is a table of its own: op "watchlist")
   "calendar_prefs",
 ];
 const KINDS = new Set(MIRRORED_KINDS);

@@ -393,6 +393,7 @@ export async function applyMirrorMessage(msg: MirrorMessage, db: Db = prisma, de
     }
 
     case "userdata":
+    case "watchlist":
       // applied by userdata-mirror-server.ts (the route dispatches it before this function; this branch only keeps the switch exhaustive)
       return { ok: true, result: "noop" };
 
