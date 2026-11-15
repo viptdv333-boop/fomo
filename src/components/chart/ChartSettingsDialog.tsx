@@ -353,6 +353,19 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Check checked={ch.priceLabel} onChange={(v) => set((x) => ({ ...x, crosshair: { ...x.crosshair, priceLabel: v } }))} label={t("cs.ch.priceLabel")} />
       <Check checked={ch.timeLabel} onChange={(v) => set((x) => ({ ...x, crosshair: { ...x.crosshair, timeLabel: v } }))} label={t("cs.ch.timeLabel")} />
 
+      <Section>{t("cs.sec.drawings")}</Section>
+      <Row label={t("cs.draw.color")} hint={t("cs.draw.hint")}>
+        {sw(s.drawDefaults.color || "#000000", (c) => set((x) => ({ ...x, drawDefaults: { ...x.drawDefaults, color: c } })))}
+      </Row>
+      <Row label={t("cs.draw.width")}>
+        <Sel
+          value={s.drawDefaults.width}
+          options={[{ id: 0, label: t("cs.draw.widthDefault") }, ...[1, 2, 3, 4].map((n) => ({ id: n, label: `${n} px` }))]}
+          onChange={(v) => set((x) => ({ ...x, drawDefaults: { ...x.drawDefaults, width: Number(v) } }))}
+          width={150}
+        />
+      </Row>
+
       <Section>{t("cs.sec.watermark")}</Section>
       <Check checked={toggles.showWatermark} onChange={(v) => onToggle("showWatermark", v)} label={t("cs.wm.symbol")}>
         {sw(theme.watermark, (c) => col("watermark", c))}

@@ -70,6 +70,8 @@ export interface ChartSettings {
   lineWidth: number;
   /** Thickest line (px) of indicators, drawings and the price line: -1 = as each line is set, else 0.5 (the default) / 1 / 1.5 / 2. */
   maxLineWidth: number;
+  /** The colour and width NEW drawings start with (the settings dialog, «Внешний вид → Рисунки»). color "" = the built-in black, width 0 = the built-in 1 px. */
+  drawDefaults: { color: string; width: number };
   /** "auto" | "exchange" | "local" | "UTC" | an IANA zone. */
   tz: string;
   status: StatusLineOptions;
@@ -103,6 +105,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   priceSource: "close",
   lineWidth: 2,
   maxLineWidth: 0.5,
+  drawDefaults: { color: "", width: 0 },
   tz: "auto",
   status: { symbol: true, ohlc: true, change: true, barChange: true, volume: true, indTitles: true, indValues: true },
   scale: {
@@ -384,6 +387,11 @@ export function normalizeSettings(saved: unknown): ChartSettings {
   s.volumeMa = sanitizeVolumeMa(s.volumeMa);
   // thin lines for everybody: 0.5 px unless the user picked another cap; -1 = «as each line is set». A stored 0 (the old «no cap» default) becomes 0.5
   s.maxLineWidth = s.maxLineWidth === -1 ? -1 : Number.isFinite(s.maxLineWidth) && s.maxLineWidth > 0 ? Math.max(0.25, Math.min(4, s.maxLineWidth)) : 0.5;
+  // new-drawing defaults: a colour the canvas can parse (hex or rgb[a]) or the built-in one; a whole width 1..4 or the built-in one
+  const dd = isObj(saved) && isObj((saved as Record<string, unknown>).drawDefaults) ? ((saved as Record<string, unknown>).drawDefaults as Record<string, unknown>) : {};
+  const dc = typeof dd.color === "string" ? dd.color.trim() : "";
+  const dw = Number(dd.width);
+  s.drawDefaults = { color: /^(#[0-9a-f]{3,8}|rgba?\([^)]{3,40}\))$/i.test(dc) ? dc : "", width: Number.isFinite(dw) && dw >= 1 ? Math.min(4, Math.round(dw)) : 0 };
   // pinned timeframes from an old / foreign copy: only real interval ids, each once
   s.ui = { ...s.ui, favIntervals: [...new Set(s.ui.favIntervals.filter((x): x is string => typeof x === "string" && isValidInterval(x)))] };
   return s;

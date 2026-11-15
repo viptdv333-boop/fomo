@@ -105,6 +105,21 @@ function style(color: string, width = 1, dash = "solid", extra: Partial<DrawingS
   return { color: inkOf(color) as string, width: 1, dash, ...extra, ...(extra.fill ? { fill: inkOf(extra.fill) } : {}) };
 }
 
+/** The colour / width the user chose in the chart settings for NEW drawings ("" / 0 = the built-in black, 1 px). Set by the chart from its settings. */
+let userColor = "";
+let userWidth = 0;
+export function setDrawingUserStyle(color: string, width: number): void {
+  userColor = color || "";
+  userWidth = Number.isFinite(width) && width >= 1 ? width : 0;
+}
+/** The tool's built-in style with the user's default colour / width on top (the width is a font size for text and stamps: left alone there). Saved tool defaults still win over this. */
+export function userStyleFor(toolId: string, base: DrawingStyle): DrawingStyle {
+  const out: DrawingStyle = { ...base };
+  if (userColor) out.color = userColor;
+  if (userWidth > 0 && toolId !== "text" && !toolId.startsWith("stamp_")) out.width = userWidth;
+  return out;
+}
+
 /* The «max line width» chart setting (0.5 px by default) limits indicator lines and the price line, NOT the drawings: a drawing is painted with the width and colour
    the user picked in its style bar. (It used to cap drawings too: every line stayed a pale 0.5 px, and only the hover +1 px showed the chosen look.) */
 function lineWidth(d: Drawing, st: DrawState): number {

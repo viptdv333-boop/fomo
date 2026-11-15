@@ -7,7 +7,7 @@ import { dist, distToPolyline, nearestOhlc, snapAngle, snapAxis, snapSquare } fr
 import { evalHit, recordDraw, recordedIntersectsRect, type Recorded } from "./hittest";
 import { toolForHotkey } from "./hotkeys";
 import { visibleAt } from "./render";
-import { TOOL_LIST, CURSOR_TOOLS, defaultHandles, getToolDef, isCursorTool, isDrawingTool, type Env, type HandleDef, type ToolDef } from "./tools";
+import { TOOL_LIST, CURSOR_TOOLS, defaultHandles, getToolDef, isCursorTool, isDrawingTool, userStyleFor, type Env, type HandleDef, type ToolDef } from "./tools";
 import { DEFAULT_LABELS, type DPoint, type Drawing, type DrawingPatch, type DrawLabels, type Magnet, type Pt, type SerializedDrawings } from "./types";
 
 const MAIN = "main";
@@ -617,7 +617,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const def = getToolDef(tool);
     if (!def || points.length === 0) return null;
     const before = this.snapshot();
-    const d: Drawing = { id: newId(), tool: def.id, points: points.map((q) => ({ ...q })), style: { ...def.style, ...style }, locked: false };
+    const d: Drawing = { id: newId(), tool: def.id, points: points.map((q) => ({ ...q })), style: { ...userStyleFor(def.id, def.style), ...style }, locked: false };
     this.drawings.push(d);
     this.sel = [d.id];
     this.pushUndo(before);
@@ -1222,7 +1222,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     if (!env) return;
     const pt = def.points === 0 ? this.rawPoint(p.x, p.y) : this.magnetPoint(p.x, p.y);
     const dflt = this.getToolDefault(def.id);
-    const d: Drawing = { id: newId(), tool: def.id, points: [pt], style: { ...def.style, ...(dflt?.style as DrawingStyle | undefined) }, locked: false };
+    const d: Drawing = { id: newId(), tool: def.id, points: [pt], style: { ...userStyleFor(def.id, def.style), ...(dflt?.style as DrawingStyle | undefined) }, locked: false };
     if (dflt?.extra && Object.keys(dflt.extra).length) d.extra = JSON.parse(JSON.stringify(dflt.extra)) as Record<string, unknown>;
     if (def.points === 1) {
       d.points = def.complete ? def.complete([pt], env) : [pt];
