@@ -219,6 +219,20 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   getStayInDrawing(): boolean {
     return this.stay;
   }
+  /** While the older history is still arriving, a drawing with a point older than the first loaded bar is not painted: such a point is placed by calendar
+   *  time (nights and weekends are not known yet), so it would slide to its real place with every batch. It appears once, in its final place. */
+  private historyPending = false;
+  setHistoryPending(on: boolean): void {
+    if (this.historyPending === on) return;
+    this.historyPending = on;
+    this.changed();
+  }
+  /** The oldest point time over all drawings (null: none). */
+  earliestPointT(): number | null {
+    let m: number | null = null;
+    for (const d of this.drawings) for (const p of d.points) if (m === null || p.t < m) m = p.t;
+    return m;
+  }
   setHidden(on: boolean): void {
     this.hidden = !!on;
     if (this.hidden) {
@@ -808,8 +822,10 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     ctx.rect(0, rect.top, rect.width, rect.height);
     ctx.clip();
 
+    const firstT = this.historyPending ? engine.getCandles()[0]?.t ?? null : null;
     for (const d of this.drawings) {
       if (d.hidden || !visibleAt(d, env.intervalMs)) continue;
+      if (firstT !== null && d.points.some((p) => p.t < firstT)) continue;
       const on = this.sel.includes(d.id);
       this.paint(ctx, env, d, { selected: on, hover: d.id === this.hoverId && !on, preview: false });
     }

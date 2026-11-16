@@ -874,6 +874,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         locale: LOCALES[locale] ?? "ru-RU",
       });
       engine.setData(candles);
+      drawings.setHistoryPending(false);
       // the live quote is merged into these bars from now on, stored ones too: a stored picture must not sit on an old last price
       dataKeyRef.current = `${source}|${ticker}|${iv}`;
       liveMemoRef.current = null;
@@ -916,6 +917,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         // only for the free public feeds: the keyed ones (Twelve Data, Databento, FMP, forex) count every page against a quota, they keep loading on scroll
         if (source === "moex" || source === "bybit" || source === "binance") void (async () => {
           let pages = 0;
+          drawings.setHistoryPending(true);
           let flushGap = 3000;
           let nextFlush = Date.now() + flushGap;
           // what an earlier visit already loaded (kept on the device): put in as soon as the series has grown back to it, no download for that part
@@ -923,7 +925,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           for (;;) {
             // a page the chart asked for itself (the view reached the left edge) may be on its way: let it finish first
             for (let w = 0; w < 100 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
-            if (cancelled || gen !== genRef.current) return;
+            if (cancelled || gen !== genRef.current) {
+              if (!cancelled) drawings.setHistoryPending(false);
+              return;
+            }
             if (engine.getCandles().length === 0 || engine.getCandles().length + held.length >= HISTORY_CAP) break;
             if (stored) {
               const firstT = (held[0] ?? engine.getCandles()[0]).t;
@@ -946,7 +951,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             const added = await loadOlder(true);
             if (added === 0) break; // the history ends here
             if (added > 0) pages++;
-            if (added > 0 && Date.now() >= nextFlush && flushHeld()) {
+            // a drawing reaches back to the loaded part: show it now (once, in its final place) instead of waiting for the next batch
+            const ep = drawings.earliestPointT();
+            const need = added > 0 && ep !== null && held.length > 0 && held[0].t <= ep && engine.getCandles()[0] && engine.getCandles()[0].t > ep;
+            if (added > 0 && (need || Date.now() >= nextFlush) && flushHeld()) {
               refreshInd();
               extendComparesRef.current();
               flushGap = Math.min(30000, flushGap * 3);
@@ -956,6 +964,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             }
             await new Promise((r) => setTimeout(r, 120));
           }
+          drawings.setHistoryPending(false);
           if (!cancelled && gen === genRef.current) {
             flushHeld();
             refreshInd();
