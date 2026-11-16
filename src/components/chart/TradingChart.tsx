@@ -799,14 +799,39 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
     /** One page of older bars in front of the series. quiet: the caller refreshes indicators itself (a long background load does not redo them per page).
      *  Returns the number of bars added, 0 when the history has ended, -1 when nothing was done (busy / replay / gone). */
+    // The background load keeps its pages OFF the chart and puts them in a few big batches (3 s, 9 s, 27 s ... after the start, and at the end):
+    // every page used to move the view, the indicators and, above all, the drawings (a point older than the loaded bars is placed by calendar time,
+    // so each page shifted a drawing to its real place: «the line creeps every second»).
+    let held: Candle[] = [];
+    const flushHeld = () => {
+      if (held.length === 0) return false;
+      const h = held;
+      held = [];
+      engine.prependCandles(h);
+      return true;
+    };
     const loadOlder = async (quiet: boolean): Promise<number> => {
       if (loadingHistory.current || cancelled || replayRef.current.mode !== "off") return -1;
-      const first = engine.getCandles()[0];
+      if (!quiet && flushHeld()) {
+        refreshInd();
+        extendComparesRef.current();
+      }
+      const first = (quiet && held[0]) || engine.getCandles()[0];
       if (!first) return -1;
       loadingHistory.current = true;
       try {
         const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1);
         if (cancelled || gen !== genRef.current) return -1;
+        if (quiet) {
+          const older = candles.filter((c) => c.t < first.t);
+          if (older.length === 0) {
+            flushHeld();
+            engine.prependCandles([]); // the history ends here
+            return 0;
+          }
+          held = older.concat(held);
+          return older.length;
+        }
         const before = engine.getCandles().length;
         engine.prependCandles(candles);
         if (!quiet) {
@@ -891,20 +916,23 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         // only for the free public feeds: the keyed ones (Twelve Data, Databento, FMP, forex) count every page against a quota, they keep loading on scroll
         if (source === "moex" || source === "bybit" || source === "binance") void (async () => {
           let pages = 0;
+          let flushGap = 3000;
+          let nextFlush = Date.now() + flushGap;
           // what an earlier visit already loaded (kept on the device): put in as soon as the series has grown back to it, no download for that part
           let stored: Candle[] | null = await readHistory(source, ticker, iv).catch(() => null);
           for (;;) {
             // a page the chart asked for itself (the view reached the left edge) may be on its way: let it finish first
             for (let w = 0; w < 100 && loadingHistory.current && !cancelled; w++) await new Promise((r) => setTimeout(r, 150));
             if (cancelled || gen !== genRef.current) return;
-            if (engine.getCandles().length === 0 || engine.getCandles().length >= HISTORY_CAP) break;
+            if (engine.getCandles().length === 0 || engine.getCandles().length + held.length >= HISTORY_CAP) break;
             if (stored) {
-              const firstT = engine.getCandles()[0].t;
+              const firstT = (held[0] ?? engine.getCandles()[0]).t;
               if (firstT <= stored[stored.length - 1].t) {
                 const older = stored.filter((c) => c.t < firstT);
                 stored = null;
                 if (older.length > 0) {
-                  engine.prependCandles(older);
+                  held = older.concat(held);
+                  flushHeld();
                   refreshInd();
                   extendComparesRef.current();
                   continue;
@@ -917,15 +945,19 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             }
             const added = await loadOlder(true);
             if (added === 0) break; // the history ends here
-            if (added > 0 && ++pages % 5 === 0) {
+            if (added > 0) pages++;
+            if (added > 0 && Date.now() >= nextFlush && flushHeld()) {
               refreshInd();
               extendComparesRef.current();
+              flushGap = Math.min(30000, flushGap * 3);
+              nextFlush = Date.now() + flushGap;
+              // an interrupted visit keeps what it has loaded so far
+              void writeHistory(source, ticker, iv, engine.getCandles());
             }
-            // an interrupted visit keeps what it has loaded so far
-            if (added > 0 && pages % 25 === 0) void writeHistory(source, ticker, iv, engine.getCandles());
             await new Promise((r) => setTimeout(r, 120));
           }
           if (!cancelled && gen === genRef.current) {
+            flushHeld();
             refreshInd();
             extendComparesRef.current();
             // nothing new was downloaded (everything came from the device): nothing to write back
