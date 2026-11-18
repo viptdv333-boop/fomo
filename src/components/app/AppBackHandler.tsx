@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { stripLocale, type Locale } from "@/lib/i18n/locale-url";
 import { isTerminalSite } from "@/lib/site-mode";
-import { backHrefFor, backLayerCount, backTarget, closeTopBackLayer, nextEntryIndex, planBack, withEntryIndex, type BackAction } from "@/lib/app-back";
+import { backHrefFor, backLayerCount, backTarget, closeTopBackLayer, leavesScreen, nextEntryIndex, planBack, runBackGuard, withEntryIndex, type BackAction } from "@/lib/app-back";
 import { useAppUi } from "./useAppUi";
 import { hostNavigate } from "./tabhost/store";
 
@@ -124,6 +124,8 @@ function Handler() {
       try {
         if (Date.now() < busy.current) return true;
         const { overlay, target, action } = snapshot();
+        // a form with unsaved edits asks first (useUnsavedGuard); closing a sheet / overlay is not leaving the screen
+        if (leavesScreen(action) && runBackGuard()) return true;
         switch (action) {
           case "layer":
             return closeTopBackLayer("sheet");

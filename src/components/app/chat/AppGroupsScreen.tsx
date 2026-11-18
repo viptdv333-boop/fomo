@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import AppIcon from "../AppIcon";
+import { useOwnBack } from "../useOwnBack";
 import AppSheet, { Sections, type SheetSection } from "./AppSheet";
 import type { PrivateRoom } from "@/lib/app-chat";
 import { deleteGroup, inviteGroup, leaveGroup } from "./groupActions";
@@ -22,6 +23,7 @@ export default function AppGroupsScreen({
   flash: (m: string) => void;
 }) {
   const { t } = useT();
+  useOwnBack();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");

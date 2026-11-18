@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { useUnsavedGuard } from "@/components/app/useUnsavedGuard";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { linkRef, paymentLinkHost } from "@/lib/payment-link";
 import { parseTariffInput, tariffErrorKey, tariffNameKey, type TariffError } from "@/lib/tariff-validation";
@@ -42,6 +43,9 @@ export default function EditChannelPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // the app UI asks «Отменить изменения?» before Back leaves a form the user has typed in (nothing happens on the site)
+  const [touched, setTouched] = useState(false);
+  const unsaved = useUnsavedGuard(touched);
   const [error, setError] = useState("");
 
   // Channel-level (from first tariff)
@@ -256,6 +260,7 @@ export default function EditChannelPage() {
         }
       }
 
+      unsaved.release();
       router.push("/subscriptions");
     } catch {
       setError(t("channel2.errNetwork"));
@@ -282,7 +287,8 @@ export default function EditChannelPage() {
   const inputCls = "w-full px-4 py-2 border dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-gray-100";
 
   return (
-    <div className="max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl w-full mx-auto" onInputCapture={() => setTouched(true)} onChangeCapture={() => setTouched(true)}>
+      {unsaved.dialog}
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("channels.settings")}</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">
@@ -563,7 +569,10 @@ export default function EditChannelPage() {
           channelId={mainTariffId}
           channelName={channelName}
           onClose={() => setShowDelete(false)}
-          onDone={() => router.push("/subscriptions")}
+          onDone={() => {
+            unsaved.release();
+            router.push("/subscriptions");
+          }}
         />
       )}
     </div>

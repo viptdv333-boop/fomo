@@ -77,6 +77,11 @@ html.app-ui.app-desktop .app-header {
   padding-left: max(16px, calc((100% - var(--app-col)) / 2));
   padding-right: max(6px, calc((100% - var(--app-col)) / 2));
 }
+html.app-ui.app-desktop .app-backbar {
+  padding-left: max(16px, calc((100% - var(--app-col)) / 2));
+  padding-right: max(16px, calc((100% - var(--app-col)) / 2));
+}
+html.app-ui.app-desktop .app-back:hover { background: var(--app-press); }
 
 /* ---------- dock: bottom of the window, tabs centred in the column, background across the window ---------- */
 html.app-ui.app-desktop .app-dock-bg {

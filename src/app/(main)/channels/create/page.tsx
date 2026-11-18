@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import { useUnsavedGuard } from "@/components/app/useUnsavedGuard";
 import ShareButtons from "@/components/shared/ShareButtons";
 import { linkRef, paymentLinkHost } from "@/lib/payment-link";
 import { parseTariffInput, tariffErrorKey, tariffNameKey, type TariffError } from "@/lib/tariff-validation";
@@ -50,6 +51,9 @@ export default function CreateChannelPage() {
     fetch("/api/payment-methods").then((r) => r.json()).then(setSavedPaymentMethods).catch(() => {});
   }, []);
   const [saving, setSaving] = useState(false);
+  // the app UI asks «Отменить изменения?» before Back leaves a form the user has typed in (nothing happens on the site)
+  const [touched, setTouched] = useState(false);
+  const unsaved = useUnsavedGuard(touched);
   const [error, setError] = useState("");
   // Specific reason for one tariff row, shown next to the offending field (field = null: under the row)
   const [tariffErr, setTariffErr] = useState<{ idx: number; field: string | null; msg: string } | null>(null);
@@ -184,6 +188,7 @@ export default function CreateChannelPage() {
     setSaving(false);
 
     if (allOk) {
+      unsaved.release();
       router.push("/subscriptions");
     }
   }
@@ -192,7 +197,8 @@ export default function CreateChannelPage() {
   const channelUrlDisplay = channelId ? `fomo.spot/channels/${channelId}` : "fomo.spot/channels/...";
 
   return (
-    <div className="max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl w-full mx-auto" onInputCapture={() => setTouched(true)} onChangeCapture={() => setTouched(true)}>
+      {unsaved.dialog}
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">{t("channels.create")}</h1>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 space-y-5">

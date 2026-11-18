@@ -6,6 +6,7 @@
 // (a sheet is no history entry) and walks the dock tab by tab instead of going «to the board». MainActivity now asks the page first
 // (`window.FomoBack()`); the page decides with the rules below and only returns false at the home screen, where the system may minimise.
 import { localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
+import { APP_TABS, type AppTabDef } from "@/lib/app-ui";
 
 /* ---------- where «Назад» leads: the path -> parent map ---------- */
 
@@ -55,6 +56,8 @@ export function parentHref(pathname: string, search: string): string | null {
   switch (s[0]) {
     case "ideas":
       if (s.length === 3 && s[2] === "edit") return `/ideas/${s[1]}`;
+      // a post started from a channel returns to that channel
+      if (s.length === 2 && s[1] === "new" && /^[\w-]+$/.test(q.get("channelId") || "")) return `/channels/${q.get("channelId")}`;
       return s.length >= 2 ? "/feed" : null;
     case "feed":
       return s.length >= 2 ? "/feed" : null;
@@ -80,6 +83,8 @@ export function parentHref(pathname: string, search: string): string | null {
     }
     case "terminal":
       return s.length >= 2 ? "/terminal" : null;
+    case "calendar":
+      return s.length >= 2 ? "/calendar" : null; // a day / an event of the calendar
     case "calculator":
       // a dock tab (a root: Back goes to the home section); opened from the terminal's «Калькулятор» card (?from=terminal) it is pushed over the terminal
       return q.get("from") === "terminal" ? "/terminal" : null;
@@ -101,6 +106,36 @@ export function backTarget(pathname: string, search: string, terminal: boolean):
   const home = backHome(terminal);
   if (path === home || path === "/") return null;
   return { href: home, level: "home" };
+}
+
+/**
+ * The screen is the ROOT of a dock tab (or the home screen): it is left through the dock, so no on-screen «Назад» is shown there.
+ * A root is the tab's own path with no pushed sub-screen behind it (parentHref null): /feed, /terminal, /calculator, /chat, /calendar, /channels, /authors, /profile
+ * (the terminal site: /terminal, /calculator, /profile). /chat?room=7, /profile?tab=finance, /calculator?from=terminal, /ideas/5 ... are not roots.
+ */
+export function isDockRoot(pathname: string, search: string, tabs: readonly AppTabDef[] = APP_TABS): boolean {
+  if (parentHref(pathname, search)) return false;
+  const path = stripLocale((pathname || "/").split(/[?#]/)[0]).path.replace(/\/+$/, "") || "/";
+  if (path === "/") return true;
+  return tabs.some((t) => t.href.split("?")[0] === path);
+}
+
+/**
+ * What the on-screen «Назад» button of the app header does as a fallback (when the in-app history has no entry behind the screen), or null when no button is
+ * shown (a dock tab root). A pushed screen goes to its parent (every page that belongs to a dock tab has one in parentHref); a screen that is none of the known ones
+ * (help, terms, data providers, the invitation page ...) goes to the home section. The button itself calls window.FomoBack() (AppBackHandler), the same code path as the Android hardware button, which
+ * prefers one step back in history and uses this target only when there is none.
+ */
+export function appBackTarget(pathname: string, search: string, terminal: boolean, tabs: readonly AppTabDef[] = APP_TABS): BackTarget | null {
+  if (isDockRoot(pathname, search, tabs)) return null;
+  const up = parentHref(pathname, search);
+  if (up) return { href: up, level: "up" };
+  return { href: backHome(terminal), level: "home" };
+}
+
+/** The back-layer actions that LEAVE the screen (an unsaved-changes guard may veto them); closing a sheet / overlay / the full-screen chart does not leave it. */
+export function leavesScreen(action: BackAction): boolean {
+  return action === "history" || action === "parent" || action === "home";
 }
 
 /** Where a computed target really goes: locale prefix back on, the preview flags (?appui=1 ...) of the current URL kept. */
@@ -253,4 +288,90 @@ export function closeTopBackLayer(kind: BackLayerKind = "sheet"): boolean {
 /** Test helper: forget every layer. */
 export function resetBackLayers(): void {
   layers.length = 0;
+}
+
+/* ---------- screens that draw their own «Назад» (the generic button of the app header steps aside) ---------- */
+
+let ownBack = 0;
+const ownBackSubs = new Set<() => void>();
+
+/** A screen with a back control of its own (a pushed-screen bar: «‹ Профиль», «‹ Каналы», a thread's «‹ Назад») is on display; the returned function says it is gone. */
+export function registerOwnBack(): () => void {
+  ownBack++;
+  ownBackSubs.forEach((f) => f());
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    ownBack = Math.max(0, ownBack - 1);
+    ownBackSubs.forEach((f) => f());
+  };
+}
+export function ownBackCount(): number {
+  return ownBack;
+}
+export function subscribeOwnBack(cb: () => void): () => void {
+  ownBackSubs.add(cb);
+  return () => void ownBackSubs.delete(cb);
+}
+
+/**
+ * Screens whose header is hidden because they carry a top bar of their own WITH a «Назад» in it (the chat threads, a channel, an author, the profile's pushed screens,
+ * the calculator opened from the terminal). Known by path, so no slim generic bar flashes in before such a screen has mounted. (The terminal's pushed pages, e.g.
+ * /terminal/features, are plain pages with no bar: they get the generic one.)
+ */
+export function hasOwnBackBar(pathname: string): boolean {
+  const s = seg(stripLocale((pathname || "/").split(/[?#]/)[0]).path);
+  switch (s[0]) {
+    case "chat":
+    case "messages":
+    case "channels":
+    case "authors":
+    case "profile":
+    case "subscriptions":
+    case "calculator":
+      return true;
+    case "rooms":
+      return s[1] !== "join";
+    default:
+      return false;
+  }
+}
+
+/** What the app header draws on this screen: nothing (a root, or the screen has its own back control), the button in the compact header, or a slim bar where the header is hidden. */
+export type BackChrome = "none" | "header" | "bar";
+export function backChrome(opts: { target: BackTarget | null; headerHidden: boolean; ownBack: boolean }): BackChrome {
+  if (!opts.target || opts.ownBack) return "none";
+  return opts.headerHidden ? "bar" : "header";
+}
+
+/* ---------- unsaved-changes guards (a form with edits asks before Back leaves it) ---------- */
+
+type BackGuard = () => boolean;
+const guards: BackGuard[] = [];
+
+/** Register a guard; while it is registered, a Back that would LEAVE the screen calls it first: it returns true when it took over (asked the user, Back stays). Last registered asks first. */
+export function registerBackGuard(g: BackGuard): () => void {
+  guards.push(g);
+  return () => {
+    const i = guards.indexOf(g);
+    if (i >= 0) guards.splice(i, 1);
+  };
+}
+
+/** True when a guard vetoed the Back (it is asking the user). */
+export function runBackGuard(): boolean {
+  const g = guards[guards.length - 1];
+  if (!g) return false;
+  try {
+    return g() === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Test helper. */
+export function resetBackGuards(): void {
+  guards.length = 0;
+  ownBack = 0;
 }

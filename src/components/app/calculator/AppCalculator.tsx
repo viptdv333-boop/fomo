@@ -28,6 +28,7 @@ import {
   type SpecParams,
 } from "@/lib/futures-calc";
 import AppIcon from "../AppIcon";
+import { useOwnBack } from "../useOwnBack";
 import AppSheet, { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import "../chat/app-chat.css";
 import "../profile/app-profile.css";
@@ -282,6 +283,7 @@ export default function AppCalculator() {
     });
     flash((await copyText(text)) ? t("appcalc.copied") : t("appcalc.copyFailed"));
   };
+  useOwnBack(from === "terminal");
   const back = () => {
     const fb = (window as unknown as { FomoBack?: () => boolean }).FomoBack;
     if (fb && fb()) return;

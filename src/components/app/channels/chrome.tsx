@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import { localizedPath, stripLocale, type Locale } from "@/lib/i18n/locale-url";
 import { holdHtmlClass } from "@/lib/html-class";
 import AppIcon from "../AppIcon";
+import { useOwnBack } from "../useOwnBack";
 
 /** Page chrome of the channel / author screens: the page is edge to edge (the screens bring their own paddings), as for the chat. */
 export function useChannelsChrome() {
@@ -86,6 +87,7 @@ export interface NavButton {
 
 /** The design's pushed-screen bar: «‹ back label», title, up to two icon buttons. Sticks to the top of the scrolling page. */
 export function ChNav({ back, backLabel, title, right }: { back: () => void; backLabel: string; title: string; right?: NavButton[] }) {
+  useOwnBack();
   return (
     <div className="ach ach-nav">
       <button type="button" className="ach-back" onClick={back} aria-label={backLabel}>

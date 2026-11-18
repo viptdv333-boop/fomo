@@ -219,6 +219,47 @@ html.app-ui .app-header {
   background: var(--app-nav);
   border-bottom: 1px solid var(--app-line);
 }
+/* the generic «‹ Назад» of every pushed screen (AppBackButton): iOS look, the accent colour of the bars' own back buttons, a 44px tap target */
+html.app-ui .app-header-left { display: flex; align-items: center; gap: 2px; min-width: 0; }
+html.app-ui .app-back {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 0;
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0 2px 0 -10px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--app-green-tx);
+  font: 400 17px/1 system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html.app-ui .app-back:active { background: var(--app-press); }
+html.app-ui .app-back:focus-visible { outline: 2px solid var(--app-green-tx); outline-offset: -2px; }
+html.app-ui .app-back-label { white-space: nowrap; }
+/* with the button in it the header gives up the logo's tagline and shrinks the logo a little on narrow phones */
+@media (max-width: 380px) {
+  html.app-ui .app-header[data-has-back] .app-logo-tag { display: none; }
+  html.app-ui .app-header[data-has-back] .app-logo-img { width: 76px; }
+}
+/* the slim bar for a pushed screen whose header is hidden and that has no bar of its own */
+html.app-ui .app-backbar {
+  position: relative;
+  z-index: 46;
+  flex: none;
+  height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--app-nav);
+  border-bottom: 1px solid var(--app-line);
+}
 html.app-ui .app-logo { display: flex; flex-direction: column; gap: 1px; text-decoration: none; min-width: 0; }
 html.app-ui .app-logo-img { position: relative; display: block; width: 92px; height: 30px; overflow: hidden; }
 html.app-ui .app-logo-img img { position: absolute; left: 0; top: -38%; width: 100%; height: auto; max-width: none; }
@@ -505,3 +546,13 @@ html.app-ui .app-term-disc { font-size: 11px; color: var(--app-tx3); padding: 0 
 html.app-ui[data-slide="l"] main { animation: appSlideL 0.22s ease-out; }
 html.app-ui[data-slide="r"] main { animation: appSlideR 0.22s ease-out; }
 @media (prefers-reduced-motion: reduce) { html.app-ui[data-slide] main { animation: none; } }
+
+/* ---------- «Отменить изменения?» (useUnsavedGuard): a small centred dialog over the screen and the dock ---------- */
+html.app-ui .app-confirm { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 20px; }
+html.app-ui .app-confirm-back { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
+html.app-ui .app-confirm-card { position: relative; width: min(100%, 320px); box-sizing: border-box; padding: 18px 16px 10px; border-radius: 14px; background: var(--app-sheet); color: var(--app-tx); text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+html.app-ui .app-confirm-title { font-size: 17px; font-weight: 600; }
+html.app-ui .app-confirm-text { margin: 6px 0 12px; font-size: 14px; color: var(--app-tx2); }
+html.app-ui .app-confirm-btn { display: block; width: 100%; min-height: 48px; border: 0; border-top: 1px solid var(--app-line); background: none; color: var(--app-green-tx); font: 500 17px/1.2 system-ui, -apple-system, sans-serif; cursor: pointer; }
+html.app-ui .app-confirm-btn[data-tone="danger"] { color: var(--app-red); }
+html.app-ui .app-confirm-btn:active { background: var(--app-press); }

@@ -13,6 +13,7 @@ import Linkify from "@/components/shared/Linkify";
 import InstrumentLogo from "@/components/instruments/InstrumentLogo";
 import IdeaComments from "@/components/ideas/IdeaComments";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
 import { sendOrQueue } from "@/lib/outbox/send";
 import { useOutboxItems, useOutboxSent } from "@/lib/outbox/useOutbox";
 import { applyPendingVote, pendingVoteOf } from "@/lib/outbox/votes";
@@ -59,6 +60,7 @@ export default function IdeaContent() {
   const params = useParams();
   const { data: session } = useSession();
   const router = useRouter();
+  const appUi = useAppUi(); // the app header has the generic «Назад» (AppBackButton): no second one here
   const [deleting, setDeleting] = useState(false);
   const [idea, setIdea] = useState<IdeaDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,16 +133,18 @@ export default function IdeaContent() {
 
   return (
     <div className="max-w-3xl w-full mx-auto">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="flex items-center gap-1 mb-4 text-sm text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path d="M15 19l-7-7 7-7" />
-        </svg>
-        {t("common.back")}
-      </button>
+      {appUi ? null : (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex items-center gap-1 mb-4 text-sm text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("common.back")}
+        </button>
+      )}
       <div
         className="relative bg-white dark:bg-gray-900 rounded-xl shadow p-8 select-none"
         onCopy={(e) => e.preventDefault()}

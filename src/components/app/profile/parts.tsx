@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import AppIcon from "../AppIcon";
 import AppSheet from "../chat/AppSheet";
+import { useOwnBack } from "../useOwnBack";
 import { useProf } from "./ProfileCtx";
 
 export interface NavAction {
@@ -15,6 +16,7 @@ export interface NavAction {
 /** The design's pushed-screen bar: «‹ Профиль», the title in the middle, up to two text buttons at the right. */
 export function Nav({ title, right }: { title: string; right?: NavAction[] }) {
   const { t, back } = useProf();
+  useOwnBack();
   return (
     <div className="ac-nav">
       <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>

@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import IdeaForm from "@/components/ideas/IdeaForm";
 import { useT } from "@/lib/i18n/client";
+import { useAppUi } from "@/components/app/useAppUi";
 
 function NewIdeaContent() {
   const { t } = useT();
   const router = useRouter();
+  const appUi = useAppUi(); // the app header has the generic «Назад» (AppBackButton): no second arrow here
   const searchParams = useSearchParams();
   const instrumentId = searchParams.get("instrumentId") || undefined;
   const channelId = searchParams.get("channelId") || undefined;
@@ -16,7 +18,7 @@ function NewIdeaContent() {
   return (
     <div className="max-w-3xl w-full mx-auto">
       {/* leave the draft: back to the channel the post was started from (or one step back) */}
-      {channelId ? (
+      {appUi ? null : channelId ? (
         <Link href={`/channels/${channelId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 mb-3">
           <span aria-hidden>←</span> {t("common.back")}
         </Link>

@@ -26,6 +26,7 @@ import {
 import ChatRoom from "@/components/chat/ChatRoom";
 import Watermark from "@/components/shared/Watermark";
 import AppIcon from "../AppIcon";
+import { useOwnBack } from "../useOwnBack";
 import AppSheet, { Sections, type SheetSection } from "../chat/AppSheet";
 import "../chat/app-chat.css";
 import "./app-channels.css";
@@ -89,6 +90,7 @@ function ChannelChat({ channel, onBack }: { channel: ChannelItem; onBack: () => 
       alive = false;
     };
   }, [channel.id]);
+  useOwnBack(typeof state !== "object");
   if (typeof state === "object") return <ChatRoom key={state.roomId} appVariant roomId={state.roomId} roomName={channel.name} onBack={onBack} />;
   return (
     <div className="ac ac-thread">

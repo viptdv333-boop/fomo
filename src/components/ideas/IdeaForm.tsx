@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmojiPicker from "@/components/ui/EmojiPicker";
 import { useT } from "@/lib/i18n/client";
+import { useUnsavedGuard } from "@/components/app/useUnsavedGuard";
 import { SMALL_MB, UploadFail, fetchUploadLimitMb, uploadVideoStream } from "@/lib/large-upload-client";
 
 interface Instrument {
@@ -318,6 +319,16 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
     }
   }
 
+  // the app UI asks «Отменить изменения?» before Back leaves a form with edits (useUnsavedGuard; nothing happens on the site)
+  const unsaved = useUnsavedGuard(
+    title !== (initialData?.title || "") ||
+      preview !== (initialData?.preview || "") ||
+      content !== (initialData?.content || "") ||
+      isPaid !== (initialData?.isPaid || false) ||
+      price !== (initialData?.price ? String(initialData.price) : "") ||
+      attachments.length !== (initialData?.attachments?.length ?? 0),
+  );
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -353,6 +364,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
       return;
     }
 
+    unsaved.release();
     router.push(`/ideas/${data.id}`);
   }
 
@@ -368,6 +380,7 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
         </div>
       )}
 
+      {unsaved.dialog}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

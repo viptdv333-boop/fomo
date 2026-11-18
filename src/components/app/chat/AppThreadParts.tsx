@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode 
 import { useT } from "@/lib/i18n/client";
 import { FONT_DEFAULT, bgCss, clockLabel, firstUnreadId, fontPx, messageHtml, withDaySeparators } from "@/lib/app-chat";
 import AppIcon from "../AppIcon";
+import { useOwnBack } from "../useOwnBack";
 import VideoPlayer from "@/components/shared/VideoPlayer";
 import { removeItem, retryItem } from "@/lib/outbox/outbox";
 import ImageLightbox from "@/components/shared/ImageLightbox";
@@ -39,6 +40,7 @@ export interface ViewMsg {
 /** Header of a thread: «‹ Назад», title (emoji + name) with a line under it, the bell (and extra buttons) on the right. */
 export function ThreadBar({ title, sub, subOn, onBack, right }: { title: ReactNode; sub?: string; subOn?: boolean; onBack: () => void; right?: ReactNode }) {
   const { t } = useT();
+  useOwnBack();
   return (
     <div className="ac-tbar">
       <button type="button" className="ac-tback" onClick={onBack} aria-label={t("common.back")}>
