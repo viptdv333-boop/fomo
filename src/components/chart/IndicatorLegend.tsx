@@ -51,6 +51,46 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  /* the user can drag the «Indicators» pill (and the list under it) off the price: the shift is kept on this device */
+  const [off, setOff] = useState<{ x: number; y: number }>(() => {
+    try {
+      const j = JSON.parse(localStorage.getItem("fomo-ind-legend-off") || "null");
+      if (j && Number.isFinite(j.x) && Number.isFinite(j.y)) return { x: j.x, y: j.y };
+    } catch {}
+    return { x: 0, y: 0 };
+  });
+  const dragRef = useRef<{ px: number; py: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const justDragged = useRef(false);
+  const onPillDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    dragRef.current = { px: e.clientX, py: e.clientY, ox: off.x, oy: off.y, moved: false };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+  const onPillMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.px;
+    const dy = e.clientY - d.py;
+    if (!d.moved && Math.hypot(dx, dy) < 5) return;
+    d.moved = true;
+    const host = hostRef.current?.getBoundingClientRect();
+    const maxX = host ? Math.max(0, host.width - 140) : 600;
+    const maxY = host ? Math.max(0, host.height - 120) : 400;
+    setOff({ x: Math.min(maxX, Math.max(0, d.ox + dx)), y: Math.min(maxY, Math.max(-mainTop, d.oy + dy)) });
+  };
+  const onPillUp = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d?.moved) return;
+    justDragged.current = true;
+    setTimeout(() => (justDragged.current = false), 0);
+    setOff((o) => {
+      try {
+        localStorage.setItem("fomo-ind-legend-off", JSON.stringify(o));
+      } catch {}
+      return o;
+    });
+  };
   const raf = useRef(0);
 
 
@@ -412,13 +452,25 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
     <>
       <div ref={rootRef} className="pointer-events-none absolute inset-0 z-20 select-none overflow-hidden text-[var(--tv3-text2)]">
         {!winId && mainUids.length > 0 && (
-          <div ref={mainRef} data-lg-main className="absolute left-1 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44 }}>
+          <div ref={mainRef} data-lg-main className="absolute left-1 flex max-w-[calc(100%-80px)] flex-col items-start gap-[3px]" style={{ top: mainTop, bottom: 44, transform: off.x || off.y ? `translate(${off.x}px, ${off.y}px)` : undefined }}>
             {/* design v3: a collapsible "Indicators ( N )" pill, the list opens under it */}
             <div className="pointer-events-auto flex items-center">
               <button
                 type="button"
-                onClick={toggleCollapsed}
-                className="tv3-press flex cursor-pointer items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-medium text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
+                onClick={() => {
+                  if (!justDragged.current) toggleCollapsed();
+                }}
+                onPointerDown={onPillDown}
+                onPointerMove={onPillMove}
+                onPointerUp={onPillUp}
+                onPointerCancel={onPillUp}
+                onDoubleClick={() => {
+                  setOff({ x: 0, y: 0 });
+                  try {
+                    localStorage.removeItem("fomo-ind-legend-off");
+                  } catch {}
+                }}
+                className="tv3-press touch-none flex cursor-grab active:cursor-grabbing items-center gap-[6px] rounded-[10px] bg-[var(--tv3-fill)]/95 px-[11px] py-[4px] text-[13.5px] font-medium text-[var(--tv3-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] dark:hover:brightness-125"
                 aria-expanded={!collapsed}
                 title={`${t("v3.indicators", { n: list.length })} — ${collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}`}
                 aria-label={collapsed ? t("ind2.lg.expand") : t("ind2.lg.collapse")}
