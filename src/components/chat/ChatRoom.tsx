@@ -562,7 +562,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     if (msg.fileType === "image") {
       return (
         <div className="mt-1">
-          <ImageLightbox src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
+          <ImageLightbox src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-full sm:max-w-[320px] max-h-[360px] rounded-lg object-contain" />
         </div>
       );
     }
