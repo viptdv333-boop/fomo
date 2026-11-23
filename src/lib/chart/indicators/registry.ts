@@ -241,6 +241,39 @@ const N = (p: Params, k: string) => p[k] as number;
 const S = (p: Params, k: string) => p[k] as string;
 const B = (p: Params, k: string) => p[k] as boolean;
 
+/** Regular RSI divergences: two consecutive RSI pivot highs (lows) where the price made a higher high (lower low) and the RSI a lower high (higher low).
+ *  A pivot is confirmed `len` bars after it, so a marker never moves once it is there. */
+interface RsiDiv { i0: number; i1: number; v0: number; v1: number; bull: boolean }
+function rsiDivergences(r: ArrayLike<number>, hi: ArrayLike<number>, lo: ArrayLike<number>, len: number): RsiDiv[] {
+  const n = r.length;
+  const L = Math.max(2, Math.floor(len) || 5);
+  const out: RsiDiv[] = [];
+  let ph: number | null = null;
+  let pl: number | null = null;
+  for (let i = L; i < n - L; i++) {
+    const v = r[i];
+    if (!(v === v)) continue;
+    let isH = true;
+    let isL = true;
+    for (let j = i - L; j <= i + L && (isH || isL); j++) {
+      if (j === i) continue;
+      const w = r[j];
+      if (!(w === w)) { isH = false; isL = false; break; }
+      if (j < i ? !(w < v) : !(w <= v)) isH = false;
+      if (j < i ? !(w > v) : !(w >= v)) isL = false;
+    }
+    if (isH) {
+      if (ph !== null && i - ph <= 80 && hi[i] > hi[ph] && v < r[ph]) out.push({ i0: ph, i1: i, v0: r[ph], v1: v, bull: false });
+      ph = i;
+    }
+    if (isL) {
+      if (pl !== null && i - pl <= 80 && lo[i] < lo[pl] && v > r[pl]) out.push({ i0: pl, i1: i, v0: r[pl], v1: v, bull: true });
+      pl = i;
+    }
+  }
+  return out;
+}
+
 const num = (key: string, def: number, min: number, max: number, step = 1): NumberParam => ({ key, type: "number", min, max, step, default: def });
 const sel = (key: string, def: string, options: SelectOption[]): SelectParam => ({ key, type: "select", options, default: def });
 const bool = (key: string, def: boolean): BooleanParam => ({ key, type: "boolean", default: def });
@@ -617,18 +650,59 @@ const defs: IndicatorDef[] = [
   {
     id: "rsi",
     hiddenParams: ["upper", "lower"],
+    styleParams: ["colorBull", "colorBear"],
     category: "momentum",
     pane: "own",
     paneRatio: 0.2,
     fmt: "osc",
     keywords: "rsi relative strength index",
-    params: [num("length", 14, 1, 500), src(), num("upper", 70, 1, 99), num("lower", 30, 1, 99), col("color", VIOLET)],
+    params: [num("length", 14, 1, 500), src(), num("upper", 70, 1, 99), num("lower", 30, 1, 99), col("color", VIOLET), bool("divShow", true), num("divPivot", 5, 2, 30), col("colorBull", GREEN), col("colorBear", RED)],
     title: (p) => `RSI ${N(p, "length")} ${S(p, "source")}`,
     compute(cs, p) {
       const cols = toCols(cs);
       const r = M.rsi(pick(cols, S(p, "source")), N(p, "length"));
       const c = S(p, "color");
-      return { plots: [line("RSI", r, c)], ...oscLevels(N(p, "upper"), N(p, "lower"), c, 50), range: [0, 100] };
+      const extra = B(p, "divShow") ? { div: rsiDivergences(r, cols.h, cols.l, N(p, "divPivot")) } : undefined;
+      return { plots: [line("RSI", r, c)], ...oscLevels(N(p, "upper"), N(p, "lower"), c, 50), range: [0, 100], extra };
+    },
+    /** Regular divergences: lines between the two RSI pivots and a «Bull» / «Bear» pill on the second one. */
+    drawTop(sc, p, res) {
+      const list = (res?.extra as { div?: RsiDiv[] } | undefined)?.div;
+      if (!list || list.length === 0) return;
+      const { ctx } = sc;
+      const bull = S(p, "colorBull");
+      const bear = S(p, "colorBear");
+      ctx.save();
+      ctx.font = "600 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const d of list) {
+        if (d.i1 < sc.from - 2 || d.i0 > sc.to + 2) continue;
+        const col = d.bull ? bull : bear;
+        const x0 = sc.x(d.i0);
+        const y0 = sc.y(d.v0);
+        const x1 = sc.x(d.i1);
+        const y1 = sc.y(d.v1);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        const text = d.bull ? "Bull" : "Bear";
+        const w = ctx.measureText(text).width + 12;
+        const h = 16;
+        const px = x1;
+        const py = d.bull ? y1 + 14 : y1 - 14;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(px - w / 2, py - h / 2, w, h, 4);
+        else ctx.rect(px - w / 2, py - h / 2, w, h);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.fillText(text, px, py + 0.5);
+      }
+      ctx.restore();
     },
   },
   {
