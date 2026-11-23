@@ -2358,7 +2358,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy && emptyWhy !== "key" && emptyWhy !== "symbol" ? `fmp.err.${emptyWhy}` : (source === "twelvedata" || source === "databento") && emptyWhy ? `pv.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
-            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
+            {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} onAlert={(uid) => setIndAlertUi({ uid, editId: null })} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
             {isTransformedType(prefs.chartType) && compareLegend(false)}
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
@@ -2387,6 +2387,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             controller={indicators}
             geo={winGeo}
             onAddIndicator={openIndicatorsFor}
+            onIndicatorAlert={(uid) => setIndAlertUi({ uid, editId: null })}
             onPickChart={(id) => {
               indicators.makeChart(id, source, ticker);
               // a new chart window starts on the current instrument as a placeholder and asks which one the user wants (the price chart coming back does not)

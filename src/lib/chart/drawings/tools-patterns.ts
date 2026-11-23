@@ -49,6 +49,32 @@ interface PatSpec {
   extraHit?: (P: Pt[], x: number, y: number) => boolean;
 }
 
+/* Elliott wave degrees (the notation of TradingView / Frost & Prechter): the same wave numbers / letters, written the way the degree asks.
+   "auto" keeps what the tool always drew (a ring around 1 2 3 .. / A B C ..). */
+export const ELLIOTT_DEGREES = ["auto", "supermillennium", "millennium", "grand", "supercycle", "cycle", "primary", "intermediate", "minor", "minute", "minuette", "subminuette"] as const;
+const ROMAN = ["", "I", "II", "III", "IV", "V"];
+function degreeLabel(base: string, degree: string): { text: string; ring: boolean } {
+  if (!base) return { text: "", ring: false };
+  const n = Number(base);
+  const upper = /^[0-9]+$/.test(base) ? ROMAN[n] ?? base : base.toUpperCase();
+  const arabic = base;
+  const low = upper.toLowerCase();
+  switch (degree) {
+    case "supermillennium": return { text: `[[${upper}]]`, ring: false };
+    case "millennium": return { text: `[${upper}]`, ring: false };
+    case "grand": return { text: `((${upper}))`, ring: false };
+    case "supercycle": return { text: `(${upper})`, ring: false };
+    case "cycle": return { text: upper, ring: false };
+    case "primary": return { text: arabic.toUpperCase(), ring: true };
+    case "intermediate": return { text: `(${arabic.toUpperCase()})`, ring: false };
+    case "minor": return { text: arabic.toUpperCase(), ring: false };
+    case "minute": return { text: low, ring: true };
+    case "minuette": return { text: `(${low})`, ring: false };
+    case "subminuette": return { text: low, ring: false };
+    default: return { text: base, ring: true };
+  }
+}
+
 function patternTool(s: PatSpec): ToolDef {
   const labelsOf = () => (typeof s.labels === "function" ? s.labels() : s.labels);
   return {
@@ -74,8 +100,14 @@ function patternTool(s: PatSpec): ToolDef {
         ratioBadge(ctx, env, G.mid(P[r.at[0]], P[r.at[1]]), ratioText(v), d.style.color);
       });
       const labels = opt(d, "showLabels", true) ? labelsOf() : [];
+      const deg = s.circled && typeof d.style.degree === "string" ? d.style.degree : "auto";
       labels.forEach((l, i) => {
-        if (P[i]) vertexLabel(ctx, env, P, i, l, d.style.color, s.circled);
+        if (!P[i]) return;
+        if (deg === "auto") vertexLabel(ctx, env, P, i, l, d.style.color, s.circled);
+        else {
+          const dl = degreeLabel(l, deg);
+          vertexLabel(ctx, env, P, i, dl.text, d.style.color, dl.ring);
+        }
       });
     },
     hit(_env, _d, P, x, y) {

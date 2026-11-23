@@ -30,12 +30,14 @@ interface Props {
   ready?: boolean;
   /** Chips that sit in the row of the «Indicators» pill, right of it (the compared symbols): they must not cover the indicators' own tables. */
   trailing?: ReactNode;
+  /** «Alert on this indicator»: opens the indicator-alert form on the row's indicator (the price chart's and the windows' rows alike). */
+  onAlert?: (uid: string) => void;
 }
 
 /** Pane id of the controller -> pane id inside the engine that draws it (the panes of a window live in the pane WIN_PANE of its own engine). */
 const enginePane = (pid: string) => (pid.endsWith(":p") ? "main" : pid.startsWith(WIN_PREFIX) ? WIN_PANE : pid);
 
-export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 6, winId, ready = true, trailing }: Props) {
+export default function IndicatorLegend({ controller, getEngine, hostRef, mainTop = 6, winId, ready = true, trailing, onAlert }: Props) {
   const { t } = useT();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -279,6 +281,16 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             setSettingsUid(uid);
           }}
         />
+        {onAlert && (
+          <MenuItem
+            icon={<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4" /></svg>}
+            label={t("indal.title")}
+            onClick={() => {
+              setMenuUid(null);
+              onAlert(uid);
+            }}
+          />
+        )}
         <MenuItem
           icon={IND_ICONS.copy(16)}
           label={t("ind2.lg.clone")}

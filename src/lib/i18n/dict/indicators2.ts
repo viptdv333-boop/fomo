@@ -201,6 +201,8 @@ const rows: [string, string, string, string][] = [
   ["win.pickInstrument", "Сменить инструмент", "Change the instrument", "更换品种"],
   ["win.catAddNew", "Каждый выбор добавляет новый индикатор в это окно, даже если такой уже есть на графике", "Every pick adds a new indicator to this window, even if the chart already has one", "每次选择都会向此窗口添加新指标，即使图表上已有"],
   ["win.catOnlyMain", "Только на основном графике: его нельзя вынести в окно", "Main chart only: it cannot be put in a window", "仅限主图：无法放入窗口"],
+  ["win.lock", "Закрепить окно: нельзя случайно сдвинуть или растянуть", "Pin the window: it can no longer be moved or resized by accident", "固定窗口：不会被误拖动或缩放"],
+  ["win.unlock", "Открепить окно", "Unpin the window", "取消固定窗口"],
   ["win.shrink", "Свернуть: уменьшить окно до 1/4 области", "Shrink the window to a quarter of the area", "缩小窗口至区域的 1/4"],
   ["win.restore", "Вернуть размер", "Restore size", "还原大小"],
   ["win.moveTo", "Перенести в окно: {title}", "Move to window: {title}", "移到窗口：{title}"],

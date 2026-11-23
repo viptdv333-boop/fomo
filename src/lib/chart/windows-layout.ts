@@ -70,6 +70,8 @@ export interface WsWindow extends Rect {
   /** A chart window: its instrument (data source and data ticker, as the chart takes them). Its interval and indicators are the chart's own. */
   src?: string;
   tk?: string;
+  /** Pinned: the window cannot be moved or resized (a stray drag of the mouse does nothing). Stored. */
+  lock?: boolean;
 }
 
 /** The windows that are open (the price chart is one of them unless it was closed). */
@@ -88,7 +90,7 @@ export const DEFAULT_WORKSPACE: Workspace = { wins: [mainWin()] };
 export function isDefault(ws: Workspace | null): boolean {
   if (!ws) return true;
   const m = ws.wins[0];
-  return ws.wins.length === 1 && m.id === MAIN_ID && m.kind === "chart" && Math.abs(m.x) < 1e-6 && Math.abs(m.y) < 1e-6 && Math.abs(m.w - 1) < 1e-6 && Math.abs(m.h - 1) < 1e-6;
+  return ws.wins.length === 1 && m.id === MAIN_ID && m.kind === "chart" && Math.abs(m.x) < 1e-6 && Math.abs(m.y) < 1e-6 && Math.abs(m.w - 1) < 1e-6 && Math.abs(m.h - 1) < 1e-6 && !m.lock;
 }
 
 /** Windows besides the price chart, in creation order. */
@@ -256,9 +258,21 @@ export function setRect(ws: Workspace | null, id: string, r: Rect): Workspace | 
   if (i < 0) return ws;
   const c = clampFrac(r);
   const w = ws.wins[i];
+  if (w.lock) return ws;
   if (Math.abs(w.x - c.x) < 1e-6 && Math.abs(w.y - c.y) < 1e-6 && Math.abs(w.w - c.w) < 1e-6 && Math.abs(w.h - c.h) < 1e-6) return ws;
   const wins = ws.wins.slice();
   wins[i] = { ...w, ...c };
+  return { wins };
+}
+
+/** Pins / unpins a window (a pinned one cannot be moved or resized). */
+export function toggleLock(ws: Workspace | null, id: string): Workspace | null {
+  if (!ws) return ws;
+  const i = ws.wins.findIndex((w) => w.id === id);
+  if (i < 0) return ws;
+  const wins = ws.wins.slice();
+  const { lock, ...rest } = wins[i];
+  wins[i] = lock ? rest : { ...rest, lock: true };
   return { wins };
 }
 
@@ -345,7 +359,7 @@ export function serializeWorkspace(ws: Workspace): unknown {
   const r = (v: number) => Math.round(v * 10000) / 10000;
   return {
     v: 2,
-    wins: ws.wins.map((w) => ({ id: w.id, kind: w.kind, x: r(w.x), y: r(w.y), w: r(w.w), h: r(w.h), z: w.z, link: w.link, ...(w.src && w.tk ? { src: w.src, tk: w.tk } : {}) })),
+    wins: ws.wins.map((w) => ({ id: w.id, kind: w.kind, x: r(w.x), y: r(w.y), w: r(w.w), h: r(w.h), z: w.z, link: w.link, ...(w.src && w.tk ? { src: w.src, tk: w.tk } : {}), ...(w.lock ? { lock: true } : {}) })),
   };
 }
 
@@ -382,6 +396,7 @@ export function parseWorkspace(raw: unknown): Workspace | null {
       z: fin(o.z) ? o.z : 0,
       link: isChart ? id : typeof o.link === "string" ? o.link : MAIN_ID,
       ...(isChart ? { src: o.src as string, tk: o.tk as string } : {}),
+      ...(o.lock === true ? { lock: true } : {}),
     });
   }
   // z by rank (ties keep the stored order), the price chart first in the list

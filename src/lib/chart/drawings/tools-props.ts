@@ -14,6 +14,9 @@ const lineRow: PropRow = { labelKey: "dp.line", controls: [c(), w, dash] };
 const borderRow: PropRow = chk("showBorder", true, "dp.border", [c(), w, dash]);
 const fillRow: PropRow = chk("showFill", true, "dp.background", [{ type: "fill" }]);
 const labelsRow: PropRow = chk("showLabels", true, "draw.opt.showLabels");
+const DEGREES = ["auto", "supermillennium", "millennium", "grand", "supercycle", "cycle", "primary", "intermediate", "minor", "minute", "minuette", "subminuette"];
+/** Elliott wave degree: how the wave numbers / letters are written (the labels of the tool). */
+const degreeRow: PropRow = { labelKey: "dp.degree", controls: [{ type: "select", key: "degree", def: "auto", options: DEGREES.map((v) => ({ value: v, labelKey: `dp.degree.${v}` })) }] };
 const extL = chk("extendLeft", false, "dp.extendLeft");
 const extR = chk("extendRight", false, "dp.extendRight");
 
@@ -60,11 +63,11 @@ reg(["head_shoulders", "triangle_pattern", "elliott_impulse", "elliott_correctio
 registerPropSchema("xabcd", schema([lineRow, labelsRow, chk("showRatios", true, "draw.opt.showRatios"), fillRow], { pointLabels: ["X", "A", "B", "C", "D"] }));
 registerPropSchema("cypher", schema([lineRow, labelsRow, chk("showRatios", true, "draw.opt.showRatios"), fillRow], { pointLabels: ["X", "A", "B", "C", "D"] }));
 registerPropSchema("abcd", schema([lineRow, labelsRow, chk("showRatios", true, "draw.opt.showRatios"), fillRow], { pointLabels: ["A", "B", "C", "D"] }));
-registerPropSchema("elliott_impulse", schema([lineRow, labelsRow, fillRow], { pointLabels: ["0", "1", "2", "3", "4", "5"] }));
-registerPropSchema("elliott_correction", schema([lineRow, labelsRow, fillRow], { pointLabels: ["0", "A", "B", "C"] }));
-registerPropSchema("elliott_triangle", schema([lineRow, labelsRow, fillRow], { pointLabels: ["0", "A", "B", "C", "D", "E"] }));
-registerPropSchema("elliott_double", schema([lineRow, labelsRow, fillRow], { pointLabels: ["0", "W", "X", "Y"] }));
-registerPropSchema("elliott_triple", schema([lineRow, labelsRow, fillRow], { pointLabels: ["0", "W", "X", "Y", "X", "Z"] }));
+registerPropSchema("elliott_impulse", schema([lineRow, labelsRow, degreeRow, fillRow], { pointLabels: ["0", "1", "2", "3", "4", "5"] }));
+registerPropSchema("elliott_correction", schema([lineRow, labelsRow, degreeRow, fillRow], { pointLabels: ["0", "A", "B", "C"] }));
+registerPropSchema("elliott_triangle", schema([lineRow, labelsRow, degreeRow, fillRow], { pointLabels: ["0", "A", "B", "C", "D", "E"] }));
+registerPropSchema("elliott_double", schema([lineRow, labelsRow, degreeRow, fillRow], { pointLabels: ["0", "W", "X", "Y"] }));
+registerPropSchema("elliott_triple", schema([lineRow, labelsRow, degreeRow, fillRow], { pointLabels: ["0", "W", "X", "Y", "X", "Z"] }));
 reg(["cyclic_lines", "time_cycles"], schema([lineRow, fillRow]));
 registerPropSchema("sine_line", schema([lineRow]));
 

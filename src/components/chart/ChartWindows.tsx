@@ -103,6 +103,12 @@ const shrinkIcon = (
     <path d="M6 17h12" />
   </svg>
 );
+const lockIcon = (on: boolean) => (
+  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d={on ? "M8 11V8a4 4 0 018 0v3" : "M8 11V8a4 4 0 017.5-2"} />
+  </svg>
+);
 const collapseIcon = (
   <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M9 4v2.5A2.5 2.5 0 016.5 9H4M15 4v2.5A2.5 2.5 0 0017.5 9H20M9 20v-2.5A2.5 2.5 0 006.5 15H4M15 20v-2.5a2.5 2.5 0 012.5-2.5H20" />
@@ -158,8 +164,9 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
   // a window that already fills the area (the lone price chart): the button takes the chart to the full screen instead of doing nothing
   const fillsArea = !!rect && rect.w >= size.w - 2 && rect.h >= size.h - 2;
   const screenMode = !!onScreen && (screenOn || (fillsArea && !maximized));
+  const locked = !!rect && controller.isLocked(id);
   const startDrag = (e: ReactPointerEvent<HTMLElement>, mode: DragMode) => {
-    if (e.button !== 0 || !rect || maximized) return;
+    if (e.button !== 0 || !rect || maximized || locked) return;
     e.preventDefault();
     e.stopPropagation();
     controller.raise(id);
@@ -222,7 +229,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
     >
       {rect ? (
         <div
-          data-win-head className={`flex h-[24px] pointer-coarse:h-[28px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized ? "" : "cursor-move"}`}
+          data-win-head className={`flex h-[24px] pointer-coarse:h-[28px] shrink-0 touch-none select-none items-center justify-between gap-2 border-b border-[var(--tv3-hair)] bg-[var(--tv3-fill)] pl-2.5 pr-1 ${maximized || locked ? "" : "cursor-move"}`}
           onDoubleClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) controller.toggleMaximize(id);
           }}
@@ -236,6 +243,17 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
           </span>
           <span className="flex shrink-0 items-center gap-0.5">
             {actions}
+            <button
+              type="button"
+              data-wb="lock"
+              className={`${hbtn} ${locked ? "!text-[var(--tv3-accent)]" : ""}`}
+              title={locked ? t("win.unlock") : t("win.lock")}
+              aria-label={locked ? t("win.unlock") : t("win.lock")}
+              aria-pressed={locked}
+              onClick={() => controller.toggleLock(id)}
+            >
+              {lockIcon(locked)}
+            </button>
             <button type="button" data-wb="shrink" className={`${hbtn} disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent`} title={t("win.shrink")} aria-label={t("win.shrink")} disabled={small && !maximized} onClick={() => controller.shrinkWindow(id)}>
               {shrinkIcon}
             </button>
@@ -259,7 +277,7 @@ export function WindowFrame({ id, controller, rect, size, z, maximized = false, 
         </div>
       ) : null}
       {children}
-      {rect && !maximized ? (
+      {rect && !maximized && !locked ? (
         <>
           {HANDLES.map(([mode, cls]) => (
             <div key={mode} className={`absolute z-40 touch-none ${cls}`} onPointerDown={(e) => startDrag(e, mode)} />
@@ -289,6 +307,8 @@ interface Props {
   /** The chart of a chart window (a whole TradingChart with its own instrument, interval and indicators). */
   renderChart: (w: WsWindow) => ReactNode;
   onFocus: (id: string | null) => void;
+  /** «Alert on this indicator» from a row of a window's legend. */
+  onIndicatorAlert?: (uid: string) => void;
 }
 
 /** A failing window must never take the price chart down with it: the windows are dropped, the indicators fall back to the stack under the chart. */
@@ -356,7 +376,7 @@ function Windows(props: Props) {
           const common = { rect, size: geo.size, controller, ws, maximized: geo.maxId === w.id };
           if (w.kind === "chart") return <ChartWindow key={w.id} win={w} {...common} renderChart={props.renderChart} onFocus={props.onFocus} onPickInstrument={props.onPickInstrument} />;
           if (w.kind === "new") return <NewWindow key={w.id} win={w} {...common} canChart={controller.canMakeChart()} hasOthers={others} onPickChart={props.onPickChart} onPickIndicator={props.onPickIndicator} onReset={props.onReset} />;
-          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} covered={covers(ws, geo.maxId, w)} />;
+          return <IndicatorWindow key={w.id} win={w} {...common} leader={controller.chartEngine(w.link)} onAddIndicator={props.onAddIndicator} onIndicatorAlert={props.onIndicatorAlert} covered={covers(ws, geo.maxId, w)} />;
         })}
     </>
   );
@@ -545,7 +565,7 @@ function ChartWindow({ win, rect, size, controller, ws, maximized, renderChart, 
   );
 }
 
-function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, onAddIndicator, covered }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void; covered: boolean }) {
+function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, onAddIndicator, onIndicatorAlert, covered }: Common & { win: WsWindow; ws: Workspace; leader: ChartEngine | null; onAddIndicator: (winId: string) => void; onIndicatorAlert?: (uid: string) => void; covered: boolean }) {
   const { t } = useT();
   const id = win.id;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -610,7 +630,7 @@ function IndicatorWindow({ win, ws, rect, size, controller, maximized, leader, o
     >
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0" />
-        <IndicatorLegend controller={controller} getEngine={getEngine} hostRef={hostRef} winId={id} ready={ready} />
+        <IndicatorLegend controller={controller} getEngine={getEngine} hostRef={hostRef} winId={id} ready={ready} onAlert={onIndicatorAlert} />
         {empty && ready && (
           <div className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 flex-col items-center gap-2 text-center text-xs text-[var(--tv3-muted)]">
             <span>{t("win.empty")}</span>

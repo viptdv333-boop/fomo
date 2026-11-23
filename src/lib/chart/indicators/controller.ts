@@ -6,7 +6,7 @@ import { IndicatorSeries } from "./series";
 import type { LegendParts } from "./series";
 import { cloneStyle, sanitizeStyle, tfGroupOf } from "./style";
 import { parseRatio, resolveRatios } from "../pane-layout";
-import { DEFAULT_WORKSPACE, MAIN_ID, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, capCharts, capWindows, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, shrink as wsShrink, windowNumber } from "../windows-layout";
+import { DEFAULT_WORKSPACE, MAIN_ID, WIN_PANE, WIN_PREFIX, addWindow as wsAdd, capCharts, capWindows, chartCount, chartIds, closeWindow as wsClose, dependents, extraIds, hasIndWindow, hasWindow, indIds, isDefault, makeChart as wsMakeChart, makeIndicator as wsMakeIndicator, migrateTree, parseLayout, parseWorkspace, raise as wsRaise, resetKind as wsResetKind, serializeWorkspace, setLink as wsSetLink, setRect as wsSetRect, setSymbol as wsSetSymbol, shrink as wsShrink, toggleLock as wsToggleLock, windowNumber } from "../windows-layout";
 import type { Rect, Workspace } from "../windows-layout";
 import { onScriptResult } from "../scripts/compute";
 import { subscribeScripts } from "../scripts/store";
@@ -973,6 +973,19 @@ export class IndicatorsController implements IndicatorsControllerLike {
     this.ws = isDefault(next) ? null : next;
     if (commit) this.emit();
     else this.emitLayout();
+  }
+
+  /** Pins / unpins a window: a pinned one cannot be moved or resized. */
+  toggleLock(id: string): void {
+    const cur = this.eff();
+    const next = wsToggleLock(cur, id);
+    if (next === cur) return;
+    this.ws = isDefault(next) ? null : next;
+    this.emit();
+  }
+
+  isLocked(id: string): boolean {
+    return !!this.eff()?.wins.find((w) => w.id === id)?.lock;
   }
 
   /** A window was clicked: it goes to the front (stored). */
