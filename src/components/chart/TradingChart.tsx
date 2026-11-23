@@ -2456,7 +2456,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           )}
         </div>
 
-        <div className={embedded || compact || appFull || zen ? "hidden" : "contents"}>
+        <div className={embedded || appFull || zen ? "hidden" : "contents"}>
         <RightPanel
           open={prefs.panelOpen}
           mobileOpen={mobilePanel}
