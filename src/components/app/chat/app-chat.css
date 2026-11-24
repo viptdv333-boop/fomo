@@ -152,12 +152,12 @@ html.app-ui .ac-crow { display: flex; align-items: center; gap: 8px; }
 html.app-ui .ac-clip { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--app-tx2); cursor: pointer; flex: none; }
 html.app-ui .ac-clip:disabled { opacity: 0.5; }
 html.app-ui .ac-inwrap { flex: 1; min-width: 0; position: relative; }
-html.app-ui .ac-input { display: block; width: 100%; box-sizing: border-box; min-height: 38px; max-height: 98px; overflow-y: auto; border-radius: 18px; border: 1px solid var(--app-line); background: var(--app-card); padding: 8px 14px; font-size: 16px; line-height: 20px; color: var(--app-tx); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; outline: none; -webkit-user-select: text; user-select: text; }
+html.app-ui .ac-input { display: block; width: 100%; box-sizing: border-box; min-height: 44px; max-height: 113px; overflow-y: auto; border-radius: 22px; border: 1px solid var(--app-line); background: var(--app-card); padding: 11px 14px; font-size: 16px; line-height: 20px; color: var(--app-tx); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; outline: none; -webkit-user-select: text; user-select: text; }
 html.app-ui .ac-input:empty::before { content: attr(data-placeholder); color: var(--app-tx3); pointer-events: none; }
 html.app-ui .ac-input img { display: inline-block; vertical-align: middle; width: 24px; height: 24px; border-radius: 50%; }
 html.app-ui .ac-inwrap[data-emoji="1"] .ac-input { padding-right: 38px; }
-html.app-ui .ac-emobtn { position: absolute; right: 4px; bottom: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); }
-html.app-ui .ac-send { width: 36px; height: 36px; border-radius: 50%; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+html.app-ui .ac-emobtn { position: absolute; right: 6px; bottom: 7px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--app-tx3); }
+html.app-ui .ac-send { width: 40px; height: 40px; border-radius: 50%; background: var(--app-green); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
 html.app-ui .ac-send:disabled { opacity: 0.55; }
 html.app-ui .ac-closed { flex: none; background: var(--app-nav); border-top: 0.5px solid var(--app-line); padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 14px; color: var(--app-tx2); }
 /* editing an own message: the text is in the main composer (it grows with the text), the bubble keeps the original highlighted */

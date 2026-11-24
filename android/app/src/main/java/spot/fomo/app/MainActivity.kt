@@ -266,6 +266,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRefresh() {
         refresh.setColorSchemeResources(R.color.fomo_green)
+        // a long pull (default 64dp made the page reload by accident while scrolling a feed or a chat up)
+        refresh.setDistanceToTriggerSync((160 * resources.displayMetrics.density).toInt())
         refresh.setOnRefreshListener {
             webView.reload()
             main.postDelayed({ refresh.isRefreshing = false }, 6000) // safety net if the load never reports back
