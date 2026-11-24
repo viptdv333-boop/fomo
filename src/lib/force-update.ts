@@ -1,25 +1,21 @@
-import { isOnline } from "./offline/online";
-
-// "Обновить приложение": drops the service worker and every cache it kept, then
-// reloads from the network. An installed PWA otherwise keeps running whatever
-// bundle it loaded until it is fully closed, so users who still see an old bug
-// have no way to pick up the fix.
+// Refresh the installed web/PWA bundle only after confirming that the server responds.
+// The previous version also trusted a cached "offline" flag and silently returned,
+// which made the profile action appear broken after connectivity recovered.
 async function serverAnswers(): Promise<boolean> {
+  const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = setTimeout(() => ctl?.abort(), 5000);
   try {
-    const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = setTimeout(() => ctl?.abort(), 4000);
-    const res = await fetch("/api/version", { cache: "no-store", signal: ctl?.signal });
-    clearTimeout(timer);
-    return res.status < 500;
+    const res = await fetch(`/api/version?check=${Date.now()}`, { cache: "no-store", signal: ctl?.signal });
+    return res.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-export async function forceUpdate(): Promise<void> {
-  // Offline there is nothing to update to, and the reload below would land on a dead page after throwing away the saved copy of the app.
-  // navigator.onLine is not enough (a dead Wi-Fi says "online"): the server must really answer before anything is deleted.
-  if (!isOnline() || !(await serverAnswers())) return;
+export async function forceUpdate(): Promise<boolean> {
+  if (!(await serverAnswers())) return false;
   try {
     if ("serviceWorker" in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -30,7 +26,8 @@ export async function forceUpdate(): Promise<void> {
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
   } catch {
-    // Best effort — reload below still fetches a fresh page.
+    // Best effort: a reload still requests a new document from the server.
   }
   window.location.reload();
+  return true;
 }

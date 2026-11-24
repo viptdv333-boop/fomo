@@ -7,6 +7,7 @@ import { DRAWING_GROUPS, getToolDef } from "@/lib/chart/drawings/tools";
 import { DRAW_TEXT_DEFAULTS, setDrawTexts } from "@/lib/chart/drawings/tools-kit";
 import { useT } from "@/lib/i18n/client";
 import { DrawIcon } from "./icons";
+import { PopupPortal } from "./ModalPortal";
 
 export { DrawIcon };
 
@@ -77,12 +78,12 @@ const GAP = <span className="tv3-rgap" />;
 const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] = [
   { key: "cursors", group: "cursors" },
   { key: "lines", group: "lines" },
-  { key: "hline", group: "lines", fixed: "hline" },
+  { key: "hline", group: "lines", fixed: "hline", noMenu: true },
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
   { key: "forecast", group: "forecast" },
-  { key: "rect", group: "shapes", fixed: "rect" },
-  { key: "brush", group: "shapes", fixed: "brush" },
+  { key: "rect", group: "shapes", fixed: "rect", noMenu: true },
+  { key: "brush", group: "shapes", fixed: "brush", noMenu: true },
   { key: "text", group: "text" },
   { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
   { key: "stamps", group: "stamps" },
@@ -571,6 +572,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       )}
 
       {flyout && flyGroup && (
+        <PopupPortal>
         <div
           ref={flyRef}
           role="menu"
@@ -670,6 +672,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
             </div>
           ))}
         </div>
+        </PopupPortal>
       )}
     </div>
   );

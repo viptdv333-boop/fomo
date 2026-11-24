@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "@/lib/theme";
-import { forceUpdate } from "@/lib/force-update";
+import { useAppUpdate } from "@/lib/app-update";
 import { APP_FONT_STEPS, type AppFontStep } from "@/lib/app-ui";
-import { canOpenNativeSettings, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
+import { canOpenNativeSettings, desktopAppVersion, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
 import { clearSavedData, isOfflineModeEnabled, setOfflineModeEnabled, swStats } from "@/lib/offline/sw-bridge";
 import { outboxCounts, purgeOutboxAll } from "@/lib/outbox/outbox";
 import { getExistingPushSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
@@ -22,7 +22,7 @@ const ico = (name: Parameters<typeof AppIcon>[0]["name"]) => <AppIcon name={name
 
 /** «Приложение» (the design's `app`): what is stored on this device: look, language, push of this device, version, update, legal links. */
 export default function AppSettings() {
-  const { t, go, open } = useProf();
+  const { t, go, open, flash } = useProf();
   const { theme, toggleTheme } = useTheme();
   const [fz, setFz] = useState<AppFontStep>("m");
   const [sheet, setSheet] = useState<"theme" | "fz" | "lang" | null>(null);
@@ -35,6 +35,7 @@ export default function AppSettings() {
   const [offlineOn, setOfflineOn] = useState(true);
   const [usedMb, setUsedMb] = useState("");
   const [cleared, setCleared] = useState(false);
+  const appUpdate = useAppUpdate();
 
   const refreshUsed = () =>
     void swStats().then((st) => {
@@ -47,7 +48,7 @@ export default function AppSettings() {
     refreshUsed();
     setFz(readFontStep());
     setNative(canOpenNativeSettings());
-    setVersion(nativeAppFeatures()?.versionName || process.env.NEXT_PUBLIC_BUILD_ID || "");
+    setVersion(nativeAppFeatures()?.versionName || desktopAppVersion() || process.env.NEXT_PUBLIC_BUILD_ID || "");
     if (isPushSupported()) {
       setPushOk(true);
       void getExistingPushSubscription().then((sub) => setPush(Boolean(sub)));
@@ -95,6 +96,11 @@ export default function AppSettings() {
     }
   }
 
+  async function updateApp() {
+    const started = await appUpdate.update();
+    if (!started) flash(t("common.updateApp.failed"));
+  }
+
   const sections: SheetSection[] = [
     {
       key: "look",
@@ -132,7 +138,7 @@ export default function AppSettings() {
       title: t("appprof.about"),
       rows: [
         { key: "ver", label: t("appprof.version"), value: version },
-        { key: "upd", label: t("common.updateApp.button"), sub: t("common.updateApp.hint"), icon: ico("refresh"), chev: true, onClick: () => void forceUpdate() },
+        { key: "upd", label: t("common.updateApp.button"), sub: appUpdate.status?.available ? `${t("common.updateApp.available")}: ${appUpdate.status.version ?? ""}` : t("common.updateApp.hint"), icon: ico("refresh"), badge: appUpdate.status?.available ? t("common.updateApp.available") : undefined, chev: true, onClick: () => void updateApp() },
         ...(TERMINAL ? [] : [{ key: "dl", label: "", node: <DownloadAppsRow variant="profile" /> }]),
         ...(TERMINAL ? [] : [{ key: "help", label: t("nav.help"), icon: ico("help"), chev: true, onClick: () => open("/help") }]),
         { key: "privacy", label: t("appprof.privacy"), chev: true, onClick: () => open("/privacy") },

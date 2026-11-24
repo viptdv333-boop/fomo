@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useTheme } from "@/lib/theme";
-import { forceUpdate } from "@/lib/force-update";
+import { useAppUpdate } from "@/lib/app-update";
 import { unregisterNativePush } from "@/lib/native-push";
-import { canOpenNativeSettings, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
+import { canOpenNativeSettings, desktopAppVersion, nativeAppFeatures, openNativeSettings } from "@/lib/native-app";
 import { isTerminalSite } from "@/lib/site-mode";
 import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
 import { avatarInitial, countValue, heroLine, pendingSalesCount, ratingLabel, specLabels } from "@/lib/app-profile";
@@ -50,7 +50,7 @@ function useVersionLabel(): string {
   const [v, setV] = useState("");
   useEffect(() => {
     const f = nativeAppFeatures();
-    setV(f?.versionName || process.env.NEXT_PUBLIC_BUILD_ID || "");
+    setV(f?.versionName || desktopAppVersion() || process.env.NEXT_PUBLIC_BUILD_ID || "");
   }, []);
   return v;
 }
@@ -80,6 +80,11 @@ export default function ProfileHome() {
   const { rooms, pending } = useCabinetCounters(user?.id);
   const inboxUnread = useInboxUnread(user?.id);
   const version = useVersionLabel();
+  const appUpdate = useAppUpdate();
+  const updateApp = async () => {
+    const started = await appUpdate.update();
+    if (!started) flash(t("common.updateApp.failed"));
+  };
   const isAdmin = user?.role === "ADMIN" || user?.role === "OWNER";
 
   const langRow: SheetRow = { key: "lang", label: t("appprof.language"), icon: ico("globe"), value: langName, chev: true, onClick: () => setLangSheet(true) };
@@ -202,7 +207,7 @@ export default function ProfileHome() {
   sections.push({
     key: "last",
     rows: [
-      { key: "update", label: t("common.updateApp.button"), icon: ico("refresh"), value: version, onClick: () => void forceUpdate() },
+      { key: "update", label: t("common.updateApp.button"), icon: ico("refresh"), value: version, badge: appUpdate.status?.available ? t("common.updateApp.available") : undefined, onClick: () => void updateApp() },
       ...(TERMINAL ? [] : [{ key: "download", label: "", node: <DownloadAppsRow variant="profile" /> }]),
       {
         key: "logout",

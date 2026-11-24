@@ -79,6 +79,12 @@ export function isDesktopApp(): boolean {
   return typeof document !== "undefined" && !!document.documentElement?.classList?.contains(APP_DESKTOP_CLASS);
 }
 
+/** Version of the installed desktop shell from its user-agent marker, or null outside that shell. */
+export function desktopAppVersion(): string | null {
+  if (typeof navigator === "undefined") return null;
+  return navigator.userAgent.match(/\bFomoDesktop\/([^\s]+)/)?.[1] ?? null;
+}
+
 /** True inside either shell (the Android app or the Windows desktop app): nothing to install or download there. */
 export function isAnyNativeShell(): boolean {
   return isNativeApp() || isDesktopApp();
