@@ -1,8 +1,8 @@
 {
     "android":  {
-                    "version":  "1.0.3",
-                    "versionCode":  4,
-                    "size":  1614320
+                    "version":  "1.0.4",
+                    "versionCode":  5,
+                    "size":  1614324
                 },
     "windows":  {
                     "version":  "1.0.0",
@@ -19,5 +19,5 @@
                                      "size":  94330061
                                  }
                  },
-    "updated":  "2026-10-12T06:48:58Z"
+    "updated":  "2026-11-24T02:07:38Z"
 }
