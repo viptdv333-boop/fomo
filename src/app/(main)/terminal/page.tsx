@@ -218,7 +218,7 @@ export default function TerminalPage() {
       {/* a guest uses the terminal freely for a limited daily demo time, then sees the blurred teaser with the sign-in card */}
       <DemoGate kind="terminal" path="/terminal">
         {selected && (
-          <ProviderGate source={selected.source} name={instName(selected, t)}>
+          <ProviderGate source={selected.source} name={instName(selected, t)} onBack={() => onSelectSymbol(DEFAULT_INSTRUMENT)}>
             <ChartErrorBoundary>
               <TradingChart
                 ticker={selected.dataTicker}

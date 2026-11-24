@@ -28,7 +28,7 @@ import { formatInterval } from "@/lib/chart/intervals";
 import AppTimeframes from "./AppTimeframes";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
 import ProviderGate from "@/components/chart/ProviderGate";
-import { exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
+import { TERMINAL_DATA, exchangeLabel, fmtPrice, instName, priceDigits, type TerminalInstrument } from "@/lib/terminal-data";
 import {
   APP_TERM_RANGES,
   APP_TERM_TFS,
@@ -368,7 +368,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
 
   // ONE chart element for both modes (same position in the tree): only appPage / appFull and the block's CSS change, so nothing remounts
   const body = selected ? (
-    <ProviderGate source={selected.source} name={instName(selected, t)}>
+    <ProviderGate source={selected.source} name={instName(selected, t)} onBack={() => onSelectSymbol(TERMINAL_DATA[0].instruments[0])}>
     <ChartErrorBoundary>
     <Chart
       ticker={selected.dataTicker}

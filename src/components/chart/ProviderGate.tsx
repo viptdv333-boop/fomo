@@ -16,7 +16,7 @@ const DATA_READY: Record<string, boolean> = Object.fromEntries(DATA_PROVIDERS.ma
  * Instead of a chart: the connect window of the data provider an instrument needs. Instruments served without a key (and providers that are
  * connected and live) render `children`, the chart.
  */
-export default function ProviderGate({ source, name, children }: { source: string; name: string; children: ReactNode }) {
+export default function ProviderGate({ source, name, children, onBack }: { source: string; name: string; children: ReactNode; onBack?: () => void }) {
   const { t } = useT();
   const { status } = useSession();
   const conns = useConnections();
@@ -63,7 +63,13 @@ export default function ProviderGate({ source, name, children }: { source: strin
             </>
           )}
         </div>
-        <Link href="/data-providers" className="mt-4 inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">
+        {/* the card replaces the whole chart (symbol search included): without this the last opened keyed symbol was a dead end */}
+        {onBack && (
+          <button type="button" onClick={onBack} className="mt-4 block w-full cursor-pointer rounded-xl bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
+            {t("pg.back")}
+          </button>
+        )}
+        <Link href="/data-providers" className="mt-3 inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">
           {t("pg.all")} →
         </Link>
       </div>
