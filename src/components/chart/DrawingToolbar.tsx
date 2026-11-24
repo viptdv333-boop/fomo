@@ -466,7 +466,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           data-tv="fav-tools"
           data-fav-bar
           style={{ position: "fixed", left: favPlace.x, top: favPlace.y, cursor: "default" }}
-          className="tv3-pop z-[60] flex select-none items-center gap-0.5 rounded-xl p-1 shadow-[var(--tv3-shadow-pop)]"
+          className="z-[60] flex select-none items-center gap-0.5 rounded-xl bg-[var(--tv3-fill)]/95 p-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]"
         >
           <span
             title={t("draw.fav.drag")}
