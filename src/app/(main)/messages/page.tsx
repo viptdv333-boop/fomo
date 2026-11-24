@@ -55,6 +55,7 @@ interface Message {
   senderId: string;
   replyToId: string | null;
   isPinned: boolean;
+  editedAt?: string | null;
   isDeleted: boolean;
   reactions: Record<string, string[]> | null;
   sender: { id: string; displayName: string; avatarUrl: string | null };
@@ -150,6 +151,12 @@ function MessagesPage() {
   // tab state kept for startConversation callback
   const [tab, setTab] = useState<"chats" | "contacts">("chats"); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  // editing an own message: its text is in the input, «Отправить» saves it
+  const [editMsg, setEditMsg] = useState<Message | null>(null);
+  // another conversation: the message being edited is not in it
+  useEffect(() => {
+    setEditMsg(null);
+  }, [activeConvId]);
   const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
   // Touch (and keyboard): the message whose action sheet is open — there is no hover on a phone.
   const [sheetMsgId, setSheetMsgId] = useState<string | null>(null);
@@ -331,6 +338,26 @@ function MessagesPage() {
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
+    if (editMsg && activeConvId) {
+      if (sending) return;
+      const m = editMsg;
+      if (!newText.trim() && !m.fileUrl) return;
+      if (newText.trim() !== m.text) {
+        setSending(true);
+        const r = await fetch(`/api/messages/conversations/${activeConvId}/messages/${m.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "edit", text: newText }),
+        }).catch(() => null);
+        setSending(false);
+        if (!r || !r.ok) return;
+        await loadMessages(activeConvId);
+        await loadConversations();
+      }
+      setEditMsg(null);
+      setNewText("");
+      return;
+    }
     if ((!newText.trim() && !pendingAttachment) || !activeConvId || sending || uploading) return;
     setSending(true);
     // offline outbox: sent now, or kept (IndexedDB) and sent when the network is back, once
@@ -467,6 +494,14 @@ function MessagesPage() {
   async function removeContact(contactUserId: string) {
     await fetch(`/api/contacts?contactId=${contactUserId}`, { method: "DELETE" });
     await loadContacts();
+  }
+
+  function startEdit(m: Message) {
+    setReplyTo(null);
+    setPendingAttachment(null);
+    setShowEmoji(false);
+    setEditMsg(m);
+    setNewText(m.text);
   }
 
   async function deleteMessage(msgId: string) {
@@ -932,6 +967,9 @@ function MessagesPage() {
                               minute: "2-digit",
                             })}
                           </span>
+                          {msg.editedAt && !msg.isDeleted && (
+                            <span className={`text-[10px] ${isMe ? "text-green-200" : "text-gray-400 dark:text-gray-500"}`}>{t("appui.chat.edited")}</span>
+                          )}
                           {isMe && !msg.isDeleted && !msg.pending && (
                             <span className="text-[10px] text-green-200">✓✓</span>
                           )}
@@ -1018,6 +1056,14 @@ function MessagesPage() {
                 >
                   {contextMenu.msg.isPinned ? `📌 ${t("msg.unpin")}` : `📌 ${t("msg.pin")}`}
                 </button>
+                {contextMenu.msg.senderId === myId && !contextMenu.msg.isDeleted && contextMenu.msg.text.trim() && (
+                  <button
+                    onClick={() => { startEdit(contextMenu.msg); setContextMenu(null); }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
+                  >
+                    ✏️ {t("common.edit")}
+                  </button>
+                )}
                 {contextMenu.msg.senderId === myId && !contextMenu.msg.isDeleted && (
                   <button
                     onClick={() => { deleteMessage(contextMenu.msg.id); setContextMenu(null); }}
@@ -1040,6 +1086,9 @@ function MessagesPage() {
                 { key: "quote", label: t("msg.quote"), icon: <span>💬</span>, onSelect: () => { setNewText(`> ${sel.sender.displayName}: ${sel.text}\n\n`); close(); } },
                 { key: "pin", label: sel.isPinned ? t("msg.unpin") : t("msg.pin"), icon: <span>📌</span>, onSelect: () => { pinMessage(sel.id); close(); } },
               ];
+              if (sel.senderId === myId && sel.text.trim()) {
+                actions.push({ key: "edit", label: t("common.edit"), icon: <span>✏️</span>, onSelect: () => { startEdit(sel); close(); } });
+              }
               if (sel.senderId === myId) {
                 actions.push({ key: "delete", label: t("msg.delete"), icon: <span>🗑</span>, danger: true, onSelect: () => { deleteMessage(sel.id); close(); } });
               }
@@ -1059,8 +1108,21 @@ function MessagesPage() {
               );
             })()}
 
+            {/* Edit preview */}
+            {editMsg && (
+              <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800/30 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
+                <div className="flex-1 border-l-2 border-amber-500 pl-3">
+                  <div className="text-xs font-medium text-amber-600 dark:text-amber-400">{t("chat2.editingMessage")}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{editMsg.text.slice(0, 80)}</div>
+                </div>
+                <button onClick={() => { setEditMsg(null); setNewText(""); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title={t("common.cancel")}>
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Reply preview */}
-            {replyTo && (
+            {!editMsg && replyTo && (
               <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800/30 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
                 <div className="flex-1 border-l-2 border-green-500 pl-3">
                   <div className="text-xs font-medium text-green-600 dark:text-green-400">
@@ -1132,14 +1194,14 @@ function MessagesPage() {
             {/* Input */}
             <form onSubmit={sendMessage} className="border-t border-gray-100 dark:border-gray-800/30 px-4 py-3 flex gap-2 items-center">
               {/* File upload */}
-              <AttachMenu
+              {!editMsg && <AttachMenu
                 onFile={uploadAttachment}
                 uploading={uploading}
                 title={t("msg.attachFile")}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 shrink-0 disabled:opacity-50 transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              </AttachMenu>
+              </AttachMenu>}
 
               <ComposerInput
                 value={newText}
