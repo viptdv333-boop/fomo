@@ -36,6 +36,9 @@ type WithExtras = DrawingsControllerLike & {
 
 const LAST_KEY = "fomo-draw-last-v1";
 const FAV_KEY = "fomo-draw-fav-v1";
+const FAV_EVENT = "fomo-draw-fav-changed";
+/** Only ONE toolbar of the page draws the favourites bar (a multi-chart layout has a toolbar in every pane). */
+let favOwner: HTMLElement | null = null;
 
 const starIcon = (on: boolean) => (
   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -116,9 +119,13 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   // the offset is measured after each paint and cancelled, so the bar stands exactly under the pointer wherever it is dragged
   const [fixOff, setFixOff] = useState({ x: 0, y: 0 });
   const favRef = useRef<HTMLDivElement | null>(null);
+  const favsRef = useRef<string[]>([]);
+  favsRef.current = favs;
   const saveFav = (ids: string[], on: boolean, pos: { x: number; y: number } | null) => {
     try {
       localStorage.setItem(FAV_KEY, JSON.stringify({ ids, on, pos }));
+      // the other panes of a multi-chart layout have a toolbar each: they re-read it
+      window.dispatchEvent(new Event(FAV_EVENT));
     } catch {
       /* storage unavailable */
     }
@@ -152,10 +159,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      setFavs((ids) => {
-        saveFav(ids, true, cur);
-        return ids;
-      });
+      saveFav(favsRef.current, true, cur);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -176,31 +180,57 @@ export default function DrawingToolbar({ controller, className }: { controller: 
     return () => window.removeEventListener("resize", place);
   }, []);
 
+  // at most a few corrections per position: a bar that cannot be placed exactly (a hidden / transformed host) must never loop the render
+  const fixTries = useRef({ key: "", n: 0 });
   useLayoutEffect(() => {
     const r = favRef.current?.getBoundingClientRect();
     if (!r) return;
-    const ex = r.left - (favPos ?? anchor).x;
-    const ey = r.top - (favPos ?? anchor).y;
-    if (Math.abs(ex) > 0.5 || Math.abs(ey) > 0.5) setFixOff((o) => ({ x: o.x + ex, y: o.y + ey }));
+    const want = favPos ?? anchor;
+    const key = `${want.x}|${want.y}|${zoom}`;
+    if (fixTries.current.key !== key) fixTries.current = { key, n: 0 };
+    const ex = r.left - want.x;
+    const ey = r.top - want.y;
+    if (!Number.isFinite(ex) || !Number.isFinite(ey)) return;
+    if ((Math.abs(ex) > 0.5 || Math.abs(ey) > 0.5) && fixTries.current.n < 3) {
+      fixTries.current.n++;
+      setFixOff((o) => ({ x: o.x + ex, y: o.y + ey }));
+    }
   });
 
-  // stored preferences are read after mount so server and client markup match
+  const [favMine, setFavMine] = useState(false);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(FAV_KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as { ids?: unknown; on?: unknown; pos?: { x?: unknown; y?: unknown } | null };
-        if (Array.isArray(p.ids)) setFavs(p.ids.filter((x): x is string => typeof x === "string" && !!getToolDef(x)));
-        if (p.on === false) setFavOn(false);
-        if (p.pos && typeof p.pos.x === "number" && typeof p.pos.y === "number") setFavPos({ x: p.pos.x, y: p.pos.y });
-      }
-    } catch {
-      /* storage unavailable */
+    const me = rootRef.current;
+    if (!favOwner || !favOwner.isConnected) {
+      favOwner = me;
+      setFavMine(true);
     }
+    return () => {
+      if (favOwner === me) favOwner = null;
+    };
+  }, []);
+
+  // stored preferences are read after mount so server and client markup match (and again when another pane's toolbar changes them)
+  useEffect(() => {
+    const readFav = () => {
+      try {
+        const raw = localStorage.getItem(FAV_KEY);
+        if (raw) {
+          const p = JSON.parse(raw) as { ids?: unknown; on?: unknown; pos?: { x?: unknown; y?: unknown } | null };
+          if (Array.isArray(p.ids)) setFavs(p.ids.filter((x): x is string => typeof x === "string" && !!getToolDef(x)));
+          setFavOn(p.on !== false);
+          if (p.pos && typeof p.pos.x === "number" && typeof p.pos.y === "number") setFavPos({ x: p.pos.x, y: p.pos.y });
+        }
+      } catch {
+        /* storage unavailable */
+      }
+    };
+    readFav();
+    window.addEventListener(FAV_EVENT, readFav);
     const stored = loadLast();
     const cs = ctl.getCursorStyle?.();
     if (cs && DRAWING_GROUPS[0].tools.some((x) => x.id === cs)) stored[DRAWING_GROUPS[0].id] = cs;
     setLast(stored);
+    return () => window.removeEventListener(FAV_EVENT, readFav);
   }, [ctl]);
 
   // translated strings that drawings paint themselves (measure labels etc.)
@@ -476,7 +506,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       </button>
       {GAP}
 
-      {favTools.length > 0 && favOn && (
+      {favTools.length > 0 && favOn && favMine && (
         <div
           role="toolbar"
           aria-label={t("draw.fav.panel")}

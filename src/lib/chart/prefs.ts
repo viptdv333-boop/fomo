@@ -106,7 +106,7 @@ export function shownInterval(interval: unknown, source: string): string {
  * Keys the chart keeps in localStorage that «Сбросить настройки графика» clears (layout / indicators / drawings are the user's work and stay):
  * the preferences and the chart settings (pinned timeframes ...), both with and without a multi-chart pane suffix.
  */
-export const CHART_RESET_KEYS = ["fomo-chart-prefs-v1", "fomo-chart-settings-v1"];
+export const CHART_RESET_KEYS = ["fomo-chart-prefs-v1", "fomo-chart-settings-v1", "fomo-draw-fav-v1"];
 
 /** localStorage keys (of a list of all keys) that belong to the chart preferences: the exact keys and their `:pane` variants. */
 export function chartResetKeys(allKeys: readonly string[]): string[] {
