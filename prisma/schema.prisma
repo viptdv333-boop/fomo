@@ -554,6 +554,8 @@ model DirectMessage {
   isDeleted       Boolean  @default(false)
   reactions       Json?
   createdAt       DateTime @default(now())
+  /// The time of the sender's last edit of the text (the app shows «изменено»); null = never edited.
+  editedAt        DateTime?
 
   conversation  DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender        User               @relation("DirectMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)

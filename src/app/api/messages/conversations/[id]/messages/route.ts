@@ -53,6 +53,7 @@ export async function GET(
       replyToId: true,
       isPinned: true,
       isDeleted: true,
+      editedAt: true,
       reactions: true,
       sender: {
         select: { id: true, displayName: true, avatarUrl: true },
@@ -144,6 +145,7 @@ export async function POST(
       replyToId: true,
       isPinned: true,
       isDeleted: true,
+      editedAt: true,
       reactions: true,
       sender: {
         select: { id: true, displayName: true, avatarUrl: true },

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string; messageId: string }> };
 
-// PATCH: Update message (pin, delete, react)
+// PATCH: Update message (pin, delete, react, edit)
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const session = await auth();
   if (!session?.user) {
@@ -41,6 +41,27 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: { isDeleted: true, text: "Сообщение удалено" },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  // Edit the text (only the sender, not a deleted message)
+  if (body.action === "edit") {
+    if (message.senderId !== userId) {
+      return NextResponse.json({ error: "Only sender can edit" }, { status: 403 });
+    }
+    if (message.isDeleted) {
+      return NextResponse.json({ error: "Message deleted" }, { status: 409 });
+    }
+    const text = typeof body.text === "string" ? body.text.trim() : "";
+    if ((!text && !message.fileUrl) || text.length > 10000) {
+      return NextResponse.json({ error: "Invalid text" }, { status: 400 });
+    }
+    if (text === message.text) return NextResponse.json({ ok: true, text, editedAt: null });
+    const upd = await prisma.directMessage.update({
+      where: { id: messageId },
+      data: { text, editedAt: new Date() },
+      select: { text: true, editedAt: true },
+    });
+    return NextResponse.json({ ok: true, text: upd.text, editedAt: upd.editedAt });
   }
 
   // Pin/unpin (any participant can pin)

@@ -33,6 +33,7 @@ interface DmMsg {
   replyToId: string | null;
   isPinned: boolean;
   isDeleted: boolean;
+  editedAt?: string | null;
   reactions: Record<string, string[]> | null;
   sender: { id: string; displayName: string; avatarUrl: string | null };
   replyTo: { id: string; text: string; sender: { displayName: string } } | null;
@@ -51,7 +52,7 @@ function toView(m: DmMsg, myId: string | undefined): ViewMsg {
     who: null,
     text: m.isDeleted ? "" : m.text,
     deleted: m.isDeleted,
-    edited: false,
+    edited: !!m.editedAt,
     reply: m.replyTo ? `${m.replyTo.sender.displayName}: ${m.replyTo.text.slice(0, 80)}${m.replyTo.text.length > 80 ? "…" : ""}` : null,
     file: m.fileUrl ? { url: m.fileUrl, name: m.fileName, type: m.fileType } : null,
     reactions: m.reactions,
@@ -86,6 +87,8 @@ export default function AppDmThread({
   const [readAt, setReadAt] = useState<string | null | undefined>(undefined);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<DmMsg | null>(null);
+  // editing an own message: its text is in the composer, «Отправить» saves it instead of sending a new one
+  const [editing, setEditing] = useState<DmMsg | null>(null);
   const [pending, setPending] = useState<{ url: string; name: string; fileType: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -131,6 +134,7 @@ export default function AppDmThread({
   useEffect(() => {
     setMessages([]);
     setReplyTo(null);
+    setEditing(null);
     setPending(null);
     void load();
     const iv = setInterval(() => {
@@ -190,6 +194,30 @@ export default function AppDmThread({
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
+    if (editing) {
+      if (sending) return;
+      const m = editing;
+      if (!text.trim() && !m.fileUrl) return;
+      if (text.trim() === m.text) {
+        setEditing(null);
+        setText("");
+        return;
+      }
+      setSending(true);
+      setError("");
+      try {
+        const r = await fetch(`/api/messages/conversations/${convId}/messages/${m.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "edit", text }) });
+        if (!r.ok) throw new Error("edit");
+        setEditing(null);
+        setText("");
+        await load();
+        onChanged();
+      } catch {
+        setError(t("appui.chat.sendFailed"));
+      }
+      setSending(false);
+      return;
+    }
     if ((!text.trim() && !pending) || sending || uploading) return;
     setSending(true);
     setError("");
@@ -258,6 +286,9 @@ export default function AppDmThread({
       { key: "quote", label: t("msg.quote"), icon: <AppIcon name="quote" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); setText(quoteDraft(m.sender.displayName, m.text)); composer.current?.focus(); } },
       { key: "pin", label: m.isPinned ? t("msg.unpin") : t("msg.pin"), icon: <AppIcon name="pin" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); void patch(m.id, { action: "pin" }); } },
     ];
+    if (m.senderId === myId && m.text.trim()) {
+      list.push({ key: "edit", label: t("common.edit"), icon: <AppIcon name="pen" size={18} stroke={1.8} />, onSelect: () => { setSelected(null); setReplyTo(null); setPending(null); setEditing(m); setText(m.text); composer.current?.focus(); } });
+    }
     if (m.senderId === myId) list.push({ key: "delete", label: t("common.delete"), icon: <AppIcon name="trash" size={18} stroke={1.8} />, danger: true, onSelect: () => { setSelected(null); void patch(m.id, { action: "delete" }); } });
     return list;
   };
@@ -314,15 +345,16 @@ export default function AppDmThread({
         selectedId={selected}
         onTap={(m) => setSelected(m.id)}
         onReact={(id, emoji) => void patch(id, { action: "react", emoji })}
-        editingId={null}
+        editingId={editing?.id ?? null}
         empty={t("chat2.startDialog")}
         look={look}
         unreadFromId={unreadFromId}
         newLabel={t("chat2.newMessages")}
       />
-      <form className="ac-composer" onSubmit={send}>
+      <form className="ac-composer" data-editing={editing ? "1" : undefined} onSubmit={send}>
         {error && <div className="ac-draft" role="alert"><span>{error}</span></div>}
-        {pending && (
+        {editing && <QuoteChip who={t("chat2.editingMessage")} text={editing.text.slice(0, 80)} onRemove={() => { setEditing(null); setText(""); }} label={t("common.cancel")} edit />}
+        {!editing && pending && (
           <DraftChip onRemove={() => setPending(null)} label={t("chat2.removeAttachment")}>
             {pending.fileType === "image" ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -333,19 +365,21 @@ export default function AppDmThread({
             {t("appui.chat.draft", { name: pending.name })}
           </DraftChip>
         )}
-        {replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${replyTo.sender.displayName}`} text={replyTo.text.slice(0, 80) || `\u{1F4CE} ${t("chat2.file")}`} onRemove={() => setReplyTo(null)} label={t("common.cancel")} />}
+        {!editing && replyTo && <QuoteChip who={`${t("chat2.replyFor")} ${replyTo.sender.displayName}`} text={replyTo.text.slice(0, 80) || `\u{1F4CE} ${t("chat2.file")}`} onRemove={() => setReplyTo(null)} label={t("common.cancel")} />}
         <div className="ac-crow">
-          <AttachMenu appSheet onFile={uploadAttachment} uploading={uploading} title={t("msg.attachFile")} className="ac-clip">
-            <AppIcon name="clip" size={22} stroke={1.8} />
-          </AttachMenu>
+          {!editing && (
+            <AttachMenu appSheet onFile={uploadAttachment} uploading={uploading} title={t("msg.attachFile")} className="ac-clip">
+              <AppIcon name="clip" size={22} stroke={1.8} />
+            </AttachMenu>
+          )}
           <div className="ac-inwrap" data-emoji="1">
             <ComposerInput ref={composer} value={text} onChange={setText} onSubmit={() => void send()} onFile={uploadAttachment} placeholder={replyTo ? t("msg.replyTo") : t("appui.chat.message")} className="ac-input" />
             <button type="button" className="ac-emobtn" aria-label={t("appui.chat.emoji")} onClick={() => setEmojiOpen(true)}>
               <AppIcon name="smile" size={20} stroke={1.8} />
             </button>
           </div>
-          <button type="submit" className="ac-send" aria-label={t("report.send")} disabled={sending}>
-            <AppIcon name="send" size={18} stroke={1.8} />
+          <button type="submit" className="ac-send" aria-label={editing ? t("common.save") : t("report.send")} disabled={sending}>
+            <AppIcon name={editing ? "check" : "send"} size={18} stroke={editing ? 2.2 : 1.8} />
           </button>
         </div>
       </form>
