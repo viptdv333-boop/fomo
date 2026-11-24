@@ -179,6 +179,8 @@ export interface EngineOptions {
   showVolume: boolean;
   showGrid: boolean;
   showWatermark: boolean;
+  /** Keep candle bodies visible when zoomed out far enough that normal bodies become sub-pixel. */
+  denseCandles: boolean;
   /** Fit the price range to the visible bars. Dragging the chart vertically or the price axis turns it off. */
   autoScale: boolean;
   locale: string;
@@ -254,6 +256,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   showVolume: true,
   showGrid: true,
   showWatermark: true,
+  denseCandles: false,
   autoScale: true,
   locale: "ru-RU",
   timeShiftMs: 0,

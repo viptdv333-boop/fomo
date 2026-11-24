@@ -686,9 +686,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       showVolume: prefs.showVolume,
       showGrid: prefs.showGrid,
       showWatermark: prefs.showWatermark,
+      denseCandles: prefs.denseCandles,
     });
     setTransformBox(engine.getTransformBox());
-  }, [engineReady, prefs.chartType, prefs.showVolume, prefs.showGrid, prefs.showWatermark]);
+  }, [engineReady, prefs.chartType, prefs.showVolume, prefs.showGrid, prefs.showWatermark, prefs.denseCandles]);
 
   /* the macOS look: big price header and rounded indicator cards inside the chart */
   useEffect(() => {
@@ -2217,6 +2218,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         }}
         chartType={prefs.chartType}
         onChartType={(c) => update({ chartType: c })}
+        denseCandles={prefs.denseCandles}
+        onToggleDenseCandles={() => update({ denseCandles: !prefs.denseCandles })}
         onOpenSearch={() => (phoneFs ? setSearchOpen((v) => !v) : setSearchOpen(true))}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => (phoneFs ? setIndOpen((v) => !v) : setIndOpen(true))}

@@ -2000,7 +2000,9 @@ export class ChartEngine {
     const brick = type === "renko" || type === "linebreak";
     let bwD = brick ? Math.max(1, Math.floor(this.barSpacing * dpr * 0.94)) : this.bodyWidthDevice();
     if (bwD % 2 === 0) bwD = Math.max(1, bwD - 1);
-    const thin = bwD <= 2;
+    // At tight zoom the normal view intentionally collapses tiny bodies to wicks. Dense mode keeps
+    // the body (at least one device pixel) so compressed candles remain readable as candles.
+    const thin = bwD <= 2 && !this.opts.denseCandles;
     const wickOn = cs.wickOn && !brick;
     let maxV = 0;
     if (type === "volcandles") for (let i = from; i <= to; i++) maxV = Math.max(maxV, d[i].v);
