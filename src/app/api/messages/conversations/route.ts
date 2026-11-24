@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
   const { userId: targetUserId } = await request.json();
   const myId = session.user.id!;
 
+  if (typeof targetUserId !== "string" || !targetUserId) {
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
+  }
   if (targetUserId === myId) {
     return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
   }

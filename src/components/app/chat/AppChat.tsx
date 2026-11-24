@@ -20,6 +20,7 @@ import { ThreadBar } from "./AppThreadParts";
 import { useAppDms, useAppRooms } from "./useAppChatData";
 import { DESKTOP_WIDE_PX, useAppDesktop, useMinWidth } from "../useAppUi";
 import { holdHtmlClass } from "@/lib/html-class";
+import { showToast } from "@/lib/offline/toast";
 import "./app-chat.css";
 
 const CATS_KEY = "fomo-app-chat-cats";
@@ -225,8 +226,13 @@ export default function AppChat() {
         if (r.ok && j.id) {
           void dms.reload();
           go({ dm: j.id }, true);
+        } else if (r.status === 403) {
+          // the person has turned direct messages off: say so (a moment longer than a usual toast) and stay where the name was tapped
+          showToast(t("appui.chat.dmDisabled")); // the app-wide toast: it outlives this screen (the back step below changes it)
+          if (window.history.length > 1) window.history.back();
+          else go({ seg: "dms" }, true);
         } else {
-          flash(j?.error || t("appui.chat.sendFailed"));
+          flash(t("appui.chat.sendFailed"));
           go({ seg: "dms" }, true);
         }
       } catch {
