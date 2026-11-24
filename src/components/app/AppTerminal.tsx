@@ -510,6 +510,15 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   <input type="search" value={macFilter} onChange={(e) => setMacFilter(e.target.value)} placeholder={t("mac.m.filter")} aria-label={t("mac.m.filter")} autoComplete="off" autoCorrect="off" spellCheck={false} />
                 </label>
               )}
+              {/* «Add a symbol» stands right under the filter, not under the list */}
+              {effSeg === "watch" && (
+                <button type="button" className="app-mac-addrow" onClick={() => setMacAdd(true)}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  {t("mac.m.addSymbol")}
+                </button>
+              )}
               {TERMINAL_SITE && effSeg === "cal" && (
                 <div className="tv3 app-term-cal" data-app-calendar>
                   <CalendarPanel zone={zone} visible />
@@ -581,14 +590,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
                   <AppIcon name="chevR" size={18} stroke={1.8} />
                 </a>
-              )}
-              {effSeg === "watch" && (
-                <button type="button" className="app-mac-addrow" onClick={() => setMacAdd(true)}>
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  {t("mac.m.addSymbol")}
-                </button>
               )}
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
