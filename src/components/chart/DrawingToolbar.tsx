@@ -110,6 +110,12 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   const [favOn, setFavOn] = useState(true);
   const [favPos, setFavPos] = useState<{ x: number; y: number } | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number }>({ x: 80, y: 60 });
+  // the terminal skin zooms the rail (CSS `zoom`): left / top of a fixed child are multiplied by it, while the pointer and getBoundingClientRect are not
+  const [zoom, setZoom] = useState(1);
+  // a rail with a filter / backdrop-filter / transform becomes the containing block of its `fixed` children: the bar is then offset by the rail's own position;
+  // the offset is measured after each paint and cancelled, so the bar stands exactly under the pointer wherever it is dragged
+  const [fixOff, setFixOff] = useState({ x: 0, y: 0 });
+  const favRef = useRef<HTMLDivElement | null>(null);
   const saveFav = (ids: string[], on: boolean, pos: { x: number; y: number } | null) => {
     try {
       localStorage.setItem(FAV_KEY, JSON.stringify({ ids, on, pos }));
@@ -159,13 +165,24 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   // default place of the bar: right of the rail, near its top
   useLayoutEffect(() => {
     const place = () => {
-      const r = rootRef.current?.getBoundingClientRect();
+      const root = rootRef.current;
+      const r = root?.getBoundingClientRect();
       if (r) setAnchor({ x: r.right + 12, y: r.top + 8 });
+      const z = root ? parseFloat(getComputedStyle(root).zoom) : 1;
+      setZoom(Number.isFinite(z) && z > 0 ? z : 1);
     };
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
   }, []);
+
+  useLayoutEffect(() => {
+    const r = favRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const ex = r.left - (favPos ?? anchor).x;
+    const ey = r.top - (favPos ?? anchor).y;
+    if (Math.abs(ex) > 0.5 || Math.abs(ey) > 0.5) setFixOff((o) => ({ x: o.x + ex, y: o.y + ey }));
+  });
 
   // stored preferences are read after mount so server and client markup match
   useEffect(() => {
@@ -465,7 +482,8 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           aria-label={t("draw.fav.panel")}
           data-tv="fav-tools"
           data-fav-bar
-          style={{ position: "fixed", left: favPlace.x, top: favPlace.y, cursor: "default" }}
+          ref={favRef}
+          style={{ position: "fixed", left: (favPlace.x - fixOff.x) / zoom, top: (favPlace.y - fixOff.y) / zoom, cursor: "default" }}
           className="z-[60] flex select-none items-center gap-0.5 rounded-xl bg-[var(--tv3-fill)]/95 p-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]"
         >
           <span
