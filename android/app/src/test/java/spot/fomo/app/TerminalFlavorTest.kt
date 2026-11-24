@@ -56,6 +56,6 @@ class TerminalFlavorTest {
     @Test
     fun terminalPageStillCountsAsTerminal() {
         assertTrue(UrlPolicy.isTerminal("https://terminal.fomo.spot/terminal"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://terminal.fomo.spot/en/terminal/BTC"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://terminal.fomo.spot/en/terminal/BTC"))
     }
 }

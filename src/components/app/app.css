@@ -33,7 +33,7 @@ html.app-ui {
   --app-inv: #0b0b0b;
   --app-inv-tx: #ffffff;
   --app-fz: 1;
-  --app-bar-h: 67px; /* was 56px: +20%, the bar is easier to hit with a thumb */
+  --app-bar-h: 80px; /* +20% from the previous 67px mobile dock */
   /* space the tab bar takes at the bottom: full-screen layers (terminal, calendar) and the page padding stop above it */
   --app-bottom-inset: calc(var(--app-bar-h) + env(safe-area-inset-bottom, 0px));
 }
@@ -118,7 +118,7 @@ html.app-ui.app-kbd .app-tabbar { display: none; }
 html.app-ui .app-tab {
   flex: 0 0 var(--app-tab-w, 18.18%);
   min-width: 0;
-  min-height: 53px;
+  min-height: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;

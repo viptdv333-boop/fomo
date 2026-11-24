@@ -266,8 +266,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRefresh() {
         refresh.setColorSchemeResources(R.color.fomo_green)
-        // a long pull (default 64dp made the page reload by accident while scrolling a feed or a chat up)
-        refresh.setDistanceToTriggerSync((160 * resources.displayMetrics.density).toInt())
+        // A deliberate but reachable pull works consistently across pages, including chat and terminal.
+        refresh.setDistanceToTriggerSync((96 * resources.displayMetrics.density).toInt())
         refresh.setOnRefreshListener {
             webView.reload()
             main.postDelayed({ refresh.isRefreshing = false }, 6000) // safety net if the load never reports back
@@ -451,7 +451,7 @@ class MainActivity : AppCompatActivity() {
         SecureWindow.update(this)
     }
 
-    /** «Обновление страницы свайпом» AND the page allows it (not on the terminal / chats). */
+    /** «Обновление страницы свайпом» on every trusted site page. */
     private fun updateRefreshEnabled() {
         if (!::refresh.isInitialized) return
         refresh.isEnabled = !offlineShown && AppSettings.pullToRefresh(this) && UrlPolicy.pullToRefreshAllowed(currentUrl)

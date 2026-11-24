@@ -54,19 +54,19 @@ class UrlPolicyTest {
     }
 
     @Test
-    fun pullToRefreshIsOffWhereGesturesConflict() {
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/terminal"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/terminal/BTC"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/en/terminal"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/chat?room=general"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/messages"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/rooms/abc123"))
-        assertFalse(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/en/rooms/abc123"))
-        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/roomsx"))
+    fun pullToRefreshWorksOnEveryTrustedPageOnly() {
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/terminal"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/terminal/BTC"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/en/terminal"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/chat?room=general"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/messages"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/rooms/abc123"))
+        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/en/rooms/abc123"))
         assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/"))
         assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/ideas"))
-        assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/terminalx"))
         assertTrue(UrlPolicy.pullToRefreshAllowed("https://fomo.spot/calendar"))
+        assertFalse(UrlPolicy.pullToRefreshAllowed("https://evil.example/terminal"))
+        assertFalse(UrlPolicy.pullToRefreshAllowed(null))
     }
 
     @Test
