@@ -406,6 +406,7 @@ export class ChartEngine {
 
   setOptions(patch: Partial<EngineOptions>) {
     const prevType = this.opts.chartType;
+    const prevDenseCandles = this.opts.denseCandles;
     const prevAuto = this.opts.autoScale;
     const prevTransform = JSON.stringify(this.opts.transform);
     const prevMode = this.opts.scaleMode;
@@ -415,6 +416,15 @@ export class ChartEngine {
     }
     Object.assign(this.opts, patch);
     this.opts.logScale = this.opts.scaleMode === "log";
+    if (
+      patch.denseCandles !== undefined &&
+      patch.denseCandles !== prevDenseCandles &&
+      ["candles", "hollow", "heikin", "volcandles"].includes(this.opts.chartType) &&
+      this.bars.length > 0
+    ) {
+      // Make the mode immediately visible by fitting about a third more bars. The right edge stays anchored.
+      this.zoomBy(patch.denseCandles ? 0.75 : 1 / 0.75);
+    }
     const transformChanged = patch.transform !== undefined && JSON.stringify(patch.transform) !== prevTransform;
     if ((patch.chartType && patch.chartType !== prevType) || (transformChanged && this.transformed())) {
       const n0 = this.bars.length;
@@ -456,7 +466,9 @@ export class ChartEngine {
   /** Bar spacing after loading data / resetting the view. */
   private defaultSpacing(): number {
     const t = this.opts.chartType;
-    return t === "line" ? 4 : t === "footprint" ? 64 : DEFAULT_BS;
+    if (t === "line") return 4;
+    if (t === "footprint") return 64;
+    return ["candles", "hollow", "heikin", "volcandles"].includes(t) && this.opts.denseCandles ? DEFAULT_BS * 0.75 : DEFAULT_BS;
   }
 
   /** Widest allowed bar spacing: the footprint needs room for its numbers. */
@@ -1819,7 +1831,8 @@ export class ChartEngine {
   }
 
   private bodyWidthDevice(): number {
-    let bw = Math.max(1, Math.floor(this.barSpacing * this.dpr * 0.72));
+    const ratio = this.opts.denseCandles ? 0.9 : 0.72;
+    let bw = Math.max(1, Math.floor(this.barSpacing * this.dpr * ratio));
     if (bw % 2 === 0) bw = Math.max(1, bw - 1);
     return bw;
   }
