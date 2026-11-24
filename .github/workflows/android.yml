@@ -44,6 +44,9 @@ jobs:
 
       # Installs the SDK command-line tools and accepts the licences so Gradle can fetch platform 36 if the image lacks it.
       - uses: android-actions/setup-android@v3
+        with:
+          # The legacy `tools` SDK package was removed; platform-tools is still published.
+          packages: platform-tools
 
       - uses: gradle/actions/setup-gradle@v4
 
