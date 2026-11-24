@@ -110,6 +110,12 @@ function LockCard({ kind, path, site }: { kind: DemoKind; path: string; site?: b
           {t("tg.register")}
         </Link>
       </div>
+      {/* a way out of the card: back to where the visitor came from (the board when there is no history) */}
+      {!site && (
+        <button type="button" onClick={() => (window.history.length > 1 ? window.history.back() : window.location.assign(localizedPath(locale, "/")))} className={`mt-3 block w-full cursor-pointer text-sm font-semibold hover:underline ${muted}`}>
+          {t("tg.back")}
+        </button>
+      )}
       {kind === "terminal" && (
         <Link href={localizedPath(locale, "/terminal/features")} className={`mt-4 inline-block text-xs font-semibold hover:underline ${link}`}>
           {t("tf.more")}

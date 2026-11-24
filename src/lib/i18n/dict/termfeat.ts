@@ -59,6 +59,7 @@ const dict: SectionDict = {
     "tg.lockText": "Войдите или зарегистрируйтесь бесплатно, чтобы открыть графики, индикаторы и инструменты рисования.",
     "tg.login": "Войти",
     "tg.register": "Зарегистрироваться",
+    "tg.back": "Назад",
   },
   en: {
     "tf.title": "FOMO Trading Terminal: Features — TradingView Alternative for MOEX and Crypto",
@@ -116,6 +117,7 @@ const dict: SectionDict = {
     "tg.lockText": "Sign in or register for free to open charts, indicators and drawing tools.",
     "tg.login": "Sign in",
     "tg.register": "Register",
+    "tg.back": "Back",
   },
   cn: {
     "tf.title": "FOMO交易终端功能 — 莫斯科交易所与加密货币的TradingView替代品",
@@ -170,6 +172,7 @@ const dict: SectionDict = {
     "tg.lockText": "免费登录或注册即可使用图表、指标和绘图工具。",
     "tg.login": "登录",
     "tg.register": "注册",
+    "tg.back": "返回",
   },
 };
 export default dict;
