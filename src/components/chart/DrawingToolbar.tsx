@@ -464,25 +464,29 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           role="toolbar"
           aria-label={t("draw.fav.panel")}
           data-tv="fav-tools"
-          style={{ position: "fixed", left: favPlace.x, top: favPlace.y }}
+          data-fav-bar
+          style={{ position: "fixed", left: favPlace.x, top: favPlace.y, cursor: "default" }}
           className="tv3-pop z-[60] flex select-none items-center gap-0.5 rounded-xl p-1 shadow-[var(--tv3-shadow-pop)]"
         >
           <span
             title={t("draw.fav.drag")}
             aria-label={t("draw.fav.drag")}
             onPointerDown={startFavDrag}
-            className="flex h-8 w-4 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--tv3-muted)] active:cursor-grabbing"
+            style={{ cursor: "grab" }}
+            className="fav-grip flex h-8 w-4 shrink-0 touch-none items-center justify-center text-[var(--tv3-muted)]"
           >
             <svg viewBox="0 0 8 14" width="7" height="12" aria-hidden="true" fill="currentColor">
               <circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" /><circle cx="2" cy="7" r="1.1" /><circle cx="6" cy="7" r="1.1" /><circle cx="2" cy="12" r="1.1" /><circle cx="6" cy="12" r="1.1" />
             </svg>
           </span>
-          {favTools.map((f) => {
+          {favTools.map((f, fi) => {
             const on = activeTool === f.id;
             return (
               <button
                 key={f.id}
                 type="button"
+                data-c={fi % 6}
+                style={{ cursor: "pointer" }}
                 title={t(f.labelKey)}
                 aria-label={t(f.labelKey)}
                 aria-pressed={on}
@@ -498,9 +502,10 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                   e.preventDefault();
                   toggleFav(f.id);
                 }}
-                className={`tv3-press tv3-hov flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--tv3-text2)] ${on ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""}`}
+                className={`fav-b tv3-press tv3-hov flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--tv3-text2)] ${on ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""}`}
               >
                 <DrawIcon id={f.id} size={22} filled={on} />
+                <MacGlyph set="cur" k={f.id} />
               </button>
             );
           })}
@@ -509,7 +514,8 @@ export default function DrawingToolbar({ controller, className }: { controller: 
             title={t("draw.fav.hide")}
             aria-label={t("draw.fav.hide")}
             onClick={() => setFavVisible(false)}
-            className="tv3-press tv3-hov flex h-8 w-5 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--tv3-muted)]"
+            style={{ cursor: "pointer" }}
+            className="fav-x tv3-press tv3-hov flex h-8 w-5 shrink-0 items-center justify-center rounded-lg text-[var(--tv3-muted)]"
           >
             <svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
           </button>

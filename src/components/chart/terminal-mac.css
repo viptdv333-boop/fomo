@@ -1192,3 +1192,38 @@ html.dark[data-tvmac] .tv3 [data-tv="drawbar"] .dsb-alert {
 html[data-tvmac] .tv3 [data-tv="drawbar"] .dsb-alert:hover {
   background: color-mix(in srgb, #cc9446 24%, transparent) !important;
 }
+
+/* ───────── favourite drawing tools bar: a pastel rounded card like the rails, each tool in its own colour ───────── */
+.tvmac [data-fav-bar] {
+  background: var(--m-card) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--m-ring), 0 8px 22px rgba(0, 0, 0, 0.14);
+  padding: 5px !important;
+  gap: 3px !important;
+  --rc: #4f9a74;
+}
+.tvmac [data-fav-bar] .fav-b { width: 40px; height: 40px; border-radius: 12px; color: var(--rc); cursor: pointer; }
+.tvmac [data-fav-bar] .fav-b svg { width: 28px; height: 28px; filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--rc) 35%, transparent)); }
+.tvmac [data-fav-bar] .fav-b[data-c="0"] { --rc: #4f9a74; }
+.tvmac [data-fav-bar] .fav-b[data-c="1"] { --rc: #5577b8; }
+.tvmac [data-fav-bar] .fav-b[data-c="2"] { --rc: #cc9446; }
+.tvmac [data-fav-bar] .fav-b[data-c="3"] { --rc: #8a6db0; }
+.tvmac [data-fav-bar] .fav-b[data-c="4"] { --rc: #4f9aa0; }
+.tvmac [data-fav-bar] .fav-b[data-c="5"] { --rc: #c46a78; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="0"] { --rc: #7cc29b; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="1"] { --rc: #8fa8dc; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="2"] { --rc: #e6b877; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="3"] { --rc: #a78bc9; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="4"] { --rc: #6bb3b8; }
+html.dark .tvmac [data-fav-bar] .fav-b[data-c="5"] { --rc: #de96a0; }
+.tvmac [data-fav-bar] .fav-b[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--rc) 15%, transparent) !important;
+  color: var(--rc) !important;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--rc) 40%, transparent);
+}
+.tvmac [data-fav-bar] .fav-b:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--rc) 10%, transparent); }
+.tvmac [data-fav-bar] .fav-x { border-radius: 10px; }
+.tvmac [data-fav-bar] .fav-grip, .tvmac [data-fav-bar] .fav-x { cursor: pointer; }
+.tvmac [data-fav-bar] .fav-grip { cursor: grab; }
+.tvmac [data-fav-bar] .fav-b:has(> .mg) > svg:not(.mg) { display: none !important; }
+.tvmac [data-fav-bar] .fav-b .mg { width: 28px; height: 28px; }
