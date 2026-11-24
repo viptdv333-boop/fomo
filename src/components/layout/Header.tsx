@@ -213,6 +213,7 @@ export default function Header({ initialHiddenPages = [] }: { initialHiddenPages
 
         {/* Mobile right section */}
         <div className="flex md:hidden items-center gap-2 ml-auto">
+          <LanguageSelector compact />
           <ThemeToggle />
           {session && !appUi && <MessengerButton />}
           {session && !appUi && <NotificationBell />}

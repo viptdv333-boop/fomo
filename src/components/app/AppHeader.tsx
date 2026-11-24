@@ -10,6 +10,7 @@ import { appHeaderHidden } from "@/lib/app-ui";
 import { appBackTarget, backChrome, hasOwnBackBar, ownBackCount, subscribeOwnBack, type BackTarget } from "@/lib/app-back";
 import { isTerminalSite } from "@/lib/site-mode";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import LanguageSelector from "@/components/layout/LanguageSelector";
 import NotificationBell from "@/components/layout/NotificationBell";
 import { useAppUi } from "./useAppUi";
 import AppBackButton from "./AppBackButton";
@@ -43,6 +44,9 @@ function Header({ back }: { back: BackTarget | null }) {
       </Link>
       </div>
       <div className="app-header-right">
+        <div className="app-hbtn">
+          <LanguageSelector compact />
+        </div>
         <div className="app-hbtn">
           <ThemeToggle />
         </div>

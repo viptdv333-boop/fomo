@@ -9,7 +9,8 @@ interface Language {
   name: string;
 }
 
-export default function LanguageSelector() {
+/** `compact`: only the flag (the phone headers: next to the theme switch there is no room for the code and the arrow). */
+export default function LanguageSelector({ compact = false }: { compact?: boolean }) {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [current, setCurrent] = useState("ru");
   const [open, setOpen] = useState(false);
@@ -38,13 +39,17 @@ export default function LanguageSelector() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
+        aria-label={current.toUpperCase()}
+        aria-expanded={open}
         className="flex items-center gap-1.5 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition rounded"
       >
-        <FlagIcon code={current} size={20} />
-        <span className="text-xs uppercase font-medium">{current}</span>
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <FlagIcon code={current} size={compact ? 22 : 20} />
+        {!compact && <span className="text-xs uppercase font-medium">{current}</span>}
+        {!compact && (
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
       </button>
 
       {open && (

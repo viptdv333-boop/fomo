@@ -56,6 +56,8 @@ const PEN = (
   </svg>
 );
 
+const OFF_KEY = "fomo-draw-stylebar-off-v1";
+
 export default function DrawingStyleBar({ controller, onCreateAlert }: { controller: DrawingsControllerLike; onCreateAlert?: () => void }) {
   const { t } = useT();
   useController(controller);
@@ -64,6 +66,72 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const textWrap = useRef<HTMLDivElement | null>(null);
   const focusedFor = useRef<string | null>(null);
+
+  // the bar can be dragged anywhere over the chart (a stray bar hides the candles); the offset from its home place is kept
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const offRef = useRef(off);
+  offRef.current = off;
+  const boundsFor = useCallback((cur: { x: number; y: number }) => {
+    const bar = barRef.current;
+    const par = bar?.offsetParent as HTMLElement | null;
+    if (!bar || !par) return null;
+    const pr = par.getBoundingClientRect();
+    const br = bar.getBoundingClientRect();
+    const bl = br.left - cur.x;
+    const bt = br.top - cur.y;
+    return { minX: pr.left - bl, maxX: pr.right - bl - br.width, minY: pr.top - bt, maxY: pr.bottom - bt - br.height };
+  }, []);
+  const clampTo = (v: { x: number; y: number }, b: { minX: number; maxX: number; minY: number; maxY: number } | null) =>
+    b ? { x: Math.min(Math.max(b.minX, b.maxX), Math.max(b.minX, v.x)), y: Math.min(Math.max(b.minY, b.maxY), Math.max(b.minY, v.y)) } : v;
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(OFF_KEY) || "null") as { x?: unknown; y?: unknown } | null;
+      if (v && typeof v.x === "number" && typeof v.y === "number" && Number.isFinite(v.x) && Number.isFinite(v.y)) setOff({ x: v.x, y: v.y });
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  // a smaller window: the bar stays inside the chart
+  useEffect(() => {
+    const onResize = () => {
+      const cur = offRef.current;
+      const next = clampTo(cur, boundsFor(cur));
+      if (next.x !== cur.x || next.y !== cur.y) setOff(next);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [boundsFor]);
+  const startDrag = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const o0 = offRef.current;
+    const b = boundsFor(o0);
+    const move = (ev: PointerEvent) => setOff(clampTo({ x: o0.x + ev.clientX - sx, y: o0.y + ev.clientY - sy }, b));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      try {
+        localStorage.setItem(OFF_KEY, JSON.stringify(offRef.current));
+      } catch {
+        /* storage unavailable */
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const resetOff = () => {
+    setOff({ x: 0, y: 0 });
+    try {
+      localStorage.removeItem(OFF_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+  };
 
   const def = sel ? getToolDef(sel.tool) : undefined;
   const schema = sel && def ? getPropSchema(sel.tool) ?? schemaFromUi(def.ui) : undefined;
@@ -141,9 +209,23 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
     <div
       role="toolbar"
       data-tv="drawbar"
+      ref={barRef}
       aria-label={t("draw.style.bar")}
+      style={off.x || off.y ? { transform: `translate(${off.x}px, ${off.y}px)` } : undefined}
       className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-2 py-1 shadow-lg"
     >
+      <span
+        title={t("draw.fav.drag")}
+        aria-label={t("draw.fav.drag")}
+        onPointerDown={startDrag}
+        onDoubleClick={resetOff}
+        style={{ cursor: "grab" }}
+        className="flex h-7 w-4 shrink-0 touch-none items-center justify-center text-[var(--tv3-muted)]"
+      >
+        <svg viewBox="0 0 8 14" width="7" height="12" aria-hidden="true" fill="currentColor">
+          <circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" /><circle cx="2" cy="7" r="1.1" /><circle cx="6" cy="7" r="1.1" /><circle cx="2" cy="12" r="1.1" /><circle cx="6" cy="12" r="1.1" />
+        </svg>
+      </span>
       {ui.color && (
         <ColorPicker value={st.color} size={28} labels={cpLabels} title={isText ? t("dp.textColor") : t("draw.style.color")} onChange={(c) => patch({ color: c })}>
           <GlyphSwatch glyph={isText ? <span className="text-[13px] font-bold leading-none">A</span> : PEN} color={st.color} />
