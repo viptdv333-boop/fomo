@@ -1,23 +1,23 @@
 {
-    "android":  {
-                    "version":  "1.0.4",
-                    "versionCode":  5,
-                    "size":  1614324
-                },
-    "windows":  {
-                    "version":  "1.0.0",
-                    "size":  94224205
-                },
-    "terminal":  {
-                     "android":  {
-                                     "version":  "1.0.3",
-                                     "versionCode":  4,
-                                     "size":  1635408
-                                 },
-                     "windows":  {
-                                     "version":  "1.0.0",
-                                     "size":  94330061
-                                 }
-                 },
-    "updated":  "2026-11-24T02:07:38Z"
+  "android": {
+    "version": "1.0.5",
+    "versionCode": 6,
+    "size": 1614324
+  },
+  "windows": {
+    "version": "1.0.0",
+    "size": 94224205
+  },
+  "terminal": {
+    "android": {
+      "version": "1.0.3",
+      "versionCode": 4,
+      "size": 1635408
+    },
+    "windows": {
+      "version": "1.0.0",
+      "size": 94330061
+    }
+  },
+  "updated": "2026-11-24T13:01:09Z"
 }
