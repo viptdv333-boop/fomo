@@ -17,6 +17,7 @@ import { removeItem, retryItem, type OutboxItem } from "@/lib/outbox/outbox";
 import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
 import VideoPlayer from "@/components/shared/VideoPlayer";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 
 interface Message {
   id: string;
@@ -280,10 +281,7 @@ export default function ChannelDiscussion({ tariffId }: Props) {
                   <VideoPlayer src={msg.fileUrl} className="mt-1 max-w-full sm:max-w-[320px] max-h-[240px] rounded-lg" />
                 )}
                 {msg.fileUrl && msg.fileType === "image" && (
-                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={msg.fileUrl} alt={msg.fileName || ""} className="max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
-                  </a>
+                  <ImageLightbox src={msg.fileUrl} alt={msg.fileName || ""} className="block mt-1 max-w-full sm:max-w-[280px] max-h-[220px] rounded-lg object-cover" />
                 )}
                 {msg.fileUrl && msg.fileType !== "video" && msg.fileType !== "image" && (
                   <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-1 text-xs text-green-600 hover:underline">

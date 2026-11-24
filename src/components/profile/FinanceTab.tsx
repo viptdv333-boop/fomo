@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import PaymentMethodsManager from "./PaymentMethodsManager";
+import ImageLightbox from "@/components/shared/ImageLightbox";
 import { useT } from "@/lib/i18n/client";
 
 const DATE_LOCALES: Record<string, string> = { ru: "ru-RU", en: "en-US", cn: "zh-CN" };
@@ -517,14 +518,7 @@ function PaymentCard({
 
       {showSendButton && (
         <div className="mt-2 pt-2 border-t dark:border-gray-700 flex items-center gap-2">
-          <a
-            href={p.receiptUrl!}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-green-600 dark:text-green-400 hover:underline"
-          >
-            {t("pay.receiptUploaded")}
-          </a>
+          <ImageLightbox src={p.receiptUrl!} alt={t("pay.receiptAlt")} label={t("pay.receiptUploaded")} className="cursor-pointer text-xs text-green-600 dark:text-green-400 hover:underline" />
           <button
             onClick={onSendForReview}
             disabled={sendingReceipt}
@@ -543,14 +537,7 @@ function PaymentCard({
       {/* Show receipt link for confirmed/rejected */}
       {p.receiptUrl && !(role === "seller" && p.status === "PENDING") && !showSendButton && !showUploadButton && (
         <div className="mt-2 pt-2 border-t dark:border-gray-700">
-          <a
-            href={p.receiptUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-green-600 dark:text-green-400 hover:underline"
-          >
-            {t("pay.viewReceipt")}
-          </a>
+          <ImageLightbox src={p.receiptUrl} alt={t("pay.receiptAlt")} label={t("pay.viewReceipt")} className="cursor-pointer text-xs text-green-600 dark:text-green-400 hover:underline" />
         </div>
       )}
     </div>
@@ -596,10 +583,7 @@ function SellerActions({ paymentId, receiptUrl }: { paymentId: string; receiptUr
   return (
     <div className="mt-2 pt-2 border-t dark:border-gray-700 space-y-2">
       {/* Receipt preview */}
-      <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={receiptUrl} alt={t("pay.receiptAlt")} className="max-h-32 rounded-lg border dark:border-gray-600 object-contain" />
-      </a>
+      <ImageLightbox src={receiptUrl} alt={t("pay.receiptAlt")} className="block max-h-32 rounded-lg border dark:border-gray-600 object-contain" />
 
       <div className="flex items-center gap-2">
         <button

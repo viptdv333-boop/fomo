@@ -8,13 +8,33 @@ interface Props {
   src: string;
   alt?: string;
   className?: string;
+  /** A text button instead of the thumbnail (a «View receipt» link): the picture opens in the same viewer. */
+  label?: string;
 }
 
 /// Click a thumbnail to see it full-size in a modal instead of relying on
 /// browser page-zoom. Doesn't fight the copy-protection already applied to
 /// idea text (this only ever renders <img>, no selectable text).
-export default function ImageLightbox({ src, alt, className }: Props) {
+export default function ImageLightbox({ src, alt, className, label }: Props) {
   const [open, setOpen] = useState(false);
+  return (
+    <>
+      {label ? (
+        <button type="button" className={className} onClick={() => setOpen(true)}>
+          {label}
+        </button>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={alt || ""} className={`${className || ""} cursor-zoom-in`} onClick={() => setOpen(true)} />
+      )}
+      {open && <ImageViewer src={src} alt={alt} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/** The full-screen viewer: zoom / pan, the red cross, Esc and a press outside close it. Also used directly where a picture is opened from a menu or a link
+ *  (a link with target=_blank would load the bare image into the desktop app's only window, with no way back). */
+export function ImageViewer({ src, alt, onClose }: { src: string; alt?: string; onClose: () => void }) {
   const { t } = useT();
   /* zoom / pan of the opened picture: two fingers (pinch), one finger when zoomed, the wheel, a double tap; the phone app has no page zoom inside a modal */
   const [view, setView] = useState({ k: 1, x: 0, y: 0 });
@@ -68,31 +88,19 @@ export default function ImageLightbox({ src, alt, className }: Props) {
   };
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [onClose]);
 
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt || ""}
-        className={`${className || ""} cursor-zoom-in`}
-        onClick={() => {
-          setView({ k: 1, x: 0, y: 0 });
-          setOpen(true);
-        }}
-      />
-
-      {open && typeof document !== "undefined" && createPortal(
+      {typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 bg-black/90 z-[1000] flex items-center justify-center p-4 cursor-zoom-out"
           onClick={(e) => {
             e.stopPropagation();
-            setOpen(false);
+            onClose();
           }}
         >
           {/* the cross sits ON the picture (its top-right corner), not at the edge of the screen */}
@@ -117,7 +125,7 @@ export default function ImageLightbox({ src, alt, className }: Props) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setOpen(false);
+              onClose();
             }}
             className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700"
             aria-label={t("common.close")}

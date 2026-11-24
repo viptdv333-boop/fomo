@@ -6,6 +6,7 @@ import { TYPE_LABELS, safeLinkUrl, type PaymentMethod } from "@/components/profi
 import AppIcon from "../AppIcon";
 import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import PaymentMethodSheet from "./PaymentMethodSheet";
+import { ImageViewer } from "@/components/shared/ImageLightbox";
 import { useProf } from "./ProfileCtx";
 import { Loading, ScreenFrame } from "./parts";
 
@@ -45,6 +46,8 @@ export default function FinanceScreen() {
   const [data, setData] = useState<FinanceData | null>(null);
   const [methods, setMethods] = useState<PaymentMethod[] | null>(null);
   const [addPm, setAddPm] = useState(false);
+  // a receipt opens in the in-page viewer (a new window would load the bare picture into the app's only window, with no way back)
+  const [receiptView, setReceiptView] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const receiptFor = useRef<string | null>(null);
@@ -258,7 +261,7 @@ export default function FinanceScreen() {
       ),
       onClick: p.buyerId ? () => open(`/profile/${p.buyerId}`) : undefined,
       actions: [
-        ...(p.receiptUrl ? [{ label: t("pay.viewReceipt"), onClick: () => window.open(p.receiptUrl!, "_blank", "noopener,noreferrer") }] : []),
+        ...(p.receiptUrl ? [{ label: t("pay.viewReceipt"), onClick: () => setReceiptView(p.receiptUrl!) }] : []),
         ...(p.status === "PENDING" && p.receiptUrl
           ? [
               { label: busy === p.id ? "…" : t("pay.confirm"), onClick: () => void decide(p, "confirm") },
@@ -291,7 +294,7 @@ export default function FinanceScreen() {
       ),
       onClick: p.ideaId ? () => open(`/ideas/${p.ideaId}`) : p.sellerId ? () => open(`/profile/${p.sellerId}`) : undefined,
       actions: [
-        ...(p.receiptUrl ? [{ label: p.status === "PENDING" ? t("pay.receiptUploaded") : t("pay.viewReceipt"), onClick: () => window.open(p.receiptUrl!, "_blank", "noopener,noreferrer") }] : []),
+        ...(p.receiptUrl ? [{ label: p.status === "PENDING" ? t("pay.receiptUploaded") : t("pay.viewReceipt"), onClick: () => setReceiptView(p.receiptUrl!) }] : []),
         ...(p.status === "PENDING" && !p.receiptUrl
           ? [
               {
@@ -323,6 +326,7 @@ export default function FinanceScreen() {
       <Sections sections={sections} />
       <input ref={fileRef} type="file" accept="image/*,.pdf" hidden onChange={(e) => void onReceiptFile(e.target.files?.[0])} />
       {addPm && <PaymentMethodSheet methodsCount={methods.length} onSaved={() => void loadMethods()} onClose={() => setAddPm(false)} />}
+      {receiptView && <ImageViewer src={receiptView} onClose={() => setReceiptView(null)} />}
     </ScreenFrame>
   );
 }
