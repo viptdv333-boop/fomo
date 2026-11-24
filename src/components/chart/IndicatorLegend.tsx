@@ -47,10 +47,8 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
   const [editScript, setEditScript] = useState<string | null>(null);
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [tops, setTops] = useState<Record<string, number>>({});
-  /* where the «more» menu of a row of the (scrolling) main list opens: in the coordinates of mainRef, outside the clipping of the scroll box */
-  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   /* the menu of a row in an extra window (a small tile would clip it): fixed, in page coordinates */
-  const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const [fixedPos, setFixedPos] = useState<{ left: number; top?: number; bottom?: number; maxH: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   /* the user can drag the «Indicators» pill (and the list under it) off the price: the shift is kept on this device */
@@ -428,16 +426,15 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
               aria-label={t("ind2.lg.more")}
               aria-expanded={menuUid === uid}
               onClick={(e) => {
-                if (inScroll) {
-                  const wr = mainRef.current?.getBoundingClientRect();
+                {
+                  // the menu is fixed on the page (not clipped by the chart / the scrolling list): under the row when there is room, otherwise above it,
+                  // and it scrolls itself when the screen is too short for all its items (phone)
                   const rr = e.currentTarget.closest("[data-lg-row]")?.getBoundingClientRect();
-                  if (wr && rr) setMenuPos({ left: rr.left - wr.left, top: rr.bottom - wr.top + 4 });
-                } else if (winId) {
-                  const rr = e.currentTarget.closest("[data-lg-row]")?.getBoundingClientRect();
-                  // under the row when there is room, otherwise above it (the menu hugs the row either way)
                   if (rr) {
                     const left = Math.max(4, Math.min(rr.left, window.innerWidth - 232));
-                    setFixedPos(window.innerHeight - rr.bottom >= 290 ? { left, top: rr.bottom + 4 } : { left, bottom: window.innerHeight - rr.top + 4 });
+                    const below = window.innerHeight - rr.bottom - 12;
+                    const above = rr.top - 12;
+                    setFixedPos(below >= 330 || below >= above ? { left, top: rr.bottom + 4, maxH: below } : { left, bottom: window.innerHeight - rr.top + 4, maxH: above });
                   }
                 }
                 setMenuUid((m) => (m === uid ? null : uid));
@@ -450,8 +447,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             </button>
           </span>
         </div>
-        {menuUid === uid && !inScroll && !winId && renderMenu(uid, "absolute left-0 top-full z-30 mt-1")}
-      </div>
+              </div>
     );
   };
 
@@ -511,7 +507,6 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
                 {mainUids.map((u) => renderRow(u, false, true))}
               </div>
             )}
-            {!collapsed && menuUid && menuPos && mainUids.includes(menuUid) && renderMenu(menuUid, "absolute z-30", { left: menuPos.left, top: menuPos.top })}
           </div>
         )}
         {/* no indicators on the price chart: the chips stand alone in the same corner */}
@@ -527,7 +522,7 @@ export default function IndicatorLegend({ controller, getEngine, hostRef, mainTo
             </div>
           ),
         )}
-        {winId && menuUid && fixedPos && <PopupPortal>{renderMenu(menuUid, "pointer-events-auto fixed z-[60]", { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom })}</PopupPortal>}
+        {menuUid && fixedPos && <PopupPortal>{renderMenu(menuUid, "pointer-events-auto fixed z-[60] overflow-y-auto overscroll-contain", { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom, maxHeight: Math.max(160, fixedPos.maxH) })}</PopupPortal>}
       </div>
       <IndicatorSettingsDialog controller={controller} uid={settingsUid} onClose={() => setSettingsUid(null)} onEditSource={setEditScript} />
       <IndicatorEditor controller={controller} scriptId={editScript} onClose={() => setEditScript(null)} />
