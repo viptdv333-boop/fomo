@@ -5,7 +5,9 @@
  */
 
 import { Server as SocketIOServer } from "socket.io";
-import { ruCaFetch } from "../src/lib/algopack-tls";
+import { installRuCaFetch, ruCaFetch } from "../src/lib/algopack-tls";
+
+installRuCaFetch(); // its ISS calls use the plain global fetch
 
 const PROD_URL = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1";
 const TINKOFF_TOKEN = process.env.TINKOFF_TOKEN || "";

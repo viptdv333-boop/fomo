@@ -396,6 +396,8 @@ export default function AppCalculator() {
         </h1>
         <div className="ac-intro">{t("appcalc.intro")}</div>
 
+        {/* the contracts plate shows only once there is a result (no «Контрактов — / Укажите цену входа и стопа» placeholder) */}
+        {ready && (
         <div className="acalc-stick">
           <div className="acalc-sum" data-state={ready ? (calc!.contracts > 0 ? "ok" : "zero") : "idle"} aria-live="polite">
             <div className="acalc-sum-l">
@@ -430,6 +432,7 @@ export default function AppCalculator() {
             </div>
           </div>
         </div>
+        )}
 
         <Sections sections={contractSections} />
         {statusNote ? (
@@ -534,10 +537,6 @@ export default function AppCalculator() {
           {t("appcalc.copy")}
         </button>
         <div className="ap-note acalc-disc">{t("calc.disclaimer")}</div>
-        {/* the way in / out of the new look: the same switch as the terminal screen's */}
-        <button type="button" className="acalc-skin" onClick={() => macSkin.set(!mac)} title={t(mac ? "mac.classicTip" : "mac.tryTip")} data-mac-try={mac ? undefined : ""}>
-          {t(mac ? "mac.classic" : "mac.try")}
-        </button>
       </div>
 
       {picker && (

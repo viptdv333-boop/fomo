@@ -6,7 +6,8 @@
  *   - apim.moex.com                           (ALGOPACK gateway)
  *   - invest-public-api.tinkoff.ru            (T-Invest REST + wss stream)
  *   - sandbox-invest-public-api.tinkoff.ru    (T-Invest sandbox)
- * iss.moex.com (public ISS) is NOT in the list: it verifies with Node's own roots (verified on the server).
+ *   - iss.moex.com                            (public ISS: moved to the same root around 2026-11-20; Node then failed with SELF_SIGNED_CERT_IN_CHAIN
+ *                                               and every ISS call — futures spec, guest candles, search — returned an error. Verified on the server.)
  * The fix must not widen trust for the other outbound hosts (Bybit, YooKassa, FMP, mail ...), so NODE_EXTRA_CA_CERTS (process-wide) is NOT used.
  * Instead requests to the exact hosts above (https / wss, port 443) get their own undici Agent (fetch) or a `ca` option (ws) whose CA list is
  * Node's default roots (tls.rootCertificates) + the PEM from the file named by ALGOPACK_CA_FILE (or its alias RU_ROOT_CA_FILE).
@@ -23,7 +24,7 @@ import { rootCertificates } from "node:tls";
 export const GATEWAY_HOST = "apim.moex.com";
 
 /** Exact hosts that need the Russian root (lower case). Add a host here only after a failed verification is proven on the server. */
-export const RU_CA_HOSTS: readonly string[] = [GATEWAY_HOST, "invest-public-api.tinkoff.ru", "sandbox-invest-public-api.tinkoff.ru"];
+export const RU_CA_HOSTS: readonly string[] = [GATEWAY_HOST, "invest-public-api.tinkoff.ru", "sandbox-invest-public-api.tinkoff.ru", "iss.moex.com"];
 
 function hostAllowed(url: string, protocol: "https:" | "wss:"): boolean {
   try {
@@ -166,4 +167,30 @@ export function resetGatewayTls(): void {
   const a = agentCache?.agent as { close?: () => Promise<void> } | undefined;
   agentCache = null;
   void a?.close?.();
+}
+
+/**
+ * Routes every plain `fetch("https://<allowed host>/...")` of this process through the dedicated agent (call once at start-up). The ISS is called with the
+ * global fetch from ~20 places; patching it for the exact hosts of RU_CA_HOSTS (https, 443, string / URL input only) fixes them all without widening trust
+ * for any other host. Other URLs, a Request object and the no-CA-file case go to the original fetch untouched. Safe to call twice.
+ */
+export function installRuCaFetch(): void {
+  const g = globalThis as unknown as { fetch: typeof fetch; __ruCaFetchInstalled?: boolean };
+  if (g.__ruCaFetchInstalled || typeof g.fetch !== "function") return;
+  g.__ruCaFetchInstalled = true;
+  const orig = g.fetch.bind(globalThis);
+  g.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if ((typeof input === "string" || input instanceof URL) && ruCaFilePath()) {
+      const url = typeof input === "string" ? input : input.href;
+      if (isRuCaUrl(url)) {
+        try {
+          const viaCa = await gatewayFetch(url, init ?? {});
+          if (viaCa) return viaCa;
+        } catch {
+          /* the dedicated agent failed (network): the default fetch below reports the real error */
+        }
+      }
+    }
+    return orig(input as RequestInfo, init);
+  }) as typeof fetch;
 }

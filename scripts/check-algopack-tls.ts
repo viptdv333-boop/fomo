@@ -36,8 +36,12 @@ async function main() {
   /* host rule */
   ok(isGatewayUrl("https://apim.moex.com/iss/x.json"), "gateway URL is recognised");
   ok(isGatewayUrl("https://APIM.moex.com:443/iss/x.json"), "case / explicit 443");
-  for (const u of ["https://iss.moex.com/iss/x.json", "http://apim.moex.com/iss/x", "https://apim.moex.com.evil.example/iss", "https://evil.example/apim.moex.com/", "https://apim.moex.com:8443/iss", "http://localhost:5099/iss", "https://api.bybit.com/v5", "not a url"])
+  for (const u of ["https://www.moex.com/iss/x.json", "http://apim.moex.com/iss/x", "https://apim.moex.com.evil.example/iss", "https://evil.example/apim.moex.com/", "https://apim.moex.com:8443/iss", "http://localhost:5099/iss", "https://api.bybit.com/v5", "not a url"])
     ok(!isGatewayUrl(u), `not the gateway: ${u}`);
+
+  /* public ISS: signed by the Russian root since 2026-11 (Node: SELF_SIGNED_CERT_IN_CHAIN) */
+  ok(isRuCaUrl("https://iss.moex.com/iss/x.json") && isRuCaUrl("https://ISS.moex.com:443/iss/x.json"), "iss.moex.com is a Russian-root host");
+  ok(!isRuCaUrl("http://iss.moex.com/iss/x.json") && !isRuCaUrl("https://iss.moex.com.evil.example/iss") && !isRuCaUrl("https://www.moex.com/iss/x.json"), "look-alike / http / www.moex.com are not");
 
   /* T-Invest hosts + ws */
   for (const u of ["https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.MarketDataService/GetLastPrices", "https://INVEST-public-api.tinkoff.ru:443/rest/x", "https://sandbox-invest-public-api.tinkoff.ru/rest/x"])
@@ -97,7 +101,7 @@ async function main() {
     const d1 = await gatewayDispatcher("https://apim.moex.com/iss/x");
     const d2 = await gatewayDispatcher("https://apim.moex.com/iss/y");
     ok(d1 !== undefined && d1 === d2, "gateway URL -> one cached dedicated agent");
-    for (const u of ["https://iss.moex.com/iss/x", "https://api.bybit.com/v5/market", "https://apim.moex.com.evil.example/iss", "http://127.0.0.1:5099/iss"])
+    for (const u of ["https://www.moex.com/iss/x", "https://api.bybit.com/v5/market", "https://apim.moex.com.evil.example/iss", "http://127.0.0.1:5099/iss"])
       ok((await gatewayDispatcher(u)) === undefined, `other host never gets the extra CA: ${u}`);
 
     for (const u of ["https://invest-public-api.tinkoff.ru/rest/x", "https://sandbox-invest-public-api.tinkoff.ru/rest/x"])
@@ -173,13 +177,13 @@ async function main() {
 
   /* routing of apFetch */
   globalCalls.length = 0;
-  await apFetch("https://iss.moex.com/iss/x.json");
+  await apFetch("https://www.moex.com/iss/x.json");
   await apFetch("https://api.bybit.com/v5/market/time");
   await apFetch("http://127.0.0.1:5099/iss/x.json");
   ok(globalCalls.length === 3, "other hosts and the local mock use the plain global fetch even with ALGOPACK_CA_FILE set");
   globalCalls.length = 0;
   await ruCaFetch("https://api.bybit.com/v5/market/time");
-  await ruCaFetch("https://iss.moex.com/iss/x.json");
+  await ruCaFetch("https://www.moex.com/iss/x.json");
   await ruCaFetch("https://invest-public-api.tinkoff.ru.evil.example/rest", { method: "POST" });
   await ruCaFetch(new URL("http://127.0.0.1:5099/rest"));
   ok(globalCalls.length === 4, "ruCaFetch: other / look-alike hosts and the local mock use the plain global fetch even with the CA file set");
