@@ -349,7 +349,7 @@ export interface AxisLabel {
 export interface LayerAxisTag {
   price: number;
   /** Built-in caption: what kind of level it is. */
-  kind: "alert";
+  kind: "alert" | "entry" | "target" | "stop";
   color: string;
   textColor?: string;
   /** "bell" / "lock" (a pinned alert) is drawn in front of the price. */

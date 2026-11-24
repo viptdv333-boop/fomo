@@ -91,6 +91,7 @@ const ROWS: Row[] = [
   ["dp.entryLine", "Линия входа", "Entry line", "入场线"],
   ["dp.alwaysStats", "Всегда показывать подписи", "Always show stats", "始终显示统计"],
   ["dp.showQty", "Показывать количество", "Show quantity", "显示数量"],
+  ["dp.axisPrices", "Цены входа, стопа и тейка на шкале", "Entry, stop and target prices on the scale", "价格轴显示入场、止损、目标价"],
   ["dp.upColor", "Цвет роста", "Up color", "上涨颜色"],
   ["dp.downColor", "Цвет падения", "Down color", "下跌颜色"],
 

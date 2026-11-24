@@ -6,12 +6,12 @@
 
 export type TagKind = "price" | "prevClose" | "alert" | "compare" | "indicator";
 
-export type CaptionKind = "price" | "prevClose" | "alert";
+export type CaptionKind = "price" | "prevClose" | "alert" | "entry" | "target" | "stop";
 
 const CAPTIONS: Record<string, Record<CaptionKind, string>> = {
-  ru: { price: "Цена", prevClose: "Закрытие", alert: "Алерт" },
-  en: { price: "Price", prevClose: "Prev close", alert: "Alert" },
-  zh: { price: "价格", prevClose: "前收", alert: "预警" },
+  ru: { price: "Цена", prevClose: "Закрытие", alert: "Алерт", entry: "Вход", target: "Тейк", stop: "Стоп" },
+  en: { price: "Price", prevClose: "Prev close", alert: "Alert", entry: "Entry", target: "Target", stop: "Stop" },
+  zh: { price: "价格", prevClose: "前收", alert: "预警", entry: "入场", target: "目标", stop: "止损" },
 };
 
 /** Caption of a built-in tag kind in a locale ("ru-RU", "en-US", "zh-CN", "cn" ...). */

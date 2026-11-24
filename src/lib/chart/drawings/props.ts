@@ -266,6 +266,7 @@ const positionSchema: PropSchema = {
         chk("showFill", true, "dp.background"),
         chk("showStats", true, "dp.alwaysStats"),
         chk("showQty", true, "dp.showQty"),
+        chk("showAxis", true, "dp.axisPrices"),
       ],
     },
   ],

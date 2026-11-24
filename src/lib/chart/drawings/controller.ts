@@ -2,7 +2,7 @@ import type { DrawingSelection, DrawingsControllerLike, DrawingStyle, DrawingToo
 import { deleteUserData, listUserData, saveUserData } from "../userdata";
 import type { ChartEngine } from "../engine";
 import { formatPrice } from "../format";
-import type { OverlayLayer, PointerInfo } from "../types";
+import type { LayerAxisTag, OverlayLayer, PointerInfo } from "../types";
 import { dist, distToPolyline, nearestOhlc, snapAngle, snapAxis, snapSquare } from "./geometry";
 import { evalHit, recordDraw, recordedIntersectsRect, type Recorded } from "./hittest";
 import { toolForHotkey } from "./hotkeys";
@@ -810,6 +810,25 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   }
 
   /* ───────────── overlay layer: painting ───────────── */
+
+  /** Long / short positions: the entry, target and stop prices as tags on the price scale (the «Цены на шкале» checkbox of the position). */
+  axisTags(engine: ChartEngine): LayerAxisTag[] {
+    if (engine !== this.engine || this.hidden) return [];
+    const env = this.makeEnv();
+    if (!env) return [];
+    const out: LayerAxisTag[] = [];
+    for (const d of this.drawings) {
+      if ((d.tool !== "long" && d.tool !== "short") || d.hidden || !visibleAt(d, env.intervalMs) || d.style.showAxis === false) continue;
+      if (d.points.length < 3) continue;
+      const profit = d.style.color;
+      const loss = d.style.fill ?? "#f23645";
+      const entry = typeof d.style.entryColor === "string" ? d.style.entryColor : "#787b86";
+      out.push({ price: d.points[0].p, kind: "entry", color: entry, textColor: "#ffffff" });
+      out.push({ price: d.points[1].p, kind: "target", color: profit, textColor: "#ffffff" });
+      out.push({ price: d.points[2].p, kind: "stop", color: loss, textColor: "#ffffff" });
+    }
+    return out;
+  }
 
   draw(ctx: CanvasRenderingContext2D, engine: ChartEngine): void {
     if (engine !== this.engine || this.hidden) return;

@@ -35,6 +35,13 @@ type WithExtras = DrawingsControllerLike & {
 };
 
 const LAST_KEY = "fomo-draw-last-v1";
+const FAV_KEY = "fomo-draw-fav-v1";
+
+const starIcon = (on: boolean) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path d="M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+  </svg>
+);
 
 function loadLast(): Record<string, string> {
   const defaults: Record<string, string> = {};
@@ -96,9 +103,83 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   });
   const [flyout, setFlyout] = useState<FlyoutState | null>(null);
   const flyRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // favourite tools: a floating bar the user drags anywhere over the chart (like TradingView's favourites toolbar)
+  const [favs, setFavs] = useState<string[]>([]);
+  const [favOn, setFavOn] = useState(true);
+  const [favPos, setFavPos] = useState<{ x: number; y: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number }>({ x: 80, y: 60 });
+  const saveFav = (ids: string[], on: boolean, pos: { x: number; y: number } | null) => {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify({ ids, on, pos }));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  const toggleFav = (id: string) => {
+    const next = favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id];
+    setFavs(next);
+    saveFav(next, favOn || !favs.includes(id), favPos);
+    if (!favs.includes(id)) setFavOn(true);
+  };
+  const setFavVisible = (on: boolean) => {
+    setFavOn(on);
+    saveFav(favs, on, favPos);
+  };
+  const startFavDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const bar = e.currentTarget.parentElement;
+    if (!bar) return;
+    e.preventDefault();
+    const r = bar.getBoundingClientRect();
+    const dx = e.clientX - r.left;
+    const dy = e.clientY - r.top;
+    let cur = { x: r.left, y: r.top };
+    const move = (ev: PointerEvent) => {
+      cur = {
+        x: Math.max(0, Math.min(window.innerWidth - r.width, ev.clientX - dx)),
+        y: Math.max(0, Math.min(window.innerHeight - r.height, ev.clientY - dy)),
+      };
+      setFavPos(cur);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setFavs((ids) => {
+        saveFav(ids, true, cur);
+        return ids;
+      });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  // default place of the bar: right of the rail, near its top
+  useLayoutEffect(() => {
+    const place = () => {
+      const r = rootRef.current?.getBoundingClientRect();
+      if (r) setAnchor({ x: r.right + 12, y: r.top + 8 });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, []);
 
   // stored preferences are read after mount so server and client markup match
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAV_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { ids?: unknown; on?: unknown; pos?: { x?: unknown; y?: unknown } | null };
+        if (Array.isArray(p.ids)) setFavs(p.ids.filter((x): x is string => typeof x === "string" && !!getToolDef(x)));
+        if (p.on === false) setFavOn(false);
+        if (p.pos && typeof p.pos.x === "number" && typeof p.pos.y === "number") setFavPos({ x: p.pos.x, y: p.pos.y });
+      }
+    } catch {
+      /* storage unavailable */
+    }
     const stored = loadLast();
     const cs = ctl.getCursorStyle?.();
     if (cs && DRAWING_GROUPS[0].tools.some((x) => x.id === cs)) stored[DRAWING_GROUPS[0].id] = cs;
@@ -224,8 +305,12 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   const slotTools = new Set(RAIL.filter((r) => r.fixed).map((r) => r.fixed as string));
   const groupOf = (id: string) => DRAWING_GROUPS.find((g) => g.id === id);
 
+  const favTools = favs.map((id) => ({ id, groupId: DRAWING_GROUPS.find((g) => g.tools.some((x) => x.id === id))?.id ?? "", labelKey: getToolDef(id)?.labelKey ?? `draw.tool.${id}` }));
+  const favPlace = favPos ?? anchor;
+
   return (
     <div
+      ref={rootRef}
       role="toolbar"
       aria-orientation="vertical"
       aria-label={t("draw.toolbar")}
@@ -374,6 +459,63 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       </button>
       {GAP}
 
+      {favTools.length > 0 && favOn && (
+        <div
+          role="toolbar"
+          aria-label={t("draw.fav.panel")}
+          data-tv="fav-tools"
+          style={{ position: "fixed", left: favPlace.x, top: favPlace.y }}
+          className="tv3-pop z-[60] flex select-none items-center gap-0.5 rounded-xl p-1 shadow-[var(--tv3-shadow-pop)]"
+        >
+          <span
+            title={t("draw.fav.drag")}
+            aria-label={t("draw.fav.drag")}
+            onPointerDown={startFavDrag}
+            className="flex h-8 w-4 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--tv3-muted)] active:cursor-grabbing"
+          >
+            <svg viewBox="0 0 8 14" width="7" height="12" aria-hidden="true" fill="currentColor">
+              <circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" /><circle cx="2" cy="7" r="1.1" /><circle cx="6" cy="7" r="1.1" /><circle cx="2" cy="12" r="1.1" /><circle cx="6" cy="12" r="1.1" />
+            </svg>
+          </span>
+          {favTools.map((f) => {
+            const on = activeTool === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                title={t(f.labelKey)}
+                aria-label={t(f.labelKey)}
+                aria-pressed={on}
+                onClick={() => {
+                  if (on) {
+                    controller.setTool(null);
+                    return;
+                  }
+                  if (f.groupId) rememberTool(f.groupId, f.id);
+                  controller.setTool(f.id);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  toggleFav(f.id);
+                }}
+                className={`tv3-press tv3-hov flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--tv3-text2)] ${on ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""}`}
+              >
+                <DrawIcon id={f.id} size={22} filled={on} />
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            title={t("draw.fav.hide")}
+            aria-label={t("draw.fav.hide")}
+            onClick={() => setFavVisible(false)}
+            className="tv3-press tv3-hov flex h-8 w-5 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--tv3-muted)]"
+          >
+            <svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+      )}
+
       {flyout && flyGroup && (
         <div
           ref={flyRef}
@@ -384,7 +526,14 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           onKeyDown={onMenuKey}
           className="tv3-pop z-[100] max-h-[calc(100vh-16px)] min-w-[276px] overflow-y-auto rounded-2xl py-1.5 text-[var(--tv3-text)] shadow-[var(--tv3-shadow-pop)]"
         >
-          <div data-fly-title className="px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">{t(flyGroup.labelKey)}</div>
+          <div data-fly-title className="flex items-center justify-between px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--tv3-muted)]">
+            <span>{t(flyGroup.labelKey)}</span>
+            {favs.length > 0 && !favOn && (
+              <button type="button" onClick={() => setFavVisible(true)} className="cursor-pointer normal-case tracking-normal text-[var(--tv3-accent)] hover:underline">
+                {t("draw.fav.show")}
+              </button>
+            )}
+          </div>
           {(flyGroup.sections ?? [{ id: "all", labelKey: flyGroup.labelKey, tools: flyGroup.tools }]).map((sec, si, all) => (
             <div key={sec.id} role="group" aria-label={t(sec.labelKey)}>
               {all.length > 1 && (
@@ -396,43 +545,71 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 <div className="grid grid-cols-6 gap-1 px-2 py-1.5">
                   {sec.tools.map((tool) => {
                     const isActive = activeTool === tool.id;
+                    const isFav = favs.includes(tool.id);
                     return (
-                      <button
-                        key={tool.id}
-                        type="button"
-                        role="menuitem"
-                        title={t(tool.labelKey)}
-                        aria-label={t(tool.labelKey)}
-                        aria-current={isActive ? "true" : undefined}
-                        onClick={() => pickTool(flyGroup.id, tool.id)}
-                        className={`tv3-press tv3-hov flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl text-[var(--tv3-text2)] focus-visible:bg-[var(--tv3-fill)] ${
-                          isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
-                        }`}
-                      >
-                        <DrawIcon id={tool.id} size={25} filled={isActive} />
-                      </button>
+                      <div key={tool.id} className="group/fi relative">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          title={t(tool.labelKey)}
+                          aria-label={t(tool.labelKey)}
+                          aria-current={isActive ? "true" : undefined}
+                          onClick={() => pickTool(flyGroup.id, tool.id)}
+                          className={`tv3-press tv3-hov flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl text-[var(--tv3-text2)] focus-visible:bg-[var(--tv3-fill)] ${
+                            isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
+                          }`}
+                        >
+                          <DrawIcon id={tool.id} size={25} filled={isActive} />
+                        </button>
+                        <button
+                          type="button"
+                          title={isFav ? t("draw.fav.remove") : t("draw.fav.add")}
+                          aria-label={isFav ? t("draw.fav.remove") : t("draw.fav.add")}
+                          aria-pressed={isFav}
+                          onClick={() => toggleFav(tool.id)}
+                          className={`absolute -right-0.5 -top-0.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-[var(--tv3-card)] [&>svg]:h-3 [&>svg]:w-3 ${
+                            isFav ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)] opacity-0 group-hover/fi:opacity-100 focus-visible:opacity-100"
+                          }`}
+                        >
+                          {starIcon(isFav)}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
               ) : (
                 sec.tools.map((tool) => {
                   const isActive = flyGroup.id === "cursors" ? activeTool === null && (last[flyGroup.id] ?? "") === tool.id : activeTool === tool.id;
+                  const isFav = favs.includes(tool.id);
                   return (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      role="menuitem"
-                      aria-current={isActive ? "true" : undefined}
-                      onClick={() => pickTool(flyGroup.id, tool.id)}
-                      className={`tv3-press tv3-hov mx-1.5 flex w-[calc(100%-12px)] cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 text-left text-[14px] text-[var(--tv3-text2)] focus-visible:bg-[var(--tv3-fill)] ${
-                        isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
-                      }`}
-                    >
-                      <DrawIcon id={tool.id} size={25} filled={isActive} />
-                      <MacGlyph set="cur" k={tool.id} />
-                      {flyGroup.id === "lines" && <MacGlyph set="line" k={String((flyGroup.sections ?? []).flatMap((x) => x.tools).findIndex((x) => x.id === tool.id))} />}
-                      <span className="truncate">{t(tool.labelKey)}</span>
-                    </button>
+                    <div key={tool.id} className="group/fi relative">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-current={isActive ? "true" : undefined}
+                        onClick={() => pickTool(flyGroup.id, tool.id)}
+                        className={`tv3-press tv3-hov mx-1.5 flex w-[calc(100%-12px)] cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 pr-9 text-left text-[14px] text-[var(--tv3-text2)] focus-visible:bg-[var(--tv3-fill)] ${
+                          isActive ? "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)]" : ""
+                        }`}
+                      >
+                        <DrawIcon id={tool.id} size={25} filled={isActive} />
+                        <MacGlyph set="cur" k={tool.id} />
+                        {flyGroup.id === "lines" && <MacGlyph set="line" k={String((flyGroup.sections ?? []).flatMap((x) => x.tools).findIndex((x) => x.id === tool.id))} />}
+                        <span className="truncate">{t(tool.labelKey)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        title={isFav ? t("draw.fav.remove") : t("draw.fav.add")}
+                        aria-label={isFav ? t("draw.fav.remove") : t("draw.fav.add")}
+                        aria-pressed={isFav}
+                        onClick={() => toggleFav(tool.id)}
+                        className={`absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg hover:bg-[var(--tv3-fill)] ${
+                          isFav ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)] opacity-0 group-hover/fi:opacity-100 focus-visible:opacity-100"
+                        }`}
+                      >
+                        {starIcon(isFav)}
+                      </button>
+                    </div>
                   );
                 })
               )}
