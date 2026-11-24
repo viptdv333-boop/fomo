@@ -29,6 +29,14 @@ html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] {
   overflow-y: auto;
   font-family: var(--ios-font);
 }
+/* the group flyout is a fixed child of the drawer: a backdrop-filter makes the drawer ITS containing block, so the sheet got squeezed to the drawer's width
+   and clipped. While a flyout is open the drawer drops the blur (its own tint stays), and the flyout is positioned against the screen again. */
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"]:has([data-fly]),
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"]:has([data-fly]) [data-tv="tools"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--tv3-card);
+}
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn { width: 46px; height: 46px; min-height: 46px; border-radius: 13px; color: var(--tv3-text2); }
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn .mg { width: 32px; height: 32px; }
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-tv="rail"] .tv3-rbtn[aria-pressed="true"],
