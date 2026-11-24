@@ -74,8 +74,8 @@ html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-fly] button .mg { wi
 /* the chart-type sheet: a grouped list - coloured glyph, title, a tick on the current type, hairlines between rows */
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button:has(> .mg) { display: flex; align-items: center; gap: 14px; padding: 0 14px !important; height: 48px; margin: 0 !important; width: 100% !important; text-align: left; font-weight: 500; }
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button:has(> .mg) .mg { width: 28px; height: 28px; }
-html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button:has(> .mg)[aria-current="true"] { background: color-mix(in srgb, var(--ios-blue) 14%, transparent) !important; color: var(--tv3-text) !important; font-weight: 600; }
-html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button:has(> .mg)[aria-current="true"]::after {
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop:not([data-fly]) button:has(> .mg)[aria-current="true"] { background: color-mix(in srgb, var(--ios-blue) 14%, transparent) !important; color: var(--tv3-text) !important; font-weight: 600; }
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop:not([data-fly]) button:has(> .mg)[aria-current="true"]::after {
   content: "";
   width: 18px;
   height: 18px;
@@ -83,6 +83,13 @@ html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop button:has(> .mg)
   flex: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a84ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+/* Drawing flyouts mark the active tool with a tinted row. Keep the trailing favourite star clear instead of overlaying it with a check. */
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-fly] button[role="menuitem"][aria-current="true"] {
+  background: color-mix(in srgb, var(--ios-blue) 18%, transparent) !important;
+  color: var(--ios-blue) !important;
+  font-weight: 600;
+}
+html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) [data-fly] button[role="menuitem"][aria-current="true"]::after { content: none !important; display: none !important; }
 
 /* layouts / templates sheet: touch-size rows and fields (16px fields: iOS does not zoom the page on focus) */
 html.app-ui.app-term-fs.app-term-fs:not(.app-desktop) .tv3-pop input:not([type="checkbox"]) { height: 42px !important; font-size: 16px !important; border-radius: 11px !important; }
