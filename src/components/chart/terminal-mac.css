@@ -1197,13 +1197,23 @@ html[data-tvmac] .tv3 [data-tv="drawbar"] .dsb-alert:hover {
 .tvmac [data-fav-bar] {
   /* the same tint as the Indicators pill (a white card hid the cursor) */
   background: rgba(138, 109, 176, 0.14) !important;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
   border-radius: 16px !important;
-  box-shadow: var(--m-ring);
+  box-shadow: var(--m-ring) !important;
+  border-color: transparent !important;
   padding: 5px !important;
   gap: 3px !important;
   --rc: #4f9a74;
+}
+/* the drawing style bar: the same plate as the favourites bar and the Indicators pill */
+.tvmac [data-tv="drawbar"] {
+  background: rgba(138, 109, 176, 0.14) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 16px !important;
+  border-color: transparent !important;
+  box-shadow: var(--m-ring) !important;
 }
 .tvmac [data-fav-bar] .fav-b { width: 40px; height: 40px; border-radius: 12px; color: var(--rc); cursor: pointer; }
 .tvmac [data-fav-bar] .fav-b svg { width: 28px; height: 28px; filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--rc) 35%, transparent)); }

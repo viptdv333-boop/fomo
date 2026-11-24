@@ -212,7 +212,7 @@ export default function DrawingStyleBar({ controller, onCreateAlert }: { control
       ref={barRef}
       aria-label={t("draw.style.bar")}
       style={off.x || off.y ? { transform: `translate(${off.x}px, ${off.y}px)` } : undefined}
-      className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-[var(--tv3-hair)] bg-[var(--tv3-card)] px-2 py-1 shadow-lg"
+      className="pointer-events-auto absolute inset-x-2 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-16px)] flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-[var(--tv3-hair)] bg-[var(--tv3-fill)]/95 px-2 py-1 shadow-[0_4px_18px_rgba(0,0,0,.12)] dark:shadow-[0_4px_18px_rgba(0,0,0,.5)]"
     >
       <span
         title={t("draw.fav.drag")}
