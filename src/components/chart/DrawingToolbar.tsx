@@ -568,7 +568,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                           aria-pressed={isFav}
                           onClick={() => toggleFav(tool.id)}
                           className={`absolute -right-0.5 -top-0.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-[var(--tv3-card)] [&>svg]:h-3 [&>svg]:w-3 ${
-                            isFav ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)] opacity-0 group-hover/fi:opacity-100 focus-visible:opacity-100"
+                            isFav ? "text-[#f5b301]" : "text-[var(--tv3-text2)] opacity-60 hover:opacity-100 hover:text-[#f5b301]"
                           }`}
                         >
                           {starIcon(isFav)}
@@ -604,7 +604,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                         aria-pressed={isFav}
                         onClick={() => toggleFav(tool.id)}
                         className={`absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg hover:bg-[var(--tv3-fill)] ${
-                          isFav ? "text-[var(--tv3-accent)]" : "text-[var(--tv3-muted)] opacity-0 group-hover/fi:opacity-100 focus-visible:opacity-100"
+                          isFav ? "text-[#f5b301]" : "text-[var(--tv3-text2)] opacity-60 hover:opacity-100 hover:text-[#f5b301]"
                         }`}
                       >
                         {starIcon(isFav)}
