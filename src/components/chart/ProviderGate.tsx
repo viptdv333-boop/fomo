@@ -29,6 +29,11 @@ export default function ProviderGate({ source, name, children, onBack }: { sourc
   return (
     <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
       <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+        {onBack && (
+          <button type="button" onClick={onBack} className="mb-4 block w-full cursor-pointer rounded-xl bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
+            {t("pg.back")}
+          </button>
+        )}
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" aria-hidden>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,12 +68,6 @@ export default function ProviderGate({ source, name, children, onBack }: { sourc
             </>
           )}
         </div>
-        {/* the card replaces the whole chart (symbol search included): without this the last opened keyed symbol was a dead end */}
-        {onBack && (
-          <button type="button" onClick={onBack} className="mt-4 block w-full cursor-pointer rounded-xl bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
-            {t("pg.back")}
-          </button>
-        )}
         <Link href="/data-providers" className="mt-3 inline-block text-sm text-gray-500 dark:text-gray-400 hover:underline">
           {t("pg.all")} →
         </Link>

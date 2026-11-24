@@ -38,11 +38,15 @@ export class RoomMessageHistory {
 
   merge<T extends RoomMessageRow>(ticket: HistoryRequest, current: T[], incoming: T[]): T[] | null {
     if (!this.current(ticket)) return null;
-    const rows = new Map(current.map(row => [row.id, row]));
-    for (const row of incoming) {
-      // A socket edit/delete or a successful send after this request began is newer than its HTTP snapshot.
-      if ((this.changed.get(row.id) ?? 0) <= ticket.version || !rows.has(row.id)) rows.set(row.id, row);
+    // The server response is the authoritative latest window: cached messages
+    // that were removed or deleted must not live forever in the local copy.
+    const rows = new Map(incoming.map(row => [row.id, row]));
+    // Keep only live changes that arrived after this request started.
+    for (const row of current) {
+      if ((this.changed.get(row.id) ?? 0) > ticket.version) rows.set(row.id, row);
     }
-    return [...rows.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    return [...rows.values()]
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .slice(-200);
   }
 }

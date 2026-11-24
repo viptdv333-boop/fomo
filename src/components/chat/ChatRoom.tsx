@@ -21,6 +21,7 @@ import { showToast } from "@/lib/offline/toast";
 import VideoPlayer from "@/components/shared/VideoPlayer";
 import ImageLightbox from "@/components/shared/ImageLightbox";
 import { RoomMessageHistory } from "@/lib/room-message-history";
+import { readRoomMessageCache, writeRoomMessageCache } from "@/lib/chat-room-cache";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -283,9 +284,16 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
+  const [cacheReadyRoom, setCacheReadyRoom] = useState<string | null>(null);
   const history = useRef(new RoomMessageHistory(roomId));
   history.current.select(roomId);
-  useEffect(() => { setMessages([]); }, [roomId]);
+  useEffect(() => {
+    setMessages(readRoomMessageCache<Message>(roomId));
+    setCacheReadyRoom(roomId);
+  }, [roomId]);
+  useEffect(() => {
+    if (cacheReadyRoom === roomId) writeRoomMessageCache(roomId, messages);
+  }, [cacheReadyRoom, messages, roomId]);
   // The paid-channel subscription ended while the chat was open (socket "room_access_revoked") or the history came back 403 needSubscription:
   // the composer is replaced by a notice with a way to the channel page (renewal). path = that page, when the server knew it.
   const [accessEnded, setAccessEnded] = useState<{ path: string | null } | null>(null);
