@@ -1092,6 +1092,56 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 .tvmac [data-tv="toolbar"] .tb-ct { display: none !important; }
 .tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 12px !important; }
 
+/* dense candles: use the same icon-over-caption control as the neighbouring chart tools */
+.tvmac [data-tv="toolbar"] .tb-dense {
+  position: relative;
+  order: 9;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 92px;
+  width: auto !important;
+  height: 56px !important;
+  padding: 0 2px !important;
+  border-radius: 12px !important;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px !important;
+  background: transparent !important;
+  color: var(--tb-c, #4f9a74);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.tvmac [data-tv="toolbar"] .tb-dense { --tb-c: #4f9a74; }
+html.dark .tvmac [data-tv="toolbar"] .tb-dense { --tb-c: #7cc29b; }
+.tvmac [data-tv="toolbar"] .tb-dense:hover:not(:disabled) { background: color-mix(in srgb, var(--m-text) 6%, transparent) !important; }
+.tvmac [data-tv="toolbar"] .tb-dense[aria-pressed="true"] { background: color-mix(in srgb, var(--tb-c) 16%, transparent) !important; }
+.tvmac [data-tv="toolbar"] .tb-dense svg {
+  width: 30px !important;
+  height: 30px !important;
+  flex: none;
+  transform: none;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--tb-c) 35%, transparent));
+}
+.tvmac [data-tv="toolbar"] .tb-dense > span { display: none !important; }
+.tvmac [data-tv="toolbar"] .tb-dense::after {
+  content: var(--tbl-density);
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--m-text);
+  line-height: 1.1;
+}
+@media (max-height: 760px) {
+  .tvmac [data-tv="toolbar"] .tb-dense { height: 46px !important; gap: 1px !important; }
+}
+@media (max-width: 1200px) {
+  .tvmac [data-tv="toolbar"] .tb-dense { max-width: 80px; }
+  .tvmac [data-tv="toolbar"] .tb-dense::after { font-size: 11px; }
+}
+
 /* header icons: big, as tall as the header allows (glyph 32px + a 10px caption) */
 @layer utilities {
   .tvmac [data-tv="toolbar"] :is(.tb-compare, .tb-ind, .tb-win, .tb-alert, .tb-replay, .tb-type, .tb-undo, .tb-redo, .tb-layout, .tb-tpl, .tb-set, .tb-keys, .tb-full, .tb-shot, .tb-skin) { height: 46px !important; min-width: 60px; padding: 0 !important; gap: 0 !important; justify-content: space-between; }

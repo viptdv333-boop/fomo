@@ -236,7 +236,7 @@ export default function TopToolbar(p: Props) {
 
   // labels of the macOS look: drawn by CSS (::after) under the icon, so every button keeps its own markup
   const macLabels = Object.fromEntries(
-    ["compare", "indicators", "window", "alerts", "events", "replay", "type", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot", "skin"].map((k) => [`--tbl-${k}`, JSON.stringify(t(`mac.lbl.${k}`))]),
+    ["compare", "indicators", "window", "alerts", "events", "replay", "type", "density", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot", "skin"].map((k) => [`--tbl-${k}`, JSON.stringify(k === "density" ? t("chart.denseCandles") : t(`mac.lbl.${k}`))]),
   ) as CSSProperties;
 
   if (p.phone) {
@@ -362,7 +362,7 @@ export default function TopToolbar(p: Props) {
         </div>
       )}
 
-      <button type="button" onClick={p.onToggleDenseCandles} disabled={!supportsDenseCandles} title={t("chart.denseCandles.tip")} aria-label={t("chart.denseCandles")} aria-pressed={p.denseCandles} className={`${btn} ${p.denseCandles ? btnOn : ""}`}>
+      <button type="button" onClick={p.onToggleDenseCandles} disabled={!supportsDenseCandles} title={t("chart.denseCandles.tip")} aria-label={t("chart.denseCandles")} aria-pressed={p.denseCandles} className={`${btn} tb-dense ${p.denseCandles ? btnOn : ""}`}>
         {denseIcon}
         <span className="hidden @[900px]:inline">{t("chart.denseCandles")}</span>
       </button>
