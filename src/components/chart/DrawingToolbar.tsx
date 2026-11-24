@@ -73,12 +73,11 @@ const btnActive = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)] hover:!
 const ICON = 26; // glyph size (the CSS of .tv3-rbtn svg wins: 26px, 23px on short screens)
 const GAP = <span className="tv3-rgap" />;
 
-/** Rail order of the design: cursor, trend, horizontal line, fib, (extra pattern / forecast groups), rectangle, brush, text, ruler, star, then the actions.
+/** Rail order of the design: cursor, line tools, fib, (extra pattern / forecast groups), rectangle, brush, text, ruler, star, then the actions.
  *  `fixed` = a slot bound to one tool (its group flyout opens from the caret / right click), otherwise the slot shows the last tool used of the group. */
 const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] = [
   { key: "cursors", group: "cursors" },
   { key: "lines", group: "lines" },
-  { key: "hline", group: "lines", fixed: "hline", noMenu: true },
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
   { key: "forecast", group: "forecast" },
