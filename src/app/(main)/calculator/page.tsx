@@ -372,13 +372,6 @@ function SiteCalculator() {
       <p className="calc-disc text-xs text-gray-400 mt-3">
         {t("calc.disclaimer")}
       </p>
-
-      {/* the way in / out of the new look, like the terminal's: a quiet button under the card */}
-      {(mac || skin.canOffer) && (
-        <button type="button" className="calc-skin" onClick={() => skin.set(!mac)} title={t(mac ? "mac.classicTip" : "mac.tryTip")} data-mac-try={mac ? undefined : ""}>
-          {mac ? t("mac.classic") : t("mac.try")}
-        </button>
-      )}
     </div>
   );
 }
