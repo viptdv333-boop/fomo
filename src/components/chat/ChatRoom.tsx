@@ -20,6 +20,7 @@ import { isOnline } from "@/lib/offline/online";
 import { showToast } from "@/lib/offline/toast";
 import VideoPlayer from "@/components/shared/VideoPlayer";
 import ImageLightbox from "@/components/shared/ImageLightbox";
+import { RoomMessageHistory } from "@/lib/room-message-history";
 
 /* ── fadeIn animation ── */
 const fadeInStyle = `
@@ -77,6 +78,7 @@ interface ReplyTo {
 
 interface Message {
   id: string;
+  roomId?: string;
   text: string;
   fileUrl: string | null;
   fileName: string | null;
@@ -281,6 +283,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [messages, setMessages] = useState<Message[]>([]);
+  const history = useRef(new RoomMessageHistory(roomId));
+  history.current.select(roomId);
+  useEffect(() => { setMessages([]); }, [roomId]);
   // The paid-channel subscription ended while the chat was open (socket "room_access_revoked") or the history came back 403 needSubscription:
   // the composer is replaced by a notice with a way to the channel page (renewal). path = that page, when the server knew it.
   const [accessEnded, setAccessEnded] = useState<{ path: string | null } | null>(null);
@@ -349,10 +354,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
   }
 
   const loadMessages = useCallback(() => {
-    fetch(`/api/chat/messages?roomId=${roomId}`)
+    const ticket = history.current.begin(roomId);
+    fetch(`/api/chat/messages?roomId=${encodeURIComponent(roomId)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setMessages(data);
+        if (!history.current.current(ticket)) return;
+        if (Array.isArray(data)) setMessages(prev => history.current.merge(ticket, prev, data) ?? prev);
         else if (data?.needSubscription) setAccessEnded({ path: typeof data.path === "string" ? data.path : null });
       })
       .catch(() => {});
@@ -372,18 +379,24 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
     if (!session?.user?.id) return;
 
     const socket = getSocket(session.user.id);
-    socket.emit("join_room", roomId);
+    const joinRoom = () => socket.emit("join_room", roomId, () => loadMessages());
+    socket.on("connect", joinRoom);
+    if (socket.connected) joinRoom();
 
-    socket.on("new_message", (msg: Message) => {
+    const onMessage = (msg: Message) => {
+      if (msg.roomId && msg.roomId !== roomId || !history.current.live(roomId, msg.id)) return;
       setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
       // Room is actively open — a message arriving live shouldn't count as
       // unread once the user navigates elsewhere and back.
       if (msg.user?.id !== session.user!.id) markRoomRead();
-    });
+    };
+    socket.on("new_message", onMessage);
 
-    socket.on("message_updated", (msg: Message) => {
+    const onUpdated = (msg: Message) => {
+      if (msg.roomId && msg.roomId !== roomId || !history.current.live(roomId, msg.id)) return;
       setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
-    });
+    };
+    socket.on("message_updated", onUpdated);
 
     // The server's sweep took this socket out of the room: the paid subscription is over. Stop here, don't keep a stale thread live.
     const onRevoked = (e: { roomId?: string; path?: string | null }) => {
@@ -393,11 +406,12 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
     return () => {
       socket.emit("leave_room", roomId);
-      socket.off("new_message");
-      socket.off("message_updated");
+      socket.off("connect", joinRoom);
+      socket.off("new_message", onMessage);
+      socket.off("message_updated", onUpdated);
       socket.off("room_access_revoked", onRevoked);
     };
-  }, [roomId, session?.user?.id]);
+  }, [roomId, session?.user?.id, loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -508,7 +522,9 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       });
       if (r.state === "sent") {
         const msg = r.data;
-        if (msg && msg.id && !msg.duplicate) setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        if (msg && msg.id && !msg.duplicate) {
+          if (history.current.live(roomId, msg.id)) setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        }
         else loadMessages();
       } else if (r.state === "queued" && !isOnline()) {
         showToast(t("offline.queuedToast"));
@@ -659,7 +675,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       });
       if (!res.ok) throw new Error(String(res.status));
       const updated = await res.json();
-      setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      if (history.current.live(roomId, updated.id)) setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       cancelEdit();
     } catch {
       // keep the edit open: a long text must not be lost on a failed request
@@ -687,7 +703,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       });
       if (res.ok) {
         const updated = await res.json();
-        setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+        if (history.current.live(roomId, updated.id)) setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       }
     } catch {}
   }
@@ -703,6 +719,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
       });
       if (res.ok) {
         const { reactions } = await res.json();
+        if (!history.current.live(roomId, messageId)) return;
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? { ...m, reactions } : m))
         );

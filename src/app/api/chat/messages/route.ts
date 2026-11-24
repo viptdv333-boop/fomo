@@ -9,6 +9,7 @@ import { notifyChannelTelegramSubscribers } from "@/lib/telegram";
 import { getT } from "@/lib/i18n/server";
 import { imageUrlsFromAttachments, toPlainText } from "@/lib/notify-text";
 import { claimClientRequest } from "@/lib/client-request";
+import { ROOM_HISTORY_ORDER } from "@/lib/room-message-history";
 
 const globalForIO = globalThis as unknown as { io: any };
 
@@ -51,11 +52,13 @@ export async function GET(req: NextRequest) {
         },
       },
     },
-    orderBy: { createdAt: "asc" },
+    // Select the newest window first. ASC + take returned the first 200 messages ever,
+    // so every history refresh erased all newer socket-delivered messages from the screen.
+    orderBy: [...ROOM_HISTORY_ORDER],
     take: 200,
   });
 
-  return NextResponse.json(messages);
+  return NextResponse.json(messages.reverse(), { headers: { "Cache-Control": "no-store" } });
 }
 
 // POST: send message with optional replyToId

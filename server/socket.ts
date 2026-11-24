@@ -134,7 +134,7 @@ export function initSocket(httpServer: HTTPServer) {
       moexSeconds.unsubscribe(socket, payload?.key);
     });
 
-    socket.on("join_room", async (roomId: string) => {
+    socket.on("join_room", async (roomId: string, acknowledge?: () => void) => {
       const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
       if (!room) return;
       // User-created private rooms require membership; other room types
@@ -146,7 +146,8 @@ export function initSocket(httpServer: HTTPServer) {
         if (!membership) return;
       }
       if (!(await canAccessRoom(prisma, roomId, socket.data.userId))) return;
-      socket.join(roomId);
+      await socket.join(roomId);
+      if (typeof acknowledge === "function") acknowledge();
     });
 
     socket.on("leave_room", (roomId: string) => {
