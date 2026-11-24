@@ -20,8 +20,9 @@ export class RoomMessageHistory {
     this.changed.clear();
   }
 
-  begin(roomId: string): HistoryRequest {
-    this.select(roomId);
+  begin(roomId: string): HistoryRequest | null {
+    // A delayed send/join acknowledgement from an old screen must not select that room again.
+    if (roomId !== this.roomId) return null;
     return { roomId, request: ++this.request, version: this.version };
   }
 

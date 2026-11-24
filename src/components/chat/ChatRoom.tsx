@@ -355,6 +355,7 @@ export default function ChatRoom({ roomId, roomName, isClosed, isArchived, onOpe
 
   const loadMessages = useCallback(() => {
     const ticket = history.current.begin(roomId);
+    if (!ticket) return;
     fetch(`/api/chat/messages?roomId=${encodeURIComponent(roomId)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
