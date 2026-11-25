@@ -14,12 +14,13 @@ import { LIQUIDITY_DEFS } from "./liquidity-defs";
 import { formatPrice, inferPrecision } from "../format";
 import type { OrderFlowStore } from "../orderflow/store";
 import type { AlgoNeed, AlgoStore } from "../algopack/store";
+import { ALGOBOT_DEFS } from "./algobots-defs";
 
 /* Indicator definitions: parameter schema + compute(). Names and descriptions live in the i18n dictionary
    under `ind.<id>.name` / `ind.<id>.desc`; parameter labels under `ind.p.<key>`. */
 
 export type Params = Record<string, ParamValue>;
-export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "patterns" | "liquidity" | "other";
+export type Category = "trend" | "momentum" | "volatility" | "volume" | "ma" | "sr" | "patterns" | "liquidity" | "algobots" | "other";
 export type PlotShape = "line" | "step" | "area" | "histogram" | "columns" | "circles";
 export type LineStyleName = "solid" | "dashed" | "dotted";
 export type NumFmt = "price" | "osc" | "vol";
@@ -1322,6 +1323,7 @@ defs.push(...HARMONIC_DEFS);
 defs.push(...CANDLE_DEFS);
 defs.push(...LIQUIDITY_DEFS);
 defs.push(...ALGOPACK_DEFS);
+defs.push(...ALGOBOT_DEFS);
 export const INDICATOR_DEFS: readonly IndicatorDef[] = defs;
 
 const byId = new Map<string, IndicatorDef>();
@@ -1337,7 +1339,7 @@ export function getIndicatorDef(id: string): IndicatorDef | undefined {
   return byId.get(id) ?? (dynamicResolver ? dynamicResolver(id) : undefined);
 }
 
-export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns", "liquidity", "other"];
+export const CATEGORIES: readonly Category[] = ["trend", "momentum", "volatility", "volume", "sr", "ma", "patterns", "liquidity", "algobots", "other"];
 
 export function defaultParams(def: IndicatorDef): Params {
   const out: Params = {};
