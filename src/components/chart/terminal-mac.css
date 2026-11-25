@@ -870,24 +870,26 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"][aria-current="true"]:no
   position: absolute;
   top: 50%;
   right: 40px;
-  width: 10px;
-  height: 10px;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
   margin: 0;
   transform: translateY(-50%);
   border-radius: 50%;
-  background: #4f9a74;
-  box-shadow: 0 0 0 2px var(--m-card, #fff);
+  border: 2px solid #4f9a74;
+  background: transparent;
 }
 html[data-tvmac] .tv3 [data-fly] button[role="menuitem"][aria-current="true"][class*="w-10"]::after {
   content: "";
   position: absolute;
   right: 3px;
   bottom: 3px;
-  width: 9px;
-  height: 9px;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #4f9a74;
-  box-shadow: 0 0 0 2px var(--m-card, #fff);
+  border: 2px solid #4f9a74;
+  background: transparent;
 }
 
 /* sheet size of the design (760x620) for the settings and the indicators dialogs */

@@ -217,7 +217,7 @@ html.app-ui .app-mac-fly-list { margin: 0 14px; border-radius: 14px; background:
 html.app-ui .app-mac-fly-sec { padding: 10px 14px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--m-tx2); }
 html.app-ui .app-mac-fly-i { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 10px 14px; font-size: 15px; font-weight: 500; text-align: left; color: var(--m-tx); }
 html.app-ui .app-mac-fly-i[data-on="1"] { background: rgba(79, 154, 116, 0.14); color: var(--m-green); }
-html.app-ui .app-mac-fly-i[aria-current="true"]::after { content: ""; width: 10px; height: 10px; flex: none; margin-left: auto; border-radius: 50%; background: var(--m-green); box-shadow: 0 0 0 2px var(--m-card); }
+html.app-ui .app-mac-fly-i[aria-current="true"]::after { content: ""; box-sizing: border-box; width: 8px; height: 8px; flex: none; margin-left: auto; border: 2px solid var(--m-green); border-radius: 50%; background: transparent; }
 html.app-ui .app-mac-fly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px 8px; }
 html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding: 10px 0; border-radius: 12px; }
 
