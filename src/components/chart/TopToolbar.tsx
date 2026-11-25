@@ -63,8 +63,6 @@ interface Props {
   onInterval: (id: string) => void;
   chartType: ChartType;
   onChartType: (t: ChartType) => void;
-  denseCandles: boolean;
-  onToggleDenseCandles: () => void;
   onOpenSearch: () => void;
   /** Switches to another instrument (exact contract chosen in the contract chip). Without it the chip is not shown. */
   onPickInstrument?: (inst: TerminalInstrument) => void;
@@ -226,14 +224,6 @@ export default function TopToolbar(p: Props) {
 
   const win = p.windows?.available ? p.windows : null;
   const currentType = CHART_TYPES.find((c) => c.id === p.chartType) ?? CHART_TYPES[0];
-  const supportsDenseCandles = ["candles", "hollow", "heikin", "volcandles"].includes(p.chartType);
-  const denseIcon = (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M5 3v18M12 3v18M19 3v18" />
-      <path d="M3.5 7h3v8h-3zM10.5 5h3v11h-3zM17.5 9h3v7h-3z" fill="currentColor" fillOpacity=".24" />
-    </svg>
-  );
-
   // labels of the macOS look: drawn by CSS (::after) under the icon, so every button keeps its own markup
   const macLabels = Object.fromEntries(
     ["compare", "indicators", "window", "alerts", "events", "replay", "type", "density", "back", "forward", "templates", "layout", "settings", "keys", "screen", "shot", "skin"].map((k) => [`--tbl-${k}`, JSON.stringify(k === "density" ? t("chart.denseCandles") : t(`mac.lbl.${k}`))]),
@@ -265,10 +255,6 @@ export default function TopToolbar(p: Props) {
         {p.favIntervals && p.onFavIntervals && (
           <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} single />
         )}
-        <button data-ph="dense-candles" onClick={p.onToggleDenseCandles} disabled={!supportsDenseCandles} title={t("chart.denseCandles.tip")} aria-label={t("chart.denseCandles")} aria-pressed={p.denseCandles} className={`${ph} ${p.denseCandles ? "ph-on" : ""}`}>
-          {denseIcon}
-          {cap(t("chart.denseCandles"))}
-        </button>
         <button data-ph="tools" onClick={p.onToggleTools} title={t("shell.drawTools")} aria-label={t("shell.drawTools")} aria-pressed={p.toolsOpen} className={`${ph} ${p.toolsOpen ? "ph-on" : ""}`}>
           {G(RAIL_GLYPHS.brush)}
           {cap(t("mac.m.tabTools"))}
@@ -361,11 +347,6 @@ export default function TopToolbar(p: Props) {
           ))}
         </div>
       )}
-
-      <button type="button" onClick={p.onToggleDenseCandles} disabled={!supportsDenseCandles} title={t("chart.denseCandles.tip")} aria-label={t("chart.denseCandles")} aria-pressed={p.denseCandles} className={`${btn} tb-dense ${p.denseCandles ? btnOn : ""}`}>
-        {denseIcon}
-        <span className="hidden @[900px]:inline">{t("chart.denseCandles")}</span>
-      </button>
 
       <Menu title={t("shell.chartType")} className={`${btn} tb-type`} width={220} trigger={<>{typeIcon[currentType.id]}<MacGlyph set="tb" k="type" alpha="55" width={1.8} /></>}>
         {(close) =>

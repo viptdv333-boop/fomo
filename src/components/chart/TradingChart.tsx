@@ -2218,8 +2218,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         }}
         chartType={prefs.chartType}
         onChartType={(c) => update({ chartType: c })}
-        denseCandles={prefs.denseCandles}
-        onToggleDenseCandles={() => update({ denseCandles: !prefs.denseCandles })}
         onOpenSearch={() => (phoneFs ? setSearchOpen((v) => !v) : setSearchOpen(true))}
         onPickInstrument={handleSelect}
         onOpenIndicators={() => (phoneFs ? setIndOpen((v) => !v) : setIndOpen(true))}
