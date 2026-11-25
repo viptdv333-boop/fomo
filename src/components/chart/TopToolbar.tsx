@@ -486,15 +486,6 @@ export default function TopToolbar(p: Props) {
         <span className={lbl2}>{t("shell.replay")}</span>
       </button>
 
-      <button onClick={() => p.drawings.undo()} disabled={!p.drawings.canUndo()} title={t("shell.undo")} aria-label={t("shell.undo")} className={`${btn} tb-undo`}>
-        {I.undo}
-        <MacGlyph set="tb" k="back" alpha="55" width={1.8} />
-      </button>
-      <button onClick={() => p.drawings.redo()} disabled={!p.drawings.canRedo()} title={t("shell.redo")} aria-label={t("shell.redo")} className={`${btn} tb-redo`}>
-        {I.redo}
-        <MacGlyph set="tb" k="forward" alpha="55" width={1.8} />
-      </button>
-
       <span className="tb-spacer flex-1 min-w-2 hidden md:block" />
 
       {p.extra && <span className="tb-extra contents">{p.extra}</span>}
