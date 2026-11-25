@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,
   },
   experimental: {
+    // The VPS also runs trading services; keep swap builds serial so Next does not exhaust RAM.
+    ...(process.env.NEXT_DIST_DIR ? { cpus: 1 } : {}),
     // One 14 KB stylesheet blocked first paint for a whole round trip to Moscow.
     inlineCss: true,
     // Tab switches: Next's own client cache keeps a visited section's payload for 30 s (dynamic) / 3 min (static) instead of 0 / 5 min, so
