@@ -865,7 +865,30 @@ html[data-tvmac] .tv3 .tv3-pop button > .mg {
 }
 html[data-tvmac] .tv3 [data-fly] button[role="menuitem"]:has(> .mg:not(.mg-keep)) > svg:not(.mg) { display: none !important; }
 html[data-tvmac] .tv3 [data-fly] button[aria-current="true"] { box-shadow: none !important; outline: 0 !important; }
-html[data-tvmac] .tv3 [data-fly] button[aria-current="true"]::after { content: none !important; }
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"][aria-current="true"]:not([class*="w-10"])::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  width: 10px;
+  height: 10px;
+  margin: 0;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #4f9a74;
+  box-shadow: 0 0 0 2px var(--m-card, #fff);
+}
+html[data-tvmac] .tv3 [data-fly] button[role="menuitem"][aria-current="true"][class*="w-10"]::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4f9a74;
+  box-shadow: 0 0 0 2px var(--m-card, #fff);
+}
 
 /* sheet size of the design (760x620) for the settings and the indicators dialogs */
 html[data-tvmac] .tv3 [data-csd],

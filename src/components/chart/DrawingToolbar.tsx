@@ -414,11 +414,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 aria-label={`${t(g.labelKey)}: ${t("draw.moreTools")}`}
                 aria-haspopup="menu"
                 aria-expanded={flyout?.groupId === g.id}
-                className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-transparent text-[var(--tv3-text2)] transition-colors hover:bg-[var(--tv3-fill2)] hover:text-[var(--tv3-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--tv3-accent)]"
+                className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-transparent text-[var(--tv3-accent)] transition-colors hover:bg-[var(--tv3-fill2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--tv3-accent)]"
                 onClick={(e) => openFlyout(g.id, e.currentTarget.parentElement ?? e.currentTarget)}
               >
-                <svg viewBox="0 0 10 8" width="12" height="10" aria-hidden="true">
-                  <path d="m2 2.5 3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+                  <circle cx="6" cy="6" r="4.5" fill="currentColor" />
                 </svg>
               </button>
             )}
