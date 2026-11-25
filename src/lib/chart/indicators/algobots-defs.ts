@@ -1,7 +1,10 @@
 import type { IndicatorDef, LevelSpec } from "./registry";
 import * as M from "./math";
 
-/** First AlgoBots catalogue entry: confirmed swing levels with breakout, retest and rejection markers. */
+type PivotSet = { period: "day" | "week"; start: number; p: M.PivotLevels };
+type Signal = { i: number; dir: "long" | "short"; kind: "breakout" | "retest" | "bounce"; price: number };
+
+/** First AlgoBots catalogue entry: daily/weekly pivots with close-confirmed entry markers. */
 export const ALGOBOT_DEFS: IndicatorDef[] = [
   {
     id: "test1",
@@ -9,125 +12,127 @@ export const ALGOBOT_DEFS: IndicatorDef[] = [
     pane: "overlay",
     fixedPane: true,
     fmt: "price",
-    keywords: "algo bot levels breakout retest bounce support resistance long short",
+    keywords: "algo bot levels daily weekly pivots breakout retest bounce support resistance long short",
     params: [
-      { key: "pivotBars", type: "number", min: 2, max: 20, step: 1, default: 5 },
       { key: "atrLength", type: "number", min: 2, max: 100, step: 1, default: 14 },
       { key: "toleranceAtr", type: "number", min: 0.05, max: 1, step: 0.05, default: 0.2 },
-      { key: "resistanceColor", type: "color", default: "#ef5350" },
-      { key: "supportColor", type: "color", default: "#26a69a" },
+      { key: "dayColor", type: "color", default: "#f59e0b" },
+      { key: "weekColor", type: "color", default: "#2962ff" },
       { key: "longColor", type: "color", default: "#00a878" },
-      { key: "shortColor", type: "color", default: "#ef5350" },
+      { key: "shortColor", type: "color", default: "#ef4444" },
     ],
     title: () => "Test1",
     compute(candles, p) {
       const n = candles.length;
-      if (n < 10) return { plots: [] };
-      const pivotBars = Math.max(2, Math.floor(Number(p.pivotBars) || 5));
-      const atr = M.atr(candles.map((x) => x.h), candles.map((x) => x.l), candles.map((x) => x.c), Number(p.atrLength) || 14);
-      const longBreak = new Float64Array(n).fill(Number.NaN);
-      const shortBreak = new Float64Array(n).fill(Number.NaN);
-      const longRetest = new Float64Array(n).fill(Number.NaN);
-      const shortRetest = new Float64Array(n).fill(Number.NaN);
-      const longBounce = new Float64Array(n).fill(Number.NaN);
-      const shortBounce = new Float64Array(n).fill(Number.NaN);
-      const signals: { i: number; dir: "long" | "short"; kind: "breakout" | "retest" | "bounce"; price: number }[] = [];
-      let resistance: { value: number; from: number } | null = null;
-      let support: { value: number; from: number } | null = null;
-      let breakout: { dir: "long" | "short"; level: number; at: number; used: boolean } | null = null;
-
-      for (let i = pivotBars * 2; i < n; i++) {
-        const pivot = i - pivotBars;
-        let isHigh = true;
-        let isLow = true;
-        for (let j = pivot - pivotBars; j <= pivot + pivotBars; j++) {
-          if (j === pivot) continue;
-          if (candles[j].h >= candles[pivot].h) isHigh = false;
-          if (candles[j].l <= candles[pivot].l) isLow = false;
-          if (!isHigh && !isLow) break;
+      if (n < 3) return { plots: [] };
+      const periods: PivotSet[] = [];
+      for (const period of ["day", "week"] as const) {
+        const lastKey = M.periodKey(candles[n - 1].t, period);
+        let currentStart = n - 1;
+        while (currentStart > 0 && M.periodKey(candles[currentStart - 1].t, period) === lastKey) currentStart--;
+        if (currentStart === 0) continue;
+        const prevKey = M.periodKey(candles[currentStart - 1].t, period);
+        let high = -Infinity;
+        let low = Infinity;
+        let close = NaN;
+        for (let i = currentStart - 1; i >= 0 && M.periodKey(candles[i].t, period) === prevKey; i--) {
+          high = Math.max(high, candles[i].h);
+          low = Math.min(low, candles[i].l);
+          if (!Number.isFinite(close)) close = candles[i].c;
         }
-        if (isHigh) resistance = { value: candles[pivot].h, from: pivot };
-        if (isLow) support = { value: candles[pivot].l, from: pivot };
+        if (Number.isFinite(high) && Number.isFinite(low) && Number.isFinite(close)) {
+          periods.push({ period, start: currentStart, p: M.classicPivots(high, low, close) });
+        }
+      }
 
-        const range = Number.isFinite(atr[i]) ? Math.max(atr[i] * Number(p.toleranceAtr || 0.2), 0) : 0;
-        const c = candles[i];
+      const h = candles.map((c) => c.h);
+      const l = candles.map((c) => c.l);
+      const c = candles.map((x) => x.c);
+      const atr = M.atr(h, l, c, Number(p.atrLength) || 14);
+      const toleranceAtr = Number(p.toleranceAtr) || 0.2;
+      const supportLevels = periods.flatMap((x) => [x.p.S1, x.p.S2, x.p.S3]);
+      const resistanceLevels = periods.flatMap((x) => [x.p.R1, x.p.R2, x.p.R3]);
+      const allSignalLevels = [...supportLevels, ...resistanceLevels];
+      const signals: Signal[] = [];
+      let pending: { dir: "long" | "short"; level: number; at: number; done: boolean } | null = null;
+      for (let i = 1; i < n; i++) {
+        const bar = candles[i];
         const prev = candles[i - 1];
-        let madeBreak = false;
-        if (resistance && prev.c <= resistance.value && c.c > resistance.value) {
-          longBreak[i] = c.l - (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-          signals.push({ i, dir: "long", kind: "breakout", price: longBreak[i] });
-          breakout = { dir: "long", level: resistance.value, at: i, used: false };
-          madeBreak = true;
-        } else if (support && prev.c >= support.value && c.c < support.value) {
-          shortBreak[i] = c.h + (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-          signals.push({ i, dir: "short", kind: "breakout", price: shortBreak[i] });
-          breakout = { dir: "short", level: support.value, at: i, used: false };
-          madeBreak = true;
+        const tolerance = Number.isFinite(atr[i]) ? Math.max(0, atr[i] * toleranceAtr) : 0;
+        let breakout = false;
+        const brokenResistance = resistanceLevels.find((level) => prev.c <= level && bar.c > level);
+        const brokenSupport = supportLevels.find((level) => prev.c >= level && bar.c < level);
+        if (brokenResistance !== undefined) {
+          signals.push({ i, dir: "long", kind: "breakout", price: bar.l - (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
+          pending = { dir: "long", level: brokenResistance, at: i, done: false };
+          breakout = true;
+        } else if (brokenSupport !== undefined) {
+          signals.push({ i, dir: "short", kind: "breakout", price: bar.h + (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
+          pending = { dir: "short", level: brokenSupport, at: i, done: false };
+          breakout = true;
         }
 
-        if (!madeBreak && breakout && !breakout.used && i > breakout.at && i - breakout.at <= 24) {
-          if (breakout.dir === "long" && c.l <= breakout.level + range && c.c > breakout.level && c.c > c.o) {
-            longRetest[i] = c.l - (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-            signals.push({ i, dir: "long", kind: "retest", price: longRetest[i] });
-            breakout.used = true;
-          } else if (breakout.dir === "short" && c.h >= breakout.level - range && c.c < breakout.level && c.c < c.o) {
-            shortRetest[i] = c.h + (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-            signals.push({ i, dir: "short", kind: "retest", price: shortRetest[i] });
-            breakout.used = true;
+        if (!breakout && pending && !pending.done && i > pending.at && i - pending.at <= 24) {
+          if (pending.dir === "long" && bar.l <= pending.level + tolerance && bar.c > pending.level && bar.c > bar.o) {
+            signals.push({ i, dir: "long", kind: "retest", price: bar.l - (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
+            pending.done = true;
+          } else if (pending.dir === "short" && bar.h >= pending.level - tolerance && bar.c < pending.level && bar.c < bar.o) {
+            signals.push({ i, dir: "short", kind: "retest", price: bar.h + (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
+            pending.done = true;
           }
         }
 
-        if (!madeBreak && support && c.l <= support.value + range && c.c > support.value && c.c > c.o && prev.l > support.value + range) {
-          longBounce[i] = c.l - (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-          signals.push({ i, dir: "long", kind: "bounce", price: longBounce[i] });
+        if (!breakout && !signals.some((s) => s.i === i)) {
+          const support = supportLevels.filter((level) => prev.l > level + tolerance && bar.l <= level + tolerance && bar.c > level && bar.c > bar.o).sort((a, b) => b - a)[0];
+          const resistance = resistanceLevels.filter((level) => prev.h < level - tolerance && bar.h >= level - tolerance && bar.c < level && bar.c < bar.o).sort((a, b) => a - b)[0];
+          if (support !== undefined) signals.push({ i, dir: "long", kind: "bounce", price: bar.l - (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
+          else if (resistance !== undefined) signals.push({ i, dir: "short", kind: "bounce", price: bar.h + (Number.isFinite(atr[i]) ? atr[i] * 0.15 : 0) });
         }
-        if (!madeBreak && resistance && c.h >= resistance.value - range && c.c < resistance.value && c.c < c.o && prev.h < resistance.value - range) {
-          shortBounce[i] = c.h + (Number.isFinite(atr[i]) ? atr[i] * 0.18 : 0);
-          signals.push({ i, dir: "short", kind: "bounce", price: shortBounce[i] });
-        }
-        if (breakout && (i - breakout.at > 24 || (breakout.dir === "long" ? c.c < breakout.level - range : c.c > breakout.level + range))) breakout = null;
+        if (pending && (i - pending.at > 24 || (pending.dir === "long" ? bar.c < pending.level - tolerance : bar.c > pending.level + tolerance))) pending = null;
       }
 
       const levels: LevelSpec[] = [];
-      if (resistance) levels.push({ value: resistance.value, color: String(p.resistanceColor), label: "R", name: "ind.test1.resistance", fromIndex: resistance.from, flag: true, scale: false });
-      if (support) levels.push({ value: support.value, color: String(p.supportColor), label: "S", name: "ind.test1.support", fromIndex: support.from, flag: true, scale: false });
-      return {
-        levels,
-        extra: { signals },
-        plots: [
-          { key: "LONG breakout", data: longBreak, kind: "dots", color: String(p.longColor), flag: false, legend: false },
-          { key: "SHORT breakout", data: shortBreak, kind: "dots", color: String(p.shortColor), flag: false, legend: false },
-          { key: "LONG retest", data: longRetest, kind: "dots", color: String(p.longColor), flag: false, legend: false },
-          { key: "SHORT retest", data: shortRetest, kind: "dots", color: String(p.shortColor), flag: false, legend: false },
-          { key: "LONG bounce", data: longBounce, kind: "dots", color: String(p.longColor), flag: false, legend: false },
-          { key: "SHORT bounce", data: shortBounce, kind: "dots", color: String(p.shortColor), flag: false, legend: false },
-        ],
-      };
+      for (const item of periods) {
+        const daily = item.period === "day";
+        const color = String(daily ? p.dayColor : p.weekColor);
+        const prefix = daily ? "D" : "W";
+        const entries: [string, number][] = [["P", item.p.P], ["R1", item.p.R1], ["S1", item.p.S1]];
+        for (const [name, value] of entries) {
+          levels.push({ value, color, label: `${prefix} ${name}`, name: `ind.test1.${daily ? "day" : "week"}.${name.toLowerCase()}`, fromIndex: item.start, width: name === "P" ? 1.4 : 2.4, dashed: name === "P", flag: true, scale: false });
+        }
+      }
+      // Keep the last confirmed levels available for the chart's level-alert UI.
+      const alertLevels = allSignalLevels.filter(Number.isFinite);
+      return { plots: [], levels, extra: { signals, alertLevels } };
     },
     drawTop(sc, p, res) {
-      const signals = (res?.extra as { signals?: { i: number; dir: "long" | "short"; kind: "breakout" | "retest" | "bounce"; price: number }[] } | undefined)?.signals;
+      const signals = (res?.extra as { signals?: Signal[] } | undefined)?.signals;
       if (!signals?.length) return;
       const { ctx } = sc;
       ctx.save();
-      ctx.font = "600 10px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
       for (const signal of signals) {
         if (signal.i < sc.from - 1 || signal.i > sc.to + 1) continue;
-        const color = String(signal.dir === "long" ? p.longColor : p.shortColor);
-        const label = `${signal.dir === "long" ? "ЛОНГ" : "ШОРТ"} · ${signal.kind === "breakout" ? "пробой" : signal.kind === "retest" ? "ретест" : "отскок"}`;
         const x = sc.x(signal.i);
-        const y = sc.y(signal.price) + (signal.dir === "long" ? 11 : -11);
-        const w = ctx.measureText(label).width + 10;
-        ctx.fillStyle = color;
+        const y = sc.y(signal.price);
+        const size = 7;
+        ctx.fillStyle = String(signal.dir === "long" ? p.longColor : p.shortColor);
         ctx.beginPath();
-        if (typeof ctx.roundRect === "function") ctx.roundRect(x - w / 2, y - 8, w, 16, 4);
-        else ctx.rect(x - w / 2, y - 8, w, 16);
+        if (signal.dir === "long") {
+          ctx.moveTo(x, y + size);
+          ctx.lineTo(x - size, y - size);
+          ctx.lineTo(x + size, y - size);
+        } else {
+          ctx.moveTo(x, y - size);
+          ctx.lineTo(x - size, y + size);
+          ctx.lineTo(x + size, y + size);
+        }
+        ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.fillText(label, x, y + 0.5);
       }
       ctx.restore();
+    },
+    alertLevels(res) {
+      return (res?.extra as { alertLevels?: number[] } | undefined)?.alertLevels ?? [];
     },
   },
 ];
