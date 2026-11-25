@@ -76,12 +76,12 @@ const GAP = <span className="tv3-rgap" />;
 
 /** Rail order of the design: cursor, line tools, fib, patterns, forecast / measurement, geometric tools, text, ruler, then the actions.
  *  `fixed` = a slot bound to one tool (its group flyout opens from the caret / right click), otherwise the slot shows the last tool used of the group. */
-const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] = [
+const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean; icon?: string; titleKey?: string }[] = [
   { key: "cursors", group: "cursors" },
   { key: "lines", group: "lines" },
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
-  { key: "forecast", group: "forecast" },
+  { key: "forecast", group: "forecast", icon: "forecast_tools", titleKey: "draw.group.forecast" },
   { key: "shapes", group: "shapes" },
   { key: "text", group: "text" },
   { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
@@ -380,9 +380,9 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           : g.id === "cursors"
             ? activeTool === null
             : activeTool !== null && g.tools.some((x) => x.id === activeTool) && !slotTools.has(activeTool);
-        const title = slot.fixed ? t(toolDef.labelKey) : `${t(g.labelKey)}: ${t(shownTool.labelKey)}`;
+        const title = slot.fixed ? t(toolDef.labelKey) : slot.titleKey ? t(slot.titleKey) : `${t(g.labelKey)}: ${t(shownTool.labelKey)}`;
         // the star slot (design: favourites) shows the outlined star until another stamp is picked
-        const iconId = slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown;
+        const iconId = slot.icon ?? (slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown);
         return (
           <Fragment key={slot.key}>
           <div data-rk={slot.key} className="group/slot relative flex shrink-0 items-center">
