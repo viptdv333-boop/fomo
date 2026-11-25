@@ -512,7 +512,13 @@ html[data-tvmac] .tvmac [data-tv="row"]:has([data-fomo-strip]) [data-tv="bottom"
   fill: color-mix(in srgb, var(--tb-c) 30%, transparent);
 }
 .tvmac :is([data-tv="tools"], [data-tv="sidetabs"]) .tv3-rbtn svg {
-  fill: color-mix(in srgb, var(--rc) 32%, transparent);
+  fill: none !important;
+}
+.tvmac [data-tv="tools"] [data-draw-caret] {
+  color: #4f9a74 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* left rail: 44px tiles with a 36px glyph; every tool has its own colour like in the design */
@@ -772,8 +778,8 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg {
   height: 22px !important;
   flex: none;
   color: var(--fc);
-  fill: color-mix(in srgb, var(--fc) 30%, transparent);
-  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--fc) 35%, transparent));
+  fill: none !important;
+  filter: none;
 }
 html[data-tvmac] .tv3 [data-fly] button[aria-current="true"] {
   background: rgba(79, 154, 116, 0.14) !important;
@@ -859,13 +865,7 @@ html[data-tvmac] .tv3 .tv3-pop button > .mg {
 }
 html[data-tvmac] .tv3 [data-fly] button[role="menuitem"]:has(> .mg:not(.mg-keep)) > svg:not(.mg) { display: none !important; }
 html[data-tvmac] .tv3 [data-fly] button[aria-current="true"] { box-shadow: none !important; outline: 0 !important; }
-html[data-tvmac] .tv3 [data-fly] button[aria-current="true"]::after {
-  content: "";
-  width: 14px;
-  height: 14px;
-  margin-left: auto;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234F9A74' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / contain no-repeat;
-}
+html[data-tvmac] .tv3 [data-fly] button[aria-current="true"]::after { content: none !important; }
 
 /* sheet size of the design (760x620) for the settings and the indicators dialogs */
 html[data-tvmac] .tv3 [data-csd],

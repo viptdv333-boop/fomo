@@ -6,7 +6,7 @@ export const RAIL_GLYPHS: Record<string, Glyph> = {
   lines: ["#7CC29B", "#4F9A74", "M7 17L17 7M5 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M19 5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0", "M5 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M19 5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"],
   hline: ["#6A8FD0", "#5577B8", "M2 12h6M16 12h6M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0", "M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0"],
   fib: ["#E6B877", "#CC9446", "M3 5h18M3 10h18M3 15h18M3 20h18", "M3 10h18v5H3z"],
-  patterns: ["#A78BC9", "#8A6DB0", "M3 18l4-11 5 8 4-8 5 11", "M3 18l4-11 5 8 4-8 5 11z"],
+  patterns: ["#A78BC9", "#8A6DB0", "M3 18l4-11 5 8 4-8 5 11", ""],
   forecast: ["#6BB3B8", "#4F9AA0", "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4", "M4 16l5-5 4 4 3-3 4 4v3H4z"],
   rect: ["#DE96A0", "#C46A78", "M3 4h11v11H3zM16.5 16.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0-9 0", "M3 4h11v11H3z"],
   brush: ["#E0B06A", "#C98B3C", "M18 3l3 3-9 9-3-3zM9 12c-3 0-5 2-5 5 0 2-1 3-1 4 3 0 7-1 7-5", "M9 12l3 3c0 3-3 5-8 5 1-1 2-2 2-3 0-3 3-5 3-5z"],
@@ -57,7 +57,7 @@ export const TB_GLYPHS: Record<string, Glyph> = {
 export const CUR_GLYPHS: Record<string, Glyph> = {
   cursor_cross: ["#7CC29B", "#4F9A74", "M12 3v18M3 12h18", ""],
   cursor_dot: ["#7DB0D6", "#5B8FC0", "M12 3a9 9 0 100 18 9 9 0 000-18zM12 9a3 3 0 100 6 3 3 0 000-6z", "M12 9a3 3 0 100 6 3 3 0 000-6z"],
-  cursor_arrow: ["#A78BC9", "#8A6DB0", "M5 3l14 7-6 2-2 6z", "M5 3l14 7-6 2-2 6z"],
+  cursor_arrow: ["#A78BC9", "#8A6DB0", "M5 3l14 7-6 2-2 6z", ""],
 };
 
 /** Navigation of the chart-settings dialog in the design. */
