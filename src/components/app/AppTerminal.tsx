@@ -164,6 +164,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   }, [mac]);
   const [macAdd, setMacAdd] = useState(false);
   const [macFilter, setMacFilter] = useState("");
+  const [rowActions, setRowActions] = useState<{ inst: TerminalInstrument; view: "menu" | "move" | "remove" } | null>(null);
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -285,8 +286,59 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   // drag and drop of the list rows (finger: press and hold)
   const macRowsRef = useRef<HTMLDivElement | null>(null);
   const clsRowsRef = useRef<HTMLDivElement | null>(null);
-  useRowReorder(macRowsRef, mac && macScreen === "list" && effSeg === "watch" && !macFilter.trim() && watchlist.items.length > 1, watchlist.move, macScreen);
-  useRowReorder(clsRowsRef, !mac && effSeg === "watch" && !hideWatch && watchlist.items.length > 1, watchlist.move);
+  const openRowActions = useCallback((key: string) => {
+    const inst = watchlist.items.find((item) => qKey(item) === key);
+    if (inst) setRowActions({ inst, view: "menu" });
+  }, [watchlist.items]);
+  useRowReorder(macRowsRef, mac && macScreen === "list" && effSeg === "watch" && watchlist.items.length > 0, watchlist.move, macScreen, openRowActions, !macFilter.trim());
+  useRowReorder(clsRowsRef, !mac && effSeg === "watch" && !hideWatch && watchlist.items.length > 0, watchlist.move, undefined, openRowActions);
+
+  useEffect(() => {
+    if (!rowActions) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRowActions(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [rowActions]);
+  const rowActionsSheet = rowActions && (
+    <div className="app-wl-actions" data-app-wl-actions>
+      <button type="button" className="app-wl-actions-back" aria-label={t("wl.cancel")} onClick={() => setRowActions(null)} />
+      <section className="app-wl-actions-sheet" role="dialog" aria-modal="true" aria-labelledby="app-wl-actions-title">
+        <div className="app-wl-actions-grip"><span /></div>
+        <h2 id="app-wl-actions-title" className="app-wl-actions-title">{rowActions.inst.ticker}</h2>
+        <p className="app-wl-actions-subtitle">{instName(rowActions.inst, t)}</p>
+        {rowActions.view === "menu" && (
+          <>
+            <button type="button" className="app-wl-actions-item" onClick={() => setRowActions({ ...rowActions, view: "move" })}>{t("wl.moveTicker")}</button>
+            <button type="button" className="app-wl-actions-item" data-tone="danger" onClick={() => setRowActions({ ...rowActions, view: "remove" })}>{t("wl.removeTicker")}</button>
+            <button type="button" className="app-wl-actions-item" onClick={() => setRowActions(null)}>{t("wl.cancel")}</button>
+          </>
+        )}
+        {rowActions.view === "move" && (
+          <>
+            <div className="app-wl-actions-section">{t("wl.moveChoose")}</div>
+            {watchlist.lists.filter((list) => list.id !== watchlist.activeId).length === 0 ? (
+              <div className="app-wl-actions-empty">{t("wl.moveNone")}</div>
+            ) : watchlist.lists.filter((list) => list.id !== watchlist.activeId).map((list) => (
+              <button key={list.id} type="button" className="app-wl-actions-item" onClick={() => {
+                watchlist.moveTo(list.id, rowActions.inst);
+                setRowActions(null);
+              }}>{list.id === "main" ? t("wl.main") : list.name}</button>
+            ))}
+            <button type="button" className="app-wl-actions-item" onClick={() => setRowActions({ ...rowActions, view: "menu" })}>{t("wl.cancel")}</button>
+          </>
+        )}
+        {rowActions.view === "remove" && (
+          <>
+            <p className="app-wl-actions-confirm">{t("wl.removeTickerSure")}</p>
+            <button type="button" className="app-wl-actions-item" data-tone="danger" onClick={() => { watchlist.remove(rowActions.inst); setRowActions(null); }}>{t("wl.removeTicker")}</button>
+            <button type="button" className="app-wl-actions-item" onClick={() => setRowActions({ ...rowActions, view: "menu" })}>{t("wl.cancel")}</button>
+          </>
+        )}
+      </section>
+    </div>
+  );
 
   // Back button (Android system / browser) pops our entry: collapse
   useEffect(() => {
@@ -599,6 +651,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             </div>
           )}
 
+          {rowActionsSheet}
           <MacTabBar active={macActiveTab(expanded ? "term" : macScreen, !!chart?.sheetOpen)} locale={loc} onPick={onMacTab} />
           <InstrumentSearchDialog open={macAdd} mode="watchlist" onClose={() => setMacAdd(false)} onPick={watchlist.add} existing={watchlist.items} onRemove={watchlist.remove} />
         </div>
@@ -808,6 +861,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
             })
           )}
         </div>}
+
+        {rowActionsSheet}
 
         {TERMINAL_SITE && (
           <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-term-ideas app-term-comm" data-fomo-community>

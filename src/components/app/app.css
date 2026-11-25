@@ -540,6 +540,22 @@ html.app-ui .app-term-wc { display: block; font-size: 12px; }
 html.app-ui .app-term-wempty { padding: 14px; font-size: 13px; color: var(--app-tx2); line-height: 1.4; }
 html.app-ui .app-term-disc { font-size: 11px; color: var(--app-tx3); padding: 0 16px 24px; line-height: 1.4; }
 
+/* long-press actions for an instrument in the mobile watchlist */
+@keyframes appWlSheetUp { from { transform: translateY(100%); } to { transform: none; } }
+html.app-ui .app-wl-actions { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; line-height: normal; }
+html.app-ui .app-wl-actions-back { position: absolute; inset: 0; width: 100%; height: 100%; background: rgba(0,0,0,.48) !important; }
+html.app-ui .app-wl-actions-sheet { position: relative; width: 100%; max-height: 78dvh; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; border-radius: 18px 18px 0 0; padding: 7px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--app-sheet); color: var(--app-tx); box-shadow: 0 -8px 32px rgba(0,0,0,.22); animation: appWlSheetUp .22s ease-out; }
+html.app-ui .app-wl-actions-grip { display: flex; justify-content: center; padding: 2px 0 12px; }
+html.app-ui .app-wl-actions-grip span { width: 36px; height: 4px; border-radius: 3px; background: var(--app-tx3); opacity: .7; }
+html.app-ui .app-wl-actions-title { margin: 0; font-size: 17px; font-weight: 700; }
+html.app-ui .app-wl-actions-subtitle { margin: 3px 0 10px; color: var(--app-tx2); font-size: 13px; }
+html.app-ui .app-term .app-wl-actions-item { display: flex; align-items: center; width: 100%; min-height: 50px; box-sizing: border-box; padding: 0 10px; border-top: 1px solid var(--app-line); color: var(--app-tx); font-size: 16px; }
+html.app-ui .app-term .app-wl-actions-item:active { background: var(--app-press); }
+html.app-ui .app-term .app-wl-actions-item[data-tone="danger"] { color: var(--app-red); }
+html.app-ui .app-wl-actions-section { padding: 5px 10px 9px; color: var(--app-tx2); font-size: 13px; }
+html.app-ui .app-wl-actions-empty, html.app-ui .app-wl-actions-confirm { padding: 10px; color: var(--app-tx2); font-size: 14px; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { html.app-ui .app-wl-actions-sheet { animation: none; } }
+
 /* switching the dock section by a swipe: the new screen slides in from the side the finger came from */
 @keyframes appSlideL { from { transform: translateX(26%); opacity: 0.2; } to { transform: none; opacity: 1; } }
 @keyframes appSlideR { from { transform: translateX(-26%); opacity: 0.2; } to { transform: none; opacity: 1; } }

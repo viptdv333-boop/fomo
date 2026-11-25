@@ -620,6 +620,29 @@ export function useWatchlist() {
       }
       commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === id && !l.items.some((i) => wlKey(i) === wlKey(inst)) ? { ...l, items: [...l.items, inst] } : l)) });
     },
+    /** move the item out of the current list and into another, committing both sides without stale-state overwrites */
+    moveTo: (id: string, inst: TerminalInstrument) => {
+      if (id === (activeExt ? activeExt.id : WLS_MAIN)) return;
+      const key = wlKey(inst);
+      if (activeExt && id !== WLS_MAIN) {
+        commitExt({
+          ...ext,
+          lists: ext.lists.map((l) => l.id === activeExt.id
+            ? { ...l, items: l.items.filter((i) => wlKey(i) !== key) }
+            : l.id === id && !l.items.some((i) => wlKey(i) === key)
+              ? { ...l, items: [...l.items, inst] }
+              : l),
+        });
+        return;
+      }
+      if (activeExt) {
+        if (!items.some((i) => wlKey(i) === key)) commit([...items, inst]);
+        commitExt({ ...ext, lists: ext.lists.map((l) => l.id === activeExt.id ? { ...l, items: l.items.filter((i) => wlKey(i) !== key) } : l) });
+        return;
+      }
+      commitExt({ ...ext, lists: ext.lists.map((l) => l.id === id && !l.items.some((i) => wlKey(i) === key) ? { ...l, items: [...l.items, inst] } : l) });
+      commit(items.filter((i) => wlKey(i) !== key));
+    },
     /** a new list with this item in it (the open list stays open) */
     createListWith: (name: string, inst: TerminalInstrument) => {
       const clean = name.trim().slice(0, 40);

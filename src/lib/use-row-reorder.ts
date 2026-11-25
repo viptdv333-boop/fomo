@@ -17,6 +17,7 @@ interface Drag {
   pid: number;
   touch: boolean;
   active: boolean;
+  armed: boolean;
   startY: number;
   startScroll: number;
   y: number;
@@ -26,15 +27,18 @@ interface Drag {
   raf: number;
 }
 
-export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boolean, onReorder: (from: number, to: number) => void, rebind?: unknown) {
+export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boolean, onReorder: (from: number, to: number) => void, rebind?: unknown, onLongPress?: (rowKey: string) => void, allowReorder = true) {
   const cb = useRef(onReorder);
   cb.current = onReorder;
+  const longPressCb = useRef(onLongPress);
+  longPressCb.current = onLongPress;
 
   useEffect(() => {
     const box = ref.current;
     if (!box || !enabled) return;
     let d: Drag | null = null;
     let swallowClick = false;
+    let swallowContextMenu = false;
 
     const rowsOf = () => Array.from(box.querySelectorAll<HTMLElement>("[data-row-key]"));
 
@@ -78,6 +82,8 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
 
     const activate = () => {
       if (!d || d.active) return;
+      if (d.timer) clearTimeout(d.timer);
+      d.timer = null;
       d.active = true;
       d.rows = rowsOf();
       d.from = d.rows.findIndex((r) => r.dataset.rowKey === d!.key);
@@ -137,14 +143,39 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       const row = t.closest<HTMLElement>("[data-row-key]");
       if (!row || !box.contains(row)) return;
       const touch = e.pointerType !== "mouse";
-      d = { key: row.dataset.rowKey!, from: -1, to: -1, pid: e.pointerId, touch, active: false, startY: e.clientY, startScroll: box.scrollTop, y: e.clientY, timer: null, rows: [], h: 0, raf: 0 };
-      if (touch) d.timer = setTimeout(activate, TOUCH_HOLD_MS);
+      d = { key: row.dataset.rowKey!, from: -1, to: -1, pid: e.pointerId, touch, active: false, armed: false, startY: e.clientY, startScroll: box.scrollTop, y: e.clientY, timer: null, rows: [], h: 0, raf: 0 };
+      if (touch) {
+        if (!longPressCb.current) d.timer = setTimeout(activate, TOUCH_HOLD_MS);
+        else d.timer = setTimeout(() => {
+          if (!d || d.active) return;
+          if (allowReorder) d.armed = true;
+          d.timer = setTimeout(() => {
+            if (!d || d.active) return;
+            // With a row action menu, keep the existing hold-to-reorder gesture: after the short hold,
+            // moving the finger starts the drag. Staying still a little longer opens row actions.
+            const key = d.key;
+            cleanup();
+            swallowClick = true;
+            swallowContextMenu = true;
+            setTimeout(() => { swallowClick = false; swallowContextMenu = false; }, 1000);
+            longPressCb.current?.(key);
+          }, 420);
+        }, TOUCH_HOLD_MS);
+      }
     };
 
     const move = (e: PointerEvent) => {
       if (!d || e.pointerId !== d.pid) return;
       d.y = e.clientY;
       if (!d.active) {
+        if (d.touch && longPressCb.current && d.armed) {
+          // A held finger that starts moving is a reorder, while a stationary hold is the action menu.
+          if (allowReorder) {
+            activate();
+            place();
+          } else cleanup();
+          return;
+        }
         const slop = d.touch ? TOUCH_SLOP : MOUSE_SLOP;
         if (Math.abs(e.clientY - d.startY) > slop) {
           if (d.touch) cleanup(); // a finger that moved before the hold: it is a scroll
@@ -184,7 +215,7 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       }
     };
     const ctx = (e: Event) => {
-      if (d && d.touch) e.preventDefault(); // the long press must not open the context menu
+      if ((d && d.touch) || swallowContextMenu) e.preventDefault(); // use the app's row menu, not the browser menu
     };
 
     box.addEventListener("pointerdown", down);
@@ -204,5 +235,5 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       box.removeEventListener("click", click, true);
       box.removeEventListener("contextmenu", ctx);
     };
-  }, [ref, enabled, rebind]);
+  }, [ref, enabled, rebind, allowReorder]);
 }
