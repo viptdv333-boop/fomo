@@ -254,6 +254,49 @@ const projection: ToolDef = {
   },
 };
 
+/* Sector: three anchors define the centre and two radii; the arc uses the shared outer radius. */
+const sector: ToolDef = {
+  id: "sector",
+  labelKey: "draw.tool.sector",
+  points: 3,
+  style: mkStyle(BLUE, 1, "solid", { fill: BLUE, fillOpacity: 0.12 }),
+  ui: UI_SHAPE,
+  draw(ctx, _env, d, P, st) {
+    const center = P[0];
+    const radius = Math.max(2, G.dist(center, P[1]), G.dist(center, P[2]));
+    const a0 = Math.atan2(P[1].y - center.y, P[1].x - center.x);
+    const a1 = Math.atan2(P[2].y - center.y, P[2].x - center.x);
+    const delta = ((a1 - a0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const steps = Math.max(8, Math.ceil(Math.abs(delta) * radius / 8));
+    const arcPts: Pt[] = Array.from({ length: steps + 1 }, (_, i) => {
+      const a = a0 + delta * i / steps;
+      return { x: center.x + Math.cos(a) * radius, y: center.y + Math.sin(a) * radius };
+    });
+    const polygon = [center, ...arcPts];
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y);
+    ctx.lineTo(arcPts[0].x, arcPts[0].y);
+    ctx.arc(center.x, center.y, radius, a0, a0 + delta, delta < 0);
+    ctx.closePath();
+    fillCur(ctx, d, undefined, 1);
+    stroke(ctx, d, st);
+  },
+  hit(_env, _d, P, x, y) {
+    const center = P[0];
+    const radius = Math.max(2, G.dist(center, P[1]), G.dist(center, P[2]));
+    const a0 = Math.atan2(P[1].y - center.y, P[1].x - center.x);
+    const a1 = Math.atan2(P[2].y - center.y, P[2].x - center.x);
+    const delta = ((a1 - a0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const steps = Math.max(8, Math.ceil(Math.abs(delta) * radius / 8));
+    const polygon: Pt[] = [center];
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + delta * i / steps;
+      polygon.push({ x: center.x + Math.cos(a) * radius, y: center.y + Math.sin(a) * radius });
+    }
+    return G.pointInPolygon({ x, y }, polygon);
+  },
+};
+
 /* ───────────── anchored VWAP ───────────── */
 
 interface VwapPoint {
@@ -537,6 +580,7 @@ export const FORECAST_TOOLS: ToolDef[] = [
   barsPattern,
   ghostFeed,
   projection,
+  sector,
   anchoredVwap,
   profileTool("fixed_volume_profile", false),
   profileTool("anchored_volume_profile", true),

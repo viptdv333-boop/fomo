@@ -328,6 +328,15 @@ export const EXTRA_DRAW_ICONS: Record<string, ReactNode> = {
       <Dot x={14} y={22} />
     </>
   ),
+  sector: (
+    <>
+      <path d="M5 23L5 8a15 15 0 0115 15z" />
+      <path d="M5 8a15 15 0 0115 15" {...Guide} />
+      <Dot x={5} y={23} />
+      <Dot x={5} y={8} />
+      <Dot x={20} y={23} />
+    </>
+  ),
   anchored_vwap: (
     <>
       <path d="M4 20c4-2 6 0 9-3s5-6 11-8" />

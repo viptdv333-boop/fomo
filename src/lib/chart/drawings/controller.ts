@@ -100,6 +100,9 @@ function isEditable(el: Element | null): boolean {
 
 const DOT_CURSOR =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><circle cx='8' cy='8' r='3.2' fill='%232962ff' stroke='white' stroke-width='1.2'/></svg>\") 8 8, crosshair";
+const DEMO_CURSOR = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='6' fill='%23f23645' fill-opacity='.65' stroke='white' stroke-width='2'/></svg>\") 10 10, crosshair";
+const MAGIC_CURSOR = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M10 1l2.2 6.8L19 10l-6.8 2.2L10 19l-2.2-6.8L1 10l6.8-2.2z' fill='%23fdd835' stroke='%23333' stroke-width='1'/></svg>\") 10 10, crosshair";
+const ERASER_CURSOR = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M3 13L12 4a2 2 0 013 0l3 3a2 2 0 010 3l-7 7H7z' fill='%23f2a1ad' stroke='%23333' stroke-width='1.2'/><path d='M8 15l4-4' stroke='white' stroke-width='1.5'/></svg>\") 8 17, crosshair";
 
 export class DrawingsController implements DrawingsControllerLike, OverlayLayer {
   private engine: ChartEngine | null = null;
@@ -122,6 +125,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   private drag: DragState | null = null;
   private captured = false;
   private hoverPt: Pt | null = null;
+  private hoverPaneId: string = MAIN;
   private lastStyleEdit = { key: "", at: 0 };
   private lastNudge = 0;
   private ptype = "mouse";
@@ -200,6 +204,9 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   }
   getTool(): DrawingToolId | null {
     return this.tool;
+  }
+  zoomBy(factor: number): void {
+    if (Number.isFinite(factor) && factor > 0) this.engine?.zoomBy(factor);
   }
   getCursorStyle(): string {
     return this.cursorStyle;
@@ -487,8 +494,9 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     if (e) {
       copy.points = d.points.map((pt) => {
         const x = e.timeToX(pt.t) + dx;
-        const y = e.priceToY(MAIN, pt.p) + dy;
-        return { t: e.xToTime(x), p: e.yToPrice(MAIN, y) };
+        const paneId = d.paneId ?? MAIN;
+        const y = e.priceToY(paneId, pt.p) + dy;
+        return { t: e.xToTime(x), p: e.yToPrice(paneId, y) };
       });
     } else {
       copy.points = d.points.map((pt) => ({ t: pt.t + 86_400_000, p: pt.p }));
@@ -679,7 +687,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     for (const d of CLIP) {
       for (const q of d.points) {
         const x = e.timeToX(q.t);
-        const y = e.priceToY(MAIN, q.p);
+        const y = e.priceToY(d.paneId ?? MAIN, q.p);
         if (Number.isFinite(x) && Number.isFinite(y)) pts.push({ x, y });
       }
     }
@@ -737,7 +745,8 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   /** Drawing under a chart-local point, or null. */
   hitTest(x: number, y: number, pointerType = "mouse"): string | null {
     if (this.hidden) return null;
-    const env = this.makeEnv();
+    const paneId = this.engine?.getPaneAtY(y) ?? MAIN;
+    const env = this.makeEnv(paneId);
     if (!env) return null;
     return this.topHit(env, x, y, pointerType)?.id ?? null;
   }
@@ -818,6 +827,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     if (!env) return [];
     const out: LayerAxisTag[] = [];
     for (const d of this.drawings) {
+      if ((d.paneId ?? MAIN) !== MAIN) continue;
       if ((d.tool !== "long" && d.tool !== "short") || d.hidden || !visibleAt(d, env.intervalMs) || d.style.showAxis === false) continue;
       if (d.points.length < 3) continue;
       const profit = d.style.color;
@@ -832,79 +842,77 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
 
   draw(ctx: CanvasRenderingContext2D, engine: ChartEngine): void {
     if (engine !== this.engine || this.hidden) return;
-    const env = this.makeEnv();
-    if (!env) return;
-    const rect = engine.getPaneRect(MAIN);
-    if (!rect) return;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, rect.top, rect.width, rect.height);
-    ctx.clip();
-
     const firstT = this.historyPending ? engine.getCandles()[0]?.t ?? null : null;
-    for (const d of this.drawings) {
-      if (d.hidden || !visibleAt(d, env.intervalMs)) continue;
-      if (firstT !== null && d.points.some((p) => p.t < firstT)) continue;
-      const on = this.sel.includes(d.id);
-      this.paint(ctx, env, d, { selected: on, hover: d.id === this.hoverId && !on, preview: false });
-    }
+    for (const paneId of engine.getPaneIds()) {
+      const env = this.makeEnv(paneId);
+      const rect = engine.getPaneRect(paneId);
+      if (!env || !rect) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, rect.top, rect.width, rect.height);
+      ctx.clip();
 
-    // anchors: of everything selected (a handful), and of the drawing under the pointer
-    if (!this.lockedAll) {
-      const primary = this.selectedId;
-      if (this.sel.length <= 6) {
-        for (const sd of this.selectedList()) {
-          if (sd.locked || !visibleAt(sd, env.intervalMs)) continue;
+      for (const d of this.drawings) {
+        if ((d.paneId ?? MAIN) !== paneId || d.hidden || !visibleAt(d, env.intervalMs)) continue;
+        if (firstT !== null && d.points.some((p) => p.t < firstT)) continue;
+        const on = this.sel.includes(d.id);
+        this.paint(ctx, env, d, { selected: on, hover: d.id === this.hoverId && !on, preview: false });
+      }
+
+      if (!this.lockedAll) {
+        const primary = this.selectedId;
+        if (this.sel.length <= 6) for (const sd of this.selectedList()) {
+          if ((sd.paneId ?? MAIN) !== paneId || sd.locked || !visibleAt(sd, env.intervalMs)) continue;
           const def = getToolDef(sd.tool);
           const P = this.pxPoints(sd);
           if (!def || !P) continue;
           const hs = defaultHandles(def, env, sd, P);
           hs.forEach((h, i) => this.paintHandle(ctx, env, h.x, h.y, sd.style.color, sd.id === primary && i === this.hoverHandle, false));
         }
+        const hov = this.hoverId && !this.sel.includes(this.hoverId) ? this.drawings.find((x) => x.id === this.hoverId) : null;
+        if (hov && (hov.paneId ?? MAIN) === paneId && !hov.locked && !hov.hidden && !this.tool && !this.pending) {
+          const def = getToolDef(hov.tool);
+          const P = this.pxPoints(hov);
+          if (def && P) defaultHandles(def, env, hov, P).forEach((h, i) => this.paintHandle(ctx, env, h.x, h.y, hov.style.color, i === this.hoverHandle, i !== this.hoverHandle));
+        }
       }
-      const hov = this.hoverId && !this.sel.includes(this.hoverId) ? this.drawings.find((x) => x.id === this.hoverId) : null;
-      if (hov && !hov.locked && !hov.hidden && !this.tool && !this.pending) {
-        const def = getToolDef(hov.tool);
-        const P = this.pxPoints(hov);
-        if (def && P) defaultHandles(def, env, hov, P).forEach((h, i) => this.paintHandle(ctx, env, h.x, h.y, hov.style.color, i === this.hoverHandle, i !== this.hoverHandle));
+
+      const pend = this.pending;
+      if (pend && (pend.d.paneId ?? MAIN) === paneId) {
+        this.paint(ctx, env, pend.d, { selected: false, hover: false, preview: true });
+        const P = this.pxPoints(pend.d);
+        if (P) for (let i = 0; i < pend.fixed && i < P.length; i++) this.paintHandle(ctx, env, P[i].x, P[i].y, pend.d.style.color, false, false);
       }
-    }
 
-    const pend = this.pending;
-    if (pend) {
-      this.paint(ctx, env, pend.d, { selected: false, hover: false, preview: true });
-      const P = this.pxPoints(pend.d);
-      if (P) for (let i = 0; i < pend.fixed && i < P.length; i++) this.paintHandle(ctx, env, P[i].x, P[i].y, pend.d.style.color, false, false);
-    }
+      const mq = this.marquee;
+      if (paneId === this.hoverPaneId && mq?.moved) {
+        const x = Math.min(mq.x0, mq.x1);
+        const y = Math.min(mq.y0, mq.y1);
+        ctx.save();
+        ctx.fillStyle = "rgba(41,98,255,0.10)";
+        ctx.strokeStyle = "rgba(41,98,255,0.85)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.fillRect(x, y, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0));
+        ctx.strokeRect(x + 0.5, y + 0.5, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0));
+        ctx.restore();
+      }
 
-    const mq = this.marquee;
-    if (mq && mq.moved) {
-      const x = Math.min(mq.x0, mq.x1);
-      const y = Math.min(mq.y0, mq.y1);
-      ctx.save();
-      ctx.fillStyle = "rgba(41,98,255,0.10)";
-      ctx.strokeStyle = "rgba(41,98,255,0.85)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
-      ctx.fillRect(x, y, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0));
-      ctx.strokeRect(x + 0.5, y + 0.5, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0));
+      if ((this.tool || pend) && this.magnet !== "off" && this.hoverPt && this.hoverPaneId === paneId) {
+        const s = this.magnetPoint(this.hoverPt.x, this.hoverPt.y, paneId);
+        const x = engine.timeToX(s.t);
+        const y = engine.priceToY(paneId, s.p);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.strokeStyle = env.theme.line;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([]);
+          ctx.stroke();
+        }
+      }
       ctx.restore();
     }
-
-    if ((this.tool || pend) && this.magnet !== "off" && this.hoverPt) {
-      const s = this.magnetPoint(this.hoverPt.x, this.hoverPt.y);
-      const x = engine.timeToX(s.t);
-      const y = engine.priceToY(MAIN, s.p);
-      if (Number.isFinite(x) && Number.isFinite(y)) {
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.strokeStyle = env.theme.line;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
   }
 
   private paint(ctx: CanvasRenderingContext2D, env: Env, d: Drawing, st: { selected: boolean; hover: boolean; preview: boolean }) {
@@ -945,11 +953,12 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const e = this.engine;
     if (!e || p.button !== 0) return false;
     this.ptype = p.pointerType || "mouse";
-    if (!this.inMain(p)) return false;
+    if (!this.inPlot(p)) return false;
     const additive = p.ctrlKey || p.shiftKey;
 
     // placing
     if (this.pending) {
+      if ((this.pending.d.paneId ?? MAIN) !== (p.paneId ?? MAIN)) return false;
       this.captured = true;
       return this.placeClick(p);
     }
@@ -957,11 +966,11 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       const def = getToolDef(this.tool);
       if (!def) return false;
       if (!this.hidden && !this.lockedAll) {
-        const env = this.makeEnv();
+        const env = this.makeEnv(p.paneId ?? MAIN);
         if (env) {
           // stay-in-drawing: the anchors of the drawing just placed stay grabbable ...
           const cur = this.selected();
-          if (cur && !cur.locked && this.sel.length === 1) {
+          if (cur && (cur.paneId ?? MAIN) === env.paneId && !cur.locked && this.sel.length === 1) {
             const h = this.handleAt(env, cur, p.x, p.y, p.pointerType);
             if (h) {
               this.startDrag("handle", cur, h, p);
@@ -983,10 +992,20 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
 
     // cursor mode: select / move / edit
     if (this.hidden || this.lockedAll) return false;
-    const env = this.makeEnv();
+    const env = this.makeEnv(p.paneId ?? MAIN);
     if (!env) return false;
+    if (this.cursorStyle === "cursor_eraser") {
+      const hit = this.topHit(env, p.x, p.y, p.pointerType);
+      if (!hit || hit.locked) return false;
+      const before = this.snapshot();
+      this.drawings = this.drawings.filter((d) => d.id !== hit.id);
+      this.sel = this.sel.filter((id) => id !== hit.id);
+      this.pushUndo(before);
+      this.changed();
+      return true;
+    }
     const sel = this.selected();
-    if (sel && !sel.locked && this.sel.length === 1) {
+    if (sel && (sel.paneId ?? MAIN) === env.paneId && !sel.locked && this.sel.length === 1) {
       const h = this.handleAt(env, sel, p.x, p.y, p.pointerType);
       if (h) {
         this.startDrag("handle", sel, h, p);
@@ -1088,12 +1107,13 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   pointerMove(p: PointerInfo): boolean {
     const e = this.engine;
     if (!e) return false;
-    const inMain = this.inMain(p);
+    const inMain = this.inPlot(p);
     if (p.pointerType) this.ptype = p.pointerType;
 
     // captured gestures
     if (this.captured) {
       if (this.pending) {
+        if ((this.pending.d.paneId ?? MAIN) !== (p.paneId ?? MAIN)) return true;
         this.updatePending(p);
       } else if (this.drag) {
         this.updateDrag(p);
@@ -1104,6 +1124,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     }
 
     this.hoverPt = inMain ? { x: p.x, y: p.y } : null;
+    if (inMain && p.paneId) this.hoverPaneId = p.paneId;
 
     if (this.pending) {
       if (inMain) this.updatePending(p);
@@ -1114,8 +1135,8 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       // the anchors of the drawing just placed can be grabbed in stay-in-drawing mode
       let hh = -1;
       const cur = this.selected();
-      if (inMain && cur && !cur.locked && this.sel.length === 1 && !this.hidden && !this.lockedAll) {
-        const env = this.makeEnv();
+      if (inMain && cur && (cur.paneId ?? MAIN) === (p.paneId ?? MAIN) && !cur.locked && this.sel.length === 1 && !this.hidden && !this.lockedAll) {
+        const env = this.makeEnv(p.paneId ?? MAIN);
         const h = env ? this.handleAt(env, cur, p.x, p.y, p.pointerType) : null;
         hh = h ? h.index : -1;
       }
@@ -1131,10 +1152,10 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     let hoverId: string | null = null;
     let hoverHandle = -1;
     if (inMain && !this.hidden && !this.lockedAll) {
-      const env = this.makeEnv();
+      const env = this.makeEnv(p.paneId ?? MAIN);
       if (env) {
         const sel = this.selected();
-        if (sel && !sel.locked && this.sel.length === 1) {
+        if (sel && (sel.paneId ?? MAIN) === env.paneId && !sel.locked && this.sel.length === 1) {
           const h = this.handleAt(env, sel, p.x, p.y, p.pointerType);
           if (h) {
             hoverId = sel.id;
@@ -1162,12 +1183,13 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     this.clearLongPress();
     const pend = this.pending;
     if (pend) {
+      if ((pend.d.paneId ?? MAIN) !== (p.paneId ?? MAIN)) return;
       if (pend.def.points === 0) {
         this.finishBrush();
       } else if (pend.firstGesture && pend.moved && !pend.def.variable) {
         pend.firstGesture = false;
         const q = this.placePx(pend, p);
-        const pt = this.magnetPoint(q.x, q.y);
+        const pt = this.magnetPoint(q.x, q.y, pend.d.paneId ?? MAIN);
         pend.d.points[pend.fixed] = pt;
         pend.fixed += 1;
         this.padPoints(pend, pt);
@@ -1203,7 +1225,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   }
 
   cursor(p: PointerInfo): string | null {
-    if (!this.engine || !this.inMain(p)) return null;
+    if (!this.engine || !this.inPlot(p)) return null;
     if (this.hoverHandle >= 0) return "pointer";
     if (this.pending || this.tool) return "crosshair";
     if (this.hoverId) {
@@ -1212,6 +1234,9 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     }
     if (this.cursorStyle === "cursor_dot") return DOT_CURSOR;
     if (this.cursorStyle === "cursor_arrow") return "default";
+    if (this.cursorStyle === "cursor_demo") return DEMO_CURSOR;
+    if (this.cursorStyle === "cursor_magic") return MAGIC_CURSOR;
+    if (this.cursorStyle === "cursor_eraser") return ERASER_CURSOR;
     return null;
   }
 
@@ -1222,10 +1247,10 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     m.y1 = p.y;
     if (!m.moved && Math.hypot(p.x - m.x0, p.y - m.y0) > 3) m.moved = true;
     if (m.moved) {
-      const env = this.makeEnv();
+      const env = this.makeEnv(this.hoverPaneId);
       if (env) {
         const r = { x0: Math.min(m.x0, m.x1), y0: Math.min(m.y0, m.y1), x1: Math.max(m.x0, m.x1), y1: Math.max(m.y0, m.y1) };
-        const ids = this.drawings.filter((d) => !d.hidden && this.touchesRect(env, d, r)).map((d) => d.id);
+        const ids = this.drawings.filter((d) => (d.paneId ?? MAIN) === env.paneId && !d.hidden && this.touchesRect(env, d, r)).map((d) => d.id);
         const merged = [...m.base, ...ids.filter((i) => !m.base.includes(i))];
         if (merged.join("|") !== this.sel.join("|")) {
           this.sel = merged;
@@ -1253,11 +1278,12 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   /* ───────────── placement ───────────── */
 
   private startPlacing(def: ToolDef, p: PointerInfo) {
-    const env = this.makeEnv();
+    const paneId = p.paneId ?? MAIN;
+    const env = this.makeEnv(paneId);
     if (!env) return;
-    const pt = def.points === 0 ? this.rawPoint(p.x, p.y) : this.magnetPoint(p.x, p.y);
+    const pt = def.points === 0 ? this.rawPoint(p.x, p.y, paneId) : this.magnetPoint(p.x, p.y, paneId);
     const dflt = this.getToolDefault(def.id);
-    const d: Drawing = { id: newId(), tool: def.id, points: [pt], style: { ...userStyleFor(def.id, def.style), ...(dflt?.style as DrawingStyle | undefined) }, locked: false };
+    const d: Drawing = { id: newId(), tool: def.id, paneId, points: [pt], style: { ...userStyleFor(def.id, def.style), ...(dflt?.style as DrawingStyle | undefined) }, locked: false };
     if (dflt?.extra && Object.keys(dflt.extra).length) d.extra = JSON.parse(JSON.stringify(dflt.extra)) as Record<string, unknown>;
     if (def.points === 1) {
       d.points = def.complete ? def.complete([pt], env) : [pt];
@@ -1296,13 +1322,14 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const e = this.engine;
     if (!e) return false;
     const last = pend.d.points[pend.fixed - 1];
-    const near = !!last && Math.hypot(e.timeToX(last.t) - p.x, e.priceToY(MAIN, last.p) - p.y) < 6;
+    const paneId = pend.d.paneId ?? MAIN;
+    const near = !!last && Math.hypot(e.timeToX(last.t) - p.x, e.priceToY(paneId, last.p) - p.y) < 6;
     if (near) {
       if (pend.fixed >= 2) this.finishVariable(pend);
       return true;
     }
     const q = this.placePx(pend, p);
-    const pt = this.magnetPoint(q.x, q.y);
+    const pt = this.magnetPoint(q.x, q.y, paneId);
     pend.d.points[pend.fixed] = pt;
     pend.fixed += 1;
     pend.firstGesture = false;
@@ -1332,7 +1359,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     }
     if (pend.def.variable) return this.placeVariable(pend, p);
     const q = this.placePx(pend, p);
-    const pt = this.magnetPoint(q.x, q.y);
+    const pt = this.magnetPoint(q.x, q.y, pend.d.paneId ?? MAIN);
     pend.d.points[pend.fixed] = pt;
     pend.fixed += 1;
     pend.firstGesture = false;
@@ -1348,7 +1375,8 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const e = this.engine;
     if (!p.shiftKey || !e || pend.fixed < 1 || pend.def.points < 2) return cur;
     const id = pend.def.id;
-    const px = (a: DPoint): Pt => ({ x: e.timeToX(a.t), y: e.priceToY(MAIN, a.p) });
+    const paneId = pend.d.paneId ?? MAIN;
+    const px = (a: DPoint): Pt => ({ x: e.timeToX(a.t), y: e.priceToY(paneId, a.p) });
     if (SQUARE_TOOLS.has(id)) return snapSquare(px(pend.d.points[0]), cur);
     if (NO_ANGLE_TOOLS.has(id)) return cur;
     const anchor = pend.d.points[pend.fixed - 1];
@@ -1358,17 +1386,19 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
   private updatePending(p: PointerInfo) {
     const pend = this.pending;
     if (!pend) return;
+    const paneId = pend.d.paneId ?? MAIN;
+    if ((p.paneId ?? MAIN) !== paneId) return;
     if (pend.def.points === 0) {
       const e = this.engine;
       if (!e) return;
       const last = pend.d.points[pend.d.points.length - 1];
       const lx = e.timeToX(last.t);
-      const ly = e.priceToY(MAIN, last.p);
-      if (Math.hypot(p.x - lx, p.y - ly) >= 2) pend.d.points.push(this.rawPoint(p.x, p.y));
+      const ly = e.priceToY(paneId, last.p);
+      if (Math.hypot(p.x - lx, p.y - ly) >= 2) pend.d.points.push(this.rawPoint(p.x, p.y, paneId));
     } else {
       if (!pend.moved && Math.hypot(p.x - pend.downX, p.y - pend.downY) > 4) pend.moved = true;
       const q = this.placePx(pend, p);
-      const pt = this.magnetPoint(q.x, q.y);
+      const pt = this.magnetPoint(q.x, q.y, paneId);
       for (let i = pend.fixed; i < this.slots(pend); i++) pend.d.points[i] = { ...pt };
     }
     this.redraw();
@@ -1391,7 +1421,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const pend = this.pending;
     if (!pend) return;
     this.pending = null;
-    const env = this.makeEnv();
+    const env = this.makeEnv(pend.d.paneId ?? MAIN);
     const d = pend.d;
     // discard degenerate drawings (all anchors on the same pixel)
     const P = this.pxPoints(d);
@@ -1471,7 +1501,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
         if (!d) continue;
         d.points = it.origPts.map((_, i) => {
           const o = it.origPx[i];
-          return { t: e.xToTime(o.x + dx), p: e.yToPrice(MAIN, o.y + dy) };
+          return { t: e.xToTime(o.x + dx), p: e.yToPrice(d.paneId ?? MAIN, o.y + dy) };
         });
       }
     } else if (drag.handle) {
@@ -1480,7 +1510,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       let px: Pt = { x: p.x, y: p.y };
       // Shift keeps the anchor on the horizontal or vertical through where it was picked up
       if (p.shiftKey) px = snapAxis({ x: drag.hx, y: drag.hy }, px);
-      const pt = this.magnetPoint(px.x, px.y);
+      const pt = this.magnetPoint(px.x, px.y, d.paneId ?? MAIN);
       const pts = drag.origPts.map((q) => ({ ...q }));
       if (drag.handle.drag) drag.handle.drag(pts, pt.t, pt.p);
       else if (drag.handle.idx !== undefined && pts[drag.handle.idx]) pts[drag.handle.idx] = pt;
@@ -1523,7 +1553,7 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
 
   /** 2 = on a line, label or text; 1 = inside a translucent fill; 0 = not on it. Follows what the tool actually paints. */
   private hitLevel(env: Env, d: Drawing, x: number, y: number, tol: number): number {
-    if (d.hidden || !visibleAt(d, env.intervalMs)) return 0;
+    if ((d.paneId ?? MAIN) !== env.paneId || d.hidden || !visibleAt(d, env.intervalMs)) return 0;
     const def = getToolDef(d.tool);
     if (!def) return 0;
     const P = this.pxPoints(d);
@@ -1569,8 +1599,8 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
 
   /* ───────────── coordinates & magnet ───────────── */
 
-  private inMain(p: PointerInfo): boolean {
-    return p.region === "plot" && p.paneId === MAIN;
+  private inPlot(p: PointerInfo): boolean {
+    return p.region === "plot" && !!p.paneId && !!this.engine?.getPaneRect(p.paneId);
   }
 
   private pxPoints(d: Drawing): Pt[] | null {
@@ -1579,22 +1609,22 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
     const out: Pt[] = [];
     for (const pt of d.points) {
       const x = e.timeToX(pt.t);
-      const y = e.priceToY(MAIN, pt.p);
+      const y = e.priceToY(d.paneId ?? MAIN, pt.p);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
       out.push({ x, y });
     }
     return out;
   }
 
-  private rawPoint(x: number, y: number): DPoint {
+  private rawPoint(x: number, y: number, paneId = MAIN): DPoint {
     const e = this.engine!;
-    return { t: e.xToTime(x), p: e.yToPrice(MAIN, y) };
+    return { t: e.xToTime(x), p: e.yToPrice(paneId, y) };
   }
 
   /** Anchor for a pointer position, snapped to the nearest bar's O/H/L/C when a magnet is on. */
-  private magnetPoint(x: number, y: number): DPoint {
+  private magnetPoint(x: number, y: number, paneId = MAIN): DPoint {
     const e = this.engine!;
-    if (this.magnet !== "off") {
+    if (this.magnet !== "off" && paneId === MAIN) {
       const candles = e.getCandles();
       const i = Math.round(e.xToIndex(x));
       if (i >= 0 && i < candles.length) {
@@ -1604,17 +1634,18 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
         if (near.dist <= limit) return { t: c.t, p: near.price };
       }
     }
-    return this.rawPoint(x, y);
+    return this.rawPoint(x, y, paneId);
   }
 
-  private makeEnv(): Env | null {
+  private makeEnv(paneId = MAIN): Env | null {
     const e = this.engine;
     if (!e) return null;
-    const rect = e.getPaneRect(MAIN);
+    const rect = e.getPaneRect(paneId);
     if (!rect) return null;
     const precision = e.getPrecision();
     const locale = e.opts.locale;
     return {
+      paneId,
       w: rect.width,
       h: rect.top + rect.height,
       theme: e.getTheme(),
@@ -1622,9 +1653,9 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       intervalMs: e.getIntervalMs(),
       labels: this.labels,
       toX: (t) => e.timeToX(t),
-      toY: (p) => e.priceToY(MAIN, p),
+      toY: (p) => e.priceToY(paneId, p),
       timeAt: (x) => e.xToTime(x),
-      priceAt: (y) => e.yToPrice(MAIN, y),
+      priceAt: (y) => e.yToPrice(paneId, y),
       barsBetween: (a, b) => e.getIndexForTime(b) - e.getIndexForTime(a),
       fmt: (v) => formatPrice(v, precision, locale),
       candles: () => e.getCandles(),

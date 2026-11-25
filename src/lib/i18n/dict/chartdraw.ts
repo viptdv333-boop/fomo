@@ -21,6 +21,9 @@ const dict: SectionDict = {
     "draw.tool.cursor_cross": "Перекрестие",
     "draw.tool.cursor_dot": "Точка",
     "draw.tool.cursor_arrow": "Стрелка",
+    "draw.tool.cursor_demo": "Демонстрация",
+    "draw.tool.cursor_magic": "Магия",
+    "draw.tool.cursor_eraser": "Ластик",
     "draw.tool.trend": "Трендовая линия",
     "draw.tool.ray": "Луч",
     "draw.tool.info": "Инфо-линия",
@@ -59,6 +62,7 @@ const dict: SectionDict = {
     "draw.tool.stamp_down": "Падение",
 
     "draw.act.magnet": "Магнит",
+    "draw.act.zoomIn": "Увеличить область",
     "draw.act.magnet.off": "Магнит: выкл.",
     "draw.act.magnet.weak": "Магнит: слабый",
     "draw.act.magnet.strong": "Магнит: сильный",
@@ -122,6 +126,9 @@ const dict: SectionDict = {
     "draw.tool.cursor_cross": "Cross",
     "draw.tool.cursor_dot": "Dot",
     "draw.tool.cursor_arrow": "Arrow",
+    "draw.tool.cursor_demo": "Demonstration",
+    "draw.tool.cursor_magic": "Magic",
+    "draw.tool.cursor_eraser": "Eraser",
     "draw.tool.trend": "Trend line",
     "draw.tool.ray": "Ray",
     "draw.tool.info": "Info line",
@@ -160,6 +167,7 @@ const dict: SectionDict = {
     "draw.tool.stamp_down": "Falling",
 
     "draw.act.magnet": "Magnet",
+    "draw.act.zoomIn": "Zoom in",
     "draw.act.magnet.off": "Magnet: off",
     "draw.act.magnet.weak": "Magnet: weak",
     "draw.act.magnet.strong": "Magnet: strong",
@@ -221,6 +229,9 @@ const dict: SectionDict = {
     "draw.fav.drag": "拖动栏",
 
     "draw.tool.cursor_cross": "十字光标",
+    "draw.tool.cursor_demo": "演示",
+    "draw.tool.cursor_magic": "魔法",
+    "draw.tool.cursor_eraser": "橡皮擦",
     "draw.tool.cursor_dot": "圆点",
     "draw.tool.cursor_arrow": "箭头",
     "draw.tool.trend": "趋势线",
@@ -261,6 +272,7 @@ const dict: SectionDict = {
     "draw.tool.stamp_down": "下跌",
 
     "draw.act.magnet": "磁吸",
+    "draw.act.zoomIn": "放大区域",
     "draw.act.magnet.off": "磁吸：关闭",
     "draw.act.magnet.weak": "磁吸：弱",
     "draw.act.magnet.strong": "磁吸：强",

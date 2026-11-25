@@ -31,6 +31,7 @@ const reg = (ids: string[], s: PropSchema) => ids.forEach((id) => registerPropSc
 /* ───────────── lines ───────────── */
 
 registerPropSchema("trend_angle", schema([lineRow, chk("showAngle", true, "dp.showAngle")], { text: LINE_TEXT }));
+registerPropSchema("sector", schema([lineRow, fillRow]));
 reg(["disjoint_channel", "flat_top_bottom"], schema([lineRow, fillRow], { text: LINE_TEXT }));
 registerPropSchema(
   "regression",

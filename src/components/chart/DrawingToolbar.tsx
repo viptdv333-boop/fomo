@@ -33,6 +33,7 @@ function useController(c: DrawingsControllerLike) {
 type WithExtras = DrawingsControllerLike & {
   setLabels?: (l: Record<string, string>) => void;
   getCursorStyle?: () => string;
+  zoomBy?: (factor: number) => void;
 };
 
 const LAST_KEY = "fomo-draw-last-v1";
@@ -49,7 +50,7 @@ const starIcon = (on: boolean) => (
 
 function loadLast(): Record<string, string> {
   const defaults: Record<string, string> = {};
-  for (const g of DRAWING_GROUPS) defaults[g.id] = g.tools[0].id;
+  for (const g of DRAWING_GROUPS) defaults[g.id] = g.id === "forecast" ? "forecast" : g.tools[0].id;
   try {
     const raw = localStorage.getItem(LAST_KEY);
     if (!raw) return defaults;
@@ -73,7 +74,7 @@ const btnActive = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)] hover:!
 const ICON = 26; // glyph size (the CSS of .tv3-rbtn svg wins: 26px, 23px on short screens)
 const GAP = <span className="tv3-rgap" />;
 
-/** Rail order of the design: cursor, line tools, fib, (extra pattern / forecast groups), rectangle, brush, text, ruler, star, then the actions.
+/** Rail order of the design: cursor, line tools, fib, patterns, forecast / measurement, geometric tools, text, ruler, then the actions.
  *  `fixed` = a slot bound to one tool (its group flyout opens from the caret / right click), otherwise the slot shows the last tool used of the group. */
 const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] = [
   { key: "cursors", group: "cursors" },
@@ -81,8 +82,7 @@ const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean }[] =
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
   { key: "forecast", group: "forecast" },
-  { key: "rect", group: "shapes", fixed: "rect", noMenu: true },
-  { key: "brush", group: "shapes", fixed: "brush", noMenu: true },
+  { key: "shapes", group: "shapes" },
   { key: "text", group: "text" },
   { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
   { key: "stamps", group: "stamps" },
@@ -101,7 +101,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
 
   const [last, setLast] = useState<Record<string, string>>(() => {
     const d: Record<string, string> = {};
-    for (const g of DRAWING_GROUPS) d[g.id] = g.tools[0].id;
+    for (const g of DRAWING_GROUPS) d[g.id] = g.id === "forecast" ? "forecast" : g.tools[0].id;
     return d;
   });
   const [flyout, setFlyout] = useState<FlyoutState | null>(null);
@@ -348,7 +348,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   const nextMagnet = magnet === "off" ? "weak" : magnet === "weak" ? "strong" : "off";
   const magnetTitle = t(`draw.act.magnet.${magnet}`);
 
-  // tools that own a rail slot of their own (design: horizontal line, rectangle, brush, ruler); their group slot is not lit for them
+  // tools that own a rail slot of their own (for example, the ruler); their group slot is not lit for them
   const slotTools = new Set(RAIL.filter((r) => r.fixed).map((r) => r.fixed as string));
   const groupOf = (id: string) => DRAWING_GROUPS.find((g) => g.id === id);
 
@@ -372,14 +372,15 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         if (!g) return null;
         const lastId = last[g.id] ?? g.tools[0].id;
         const lastTool = g.tools.find((x) => x.id === lastId) ?? g.tools[0];
-        const shown = slot.fixed ?? lastTool.id;
-        const toolDef = slot.fixed ? { id: slot.fixed, labelKey: `draw.tool.${slot.fixed}` } : lastTool;
+        const shown = slot.fixed ?? (slot.group === "forecast" ? "forecast" : lastTool.id);
+        const shownTool = g.tools.find((x) => x.id === shown) ?? lastTool;
+        const toolDef = slot.fixed ? { id: slot.fixed, labelKey: `draw.tool.${slot.fixed}` } : shownTool;
         const active = slot.fixed
           ? activeTool === slot.fixed
           : g.id === "cursors"
             ? activeTool === null
             : activeTool !== null && g.tools.some((x) => x.id === activeTool) && !slotTools.has(activeTool);
-        const title = slot.fixed ? t(toolDef.labelKey) : `${t(g.labelKey)}: ${t(lastTool.labelKey)}`;
+        const title = slot.fixed ? t(toolDef.labelKey) : `${t(g.labelKey)}: ${t(shownTool.labelKey)}`;
         // the star slot (design: favourites) shows the outlined star until another stamp is picked
         const iconId = slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown;
         return (
@@ -413,11 +414,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 aria-label={`${t(g.labelKey)}: ${t("draw.moreTools")}`}
                 aria-haspopup="menu"
                 aria-expanded={flyout?.groupId === g.id}
-                className="absolute -bottom-px -right-1 flex h-4 w-3.5 items-center justify-center rounded-md text-[var(--tv3-muted)] opacity-0 transition-opacity hover:bg-[var(--tv3-fill2)] hover:text-[var(--tv3-text)] focus-visible:opacity-100 group-hover/slot:opacity-100"
+                className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--tv3-accent)]/25 bg-[var(--tv3-card)]/95 text-[var(--tv3-accent)] shadow-sm transition-colors hover:bg-[var(--tv3-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--tv3-accent)]"
                 onClick={(e) => openFlyout(g.id, e.currentTarget.parentElement ?? e.currentTarget)}
               >
-                <svg viewBox="0 0 8 8" width="7" height="7" aria-hidden="true">
-                  <path d="M1 2.5h6L4 6z" fill="currentColor" />
+                <svg viewBox="0 0 10 8" width="10" height="8" aria-hidden="true">
+                  <path d="M1 1.5h8L5 6.5z" fill="currentColor" />
                 </svg>
               </button>
             )}
@@ -427,6 +428,11 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         );
       })}
 
+      <button type="button" title={t("draw.act.zoomIn")} aria-label={t("draw.act.zoomIn")} data-rk="zoomIn" className={btnBase} onClick={() => ctl.zoomBy?.(1.25)}>
+        <DrawIcon id="zoomIn" size={ICON} />
+        <MacGlyph set="rail" k="zoomIn" />
+      </button>
+      {GAP}
       <button
         type="button"
         title={magnetTitle}

@@ -29,6 +29,24 @@ const DRAW_ICONS: Record<string, ReactNode> = {
     </>
   ),
   cursor_arrow: <path d="M8 4.5v17.5l4.4-4 3 6.5 3-1.4-3-6.2 6-.4z" />,
+  cursor_demo: (
+    <>
+      <path d="M7 4.5v17l4.3-4 3.1 5.6 3-1.4-3-5.5 6-.5z" />
+      <path d="M22 3v5M19.5 5.5h5" />
+    </>
+  ),
+  cursor_magic: (
+    <>
+      <path d="M5 4.5v17l4.3-4 3.1 5.6 3-1.4-3-5.5 6-.5z" />
+      <path d="M21 3v6M18 6h6M21 15v5M18.5 17.5h5" />
+    </>
+  ),
+  cursor_eraser: (
+    <>
+      <path d="M5 17.5L16.5 6a2 2 0 012.8 0l3.7 3.7a2 2 0 010 2.8l-8.5 8.5H9z" />
+      <path d="M12 20.5l5-5" />
+    </>
+  ),
 
   /* lines */
   trend: (
@@ -234,6 +252,12 @@ const DRAW_ICONS: Record<string, ReactNode> = {
     <>
       <path d="M7 4h4v11a3 3 0 006 0V4h4v11a7 7 0 01-14 0z" />
       <path d="M7 9h4M17 9h4" />
+    </>
+  ),
+  zoomIn: (
+    <>
+      <circle cx="11.5" cy="11.5" r="7.2" />
+      <path d="M17 17l6 6M11.5 8v7M8 11.5h7" />
     </>
   ),
   stay: (

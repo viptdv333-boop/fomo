@@ -46,7 +46,7 @@ export const GROUP_LAYOUT: GroupLayout[] = [
   {
     id: "forecast",
     sections: [
-      { id: "forecasting", ids: ["long", "short", "forecast", "bars_pattern", "ghost_feed", "projection"] },
+      { id: "forecasting", ids: ["long", "short", "forecast", "bars_pattern", "ghost_feed", "projection", "sector"] },
       { id: "volume", ids: ["anchored_vwap", "fixed_volume_profile", "anchored_volume_profile"] },
       { id: "measure", ids: ["price_range", "date_range", "datprice_range", "measure"] },
     ],

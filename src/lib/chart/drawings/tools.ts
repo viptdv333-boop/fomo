@@ -10,6 +10,7 @@ import type { DPoint, DrawLabels, Drawing, Pt } from "./types";
    time/price conversions for tools that need to derive new anchors or read prices. */
 
 export interface Env {
+  paneId: string;
   w: number;
   h: number;
   theme: ChartTheme;
@@ -1464,7 +1465,7 @@ export function isDrawingTool(id: string | null | undefined): boolean {
   return !!id && REGISTRY.has(id);
 }
 
-export const CURSOR_TOOLS = ["cursor_cross", "cursor_dot", "cursor_arrow"] as const;
+export const CURSOR_TOOLS = ["cursor_cross", "cursor_dot", "cursor_arrow", "cursor_demo", "cursor_magic", "cursor_eraser"] as const;
 
 export function isCursorTool(id: string | null | undefined): boolean {
   return !!id && (CURSOR_TOOLS as readonly string[]).includes(id);

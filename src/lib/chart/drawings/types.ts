@@ -9,6 +9,8 @@ export interface DPoint {
 export interface Drawing {
   id: string;
   tool: string;
+  /** Pane whose vertical scale owns these anchors; absent on legacy drawings means the price pane. */
+  paneId?: string;
   points: DPoint[];
   style: DrawingStyle;
   locked: boolean;
