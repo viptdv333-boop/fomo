@@ -523,7 +523,7 @@ html[data-tvmac] .tvmac [data-tv="row"]:has([data-fomo-strip]) [data-tv="bottom"
 
 /* left rail: 44px tiles with a 36px glyph; every tool has its own colour like in the design */
 .tvmac [data-tv="tools"] {
-  width: 62px;
+  width: 68px;
   gap: 0;
 }
 .tvmac [data-tv="tools"] .tv3-rbtn {
