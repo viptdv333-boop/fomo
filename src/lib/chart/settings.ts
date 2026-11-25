@@ -39,6 +39,8 @@ export interface ColorOverrides {
 
 export interface ScaleSettings {
   mode: ScaleMode;
+  /** Indicator panes use their own scale mode; linear by default even when the price axis is logarithmic. */
+  indicatorMode: "regular" | "log";
   invert: boolean;
   lock: boolean;
   side: "right" | "left";
@@ -110,6 +112,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   status: { symbol: true, ohlc: true, change: true, barChange: true, volume: true, indTitles: true, indValues: true },
   scale: {
     mode: "regular",
+    indicatorMode: "regular",
     invert: false,
     lock: false,
     side: "right",
@@ -278,6 +281,7 @@ export function settingsToEngine(s: ChartSettings, siteDark: boolean): Partial<E
     lineWidth: s.lineWidth,
     maxLineWidth: s.maxLineWidth,
     scaleMode: s.scale.mode,
+    indicatorScaleMode: s.scale.indicatorMode,
     invertScale: s.scale.invert,
     lockScale: s.scale.lock,
     scaleSide: s.scale.side,
@@ -381,6 +385,7 @@ export function sanitizeVolumeMa(v: VolumeMaOptions): VolumeMaOptions {
 
 export function normalizeSettings(saved: unknown): ChartSettings {
   const s = mergeInto(DEFAULT_SETTINGS, saved);
+  if (s.scale.indicatorMode !== "log") s.scale.indicatorMode = "regular";
   if (!["classic", "tvdark", "tvlight"].includes(s.preset)) s.preset = "classic";
   if (isObj(saved) && typeof saved.precision === "number") s.precision = Math.max(0, Math.min(10, Math.round(saved.precision)));
   s.footprint = sanitizeFootprint(isObj(saved) ? saved.footprint : undefined);

@@ -333,7 +333,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [engineReady, setEngineReady] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
   const [csTab, setCsTab] = useState<SettingsTab>("symbol");
-  const [scaleMenu, setScaleMenu] = useState<{ x: number; y: number } | null>(null);
+  const [scaleMenu, setScaleMenu] = useState<{ x: number; y: number; paneId: string } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [gotoSignal, setGotoSignal] = useState(0);
   const [offsetMs, setOffsetMs] = useState(0);
@@ -600,7 +600,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
     setSiteDark(dark);
     engine.onBaselineChange = (pct) => csRef.current.update((x) => ({ ...x, baselinePercent: Math.round(pct) }));
-    engine.onPriceAxisMenu = ({ clientX, clientY }) => setScaleMenu({ x: clientX, y: clientY });
+    engine.onPriceAxisMenu = ({ clientX, clientY, paneId }) => setScaleMenu({ x: clientX, y: clientY, paneId });
     setEngineReady(true);
     onEngineRef.current?.(engine);
 
@@ -2506,6 +2506,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       />
       <PriceScaleMenu
         pos={scaleMenu}
+        paneId={scaleMenu?.paneId ?? "main"}
         onClose={() => setScaleMenu(null)}
         api={csApi}
         autoScale={autoScale}

@@ -211,6 +211,8 @@ export interface EngineOptions {
   /** Thickest line (px) any indicator, drawing or price line may have; 0 = no limit (every line keeps the width it was given). */
   maxLineWidth: number;
   scaleMode: ScaleMode;
+  /** Independent indicator-pane scale. Percent/indexed are price-only modes. */
+  indicatorScaleMode: "regular" | "log";
   invertScale: boolean;
   /** Freeze the price range: no auto-scale, no dragging of the price scale. */
   lockScale: boolean;
@@ -270,6 +272,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   lineWidth: 2,
   maxLineWidth: 0.5,
   scaleMode: "regular",
+  indicatorScaleMode: "regular",
   invertScale: false,
   lockScale: false,
   scaleSide: "right",

@@ -97,6 +97,7 @@ const dict: SectionDict = {
     "cs.st.indValues": "Значения индикаторов",
 
     "cs.scaleMode": "Режим шкалы",
+    "cs.indicatorScaleMode": "Шкала индикаторов",
     "cs.mode.regular": "Обычная",
     "cs.mode.percent": "В процентах",
     "cs.mode.indexed": "Индексированная к 100",
@@ -359,6 +360,7 @@ const dict: SectionDict = {
     "cs.st.indValues": "Indicator values",
 
     "cs.scaleMode": "Scale mode",
+    "cs.indicatorScaleMode": "Indicator scale",
     "cs.mode.regular": "Regular",
     "cs.mode.percent": "Percentage",
     "cs.mode.indexed": "Indexed to 100",
@@ -621,6 +623,7 @@ const dict: SectionDict = {
     "cs.st.indValues": "指标数值",
 
     "cs.scaleMode": "刻度模式",
+    "cs.indicatorScaleMode": "指标刻度",
     "cs.mode.regular": "常规",
     "cs.mode.percent": "百分比",
     "cs.mode.indexed": "指数化为100",

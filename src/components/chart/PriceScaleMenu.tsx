@@ -10,6 +10,7 @@ import type { ChartSettingsApi } from "./useChartSettings";
 interface Props {
   /** Client coordinates of the right click; null = closed. */
   pos: { x: number; y: number } | null;
+  paneId: string;
   onClose: () => void;
   api: ChartSettingsApi;
   autoScale: boolean;
@@ -31,7 +32,7 @@ function Item({ checked, radio, onClick, children }: { checked?: boolean; radio?
 const Sep = () => <div className="my-1 h-px bg-[var(--tv3-hair)]" />;
 
 /** Right-click menu of the price scale: auto / lock / invert, scale mode, labels, side. */
-export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, onSettings }: Props) {
+export default function PriceScaleMenu({ pos, paneId, onClose, api, autoScale, onAuto, onSettings }: Props) {
   const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
@@ -53,7 +54,13 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
 
   if (!pos) return null;
   const setScale = <K extends keyof typeof sc>(k: K, v: (typeof sc)[K]) => api.update((x) => ({ ...x, scale: { ...x.scale, [k]: v } }));
-  const modes: ScaleMode[] = ["regular", "percent", "indexed", "log"];
+  const isMainPane = paneId === "main";
+  const selectedMode = isMainPane ? sc.mode : sc.indicatorMode;
+  const modes: ScaleMode[] = isMainPane ? ["regular", "percent", "indexed", "log"] : ["regular", "log"];
+  const setMode = (mode: ScaleMode) => api.update((x) => ({
+    ...x,
+    scale: isMainPane ? { ...x.scale, mode } : { ...x.scale, indicatorMode: mode as "regular" | "log" },
+  }));
 
   return (
     <PopupPortal>
@@ -68,7 +75,7 @@ export default function PriceScaleMenu({ pos, onClose, api, autoScale, onAuto, o
         <Item checked={sc.invert} onClick={() => { setScale("invert", !sc.invert); onClose(); }}>{t("cs.invertScale")}</Item>
         <Sep />
         {modes.map((m) => (
-          <Item key={m} radio checked={sc.mode === m} onClick={() => { setScale("mode", m); onClose(); }}>
+          <Item key={m} radio checked={selectedMode === m} onClick={() => { setMode(m); onClose(); }}>
             {t(`cs.mode.${m}`)}
           </Item>
         ))}

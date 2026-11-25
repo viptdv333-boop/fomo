@@ -410,6 +410,7 @@ export class ChartEngine {
     const prevAuto = this.opts.autoScale;
     const prevTransform = JSON.stringify(this.opts.transform);
     const prevMode = this.opts.scaleMode;
+    const prevIndicatorMode = this.opts.indicatorScaleMode;
     // the old boolean and the scale mode describe the same thing
     if (patch.logScale !== undefined && patch.scaleMode === undefined) {
       patch = { ...patch, scaleMode: patch.logScale ? "log" : this.opts.scaleMode === "log" ? "regular" : this.opts.scaleMode };
@@ -442,6 +443,9 @@ export class ChartEngine {
     }
     if ("pricePrecision" in patch) this.precision = patch.pricePrecision ?? inferPrecision(this.candles);
     if (patch.scaleMode !== undefined && patch.scaleMode !== prevMode) for (const p of this.panes) p.ready = false;
+    if (patch.indicatorScaleMode !== undefined && patch.indicatorScaleMode !== prevIndicatorMode) {
+      for (const p of this.panes) if (p.id !== "main") p.ready = false;
+    }
     if (patch.showCountdown !== undefined) this.syncCountdown();
     if (this.followers.size) {
       const sub = windowOptions(patch);
@@ -1103,7 +1107,8 @@ export class ChartEngine {
   }
 
   private isLog(p: Pane): boolean {
-    return this.opts.scaleMode === "log" && p.id === "main" && p.min > 0;
+    const mode = p.id === "main" ? this.opts.scaleMode : this.opts.indicatorScaleMode;
+    return mode === "log" && p.min > 0;
   }
   private isInverted(p: Pane): boolean {
     return this.opts.invertScale && p.id === "main";
@@ -1326,7 +1331,8 @@ export class ChartEngine {
   }
 
   private isLogRange(p: Pane, lo: number): boolean {
-    return this.opts.scaleMode === "log" && p.id === "main" && lo > 0;
+    const mode = p.id === "main" ? this.opts.scaleMode : this.opts.indicatorScaleMode;
+    return mode === "log" && lo > 0;
   }
 
   /* ───────────── render loop ───────────── */
