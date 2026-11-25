@@ -82,7 +82,7 @@ const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean; icon
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
   { key: "forecast", group: "forecast", icon: "forecast_tools", titleKey: "draw.group.forecast" },
-  { key: "shapes", group: "shapes" },
+  { key: "shapes", group: "shapes", icon: "shape_tools" },
   { key: "text", group: "text" },
   { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
   { key: "stamps", group: "stamps" },
