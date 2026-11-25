@@ -199,8 +199,8 @@ function Sheet({ seg, onSeg, onClose, drawings, indicators, getEngine, onAddIndi
                 }
               }}
             >
-              <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-                <circle cx="6" cy="6" r="4.5" fill="currentColor" />
+              <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m2.5 4.5 3.5 3 3.5-3" />
               </svg>
             </span>
           )}

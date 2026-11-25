@@ -516,9 +516,9 @@ html[data-tvmac] .tvmac [data-tv="row"]:has([data-fomo-strip]) [data-tv="bottom"
 }
 .tvmac [data-tv="tools"] [data-draw-caret] {
   color: #4f9a74 !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  background: color-mix(in srgb, #4f9a74 9%, var(--m-card, #fff)) !important;
+  border: 0.5px solid color-mix(in srgb, #4f9a74 24%, transparent) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14) !important;
 }
 
 /* left rail: 44px tiles with a 36px glyph; every tool has its own colour like in the design */
