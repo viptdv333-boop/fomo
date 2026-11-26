@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod/v4";
-import { ideaUploadUrls, removeIdeaUploads } from "@/lib/upload-cleanup";
+import { ideaUploadUrls, removeIdeaUploads, removeDeletedIdeaUploads } from "@/lib/upload-cleanup";
+import { deleteIdeaRecords } from "@/lib/idea-delete";
 import { familyOfTariff } from "@/lib/tariff-plans";
 
 const ideaPatchSchema = z.object({
@@ -322,9 +323,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await prisma.idea.delete({ where: { id } });
-  // the post is gone: its photos / videos go with it (a 500 MB video must not stay on the disk)
-  void removeIdeaUploads(ideaUploadUrls(idea.attachments, idea.authorId), id);
+  const removed = await prisma.$transaction(tx => deleteIdeaRecords(tx, { id, authorId: idea.authorId }));
+  await removeDeletedIdeaUploads(removed);
 
   return NextResponse.json({ message: "Idea deleted" });
 }

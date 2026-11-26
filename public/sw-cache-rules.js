@@ -206,8 +206,8 @@
   ];
   function isLiveChannelApi(pathname, search) {
     for (var i = 0; i < LIVE_CHANNEL_API.length; i++) if (LIVE_CHANNEL_API[i].test(pathname)) return true;
-    // the posts of one channel / one author (the board feed itself is not live)
-    return pathname === "/api/ideas" && /(^|[?&])(channelId|authorId)=/.test(search || "");
+    // Lists and details must reflect deletions, including the board and My Ideas.
+    return /^\/api\/ideas(\/[^/]+)?$/.test(pathname);
   }
 
   /** stored API answers dropped after a channel / plan / subscription / post changed (the whole family, any query) */

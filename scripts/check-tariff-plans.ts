@@ -17,7 +17,7 @@ const truth = (name: string, v: boolean) => eq(name, v, true);
 
 /* ---------- a tiny in-memory Prisma ---------- */
 type Row = Record<string, any>;
-const NOW = new Date("2026-10-22T12:00:00Z");
+const NOW = new Date(); // fixtures stay active relative to the access checks' clock
 const DAY = 86_400_000;
 const days = (n: number) => new Date(NOW.getTime() + n * DAY);
 
@@ -41,7 +41,7 @@ const match = (row: Row, where: Row = {}): boolean =>
   });
 
 function makeDb() {
-  const t: Record<string, Row[]> = { tariffs: [], subs: [], ideas: [], payments: [], rooms: [], messages: [], users: [] };
+  const t: Record<string, Row[]> = { tariffs: [], subs: [], ideas: [], payments: [], rooms: [], messages: [], users: [], notifications: [] };
   let seq = 0;
   const table = (name: string) => ({
     findUnique: async ({ where }: any) => t[name].find((r) => match(r, where)) ?? null,
@@ -101,6 +101,7 @@ function makeDb() {
     },
     subscription: table("subs"),
     idea: table("ideas"),
+    notification: table("notifications"),
     paymentRequest: table("payments"),
     chatRoom: table("rooms"),
     chatMessage: table("messages"),
@@ -251,7 +252,7 @@ async function main() {
   eq("with the typed name (staff may do it too): archived, 3 subscriptions ended", [done.ok, done.mode, done.cancelled], [true, "archived", 3]);
   eq("subscriptions: cancelled, ended now, Telegram off; the expired row untouched", T.subs.map((s) => [s.id, s.status, +s.endDate === +NOW || s.id === "k4", s.telegramNotify]), [["k1", "cancelled", true, false], ["k2", "cancelled", true, false], ["k3", "cancelled", true, false], ["k4", "expired", true, false]]);
   eq("the channel row is kept, closed, slug freed; plans closed", [T.tariffs[0].archivedAt !== null, T.tariffs[0].isActive, T.tariffs[0].slug, T.tariffs.filter((x) => x.parentId === "ch").every((x) => x.archivedAt && !x.isActive)], [true, false, null, true]);
-  eq("paid posts are NOT made public: kept (tariffId stays) and archived", T.ideas.map((i) => [i.tariffId, i.moderationStatus]), [["ch", "archived"], ["ch", "hidden"]]);
+  eq("closed channel posts are permanently deleted", T.ideas, []);
   eq("the chat room is archived and closed, not deleted", [T.rooms[0].isArchived, T.rooms[0].isClosed], [true, true]);
   eq("pending payment rejected, confirmed one kept", T.payments.map((p) => p.status), ["REJECTED", "CONFIRMED"]);
   eq("one notice per subscriber (2 people), not per row", notices.sort(), ["m1", "m2"]);

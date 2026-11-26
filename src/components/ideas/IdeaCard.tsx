@@ -111,8 +111,9 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSent, setReportSent] = useState(false);
-  const [isArchived, setIsArchived] = useState(idea.moderationStatus === "archived");
-  const [archiving, setArchiving] = useState(false);
+  const isArchived = idea.moderationStatus === "archived";
+  const [deleted, setDeleted] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const viewCount = idea.viewCount ?? 0;
   const commentCount = idea.commentCount ?? 0;
@@ -121,19 +122,19 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
     session?.user?.id !== idea.author.id &&
     Boolean(idea.author.donationCard || idea.author.sbpQrUrl);
 
-  async function toggleArchive() {
-    setArchiving(true);
-    const next = isArchived ? "published" : "archived";
-    const res = await fetch(`/api/ideas/${idea.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ moderationStatus: next }),
-    });
-    if (res.ok) {
-      setIsArchived(next === "archived");
+  async function deleteIdea() {
+    if (!confirm(t("profile2.confirmDeleteIdea"))) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setDeleted(true);
       onVote?.();
+    } catch {
+      showToast(t("profile2.deleteIdeaFailed"));
+    } finally {
+      setDeleting(false);
     }
-    setArchiving(false);
   }
 
   async function handleLike() {
@@ -177,6 +178,11 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
   const avatarColor = hashColor(idea.author.id);
   const isNew = isRecentlyPublished(idea.createdAt);
 
+  if (deleted) return null;
+  const deleteButton = session?.user?.id === idea.author.id
+    ? <button type="button" onClick={deleteIdea} disabled={deleting} className="text-xs text-red-600 shrink-0 disabled:opacity-50">{t("common.delete")}</button>
+    : null;
+
   // App UI (Android app / ?appui=1): the board card of the mobile design instead of the wide paragraph card
   if (appUi && !minimal && !compact) {
     const cats = uniqInstruments.map((i) => i.asset?.name || i.name).join(" · ");
@@ -201,6 +207,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
             {isArchived && <ArchivedBadge className="ml-2 align-middle" />}
           </div>
         </div>
+        {deleteButton}
         {cats && <div className="app-idea-inst">{cats}</div>}
         {idea.preview && <div className="app-idea-prev">{idea.preview}</div>}
         {editedStr && <div className="text-[11px] opacity-60 mb-1">{editedStr}</div>}
@@ -256,6 +263,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           {appUi && <UnreadChip entry={unreadMap.byIdea[idea.id]} className="app-uchip-row" />}
         </Link>
         <FomoMark className="shrink-0" />
+        {deleteButton}
         <span className="text-xs text-gray-400 shrink-0">{idea.author.displayName}</span>
         <span className="text-xs text-gray-400 shrink-0">{dateStr}{editedStr && ` · ${editedStr}`}</span>
         <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
@@ -304,6 +312,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.author.displayName}</span>
           <StarRating rating={idea.author.rating} />
           <FomoMark className="shrink-0" />
+        {deleteButton}
           {appUi && <IdeaUnreadMarks entry={unreadMap.byIdea[idea.id]} />}
           {isNew && <NewBadge />}
           {isArchived && <ArchivedBadge />}
@@ -395,7 +404,7 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
           )}
         </div>
 
-        {/* Edit / archive buttons */}
+        {/* Edit / delete buttons */}
         {session?.user?.id === idea.author.id && (
           <div className="flex items-center gap-2 shrink-0">
             <Link href={`/ideas/${idea.id}/edit`} className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition" title={t("common.edit")}>
@@ -404,13 +413,13 @@ export default function IdeaCard({ idea, onVote, compact, minimal }: IdeaCardPro
               </svg>
             </Link>
             <button
-              onClick={toggleArchive}
-              disabled={archiving}
+              onClick={deleteIdea}
+              disabled={deleting}
               className="text-gray-300 dark:text-gray-600 hover:text-green-600 dark:hover:text-green-400 transition disabled:opacity-50"
-              title={isArchived ? t("idea.unarchive") : t("idea.archive")}
+              title={t("common.delete")} aria-label={t("common.delete")}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8M10 12h4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6m4-6v6" />
               </svg>
             </button>
           </div>

@@ -283,7 +283,7 @@ async function swr(event, req, key, pol, st, kind) {
   // a live read answered from the copy: when the network's answer turns out to be different, every open window is told (see notifyIfChanged)
   const served = pol.live && hit && action !== "network" ? hit.res.clone() : null;
   const notifyIfChanged = async (r) => {
-    if (!served || !r.ok) return;
+    if (!served || (!r.ok && r.status !== 404 && r.status !== 410)) return;
     try {
       const [was, now] = await Promise.all([served.text(), r.clone().text()]);
       if (was !== now) await broadcast({ type: "fomo-data-updated", path: new URL(req.url).pathname });
@@ -294,6 +294,10 @@ async function swr(event, req, key, pol, st, kind) {
 
   const fetchAndStore = async () => {
     const res = await fetch(req);
+    // A deleted idea must not come back from the offline copy.
+    if ((res.status === 404 || res.status === 410) && /^\/api\/ideas\/[^/]+$/.test(new URL(req.url).pathname)) {
+      await cache.delete(new Request(key));
+    }
     event.waitUntil(noteBuild(res.clone()).catch(() => {}));
     if (gen0 === generation && R.cacheableAnswer(type, res.status, res.type, res.redirected, header(res, "cache-control"), header(res, "content-type"), header(res, "content-length"))) {
       const copy = res.clone();

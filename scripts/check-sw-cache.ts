@@ -134,7 +134,7 @@ eq("klines / quotes stay out of the service worker's api cache (the chart keeps 
 
 // --- channels family: "live" reads, what a request for the freshest answer means (scripts/check-channels-invalidate.ts goes deeper)
 eq("live reads: channels, authors, subscriptions, a user's plans, a profile, one channel's posts", [R.apiPolicy("/api/channels").live, R.apiPolicy("/api/authors").live, R.apiPolicy("/api/subscriptions").live, R.apiPolicy("/api/users/u1/tariffs").live, R.apiPolicy("/api/users/u1").live, R.apiPolicy("/api/ideas", "?channelId=c1&limit=50").live], Array(6).fill(true));
-eq("not live: the board feed, categories, the denied", [R.apiPolicy("/api/ideas", "?limit=50&page=1").live, R.apiPolicy("/api/categories").live, R.apiPolicy("/api/payments").live], [false, false, false]);
+eq("board follows deletions; categories and denied APIs are not live", [R.apiPolicy("/api/ideas", "?limit=50&page=1").live, R.apiPolicy("/api/categories").live, R.apiPolicy("/api/payments").live], [true, false, false]);
 eq("channel lists keep an instant window (the copy is checked against the network afterwards)", [R.apiPolicy("/api/channels").fresh, R.apiPolicy("/api/subscriptions").fresh], [2 * MIN, 2 * MIN]);
 eq("a request for the freshest answer: no-store / reload / no-cache, Cache-Control, Pragma", [R.wantsFresh("no-store", "", ""), R.wantsFresh("reload", "", ""), R.wantsFresh("no-cache", "", ""), R.wantsFresh("default", "max-age=0", ""), R.wantsFresh("default", "no-cache", ""), R.wantsFresh("default", "", "no-cache"), R.wantsFresh("default", "", ""), R.wantsFresh("force-cache", "max-age=60", "")], [true, true, true, true, true, true, false, false]);
 

@@ -10,12 +10,13 @@ let failCreate = false;
 let failArchive = false;
 let tail = Promise.resolve();
 let locks = 0;
+let seq = 0;
 function matches(row: Row, where: Row) {
-  return Object.entries(where).every(([k, v]) => row[k] === v);
+  return Object.entries(where).every(([k, v]) => v && typeof v === "object" && "in" in v ? v.in.includes(row[k]) : row[k] === v);
 }
 const create = async ({ data }: Row) => {
   if (failCreate) throw new Error("create failed");
-  const row = { id: `id-${rows.length}`, moderationStatus: "published", createdAt: now, ...data };
+  const row = { id: `id-${++seq}`, moderationStatus: "published", createdAt: now, ...data };
   rows.push(row);
   return row;
 };
@@ -36,8 +37,16 @@ const db = {
         assert.ok(locked, "время читается после блокировки");
         return [{ now }];
       },
+      notification: { deleteMany: async () => ({ count: 0 }) },
       idea: {
         create,
+        findMany: async ({ where }: Row) => rows.filter(r => matches(r, where)),
+        deleteMany: async ({ where }: Row) => {
+          if (failArchive) throw new Error("archive failed");
+          const selected = rows.filter(r => matches(r, where));
+          rows = rows.filter(r => !matches(r, where));
+          return { count: selected.length };
+        },
         findFirst: async ({ where }: Row) => {
           assert.ok(locked, "поиск пачки после блокировки");
           return rows.filter(r => matches(r, where)).sort((a, b) => +b.createdAt - +a.createdAt)[0] ?? null;
@@ -80,8 +89,8 @@ async function main() {
   now = new Date("2026-10-08T10:15:00.001Z");
   const replaced = await publish();
   assert.equal(replaced.setupBatch?.archivedCount, 3);
-  assert.ok(rows.slice(0, 3).every(r => r.moderationStatus === "archived"));
-  assert.deepEqual(rows.slice(3, -1), protectedRows);
+  assert.equal(replaced.setupBatch?.deletedCount, 3);
+  assert.deepEqual(rows.slice(0, -1), protectedRows);
   assert.equal(+replaced.setupBatch!.startedAt, +now);
   assert.equal(locks, 6);
 
@@ -112,12 +121,12 @@ async function main() {
   const split = await Promise.all([scoped("accountA.swing"), scoped("accountB.intraday")]);
   assert.deepEqual(split.map(r => r.setupBatch!.archivedCount), [1, 1]);
   assert.deepEqual(rows.map(r => r.moderationStatus),
-    ["archived", "archived", "published", "published", "published", "published"]);
+    ["published", "published", "published", "published"]);
   assert.equal(split[0].setupBatch!.ticker, "BRX6");
   assert.equal(split[0].setupBatch!.scope, "accountA.swing");
   await publish("BRX6");
-  assert.equal(rows[4].moderationStatus, "published", "старый клиент не удаляет свинг");
-  assert.equal(rows[5].moderationStatus, "published", "старый клиент не удаляет интрадей");
+  assert.equal(rows[1].moderationStatus, "published", "старый клиент не удаляет свинг");
+  assert.equal(rows[2].moderationStatus, "published", "старый клиент не удаляет интрадей");
   const again = await scoped("accountA.swing");
   assert.equal(again.setupBatch!.archivedCount, 0, "внутри 15 минут сетапы складываются");
   console.log("OK: fixed window, exact boundary, ticker/channel/author isolation, rollback, concurrent batch, no public setup");

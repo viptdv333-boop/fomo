@@ -862,9 +862,9 @@ const rows: [string, string, string, string][] = [
     "Turn on “Paid idea” and set a price in roubles, or turn on “Accept donations” so readers can send thanks (this needs a card or QR for donations in your profile). Then click “Publish”.",
     "开启“付费观点”并以卢布设定价格，或开启“接受打赏”让读者表达谢意（需要先在个人资料中设置接收打赏的银行卡或二维码）。然后点击“发布”。"],
   ["help.ideas.p3",
-    "Опубликованную идею можно отредактировать, отправить в архив или удалить — на карточке идеи и во вкладке «Мои идеи» профиля.",
-    "A published idea can be edited, archived or deleted — on the idea card and in the “My ideas” tab of your profile.",
-    "已发布的观点可以编辑、归档或删除——在观点卡片上以及个人资料的“我的观点”标签页中操作。"],
+    "Идею можно отредактировать или удалить. Удаление убирает её из канала, с доски и из «Моих идей» без сохранения истории.",
+    "An idea can be edited or deleted. Deletion removes it from the channel, board and My Ideas permanently.",
+    "观点可以编辑或删除。删除会将其从频道、看板和“我的观点”中永久移除。"],
 
   /* ===== Channels (overrides) ===== */
   ["help.ch.s2d",

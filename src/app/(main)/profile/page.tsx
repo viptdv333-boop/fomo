@@ -1,5 +1,6 @@
 "use client";
 
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -183,7 +184,7 @@ function ProfileContent() {
     if (!session?.user?.id) return [];
     const all: any[] = [];
     for (let page = 1; page < 200; page++) {
-      const res = await fetch(`/api/ideas?authorId=${session.user.id}&page=${page}&limit=100`);
+      const res = await fetch(`/api/ideas?authorId=${session.user.id}&page=${page}&limit=100`, { cache: "no-store" });
       if (!res.ok) break;
       const data = await res.json();
       const chunk =
@@ -207,6 +208,8 @@ function ProfileContent() {
       setMyIdeasLoading(false);
     }
   }
+
+  useChannelsChanged(loadMyIdeas, !!session?.user?.id);
 
   async function deleteIdea(id: string) {
     if (!confirm(t("profile2.confirmDeleteIdea"))) return;

@@ -1,3 +1,5 @@
+import { deleteIdeaRecords } from "@/lib/idea-delete";
+import { removeDeletedIdeaUploads } from "@/lib/upload-cleanup";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -107,7 +109,8 @@ export async function PATCH(request: NextRequest) {
 
   // Apply resolution
   if (resolution === "deleted" && report.targetType === "idea") {
-    await prisma.idea.delete({ where: { id: report.targetId } }).catch(() => {});
+    const removed = await prisma.$transaction(tx => deleteIdeaRecords(tx, { id: report.targetId }));
+    await removeDeletedIdeaUploads(removed);
   } else if (resolution === "banned" && report.targetType === "author") {
     await prisma.user.update({
       where: { id: report.targetId },

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 import { agoLabel } from "@/lib/app-ui";
 import { ideaSubLine } from "@/lib/app-profile";
 import { hasUnread, unreadAccent, unreadLabel } from "@/lib/app-unread";
@@ -22,8 +23,8 @@ interface MyIdea {
 async function fetchAllMyIdeas(authorId: string): Promise<MyIdea[]> {
   const all: MyIdea[] = [];
   for (let page = 1; page < 200; page++) {
-    const res = await fetch(`/api/ideas?authorId=${authorId}&page=${page}&limit=100`);
-    if (!res.ok) break;
+    const res = await fetch(`/api/ideas?authorId=${authorId}&page=${page}&limit=100`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Idea list unavailable");
     const data = await res.json();
     const chunk: MyIdea[] = data?.data ?? data?.ideas ?? (Array.isArray(data) ? data : []);
     if (chunk.length === 0) break;
@@ -33,32 +34,31 @@ async function fetchAllMyIdeas(authorId: string): Promise<MyIdea[]> {
   return all;
 }
 
-/** «Мои идеи» (the design's `myideas`): every idea with «В архив» / «Вернуть», «Редактировать», «Удалить» and «Удалить все». */
+/** «Мои идеи» (the design's `myideas`): every idea with «Редактировать», «Удалить» and «Удалить все». */
 export default function MyIdeas() {
   const { t, user, locale, open, flash } = useProf();
   const uid = user?.id;
   const [ideas, setIdeas] = useState<MyIdea[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const loadId = useRef(0);
   const unread = useUnreadByIdea(); // red count of unread comments under each idea
 
   const load = useCallback(async () => {
     if (!uid) return;
+    const ticket = ++loadId.current;
     try {
-      setIdeas(await fetchAllMyIdeas(uid));
+      const next = await fetchAllMyIdeas(uid);
+      if (ticket === loadId.current) setIdeas(next);
     } catch {
-      setIdeas((prev) => prev ?? []);
+      if (ticket === loadId.current) setIdeas((prev) => prev ?? []);
     }
   }, [uid]);
   useEffect(() => {
     void load();
   }, [load]);
 
-  async function toggleArchive(i: MyIdea) {
-    const next = i.moderationStatus === "archived" ? "published" : "archived";
-    const res = await fetch(`/api/ideas/${i.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moderationStatus: next }) });
-    if (res.ok) setIdeas((prev) => (prev ? prev.map((x) => (x.id === i.id ? { ...x, moderationStatus: next } : x)) : prev));
-    else flash(t("appprof.actionFailed"));
-  }
+  useChannelsChanged(load, !!uid);
+
   async function remove(i: MyIdea) {
     if (!window.confirm(t("profile2.confirmDeleteIdea"))) return;
     const res = await fetch(`/api/ideas/${i.id}`, { method: "DELETE" });
@@ -114,7 +114,6 @@ export default function MyIdeas() {
         onClick: () => open(`/ideas/${i.id}`),
         actions: [
           { label: t("appprof.edit"), onClick: () => open(`/ideas/${i.id}/edit`) },
-          ...(i.moderationStatus === "hidden" ? [] : [{ label: i.moderationStatus === "archived" ? t("appprof.unarchive") : t("appprof.archive"), onClick: () => void toggleArchive(i) }]),
           { label: t("common.delete"), tone: "danger" as const, onClick: () => void remove(i) },
         ],
       })),

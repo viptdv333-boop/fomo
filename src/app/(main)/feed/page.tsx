@@ -12,6 +12,7 @@ import IdeaUnreadMarks, { UnreadChip, ideaUnreadMarks } from "@/components/app/I
 import { useUnreadIdeaCards } from "@/components/app/useUnreadIdeaCards";
 import { unreadOffList } from "@/lib/app-unread";
 import { useUnreadByIdea } from "@/components/app/useUnreadByIdea";
+import { useChannelsChanged } from "@/lib/channels-invalidate";
 import { useAppUi } from "@/components/app/useAppUi";
 
 // the cards do not re-render when the board re-renders for a reason that does not touch them (a tab switch changes the URL: useSearchParams)
@@ -277,7 +278,7 @@ function FeedPage() {
     }
     let list: IdeaData[];
     try {
-      const res = await fetch(`/api/ideas?${params}`);
+      const res = await fetch(`/api/ideas?${params}`, { cache: "no-store" });
       const data = await res.json();
       list = data.data || data.ideas || (Array.isArray(data) ? data : []);
     } catch (e) {
@@ -306,6 +307,7 @@ function FeedPage() {
   const loadRef = useRef(loadIdeas);
   loadRef.current = loadIdeas;
   const reloadIdeas = useCallback(() => void loadRef.current(), []);
+  useChannelsChanged(reloadIdeas);
   const applyHeld = useCallback(() => {
     setHeld((h) => {
       if (h) {
