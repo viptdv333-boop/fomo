@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type KeyboardEvent, type MouseEvent, type TouchEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from "react";
 import { useT } from "@/lib/i18n/client";
 import {
   CAT_I18N,
@@ -36,6 +36,7 @@ interface Props {
   marks: ReturnType<typeof useDmMarks>;
   /** long press / right click on a dialog: the pin / star / mute sheet */
   onDialogMenu: (c: Conversation) => void;
+  onDeleteDialog: (c: Conversation) => void;
 }
 
 /** Long press (touch) and right click (mouse) on a row; a normal tap still opens it. */
@@ -72,6 +73,9 @@ function useLongPress(onLong: () => void) {
 /** One dialog row (its own component: every row owns a long-press timer). */
 function DialogRow({ c, p, onMenu, marks, online, locale, fileWord, t }: { c: Conversation; p: Props; onMenu: () => void; marks: ReturnType<typeof useDmMarks>; online: boolean; locale: string; fileWord: string; t: (k: string) => string }) {
   const lp = useLongPress(onMenu);
+  const [swiped, setSwiped] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const didSwipe = useRef(false);
   const name = c.otherUser?.displayName || t("msg.deletedUser");
   const count = typeof c.unreadCount === "number" ? c.unreadCount : c.unread ? 1 : 0;
   const pinned = marks.pinned.includes(c.id);
@@ -80,16 +84,42 @@ function DialogRow({ c, p, onMenu, marks, online, locale, fileWord, t }: { c: Co
   const dnd = c.otherUser?.dmEnabled === false;
   return (
     <div
-      className="ac-row"
-      {...press(() => {
-        if (lp.fired.current) {
-          lp.fired.current = false;
-          return;
+      className="ac-swipe"
+      data-open={swiped ? "1" : undefined}
+      onTouchStart={(e) => { const touch = e.touches[0]; touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null; didSwipe.current = false; }}
+      onTouchMove={(e) => {
+        const start = touchStart.current;
+        const touch = e.touches[0];
+        if (start && touch && Math.abs(touch.clientX - start.x) > 18 && Math.abs(touch.clientX - start.x) > Math.abs(touch.clientY - start.y)) didSwipe.current = true;
+      }}
+      onTouchEnd={(e) => {
+        const start = touchStart.current;
+        const touch = e.changedTouches[0];
+        if (start && touch) {
+          const dx = touch.clientX - start.x;
+          if (dx < -48) setSwiped(true);
+          else if (dx > 48) setSwiped(false);
         }
-        p.onOpenDm(c.id);
-      })}
-      {...lp.handlers}
+        touchStart.current = null;
+      }}
     >
+      <button type="button" className="ac-swipe-delete" aria-label={t("appui.chat.deleteDialog")} onClick={() => { setSwiped(false); p.onDeleteDialog(c); }}>
+        <AppIcon name="trash" size={17} stroke={1.9} />
+        <span>{t("appui.chat.deleteDialog")}</span>
+      </button>
+      <div
+        className="ac-row"
+        data-swipe-open={swiped ? "1" : undefined}
+        {...press(() => {
+          if (lp.fired.current) {
+            lp.fired.current = false;
+            return;
+          }
+          if (didSwipe.current || swiped) { didSwipe.current = false; setSwiped(false); return; }
+          p.onOpenDm(c.id);
+        })}
+        {...lp.handlers}
+      >
       <div className="ac-tilewrap">
         <div className="ac-tile">
           {c.otherUser?.avatarUrl ? (
@@ -119,6 +149,7 @@ function DialogRow({ c, p, onMenu, marks, online, locale, fileWord, t }: { c: Co
           <div className="ac-rlast">{dialogPreviewLine(c.lastMessage, p.myId, t("chat2.youPrefix"), fileWord)}</div>
         </div>
         {count > 0 && <div className="ac-badge" style={muted ? { background: "var(--app-tx3)" } : undefined}>{badgeLabel(count)}</div>}
+      </div>
       </div>
     </div>
   );

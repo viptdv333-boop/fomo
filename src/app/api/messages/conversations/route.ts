@@ -13,7 +13,7 @@ export async function GET() {
   const userId = session.user.id!;
 
   const participantRecords = await prisma.directConversationParticipant.findMany({
-    where: { userId },
+    where: { userId, hiddenAt: null },
     select: {
       conversationId: true,
       lastReadAt: true,
@@ -51,7 +51,7 @@ export async function GET() {
       SELECT m."conversationId", COUNT(*)::bigint AS count
       FROM "DirectMessage" m
       JOIN "DirectConversationParticipant" p ON p."conversationId" = m."conversationId" AND p."userId" = ${userId}
-      WHERE m."isDeleted" = false AND m."senderId" != ${userId} AND m."createdAt" > p."lastReadAt"
+      WHERE p."hiddenAt" IS NULL AND m."isDeleted" = false AND m."senderId" != ${userId} AND m."createdAt" > p."lastReadAt"
       GROUP BY m."conversationId"
     `;
     for (const r of rows) unreadCounts.set(r.conversationId, Number(r.count));

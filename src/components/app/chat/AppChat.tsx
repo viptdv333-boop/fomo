@@ -184,6 +184,20 @@ export default function AppChat() {
     else window.history.replaceState({ appChat: 1 }, "", urlFor({ seg: route.seg }));
   }, [urlFor, route.seg]);
 
+  const deleteDialog = useCallback(async (conv: Conversation) => {
+    const name = conv.otherUser?.displayName || t("msg.deletedUser");
+    if (!window.confirm(t("appui.chat.deleteDialogConfirm", { name }))) return;
+    try {
+      const response = await fetch(`/api/messages/conversations/${encodeURIComponent(conv.id)}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("delete failed");
+      setDialogMenu(null);
+      await dms.reload();
+      if (route.dm === conv.id) go({ seg: route.seg }, true);
+    } catch {
+      flash(t("appui.chat.deleteDialogFailed"));
+    }
+  }, [dms.reload, flash, go, route.dm, route.seg, t]);
+
   const setSeg = (s: ChatSeg) => go({ seg: s }, true);
   const toggleCat = (slug: string) =>
     setOpenCats((prev) => {
@@ -310,6 +324,7 @@ export default function AppChat() {
       onNewChat={() => setNewChat(true)}
       marks={marks}
       onDialogMenu={setDialogMenu}
+      onDeleteDialog={(conv) => void deleteDialog(conv)}
     />
   );
 
@@ -355,7 +370,7 @@ export default function AppChat() {
       ) : (
         screen
       )}
-      {dialogMenu && <AppDialogSheet conv={dialogMenu} marks={marks} onClose={() => setDialogMenu(null)} flash={flash} />}
+      {dialogMenu && <AppDialogSheet conv={dialogMenu} marks={marks} onClose={() => setDialogMenu(null)} flash={flash} onDelete={() => void deleteDialog(dialogMenu)} />}
       {newChat && <AppNewChatSheet onClose={() => setNewChat(false)} onPick={startWith} myId={myId} />}
       {toast && <div className="ac ac-toast" role="status">{toast}</div>}
     </>

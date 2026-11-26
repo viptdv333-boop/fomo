@@ -9,7 +9,7 @@ import type { useDmMarks } from "./useChatPrefs";
 import type { Conversation } from "./useAppChatData";
 
 /** The old page's right-click menu of a dialog (star the person, pin, mute, remove from contacts), as a design sheet opened by a long press. */
-export default function AppDialogSheet({ conv, marks, onClose, flash }: { conv: Conversation; marks: ReturnType<typeof useDmMarks>; onClose: () => void; flash: (m: string) => void }) {
+export default function AppDialogSheet({ conv, marks, onClose, flash, onDelete }: { conv: Conversation; marks: ReturnType<typeof useDmMarks>; onClose: () => void; flash: (m: string) => void; onDelete: () => void }) {
   const { t } = useT();
   const other = conv.otherUser;
   const [isContact, setIsContact] = useState<boolean | null>(null);
@@ -53,6 +53,7 @@ export default function AppDialogSheet({ conv, marks, onClose, flash }: { conv: 
                   },
                 ]
               : []),
+            { key: "delete", label: t("appui.chat.deleteDialog"), icon: <AppIcon name="trash" size={18} stroke={1.8} />, color: "var(--app-red)", onClick: onDelete },
           ],
         },
       ]}

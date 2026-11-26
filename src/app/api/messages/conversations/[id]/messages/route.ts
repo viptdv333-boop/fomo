@@ -178,6 +178,11 @@ export async function POST(
     },
     data: { lastReadAt: new Date() },
   });
+  // A new message makes this dialog visible again for both participants.
+  await prisma.directConversationParticipant.updateMany({
+    where: { conversationId },
+    data: { hiddenAt: null },
+  });
 
   // Emit via Socket.IO to conversation room
   const io = globalForIO.io;
