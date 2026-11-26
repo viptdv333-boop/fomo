@@ -21,9 +21,6 @@ object AppSettings {
     fun hideContent(context: Context): Boolean =
         prefs(context).getBoolean(SettingsSpec.KEY_HIDE_CONTENT, SettingsSpec.DEFAULT_HIDE_CONTENT)
 
-    fun pullToRefresh(context: Context): Boolean =
-        prefs(context).getBoolean(SettingsSpec.KEY_PULL_TO_REFRESH, SettingsSpec.DEFAULT_PULL_TO_REFRESH)
-
     fun keepScreenOnInTerminal(context: Context): Boolean =
         prefs(context).getBoolean(SettingsSpec.KEY_KEEP_SCREEN_ON, SettingsSpec.DEFAULT_KEEP_SCREEN_ON)
 

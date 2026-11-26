@@ -42,8 +42,8 @@ android {
             dimension = "site"
             applicationId = "spot.fomo.app"
             // Bump BOTH together with public/app/version.json on the site when you publish a new APK.
-            versionCode = 7
-            versionName = "1.0.6"
+            versionCode = 8
+            versionName = "1.0.7"
             // BASE_URL itself is set per variant (androidComponents.onVariants below), because debug may override it.
             buildConfigField("String", "UPDATE_PATH", "\"/app/version.json\"")
             buildConfigField("boolean", "SHARE_ENABLED", "true")

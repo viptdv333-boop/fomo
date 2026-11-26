@@ -84,12 +84,6 @@
         <SwitchPreferenceCompat
             app:defaultValue="false"
             app:iconSpaceReserved="false"
-            app:key="pull_to_refresh"
-            app:summary="@string/settings_pull_refresh_summary"
-            app:title="@string/settings_pull_refresh" />
-        <SwitchPreferenceCompat
-            app:defaultValue="false"
-            app:iconSpaceReserved="false"
             app:key="keep_screen_on_terminal"
             app:summary="@string/settings_keep_screen_summary"
             app:title="@string/settings_keep_screen" />

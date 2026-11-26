@@ -14,7 +14,6 @@ class SettingsSpecTest {
         assertEquals("15", SettingsSpec.DEFAULT_LOCK_TIMEOUT)
         assertEquals(15, LockPolicy.parseTimeoutMinutes(SettingsSpec.DEFAULT_LOCK_TIMEOUT))
         assertFalse(SettingsSpec.DEFAULT_HIDE_CONTENT)
-        assertFalse("pull-to-refresh is off by default: it stole vertical chart pans and reloaded pages on ordinary swipes", SettingsSpec.DEFAULT_PULL_TO_REFRESH)
         assertFalse("a screen that never sleeps is opt-in", SettingsSpec.DEFAULT_KEEP_SCREEN_ON)
         assertTrue("haptics worked before the settings existed", SettingsSpec.DEFAULT_HAPTIC)
     }
@@ -23,7 +22,7 @@ class SettingsSpecTest {
     fun keysAreUnique() {
         val keys = listOf(
             SettingsSpec.KEY_LOCK_ENABLED, SettingsSpec.KEY_LOCK_TIMEOUT, SettingsSpec.KEY_HIDE_CONTENT,
-            SettingsSpec.KEY_PULL_TO_REFRESH, SettingsSpec.KEY_KEEP_SCREEN_ON, SettingsSpec.KEY_HAPTIC,
+            SettingsSpec.KEY_KEEP_SCREEN_ON, SettingsSpec.KEY_HAPTIC,
         )
         assertEquals(keys.size, keys.toSet().size)
     }
@@ -49,7 +48,6 @@ class SettingsSpecTest {
         assertEquals(SettingsSpec.DEFAULT_LOCK_ENABLED.toString(), defaultOf(SettingsSpec.KEY_LOCK_ENABLED))
         assertEquals(SettingsSpec.DEFAULT_LOCK_TIMEOUT, defaultOf(SettingsSpec.KEY_LOCK_TIMEOUT))
         assertEquals(SettingsSpec.DEFAULT_HIDE_CONTENT.toString(), defaultOf(SettingsSpec.KEY_HIDE_CONTENT))
-        assertEquals(SettingsSpec.DEFAULT_PULL_TO_REFRESH.toString(), defaultOf(SettingsSpec.KEY_PULL_TO_REFRESH))
         assertEquals(SettingsSpec.DEFAULT_KEEP_SCREEN_ON.toString(), defaultOf(SettingsSpec.KEY_KEEP_SCREEN_ON))
         assertEquals(SettingsSpec.DEFAULT_HAPTIC.toString(), defaultOf(SettingsSpec.KEY_HAPTIC))
     }

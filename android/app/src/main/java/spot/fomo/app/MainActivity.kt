@@ -266,8 +266,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRefresh() {
         refresh.setColorSchemeResources(R.color.fomo_green)
-        // Off by default (SettingsSpec): the pull stole vertical chart pans and reloaded pages on ordinary swipes.
-        // Users who still want it can enable the switch in settings; the distance stays reachable when enabled.
+        // Permanently off (updateRefreshEnabled): the pull stole vertical chart pans and reloaded pages
+        // on ordinary swipes. The listener stays wired but the layout never intercepts while disabled.
         refresh.setDistanceToTriggerSync((96 * resources.displayMetrics.density).toInt())
         refresh.setOnRefreshListener {
             webView.reload()
@@ -452,10 +452,11 @@ class MainActivity : AppCompatActivity() {
         SecureWindow.update(this)
     }
 
-    /** «Обновление страницы свайпом» on every trusted site page. */
+    /** Pull-to-refresh is permanently off: it stole vertical chart pans and reloaded pages on ordinary swipes.
+     *  A saved "on" preference from older versions must not bring it back, so no setting is consulted. */
     private fun updateRefreshEnabled() {
         if (!::refresh.isInitialized) return
-        refresh.isEnabled = !offlineShown && AppSettings.pullToRefresh(this) && UrlPolicy.pullToRefreshAllowed(currentUrl)
+        refresh.isEnabled = false
     }
 
     /** «Не гасить экран в терминале»: FLAG_KEEP_SCREEN_ON only on /terminal, only unlocked and only in the foreground. */
