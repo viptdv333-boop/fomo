@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FomoLogo from "@/components/brand/FomoLogo";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import { FlagIcon } from "@/components/layout/FlagIcon";
 import { useTheme } from "@/lib/theme";
@@ -123,11 +124,8 @@ export default function TerminalLanding() {
           <TerminalHeroBackdrop />
           <div className="relative z-[1] flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-12 text-center">
             <div className="tl-rise flex flex-col items-center" style={{ ["--tl-d" as string]: "0.05s" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${IMG}/logo.webp`} alt="FOMO" width={480} height={203} className="w-[min(260px,62vw)] h-auto" />
-              <div className="mt-1 text-[0.7rem] sm:text-sm tracking-[0.3em] uppercase text-gray-300">
-                <span className="font-semibold text-green-400">{t("termsite.name")}</span>
-                {" · "}
+              <FomoLogo product="terminal" hero />
+              <div className="mt-3 text-[0.7rem] sm:text-sm tracking-[0.3em] uppercase text-gray-300">
                 {t("termsite.tagline")}
               </div>
             </div>

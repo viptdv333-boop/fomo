@@ -9,6 +9,7 @@ import { localizedPath, type Locale } from "@/lib/i18n/locale-url";
 import { appHeaderHidden } from "@/lib/app-ui";
 import { appBackTarget, backChrome, hasOwnBackBar, ownBackCount, subscribeOwnBack, type BackTarget } from "@/lib/app-back";
 import { isTerminalSite } from "@/lib/site-mode";
+import FomoLogo from "@/components/brand/FomoLogo";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import LanguageSelector from "@/components/layout/LanguageSelector";
 import NotificationBell from "@/components/layout/NotificationBell";
@@ -36,11 +37,7 @@ function Header({ back }: { back: BackTarget | null }) {
           if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && hostNavigate(localizedPath(locale as Locale, TERMINAL ? "/terminal" : "/feed"))) e.preventDefault();
         }}
       >
-        <span className="app-logo-img">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" />
-        </span>
-        <span className="app-logo-tag">Find Opportunities, Make Outcomes</span>
+        <FomoLogo product={TERMINAL ? "terminal" : "spot"} />
       </Link>
       </div>
       <div className="app-header-right">

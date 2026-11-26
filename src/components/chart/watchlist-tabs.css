@@ -3,8 +3,8 @@
 div[data-wl-tabs] { gap: 4px; align-items: flex-end; border-bottom: 2px solid var(--tv3-hair, rgba(128, 128, 128, 0.25)); padding-right: 2px; }
 div[data-wl-tabs] > button[role="tab"] {
   --lc: #5b8fc0;
-  flex: 1 0 74px;
-  min-width: 74px;
+  flex: 1 0 auto;
+  min-width: max-content;
   max-width: none;
   height: 30px;
   padding: 0 8px;

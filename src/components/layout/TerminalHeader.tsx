@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { stripLocale } from "@/lib/i18n/locale-url";
+import FomoLogo from "@/components/brand/FomoLogo";
 import ThemeToggle from "./ThemeToggle";
 import NotificationBell from "./NotificationBell";
 import LanguageSelector from "./LanguageSelector";
@@ -45,11 +46,7 @@ export default function TerminalHeader() {
     <header data-app-hide data-terminal-header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
       <div className="w-full px-3 sm:px-4 py-1 flex items-center gap-2 sm:gap-6">
         <Link href="/terminal" aria-label={t("termsite.name")} className="flex items-center gap-2 shrink-0">
-          <div className="w-[64px] sm:w-[88px] h-[40px] sm:h-[48px] overflow-hidden relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-fomo-sm.webp" width={480} height={320} alt="FOMO" className="absolute w-full h-auto" style={{ top: "-16%" }} />
-          </div>
-          <span className="hidden sm:inline text-base font-semibold text-green-600 dark:text-green-400 tracking-wide -ml-1">Terminal</span>
+          <FomoLogo product="terminal" />
         </Link>
 
         <nav className="flex items-center gap-3 sm:gap-6 flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] sm:justify-center" aria-label={t("termsite.name")}>
