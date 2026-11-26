@@ -191,7 +191,7 @@ html.app-ui .app-mac-tool-b { position: relative; width: 64px; height: 64px; bor
 html.app-ui .app-mac-tool-b:active { background: var(--m-seg); }
 html.app-ui .app-mac-tool-b:disabled { opacity: 0.4; }
 html.app-ui .app-mac-tool-l { font-size: 11.5px; font-weight: 600; text-align: center; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-html.app-ui .app-mac-caret { position: absolute; right: -8px; bottom: 2px; width: 14px; height: 14px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: var(--m-green); background: color-mix(in srgb, var(--m-green) 9%, var(--m-card)); box-shadow: 0 1px 3px rgba(0,0,0,.14), 0 0 0 .5px color-mix(in srgb, var(--m-green) 18%, transparent); }
+html.app-ui .app-mac-caret { position: absolute; right: -4px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: var(--m-green); background: color-mix(in srgb, var(--m-green) 9%, var(--m-card)); box-shadow: 0 1px 3px rgba(0,0,0,.14), 0 0 0 .5px color-mix(in srgb, var(--m-green) 18%, transparent); }
 html.app-ui .app-mac-dots { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 2px; }
 html.app-ui .app-mac-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--m-tx); }
 html.app-ui .app-mac-xrow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; padding: 10px 14px 0; }
