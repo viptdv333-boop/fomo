@@ -700,6 +700,8 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
   const [sure, setSure] = useState(false);
   const moreRef = useRef<HTMLButtonElement | null>(null);
+  const tabDrag = useRef<{ id: number; x: number; left: number; moved: boolean } | null>(null);
+  const suppressTabClick = useRef(0);
   const atLimit = wl.lists.length > WLS_MAX_LISTS;
   const name = (l: { id: string; name: string }) => (l.id === "main" ? t("wl.main") : l.name);
   const cur = wl.lists.find((l) => l.id === wl.activeId) ?? wl.lists[0];
@@ -738,7 +740,43 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const item = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
   return (
     <div className="mb-1.5 flex items-center gap-1.5">
-      <div role="tablist" data-wl-tabs data-no-swipe aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" data-wl-tabs data-no-swipe aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onPointerDown={(e) => {
+          if (e.pointerType !== "mouse" || e.button !== 0 || e.currentTarget.scrollWidth <= e.currentTarget.clientWidth) return;
+          tabDrag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft, moved: false };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const drag = tabDrag.current;
+          if (!drag || drag.id !== e.pointerId) return;
+          const dx = e.clientX - drag.x;
+          if (!drag.moved && Math.abs(dx) < 4) return;
+          drag.moved = true;
+          e.preventDefault();
+          e.currentTarget.scrollLeft = drag.left - dx;
+        }}
+        onPointerUp={(e) => {
+          if (!tabDrag.current || tabDrag.current.id !== e.pointerId) return;
+          if (tabDrag.current.moved) suppressTabClick.current = Date.now() + 500;
+          tabDrag.current = null;
+        }}
+        onPointerCancel={() => { tabDrag.current = null; }}
+        onClickCapture={(e) => {
+          if (Date.now() < suppressTabClick.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            suppressTabClick.current = 0;
+          }
+        }}
+        onWheel={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollWidth <= el.clientWidth) return;
+          const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          if (delta && ((delta < 0 && el.scrollLeft > 0) || (delta > 0 && el.scrollLeft + el.clientWidth < el.scrollWidth - 1))) {
+            e.preventDefault();
+            el.scrollLeft += delta;
+          }
+        }}>
         {wl.lists.map((l) =>
           renaming && l.id === wl.activeId ? (
             <span key={l.id}>{input}</span>

@@ -224,7 +224,8 @@ html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding:
 /* watchlists: the list picker under the title of the list screen */
 html.app-ui .app-mac .app-mac-lists { padding: 0 14px 6px; }
 html.app-ui .app-mac .app-mac-lists > div:first-child { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
-html.app-ui .app-mac .app-mac-lists [data-wl-tabs] { flex: 1 1 0%; width: 0; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x; scrollbar-width: none; }
+html.app-ui .app-mac .app-mac-lists [data-wl-tabs] { flex: 1 1 0%; width: 0; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x; scrollbar-width: none; cursor: grab; user-select: none; }
+html.app-ui .app-mac .app-mac-lists [data-wl-tabs]:active { cursor: grabbing; }
 html.app-ui .app-mac .app-mac-lists [data-wl-tabs]::-webkit-scrollbar { display: none; }
 /* the watchlists as browser-style tabs, each with its own colour (a dot and a tint; the open one is filled) and a coloured «+» */
 html.app-ui .app-mac .app-mac-lists [role="tablist"] { gap: 4px; align-items: flex-end; padding: 0; border-bottom: 2px solid var(--m-line); }
