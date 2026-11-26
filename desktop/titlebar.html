@@ -2,14 +2,13 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'; img-src 'self'">
 <style>
 html,body { margin:0; background:#f0f2f7; }
 header { height:36px; display:flex; align-items:center; padding:0 150px 0 14px; box-sizing:border-box; -webkit-app-region:drag; user-select:none; }
-.brand { display:inline-flex; font:900 22px/1 Arial,Helvetica,sans-serif; letter-spacing:-1.2px; }
-.brand span { color:#00ac55; }
-.brand span:nth-child(odd) { color:#eb414c; }
+.brand { position:relative; display:block; width:76px; height:32.2px; overflow:hidden; }
+.brand img { position:absolute; width:148.9px; height:auto; max-width:none; left:-32.86px; top:-30.53px; }
 </style>
 </head>
-<body><header><div class="brand" role="img" aria-label="FOMO"><span>F</span><span>O</span><span>M</span><span>O</span></div></header></body>
+<body><header><div class="brand"><img src="assets/logo-fomo.png" alt="FOMO" draggable="false"></div></header></body>
 </html>

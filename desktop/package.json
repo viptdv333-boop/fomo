@@ -1,7 +1,7 @@
 {
   "name": "fomo-desktop",
   "productName": "FOMO",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "FOMO for Windows and macOS: a thin desktop shell around https://fomo.spot (flavor terminal: https://terminal.fomo.spot)",
   "author": "FOMO <support@fomo.spot>",
   "license": "UNLICENSED",
