@@ -266,7 +266,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRefresh() {
         refresh.setColorSchemeResources(R.color.fomo_green)
-        // A deliberate but reachable pull works consistently across pages, including chat and terminal.
+        // Off by default (SettingsSpec): the pull stole vertical chart pans and reloaded pages on ordinary swipes.
+        // Users who still want it can enable the switch in settings; the distance stays reachable when enabled.
         refresh.setDistanceToTriggerSync((96 * resources.displayMetrics.density).toInt())
         refresh.setOnRefreshListener {
             webView.reload()

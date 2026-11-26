@@ -14,7 +14,7 @@ class SettingsSpecTest {
         assertEquals("15", SettingsSpec.DEFAULT_LOCK_TIMEOUT)
         assertEquals(15, LockPolicy.parseTimeoutMinutes(SettingsSpec.DEFAULT_LOCK_TIMEOUT))
         assertFalse(SettingsSpec.DEFAULT_HIDE_CONTENT)
-        assertTrue("pull-to-refresh worked before the settings existed", SettingsSpec.DEFAULT_PULL_TO_REFRESH)
+        assertFalse("pull-to-refresh is off by default: it stole vertical chart pans and reloaded pages on ordinary swipes", SettingsSpec.DEFAULT_PULL_TO_REFRESH)
         assertFalse("a screen that never sleeps is opt-in", SettingsSpec.DEFAULT_KEEP_SCREEN_ON)
         assertTrue("haptics worked before the settings existed", SettingsSpec.DEFAULT_HAPTIC)
     }

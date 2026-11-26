@@ -82,7 +82,7 @@
         app:title="@string/settings_behavior">
 
         <SwitchPreferenceCompat
-            app:defaultValue="true"
+            app:defaultValue="false"
             app:iconSpaceReserved="false"
             app:key="pull_to_refresh"
             app:summary="@string/settings_pull_refresh_summary"
