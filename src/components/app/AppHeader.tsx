@@ -26,7 +26,7 @@ function Header({ back }: { back: BackTarget | null }) {
   // the design's header: the logo and the theme switch (no bell and no counter: the unread counts are the red badges of the dock, see AppTabBar). The profile (photo, menu, settings, text size, update, downloads, sign out)
   // lives in the «Профиль» tab of the dock (components/app/profile). The hidden bell is NOT in here (see AppHeader): it must outlive the header.
   return (
-    <header className="app-header" data-app-header data-has-back={back ? "1" : undefined}>
+    <header className="app-header" data-app-product={TERMINAL ? "terminal" : "main"} data-app-header data-has-back={back ? "1" : undefined}>
       <div className="app-header-left">
       {back ? <AppBackButton target={back} variant="header" /> : null}
       <Link

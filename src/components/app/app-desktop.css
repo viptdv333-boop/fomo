@@ -228,3 +228,6 @@ html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-first { grid-template-r
 html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-slot { grid-row: 1; }
 html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-ranges,
 html.app-ui.app-desktop .app-term[data-tb="1"] .app-term-first > .app-term-tools { grid-row: 2; }
+
+/* The Windows shell already carries the FOMO logo above the site. */
+html.app-desktop [data-app-product="main"] .app-logo { display: none; }
