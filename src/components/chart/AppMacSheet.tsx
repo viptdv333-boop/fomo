@@ -52,7 +52,7 @@ const SLOTS: Slot[] = [
   { key: "rect", label: "mac.t.shapes", group: "shapes", fixed: "rect" },
   { key: "brush", label: "mac.t.brush", group: "shapes", fixed: "brush" },
   { key: "measure", label: "mac.t.ruler", group: "forecast", fixed: "measure" },
-  { key: "stamps", label: "mac.t.fav", group: "stamps" },
+  { key: "stamps", label: "draw.group.stamps", group: "stamps" },
 ];
 /** What the design has no tile for but the classic rail has: a row of smaller buttons so nothing is lost. */
 const EXTRA: Slot[] = [

@@ -71,21 +71,20 @@ function loadLast(): Record<string, string> {
 const btnBase =
   "tv3-rbtn tv3-press tv3-hov relative flex shrink-0 cursor-pointer items-center justify-center text-[var(--tv3-text2)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
 const btnActive = "bg-[var(--tv3-accent-soft)] !text-[var(--tv3-accent)] hover:!bg-[var(--tv3-accent-soft)] active:!bg-[var(--tv3-accent-soft)]";
-const ICON = 26; // glyph size (the CSS of .tv3-rbtn svg wins: 26px, 23px on short screens)
 const GAP = <span className="tv3-rgap" />;
 
 /** Rail order of the design: cursor, line tools, fib, patterns, forecast / measurement, geometric tools, text, ruler, then the actions.
  *  `fixed` = a slot bound to one tool (its group flyout opens from the caret / right click), otherwise the slot shows the last tool used of the group. */
-const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean; icon?: string; titleKey?: string }[] = [
+const RAIL: { key: string; group: string; fixed?: string; noMenu?: boolean; titleKey?: string }[] = [
   { key: "cursors", group: "cursors" },
   { key: "lines", group: "lines" },
   { key: "fib", group: "fib" },
   { key: "patterns", group: "patterns" },
-  { key: "forecast", group: "forecast", icon: "forecast_tools", titleKey: "draw.group.forecast" },
-  { key: "shapes", group: "shapes", icon: "shape_tools" },
+  { key: "forecast", group: "forecast", titleKey: "draw.group.forecast" },
+  { key: "shapes", group: "shapes" },
   { key: "text", group: "text" },
-  { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
   { key: "stamps", group: "stamps" },
+  { key: "measure", group: "forecast", fixed: "measure", noMenu: true },
 ];
 
 interface FlyoutState {
@@ -381,8 +380,6 @@ export default function DrawingToolbar({ controller, className }: { controller: 
             ? activeTool === null
             : activeTool !== null && g.tools.some((x) => x.id === activeTool) && !slotTools.has(activeTool);
         const title = slot.fixed ? t(toolDef.labelKey) : slot.titleKey ? t(slot.titleKey) : `${t(g.labelKey)}: ${t(shownTool.labelKey)}`;
-        // the star slot (design: favourites) shows the outlined star until another stamp is picked
-        const iconId = slot.icon ?? (slot.group === "stamps" && !slot.fixed ? (lastTool.id === g.tools[0].id ? "stamp_star" : lastTool.id) : shown);
         return (
           <Fragment key={slot.key}>
           <div data-rk={slot.key} className="group/slot relative flex shrink-0 items-center">
@@ -403,7 +400,6 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 openFlyout(g.id, e.currentTarget);
               }}
             >
-              <DrawIcon id={iconId} size={ICON} filled={active && g.id !== "cursors" && g.id !== "shapes"} />
               <MacGlyph set="rail" k={slot.key} />
             </button>
             {!slot.noMenu && (
@@ -429,7 +425,6 @@ export default function DrawingToolbar({ controller, className }: { controller: 
       })}
 
       <button type="button" title={t("draw.act.zoomIn")} aria-label={t("draw.act.zoomIn")} data-rk="zoomIn" className={btnBase} onClick={() => ctl.zoomBy?.(1.25)}>
-        <DrawIcon id="zoomIn" size={ICON} />
         <MacGlyph set="rail" k="zoomIn" />
       </button>
       {GAP}
@@ -441,7 +436,6 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         data-rk="magnet" className={`${btnBase} ${magnet !== "off" ? btnActive : ""}`}
         onClick={() => controller.setMagnet(nextMagnet)}
       >
-        <DrawIcon id="magnet" size={ICON} filled={magnet !== "off"} />
         <MacGlyph set="rail" k="magnet" />
         {magnet !== "off" && (
           <span className="pointer-events-none absolute bottom-1 right-1.5 flex gap-px">
@@ -459,7 +453,6 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         data-rk="stay" className={`${btnBase} ${stay ? btnActive : ""}`}
         onClick={() => controller.setStayInDrawing(!stay)}
       >
-        <DrawIcon id="stay" size={ICON} filled={stay} />
         <MacGlyph set="rail" k="stay" />
       </button>
       {GAP}
@@ -471,8 +464,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         data-rk="lock" className={`${btnBase} ${lockedAll ? btnActive : ""}`}
         onClick={() => controller.setLockedAll(!lockedAll)}
       >
-        <DrawIcon id={lockedAll ? "lock" : "unlock"} size={ICON} filled={lockedAll} />
-        <MacGlyph set="rail" k="lock" />
+        <MacGlyph set="rail" k={lockedAll ? "lock" : "unlock"} />
       </button>
       {GAP}
       <button
@@ -483,8 +475,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         data-rk="eye" className={`${btnBase} ${hidden ? btnActive : ""}`}
         onClick={() => controller.setHidden(!hidden)}
       >
-        <DrawIcon id={hidden ? "eyeOff" : "eye"} size={ICON} filled={hidden} />
-        <MacGlyph set="rail" k="eye" />
+        <MacGlyph set="rail" k={hidden ? "eyeOff" : "eye"} />
       </button>
       {GAP}
       <button
@@ -496,18 +487,15 @@ export default function DrawingToolbar({ controller, className }: { controller: 
           if (window.confirm(t("draw.act.removeConfirm"))) controller.removeAll();
         }}
       >
-        <DrawIcon id="trash" size={ICON} />
         <MacGlyph set="rail" k="trash" />
       </button>
       {GAP}
 
       <button type="button" title={t("draw.act.undo")} aria-label={t("draw.act.undo")} disabled={!controller.canUndo()} data-rk="undo" className={btnBase} onClick={() => controller.undo()}>
-        <DrawIcon id="undo" size={ICON} />
         <MacGlyph set="rail" k="undo" />
       </button>
       {GAP}
       <button type="button" title={t("draw.act.redo")} aria-label={t("draw.act.redo")} disabled={!controller.canRedo()} data-rk="redo" className={btnBase} onClick={() => controller.redo()}>
-        <DrawIcon id="redo" size={ICON} />
         <MacGlyph set="rail" k="redo" />
       </button>
       {GAP}
