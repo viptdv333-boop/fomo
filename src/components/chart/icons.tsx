@@ -190,8 +190,8 @@ const DRAW_ICONS: Record<string, ReactNode> = {
   ),
   forecast_tools: (
     <>
-      <path d="M4 5h16M4 12h12M4 19h16" />
-      <path d="M8 2v6M15 9v6M10 16v6M20 2v6" />
+      <path d="M4 12h16M4 12l3-3M4 12l3 3M20 12l-3-3M20 12l-3 3" />
+      <path d="M7 7v10M17 7v10" />
     </>
   ),
   shape_tools: (
