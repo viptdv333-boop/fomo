@@ -67,6 +67,21 @@ export default function IdeaContent() {
   const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  async function toggleArchive() {
+    if (!idea) return;
+    setArchiving(true);
+    const next = idea.moderationStatus === "archived" ? "published" : "archived";
+    const res = await fetch(`/api/ideas/${idea.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moderationStatus: next }),
+    });
+    if (res.ok) setIdea({ ...idea, moderationStatus: next });
+    setArchiving(false);
+  }
+
   async function loadIdea() {
     const res = await fetch(`/api/ideas/${params.id}`, { cache: "no-store" });
     if (res.ok) setIdea(await res.json());
@@ -179,6 +194,13 @@ export default function IdeaContent() {
               <Link href={`/ideas/${idea.id}/edit`} className="text-sm text-green-600 hover:text-green-800 font-medium">
                 {t("common.edit")}
               </Link>
+              <button
+                onClick={toggleArchive}
+                disabled={archiving}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium disabled:opacity-50"
+              >
+                {idea.moderationStatus === "archived" ? t("idea.unarchive") : t("idea.archive")}
+              </button>
               <button
                 onClick={async () => {
                   if (!confirm(t("feed2.deleteIdeaConfirm"))) return;

@@ -34,7 +34,7 @@ async function fetchAllMyIdeas(authorId: string): Promise<MyIdea[]> {
   return all;
 }
 
-/** «Мои идеи» (the design's `myideas`): every idea with «Редактировать», «Удалить» and «Удалить все». */
+/** «Мои идеи» (the design's `myideas`): every idea with «В архив» / «Вернуть», «Редактировать», «Удалить» and «Удалить все». */
 export default function MyIdeas() {
   const { t, user, locale, open, flash } = useProf();
   const uid = user?.id;
@@ -59,6 +59,12 @@ export default function MyIdeas() {
 
   useChannelsChanged(load, !!uid);
 
+  async function toggleArchive(i: MyIdea) {
+    const next = i.moderationStatus === "archived" ? "published" : "archived";
+    const res = await fetch(`/api/ideas/${i.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moderationStatus: next }) });
+    if (res.ok) setIdeas((prev) => (prev ? prev.map((x) => (x.id === i.id ? { ...x, moderationStatus: next } : x)) : prev));
+    else flash(t("appprof.actionFailed"));
+  }
   async function remove(i: MyIdea) {
     if (!window.confirm(t("profile2.confirmDeleteIdea"))) return;
     const res = await fetch(`/api/ideas/${i.id}`, { method: "DELETE" });
@@ -114,6 +120,7 @@ export default function MyIdeas() {
         onClick: () => open(`/ideas/${i.id}`),
         actions: [
           { label: t("appprof.edit"), onClick: () => open(`/ideas/${i.id}/edit`) },
+          ...(i.moderationStatus === "hidden" ? [] : [{ label: i.moderationStatus === "archived" ? t("appprof.unarchive") : t("appprof.archive"), onClick: () => void toggleArchive(i) }]),
           { label: t("common.delete"), tone: "danger" as const, onClick: () => void remove(i) },
         ],
       })),

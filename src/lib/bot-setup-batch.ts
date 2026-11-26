@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { deleteIdeaRecords } from "./idea-delete";
 
 export const SETUP_BATCH_SECONDS = 15 * 60;
 export const SETUP_BATCH_VERSION = 1;
@@ -25,13 +24,12 @@ export async function createBotIdea(
   if (!data.tariffId) throw new Error("A setup requires a closed channel");
 
   // 12.10.2026: отдельная пачка на источник-счёт и горизонт. Старые посты
-  // без scope не присваиваем счёту и не удаляем по догадке. Поле уже индексировано.
+  // без scope не присваиваем счёту и не архивируем по догадке. Поле уже индексировано.
   const batchKey = setupScope ? JSON.stringify([setupTicker, setupScope]) : setupTicker;
   const scope = { authorId: data.authorId, tariffId: data.tariffId, botSetupTicker: batchKey };
   // 08.10.2026: блокировка БД, а не память процесса — параллельные публикации
-  // одного тикера/канала не удаляют друг друга. Создание и удаление — одна транзакция.
-  const removed: Awaited<ReturnType<typeof deleteIdeaRecords>> = [];
-  const result = await db.$transaction(async (tx) => {
+  // одного тикера/канала не удаляют друг друга. Создание и архив — одна транзакция.
+  return db.$transaction(async (tx) => {
     const key = JSON.stringify([scope.authorId, scope.tariffId, batchKey]);
     await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
     const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
@@ -41,9 +39,11 @@ export async function createBotIdea(
     const startedAt = batchStart(previous?.botSetupBatchAt ?? null, clock.now);
     let archivedCount = 0;
     if (previous && startedAt.getTime() !== previous.botSetupBatchAt?.getTime()) {
-      const deleted = await deleteIdeaRecords(tx, { ...scope, moderationStatus: "published" });
-      removed.push(...deleted);
-      archivedCount = deleted.length;
+      const archived = await tx.idea.updateMany({
+        where: { ...scope, moderationStatus: "published" },
+        data: { moderationStatus: "archived", isPinned: false, pinnedAt: null },
+      });
+      archivedCount = archived.count;
     }
     const idea = await tx.idea.create({
       data: { ...data, botSetupTicker: batchKey, botSetupBatchAt: startedAt, createdAt: clock.now },
@@ -52,13 +52,7 @@ export async function createBotIdea(
     return {
       idea,
       setupBatch: { version: SETUP_BATCH_VERSION, ticker: setupTicker, scope: setupScope ?? null, startedAt,
-        windowSeconds: SETUP_BATCH_SECONDS, deletedCount: archivedCount, archivedCount },
+        windowSeconds: SETUP_BATCH_SECONDS, archivedCount },
     };
   });
-  // Only committed replacement may remove files. Keep archivedCount for older bot clients.
-  if (removed.some(row => (Array.isArray(row.attachments) && row.attachments.length) || row.comments?.some(c => c.fileUrl))) {
-    const { removeDeletedIdeaUploads } = await import("./upload-cleanup");
-    await removeDeletedIdeaUploads(removed);
-  }
-  return result;
 }

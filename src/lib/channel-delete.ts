@@ -10,7 +10,7 @@
  *  - строка канала НЕ удаляется, если у неё есть посты / подписки / платежи: она помечается archivedAt, isActive = false,
  *    slug освобождается; планы закрываются так же. Причина: Idea.tariffId и Subscription.tariffId — onDelete SetNull, и
  *    физическое удаление превратило бы платные посты в «платные идеи автора без канала» (видны в профиле как закрытые, но
- *    уже не принадлежат каналу). Посты удаляются без архива, чат-комната
+ *    уже не принадлежат каналу). Посты получают moderationStatus "archived" (видны только автору в его архиве), чат-комната
  *    архивируется и закрывается (сообщения сохраняются), сокеты не-автора отключает штатная подметалка (subscription-sweep).
  *  - канал, у которого НИКОГДА не было ни постов, ни подписок, ни платежей, удаляется физически (ошибочно созданный);
  *  - после коммита каждому бывшему активному подписчику уходит ОДНО уведомление «Канал закрыт»; одна строка аудита в лог.
@@ -22,7 +22,6 @@
  *    у канала не бывает.
  */
 
-import { deleteIdeaRecords } from "./idea-delete";
 import type { PrismaClient } from "@prisma/client";
 import { rootIdOf, splitTariffName, tariffFamily } from "./tariff-plans";
 
@@ -80,7 +79,6 @@ export async function closeChannel(db: PrismaClient, args: CloseArgs): Promise<C
     return { ok: false, code: "confirmRequired", activeSubscribers: subscriberIds.length };
   }
 
-  const removed: Awaited<ReturnType<typeof deleteIdeaRecords>> = [];
   const mode = await db.$transaction(async (tx) => {
     const [ideas, subsEver, payments] = await Promise.all([
       tx.idea.count({ where: { tariffId: { in: family } } }),
@@ -105,7 +103,7 @@ export async function closeChannel(db: PrismaClient, args: CloseArgs): Promise<C
       return "deleted" as const;
     }
 
-    removed.push(...await deleteIdeaRecords(tx, { tariffId: { in: family } }));
+    await tx.idea.updateMany({ where: { tariffId: { in: family }, moderationStatus: "published" }, data: { moderationStatus: "archived" } });
     await tx.subscriptionTariff.updateMany({ where: { parentId: root.id }, data: { isActive: false, archivedAt: now } });
     await tx.subscriptionTariff.updateMany({
       where: { id: root.id },
@@ -114,10 +112,6 @@ export async function closeChannel(db: PrismaClient, args: CloseArgs): Promise<C
     return "archived" as const;
   });
 
-  if (removed.some(row => (Array.isArray(row.attachments) && row.attachments.length) || row.comments?.some(c => c.fileUrl))) {
-    const { removeDeletedIdeaUploads } = await import("./upload-cleanup");
-    await removeDeletedIdeaUploads(removed);
-  }
   // Уведомления - после коммита, по одному; сбой уведомления не откатывает закрытие.
   if (args.notify) {
     await Promise.all(subscriberIds.map((u) => Promise.resolve(args.notify!(u, root.name)).catch(() => {})));
