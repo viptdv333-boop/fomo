@@ -166,7 +166,7 @@ export function MacTabBar({ active, locale, onPick }: { active: MacTabId; locale
 }
 
 /** «⋯» button next to the timeframes: the actions that have no place of their own in the design (watchlist star, chart settings, the other sections, the way back to the classic look). */
-export function MacMenu({ inList, onFav, onSettings, onClassic, locale }: { inList: boolean; onFav: () => void; onSettings: () => void; onClassic: () => void; locale: "ru" | "en" | "cn" }) {
+export function MacMenu({ inList, onFav, onSettings, locale }: { inList: boolean; onFav: () => void; onSettings: () => void; locale: "ru" | "en" | "cn" }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
@@ -223,7 +223,6 @@ export function MacMenu({ inList, onFav, onSettings, onClassic, locale }: { inLi
             );
           })}
           <div className="app-mac-sep" />
-          {row("classic", t("mac.classic"), onClassic, t("mac.classicTip"))}
         </div>
       )}
     </div>

@@ -24,7 +24,6 @@ import { usFutureBySymbol, usFutureItem } from "@/lib/us-futures";
 import { noteSignedIn, openChannel, withTimeout, type Channel } from "@/lib/chart/account-sync";
 import { KIND_LAST } from "@/lib/chart/sync-logic";
 import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
-import SkinSwitch from "@/components/layout/SkinSwitch";
 import ProviderGate from "@/components/chart/ProviderGate";
 import AppTerminal from "@/components/app/AppTerminal";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
@@ -198,18 +197,8 @@ export default function TerminalPage() {
   }, []);
 
   // app-only UI (Android app / ?appui=1): the terminal is a scrolling page like the design; the symbol state stays here
-  if (appUi && !mac)
-    return (
-      <>
-        <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />
-        {/* a wide app window in the old look: the way to the new one (the phone layout has its own button) */}
-        {wideApp && (
-          <div className="fixed right-14 top-1.5 z-[60]">
-            <SkinSwitch />
-          </div>
-        )}
-      </>
-    );
+  if (appUi && !mac) return <AppTerminal selected={selected} onSelectSymbol={onSelectSymbol} />;
+
 
   return (
     <div className={`tv3 ${mac ? "tvmac" : "bg-[var(--tv3-canvas)]"} ${mac && appUi ? "tvmac-app" : ""} fixed inset-x-0 bottom-[var(--app-bottom-inset,0px)] z-40`} style={mac ? ({ top, "--mz": macZoom } as React.CSSProperties) : { top }}>

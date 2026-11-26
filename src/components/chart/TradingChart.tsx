@@ -40,7 +40,7 @@ import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopT
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState, AppChip } from "@/components/chart/app-bridge";
-import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
+import { useAppTopToolbar } from "@/components/app/useAppUi";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import ReplayControls, { useReplay } from "@/components/chart/ReplayControls";
 import ChartContextMenu, { type ChartMenuState } from "@/components/chart/ChartContextMenu";
@@ -71,7 +71,6 @@ import type { ChartSyncHub } from "@/lib/chart/sync";
 import { saveBlobAsFile, saveDataUrlAsFile } from "@/lib/save-file";
 import { adHocInstrument, exchangeLabel, findInstrument, instName, type TerminalInstrument } from "@/lib/terminal-data";
 import "@/components/chart/terminal-v3.css";
-import MacTitleBar from "@/components/chart/MacTitleBar";
 import { ensureMacFont, useMacSkin } from "@/lib/chart/mac-skin";
 
 export type { ChartSource } from "@/lib/terminal-data";
@@ -493,7 +492,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const macSkin = useMacSkin();
   const macPage = !embedded && !compact && !appPage && !appFull;
   const mac = macSkin.on && macPage;
-  const appWindow = useAppUi();
   useEffect(() => {
     const read = () => setWinCount(indicators.windowCount());
     read();
@@ -2195,7 +2193,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
 
   return (
     <div ref={wrapRef} data-tv="wrap" className="flex flex-col w-full h-full min-h-0 bg-[var(--tv3-canvas)] text-[var(--tv3-text)] select-none">
-      {mac && <MacTitleBar title={mainTitle} onClassic={() => macSkin.set(false)} />}
       {/* design v3: floating cards on the canvas: [drawing tools] [chart card: toolbar + chart + bottom bar] [right panel] */}
       <div data-tv="row" className={`relative flex flex-1 min-h-0 ${embedded ? "" : compact ? "md:gap-2" : "md:gap-2 md:p-2"}`}>
         {/* drawing tools (the toolbar is its own card; on a phone it is a drawer under the top toolbar) */}
@@ -2263,8 +2260,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         onExportCsv={exportCandlesCsv}
         onShare={() => void shareChart()}
         lead={appFull ? appFullLead : undefined}
-        appSkin={mac && appWindow ? () => macSkin.set(false) : undefined}
-        macOffer={macPage && !macSkin.on && macSkin.canOffer ? () => macSkin.set(true) : undefined}
       />
       )}
 

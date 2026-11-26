@@ -16,7 +16,6 @@ import { Sections, type SheetRow, type SheetSection } from "../chat/AppSheet";
 import { useProf } from "./ProfileCtx";
 import { useInboxUnread } from "./useNotifInbox";
 import { PickerSheet } from "./parts";
-import { useAppMacSkin } from "@/lib/chart/mac-skin";
 
 // terminal.fomo.spot: the board site's sections (authors, calculator, ideas, finance, rooms ...) do not exist there
 const TERMINAL = isTerminalSite();
@@ -55,24 +54,11 @@ function useVersionLabel(): string {
   return v;
 }
 
-/** The quiet switch between the looks (the new one is the default on the phone), under the lists. */
-function MacLookRow() {
-  const { t } = useProf();
-  const mac = useAppMacSkin(true);
-  return (
-    <button type="button" className="ap-macbtn" onClick={() => mac.set(!mac.on)} title={mac.on ? t("mac.classicTip") : t("mac.tryTip")}>
-      {mac.on ? t("mac.classic") : t("mac.try")}
-    </button>
-  );
-}
-
 /** The Профиль tab: the design's `me` screen. */
 export default function ProfileHome() {
   const { t, user, me, go, open, flash } = useProf();
   const { theme, toggleTheme } = useTheme();
   const [themeSheet, setThemeSheet] = useState(false);
-  const [lookSheet, setLookSheet] = useState(false);
-  const look = useAppMacSkin(true);
   const [langSheet, setLangSheet] = useState(false);
   const langName = useLanguageName();
   const [native, setNative] = useState(false);
@@ -108,7 +94,6 @@ export default function ProfileHome() {
         )}
         {/* a guest has no «Настройки приложения», but the language is not a thing to hide behind a sign-in */}
         <Sections sections={[{ key: "guestapp", rows: [langRow] }]} />
-        <MacLookRow />
         {langSheet && <LanguageSheet to={TERMINAL ? "/terminal" : "/feed"} onClose={() => setLangSheet(false)} />}
       </div>
     );
@@ -193,7 +178,6 @@ export default function ProfileHome() {
     footer: t("appprof.appFoot"),
     rows: [
       { key: "theme", label: t("appprof.theme"), icon: ico(theme === "dark" ? "moon" : "sun"), value: themeLabel, chev: true, onClick: () => setThemeSheet(true) },
-      { key: "look", label: t("appprof.look"), icon: ico("sliders"), value: look.on ? t("appprof.lookNew") : t("appprof.lookOld"), chev: true, onClick: () => setLookSheet(true) },
       langRow,
       ...(native ? [{ key: "native", label: t("app.settings"), icon: ico("sliders"), chev: true, onClick: () => void openNativeSettings() }] : []),
       { key: "allapp", label: t("appprof.allAppSettings"), icon: ico("phone"), chev: true, onClick: () => go("app") },
@@ -271,7 +255,6 @@ export default function ProfileHome() {
         </button>
       )}
       <Sections sections={sections} />
-      <MacLookRow />
       {themeSheet && (
         <PickerSheet
           title={t("appprof.theme")}
@@ -284,18 +267,6 @@ export default function ProfileHome() {
             if (k !== theme) toggleTheme();
           }}
           onClose={() => setThemeSheet(false)}
-        />
-      )}
-      {lookSheet && (
-        <PickerSheet
-          title={t("appprof.look")}
-          value={look.on ? "new" : "old"}
-          options={[
-            { key: "new", label: t("appprof.lookNew") },
-            { key: "old", label: t("appprof.lookOld") },
-          ]}
-          onPick={(k) => look.set(k === "new")}
-          onClose={() => setLookSheet(false)}
         />
       )}
       {langSheet && <LanguageSheet onClose={() => setLangSheet(false)} />}

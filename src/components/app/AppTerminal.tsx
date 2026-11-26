@@ -497,7 +497,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   onFavs={(list) => h.current?.setFavIntervals(list)}
                 />
               </ChartErrorBoundary>
-              <MacMenu inList={inList} onFav={toggleFav} onSettings={() => h.current?.openSettings()} onClassic={() => macSkin.set(false)} locale={loc} />
+              <MacMenu inList={inList} onFav={toggleFav} onSettings={() => h.current?.openSettings()} locale={loc} />
             </div>
             <MacChips chips={chart?.chips ?? []} onOpen={() => h.current?.openMacSheet("inds")} />
 
@@ -747,12 +747,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {chart?.windows && tool("win", "windows", t("appui.term.toolWin"), () => h.current?.addWindow(), chart.windows.count)}
         </div>
         </div>
-
-        {!tb && (
-          <button type="button" className="app-term-macbtn" onClick={() => macSkin.set(true)} title={t("mac.tryTip")} data-mac-try>
-            {t("mac.try")}
-          </button>
-        )}
 
         {!wide && !TERMINAL_SITE && selected && (
           <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">

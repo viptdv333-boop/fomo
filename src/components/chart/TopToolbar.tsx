@@ -130,10 +130,6 @@ interface Props {
   phone?: boolean;
   onExportCsv?: () => void;
   onShare?: () => void;
-  /** Classic look on a wide window: offers the optional macOS look (src/lib/chart/mac-skin.ts). */
-  macOffer?: () => void;
-  /** App window in the new look: the way back to the classic one, as the last button of the toolbar. */
-  appSkin?: () => void;
 }
 
 /* icons live in ./icons */
@@ -577,19 +573,6 @@ export default function TopToolbar(p: Props) {
       ) : (
         <button onClick={p.onScreenshot} title={t("chart.screenshot")} aria-label={t("chart.screenshot")} className={ibtn}>
           {I.camera}
-        </button>
-      )}
-      {p.appSkin && (
-        <button type="button" onClick={p.appSkin} title={t("mac.classicTip")} aria-label={t("mac.classic")} className={`${btn} tb-skin`}>
-          <MacGlyph set="tb" k="skin" alpha="55" width={1.8} />
-        </button>
-      )}
-      {p.macOffer && (
-        <button type="button" onClick={p.macOffer} title={t("mac.tryTip")} className={`${btn} tb-macoffer hidden lg:inline-flex`}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
-          </svg>
-          <span>{t("mac.try")}</span>
         </button>
       )}
       {!p.appFull && (

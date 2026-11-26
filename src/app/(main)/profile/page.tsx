@@ -1207,19 +1207,6 @@ function ProfileContent() {
         </div>
       )}
 
-      {/* the switch between the looks stays reachable on this page (same device setting as the terminal's) */}
-      {(mac || macSkin.canOffer) && (
-        <div className="pfm-skin mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => macSkin.set(!mac)}
-            title={mac ? t("mac.classicTip") : t("mac.tryTip")}
-            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline-offset-2 hover:underline"
-          >
-            {mac ? t("mac.classic") : t("mac.try")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
