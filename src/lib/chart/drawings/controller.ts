@@ -1859,6 +1859,7 @@ function sanitize(raw: unknown): Drawing | null {
     style,
     locked: r.locked === true,
   };
+  if (typeof r.paneId === "string" && r.paneId.trim() && r.paneId.length <= 128) d.paneId = r.paneId;
   if (r.hidden === true) d.hidden = true;
   if (typeof r.name === "string" && r.name.trim()) d.name = r.name.trim().slice(0, 80);
   if (r.extra && typeof r.extra === "object" && !Array.isArray(r.extra)) d.extra = r.extra as Record<string, unknown>;

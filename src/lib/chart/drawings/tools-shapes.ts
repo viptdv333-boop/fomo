@@ -1,4 +1,5 @@
 import * as G from "./geometry";
+import { circleSideHandles, polygonSideHandles, rotatedSideHandles } from "./shape-handles";
 import { paintTextInBox } from "./render";
 import {
   BLUE,
@@ -68,14 +69,12 @@ const rotatedRect: ToolDef = {
     boxText(ctx, env, d, c);
   },
   hit: (_env, _d, P, x, y) => polyHit(x, y, rotRectCorners(P), true, true),
-  handles(_env, _d, P) {
+  handles(env, _d, P) {
     const c = rotRectCorners(P);
-    // the third anchor sits at the middle of the far side, so dragging it resizes the width
-    const far = G.mid(c[2], c[3]);
     return [
       { x: P[0].x, y: P[0].y, idx: 0 },
       { x: P[1].x, y: P[1].y, idx: 1 },
-      { x: far.x, y: far.y, idx: 2 },
+      ...rotatedSideHandles(env, P, c),
     ];
   },
 };
@@ -106,6 +105,7 @@ const circle: ToolDef = {
     // the whole disc plus a rim tolerance so thin circles stay selectable
     return Math.hypot(x - P[0].x, y - P[0].y) <= G.dist(P[0], P[1]) + TOL * 0.5;
   },
+  handles: (env, _d, P) => [...P.map((p, idx) => ({ ...p, idx })), ...circleSideHandles(env, P)],
 };
 
 /* ───────────── path & polyline (variable number of anchors) ───────────── */
@@ -160,6 +160,7 @@ const polyline: ToolDef = {
     boxText(ctx, env, d, P);
   },
   hit: (_env, _d, P, x, y) => polyHit(x, y, P, P.length > 2, true),
+  handles: (env, _d, P) => [...P.map((p, idx) => ({ ...p, idx })), ...polygonSideHandles(env, P)],
 };
 
 /* ───────────── arc, curve, double curve ───────────── */

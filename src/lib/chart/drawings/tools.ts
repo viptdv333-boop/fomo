@@ -2,6 +2,7 @@ import type { DrawingStyle } from "../contracts";
 import type { Candle, ChartTheme } from "../types";
 import { EXTRA_TOOLS, GROUP_LAYOUT } from "./tools-extra";
 import * as G from "./geometry";
+import { boxSideHandles, polygonSideHandles } from "./shape-handles";
 import { contrastOn, getLevels, layoutText, on, paintLineText, paintText, paintTextInBox, positionStats, solid, textCfg, type FibLevel, type LevelKind, type TextDefaults } from "./render";
 import type { DPoint, DrawLabels, Drawing, Pt } from "./types";
 
@@ -1095,7 +1096,7 @@ const rectangle: ToolDef = {
     const b = { x: d.style.extendRight ? 1e5 : P[1].x, y: P[1].y };
     return G.pointInRect({ x, y }, a, b) || G.distToRectEdge({ x, y }, a, b) <= TOL;
   },
-  handles: (_env, _d, P) => boxHandles(P),
+  handles: (_env, _d, P) => [...boxHandles(P), ...boxSideHandles(P)],
 };
 
 const ellipse: ToolDef = {
@@ -1122,7 +1123,7 @@ const ellipse: ToolDef = {
     );
   },
   hit: (_env, _d, P, x, y) => G.pointInEllipse({ x, y }, P[0], P[1]) || G.distToEllipseEdge({ x, y }, P[0], P[1]) <= TOL,
-  handles: (_env, _d, P) => boxHandles(P),
+  handles: (_env, _d, P) => [...boxHandles(P), ...boxSideHandles(P)],
 };
 
 const triangle: ToolDef = {
@@ -1137,6 +1138,7 @@ const triangle: ToolDef = {
     paintShape(ctx, env, d, st, () => pathPoly(ctx, P), [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]);
   },
   hit: (_env, _d, P, x, y) => G.pointInPolygon({ x, y }, P) || G.distToPolyline({ x, y }, P, true) <= TOL,
+  handles: (env, _d, P) => [...P.map((p, idx) => ({ ...p, idx })), ...polygonSideHandles(env, P)],
 };
 
 /** Moving-average smoothing passes over a stroke (each pass softens the corners a bit more). */
