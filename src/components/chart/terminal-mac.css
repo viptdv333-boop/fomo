@@ -417,6 +417,7 @@ html.dark .tvmac [data-tv="toolbar"] .tb-roll > span:last-child {
 html[data-tvmac] .tvmac aside { display: contents; }
 html[data-tvmac] .tvmac [data-tv="row"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
 html[data-tvmac] .tvmac [data-testid="right-panel"] { grid-column: 3; grid-row: 2; min-height: 0; }
+html[data-tvmac] .tvmac [data-panel-tab="watchlist"] { zoom: 0.8; }
 html[data-tvmac] .tvmac [data-tv="sidetabs"] { grid-column: 4; grid-row: 2 / 4; min-height: 0; }
 /* (the scale --mz still comes from <aside>: its zoom is inherited through display:contents, so the panel must not set it again) */
 /* the two halves of the strip meet in the gap between the columns: square inner corners, no seam line */

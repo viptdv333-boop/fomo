@@ -1294,7 +1294,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
   const [panelW, setPanelW] = useState(OB_DEFAULT_W);
   const [vw, setVw] = useState(1600);
   const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ x: number; w: number } | null>(null);
+  const dragRef = useRef<{ x: number; w: number; scale: number } | null>(null);
   useEffect(() => {
     try {
       const v = Number(localStorage.getItem(WIDTH_KEY));
@@ -1318,19 +1318,21 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
   const onGripDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { x: e.clientX, w: widthPx };
+    const grip = e.currentTarget;
+    const scale = grip.getBoundingClientRect().width / grip.offsetWidth || 1;
+    dragRef.current = { x: e.clientX, w: widthPx, scale };
     setDragging(true);
   };
   const onGripMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
-    if (d) setWidth(d.w + (d.x - e.clientX), false);
+    if (d) setWidth(d.w + (d.x - e.clientX) / d.scale, false);
   };
   const onGripUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d) return;
     dragRef.current = null;
     setDragging(false);
-    setWidth(d.w + (d.x - e.clientX));
+    setWidth(d.w + (d.x - e.clientX) / d.scale);
   };
   const onGripKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") setWidth(widthPx + 20);
@@ -1351,6 +1353,7 @@ export default function RightPanel({ open, mobileOpen, visible, tab: tabProp, on
         <div
           className={`relative w-full md:w-[var(--rp-w)] flex-col min-h-0 min-w-0 flex md:rounded-2xl md:bg-[var(--tv3-card)] ${open ? "md:flex" : "md:hidden"}`}
           style={{ "--rp-w": `${widthPx}px` } as React.CSSProperties}
+          data-panel-tab={tab}
           data-testid="right-panel"
         >
           {/* drag the left edge to resize (double click / Home: back to the default width) */}
