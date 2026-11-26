@@ -1079,7 +1079,7 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 @media (max-height: 760px) { .tvmac [data-tv="toolbar"] { padding-top: 18px !important; } }
 .tvmac [data-tv="toolbar"] { margin-top: 18px; }
 
-.tvmac [data-tv="tools"] .tv3-rbtn > .mg { translate: -4px 0; }
+.tvmac [data-tv="tools"] .tv3-rbtn > .mg { translate: -6px 0; }
 
 /* both rails (tools on the left, panel tabs on the right) use ONE tile size, derived from the height so the 18 left tiles fit without scrolling */
 .tvmac {
