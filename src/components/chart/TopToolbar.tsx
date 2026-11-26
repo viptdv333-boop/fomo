@@ -4,6 +4,7 @@ import MacGlyph from "./MacGlyph";
 import MacSvg from "./MacSvg";
 import { RAIL_GLYPHS, TB_GLYPHS, type Glyph } from "./mac-glyph-data";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useTheme } from "@/lib/theme";
 import { useT } from "@/lib/i18n/client";
 import type { ChartType } from "@/lib/chart/types";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
@@ -197,6 +198,10 @@ function Menu({
 
 export default function TopToolbar(p: Props) {
   const { t } = useT();
+  const { theme, toggleTheme } = useTheme();
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const themeLabel = t(`common.theme.${nextTheme}`);
+  const themeGlyph = nextTheme === "dark" ? "moon" : "sun";
   const [, setV] = useState(0);
   const [ctTicker, setCtTicker] = useState<string | null>(null);
   useEffect(() => p.drawings.subscribe(() => setV((v) => v + 1)), [p.drawings]);
@@ -294,6 +299,10 @@ export default function TopToolbar(p: Props) {
             {cap(t("mac.lbl.settings"))}
           </button>
         )}
+        <button type="button" onClick={toggleTheme} title={themeLabel} aria-label={themeLabel} className={ph}>
+          {G(TB_GLYPHS[themeGlyph])}
+          {cap(t("common.theme"))}
+        </button>
         {p.templates && <TemplatesMenu btn={ph} phKey="tpl" phoneTrigger={<>{G(TB_GLYPHS.templates)}{cap(t("mac.lbl.templates"))}</>} {...p.templates} />}
         {p.onExportCsv && (
           <button data-ph="csv" onClick={p.onExportCsv} title={t("appui.fs.table")} aria-label={t("appui.fs.table")} className={ph}>
@@ -490,6 +499,10 @@ export default function TopToolbar(p: Props) {
 
       {p.extra && <span className="tb-extra contents">{p.extra}</span>}
       {p.templates && <TemplatesMenu btn={`${btn} tb-tpl`} {...p.templates} />}
+      <button type="button" onClick={toggleTheme} title={themeLabel} aria-label={themeLabel} data-caption={t("common.theme")} className={`${ibtn} tb-theme`}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={TB_GLYPHS[themeGlyph][2]} /></svg>
+        <MacGlyph set="tb" k={themeGlyph} alpha="55" width={1.8} />
+      </button>
       {p.onOpenSettings ? (
         <button onClick={p.onOpenSettings} title={t("chart.settings")} aria-label={t("chart.settings")} className={`${ibtn} tb-set`}>
           {I.gear}

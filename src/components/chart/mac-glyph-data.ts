@@ -39,6 +39,8 @@ export const SIDE_GLYPHS: Record<string, Glyph> = {
 };
 
 export const TB_GLYPHS: Record<string, Glyph> = {
+  moon: ["#A9AFE8", "#777EBC", "M20.5 14A8.8 8.8 0 0110 3.5 8.9 8.9 0 1020.5 14Z", "M20.5 14A8.8 8.8 0 0110 3.5 8.9 8.9 0 1020.5 14Z"],
+  sun: ["#F4CB78", "#DBA341", "M16 12a4 4 0 11-8 0 4 4 0 018 0ZM12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5", "M16 12a4 4 0 11-8 0 4 4 0 018 0Z"],
   compare: ["#7DB0D6", "#5B8FC0", "M4 7h6l4 10h6M4 17h6l4-10h6", "M4 7h6l4 10h6M4 17h6l4-10h6"],
   indicators: ["#A78BC9", "#8A6DB0", "M4.5 14h3v6h-3zM10.5 11h3v9h-3zM16.5 8h3v12h-3zM3.5 9.5l5-4 4 2.5 6-4.5M15 3.5h3.5V7", "M4.5 14h3v6h-3zM10.5 11h3v9h-3zM16.5 8h3v12h-3z"],
   window: ["#7CC29B", "#4F9A74", "M12 5v14M5 12h14", ""],
