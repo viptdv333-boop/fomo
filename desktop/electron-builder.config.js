@@ -22,7 +22,7 @@ module.exports = {
   // the packaged package.json carries the flavor: name (the userData folder of dev runs), description and `fomoFlavor` for main.js
   extraMetadata: { name: f.packageName, productName: f.productName, description: f.description, fomoFlavor: f.id },
   directories: { output, buildResources: "build" },
-  files: ["main.js", "flavors.js", "offline.html", f.icon, "package.json"],
+  files: ["main.js", "flavors.js", "offline.html", "titlebar.html", f.icon, "package.json"],
   win: {
     target: [{ target: "nsis", arch: ["x64"] }],
     icon: f.winIcon,

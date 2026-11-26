@@ -4,7 +4,7 @@
 // default browser.
 // Run: npm start (npm run start:terminal)   |   smoke test: npx electron . --smoke   |   build: npm run dist (see README.md)
 
-const { app, BrowserWindow, Menu, shell, session, screen } = require("electron");
+const { app, BrowserWindow, WebContentsView, Menu, shell, session, screen } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
@@ -130,14 +130,18 @@ function saveState(win, zoom) {
 let mainWindow = null;
 let zoomLevel = 0;
 
+function siteContents(win) {
+  return win.siteView ? win.siteView.webContents : win.webContents;
+}
+
 function showOffline(win, failedUrl) {
   if (win.isDestroyed()) return;
-  void win.loadFile(OFFLINE_FILE, { query: { u: failedUrl || SITE, site: SITE, name: FLAVOR.productName } });
+  void siteContents(win).loadFile(OFFLINE_FILE, { query: { u: failedUrl || SITE, site: SITE, name: FLAVOR.productName } });
 }
 
 function setZoom(win, level) {
   zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level));
-  win.webContents.setZoomLevel(zoomLevel);
+  siteContents(win).setZoomLevel(zoomLevel);
 }
 
 /** Keyboard shortcuts. The menu is removed (no menu bar), so the standard ones are handled here. */
@@ -149,8 +153,8 @@ function handleShortcut(win, event, input) {
   const k = typeof key === "string" ? key.toLowerCase() : "";
   if (key === "F5" || (ctrl && k === "r")) {
     event.preventDefault();
-    if (input.shift) win.webContents.reloadIgnoringCache();
-    else win.webContents.reload();
+    if (input.shift) siteContents(win).reloadIgnoringCache();
+    else siteContents(win).reload();
   } else if (key === "F11") {
     event.preventDefault();
     win.setFullScreen(!win.isFullScreen());
@@ -169,13 +173,13 @@ function handleShortcut(win, event, input) {
     setZoom(win, 0);
   } else if ((input.alt && key === "ArrowLeft") || (MAC && ctrl && key === "[")) {
     event.preventDefault();
-    if (win.webContents.navigationHistory.canGoBack()) win.webContents.navigationHistory.goBack();
+    if (siteContents(win).navigationHistory.canGoBack()) siteContents(win).navigationHistory.goBack();
   } else if ((input.alt && key === "ArrowRight") || (MAC && ctrl && key === "]")) {
     event.preventDefault();
-    if (win.webContents.navigationHistory.canGoForward()) win.webContents.navigationHistory.goForward();
+    if (siteContents(win).navigationHistory.canGoForward()) siteContents(win).navigationHistory.goForward();
   } else if (DEVTOOLS && ((ctrl && input.shift && k === "i") || key === "F12")) {
     event.preventDefault();
-    win.webContents.toggleDevTools();
+    siteContents(win).toggleDevTools();
   }
 }
 
@@ -194,6 +198,7 @@ function createWindow() {
     icon: ICON,
     backgroundColor: BG,
     autoHideMenuBar: true,
+    ...(!MAC ? { titleBarStyle: "hidden", titleBarOverlay: { color: "#f0f2f7", symbolColor: "#374151", height: 36 } } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -203,6 +208,26 @@ function createWindow() {
       devTools: DEVTOOLS,
     },
   });
+  if (!MAC) {
+    const view = new WebContentsView({
+      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, devTools: DEVTOOLS },
+    });
+    win.siteView = view;
+    win.contentView.addChildView(view);
+    const layout = () => {
+      const [width, height] = win.getContentSize();
+      const top = win.isFullScreen() ? 0 : 36;
+      view.setBounds({ x: 0, y: top, width, height: Math.max(0, height - top) });
+    };
+    layout();
+    win.on("resize", layout);
+    win.on("enter-full-screen", layout);
+    win.on("leave-full-screen", layout);
+    win.on("closed", () => {
+      if (!view.webContents.isDestroyed()) view.webContents.close();
+    });
+    void win.loadFile(path.join(__dirname, "titlebar.html"), { query: { product: FLAVOR.id } });
+  }
   mainWindow = win;
   win.setMenuBarVisibility(false);
   if (st.maximized) win.maximize();
@@ -211,7 +236,8 @@ function createWindow() {
   // the page <title> changes per route; the window keeps its name
   win.on("page-title-updated", (e) => e.preventDefault());
 
-  const wc = win.webContents;
+  const wc = siteContents(win);
+  wc.setUserAgent(app.userAgentFallback);
   wc.on("did-finish-load", () => {
     if (zoomLevel !== 0 && !isOfflineUrl(wc.getURL())) wc.setZoomLevel(zoomLevel);
   });
@@ -247,7 +273,7 @@ function createWindow() {
     if (mainWindow === win) mainWindow = null;
   });
 
-  void win.loadURL(SITE);
+  void siteContents(win).loadURL(SITE);
   return win;
 }
 
@@ -319,25 +345,25 @@ function runSmoke() {
     app.exit(ok ? 0 : 1);
   };
   const timer = setTimeout(() => finish(false, "timeout 15s"), 15000);
-  win.webContents.on("did-fail-load", (_e, code, desc, url, isMainFrame) => {
+  siteContents(win).on("did-fail-load", (_e, code, desc, url, isMainFrame) => {
     if (isMainFrame && code !== -3) {
       clearTimeout(timer);
       finish(false, `${code} ${desc} ${url}`);
     }
   });
-  win.webContents.on("did-finish-load", async () => {
+  siteContents(win).on("did-finish-load", async () => {
     clearTimeout(timer);
     try {
-      const ua = await win.webContents.executeJavaScript("navigator.userAgent");
-      out("url " + win.webContents.getURL());
+      const ua = await siteContents(win).executeJavaScript("navigator.userAgent");
+      out("url " + siteContents(win).getURL());
       out("ua " + ua);
       out("flavor " + FLAVOR.id + " userData " + app.getPath("userData"));
-      finish(new RegExp("FomoDesktop/\\S+ " + OS_TOKEN).test(ua) && isTrustedUrl(win.webContents.getURL()), "no UA marker or wrong url");
+      finish(new RegExp("FomoDesktop/\\S+ " + OS_TOKEN).test(ua) && isTrustedUrl(siteContents(win).getURL()), "no UA marker or wrong url");
     } catch (err) {
       finish(false, String(err));
     }
   });
-  void win.loadURL(SITE);
+  void siteContents(win).loadURL(SITE);
 }
 
 // ---- start --------------------------------------------------------------------------------------------------------
