@@ -744,13 +744,13 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
         onPointerDown={(e) => {
           if (e.pointerType !== "mouse" || e.button !== 0 || e.currentTarget.scrollWidth <= e.currentTarget.clientWidth) return;
           tabDrag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft, moved: false };
-          e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
           const drag = tabDrag.current;
           if (!drag || drag.id !== e.pointerId) return;
           const dx = e.clientX - drag.x;
           if (!drag.moved && Math.abs(dx) < 4) return;
+          if (!drag.moved) e.currentTarget.setPointerCapture(e.pointerId);
           drag.moved = true;
           e.preventDefault();
           e.currentTarget.scrollLeft = drag.left - dx;
