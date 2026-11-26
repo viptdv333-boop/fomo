@@ -223,9 +223,12 @@ html.app-ui .app-mac-fly-grid .app-mac-fly-i { justify-content: center; padding:
 
 /* watchlists: the list picker under the title of the list screen */
 html.app-ui .app-mac .app-mac-lists { padding: 0 14px 6px; }
+html.app-ui .app-mac .app-mac-lists > div:first-child { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+html.app-ui .app-mac .app-mac-lists [data-wl-tabs] { flex: 1 1 0%; width: 0; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x; scrollbar-width: none; }
+html.app-ui .app-mac .app-mac-lists [data-wl-tabs]::-webkit-scrollbar { display: none; }
 /* the watchlists as browser-style tabs, each with its own colour (a dot and a tint; the open one is filled) and a coloured «+» */
 html.app-ui .app-mac .app-mac-lists [role="tablist"] { gap: 4px; align-items: flex-end; padding: 0; border-bottom: 2px solid var(--m-line); }
-html.app-ui .app-mac .app-mac-lists [role="tab"] { --lc: #5b8fc0; flex: 1 0 86px; min-width: 86px; max-width: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 10px; border-radius: 12px 12px 0 0; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--lc) 15%, transparent); color: var(--m-tx); font-size: 14px; font-weight: 600; cursor: pointer; }
+html.app-ui .app-mac .app-mac-lists [role="tab"] { --lc: #5b8fc0; flex: 0 0 86px; min-width: 86px; max-width: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 10px; border-radius: 12px 12px 0 0; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--lc) 15%, transparent); color: var(--m-tx); font-size: 14px; font-weight: 600; cursor: pointer; }
 html.app-ui .app-mac .app-mac-lists [role="tab"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the coloured flag of TradingView's list tab: a flag with a notch */
 html.app-ui .app-mac .app-mac-lists [role="tab"]::before { content: ""; flex: none; width: 13px; height: 16px; background: var(--lc); clip-path: polygon(0 0, 100% 0, 68% 50%, 100% 100%, 0 100%); }

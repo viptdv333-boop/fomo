@@ -738,7 +738,7 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const item = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
   return (
     <div className="mb-1.5 flex items-center gap-1.5">
-      <div role="tablist" data-wl-tabs aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" data-wl-tabs data-no-swipe aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {wl.lists.map((l) =>
           renaming && l.id === wl.activeId ? (
             <span key={l.id}>{input}</span>
