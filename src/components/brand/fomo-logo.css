@@ -1,6 +1,6 @@
 .fomo-wordmark {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.1em;
   white-space: nowrap;
   line-height: 1;
@@ -11,13 +11,24 @@
   color: #202c38;
   padding: 8px 0;
 }
-.fomo-wordmark-name { display: inline-flex; }
-.fomo-wordmark-name > span { color: #00ac55; }
-.fomo-wordmark-name > span:nth-child(odd) { color: #eb414c; }
+.fomo-wordmark-name {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 3.1em;
+  height: 1.313em;
+  overflow: hidden;
+}
+.fomo-wordmark-name img {
+  position: absolute;
+  width: 6.074em;
+  height: auto;
+  max-width: none;
+  left: -1.34em;
+  top: -1.246em;
+}
 .fomo-wordmark-product { font-weight: 600; letter-spacing: -0.045em; }
 .dark .fomo-wordmark { color: #edf2f6; }
-.dark .fomo-wordmark-name > span { color: #34d986; }
-.dark .fomo-wordmark-name > span:nth-child(odd) { color: #ff6470; }
 .fomo-wordmark-hero { font-size: clamp(36px, 8vw, 60px); color: #fff; }
 @media (max-width: 640px) {
   .fomo-wordmark:not(.fomo-wordmark-hero) { font-size: 18px; }
