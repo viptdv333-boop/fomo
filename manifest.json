@@ -1,0 +1,31 @@
+{
+    "android":  {
+                    "file":  "FOMO.apk",
+                    "version":  "1.0.7",
+                    "versionCode":  8,
+                    "size":  1613868,
+                    "sha256":  "cec5c100ff236b6ca46946c062506ca70195e6dab9ebdb3b810e1a1a85ca2059"
+                },
+    "windows":  {
+                    "file":  "FOMO-Setup.exe",
+                    "version":  "1.0.2",
+                    "size":  94259101,
+                    "sha256":  "49dee2a2861143787f7566e05d212c769a3c88f1867fafc0d18112d129d16ed0"
+                },
+    "terminal":  {
+                     "android":  {
+                                     "file":  "FOMO-Terminal.apk",
+                                     "version":  "1.0.3",
+                                     "versionCode":  4,
+                                     "size":  1635408,
+                                     "sha256":  "42af1e900b9bb6872d3ca28ec4802d03ca6c8b56bc389d87b89a1da034c1b987"
+                                 },
+                     "windows":  {
+                                     "file":  "FOMO-Terminal-Setup.exe",
+                                     "version":  "1.0.0",
+                                     "size":  94330061,
+                                     "sha256":  "5cd16455f83d0cf865bbd6aa3d9cdd5df7c5d07724de8717d1c21325d6a4ccee"
+                                 }
+                 },
+    "updated":  "2026-11-26T14:12:36Z"
+}
