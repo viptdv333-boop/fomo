@@ -14,14 +14,14 @@ import { warmFirewallActive } from "./tabhost/warm";
  *   - drops a stale `html.app-kbd` (the dock is hidden while a field is focused; the WebView takes the focus away natively when the app is paused, without
  *     a focusout, and the dock stayed hidden);
  *   - takes the tab host's warm-up stub off <main>.scrollTo when no warm-up is running (a leftover would make every scroll-to-top / scroll-to-comment a no-op).
- * Renders nothing; does nothing in a browser or in the desktop app.
+ * Renders nothing; also restores the mobile browser's app shell if its root class was removed.
  */
 export default function AppUiGuard() {
   useEffect(() => {
     const root = document.documentElement;
     const heal = () => {
       try {
-        if (appUiClassMissing(root.classList.contains(APP_UI_CLASS), navigator.userAgent, nativeBridge() !== null, (navigator as Navigator & { standalone?: boolean }).standalone === true)) root.classList.add(APP_UI_CLASS);
+        if (appUiClassMissing(root.classList.contains(APP_UI_CLASS), navigator.userAgent, nativeBridge() !== null, (navigator as Navigator & { standalone?: boolean }).standalone === true, window.matchMedia?.("(max-width: 767px)").matches ?? false)) root.classList.add(APP_UI_CLASS);
         if (!root.classList.contains(APP_UI_CLASS)) return;
         if (root.classList.contains("app-kbd") && !root.classList.contains("app-desktop") && !raisesKeyboard(document.activeElement as HTMLElement | null)) root.classList.remove("app-kbd");
         const main = document.querySelector("main") as { scrollTo?: unknown } | null;
