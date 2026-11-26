@@ -18,6 +18,7 @@ import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
 import { useFomoIdeas } from "@/components/chart/FomoPanel";
 import { ListSwitch, useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import { useRowReorder } from "@/lib/use-row-reorder";
+import WatchlistSwipeRow from "./WatchlistSwipeRow";
 import InstrumentSearchDialog from "@/components/chart/InstrumentSearchDialog";
 import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import { filterWatch, macActiveTab, macTabAction, macTone, type MacTabId } from "@/lib/app-mac";
@@ -164,7 +165,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   }, [mac]);
   const [macAdd, setMacAdd] = useState(false);
   const [macFilter, setMacFilter] = useState("");
-  const [rowActions, setRowActions] = useState<{ inst: TerminalInstrument; view: "menu" | "move" | "remove" } | null>(null);
+  const [rowActions, setRowActions] = useState<{ inst: TerminalInstrument; view: "menu" | "move" | "add" | "remove" } | null>(null);
+  const [swipedRow, setSwipedRow] = useState<string | null>(null);
   const [chart, setChart] = useState<AppChartState | null>(null);
   const [range, setRange] = useState<RangeId | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -286,12 +288,26 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
   // drag and drop of the list rows (finger: press and hold)
   const macRowsRef = useRef<HTMLDivElement | null>(null);
   const clsRowsRef = useRef<HTMLDivElement | null>(null);
+  const orderedWatchItems = [...watchlist.items].sort((a, b) => Number(watchlist.pinned(b)) - Number(watchlist.pinned(a)));
+  const moveWatchRow = (from: number, to: number) => {
+    const index = (n: number) => watchlist.items.findIndex((i) => qKey(i) === qKey(orderedWatchItems[n]));
+    if (orderedWatchItems[from] && orderedWatchItems[to]) watchlist.move(index(from), index(to));
+  };
+  useEffect(() => { setSwipedRow(null); setRowActions(null); }, [watchlist.activeId, macScreen, effSeg, macFilter]);
   const openRowActions = useCallback((key: string) => {
     const inst = watchlist.items.find((item) => qKey(item) === key);
     if (inst) setRowActions({ inst, view: "menu" });
   }, [watchlist.items]);
-  useRowReorder(macRowsRef, mac && macScreen === "list" && effSeg === "watch" && watchlist.items.length > 0, watchlist.move, macScreen, openRowActions, !macFilter.trim());
-  useRowReorder(clsRowsRef, !mac && effSeg === "watch" && !hideWatch && watchlist.items.length > 0, watchlist.move, undefined, openRowActions);
+  useRowReorder(macRowsRef, mac && macScreen === "list" && effSeg === "watch" && watchlist.items.length > 0, moveWatchRow, macScreen, openRowActions, !macFilter.trim());
+  useRowReorder(clsRowsRef, !mac && effSeg === "watch" && !hideWatch && watchlist.items.length > 0, moveWatchRow, undefined, openRowActions);
+  const swipeProps = (inst: TerminalInstrument) => ({
+    rowKey: qKey(inst), open: swipedRow === qKey(inst), pinned: watchlist.pinned(inst),
+    onOpen: (open: boolean) => setSwipedRow(open ? qKey(inst) : null),
+    onPin: () => watchlist.togglePin(inst),
+    onAdd: () => setRowActions({ inst, view: "add" }),
+    onRemove: () => setRowActions({ inst, view: "remove" }),
+    onLongPress: () => openRowActions(qKey(inst)),
+  });
 
   useEffect(() => {
     if (!rowActions) return;
@@ -310,19 +326,22 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         <p className="app-wl-actions-subtitle">{instName(rowActions.inst, t)}</p>
         {rowActions.view === "menu" && (
           <>
+            <button type="button" className="app-wl-actions-item" onClick={() => { watchlist.togglePin(rowActions.inst); setRowActions(null); }}>{t(watchlist.pinned(rowActions.inst) ? "wl.unpin" : "wl.pin")}</button>
+            <button type="button" className="app-wl-actions-item" onClick={() => setRowActions({ ...rowActions, view: "add" })}>{t("wl.addTo")}</button>
             <button type="button" className="app-wl-actions-item" onClick={() => setRowActions({ ...rowActions, view: "move" })}>{t("wl.moveTicker")}</button>
             <button type="button" className="app-wl-actions-item" data-tone="danger" onClick={() => setRowActions({ ...rowActions, view: "remove" })}>{t("wl.removeTicker")}</button>
             <button type="button" className="app-wl-actions-item" onClick={() => setRowActions(null)}>{t("wl.cancel")}</button>
           </>
         )}
-        {rowActions.view === "move" && (
+        {(rowActions.view === "move" || rowActions.view === "add") && (
           <>
             <div className="app-wl-actions-section">{t("wl.moveChoose")}</div>
             {watchlist.lists.filter((list) => list.id !== watchlist.activeId).length === 0 ? (
               <div className="app-wl-actions-empty">{t("wl.moveNone")}</div>
             ) : watchlist.lists.filter((list) => list.id !== watchlist.activeId).map((list) => (
-              <button key={list.id} type="button" className="app-wl-actions-item" onClick={() => {
-                watchlist.moveTo(list.id, rowActions.inst);
+              <button key={list.id} type="button" className="app-wl-actions-item" disabled={rowActions.view === "add" && watchlist.has(list.id, rowActions.inst)} onClick={() => {
+                if (rowActions.view === "add") watchlist.addTo(list.id, rowActions.inst);
+                else watchlist.moveTo(list.id, rowActions.inst);
                 setRowActions(null);
               }}>{list.id === "main" ? t("wl.main") : list.name}</button>
             ))}
@@ -471,7 +490,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         h.current?.openMacSheet("tools");
       } else if (a === "alerts") h.current?.openAlerts();
     };
-    const rows = filterWatch(watchlist.items, macFilter, (i) => instName(i, t));
+    const rows = filterWatch(orderedWatchItems, macFilter, (i) => instName(i, t));
     return (
       <DemoGate kind="terminal" path="/terminal" layout="flow">
         <div className="app-term app-mac" data-screen={macScreen}>
@@ -595,11 +614,10 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                       const q = quotes[qKey(i)];
                       const c = macTone(changeTone(q?.changePercent));
                       return (
+                        <WatchlistSwipeRow key={qKey(i)} {...swipeProps(i)}>
                         <button
-                          key={qKey(i)}
                           type="button"
                           className="app-mac-row"
-                          data-row-key={qKey(i)}
                           data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined}
                           onClick={() => {
                             onSelectSymbol(i);
@@ -621,6 +639,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                             </span>
                           </span>
                         </button>
+                        </WatchlistSwipeRow>
                       );
                     })
                   )}
@@ -831,11 +850,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {watchlist.items.length === 0 ? (
             <div className="app-term-wempty">{t("appui.term.watchEmpty")}</div>
           ) : (
-            watchlist.items.map((i) => {
+            orderedWatchItems.map((i) => {
               const q = quotes[qKey(i)];
               const tn = changeTone(q?.changePercent);
               return (
-                <button key={qKey(i)} type="button" className="app-term-wrow" data-row-key={qKey(i)} data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined} onClick={() => {
+                <WatchlistSwipeRow key={qKey(i)} {...swipeProps(i)}>
+                <button type="button" className="app-term-wrow" data-sel={selected && qKey(i) === qKey(selected) ? "1" : undefined} onClick={() => {
                     onSelectSymbol(i);
                     // the chart is above the list: bring it into view (the design leaves the scroll as is, but then the tap shows nothing)
                     document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -851,6 +871,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                     </span>
                   </span>
                 </button>
+                </WatchlistSwipeRow>
               );
             })
           )}

@@ -140,6 +140,8 @@ const rows: [string, string, string, string][] = [
   ["wl.save", "Сохранить", "Save", "保存"],
   ["wl.rename", "Переименовать", "Rename", "重命名"],
   ["wl.pin", "Закрепить вверху списка", "Pin to the top", "置顶"],
+  ["wl.pinShort", "Закрепить", "Pin", "置顶"],
+  ["wl.deleteShort", "Удалить", "Delete", "删除"],
   ["wl.unpin", "Открепить", "Unpin", "取消置顶"],
   ["wl.addTo", "Добавить в список", "Add to a list", "添加到列表"],
   ["wl.moveTicker", "Перенести в другой список", "Move to another list", "移至其他列表"],
