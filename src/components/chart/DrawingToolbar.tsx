@@ -3,7 +3,7 @@
 import MacGlyph from "./MacGlyph";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DrawingsControllerLike } from "@/lib/chart/contracts";
-import { DRAWING_GROUPS, getToolDef } from "@/lib/chart/drawings/tools";
+import { DRAWING_GROUPS, getToolDef, isCursorTool } from "@/lib/chart/drawings/tools";
 import { DRAW_TEXT_DEFAULTS, setDrawTexts } from "@/lib/chart/drawings/tools-kit";
 import { useT } from "@/lib/i18n/client";
 import { DrawIcon } from "./icons";
@@ -215,7 +215,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
         const raw = localStorage.getItem(FAV_KEY);
         if (raw) {
           const p = JSON.parse(raw) as { ids?: unknown; on?: unknown; pos?: { x?: unknown; y?: unknown } | null };
-          if (Array.isArray(p.ids)) setFavs(p.ids.filter((x): x is string => typeof x === "string" && !!getToolDef(x)));
+          if (Array.isArray(p.ids)) setFavs(p.ids.filter((x): x is string => typeof x === "string" && (!!getToolDef(x) || isCursorTool(x))));
           setFavOn(p.on !== false);
           if (p.pos && typeof p.pos.x === "number" && typeof p.pos.y === "number") setFavPos({ x: p.pos.x, y: p.pos.y });
         }
@@ -522,7 +522,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
             </svg>
           </span>
           {favTools.map((f, fi) => {
-            const on = activeTool === f.id;
+            const on = activeTool === f.id || (f.groupId === "cursors" && activeTool === null && ctl.getCursorStyle?.() === f.id);
             return (
               <button
                 key={f.id}
@@ -534,7 +534,10 @@ export default function DrawingToolbar({ controller, className }: { controller: 
                 aria-pressed={on}
                 onClick={() => {
                   if (on) {
-                    controller.setTool(null);
+                    if (isCursorTool(f.id)) {
+                      rememberTool(f.groupId, "cursor_cross");
+                      controller.setTool("cursor_cross");
+                    } else controller.setTool(null);
                     return;
                   }
                   if (f.groupId) rememberTool(f.groupId, f.id);
