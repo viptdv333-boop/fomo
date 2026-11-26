@@ -3023,7 +3023,20 @@ export class ChartEngine {
       if (!headLegend && (st.ohlc || st.barChange || st.change || showVol)) {
         if (!mac) x = x0;
         ctx.font = `13px ${this.opts.fontFamily}`;
+        const maxLegendX = Math.max(x0 + 32, this.plotW() - 10);
+        const wrapLegendItem = (width: number) => {
+          if (x > x0 && x + width > maxLegendX) {
+            chipRight = Math.max(chipRight, x);
+            x = x0;
+            cy += 15;
+          }
+        };
         const put2 = (label: string, val: string) => {
+          ctx.font = `13px ${this.opts.fontFamily}`;
+          const labelWidth = ctx.measureText(label).width;
+          ctx.font = `500 13px ${this.opts.fontFamily}`;
+          const valWidth = ctx.measureText(val).width;
+          wrapLegendItem(labelWidth + valWidth + 13);
           ctx.font = `13px ${this.opts.fontFamily}`;
           ctx.fillStyle = th.textMuted;
           ctx.fillText(label, x, cy);
@@ -3049,18 +3062,24 @@ export class ChartEngine {
           if (st.change) parts.push(st.barChange ? `(${sign}${pct.toFixed(2)}%)` : `${sign}${pct.toFixed(2)}%`);
           const chg = parts.join(" ");
           ctx.font = `500 13px ${this.opts.fontFamily}`;
+          wrapLegendItem(ctx.measureText(chg).width + 12);
           ctx.fillText(chg, x, cy);
           x += ctx.measureText(chg).width + 12;
         }
         if (showVol) {
+          ctx.font = `13px ${this.opts.fontFamily}`;
+          const vol = formatVolume(c.v, this.opts.locale);
+          const volWidth = ctx.measureText("Vol").width + 4;
+          ctx.font = `500 13px ${this.opts.fontFamily}`;
+          wrapLegendItem(volWidth + ctx.measureText(vol).width);
           ctx.fillStyle = th.textMuted;
           ctx.font = `13px ${this.opts.fontFamily}`;
           ctx.fillText("Vol", x, cy);
-          x += ctx.measureText("Vol").width + 4;
+          x += volWidth;
           ctx.fillStyle = th.text;
           ctx.font = `500 13px ${this.opts.fontFamily}`;
-          ctx.fillText(formatVolume(c.v, this.opts.locale), x, cy);
-          x += ctx.measureText(formatVolume(c.v, this.opts.locale)).width;
+          ctx.fillText(vol, x, cy);
+          x += ctx.measureText(vol).width;
           // the average of the volume (same colour as its line)
           const vm = this.opts.volumeMa;
           const ma = vm && vm.on ? this.volumeMaData() : null;
@@ -3070,19 +3089,23 @@ export class ChartEngine {
             ctx.fillStyle = th.textMuted;
             ctx.font = `13px ${this.opts.fontFamily}`;
             const lab = `MA ${Math.round(vm.length)}`;
+            ctx.font = `500 13px ${this.opts.fontFamily}`;
+            const maVal = formatVolume(mv, this.opts.locale);
+            const maLabelWidth = ctx.measureText(lab).width + 4;
+            wrapLegendItem(9 + maLabelWidth + ctx.measureText(maVal).width);
+            ctx.font = `13px ${this.opts.fontFamily}`;
             ctx.fillText(lab, x, cy);
-            x += ctx.measureText(lab).width + 4;
+            x += maLabelWidth;
             ctx.fillStyle = vm.color;
             ctx.font = `500 13px ${this.opts.fontFamily}`;
-            const val = formatVolume(mv, this.opts.locale);
-            ctx.fillText(val, x, cy);
-            x += ctx.measureText(val).width;
+            ctx.fillText(maVal, x, cy);
+            x += ctx.measureText(maVal).width;
           }
         }
         chipRight = Math.max(chipRight, x);
         cy += 15;
       }
-      if (mac) cy = headLegend ? y : y + 36;
+      if (mac) cy = headLegend ? y : Math.max(cy, y + 36);
       // design v3: the status block sits on a soft rounded chip (drawn behind the text already on this layer)
       if (chipRight > 0 && cy > y && !mac) {
         ctx.globalCompositeOperation = "destination-over";

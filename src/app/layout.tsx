@@ -159,7 +159,7 @@ export default async function RootLayout({
             __html: `try{if(localStorage.getItem('fomo-theme')==='dark'||(!localStorage.getItem('fomo-theme')&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
           }}
         />
-        {/* app-only UI switch (Android app or ?appui=1 preview): only adds the class "app-ui" to <html>, see src/lib/native-app.ts */}
+        {/* app-only UI switch (native app, installed iOS PWA or ?appui=1 preview): see src/lib/native-app.ts */}
         <script dangerouslySetInnerHTML={{ __html: APP_UI_BOOT_SCRIPT }} />
         {/* the dictionary of the page's language: a static script cached for a year (and by the service worker) instead of ~280 KB inside every HTML document; must run before hydration, so no async / defer */}
         <script src={dictScriptUrl(locale)} />

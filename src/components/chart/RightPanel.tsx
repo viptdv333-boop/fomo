@@ -703,6 +703,7 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const tabDrag = useRef<{ id: number; x: number; left: number; moved: boolean } | null>(null);
   const suppressTabClick = useRef(0);
   const atLimit = wl.lists.length > WLS_MAX_LISTS;
+  const tabsRef = useRef<HTMLDivElement | null>(null);
   const name = (l: { id: string; name: string }) => (l.id === "main" ? t("wl.main") : l.name);
   const cur = wl.lists.find((l) => l.id === wl.activeId) ?? wl.lists[0];
   const tab = "tv3-press h-7 shrink-0 max-w-[150px] truncate rounded-full px-3 text-[12.5px] font-semibold cursor-pointer";
@@ -738,9 +739,18 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
     setSure(false);
   };
   const item = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
+  useEffect(() => {
+    const el = tabsRef.current;
+    const active = el?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!el || !active) return;
+    const left = active.offsetLeft;
+    const right = left + active.offsetWidth;
+    if (left < el.scrollLeft) el.scrollTo({ left, behavior: "smooth" });
+    else if (right > el.scrollLeft + el.clientWidth) el.scrollTo({ left: right - el.clientWidth, behavior: "smooth" });
+  }, [wl.activeId, wl.lists.length]);
   return (
     <div className="mb-1.5 flex items-center gap-1.5">
-      <div role="tablist" data-wl-tabs data-no-swipe aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <div ref={tabsRef} role="tablist" data-wl-tabs data-no-swipe aria-label={t("wl.lists")} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onPointerDown={(e) => {
           if (e.pointerType !== "mouse" || e.button !== 0 || e.currentTarget.scrollWidth <= e.currentTarget.clientWidth) return;
           tabDrag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft, moved: false };
@@ -786,6 +796,7 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
               type="button"
               role="tab"
               aria-selected={l.id === wl.activeId}
+              data-wl-tab
               title={`${name(l)} · ${l.count}`}
               onClick={() => wl.selectList(l.id)}
               className={`${tab} ${l.id === wl.activeId ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"}`}

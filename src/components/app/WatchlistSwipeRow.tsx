@@ -101,7 +101,6 @@ export default function WatchlistSwipeRow({ rowKey, open, pinned, onOpen, onPin,
       </div>
       <div className="app-wl-swipe-front" style={offset === null ? undefined : { transform: `translateX(${offset}px)`, transition: "none" }}>
         {children}
-        {pinned && <span className="app-wl-pin" aria-label={t("wl.pin")}><AppIcon name="pin" size={12} /></span>}
       </div>
     </div>
   );

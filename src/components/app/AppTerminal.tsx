@@ -9,13 +9,13 @@ import type { Locale } from "@/lib/i18n/locale-url";
 import DemoGate from "@/components/shared/DemoGate";
 import { isTerminalSite } from "@/lib/site-mode";
 import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
+import FomoLogo from "@/components/brand/FomoLogo";
 import { localZone } from "@/lib/chart/settings";
 import CalendarPanel from "@/components/chart/calendar/CalendarPanel";
 import { setTermCal } from "./termCal";
 import OrderBookPanel from "@/components/chart/OrderBookPanel";
 import AlgoPanel from "@/components/chart/AlgoPanel";
 import { useAlgopackAllowed } from "@/lib/chart/algopack/useAlgopackAllowed";
-import { useFomoIdeas } from "@/components/chart/FomoPanel";
 import { ListSwitch, useBatchQuotes, useWatchlist, type Quote } from "@/components/chart/RightPanel";
 import { useRowReorder } from "@/lib/use-row-reorder";
 import WatchlistSwipeRow from "./WatchlistSwipeRow";
@@ -62,10 +62,22 @@ const Chart = dynamic(() => import("@/components/chart/MultiChart"), {
 
 const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
-// terminal.fomo.spot has no board of its own: no requests to /api/instruments or /api/ideas of this instance. Its «Идеи FOMO по …» card
-// reads fomo.spot through /api/fomo-ideas (useFomoIdeas), the calendar is a segment next to the watchlist, and a «сообщество FOMO» card follows.
+// terminal.fomo.spot has no board of its own: the watchlist links to the FOMO Spot community.
 const TERMINAL_SITE = isTerminalSite();
 const TZ_LS = "fomo-calendar-tz";
+
+function FomoSpotBanner() {
+  return (
+    <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-term-ideas app-fomospot-banner" data-fomospot-banner aria-label="FOMO Spot">
+      <span className="app-fomospot-name"><FomoLogo product="spot" /></span>
+      <span className="app-fomospot-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+        </svg>
+      </span>
+    </a>
+  );
+}
 
 /** Ideas of the board for a terminal symbol: the board's instrument id and the number of ideas (cached for the session). */
 interface IdeasInfo {
@@ -218,7 +230,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     setTermCal(calShown);
     return () => setTermCal(false);
   }, [calShown]);
-  const fomoIdeas = useFomoIdeas(TERMINAL_SITE ? selected : null, TERMINAL_SITE);
 
   const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
   const selKey = selected ? qKey(selected) : "";
@@ -628,7 +639,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                         >
                           <MacInstIcon inst={i} size={40} />
                           <span className="app-mac-row-n">
-                            <b>{i.ticker}</b>
+                            <b>{i.ticker}{watchlist.pinned(i) && <span className="app-wl-ticker-pin" aria-label={t("wl.pin")}><AppIcon name="pin" size={17} stroke={2.2} /></span>}</b>
                             <small>{instName(i, t)}</small>
                           </span>
                           <span className="app-mac-row-p">
@@ -654,14 +665,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                   <AppIcon name="chevR" size={18} stroke={1.8} />
                 </Link>
               )}
-              {!wide && TERMINAL_SITE && selected && fomoIdeas?.ok && (
-                <a href={fomoIdeas.boardUrl} target="_blank" rel="noopener" className="app-term-ideas" data-fomo-ideas>
-                  <AppIcon name="bulb" size={18} stroke={1.8} />
-                  <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
-                  {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
-                  <AppIcon name="chevR" size={18} stroke={1.8} />
-                </a>
-              )}
+              {!wide && TERMINAL_SITE && <FomoSpotBanner />}
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
@@ -776,13 +780,8 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           </Link>
         )}
 
-        {!wide && TERMINAL_SITE && selected && fomoIdeas?.ok && (
-          <a href={fomoIdeas.boardUrl} target="_blank" rel="noopener" className="app-term-ideas" data-fomo-ideas>
-            <AppIcon name="bulb" size={18} stroke={1.8} />
-            <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
-            {fomoIdeas.count > 0 && <span className="app-term-ideas-n">{fomoIdeas.count}</span>}
-            <AppIcon name="chevR" size={18} stroke={1.8} />
-          </a>
+        {!wide && TERMINAL_SITE && selected && (
+          <FomoSpotBanner />
         )}
 
         {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
@@ -861,7 +860,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                     document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
                   }}>
                   <span className="app-term-wl">
-                    <span className="app-term-wt">{i.ticker}</span>
+                    <span className="app-term-wt">{i.ticker}{watchlist.pinned(i) && <span className="app-wl-ticker-pin" aria-label={t("wl.pin")}><AppIcon name="pin" size={17} stroke={2.2} /></span>}</span>
                     <span className="app-term-wn">{instName(i, t)}</span>
                   </span>
                   <span className="app-term-wr">

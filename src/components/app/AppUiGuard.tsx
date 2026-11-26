@@ -21,7 +21,7 @@ export default function AppUiGuard() {
     const root = document.documentElement;
     const heal = () => {
       try {
-        if (appUiClassMissing(root.classList.contains(APP_UI_CLASS), navigator.userAgent, nativeBridge() !== null)) root.classList.add(APP_UI_CLASS);
+        if (appUiClassMissing(root.classList.contains(APP_UI_CLASS), navigator.userAgent, nativeBridge() !== null, (navigator as Navigator & { standalone?: boolean }).standalone === true)) root.classList.add(APP_UI_CLASS);
         if (!root.classList.contains(APP_UI_CLASS)) return;
         if (root.classList.contains("app-kbd") && !root.classList.contains("app-desktop") && !raisesKeyboard(document.activeElement as HTMLElement | null)) root.classList.remove("app-kbd");
         const main = document.querySelector("main") as { scrollTo?: unknown } | null;

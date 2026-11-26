@@ -392,6 +392,8 @@ export interface AppUiInput {
   userAgent: string;
   /** window.FomoApp is an object */
   hasBridge: boolean;
+  /** Safari's installed iOS web app mode (navigator.standalone). */
+  iosStandalone?: boolean;
   /** location.search */
   search: string;
   /** sessionStorage[APP_UI_FLAG_KEY] (null when unset or unreadable) */
@@ -419,7 +421,7 @@ export function appDesktopQuery(search: string): "1" | "0" | null {
 }
 
 /**
- * Pure decision of the app UI: active inside the Android app (UA marker or bridge), inside the desktop app (UA marker FomoDesktop/, which ?appui=0
+ * Pure decision of the app UI: active inside native apps, in an installed iOS PWA, inside the desktop app (UA marker FomoDesktop/, which ?appui=0
  * switches off for that page: the escape hatch to the ordinary site), or when the preview flag is set.
  * `store` says what to do with the ?appui flag: "1" write it, "0" clear it, null leave it alone; `storeDesktop` the same for ?appdesktop.
  * `desktop`: the wide-window layout (desktop shell or the ?appdesktop=1 preview), never inside the Android app.
@@ -431,8 +433,8 @@ export function resolveAppUi(i: AppUiInput): { active: boolean; store: "1" | "0"
   const flagDesktop = qd === "1" ? true : qd === "0" ? false : i.storedDesktop === "1";
   const android = i.hasBridge || /\bFomoApp\//.test(i.userAgent || "");
   const shell = /\bFomoDesktop\//.test(i.userAgent || "");
-  const active = android || (shell && q !== "0") || flag;
-  return { active, store: q, desktop: active && !android && (shell || flagDesktop), storeDesktop: qd };
+  const active = android || (shell && q !== "0") || flag || (i.iosStandalone === true && q !== "0");
+  return { active, store: q, desktop: active && !android && i.iosStandalone !== true && (shell || flagDesktop), storeDesktop: qd };
 }
 
 /**
@@ -444,16 +446,16 @@ export const APP_UI_BOOT_SCRIPT =
   "while((m=r.exec(location.search)))q=m[1];while((m=v.exec(location.search)))w=m[1];" +
   "try{if(q==='1')sessionStorage.setItem('fomo-appui','1');else if(q==='0')sessionStorage.removeItem('fomo-appui');f=sessionStorage.getItem('fomo-appui');" +
   "if(w==='1')sessionStorage.setItem('fomo-appdesktop','1');else if(w==='0')sessionStorage.removeItem('fomo-appdesktop');g=sessionStorage.getItem('fomo-appdesktop')}catch(e){f=q==='1'?'1':null;g=w==='1'?'1':null}" +
-  "var a=/\\bFomoApp\\//.test(u)||!!(window.FomoApp&&typeof window.FomoApp==='object'),s=/\\bFomoDesktop\\//.test(u);" +
-  "if(a||(s&&q!=='0')||(q!=='0'&&f==='1')||q==='1'){d.classList.add('app-ui');if(!a&&(s||w==='1'||(w!=='0'&&g==='1')))d.classList.add('app-desktop')}}catch(e){}";
+  "var a=/\\bFomoApp\\//.test(u)||!!(window.FomoApp&&typeof window.FomoApp==='object'),s=/\\bFomoDesktop\\//.test(u),i=!!navigator.standalone;" +
+  "if(a||(s&&q!=='0')||(q!=='0'&&f==='1')||q==='1'||(i&&q!=='0')){d.classList.add('app-ui');if(!a&&!i&&(s||w==='1'||(w!=='0'&&g==='1')))d.classList.add('app-desktop')}}catch(e){}";
 
 /**
- * The Android app is the one place where `html.app-ui` can never legitimately be absent (the UA marker / the bridge decide, no query or stored flag can switch it
- * off). True when this page IS the Android app and its <html> lost the class (the boot script did not run, a restored document, a script that reset the class
+ * An installed app is the one place where `html.app-ui` can never legitimately be absent (the UA marker, bridge or iOS standalone mode decide, no query or stored flag can switch it
+ * off). True when this page IS the installed app and its <html> lost the class (the boot script did not run, a restored document, a script that reset the class
  * list): the page then has the ordinary site's layout around the app's screens until a refresh. AppUiGuard puts the class back.
  */
-export function appUiClassMissing(hasClass: boolean, userAgent: string, hasBridge: boolean): boolean {
-  return !hasClass && (hasBridge || /\bFomoApp\//.test(userAgent || ""));
+export function appUiClassMissing(hasClass: boolean, userAgent: string, hasBridge: boolean, iosStandalone = false): boolean {
+  return !hasClass && (hasBridge || /\bFomoApp\//.test(userAgent || "") || iosStandalone);
 }
 
 /** True when the app UI is on: the class the boot script set, or the same decision made right now. Always false on the server. */
@@ -479,5 +481,5 @@ function currentAppUi() {
   } catch {
     /* private mode */
   }
-  return resolveAppUi({ userAgent: navigator.userAgent, hasBridge: nativeBridge() !== null, search: window.location.search, stored, storedDesktop });
+  return resolveAppUi({ userAgent: navigator.userAgent, hasBridge: nativeBridge() !== null, iosStandalone: (navigator as Navigator & { standalone?: boolean }).standalone === true, search: window.location.search, stored, storedDesktop });
 }

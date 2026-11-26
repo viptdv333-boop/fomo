@@ -73,6 +73,7 @@ html.app-ui.dark body {
 }
 html.app-ui,
 html.app-ui body { overscroll-behavior: none; }
+@supports (height: 100dvh) { html.app-ui .h-screen { height: 100dvh; } }
 
 /* content scrolls under the bar: padding keeps the last row clear of it */
 html.app-ui main { padding-bottom: calc(var(--app-bottom-inset) + 12px); }
@@ -210,12 +211,12 @@ html.app-ui .app-header {
   position: relative;
   z-index: 46;
   flex: none;
-  height: 52px;
+  height: calc(52px + env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px 0 16px;
+  padding: env(safe-area-inset-top, 0px) 6px 0 16px;
   background: var(--app-nav);
   border-bottom: 1px solid var(--app-line);
 }
@@ -515,6 +516,10 @@ html.app-ui .app-term-ideas-t { flex: 1; font-size: 15px; min-width: 0; }
 html.app-ui .app-term-ideas-n { color: var(--app-tx2); font-size: 15px; }
 html.app-ui .app-term-ideas-s { display: block; margin-top: 2px; font-size: 12px; color: var(--app-tx2); }
 html.app-ui .app-term-ideas.app-term-comm { margin: 4px 12px 20px; }
+html.app-ui .app-fomospot-banner { display: flex; align-items: center; gap: 12px; box-sizing: border-box; min-height: 58px; color: #fff; background: linear-gradient(112deg, #137e4b 0%, #209f63 54%, #7355ad 100%); box-shadow: 0 5px 16px rgba(27,125,83,.22); text-decoration: none; }
+html.app-ui .app-fomospot-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; letter-spacing: -.03em; }
+html.app-ui .app-fomospot-arrow { display: flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); }
+html.app-ui .app-fomospot-name .fomo-wordmark { padding: 0; color: #fff; font-size: 18px; }
 /* terminal site: «Список наблюдения | Календарь» segmented control and the calendar under it */
 html.app-ui .app-term-seg { margin: 16px 12px 8px; display: flex; padding: 3px; border-radius: 10px; background: var(--app-card2); }
 html.app-ui .app-term-seg button { flex: 1; height: 32px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--app-tx2); background: transparent; }
@@ -549,7 +554,8 @@ html.app-ui .app-term .app-wl-swipe-actions [data-tone="add"] { background: #267
 html.app-ui .app-term .app-wl-swipe-actions [data-tone="remove"] { background: #cd3b44; }
 html.app-ui .app-wl-swipe-front { position: relative; background: var(--m-bg, var(--app-bg)); transition: transform .18s ease-out; }
 html.app-ui .app-wl-swipe[data-open] .app-wl-swipe-front { transform: translateX(calc(-1 * var(--wl-action-width))); }
-html.app-ui .app-wl-pin { position: absolute; left: 2px; top: 5px; color: var(--app-green-tx); pointer-events: none; }
+html.app-ui .app-wl-pin { display: none; }
+html.app-ui .app-wl-ticker-pin { display: inline-flex; vertical-align: -3px; margin-left: 5px; color: #eab308; pointer-events: none; }
 html.app-ui .app-term .app-wl-actions-item:disabled { opacity: .45; }
 @media (prefers-reduced-motion: reduce) { html.app-ui .app-wl-swipe-front { transition: none; } }
 @keyframes appWlSheetUp { from { transform: translateY(100%); } to { transform: none; } }
