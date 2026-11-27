@@ -8,7 +8,7 @@ import { prisma } from "./prisma";
 export const MAX_BYTES = 512 * 1024;
 export const MAX_PER_KIND = 300;
 /** Chart state that follows the account: small per-kind byte caps. */
-export const KIND_MAX_BYTES: Record<string, number> = { chart_prefs: 16 * 1024, chart_indicators: 64 * 1024, chart_drawings: 400 * 1024, terminal_last: 2 * 1024 };
+export const KIND_MAX_BYTES: Record<string, number> = { chart_prefs: 16 * 1024, chart_indicators: 64 * 1024, chart_drawings: 400 * 1024, drawing_favorites: 8 * 1024, terminal_last: 2 * 1024 };
 /** Drawings keep the newest 200 symbols: the oldest is evicted instead of refusing the write, so the limit never shows up as an error. */
 export const EVICT_KINDS: Record<string, number> = { chart_drawings: 200 };
 

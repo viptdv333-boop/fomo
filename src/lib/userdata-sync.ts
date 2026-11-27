@@ -16,6 +16,7 @@ export const MIRRORED_KINDS: readonly string[] = [
   "chart_drawings",
   "chart_template",
   "drawing_template",
+  "drawing_favorites", // favourite drawing tools and their floating-bar preferences
   "layout",
   "indicator_script",
   "indicator_favorites",

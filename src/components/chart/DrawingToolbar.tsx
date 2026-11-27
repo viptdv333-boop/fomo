@@ -8,6 +8,7 @@ import { DRAW_TEXT_DEFAULTS, setDrawTexts } from "@/lib/chart/drawings/tools-kit
 import { useT } from "@/lib/i18n/client";
 import { DrawIcon } from "./icons";
 import { PopupPortal } from "./ModalPortal";
+import { openChannel, type Channel } from "@/lib/chart/account-sync";
 
 export { DrawIcon };
 
@@ -39,6 +40,35 @@ type WithExtras = DrawingsControllerLike & {
 const LAST_KEY = "fomo-draw-last-v1";
 const FAV_KEY = "fomo-draw-fav-v1";
 const FAV_EVENT = "fomo-draw-fav-changed";
+let favChannel: Channel | null = null;
+function getFavChannel(): Channel {
+  if (!favChannel) {
+    favChannel = openChannel({
+      kind: "drawing_favorites",
+      key: "default",
+      lsKey: FAV_KEY,
+      current: () => {
+        try { return localStorage.getItem(FAV_KEY) ?? ""; } catch { return ""; }
+      },
+      apply: (json) => {
+        try {
+          if (json) localStorage.setItem(FAV_KEY, json);
+          else localStorage.removeItem(FAV_KEY);
+          window.dispatchEvent(new Event(FAV_EVENT));
+        } catch {}
+      },
+      isEmpty: (json) => {
+        if (!json) return true;
+        try {
+          const value = JSON.parse(json) as { ids?: unknown };
+          return !Array.isArray(value?.ids) || value.ids.length === 0;
+        } catch { return true; }
+      },
+      emptyJson: "",
+    });
+  }
+  return favChannel;
+}
 /** Only ONE toolbar of the page draws the favourites bar (a multi-chart layout has a toolbar in every pane). */
 let favOwner: HTMLElement | null = null;
 
@@ -122,7 +152,9 @@ export default function DrawingToolbar({ controller, className }: { controller: 
   favsRef.current = favs;
   const saveFav = (ids: string[], on: boolean, pos: { x: number; y: number } | null) => {
     try {
-      localStorage.setItem(FAV_KEY, JSON.stringify({ ids, on, pos }));
+      const json = JSON.stringify({ ids, on, pos });
+      localStorage.setItem(FAV_KEY, json);
+      getFavChannel().changed(json);
       // the other panes of a multi-chart layout have a toolbar each: they re-read it
       window.dispatchEvent(new Event(FAV_EVENT));
     } catch {
@@ -210,6 +242,7 @@ export default function DrawingToolbar({ controller, className }: { controller: 
 
   // stored preferences are read after mount so server and client markup match (and again when another pane's toolbar changes them)
   useEffect(() => {
+    void getFavChannel().start();
     const readFav = () => {
       try {
         const raw = localStorage.getItem(FAV_KEY);
