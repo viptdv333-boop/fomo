@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import { ideaUploadUrls, removeIdeaUploads, removeDeletedIdeaUploads } from "@/lib/upload-cleanup";
 import { deleteIdeaRecords } from "@/lib/idea-delete";
 import { familyOfTariff } from "@/lib/tariff-plans";
+import { isAdmin } from "@/lib/roles";
 
 const ideaPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -204,10 +205,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Idea not found" }, { status: 404 });
   }
 
-  const isAdmin = (session.user as any).role === "ADMIN";
+  const admin = isAdmin(session.user);
   const isAuthor = idea.authorId === session.user.id;
 
-  if (!isAdmin && !isAuthor) {
+  if (!admin && !isAuthor) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -316,10 +317,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Idea not found" }, { status: 404 });
   }
 
-  const isAdmin = (session.user as any).role === "ADMIN";
+  const admin = isAdmin(session.user);
   const isAuthor = idea.authorId === session.user.id;
 
-  if (!isAdmin && !isAuthor) {
+  if (!admin && !isAuthor) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

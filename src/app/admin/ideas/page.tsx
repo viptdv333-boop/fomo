@@ -26,6 +26,7 @@ export default function AdminIdeasPage() {
   const [filter, setFilter] = useState<"all" | "published" | "hidden" | "archived">("all");
   const [search, setSearch] = useState("");
   const [total, setTotal] = useState(0);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadIdeas() {
     setLoading(true);
@@ -52,8 +53,20 @@ export default function AdminIdeasPage() {
 
   async function deleteIdea(id: string) {
     if (!confirm("Удалить идею безвозвратно?")) return;
-    await fetch(`/api/ideas/${id}`, { method: "DELETE" });
-    loadIdeas();
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || `Не удалось удалить идею (ошибка ${res.status}).`);
+        return;
+      }
+      await loadIdeas();
+    } catch {
+      alert("Не удалось связаться с сервером. Идея не удалена.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const inputCls = "px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:bg-gray-800 dark:text-gray-100";
@@ -127,7 +140,7 @@ export default function AdminIdeasPage() {
                     <button onClick={() => moderateIdea(idea.id, "archived")}
                       className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400">В архив</button>
                   )}
-                  <button onClick={() => deleteIdea(idea.id)}
+                  <button onClick={() => deleteIdea(idea.id)} disabled={deletingId === idea.id}
                     className="text-xs text-red-500 hover:text-red-700">Удалить</button>
                 </div>
               </div>
