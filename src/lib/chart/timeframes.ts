@@ -157,6 +157,8 @@ const NATIVE: Record<string, string[]> = {
   databento: [...COMMON_NATIVE, "30"],
   // Binance klines: 1m 3m 5m 15m 30m 1h 2h 4h 6h 12h 1d 1w 1M; Y is built from M on the server
   binance: ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M", "Y"],
+  // Yahoo chart: 1m 5m 15m 30m 60m 1d 1wk 1mo; 240 is resampled from 60m and Y from M on the server (data/yahoo.ts)
+  yahoo: ["1", "5", "15", "30", "60", "240", "D", "W", "M", "Y"],
 };
 
 /** What /api/klines accepts for a source: the native set plus the 30-minute bars the FMP and FX layers also serve themselves. */

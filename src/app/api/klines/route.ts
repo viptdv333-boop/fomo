@@ -17,6 +17,7 @@ import { getUserKey } from "@/lib/data/user-key";
 import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 import { dbCandles } from "@/lib/data/databento";
+import { yahooCandles } from "@/lib/data/yahoo";
 import { UpstreamCache, issCacheTtl, bybitCacheTtl, LIVE_TTL_MS } from "@/lib/kline-cache";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
@@ -606,6 +607,14 @@ async function handle(request: NextRequest) {
       toMs !== undefined
         ? await pageMemo(`binance|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs), (c) => c.length > 0)
         : await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
+  } else if (source === "yahoo") {
+    // Yahoo chart (US stocks/futures, LSE, HKEX, Xetra, Tokyo; ~15 min delayed, no key). 4h is resampled from 60m,
+    // anchored to the first bar of each exchange day like the MOEX 4h; the upstream cache lives in data/yahoo.ts.
+    const yi = srcInterval === "240" ? "60" : srcInterval;
+    const yl = srcInterval === "240" ? Math.min(srcLimit * 4 + 4, 5000) : srcLimit;
+    const y = await yahooCandles(ticker, yi, yl, toMs);
+    candles = srcInterval === "240" ? aggregateSessionCandles(y.candles, 4 * 3_600_000).slice(-Math.max(srcLimit, 1)) : y.candles;
+    resolvedTicker = y.symbol || ticker;
   } else if (source === "databento") {
     // the user's own Databento key; without one the chart is not served (the client shows the connect window instead)
     const uk = await getUserKey("databento");
