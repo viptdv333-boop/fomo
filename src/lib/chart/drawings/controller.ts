@@ -1014,16 +1014,16 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       }
     }
     const hit = this.topHit(env, p.x, p.y, p.pointerType);
-    // an end point of a drawing that is not selected yet: one press selects it and drags the point (not the whole drawing)
+    // A press on a drawing that is not selected yet only selects it (TradingView rule, mouse and touch alike):
+    // the gesture stays with the chart, so a pan that lands on a drawing pans. Moving starts from the next
+    // press on the now-selected drawing.
     if (hit && !hit.locked && !additive && !this.sel.includes(hit.id)) {
       const h = this.handleAt(env, hit, p.x, p.y, p.pointerType);
       if (h) {
         this.sel = [hit.id];
         this.hoverHandle = h.index;
         this.changed();
-        this.startDrag("handle", hit, h, p);
-        this.captured = true;
-        return true;
+        return false;
       }
     }
     if (!hit) {
@@ -1073,6 +1073,11 @@ export class DrawingsController implements DrawingsControllerLike, OverlayLayer 
       this.sel = [hit.id];
       this.hoverHandle = -1;
       this.changed();
+      // First press selects only; the chart keeps the gesture (pan). Moving a drawing takes a second
+      // press on the selected drawing — the TradingView rule, for mouse and touch alike.
+      this.drag = null;
+      this.captured = false;
+      return false;
     } else if (this.sel.length > 1) {
       // pressing one of several selected: a click narrows the selection to it, a drag moves them all
       this.collapseTo = hit.id;
