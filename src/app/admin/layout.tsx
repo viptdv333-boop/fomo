@@ -2,6 +2,7 @@ import SessionProvider from "@/components/layout/SessionProvider";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { isTerminalSite } from "@/lib/site-mode";
+import AdminPullToRefresh from "@/components/admin/AdminPullToRefresh";
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard" },
@@ -59,7 +60,9 @@ export default function AdminLayout({
             </Link>
           </div>
         </aside>
-        <main className="min-w-0 w-full flex-1 bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 md:p-8">{children}</main>
+        <AdminPullToRefresh>
+          <main className="min-w-0 w-full flex-1 bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 md:p-8">{children}</main>
+        </AdminPullToRefresh>
       </div>
     </SessionProvider>
   );
