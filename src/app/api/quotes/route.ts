@@ -49,6 +49,6 @@ async function handle(request: NextRequest) {
   const realtime = tinkoffToken().length > 0;
   const quotes = await getBatchQuotes(items, { realtime });
   return NextResponse.json(quotes, {
-    headers: { "Cache-Control": "no-cache, no-store, must-revalidate", Vary: "Cookie" },
+    headers: { "Cache-Control": "no-cache, must-revalidate", Vary: "Cookie" },
   });
 }

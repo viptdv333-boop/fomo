@@ -15,7 +15,7 @@ export default function AppDialogSheet({ conv, marks, onClose, flash, onDelete }
   const [isContact, setIsContact] = useState<boolean | null>(null);
   const load = useCallback(async () => {
     try {
-      const r = await fetch("/api/contacts", { cache: "no-store" });
+      const r = await fetch("/api/contacts");
       if (r.ok && other) setIsContact(((await r.json()) as { user: { id: string } }[]).some((c) => c.user.id === other.id));
     } catch {
       /* the row stays hidden */

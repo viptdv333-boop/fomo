@@ -62,7 +62,7 @@ async function handle(req: NextRequest) {
   const privileged = source === "moex" && algopackEnabled() && (await getAlgopackAccess()).allowed;
   // real-time T-Invest trades only for a session user (or GUEST_REALTIME=1); a guest gets the delayed ISS trades
   const realtime = source === "moex" ? (await getViewer()).realtime : true;
-  const answerHeaders = privileged || source === "moex" ? { "Cache-Control": "private, no-store", Vary: "Cookie" } : noStore.headers;
+  const answerHeaders: Record<string, string> = privileged || source === "moex" ? { "Cache-Control": "private, no-cache", Vary: "Cookie" } : { "Cache-Control": "no-cache" };
   const unsupported = NextResponse.json({ supported: false, bars: [], tick: 0, nativeTick: 0, cov: [], pending: false, live: false }, noStore);
 
   try {

@@ -119,7 +119,7 @@ export default function AppAuthorDetail({ idParam }: { idParam: string }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/api/users/${encodeURIComponent(idParam)}`, { cache: "no-store" });
+      const r = await fetch(`/api/users/${encodeURIComponent(idParam)}`);
       if (r.status === 404) return setState("missing");
       if (!r.ok) return setState("failed");
       const p = (await r.json()) as Profile;
@@ -140,7 +140,7 @@ export default function AppAuthorDetail({ idParam }: { idParam: string }) {
   useEffect(() => {
     if (!profile) return;
     let alive = true;
-    fetch(`/api/ideas?authorId=${profile.id}&limit=50`, { cache: "no-store" })
+    fetch(`/api/ideas?authorId=${profile.id}&limit=50`)
       .then((r) => r.json())
       .then((j) => {
         const arr = j.data || j.ideas || (Array.isArray(j) ? j : []);

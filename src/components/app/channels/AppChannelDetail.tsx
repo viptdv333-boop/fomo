@@ -167,7 +167,7 @@ export default function AppChannelDetail({ idParam }: { idParam: string }) {
   const loadPosts = useCallback(async () => {
     if (!channel) return;
     try {
-      const r = await fetch(`/api/ideas?channelId=${channel.id}&limit=50`, { cache: "no-store" });
+      const r = await fetch(`/api/ideas?channelId=${channel.id}&limit=50`);
       const j = await r.json();
       const arr = j.data || j.ideas || (Array.isArray(j) ? j : []);
       setPosts(Array.isArray(arr) ? arr : []);

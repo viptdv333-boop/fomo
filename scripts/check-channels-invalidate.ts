@@ -66,7 +66,7 @@ async function main() {
   const instant = R.storedAction(20_000, R.apiPolicy("/api/channels").fresh, false);
   const asked = R.wantsFresh("no-store", "", "") && instant === "stale" ? "network-first" : instant;
   eq("a copy 20 s old: instant for a plain read, network first for cache:no-store", [instant, asked], ["stale", "network-first"]);
-  eq("a copy of another release or older than the instant window: network first anyway", [R.storedAction(3 * 60_000, 2 * 60_000, false), R.storedAction(1000, 2 * 60_000, true)], ["network-first", "network-first"]);
+  eq("an older copy still answers instantly (pure SWR); another release forces network first", [R.storedAction(3 * 60_000, 2 * 60_000, false), R.storedAction(1000, 2 * 60_000, true)], ["stale", "network-first"]);
 
   // --- the event wiring
   const seen: string[] = [];

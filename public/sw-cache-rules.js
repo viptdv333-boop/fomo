@@ -132,8 +132,8 @@
   // /api: allowlist of read endpoints that are safe to show stale
   // ---------------------------------------------------------------------------------------------------------------------------
 
-  /** Never cached, whatever the allowlist says (auth, money, uploads, push, admin, bots, live market data ...). */
-  var API_DENY = /^\/api\/(auth|csrf|session|payments?|yukassa|upload|push|admin|bot|version|socketio|klines|quotes?|orderbook|orderflow|market-search|futures|fmp-stats|crypto-stats|algopack|contracts|sandbox|captcha|terminal|telegram|notification-settings|payment-methods|reports|me)(\/|$)/;
+  /** Never cached, whatever the allowlist says (auth, money, uploads, push, admin, bots ...). klines stays out: the chart keeps its own IndexedDB candle store. */
+  var API_DENY = /^\/api\/(auth|csrf|session|payments?|yukassa|upload|push|admin|bot|version|socketio|klines|algopack|sandbox|captcha|terminal|telegram|notification-settings|payment-methods|reports|me)(\/|$)/;
   var API_DENY_DEEP = /^\/api\/(users\/(online|dm-enabled)$|users\/[^/]+\/(finances|payment-links|tariffs\/[^/]+\/subscribers)|instruments\/[^/]+\/(moex|contracts)|chat\/(badge|unread|previews)|notifications\/unread-by-)/;
 
   // [pattern, instant window]. `fresh` 0 = always network first (live-ish), a stored copy only answers when the network is gone or slow.
@@ -177,6 +177,16 @@
     [/^\/api\/site-settings$/, 10 * MIN],
     [/^\/api\/stats\/public$/, 10 * MIN],
     [/^\/api\/news$/, 5 * MIN],
+    // market reads — shown from the stored copy instantly, refreshed in the background, open screens notified (live).
+    // The chart's candles are NOT here: klines stays denied, the chart keeps its own IndexedDB store (candle-cache.ts).
+    [/^\/api\/quotes?$/, 5 * 1000],
+    [/^\/api\/orderbook$/, 5 * 1000],
+    [/^\/api\/orderflow$/, 10 * 1000],
+    [/^\/api\/market-search$/, 2 * MIN],
+    [/^\/api\/futures(\/|$)/, 10 * MIN],
+    [/^\/api\/contracts$/, 10 * MIN],
+    [/^\/api\/fmp-stats$/, 10 * MIN],
+    [/^\/api\/crypto-stats$/, 5 * MIN],
   ];
 
   /**
@@ -204,8 +214,11 @@
     /^\/api\/users\/by-fomo-id\/[^/]+$/,
     /^\/api\/users\/[^/]+\/followers$/,
   ];
+  /** market reads whose stored copy is shown instantly and compared with the network afterwards (the open screens update on a diff) */
+  var LIVE_MARKET_API = [/^\/api\/quotes?$/, /^\/api\/orderbook$/, /^\/api\/orderflow$/, /^\/api\/market-search$/, /^\/api\/futures(\/|$)/, /^\/api\/contracts$/, /^\/api\/fmp-stats$/, /^\/api\/crypto-stats$/];
   function isLiveChannelApi(pathname, search) {
     for (var i = 0; i < LIVE_CHANNEL_API.length; i++) if (LIVE_CHANNEL_API[i].test(pathname)) return true;
+    for (var k = 0; k < LIVE_MARKET_API.length; k++) if (LIVE_MARKET_API[k].test(pathname)) return true;
     // Lists and details must reflect deletions, including the board and My Ideas.
     return /^\/api\/ideas(\/[^/]+)?$/.test(pathname);
   }
@@ -268,12 +281,15 @@
   /**
    * What to do with a stored copy: "stale" = answer from it now and refresh in the background, "network-first" = ask the network
    * (timeout, then the copy), "network" = nothing usable stored.
-   * ageMs: age of the copy or null; fresh: instant window; buildMismatch: the copy was rendered by another release than the server runs.
+   * ageMs: age of the copy or null; fresh: kept for callers (the instant window no longer gates the serve); buildMismatch: the copy
+   * was rendered by another release than the server runs.
+   * Pure stale-while-revalidate: any usable copy (younger than MAX_AGE, same release) answers instantly and the network refreshes it
+   * in the background; live reads notify the open screens when the fresh answer differs. Only a release change forces network-first.
    */
   function storedAction(ageMs, fresh, buildMismatch) {
     if (ageMs === null || ageMs === undefined || ageMs < 0 || ageMs > MAX_AGE) return "network";
     if (buildMismatch) return "network-first";
-    return ageMs <= fresh ? "stale" : "network-first";
+    return "stale";
   }
 
   /** Is this answer worth storing? kind: "api" | "page" | "media" | "static". `cc` = Cache-Control header of the answer. */

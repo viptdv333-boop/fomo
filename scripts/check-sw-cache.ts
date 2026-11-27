@@ -61,7 +61,7 @@ const denied = [
   "/api/auth/session", "/api/auth/csrf", "/api/auth/signout", "/api/csrf", "/api/session",
   "/api/payments", "/api/payments/p1", "/api/yukassa/create", "/api/payment-methods", "/api/upload", "/api/upload/favicon", "/api/upload/stream", "/api/push/subscribe", "/api/push/beacon",
   "/api/admin/users", "/api/bot/ideas", "/api/version", "/api/socketio",
-  "/api/klines", "/api/quote", "/api/quotes", "/api/orderbook", "/api/orderflow", "/api/market-search", "/api/futures/spec", "/api/contracts", "/api/algopack/x", "/api/sandbox/orders", "/api/terminal/alerts", "/api/fmp-stats", "/api/crypto-stats",
+  "/api/klines", "/api/algopack/x", "/api/sandbox/orders", "/api/terminal/alerts",
   "/api/users/u1/finances", "/api/users/u1/payment-links", "/api/users/u1/tariffs/t1/subscribers", "/api/users/online", "/api/users/dm-enabled",
   "/api/instruments/btc/moex", "/api/instruments/btc/contracts",
   "/api/chat/unread", "/api/chat/badge", "/api/chat/previews", "/api/notifications/unread-by-idea", "/api/notifications/unread-by-type",
@@ -82,8 +82,8 @@ eq("identity change", [R.identityChange("", "u1"), R.identityChange("u1", "u1"),
 // --- what is done with a stored copy
 eq("no copy -> network", [R.storedAction(null, DAY, false), R.storedAction(undefined, DAY, false)], ["network", "network"]);
 eq("young copy -> stale-while-revalidate", R.storedAction(10 * MIN, DAY, false), "stale");
-eq("copy older than the instant window -> network first", R.storedAction(2 * DAY, DAY, false), "network-first");
-eq("zero window -> always network first", R.storedAction(1000, 0, false), "network-first");
+eq("copy older than the instant window -> still served instantly (pure SWR)", R.storedAction(2 * DAY, DAY, false), "stale");
+eq("zero window -> still served instantly (pure SWR)", R.storedAction(1000, 0, false), "stale");
 eq("another release rendered it -> network first even if young", R.storedAction(1000, DAY, true), "network-first");
 eq("older than a week is never served", [R.storedAction(8 * DAY, 30 * DAY, false), R.storedAction(7 * DAY + 1, DAY, false)], ["network", "network"]);
 eq("clock skew (negative age) is not trusted", R.storedAction(-5, DAY, false), "network");
@@ -130,7 +130,8 @@ eq("the calculator is a tab-root-like page (a day instant window)", R.pagePolicy
 eq("the dictionary script is cache-first static", [R.assetKind("/i18n/ru-5b615a9c26.js"), R.assetKind("/i18n/en.js")], ["static", "static"]);
 eq("channel pages of the warm-up: subscribed channels only, slug first, at most 3", channelPages([{ channel: { id: "c1", slug: "gold" } }, { channel: { id: "c2", slug: null } }, { channel: { id: "c3", slug: "x" } }, { channel: { id: "c4", slug: "y" } }, { channel: { id: "c5", slug: "z" } }], ["c1", "c2", "c3", "c4"], "en"), ["/en/channels/gold", "/en/channels/c2", "/en/channels/x"]);
 eq("no subscriptions -> no channel pages", channelPages(null, [], "ru"), []);
-eq("klines / quotes stay out of the service worker's api cache (the chart keeps its own stored candles)", [R.apiPolicy("/api/klines").cache, R.apiPolicy("/api/quote").cache, R.apiPolicy("/api/quotes").cache], [false, false, false]);
+eq("klines stays out of the SW api cache (the chart keeps its own stored candles); quotes are cached live", [R.apiPolicy("/api/klines").cache, R.apiPolicy("/api/quote").cache, R.apiPolicy("/api/quotes").cache], [false, true, true]);
+eq("market reads are cacheable and live (instant copy + background refresh + notify)", ["/api/quotes", "/api/orderbook", "/api/orderflow", "/api/market-search", "/api/futures/spec", "/api/contracts", "/api/fmp-stats", "/api/crypto-stats"].map((p) => R.apiPolicy(p).cache && R.apiPolicy(p).live), Array(8).fill(true));
 
 // --- channels family: "live" reads, what a request for the freshest answer means (scripts/check-channels-invalidate.ts goes deeper)
 eq("live reads: channels, authors, subscriptions, a user's plans, a profile, one channel's posts", [R.apiPolicy("/api/channels").live, R.apiPolicy("/api/authors").live, R.apiPolicy("/api/subscriptions").live, R.apiPolicy("/api/users/u1/tariffs").live, R.apiPolicy("/api/users/u1").live, R.apiPolicy("/api/ideas", "?channelId=c1&limit=50").live], Array(6).fill(true));

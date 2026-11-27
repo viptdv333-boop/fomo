@@ -195,7 +195,7 @@ export default function AppCalculator() {
     let live: FuturesSpec | null = null;
     let error = "calc.specError";
     try {
-      const res = await fetch(`/api/futures/spec?ticker=${encodeURIComponent(tk)}`, { cache: "no-store" });
+      const res = await fetch(`/api/futures/spec?ticker=${encodeURIComponent(tk)}`);
       const data = await res.json();
       if (res.ok && data && typeof data.minStep === "number") live = data as FuturesSpec;
       else if (typeof data?.error === "string") error = data.error;
