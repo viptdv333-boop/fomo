@@ -11,6 +11,8 @@
  * Classification (`buildFamilies`) is pure and unit-testable from a captured ISS response.
  */
 
+import { ngContinuousRank } from "./continuous-futures";
+import { ruCaFetch } from "./algopack-tls";
 const ISS = "https://iss.moex.com/iss";
 const FORTS_URL = `${ISS}/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,BOARDID,SHORTNAME,SECNAME,ASSETCODE,LASTTRADEDATE,SECTYPE,LOTVOLUME,DECIMALS,MINSTEP`;
 
@@ -174,7 +176,8 @@ export function findFamily(families: ContractFamily[], input: string, loose = fa
   if (!s) return null;
   for (const f of families) if (f.contracts.some((c) => c.secid === s)) return f;
   let asset: string | null = null;
-  if (s.endsWith(AUTO_SUFFIX)) asset = s.slice(0, -AUTO_SUFFIX.length);
+  if (ngContinuousRank(s)) asset = "NG";
+  else if (s.endsWith(AUTO_SUFFIX)) asset = s.slice(0, -AUTO_SUFFIX.length);
   else if (GENERIC_FUTURES.has(s)) asset = GENERIC_ALIAS[s] ?? s;
   if (asset) return families.find((f) => f.asset === asset) ?? families.find((f) => f.asset.toLowerCase() === asset!.toLowerCase()) ?? null;
   if (!loose) return null;
@@ -196,7 +199,8 @@ export function resolveContract(families: ContractFamily[], input: string): { co
   }
   const f = findFamily(families, s);
   if (!f) return null;
-  const front = f.contracts.find((c) => c.order === 1) ?? f.contracts[0];
+  const rank = ngContinuousRank(s);
+  const front = rank ? f.contracts.find((c) => c.order === rank) : f.contracts.find((c) => c.order === 1) ?? f.contracts[0];
   return front ? { contract: front, family: f, auto: true } : null;
 }
 
@@ -248,7 +252,7 @@ let failedAt = 0;
 
 async function fetchForts(): Promise<Cache | null> {
   try {
-    const res = await fetch(FORTS_URL, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    const res = await ruCaFetch(FORTS_URL, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return null;
     const data = await res.json();
     const rows = parseFortsRows(data?.securities?.columns ?? [], data?.securities?.data ?? []);
@@ -297,6 +301,12 @@ export async function getContract(secid: string): Promise<FortsContract | undefi
 /** A ticker (exact SECID / generic ticker / "<ASSET>.F") -> the SECID to request data for. */
 export async function resolveFuturesTicker(ticker: string): Promise<{ secid: string; auto: boolean; board: string } | null> {
   const families = await getFortsFamilies();
+  const rank = ngContinuousRank(ticker);
+  if (rank) {
+    const dated = families.find((f) => f.asset === "NG")?.contracts.filter((c) => c.expiry && c.expiry >= mskDate()).sort((a, b) => a.expiry!.localeCompare(b.expiry!));
+    const c = dated?.[rank - 1];
+    return c ? { secid: c.secid, auto: true, board: c.board } : null;
+  }
   // an expired front can sit in the cached build until the next refresh: skip dated contracts that are already past
   const r = resolveContract(families, ticker);
   if (!r) return null;
@@ -309,7 +319,7 @@ export async function resolveFuturesTicker(ticker: string): Promise<{ secid: str
 
 /** Front contract SECID of a generic ticker (null when the ticker is not a generic futures ticker or ISS is unreachable). */
 export async function frontSecid(ticker: string): Promise<string | null> {
-  if (!GENERIC_FUTURES.has(ticker) && !ticker.endsWith(AUTO_SUFFIX)) return null;
+  if (!ngContinuousRank(ticker) && !GENERIC_FUTURES.has(ticker) && !ticker.endsWith(AUTO_SUFFIX)) return null;
   const r = await resolveFuturesTicker(ticker);
   return r?.secid ?? null;
 }

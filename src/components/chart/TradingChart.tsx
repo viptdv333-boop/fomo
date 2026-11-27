@@ -38,6 +38,7 @@ import DrawingStyleBar from "@/components/chart/DrawingStyleBar";
 import DrawingSettingsDialog from "@/components/chart/DrawingSettingsDialog";
 import TopToolbar, { CHART_TYPES, type ToggleKey } from "@/components/chart/TopToolbar";
 import BottomBar, { type RangeId } from "@/components/chart/BottomBar";
+import { ngContinuousRank, continuousDay } from "@/lib/continuous-futures";
 import RightPanel, { type PanelTab } from "@/components/chart/RightPanel";
 import type { AppChartHandle, AppChartState, AppChip } from "@/components/chart/app-bridge";
 import { useAppTopToolbar } from "@/components/app/useAppUi";
@@ -166,10 +167,12 @@ interface FxInfo {
   proxy?: string;
 }
 
-async function fetchCandles(source: string, ticker: string, interval: string, limit: number, to?: number) {
+async function fetchCandles(source: string, ticker: string, interval: string, limit: number, to?: number, adjusted = false) {
   let url = `/api/klines?source=${source}&ticker=${encodeURIComponent(ticker)}&interval=${interval}&limit=${limit}`;
+  if (source === "moex" && ngContinuousRank(ticker)) url += `&backadjust=${adjusted ? 1 : 0}`;
   if (to) url += `&to=${to}`;
   const res = await fetch(url);
+  if (!res.ok && source === "moex" && ngContinuousRank(ticker)) throw new Error("Continuous history unavailable");
   if (!res.ok) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined, err: undefined as ProviderError | undefined };
   const j = await res.json();
   const rows: any[] = Array.isArray(j) ? j : j.candles ?? [];
@@ -179,6 +182,7 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
     rows
       .filter((d) => d && typeof d === "object")
       .map((d) => ({ t: d.timestamp, o: d.open, h: d.high, l: d.low, c: d.close, v: d.volume }) as Candle),
+    source === "moex" && !!ngContinuousRank(ticker) && adjusted,
   );
   // `delayed`: the newest bars are the 15-minute delayed ISS ones (no real-time tail was added); absent for scroll-back pages
   const fx: FxInfo | undefined = typeof j.provider === "string" ? { provider: j.provider, volumeKind: String(j.volumeKind ?? "none"), proxy: typeof j.proxy === "string" ? j.proxy : undefined } : undefined;
@@ -189,12 +193,12 @@ async function fetchCandles(source: string, ticker: string, interval: string, li
 }
 
 /** Bars of any interval: finer candles are fetched and merged on the client when the API has no such interval. */
-async function fetchBars(source: string, ticker: string, interval: string, limit: number, to?: number) {
+async function fetchBars(source: string, ticker: string, interval: string, limit: number, to?: number, adjusted = false) {
   const plan = intervalPlan(interval, source);
   // second bars have no history: nothing to ask the server for, they are built live from the trade stream (seconds-feed.ts)
   if (plan.live) return { candles: [] as Candle[], tzMin: 0, delayed: undefined as boolean | undefined, fx: undefined as FxInfo | undefined, err: undefined as ProviderError | undefined };
-  if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to);
-  const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to);
+  if (plan.ratio === 1) return fetchCandles(source, ticker, plan.base, limit, to, adjusted);
+  const r = await fetchCandles(source, ticker, plan.base, Math.min(limit * plan.ratio, 3000), to, adjusted);
   return { candles: aggregateCandles(r.candles, plan.ms), tzMin: r.tzMin, delayed: r.delayed, fx: r.fx, err: r.err, resolved: r.resolved };
 }
 
@@ -206,6 +210,7 @@ export async function warmLastSymbolBars(): Promise<void> {
   try {
     const last = JSON.parse(localStorage.getItem("fomo-terminal-last-v1") || "null") as { source?: unknown; dataTicker?: unknown } | null;
     if (!last || typeof last.source !== "string" || typeof last.dataTicker !== "string") return;
+    if (last.source === "moex" && ngContinuousRank(last.dataTicker)) return;
     const iv = loadPrefs().interval;
     if (isSecondsInterval(iv)) return;
     await readBars(candleKey(last.source, last.dataTicker, iv, 600));
@@ -350,6 +355,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const logMigrated = useRef(false);
 
   const instrument: TerminalInstrument = findInstrument(source, ticker) ?? adHocInstrument(source, ticker);
+  const continuous = source === "moex" && ngContinuousRank(ticker) !== null;
+  const adjusted = continuous && prefs.backAdjust;
+  const [chainDay, setChainDay] = useState(continuousDay);
+  useEffect(() => {
+    if (!continuous) return;
+    const check = () => setChainDay(continuousDay());
+    check();
+    const timer = setInterval(check, 1000);
+    return () => clearInterval(timer);
+  }, [continuous]);
 
   /* saved preferences */
   useEffect(() => {
@@ -786,13 +801,13 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     replayRef.current.exit(false);
     const iv = prefs.interval;
     // stored bars in memory paint at once: no spinner over them
-    if (!peekBars(candleKey(source, ticker, iv, 600))) setLoading(true);
+    if (continuous || !peekBars(candleKey(source, ticker, iv, 600))) setLoading(true);
     setEmpty(false);
     setEmptyWhy(null);
     const label = formatInterval(iv, t);
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    if (retryKeyRef.current !== `${source}|${ticker}|${iv}`) {
-      retryKeyRef.current = `${source}|${ticker}|${iv}`;
+    if (retryKeyRef.current !== `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`) {
+      retryKeyRef.current = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
       retryRef.current = 0;
     }
 
@@ -819,7 +834,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       if (!first) return -1;
       loadingHistory.current = true;
       try {
-        const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1);
+        const { candles } = await fetchBars(source, ticker, iv, 500, first.t - 1, adjusted);
         if (cancelled || gen !== genRef.current) return -1;
         if (quiet) {
           const older = candles.filter((c) => c.t < first.t);
@@ -863,6 +878,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       alertsLayer.setTimeOffset(offsetMs);
       setOffsetMs(offsetMs);
       engine.setOptions({
+        allowZeroPrices: adjusted,
         symbolLabel: name || ticker,
         scaleSymbol: ticker,
         intervalLabel: label,
@@ -875,17 +891,17 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       engine.setData(candles);
       drawings.setHistoryPending(false);
       // the live quote is merged into these bars from now on, stored ones too: a stored picture must not sit on an old last price
-      dataKeyRef.current = `${source}|${ticker}|${iv}`;
+      dataKeyRef.current = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
       liveMemoRef.current = null;
       refreshInd();
       setEmpty(candles.length === 0);
-      setEmptyWhy(candles.length === 0 && (source === "fmp" || source === "twelvedata" || source === "databento") ? err ?? null : null);
+      setEmptyWhy(candles.length === 0 && (continuous || source === "fmp" || source === "twelvedata" || source === "databento") ? err ?? null : null);
       setStoredAt(stored);
       setLoading(false);
       setTransformBox(engine.getTransformBox());
       setDataVersion((v) => v + 1);
       // the newest bar gets the live price right away (not at the next poll): a stored or a cached answer is minutes behind
-      livePokeRef.current?.(`${source}|${ticker}|${iv}`);
+      livePokeRef.current?.(`${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`);
       };
       // seconds: no history anywhere (no stored bars, no server): the series starts empty and the trade stream below fills it from now on
       if (isSecondsInterval(iv)) {
@@ -894,27 +910,27 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         return;
       }
       // a reload of the picture that is already on the chart (a retry, the day changed on an aggregated interval) does not paint stored bars over it
-      const reload = dataKeyRef.current === `${source}|${ticker}|${iv}`;
-      const hit = reload ? null : await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
+      const reload = dataKeyRef.current === `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
+      const hit = reload || continuous ? null : await readBars(candleKey(source, ticker, iv, 600)).catch(() => null);
       if (cancelled) return;
       // the chart gets its own copy of the series: the live quote appends / replaces bars in it, the stored answer must stay what the server said
       if (hit) apply({ ...hit.res, candles: hit.res.candles.slice() }, hit.savedAt);
       let fresh: BarsResult | null = null;
       try {
-        fresh = await fetchBars(source, ticker, iv, 600);
+        fresh = await fetchBars(source, ticker, iv, 600, undefined, adjusted);
       } catch {
         fresh = null; // no network: the stored bars stay (with the badge)
       }
       if (cancelled) return;
       if (fresh && (fresh.candles.length > 0 || !hit)) {
-        void writeBars(source, ticker, iv, 600, { ...fresh, candles: fresh.candles.slice() });
+        if (!continuous) void writeBars(source, ticker, iv, 600, { ...fresh, candles: fresh.candles.slice() });
         apply(fresh, null);
         retryRef.current = 0;
         // The first answer is only a window of the history (a synthesised MOEX interval, 15m / 5m, is built from 1-minute rows: ~3 days, ~220 bars),
         // and the rest used to come only while scrolling left: long indicators (ALMA / SMA 200) started a few bars before the end. Load ALL the
         // older history in the background, page after page, until the exchange has no more (or HISTORY_CAP bars); the view stays where it is.
         // only for the free public feeds: the keyed ones (Twelve Data, Databento, FMP, forex) count every page against a quota, they keep loading on scroll
-        if (source === "moex" || source === "bybit" || source === "binance") void (async () => {
+        if (!continuous && (source === "moex" || source === "bybit" || source === "binance")) void (async () => {
           let pages = 0;
           drawings.setHistoryPending(true);
           let flushGap = 3000;
@@ -973,7 +989,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
           }
         })();
       } else if (!hit && !reload) {
-        apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: undefined }, null);
+        apply({ candles: [], tzMin: 0, delayed: undefined, fx: undefined, err: continuous ? "network" : undefined }, null);
       }
       // the live answer did not come (a hiccup, a timeout, an empty answer) while old bars are on the chart: try again, the picture must not stay stale for good
       if ((!fresh || fresh.candles.length === 0) && (hit || reload) && !cancelled) {
@@ -985,7 +1001,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     })();
 
     engine.onNeedHistory = async () => {
-      await loadOlder(false);
+      try { await loadOlder(false); } catch { /* Keep loaded bars; a subsequent scroll retries the failed page. */ }
     };
 
     return () => {
@@ -993,7 +1009,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(retryTimer);
       engine.onNeedHistory = null;
     };
-  }, [prefsLoaded, source, ticker, name, prefs.interval, locale, t, refreshInd, alertsLayer, reloadTick]);
+  }, [prefsLoaded, source, ticker, name, prefs.interval, adjusted, continuous, chainDay, locale, t, refreshInd, alertsLayer, reloadTick]);
 
   const badQuoteRef = useRef(0);
   const tickAtRef = useRef(0);
@@ -1042,7 +1058,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (isSecondsInterval(iv)) return; // seconds are driven by the trade stream, not by the quote poll
     const intraday = isIntraday(iv);
     const pollMs = intraday ? 4000 : 12000;
-    const dataKey = `${source}|${ticker}|${iv}`;
+    const dataKey = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
     let stopped = false;
     let quoteBusy = false;
     let barsBusy = false;
@@ -1054,7 +1070,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     const pollQuote = async () => {
       const engine = engineRef.current;
       // the chart still shows the previous symbol / interval until its bars have been loaded: its bars must not get this one's price
-      if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
+      if (stopped || quoteBusy || !engine || document.hidden || dataKeyRef.current !== dataKey || (continuous && chainDay !== continuousDay())) return;
       // the trade stream moved the bar a moment ago: a polled price would only be older than it
       // (once per chart the poll still runs, to learn the previous close for the tab title's arrow)
       if (Date.now() - tickAtRef.current < 6000 && refCloseRef.current !== 0) return;
@@ -1115,7 +1131,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       if (stopped || barsBusy || !engine || document.hidden || dataKeyRef.current !== dataKey) return;
       barsBusy = true;
       try {
-        const { candles, delayed } = await fetchBars(source, ticker, iv, 3);
+        const { candles, delayed } = await fetchBars(source, ticker, iv, 3, undefined, adjusted);
         if (stopped || dataKeyRef.current !== dataKey) return;
         if (delayed !== undefined) setCandlesDelayed(delayedNow(source, delayed, engine.getCandles().at(-1)?.t, shiftRef.current.offsetMs, iv));
         const plan = intervalPlan(iv, source);
@@ -1149,7 +1165,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(first);
       livePokeRef.current = null;
     };
-  }, [prefsLoaded, source, ticker, prefs.interval, replayActive, refreshInd]);
+  }, [prefsLoaded, source, ticker, prefs.interval, adjusted, continuous, chainDay, replayActive, refreshInd]);
 
   /* the forming bar tick by tick: the exchange's trade stream moves the newest bar of every minute-or-longer timeframe as trades happen (Bybit and
      Binance: the public WebSocket of the browser; MOEX: the server's T-Invest trade feed, the same socket the second candles use). The 4-second quote
@@ -1159,7 +1175,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (!prefsLoaded || !engineReady || replayActive || isSecondsInterval(iv)) return;
     const moexLive = source === "moex" && moexSec === true && sessionStatus === "authenticated" && !!sessionUserId;
     if (source !== "bybit" && source !== "binance" && !moexLive) return;
-    const dataKey = `${source}|${ticker}|${iv}`;
+    const dataKey = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
     let stopped = false;
     // ticks of one frame are folded into one move of the bar: the last price, the extremes and the volume
     let acc: { price: number; hi: number; lo: number; vol: number } | null = null;
@@ -1235,7 +1251,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(frame);
       stop();
     };
-  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, adjusted, continuous, chainDay, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
 
   /* seconds (1s ... 30s) exist only for instruments with a trade stream; on any other symbol the chart goes back to one minute */
   useEffect(() => {
@@ -1252,7 +1268,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     setSecBars(false);
     if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || source !== "bybit") return;
     const periodMs = secondsIntervalMs(iv);
-    const dataKey = `${source}|${ticker}|${iv}`;
+    const dataKey = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
     let lastRefresh = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const refreshSoon = () => {
@@ -1294,7 +1310,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       clearTimeout(timer);
       setSecState(null);
     };
-  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd]);
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, adjusted, continuous, chainDay, replayActive, refreshInd]);
 
   /* live second candles of MOEX shares and futures: the last hour of 1-second bars comes from the server (T-Invest trades, folded there),
      then the socket keeps adding; the chart's N-second bars are merged from them here. No bar for a second without trades. */
@@ -1307,7 +1323,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     if (!prefsLoaded || !engineReady || replayActive || !isSecondsInterval(iv) || moexSec !== true) return;
     if (sessionStatus !== "authenticated" || !sessionUserId) return;
     const periodMs = secondsIntervalMs(iv);
-    const dataKey = `${source}|${ticker}|${iv}`;
+    const dataKey = `${source}|${ticker}|${iv}|${adjusted}|${continuous ? chainDay : ""}`;
     const agg = new SecondsAgg(periodMs, secondsBasis(source).offsetMs);
     let stopped = false;
     let lastRefresh = 0;
@@ -1389,7 +1405,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       setSecState(null);
       setSecMsg(null);
     };
-  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
+  }, [prefsLoaded, engineReady, source, ticker, prefs.interval, adjusted, continuous, chainDay, replayActive, refreshInd, moexSec, sessionStatus, sessionUserId]);
 
   /* order flow (footprint, volume profile, VWAP / CVD from trades): fetches the trades of what the chart shows */
   const flowClientRef = useRef<OrderFlowClient | null>(null);
@@ -1796,7 +1812,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         if (gen !== genRef.current) return;
         loadingHistory.current = true;
         try {
-          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1);
+          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1, adjusted);
           if (gen !== genRef.current) return;
           engine.prependCandles(older);
           refreshInd();
@@ -1843,7 +1859,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
         if (gen !== genRef.current) return;
         loadingHistory.current = true;
         try {
-          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1);
+          const { candles: older } = await fetchBars(source, ticker, iv, 500, first.t - 1, adjusted);
           if (gen !== genRef.current) return;
           engine.prependCandles(older);
           refreshInd();
@@ -2351,11 +2367,19 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               </div>
             )}
             {!loading && empty && (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy && emptyWhy !== "key" && emptyWhy !== "symbol" ? `fmp.err.${emptyWhy}` : (source === "twelvedata" || source === "databento") && emptyWhy ? `pv.err.${emptyWhy}` : "chart.noData")}</div>
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--tv3-muted)] pointer-events-none">{t(continuous && emptyWhy ? "chart.chainUnavailable" : source === "forex" ? "fx.noData" : source === "fmp" && emptyWhy && emptyWhy !== "key" && emptyWhy !== "symbol" ? `fmp.err.${emptyWhy}` : (source === "twelvedata" || source === "databento") && emptyWhy ? `pv.err.${emptyWhy}` : "chart.noData")}</div>
             )}
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} onAlert={(uid) => setIndAlertUi({ uid, editId: null })} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
             {isTransformedType(prefs.chartType) && compareLegend(false)}
+            {continuous && (
+              <button type="button" data-back-adjust aria-pressed={adjusted}
+                title={t("chart.backAdjust")}
+                onClick={() => update({ backAdjust: !prefs.backAdjust })}
+                className={`absolute bottom-0 right-24 z-30 h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
+                B-ADJ
+              </button>
+            )}
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
                 className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${

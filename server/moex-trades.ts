@@ -45,7 +45,7 @@ const STREAM_IDLE_MS = 60_000;
 const FLUSH_MS = 250;
 const SILENCE_MS = 200_000;
 const READY_TIMEOUT_MS = 40_000;
-const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
+const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 
 const token = () => process.env.TINKOFF_TOKEN || "";
 

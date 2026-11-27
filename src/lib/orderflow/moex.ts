@@ -103,7 +103,7 @@ async function resolve(ticker: string, ap = false): Promise<Resolved | null> {
   if (hit && Date.now() - hit.at < 30 * 60_000) return hit.r;
   let r: Resolved | null = null;
   // an exact contract (MXZ6, IMOEXF), a generic futures ticker (front contract) or any other id on its primary board (ISS)
-  const sec = /^[A-Za-z0-9_.-]{1,24}$/.test(ticker) ? await resolveMoex(ticker) : null;
+  const sec = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/.test(ticker) ? await resolveMoex(ticker) : null;
   if (sec && sec.engine === "futures") {
     r = { key: `fu:${sec.secid}`, url: `${issSecurityPath(sec)}/trades.json`, secid: sec.secid, cls: "SPBFUT" };
   } else if (sec && sec.engine === "stock" && sec.market === "shares") {

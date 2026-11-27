@@ -43,7 +43,7 @@ interface Props {
   initialQuery?: string;
 }
 
-const RAW_TICKER = /^[A-Za-z0-9_.-]{2,24}$/;
+const RAW_TICKER = /^(?:[A-Za-z0-9_.-]{2,24}|NG[12]!)$/;
 
 /** the same instrument in a list: the FMP aliases of spot-style tickers (WTIUSD -> CLUSD) count as one */
 function sameInstrument(a: { source: string; dataTicker: string }, b: { source: string; dataTicker: string }): boolean {

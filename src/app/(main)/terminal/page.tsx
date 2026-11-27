@@ -35,7 +35,7 @@ const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
 });
 
 const DEFAULT_INSTRUMENT: TerminalInstrument = TERMINAL_DATA[0].instruments[0];
-const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
+const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 
 const LAST_KEY = "fomo-terminal-last-v1";
 const WATCHLIST_KEY = "fomo-terminal-watchlist-v1"; // the terminal's own list (RightPanel keeps it in sync with the account)

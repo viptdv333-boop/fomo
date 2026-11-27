@@ -11,6 +11,7 @@ import { contractToInstrument, fetchContracts, getLastContract, setLastContract,
 export const ROLL_DAYS = 7;
 
 const KIND_COLOR: Record<string, string> = {
+  continuous: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
   perpetual: "bg-violet-500/15 text-violet-600 dark:text-violet-300",
   spot: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
   quarterly: "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]",
@@ -19,7 +20,7 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 export function ContractBadge({ c, current }: { c: Pick<ContractInfo, "kind" | "order" | "badge">; current?: boolean }) {
-  const cls = c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]";
+  const cls = c.kind === "continuous" || c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]";
   return <span className={`px-1.5 rounded text-[10px] leading-4 font-medium whitespace-nowrap ${cls} ${current ? "ring-1 ring-current" : ""}`}>{c.badge}</span>;
 }
 

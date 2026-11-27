@@ -25,7 +25,7 @@ async function handle(req: NextRequest) {
   if (overLimit(`orderbook:${ipOf(req)}`, 90)) return NextResponse.json({ ok: false, reason: "rate-limit" }, { status: 429, headers: { ...PRIVATE_HEADERS, "Retry-After": "10" } });
 
   const secid = (req.nextUrl.searchParams.get("secid") || req.nextUrl.searchParams.get("ticker") || "").trim();
-  if (!/^[A-Za-z0-9_.-]{1,24}$/.test(secid)) return NextResponse.json({ ok: false, reason: "bad-secid" }, { status: 400, headers: PRIVATE_HEADERS });
+  if (!/^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/.test(secid)) return NextResponse.json({ ok: false, reason: "bad-secid" }, { status: 400, headers: PRIVATE_HEADERS });
 
   const sec = await resolveMoex(secid);
   if (!sec) return NextResponse.json({ ok: false, reason: "unknown-instrument" }, { headers: PRIVATE_HEADERS });

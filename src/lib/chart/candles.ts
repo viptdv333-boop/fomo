@@ -8,11 +8,14 @@ import type { Candle } from "./types";
 type Num = number;
 
 const isNum = (x: unknown): x is Num => typeof x === "number" && Number.isFinite(x);
-/** A usable price: a real number other than 0 (`isFinite(null)` is true and `Math.max(0, null)` is 0, so null / "" / false must not pass). */
-const isPrice = (x: unknown): x is Num => isNum(x) && x !== 0;
-
 /** Already a drawable bar: finite time and prices, `l <= min(o, c)` and `h >= max(o, c)`, a sane volume. */
 export function isDrawable(c: Candle): boolean {
+  return drawable(c, false);
+}
+
+// Adjusted futures can legitimately cross zero; raw-feed validation retains its existing rules.
+function drawable(c: Candle, allowZero: boolean): boolean {
+  const isPrice = allowZero ? isNum : (x: unknown): x is Num => isNum(x) && x !== 0;
   return (
     isNum(c.t) &&
     isPrice(c.o) &&
@@ -34,7 +37,8 @@ export function isDrawable(c: Candle): boolean {
  * extreme of open and close, and the high / low are stretched over open and close (the exchange feed delivers a forming bar
  * field by field, so its close can sit a tick outside the high / low for a moment).
  */
-export function cleanCandle(raw: { t?: unknown; o?: unknown; h?: unknown; l?: unknown; c?: unknown; v?: unknown; k?: unknown }, prevClose?: number): Candle | null {
+export function cleanCandle(raw: { t?: unknown; o?: unknown; h?: unknown; l?: unknown; c?: unknown; v?: unknown; k?: unknown }, prevClose?: number, allowZero = false): Candle | null {
+  const isPrice = allowZero ? isNum : (x: unknown): x is Num => isNum(x) && x !== 0;
   if (!isNum(raw.t) || !isPrice(raw.c)) return null;
   const c = raw.c;
   const o = isPrice(raw.o) ? raw.o : isPrice(prevClose) ? prevClose : c;
@@ -46,10 +50,10 @@ export function cleanCandle(raw: { t?: unknown; o?: unknown; h?: unknown; l?: un
 }
 
 /** A whole series (ascending): the same array when every bar is already drawable, else a repaired copy without the hopeless bars. */
-export function cleanCandles(list: Candle[]): Candle[] {
+export function cleanCandles(list: Candle[], allowZero = false): Candle[] {
   let all = true;
   for (let i = 0; i < list.length; i++) {
-    if (!isDrawable(list[i])) {
+    if (!drawable(list[i], allowZero)) {
       all = false;
       break;
     }
@@ -58,7 +62,7 @@ export function cleanCandles(list: Candle[]): Candle[] {
   const out: Candle[] = [];
   let prev: number | undefined;
   for (const raw of list) {
-    const c = cleanCandle(raw, prev);
+    const c = cleanCandle(raw, prev, allowZero);
     if (!c) continue;
     out.push(c);
     prev = c.c;
@@ -76,26 +80,26 @@ export const MERGE_LOOKBACK = 12;
  * the bar with the same time when that is among the last MERGE_LOOKBACK bars (its final numbers arrive after the next bar has
  * already been opened from a quote). Anything else is ignored. Returns what happened.
  */
-export function mergeCandle(list: Candle[], raw: { t?: unknown; o?: unknown; h?: unknown; l?: unknown; c?: unknown; v?: unknown }): MergeResult {
+export function mergeCandle(list: Candle[], raw: { t?: unknown; o?: unknown; h?: unknown; l?: unknown; c?: unknown; v?: unknown }, allowZero = false): MergeResult {
   const n = list.length;
   if (n === 0) return "none";
   const last = list[n - 1];
   if (!isNum(raw.t)) return "none";
   if (raw.t === last.t) {
-    const c = cleanCandle(raw, n > 1 ? list[n - 2].c : undefined);
+    const c = cleanCandle(raw, n > 1 ? list[n - 2].c : undefined, allowZero);
     if (!c) return "none";
     list[n - 1] = c;
     return "last";
   }
   if (raw.t > last.t) {
-    const c = cleanCandle(raw, last.c);
+    const c = cleanCandle(raw, last.c, allowZero);
     if (!c) return "none";
     list.push(c);
     return "append";
   }
   for (let i = n - 2; i >= 0 && i >= n - 1 - MERGE_LOOKBACK; i--) {
     if (list[i].t === raw.t) {
-      const c = cleanCandle(raw, i > 0 ? list[i - 1].c : undefined);
+      const c = cleanCandle(raw, i > 0 ? list[i - 1].c : undefined, allowZero);
       if (!c) return "none";
       list[i] = c;
       return "older";

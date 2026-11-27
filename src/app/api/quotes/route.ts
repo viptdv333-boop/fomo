@@ -13,7 +13,7 @@ import { withMoexKeys } from "@/lib/data/moex-access";
  */
 
 const MAX_ITEMS = 80;
-const TICKER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
+const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 
 export async function GET(request: NextRequest) {
   // MOEX quotes are real time on the requester's own T-Invest token (data/moex-access.ts), delayed ISS otherwise

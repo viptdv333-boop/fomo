@@ -188,6 +188,8 @@ export interface EngineOptions {
   timeShiftMs: number;
   /** Fixed number of price decimals; inferred from the data when undefined. */
   pricePrecision?: number;
+  /** Additively adjusted futures may legitimately cross zero. */
+  allowZeroPrices?: boolean;
   theme: ChartTheme;
   symbolLabel: string;
   intervalLabel: string;

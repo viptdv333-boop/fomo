@@ -7,6 +7,8 @@
 
 import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
+import { ngChainItems } from "./ng-symbols";
+import { getNgCatalogue } from "./moex-continuous";
 import type { GroupTab, MarketGroup, MarketItem, MarketPage } from "./market-types";
 import { FX_PAIRS, parseFxSymbol, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
 import { getBinanceSpotList } from "./binance";
@@ -438,13 +440,22 @@ export function pageOf(list: MarketItem[], group: GroupTab, opts: PageOpts = {})
 
 /** A typed query on a chip: ranked rows (a page of them), tagged with their venue / country / category and filtered. */
 export async function searchMarketPage(q: string, group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
-  return pageOf(assetFirst(withProviders(await searchCandidates(q.trim(), group), q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
+  const ngQuery = /^(?:ng[12!]*|газ|природный(?: газ)?|natural(?: gas)?|gas)$/i.test(q.trim());
+  const ngExact = /^NG[FGHJKMNQUVXZ]\d{1,2}$/i.test(q.trim());
+  const futures = group === "all" || group === "future";
+  const chains = futures && ngQuery ? ngChainItems().filter((c) => !/^NG[12]!$/i.test(q.trim()) || c.ticker === q.trim().toUpperCase()) : [];
+  const dated = futures && (ngQuery || ngExact) ? await ngDatedItems().catch(() => []) : [];
+  return pageOf(assetFirst(withProviders([...chains, ...await searchCandidates(q.trim(), group), ...dated.filter((c) => !ngExact || c.ticker === q.trim().toUpperCase())], q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
+}
+
+async function ngDatedItems(): Promise<MarketItem[]> {
+  return (await getNgCatalogue()).slice().reverse().map((c) => ({ secid: c.secid, ticker: c.secid, name: `Газ · ${c.secid} · ${c.expiry}`, group: "future", source: "moex", exchange: "MOEX", country: "RU", fgroup: "gas", asset: "NG", kind: "monthly", expiry: c.expiry, engine: "futures", market: "forts", board: "RFUD" }));
 }
 
 /** Nothing typed: the chip's popular list (a page of it). */
 export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
   const filtered = hasFilters(opts.filters ?? NO_FILTERS);
-  const base = await popularCandidates(group, filtered);
+  const base = [...(group === "future" || group === "all" ? ngChainItems() : []), ...(await popularCandidates(group, filtered))];
   const yh = yahooPopularFor(group).map(tagItem);
   const mixed = yh.length ? [...base, ...yh] : base;
   // the short mix of «Все» stays as it is; a filter on «Все» looks through every list, the providers' included
@@ -455,6 +466,13 @@ export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts 
 export async function lookupMarket(id: string): Promise<MarketItem | null> {
   id = id.trim();
   if (!id) return null;
+  const chain = ngChainItems().find((c) => c.ticker === id.toUpperCase());
+  if (chain) return chain;
+  if (/^NG[FGHJKMNQUVXZ]\d{1,2}$/i.test(id)) {
+    const dated = await ngDatedItems().catch(() => []);
+    const c = dated.find((c) => c.ticker === id.toUpperCase());
+    if (c) return c;
+  }
   const us = usFutureBySymbol(id);
   if (us) return tagItem(usFutureItem(us));
   const prov = lookupProviderItem(id);

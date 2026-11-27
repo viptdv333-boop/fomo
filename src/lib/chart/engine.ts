@@ -490,7 +490,7 @@ export class ChartEngine {
 
   setData(candles: Candle[]) {
     // the canvas draws whatever it is given: a bar with a null / 0 open would be a solid body down to the bottom of the pane
-    this.candles = cleanCandles(candles);
+    this.candles = cleanCandles(candles, this.opts.allowZeroPrices);
     candles = this.candles;
     this.precision = this.opts.pricePrecision ?? inferPrecision(candles);
     this.rebuildDisplay();
@@ -511,7 +511,7 @@ export class ChartEngine {
 
   /** Older bars, ascending, all earlier than the current first bar. The view does not move. */
   prependCandles(older: Candle[]) {
-    older = cleanCandles(older);
+    older = cleanCandles(older, this.opts.allowZeroPrices);
     if (older.length === 0) {
       this.hasMoreHistory = false;
       return;
@@ -544,7 +544,7 @@ export class ChartEngine {
     if (n === 0) return;
     const nb = this.bars.length;
     const atLatest = this.r >= nb - 1 - 0.5 && this.r <= nb - 1 + this.plotW() / this.barSpacing;
-    const res = mergeCandle(this.candles, c);
+    const res = mergeCandle(this.candles, c, this.opts.allowZeroPrices);
     if (res === "none") return;
     // indicators and other caches look at the newest bar only: a changed older bar needs a new array identity to be noticed
     if (res === "older") this.candles = this.candles.slice();

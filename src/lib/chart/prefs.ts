@@ -15,6 +15,7 @@ export interface Prefs {
   showGrid: boolean;
   showWatermark: boolean;
   denseCandles: boolean;
+  backAdjust: boolean;
   logScale: boolean;
   panelOpen: boolean;
   panelTab: PanelTab;
@@ -27,6 +28,7 @@ export const DEFAULT_PREFS: Prefs = {
   showGrid: true,
   showWatermark: true,
   denseCandles: false,
+  backAdjust: false,
   logScale: false,
   panelOpen: true,
   panelTab: "watchlist",
@@ -80,6 +82,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     showGrid: bool(o.showGrid, D.showGrid),
     showWatermark: bool(o.showWatermark, D.showWatermark),
     denseCandles: bool(o.denseCandles, D.denseCandles),
+    backAdjust: bool(o.backAdjust, D.backAdjust),
     logScale: bool(o.logScale, D.logScale),
     panelOpen: bool(o.panelOpen, D.panelOpen),
     panelTab: has(PANEL_TAB_SET, o.panelTab) ? (o.panelTab as PanelTab) : D.panelTab,

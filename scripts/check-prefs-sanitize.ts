@@ -33,11 +33,15 @@ const show = (v: unknown) => (v === undefined ? "undefined" : Number.isNaN(v) ? 
     showVolume: false,
     showGrid: false,
     showWatermark: false,
+    denseCandles: false,
+    backAdjust: false,
     logScale: true,
     panelOpen: false,
     panelTab: "news",
   });
   eq("only the interval stored (an old build): the rest are defaults", parsePrefs(JSON.stringify({ interval: "1" })), { ...DEFAULT_PREFS, interval: "1" });
+  eq("B-ADJ preference survives reload", parsePrefs(JSON.stringify({ backAdjust: true })).backAdjust, true);
+  eq("non-boolean B-ADJ stays off", sanitizePrefs({ backAdjust: "true" }).backAdjust, false);
 
   // the interval field with every kind of junk (an object crashed the whole page)
   for (const v of [{ a: 1 }, [], [1], 123, 0, -1, NaN, null, true, "2h", "45 min", "", " ", "x", "999999", "0", "-5", "1.5", "1e3", "15S", "Dd"]) {

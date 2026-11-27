@@ -20,7 +20,7 @@ import type { GroupTab } from "@/lib/market-types";
 
 export const dynamic = "force-dynamic";
 
-const ID_RE = /^[A-Za-z0-9_.-]{1,24}$/;
+const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 const FILTER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
 export async function GET(req: NextRequest) {

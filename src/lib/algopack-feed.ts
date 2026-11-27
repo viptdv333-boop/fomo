@@ -4,6 +4,7 @@
  */
 
 import { apGet, PUBLIC_ISS } from "./algopack";
+import { ruCaFetch } from "./algopack-tls";
 import type { TailResult } from "./tinkoff-candles";
 
 // Where the ISS candle rows come from for this request. `ap` (privileged requester + ALGOPACK key): the authenticated gateway
@@ -27,7 +28,7 @@ export async function getIssJson(url: string, feed: Feed): Promise<any | null> {
     feed.apReason = r.reason;
   }
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await ruCaFetch(url, { cache: "no-store", signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     return await res.json();
   } catch {

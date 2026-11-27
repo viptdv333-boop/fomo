@@ -19,6 +19,8 @@ import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 import { dbCandles } from "@/lib/data/databento";
 import { yahooCandles } from "@/lib/data/yahoo";
 import { UpstreamCache, issCacheTtl, bybitCacheTtl, LIVE_TTL_MS } from "@/lib/kline-cache";
+import { continuousDay, ngContinuousRank } from "@/lib/continuous-futures";
+import { getNgCatalogue, getNgContinuous } from "@/lib/moex-continuous";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -258,11 +260,11 @@ interface KlineRow {
 // forming. JSON turns NaN into null as well, and the client draws a null open as 0: a solid body from the close down to the bottom
 // of the pane. Rows go out drawable: a missing open becomes the previous close, high / low cover open and close, a row without a
 // time or a close is dropped (rows are ascending).
-function cleanRows(rows: KlineRow[]): KlineRow[] {
+function cleanRows(rows: KlineRow[], allowZero = false): KlineRow[] {
   const out: KlineRow[] = [];
   let prev: number | undefined;
   for (const r of rows) {
-    const c = cleanCandle({ t: r.timestamp, o: r.open, h: r.high, l: r.low, c: r.close, v: r.volume }, prev);
+    const c = cleanCandle({ t: r.timestamp, o: r.open, h: r.high, l: r.low, c: r.close, v: r.volume }, prev, allowZero);
     if (!c) continue;
     out.push({ timestamp: c.t, open: c.o, high: c.h, low: c.l, close: c.c, volume: c.v });
     prev = c.c;
@@ -356,6 +358,12 @@ interface MoexResult {
 }
 
 async function fetchMoexCandles(ticker: string, interval: string, limit: number, toMs: number | undefined, feed: Feed, realtime: boolean): Promise<MoexResult> {
+  const datedNg = /^NG[FGHJKMNQUVXZ]\d{1,2}$/.test(ticker);
+  if (datedNg && toMs === undefined) {
+    const contract = (await getNgCatalogue()).find((c) => c.secid === ticker);
+    // Opening an expired contract starts at its own last session, not an empty window near today.
+    if (contract && contract.expiry < continuousDay()) toMs = new Date(contract.expiry + "T23:59:59.999").getTime();
+  }
   const synth = MOEX_SYNTHESIZE[interval];
   const fetchInterval = synth ? synth.native : interval;
   const moexInterval = MOEX_INTERVALS[fetchInterval] || 24;
@@ -437,7 +445,7 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   }
 
   // 2. If exact ticker failed, it might be a futures base ticker (BR, GOLD, Si, NG, etc.)
-  const activeContract = await findActiveContract(ticker);
+  const activeContract = datedNg ? null : await findActiveContract(ticker);
   if (activeContract) {
     try {
       const url = `https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/${activeContract}/candles.json`;
@@ -584,14 +592,24 @@ async function handle(request: NextRequest) {
   const srcLimit = yearly ? Math.min(Math.max(limit, 1) * 12 + 12, 1500) : limit;
 
   if (source === "moex") {
-    const result =
-      toMs !== undefined && !privileged
-        ? await pageMemo(`moex|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime), (r) => r.candles.length > 0)
-        : await fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime);
-    candles = result.candles;
-    resolvedTicker = result.resolvedTicker;
-    sec = result.sec;
-    tail = result.tail;
+    if (ngContinuousRank(ticker)) {
+      try {
+        candles = await getNgContinuous({ ticker, interval: srcInterval, limit: srcLimit, to: toMs, adjusted: searchParams.get("backadjust") === "1" }, feed);
+        tail = { rows: candles, tail: feed.apHits > 0 && feed.apMiss === 0 ? "algopack" : "iss", reason: "continuous-expiry" };
+      } catch (e) {
+        console.error("[NG continuous]", e instanceof Error ? e.message : "unavailable");
+        return NextResponse.json({ error: "network", candles: [], detail: "Continuous futures data temporarily unavailable" }, { status: 502, headers: { "Cache-Control": "no-store" } });
+      }
+    } else {
+      const result =
+        toMs !== undefined && !privileged
+          ? await pageMemo(`moex|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime), (r) => r.candles.length > 0)
+          : await fetchMoexCandles(ticker, srcInterval, srcLimit, toMs, feed, realtime);
+      candles = result.candles;
+      resolvedTicker = result.resolvedTicker;
+      sec = result.sec;
+      tail = result.tail;
+    }
   } else if (source === "fmp") {
     // FMP (US futures / stocks) through its own layer: native + aggregated intervals, history paging, cache, and an explicit
     // `error` ("limit" | "plan" | "network") instead of a silent empty answer
@@ -635,7 +653,7 @@ async function handle(request: NextRequest) {
     candles = fx.candles;
   }
 
-  candles = cleanRows(candles);
+  candles = cleanRows(candles, source === "moex" && !!ngContinuousRank(ticker) && searchParams.get("backadjust") === "1");
   if (yearly) {
     // MOEX monthly bars are Moscow wall clocks parsed in the server's zone (its offset is the wall clock shift); the others are real UTC
     const off = source === "moex" ? -new Date().getTimezoneOffset() * 60_000 : 0;

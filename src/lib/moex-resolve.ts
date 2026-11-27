@@ -9,7 +9,9 @@
  * No Next / DB imports (used by the alert scheduler too).
  */
 
-import { resolveFuturesTicker } from "./moex-contracts";
+import { resolveFuturesTicker, mskDate } from "./moex-contracts";
+import { ngContinuousRank } from "./continuous-futures";
+import { ruCaFetch } from "./algopack-tls";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -54,7 +56,7 @@ export function groupOfMarket(engine: string, market: string, board: string): Ma
 
 async function issJson(url: string): Promise<any | null> {
   try {
-    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+    const res = await ruCaFetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -94,7 +96,7 @@ async function lookup(ticker: string): Promise<MoexSecurity | null> {
 /** Resolve any MOEX id. Cached (6 h, 10 min for a generic futures ticker, 5 min for a miss). Never throws. */
 export async function resolveMoex(ticker: string): Promise<MoexSecurity | null> {
   const hit = S.cache.get(ticker);
-  if (hit && Date.now() - hit.at < (hit.r === null ? MISS_TTL : hit.r.auto ? FRONT_TTL : HIT_TTL)) return hit.r;
+  if (hit && (!ngContinuousRank(ticker) || mskDate(hit.at) === mskDate()) && Date.now() - hit.at < (hit.r === null ? MISS_TTL : hit.r.auto ? FRONT_TTL : HIT_TTL)) return hit.r;
   let p = S.inflight.get(ticker);
   if (!p) {
     p = lookup(ticker)
@@ -105,7 +107,7 @@ export async function resolveMoex(ticker: string): Promise<MoexSecurity | null> 
           if (S.cache.size > 3000) S.cache.clear();
           S.cache.set(ticker, { at: Date.now(), r });
         }
-        return r ?? hit?.r ?? null;
+        return r ?? (ngContinuousRank(ticker) ? null : hit?.r) ?? null;
       })
       .finally(() => S.inflight.delete(ticker));
     S.inflight.set(ticker, p);

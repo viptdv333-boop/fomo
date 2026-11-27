@@ -3,6 +3,8 @@ import { contractBadge, contractLabel, findFamily, getFortsFamilies, refreshDays
 import { getBybitContracts } from "@/lib/bybit-contracts";
 import { ipOf, overLimit } from "@/lib/mem-rate-limit";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
+import { ngContinuousRank } from "@/lib/continuous-futures";
+import { ngChainContracts } from "@/lib/ng-symbols";
 
 /**
  * Exact tradable contracts of one underlying.
@@ -14,7 +16,7 @@ import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
 
 export const dynamic = "force-dynamic";
 
-const ID_RE = /^[A-Za-z0-9_.-]{1,24}$/;
+const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 const LANGS = new Set(["ru", "en", "cn"]);
 const CACHE = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
 
@@ -32,6 +34,10 @@ export async function GET(req: NextRequest) {
     const info: Record<string, ContractInfo & { asset: string; name: string; auto: string }> = {};
     for (const id of secids.split(",").slice(0, 100)) {
       if (!ID_RE.test(id)) continue;
+      if (ngContinuousRank(id)) {
+        info[id] = { ...ngChainContracts(lang).find((c) => c.ticker === id)!, asset: "NG", name: "NG", auto: "NG" };
+        continue;
+      }
       for (const f of families) {
         const c = f.contracts.find((x) => x.secid === id);
         if (c) {
@@ -70,8 +76,8 @@ export async function GET(req: NextRequest) {
     asset: f.asset,
     name: f.name,
     auto: f.auto,
-    current: f.contracts.find((c) => c.secid === asset)?.secid ?? f.contracts.find((c) => c.order === 1)?.secid,
-    contracts: f.contracts.map((c) => toInfo(c, f.name, lang)),
+    current: ngContinuousRank(asset) ? asset : f.contracts.find((c) => c.secid === asset)?.secid ?? f.contracts.find((c) => c.order === 1)?.secid,
+    contracts: [...f.contracts.map((c) => toInfo(c, f.name, lang)), ...(f.asset === "NG" ? ngChainContracts(lang) : [])],
   };
   return NextResponse.json(res, { headers: CACHE });
 }

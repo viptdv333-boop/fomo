@@ -67,6 +67,8 @@ export default function PriceScaleMenu({ pos, paneId, onClose, api, autoScale, o
       <div className="fixed inset-0 z-[60]" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
         ref={ref}
+        role="menu"
+        aria-label={t("cs.scaleMenuTitle")}
         className="fixed z-[61] w-[270px] py-1 rounded-2xl tv3-pop shadow-[var(--tv3-shadow-pop)]"
         style={{ left: at?.left ?? pos.x, top: at?.top ?? pos.y, visibility: at ? "visible" : "hidden" }}
       >

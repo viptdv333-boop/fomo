@@ -6,7 +6,7 @@ export type GroupTab = "all" | Exclude<MarketGroup, "other">;
 export type MarketSource = "moex" | "bybit" | "binance" | "forex" | "fmp" | "databento" | "twelvedata" | "yahoo";
 /** underlying asset class of a futures row (the second chip row of the «Фьючерсы» chip); "other" is only listed under «Все» */
 export type FutAsset = "oil" | "gas" | "gold" | "silver" | "copper" | "platinum" | "palladium" | "index" | "currency" | "bond" | "grain" | "soft" | "livestock" | "crypto" | "stock" | "other";
-export type ContractKind = "perpetual" | "quarterly" | "monthly" | "weekly" | "spot";
+export type ContractKind = "perpetual" | "quarterly" | "monthly" | "weekly" | "spot" | "continuous";
 
 /** Options of the two dropdowns of the instrument search dialog (what the rows on offer have). */
 export interface Facets {
