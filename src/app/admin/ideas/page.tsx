@@ -73,11 +73,11 @@ export default function AdminIdeasPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Модерация идей</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 dark:text-gray-100">Модерация идей</h1>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6 flex items-center gap-4 flex-wrap">
-        <div className="flex gap-1">
+      <div className="min-w-0 bg-white dark:bg-gray-800 rounded-xl shadow p-3 sm:p-4 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-4 flex-wrap">
+        <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
           {(["all", "published", "hidden", "archived"] as const).map((f) => (
             <button key={f} onClick={() => { setFilter(f); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f
@@ -89,7 +89,7 @@ export default function AdminIdeasPage() {
         </div>
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); loadIdeas(); } }}
-          placeholder="Поиск по заголовку..." className={`${inputCls} w-64`} />
+          placeholder="Поиск по заголовку..." className={`${inputCls} min-w-0 w-full sm:w-64`} />
         <button onClick={() => { setPage(1); loadIdeas(); }}
           className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">Найти</button>
         <span className="text-xs text-gray-400 ml-auto">Всего: {total}</span>
@@ -104,14 +104,14 @@ export default function AdminIdeasPage() {
           {ideas.map((idea) => {
             const st = STATUS_LABELS[idea.moderationStatus] || STATUS_LABELS.published;
             return (
-              <div key={idea.id} className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex items-start gap-4">
+              <div key={idea.id} className="min-w-0 bg-white dark:bg-gray-800 rounded-xl shadow p-3 sm:p-4 flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{idea.title}</span>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="min-w-0 font-medium text-sm text-gray-900 dark:text-gray-100 break-words">{idea.title}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${st.color}`}>{st.label}</span>
                     {idea.isPaid && <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded">Платная</span>}
                   </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-3">
+                  <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span>{idea.author.displayName}</span>
                     <span>{new Date(idea.createdAt).toLocaleDateString("ru")}</span>
                     {idea.instruments.length > 0 && (
@@ -127,7 +127,7 @@ export default function AdminIdeasPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:shrink-0">
                   {idea.moderationStatus !== "published" && (
                     <button onClick={() => moderateIdea(idea.id, "published")}
                       className="text-xs text-green-600 hover:text-green-800 dark:text-green-400">Опубликовать</button>
