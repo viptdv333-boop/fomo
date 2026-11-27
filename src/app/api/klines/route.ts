@@ -17,6 +17,7 @@ import { getUserKey } from "@/lib/data/user-key";
 import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 import { dbCandles } from "@/lib/data/databento";
+import { UpstreamCache, issCacheTtl, bybitCacheTtl, LIVE_TTL_MS } from "@/lib/kline-cache";
 
 // Server-side proxy for market data (avoids CORS issues with MOEX)
 
@@ -75,6 +76,15 @@ const FUTURES_PREFIX: Record<string, string> = {
 // Cache for resolved futures contracts (base ticker → {contract, expiry})
 const contractCache = new Map<string, { contract: string; resolved: number }>();
 const CONTRACT_CACHE_TTL = 3600_000; // 1 hour
+
+// Upstream candle caches: closed history for hours, the live edge for seconds (see kline-cache.ts).
+// Keys carry the full upstream request incl. the feed path; personalization happens after the cache.
+const gKline = globalThis as unknown as {
+  __issRowsCache?: UpstreamCache<any[][]>;
+  __bybitPageCache?: UpstreamCache<any[][]>;
+};
+const issRowsCache = (gKline.__issRowsCache ??= new UpstreamCache<any[][]>(300));
+const bybitPageCache = (gKline.__bybitPageCache ??= new UpstreamCache<any[][]>(200));
 
 // `anchorMs` is "now" for a live/initial load, or the chart's requested
 // `to` timestamp when paging further back into history — without it every
@@ -369,12 +379,16 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
   const smallFrom = small ? smallFromDate(needRows, moexInterval, toMs) : from;
 
   async function issRows(url: string): Promise<any[][]> {
+    const ttl = issCacheTtl(till, moexInterval);
+    const feedKey = feed.ap ? 1 : 0;
     if (small) {
-      const rows = await fetchIssRecent(url, moexInterval, needRows, smallFrom, till, feed);
+      const key = `recent|${url}|${moexInterval}|${needRows}|${smallFrom}|${till ?? ""}|${feedKey}`;
+      const rows = await issRowsCache.get(key, (r) => (r.length ? ttl : LIVE_TTL_MS), () => fetchIssRecent(url, moexInterval, needRows, smallFrom, till, feed));
       if (rows.length > 0) return rows;
       // nothing in the short window (a long holiday?): the regular wide window
     }
-    return fetchIssCandlesPage(url, moexInterval, from, till, feed);
+    const key = `page|${url}|${moexInterval}|${from}|${till ?? ""}|${feedKey}`;
+    return issRowsCache.get(key, (r) => (r.length ? ttl : LIVE_TTL_MS), () => fetchIssCandlesPage(url, moexInterval, from, till, feed));
   }
 
   let tail: TailResult | undefined;
@@ -453,10 +467,16 @@ async function fetchBybitCandles(ticker: string, interval: string, limit: number
     for (let i = 0; i < pages; i++) {
       let url = `https://api.bybit.com/v5/market/kline?category=${bb.category}&symbol=${encodeURIComponent(bb.symbol)}&interval=${bybitInterval}&limit=${PAGE}`;
       if (endTime) url += `&end=${endTime}`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) break;
-      const data = await res.json();
-      const list = data?.result?.list || [];
+      const list = await bybitPageCache.get(
+        url,
+        (rows) => (rows.length ? bybitCacheTtl(endTime, bybitInterval) : LIVE_TTL_MS),
+        async () => {
+          const res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data?.result?.list || []) as any[][];
+        }
+      );
       if (list.length === 0) break;
 
       const parsed = list.map((c: any[]) => {
