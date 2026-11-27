@@ -129,3 +129,32 @@ export async function yahooCandles(symbol: string, interval: string, limit: numb
   const candles = toMs !== undefined ? got.candles.filter((c) => c.timestamp <= toMs) : got.candles;
   return { ...got, candles: candles.slice(-want) };
 }
+
+export interface YahooMeta {
+  symbol: string;
+  exchangeCode: string;
+  exchange: string;
+  currency: string;
+  quoteType: string;
+}
+
+const gMeta = globalThis as unknown as { __yahooMeta?: UpstreamCache<YahooMeta | null> };
+const metaCache = (gMeta.__yahooMeta ??= new UpstreamCache<YahooMeta | null>(500));
+
+/** Instrument meta (exchange, type, currency) for the search lookup; one cheap chart call, cached an hour. */
+export async function yahooMeta(symbol: string): Promise<YahooMeta | null> {
+  if (!/^[A-Za-z0-9.^=\-]{1,20}$/.test(symbol)) return null;
+  const path = `/v8/finance/chart/${encodeURIComponent(symbol.toUpperCase())}?range=1d&interval=1d`;
+  return metaCache.get(path, 3_600_000, async () => {
+    const j = await fetchYahoo(path);
+    const m = j?.chart?.result?.[0]?.meta;
+    if (!m) return null;
+    return {
+      symbol: m.symbol ?? symbol.toUpperCase(),
+      exchangeCode: m.exchangeName ?? "",
+      exchange: m.fullExchangeName ?? m.exchangeName ?? "",
+      currency: m.currency ?? "",
+      quoteType: m.instrumentType ?? "",
+    };
+  });
+}

@@ -130,6 +130,9 @@ export function tagItem(item: MarketItem): MarketItem {
     case "twelvedata":
       // the provider catalogue rows carry their own venue / country (src/lib/data/provider-catalog.ts)
       break;
+    case "yahoo":
+      // Yahoo rows carry their own venue / country (src/lib/yahoo-search.ts)
+      break;
   }
   return out;
 }

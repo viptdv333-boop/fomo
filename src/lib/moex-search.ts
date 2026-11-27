@@ -17,6 +17,7 @@ import { arrangeByAsset, classBoost, FUT_ASSETS, moexAssetOrder } from "./future
 import { allUsFutureItems, fmpCatalogOn, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
 import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
 import { lookupProviderItem, providerItemsOf, searchProviderItems } from "./data/provider-catalog";
+import { searchYahoo, lookupYahoo, yahooPopularFor } from "./yahoo-search";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -231,7 +232,10 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
     return zipRows(bb, bn);
   }
   if (group === "forex") return searchForex(q, CANDIDATES);
-  if (group === "index") return searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem);
+  if (group === "index") {
+    const idx = searchIndexRows(await getIndexRows(), q, CANDIDATES).map(indexItem);
+    return [...idx, ...(await searchYahoo(q, 10)).filter((r) => r.group === "index").map(tagItem)];
+  }
 
   if (group === "future") {
     // Russian and US futures by relevance (RU first on a tie), then the classes ordered by their best hit, RU before US inside a class
@@ -244,7 +248,8 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
       })
       .sort((a, b) => b.s - a.s || a.i - b.i)
       .map((x) => x.item);
-    return arrangeByAsset(merged.slice(0, CANDIDATES * 2), true);
+    const yh = (await searchYahoo(q, 20)).filter((r) => r.group === "future").map(tagItem);
+    return arrangeByAsset([...merged.slice(0, CANDIDATES * 2), ...yh], true);
   }
 
   // «Все» and the cash groups (stocks, bonds, funds, currency)
@@ -266,6 +271,10 @@ async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]
     if (looksLikeCoin(q)) items.push(...searchSpotPairs(await getBybitSpotList(), q, CRYPTO_IN_ALL).map((p) => pairToItem(p)));
     const have = new Set(items.map((i) => `${i.source}:${i.secid}`));
     items.push(...searchForex(q, FOREX_IN_ALL, 75).filter((i) => !have.has(`${i.source}:${i.secid}`)));
+  }
+  if (all || group === "stock" || group === "fund") {
+    const yh = (await searchYahoo(q, all ? 10 : 20)).filter((r) => (all ? r.group !== "crypto" && r.group !== "forex" : r.group === group || (group === "stock" && r.group === "fund")));
+    items.push(...yh.map(tagItem));
   }
   return items;
 }
@@ -436,8 +445,10 @@ export async function searchMarketPage(q: string, group: GroupTab = "all", opts:
 export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
   const filtered = hasFilters(opts.filters ?? NO_FILTERS);
   const base = await popularCandidates(group, filtered);
+  const yh = yahooPopularFor(group).map(tagItem);
+  const mixed = yh.length ? [...base, ...yh] : base;
   // the short mix of «Все» stays as it is; a filter on «Все» looks through every list, the providers' included
-  return pageOf(group === "all" && !filtered ? base : withProviders(base, "", group, opts.provs ?? []), group, opts);
+  return pageOf(group === "all" && !filtered ? mixed : withProviders(mixed, "", group, opts.provs ?? []), group, opts);
 }
 
 /** Exact lookup by SECID / ISIN / auto ticker: the item a URL ?symbol= stands for. */
@@ -462,5 +473,7 @@ export async function lookupMarket(id: string): Promise<MarketItem | null> {
   // cash instrument: ISS description of the id (exact)
   const items = await issSearch(id, "all", 10).catch(() => []);
   const found = items.find((i) => i.secid === id || i.isin === id);
-  return found ? tagItem(found) : null;
+  if (found) return tagItem(found);
+  const y = await lookupYahoo(id);
+  return y ? tagItem(y) : null;
 }
