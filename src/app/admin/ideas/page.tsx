@@ -31,7 +31,10 @@ export default function AdminIdeasPage() {
   async function loadIdeas() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "50", admin: "1" });
-    if (filter !== "all") params.set("moderationStatus", filter);
+    // /api/ideas uses `status` for the moderation filter. Sending
+    // `moderationStatus` silently fell through to its normal published feed,
+    // so the Archive tab showed published ideas with an Archive action.
+    if (filter !== "all") params.set("status", filter);
     if (search) params.set("search", search);
     const res = await fetch(`/api/ideas?${params}`);
     const data = await res.json();

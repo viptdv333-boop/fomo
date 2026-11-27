@@ -29,10 +29,9 @@ const MOEX_INTERVALS: Record<string, number> = {
 // project by the same author), synthesize them by resampling the nearest
 // native interval it does support (1m for 5m/15m, 60m for 4h) with plain
 // OHLCV aggregation (open=first, high=max, low=min, close=last,
-// volume=sum). terminal-3 also has a session-anchored variant of the 4h
-// resample to match TradingView's exact bar geometry for its signal bot —
-// that precision isn't needed for a display chart, so this uses simple
-// calendar-aligned buckets instead.
+// volume=sum). The 4h bars are anchored to the first MOEX candle of each
+// exchange day, matching the chart's session-based aggregation and avoiding
+// UTC-midnight buckets that cut the trading session in the wrong places.
 const MOEX_SYNTHESIZE: Record<string, { native: string; bucketMs: number }> = {
   "5": { native: "1", bucketMs: 5 * 60_000 },
   "15": { native: "1", bucketMs: 15 * 60_000 },
@@ -299,6 +298,31 @@ function aggregateCandles(candles: ReturnType<typeof filterAndDedupe>, bucketMs:
   return Array.from(buckets.values()).sort((a, b) => a.timestamp - b.timestamp);
 }
 
+/** Resample MOEX intraday candles from the first source candle of each exchange day. */
+function aggregateSessionCandles(candles: ReturnType<typeof filterAndDedupe>, bucketMs: number) {
+  const buckets = new Map<number, (typeof candles)[number]>();
+  let day = NaN;
+  let anchor = 0;
+  for (const c of candles) {
+    const nextDay = Math.floor(c.timestamp / 86_400_000);
+    if (nextDay !== day) {
+      day = nextDay;
+      anchor = c.timestamp;
+    }
+    const bucketTs = anchor + Math.floor((c.timestamp - anchor) / bucketMs) * bucketMs;
+    const b = buckets.get(bucketTs);
+    if (!b) {
+      buckets.set(bucketTs, { ...c, timestamp: bucketTs });
+    } else {
+      b.high = Math.max(b.high, c.high);
+      b.low = Math.min(b.low, c.low);
+      b.close = c.close;
+      b.volume += c.volume;
+    }
+  }
+  return Array.from(buckets.values()).sort((a, b) => a.timestamp - b.timestamp);
+}
+
 // How many calendar days of native-granularity history to request in order
 // to synthesize `limit` bars of a coarser interval. Capped (not simply
 // `limit * multiplier` days of history) so a 24h-traded futures contract
@@ -362,7 +386,9 @@ async function fetchMoexCandles(ticker: string, interval: string, limit: number,
       tail = realtime ? labelTail(await applyTinkoffTail(withTail, moexInterval, candles), feed) : { rows: candles, tail: "iss", reason: "guest-delayed" };
       candles = tail.rows;
     }
-    if (synth) candles = aggregateCandles(candles, synth.bucketMs);
+    if (synth) candles = interval === "240"
+      ? aggregateSessionCandles(candles, synth.bucketMs)
+      : aggregateCandles(candles, synth.bucketMs);
     return candles.slice(-limit);
   }
 
