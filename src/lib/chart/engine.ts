@@ -2577,7 +2577,9 @@ export class ChartEngine {
           const name = (t.caption ?? t.lineName ?? "").replace(/^(\S+) \1(?=\s|$)/, "$1");
           ctx.save();
           ctx.beginPath();
-          rr(x0 + 1, pl.bodyTop, w - 2, bodyH, 6);
+          // Keep the countdown inside the price tag, like TradingView. Drawing it as a second,
+          // dimmed plate made the most useful part of the live price tag hard to read.
+          rr(x0 + 1, pl.bodyTop, w - 2, height, 6);
           if (solid) {
             ctx.fillStyle = t.bg;
             ctx.fill();
@@ -2607,13 +2609,9 @@ export class ChartEngine {
             ctx.globalAlpha = 1;
           }
           if (t.extra) {
-            ctx.beginPath();
-            rr(x0 + 1, pl.bodyTop + bodyH - 3, w - 2, extraH + 3, [0, 0, 6, 6]);
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            ctx.fill();
             ctx.textAlign = "center";
             ctx.fillStyle = t.fg;
-            ctx.font = `500 ${Math.max(10, fs - 1)}px ${ff}`;
+            ctx.font = `500 ${Math.max(10, fs)}px ${ff}`;
             ctx.fillText(t.extra, x0 + w / 2, pl.bodyTop + bodyH + extraH / 2 + 0.5);
           }
           ctx.restore();
@@ -2644,9 +2642,6 @@ export class ChartEngine {
         ctx.fillStyle = t.bg;
         ctx.fill();
         ctx.clip();
-        // the row below the price (the countdown to the bar close) is a shade darker
-        ctx.fillStyle = "rgba(0,0,0,0.2)";
-        if (t.extra) ctx.fillRect(x0, pl.bodyTop + bodyH, w, extraH);
         ctx.restore();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";

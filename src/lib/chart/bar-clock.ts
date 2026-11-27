@@ -35,16 +35,34 @@ export function barCloseTime(barStart: number, intervalMs: number, wallShiftMs =
 }
 
 /**
- * Milliseconds until the forming bar closes, or null when there is nothing to count down to (the market is closed, the data is old).
+ * Milliseconds until the current timeframe closes, or null when there is no intraday bar to count down to (the market is closed, the data is old).
  * `lastStart` is the start of the newest bar, `nowChart` the current time in chart time. A bar that has just ended and has no successor yet
  * (a quiet instrument, a second chart between trades) rolls over to the next slot of the grid for a short while (`rollGraceMs`);
- * daily and longer bars never roll (a closed market must not show a clock).
+ * calendar timeframes (D/W/M/Y and custom multi-day intervals) use their actual calendar boundary, so the countdown is available on every timeframe.
  */
 export function barCountdownMs(lastStart: number, intervalMs: number, nowChart: number, wallShiftMs = 0): number | null {
   if (!Number.isFinite(lastStart) || !Number.isFinite(nowChart) || !(intervalMs > 0)) return null;
+  if (intervalMs >= DAY) {
+    const wallNow = nowChart + wallShiftMs;
+    const d = new Date(wallNow);
+    let closeWall: number;
+    if (intervalMs >= 360 * DAY) {
+      closeWall = Date.UTC(d.getUTCFullYear() + 1, 0, 1);
+    } else if (intervalMs >= 28 * DAY) {
+      closeWall = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+    } else if (intervalMs >= 6 * DAY) {
+      const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      const day = d.getUTCDay();
+      closeWall = monday + ((8 - (day || 7)) % 7 || 7) * DAY;
+    } else {
+      const spanDays = Math.max(1, Math.round(intervalMs / DAY));
+      const dayWall = Math.floor(wallNow / DAY) * DAY;
+      closeWall = (Math.floor(dayWall / (spanDays * DAY)) + 1) * spanDays * DAY;
+    }
+    return Math.max(0, closeWall - wallShiftMs - nowChart);
+  }
   const end = barCloseTime(lastStart, intervalMs, wallShiftMs);
   if (end > nowChart) return end - nowChart;
-  if (intervalMs >= DAY) return null;
   if (nowChart - end > rollGraceMs(intervalMs)) return null;
   // the slot of the grid "now" falls in; it may not reach past the day of the last bar (a new day opens its own grid)
   const start = lastStart + Math.floor((nowChart - lastStart) / intervalMs) * intervalMs;
