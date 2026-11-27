@@ -2416,6 +2416,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             rangeBusy={rangeBusy || replayActive}
             scaleMode={scaleModeNow}
             onScaleMode={setScaleMode}
+            onSettings={() => openSettings("scales")}
             tz={cs.tz}
             zone={resolveZone(cs.tz, source)}
             onTz={(tz) => csApi.update((x) => ({ ...x, tz }))}
