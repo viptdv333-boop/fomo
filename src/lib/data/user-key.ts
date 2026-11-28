@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptKey } from "./crypto";
 import type { DataProvider } from "./providers";
+import { globalProviderKey } from "./global-key";
 
 export interface UserKey {
   userId: string;
@@ -16,15 +17,15 @@ export async function getUserKey(provider: DataProvider["id"]): Promise<UserKey 
   let userId: string | undefined;
   try {
     userId = (await auth())?.user?.id;
-  } catch {
-    return null;
-  }
-  if (!userId) return null;
+  } catch {}
   try {
-    const row = await prisma.dataConnection.findUnique({ where: { userId_provider: { userId, provider } }, select: { keyEnc: true, enabled: true } });
-    if (!row || !row.enabled) return null;
-    const key = decryptKey(row.keyEnc);
-    return key ? { userId, key } : null;
+    if (userId) {
+      const row = await prisma.dataConnection.findUnique({ where: { userId_provider: { userId, provider } }, select: { keyEnc: true, enabled: true } });
+      const key = row?.enabled ? decryptKey(row.keyEnc) : null;
+      if (key) return { userId, key };
+    }
+    const shared = ["twelvedata", "databento"].includes(provider) ? await globalProviderKey(provider) : null;
+    return shared ? { userId: "global", key: shared } : null;
   } catch {
     return null;
   }
@@ -35,15 +36,16 @@ export async function connectedProviders(): Promise<DataProvider["id"][]> {
   let userId: string | undefined;
   try {
     userId = (await auth())?.user?.id;
-  } catch {
-    return [];
-  }
-  if (!userId) return [];
+  } catch {}
+  if (!userId) { const shared = await Promise.all([globalProviderKey("twelvedata"), globalProviderKey("databento")]); return (["twelvedata", "databento"] as const).filter((_, i) => !!shared[i]); }
   const uid = userId;
   return memoized(`conn:${uid}`, 10_000, async () => {
     try {
       const rows = await prisma.dataConnection.findMany({ where: { userId: uid, enabled: true }, select: { provider: true } });
-      return rows.map((r) => r.provider as DataProvider["id"]);
+      const providers = rows.map((r) => r.provider as DataProvider["id"]);
+      if (!providers.includes("twelvedata") && await globalProviderKey("twelvedata")) providers.push("twelvedata");
+      if (!providers.includes("databento") && await globalProviderKey("databento")) providers.push("databento");
+      return providers;
     } catch {
       return [] as DataProvider["id"][];
     }

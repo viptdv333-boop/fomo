@@ -22,8 +22,10 @@
 
 import { FX_PAIRS, fxDigits, parseFxSymbol } from "./forex-meta";
 import { fmpGateCheck, fmpGateReport } from "./fmp-gate";
+import { globalProviderKey } from "./data/global-key";
+import { tdCandles, tdQuote } from "./data/twelvedata";
 
-export type ForexProviderName = "instaforex" | "fmp" | "stooq" | "yahoo";
+export type ForexProviderName = "instaforex" | "fmp" | "stooq" | "yahoo" | "twelvedata";
 
 export interface FxCandle {
   timestamp: number;
@@ -600,7 +602,22 @@ const instaProvider: ForexProvider = {
 
 /* ═══════════════════════════ the layer ═══════════════════════════ */
 
-export const FOREX_PROVIDERS: Record<ForexProviderName, ForexProvider> = { instaforex: instaProvider, fmp: fmpProvider, stooq: stooqProvider, yahoo: yahooProvider };
+const twelveProvider: ForexProvider = {
+  name: "twelvedata",
+  async quote(symbol) {
+    const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
+    if (!key || !pair) return { ok: false, reason: "unsupported" };
+    const result = await tdQuote("global", key, `${pair.base}/${pair.quote}`);
+    return result.quote ? { ok: true, data: result.quote } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
+  },
+  async candles(symbol, interval, from, to, limit) {
+    const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
+    if (!key || !pair) return { ok: false, reason: "unsupported" };
+    const result = await tdCandles("global", key, `${pair.base}/${pair.quote}`, interval, limit, to);
+    return result.candles.length ? { ok: true, data: { candles: from ? result.candles.filter((c) => c.timestamp >= from) : result.candles, volume: "none" } } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
+  },
+};
+export const FOREX_PROVIDERS: Record<ForexProviderName, ForexProvider> = { instaforex: instaProvider, fmp: fmpProvider, stooq: stooqProvider, yahoo: yahooProvider, twelvedata: twelveProvider };
 
 function order(envName: string, def: string): ForexProvider[] {
   const names = (process.env[envName] || def).split(",").map((s) => s.trim().toLowerCase());
@@ -611,8 +628,8 @@ function order(envName: string, def: string): ForexProvider[] {
  * InstaForex is the primary live source for quotes and candles; unsupported pairs fall through to FMP, then legacy Yahoo/Stooq fallbacks.
  * Provider order can be overridden with FOREX_CANDLE_PROVIDERS / FOREX_QUOTE_PROVIDERS (comma-separated provider ids).
  */
-const quoteOrder = () => order("FOREX_QUOTE_PROVIDERS", "instaforex,fmp,yahoo");
-const candleOrder = () => order("FOREX_CANDLE_PROVIDERS", "instaforex,fmp,stooq,yahoo");
+const quoteOrder = () => order("FOREX_QUOTE_PROVIDERS", "twelvedata,instaforex,fmp,yahoo");
+const candleOrder = () => order("FOREX_CANDLE_PROVIDERS", "twelvedata,instaforex,fmp,stooq,yahoo");
 
 const QUOTE_TTL = () => Number(process.env.FOREX_QUOTE_TTL_MS) || 8_000;
 

@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { cryptoReady, encryptKey } from "@/lib/data/crypto";
 import { cleanKey, providerById } from "@/lib/data/providers";
 import { checkKey } from "@/lib/data/validate";
+import { globalProviderKey } from "@/lib/data/global-key";
 
 /* The user's market-data provider keys. The key is stored encrypted and is NEVER returned: a list has only the provider, the last 4 characters,
    the state and the check time. Every answer is private (no shared cache). */
@@ -14,9 +15,9 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 
 export async function GET() {
   const userId = (await auth())?.user?.id;
-  if (!userId) return json({ error: "unauthorized" }, 401);
-  const rows = await prisma.dataConnection.findMany({ where: { userId }, select: { provider: true, keyHint: true, enabled: true, status: true, checkedAt: true } });
-  return json({ connections: rows, ready: cryptoReady() });
+  const rows = userId ? await prisma.dataConnection.findMany({ where: { userId }, select: { provider: true, keyHint: true, enabled: true, status: true, checkedAt: true } }) : [];
+  const shared = await Promise.all([globalProviderKey("twelvedata"), globalProviderKey("databento")]);
+  return json({ connections: rows, sharedProviders: ["twelvedata", "databento"].filter((_, i) => !!shared[i]), ready: cryptoReady() });
 }
 
 // POST { provider, key }: checks the key with the provider, stores it encrypted (replacing the old one)

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import GlobalProviderKeys from "@/components/admin/GlobalProviderKeys";
+import { isTerminalSite } from "@/lib/site-mode";
 
 interface Settings {
   metaTitle: string;
@@ -136,6 +138,7 @@ export default function SiteSettingsPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold dark:text-gray-100 mb-6">Настройки сайта</h1>
+      {!isTerminalSite() && <GlobalProviderKeys />}
 
       <div className="space-y-6">
         {/* Meta Title */}

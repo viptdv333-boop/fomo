@@ -20,8 +20,8 @@ const emit = () => listeners.forEach((f) => f());
 export function refreshConnections(): Promise<void> {
   inflight ??= fetch("/api/data/connections", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-    .then((d: { connections?: { provider: string; enabled: boolean }[] }) => {
-      state = { loaded: true, unknown: false, on: new Set((d.connections ?? []).filter((c) => c.enabled).map((c) => c.provider)) };
+    .then((d: { connections?: { provider: string; enabled: boolean }[]; sharedProviders?: string[] }) => {
+      state = { loaded: true, unknown: false, on: new Set([...(d.connections ?? []).filter((c) => c.enabled).map((c) => c.provider), ...(d.sharedProviders ?? [])]) };
     })
     .catch(() => {
       state = { loaded: true, unknown: true, on: new Set() };

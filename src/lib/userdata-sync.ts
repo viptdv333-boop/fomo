@@ -24,6 +24,7 @@ export const MIRRORED_KINDS: readonly string[] = [
   "terminal_prefs",
   "terminal_watchlists", // the EXTRA watchlists (the main list is a table of its own: op "watchlist")
   "calendar_prefs",
+  "global_provider_key",
 ];
 const KINDS = new Set(MIRRORED_KINDS);
 export function isMirroredKind(kind: string): boolean {

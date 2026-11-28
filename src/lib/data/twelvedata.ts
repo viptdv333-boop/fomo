@@ -3,6 +3,7 @@
  * Instrument ids of the catalogue: `SAP.XETR` = symbol SAP on the exchange with MIC XETR; an id without a suffix (`SPX`) is the plain symbol.
  */
 import { memoized } from "./user-key";
+import { rateLimit } from "@/lib/rate-limit";
 
 export interface TdCandle {
   timestamp: number;
@@ -97,11 +98,12 @@ export async function tdCandles(userId: string, key: string, id: string, interva
   p.set("order", "ASC");
   if (toMs !== undefined) p.set("end_date", fmtTime(toMs));
   // a refresh-sized request every minute from one chart must not spend a Twelve Data credit each time more than once in a few seconds
-  const ttl = limit <= 5 ? 4_000 : /^[DWM]$/.test(interval) ? 20_000 : 6_000;
+  const ttl = userId === "global" ? 60_000 : limit <= 5 ? 4_000 : /^[DWM]$/.test(interval) ? 20_000 : 6_000;
   return memoized(
     `td:c:${userId}:${p.toString()}`,
     ttl,
     async () => {
+      if (userId === "global" && (!(await rateLimit("twelve-global-minute", 3, 60_000)).allowed || !(await rateLimit("twelve-global-day", 350, 86_400_000)).allowed)) return { candles: [], error: "limit" as const };
       const r = await get("/time_series", new URLSearchParams(p), key);
       if (r.error || !r.json) return { candles: [], error: r.error ?? "network", detail: r.detail };
       const values: any[] = Array.isArray(r.json.values) ? r.json.values : [];
@@ -134,8 +136,11 @@ export async function tdQuote(userId: string, key: string, id: string): Promise<
   const p = tdParams(id);
   const r = await memoized(
     `td:q:${userId}:${p.toString()}`,
-    5_000,
-    () => get("/quote", new URLSearchParams(p), key),
+    userId === "global" ? 60_000 : 5_000,
+    async () => {
+      if (userId === "global" && (!(await rateLimit("twelve-global-minute", 3, 60_000)).allowed || !(await rateLimit("twelve-global-day", 350, 86_400_000)).allowed)) return { json: null, error: "limit" as const };
+      return get("/quote", new URLSearchParams(p), key);
+    },
     (v) => !v.error
   );
   const q = r.json;
