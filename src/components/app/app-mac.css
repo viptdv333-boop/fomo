@@ -135,7 +135,8 @@ html.app-ui .app-mac .app-mac-bar-l[data-on="1"] { font-weight: 700; color: var(
 /* ---------- «Список» ---------- */
 html.app-ui .app-mac .app-mac-list { position: fixed; left: 0; right: 0; top: 0; bottom: var(--app-bottom-inset); z-index: 43; overflow-y: auto; overscroll-behavior: contain; background: var(--m-bg); color: var(--m-tx); font-family: var(--m-font); padding-top: env(safe-area-inset-top, 0px); -webkit-overflow-scrolling: touch; }
 html.app-ui .app-mac .app-mac-list-content { min-height: 100%; display: flex; flex-direction: column; }
-html.app-ui .app-mac .app-mac-list-banner { flex-shrink: 0; margin: auto 12px 12px; }
+html.app-ui .app-mac .app-mac-list-banner { flex-shrink: 0; margin: auto 12px 12px; background: #fff; background-image: none; color: #24262b; border: 1px solid #e3e3e6; box-shadow: none; }
+html.app-ui .app-mac .app-mac-list-banner .fomo-wordmark-product { display: none; }
 html.app-ui .app-mac .app-mac-list :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
 html.app-ui .app-mac .app-mac-list-h { display: flex; align-items: center; gap: 6px; padding: 10px 12px 6px 14px; }
 html.app-ui .app-mac .app-mac-list-h .app-mac-lists { flex: 1; min-width: 0; padding: 0; }
