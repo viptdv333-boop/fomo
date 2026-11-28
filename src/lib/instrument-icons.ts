@@ -1,6 +1,7 @@
 import { coinIcon } from "./bybit-spot-search";
 import { fxIcon, parseFxSymbol } from "./forex-meta";
 import { knownMoexAssets, moexAssetGroup } from "./futures-assets";
+import { usFutureBySymbol } from "./us-futures";
 import type { FutAsset, MarketItem } from "./market-types";
 import tinkoffIcons from "./tinvest-icons.generated.json";
 
@@ -113,6 +114,21 @@ function moexFutureRoot(...symbols: Array<string | undefined>): string | null {
   return null;
 }
 
+type IconInstrument = { source: string; ticker: string; dataTicker: string; group?: string; emoji?: string };
+function inferredGroup(inst: IconInstrument): string | undefined {
+  if (inst.group) return inst.group;
+  if (inst.source === "moex" && moexFutureRoot(inst.dataTicker, inst.ticker)) return "future";
+  if (inst.source === "fmp" && (usFutureBySymbol(inst.dataTicker) || usFutureBySymbol(inst.ticker))) return "future";
+  return undefined;
+}
+
+/** One resolved artwork path for the catalog, web watchlist and app watchlist. */
+export function instrumentIcon(inst: IconInstrument): string {
+  const group = inferredGroup(inst);
+  const fallback = instrumentIconFallback({ ...inst, group });
+  return tinkoffInstrumentIcon(group, inst.dataTicker, inst.ticker) || (fallback.includes("/tinvest/") ? fallback : "") || inst.emoji || fallback;
+}
+
 /** Artwork for any listed or newly discovered futures family. */
 export function futuresIcon(asset: string, group?: FutAsset): string {
   const upper = asset.toUpperCase();
@@ -129,7 +145,8 @@ export function instrumentIconFallback(inst: {
   dataTicker: string;
   group?: string;
 }): string {
-  const providerLogo = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker);
+  const group = inferredGroup(inst);
+  const providerLogo = tinkoffInstrumentIcon(group, inst.dataTicker, inst.ticker);
   if (providerLogo) return providerLogo;
   if (inst.source === "forex") {
     return parseFxSymbol(inst.dataTicker) ? fxIcon(inst.dataTicker) : categoryPath("forex");
@@ -140,18 +157,21 @@ export function instrumentIconFallback(inst: {
     return coinIcon(base);
   }
   const moexFuture = inst.source === "moex" ? moexFutureRoot(inst.dataTicker, inst.ticker) : null;
-  if (inst.source === "moex" && (inst.group === "future" || moexFuture)) {
+  if (inst.source === "moex" && (group === "future" || moexFuture)) {
     const symbol = moexFuture ?? (inst.dataTicker || inst.ticker).replace(/\d!$/, "").replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, "");
     return futureFamilyLogo(symbol) || futuresIcon(symbol);
   }
-  if (inst.group === "future") return futuresIcon(inst.dataTicker || inst.ticker, undefined);
-  if (inst.group === "stock") return categoryPath("stocks-ru");
-  if (inst.group === "fund") return categoryPath("funds");
-  if (inst.group === "bond") return categoryPath("bonds");
-  if (inst.group === "option") return categoryPath("options");
-  if (inst.group === "currency") return categoryPath("currencies");
-  if (inst.group === "index") return categoryPath("indices");
-  if (inst.group === "crypto") return categoryPath("crypto");
+  if (group === "future") {
+    const us = inst.source === "fmp" ? usFutureBySymbol(inst.dataTicker) ?? usFutureBySymbol(inst.ticker) : undefined;
+    return us?.icon || futuresIcon(inst.dataTicker || inst.ticker, undefined);
+  }
+  if (group === "stock") return categoryPath("stocks-ru");
+  if (group === "fund") return categoryPath("funds");
+  if (group === "bond") return categoryPath("bonds");
+  if (group === "option") return categoryPath("options");
+  if (group === "currency") return categoryPath("currencies");
+  if (group === "index") return categoryPath("indices");
+  if (group === "crypto") return categoryPath("crypto");
   if (inst.source === "moex" || inst.source === "fmp" || inst.source === "databento" || inst.source === "twelvedata" || inst.source === "yahoo") return categoryPath("stocks-ru");
   return categoryPath("commodities");
 }

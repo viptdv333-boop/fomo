@@ -2,7 +2,7 @@
 
 import Flag from "./Flag";
 import { FX_CURRENCIES, parseFxSymbol } from "@/lib/forex-meta";
-import { instrumentIconFallback, tinkoffInstrumentIcon } from "@/lib/instrument-icons";
+import { instrumentIcon } from "@/lib/instrument-icons";
 import type { TerminalInstrument } from "@/lib/terminal-data";
 
 /** Two overlapping flags of a currency pair (EUR/USD); the metals have artwork and never get here. */
@@ -24,8 +24,7 @@ function PairIcon({ symbol, size }: { symbol: string; size: number }) {
 
 /** Round icon of an instrument: its artwork, the two flags of a currency pair, or the first letters of the ticker. */
 export default function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?: number }) {
-  const fallbackArtwork = instrumentIconFallback(inst);
-  const artwork = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker) || (fallbackArtwork.includes("/tinvest/") ? fallbackArtwork : "") || inst.emoji || fallbackArtwork;
+  const artwork = instrumentIcon(inst);
   if (!artwork && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
   if (artwork) {
     // eslint-disable-next-line @next/next/no-img-element
