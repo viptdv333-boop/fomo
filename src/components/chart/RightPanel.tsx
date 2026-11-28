@@ -37,7 +37,7 @@ import {
 import { fetchContractInfo, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
 import { ContractBadge } from "./ContractPicker";
 import { isTerminalSite } from "@/lib/site-mode";
-import { FomoCommunityCard, FomoIdeasPanel, FomoSpotBanner } from "./FomoPanel";
+import { FomoCommunityCard, FomoIdeasPanel } from "./FomoPanel";
 import "./terminal-v3.css";
 import "./watchlist-tabs.css";
 import MacGlyph from "./MacGlyph";
@@ -1139,7 +1139,6 @@ function Watchlist({
             </div>
           </PopupPortal>
         )}
-        {TERMINAL_SITE && <FomoSpotBanner className="mt-2" />}
       </div>
     </div>
   );
