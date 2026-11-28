@@ -52,6 +52,7 @@ async function main() {
     assert.equal((await markets("moex",ticker)).name,"Золото");
   }
   assert(!(await markets("moex","NG1!")).items.some((i:any)=>i.kind==="spot"),"Current-month gas CFD is not spot");
+  assert(!(await markets("instaforex","T")).items.some((i:any)=>i.source==="moex"),"AT&T must not inherit T-Technologies futures with the same ticker");
   console.log(`Spot catalogue/search/pagination/recents passed; ${checks} reciprocal commodity contract checks passed.`);
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

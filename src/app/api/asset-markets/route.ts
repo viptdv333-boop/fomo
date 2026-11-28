@@ -25,7 +25,7 @@ export async function GET(req:NextRequest) {
   const title=family?.name===ticker && f ? f.name : family?.name ?? f?.name ?? ticker;
   const items:Array<TerminalInstrument & {kind:string;expiry?:string|null}>=[];
   for(const r of INSTA_INSTRUMENTS) if((r.asset && commodityAsset(r.asset)===root)||(usShare && r.group==="stock" && r.id===stock)) items.push({ticker:r.id,name:r.name,source:"instaforex",dataTicker:r.id,group:r.group,emoji:"",kind:r.kind??"stock"});
-  const related=families.filter(candidate=>commodityAsset(candidate.asset)===root);
+  const related=stock ? [] : families.filter(candidate=>commodityAsset(candidate.asset)===root);
   // Keep the selected exchange family first, then the same commodity's other contract sizes/currencies.
   const markets=f ? [f,...related.filter(candidate=>candidate.asset!==f.asset)] : related;
   for(const market of markets) {
