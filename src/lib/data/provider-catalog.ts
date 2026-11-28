@@ -339,7 +339,7 @@ export function providerItems(): MarketItem[] {
 export function providerItemsOf(group: MarketGroup | "all", provs: readonly string[] = []): MarketItem[] {
   if (provs.length === 0) return [];
   const on = new Set(provs);
-  return providerItems().filter((i) => on.has(i.source) && (group === "all" || i.group === group));
+  return providerItems().filter((i) => i.source !== "twelvedata" && on.has(i.source) && (group === "all" || i.group === group));
 }
 
 const n = (s: string) => s.toLowerCase().replace(/ё/g, "е");
