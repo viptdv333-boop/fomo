@@ -2413,8 +2413,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 }}
                 className={`absolute bottom-0 z-30 flex h-7 w-12 items-center justify-center rounded-md border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#338bd0] hover:bg-[var(--tv3-fill)] hover:text-[#176eb6] cursor-pointer ${cs.scale.side === "right" ? "right-0" : "left-0"}`}
               >
-                <svg viewBox="0 0 24 24" className="h-5 w-5 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M13 5H4a1 1 0 0 0-1 1v10h18v-4M2 19h20M8 19h8M16.2 3.6a4 4 0 0 0-1.7 4.7l-3.2 3.2a1.8 1.8 0 0 0 2.5 2.5L17 10.8a4 4 0 0 0 4.7-5l-2.6 2.4-2.1-.5-.5-2.1 2.4-2.6a4 4 0 0 0-2.7.6z" />
+                <svg viewBox="0 0 32 32" className="h-6 w-6 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M14 7H6a2 2 0 0 0-2 2v12h24v-8M2 24h28a2 2 0 0 1-2 3H4a2 2 0 0 1-2-3Z" />
+                  <path d="M23 3a6 6 0 0 0-5.3 8.8L13 16.5a2 2 0 0 0 2.8 2.8l4.7-4.7A6 6 0 0 0 28 7l-3.6 3.2-2.9-.7-.7-2.9L24 3.1A6 6 0 0 0 23 3Z" />
                 </svg>
               </button>
             )}
