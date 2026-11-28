@@ -585,7 +585,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                 </div>
               )}
 
-              <FomoSpotBanner />
+              {TERMINAL_SITE && <FomoSpotBanner />}
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
@@ -691,7 +691,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         </div>
         </div>
 
-        <FomoSpotBanner />
+        {TERMINAL_SITE && <FomoSpotBanner />}
 
         {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
           <Link

@@ -1139,7 +1139,7 @@ function Watchlist({
             </div>
           </PopupPortal>
         )}
-        <FomoSpotBanner className="mt-2" />
+        {TERMINAL_SITE && <FomoSpotBanner className="mt-2" />}
       </div>
     </div>
   );
