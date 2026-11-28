@@ -347,7 +347,7 @@ const WL_KEY = "fomo-terminal-watchlist-v1";
 const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
-const WL_SOURCES = ["moex", "bybit", "binance", "fmp", "forex"];
+const WL_SOURCES = ["moex", "bybit", "binance", "fmp", "forex", "yahoo", "databento", "twelvedata"];
 
 export function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   if (!Array.isArray(raw)) return [];

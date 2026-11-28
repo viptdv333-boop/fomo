@@ -186,6 +186,7 @@ const TERMINAL_API_PREFIX = [
   "quotes",
   "market-search",
   "contracts",
+  "continuous-rolls", // roll points of a continuous futures series (chart roll marks)
   "orderbook",
   "orderflow",
   "moex-seconds", // second candles of MOEX instruments: availability (the feed itself is on the socket)
