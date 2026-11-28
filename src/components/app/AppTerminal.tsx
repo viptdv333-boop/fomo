@@ -35,10 +35,7 @@ import {
   APP_TERM_TFS,
   NO_VALUE,
   changeTone,
-  ideasHref,
-  ideasTotal,
   pctLabel,
-  pickBoardInstrument,
   showDelayNote,
 } from "@/lib/app-terminal";
 import { useDemoGate } from "@/lib/useDemoGate";
@@ -77,47 +74,6 @@ function FomoSpotBanner() {
       </span>
     </a>
   );
-}
-
-/** Ideas of the board for a terminal symbol: the board's instrument id and the number of ideas (cached for the session). */
-interface IdeasInfo {
-  id: string | null;
-  n: number | null;
-}
-const ideasCache = new Map<string, IdeasInfo>();
-
-async function loadIdeasInfo(inst: TerminalInstrument): Promise<IdeasInfo> {
-  const key = qKey(inst);
-  const hit = ideasCache.get(key);
-  if (hit) return hit;
-  let id: string | null = null;
-  let answered = false; // the board's instrument search gave an answer (a database outage must not read as "0 ideas")
-  for (const q of [...new Set([inst.ticker, inst.dataTicker])]) {
-    try {
-      const r = await fetch(`/api/instruments?search=${encodeURIComponent(q)}`);
-      if (!r.ok) continue;
-      answered = true;
-      const found = pickBoardInstrument<{ id: string; ticker?: string | null }>(await r.json(), q);
-      if (found) {
-        id = found.id;
-        break;
-      }
-    } catch {
-      /* try the next spelling */
-    }
-  }
-  let n: number | null = id ? null : answered ? 0 : null;
-  if (id) {
-    try {
-      const r = await fetch(`/api/ideas?instrumentId=${encodeURIComponent(id)}&limit=1`);
-      if (r.ok) n = ideasTotal(await r.json());
-    } catch {
-      /* the count stays unknown */
-    }
-  }
-  const info = { id, n };
-  if (n !== null) ideasCache.set(key, info); // an unknown count is asked again next time
-  return info;
 }
 
 function priceText(q: Quote | undefined, inst: { source: string; dataTicker: string }, locale: string): string {
@@ -230,21 +186,6 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
     setTermCal(calShown);
     return () => setTermCal(false);
   }, [calShown]);
-
-  const [ideas, setIdeas] = useState<IdeasInfo | null>(null);
-  const selKey = selected ? qKey(selected) : "";
-  useEffect(() => {
-    if (!selected || TERMINAL_SITE) return;
-    let cancelled = false;
-    setIdeas(null);
-    void loadIdeasInfo(selected).then((r) => {
-      if (!cancelled) setIdeas(r);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selKey]);
 
   const openFs = useCallback(() => {
     scrollTop.current = document.querySelector("main")?.scrollTop ?? 0;
@@ -657,15 +598,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                 </div>
               )}
 
-              {!wide && !TERMINAL_SITE && selected && (
-                <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">
-                  <AppIcon name="bulb" size={18} stroke={1.8} />
-                  <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
-                  {ideas?.n != null && <span className="app-term-ideas-n">{ideas.n}</span>}
-                  <AppIcon name="chevR" size={18} stroke={1.8} />
-                </Link>
-              )}
-              {TERMINAL_SITE && selected && <FomoSpotBanner />}
+              <FomoSpotBanner />
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
@@ -771,18 +704,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
         </div>
         </div>
 
-        {!wide && !TERMINAL_SITE && selected && (
-          <Link href={ideasHref(locale as Locale, ideas?.id ?? null)} prefetch={false} className="app-term-ideas">
-            <AppIcon name="bulb" size={18} stroke={1.8} />
-            <span className="app-term-ideas-t">{t("appui.term.ideas", { t: selected.ticker })}</span>
-            {ideas?.n != null && <span className="app-term-ideas-n">{ideas.n}</span>}
-            <AppIcon name="chevR" size={18} stroke={1.8} />
-          </Link>
-        )}
-
-        {TERMINAL_SITE && selected && (
-          <FomoSpotBanner />
-        )}
+        <FomoSpotBanner />
 
         {!wide && selected && calcTickerFor(selected.source, selected.dataTicker) && (
           <Link
