@@ -2392,11 +2392,12 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             {hasSelection && <DrawingStyleBar controller={drawings} onCreateAlert={openAlertFromDrawing} />}
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} onAlert={(uid) => setIndAlertUi({ uid, editId: null })} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
             {isTransformedType(prefs.chartType) && compareLegend(false)}
+            <div className={`absolute bottom-0 z-30 flex items-center gap-1 ${cs.scale.side === "right" ? "right-0" : "left-0 flex-row-reverse"}`}>
             {continuous && (
               <button type="button" data-back-adjust aria-pressed={adjusted}
                 title={t("chart.backAdjust")}
                 onClick={() => update({ backAdjust: !prefs.backAdjust })}
-                className={`absolute bottom-0 z-30 h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${cs.scale.side === "right" ? "right-14" : "left-14"} ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
+                className={`h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
                 B-ADJ
               </button>
             )}
@@ -2411,7 +2412,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   const r = e.currentTarget.getBoundingClientRect();
                   setScaleMenu({ x: r.right, y: r.top, paneId: "main", anchor: true });
                 }}
-                className={`absolute bottom-0 z-30 flex h-7 w-12 items-center justify-center rounded-md border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#338bd0] hover:bg-[var(--tv3-fill)] hover:text-[#176eb6] cursor-pointer ${cs.scale.side === "right" ? "right-0" : "left-0"}`}
+                className="flex h-7 w-12 items-center justify-center rounded-md border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#338bd0] hover:bg-[var(--tv3-fill)] hover:text-[#176eb6] cursor-pointer"
               >
                 <svg viewBox="0 0 32 32" className="h-6 w-6 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M14 7H6a2 2 0 0 0-2 2v12h24v-8M2 24h28a2 2 0 0 1-2 3H4a2 2 0 0 1-2-3Z" />
@@ -2419,6 +2420,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 </svg>
               </button>
             )}
+            </div>
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
                 className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
