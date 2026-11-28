@@ -1,6 +1,6 @@
 import { coinIcon } from "./bybit-spot-search";
 import { fxIcon, parseFxSymbol } from "./forex-meta";
-import { moexAssetGroup } from "./futures-assets";
+import { knownMoexAssets, moexAssetGroup } from "./futures-assets";
 import type { FutAsset, MarketItem } from "./market-types";
 import tinkoffIcons from "./tinvest-icons.generated.json";
 
@@ -93,6 +93,26 @@ function futureFamilyLogo(asset: string, hint?: FutAsset): string {
 
 const categoryPath = (name: string) => `/icons/categories/${name}.svg`;
 
+// The main watchlist is mirrored between fomo.spot and terminal.fomo.spot as
+// ticker/source/name. Dynamic exchange-search metadata (group/emoji) is not
+// stored with the row, so infer known MOEX futures from their stable ticker
+// roots. This keeps a contract's icon the same after it is mirrored/reloaded.
+const KNOWN_MOEX_FUTURES = new Set(knownMoexAssets().map((x) => x.toUpperCase()));
+function moexFutureRoot(...symbols: Array<string | undefined>): string | null {
+  for (const symbol of symbols) {
+    const raw = (symbol ?? "").trim().toUpperCase();
+    if (!raw) continue;
+    const roots = [
+      raw.replace(/\d!$/, ""),
+      raw.replace(/-[A-Z0-9]{1,2}\.\d{2}$/, ""),
+      raw.replace(/[FGHJKMNQUVXZ]\d{1,2}$/, ""),
+      raw,
+    ];
+    for (const root of roots) if (KNOWN_MOEX_FUTURES.has(root)) return root;
+  }
+  return null;
+}
+
 /** Artwork for any listed or newly discovered futures family. */
 export function futuresIcon(asset: string, group?: FutAsset): string {
   const upper = asset.toUpperCase();
@@ -119,8 +139,9 @@ export function instrumentIconFallback(inst: {
     const base = symbol.match(/^([A-Z0-9]+?)(?:USDT|USDC|USD|BTC|ETH)$/)?.[1] ?? symbol;
     return coinIcon(base);
   }
-  if (inst.source === "moex" && inst.group === "future") {
-    const symbol = (inst.dataTicker || inst.ticker).replace(/\d!$/, "").replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, "");
+  const moexFuture = inst.source === "moex" ? moexFutureRoot(inst.dataTicker, inst.ticker) : null;
+  if (inst.source === "moex" && (inst.group === "future" || moexFuture)) {
+    const symbol = moexFuture ?? (inst.dataTicker || inst.ticker).replace(/\d!$/, "").replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, "");
     return futureFamilyLogo(symbol) || futuresIcon(symbol);
   }
   if (inst.group === "future") return futuresIcon(inst.dataTicker || inst.ticker, undefined);

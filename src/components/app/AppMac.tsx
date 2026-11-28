@@ -8,10 +8,9 @@ import InstIcon from "@/components/chart/InstIcon";
 import MacSvg from "@/components/chart/MacSvg";
 import { instName, type TerminalInstrument } from "@/lib/terminal-data";
 import { APP_TABS, appTabHref } from "@/lib/app-ui";
-import { MAC_CHIP_COLORS, macTitle, MAC_QUICK, MAC_ROW_ICONS, MAC_TABS, macGradFor, macIconKey, macTone, sparkPath, type MacGlyphDef, type MacTabId } from "@/lib/app-mac";
+import { MAC_CHIP_COLORS, macTitle, MAC_QUICK, MAC_TABS, macTone, sparkPath, type MacGlyphDef, type MacTabId } from "@/lib/app-mac";
 import { hostNavigate } from "./tabhost/store";
 import { useTheme } from "@/lib/theme";
-import { instrumentIconFallback, tinkoffInstrumentIcon } from "@/lib/instrument-icons";
 
 /* Pieces of the phone version of the macOS look (design "FOMO Terminal Mobile"); AppTerminal.tsx wires them to the chart. Styles: app-mac.css. */
 
@@ -19,30 +18,9 @@ export function G({ g, size, alpha, width }: { g: MacGlyphDef; size: number; alp
   return <MacSvg d={g.d} fl={g.fl} light={g.light} stroke={g.stroke} size={size} alpha={alpha} width={width} />;
 }
 
-/** The round instrument icon: the design's glyph on its gradient when it has one for the ticker, else a gradient with the instrument's own artwork / letters. */
+/** Use the same instrument artwork as the web terminal's catalog and watchlist. */
 export function MacInstIcon({ inst, size }: { inst: TerminalInstrument; size: number }) {
-  const key = macIconKey(inst.ticker);
-  const ic = key ? MAC_ROW_ICONS[key] : null;
-  const fallbackArtwork = instrumentIconFallback(inst);
-  const providerArtwork = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker) || (fallbackArtwork.includes("/tinvest/") ? fallbackArtwork : "");
-  const artwork = providerArtwork || inst.emoji || fallbackArtwork;
-  const [c1, c2] = ic && !providerArtwork ? [ic.c1, ic.c2] : macGradFor(inst.ticker);
-  return (
-    <span className="app-mac-ico" data-art={(!ic || providerArtwork) && (artwork || inst.source === "forex") ? "1" : undefined} style={{ width: size, height: size, background: `linear-gradient(135deg,${c1},${c2})`, boxShadow: `0 3px 8px ${c2}55` }} aria-hidden="true">
-      {ic && !providerArtwork ? (
-        <svg viewBox="0 0 24 24" width={size * 0.52} height={size * 0.52} fill="none" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          {ic.fl && <path d={ic.fl} fill="rgba(255,255,255,.34)" stroke="none" />}
-          <path d={ic.d} />
-        </svg>
-      ) : artwork || inst.source === "forex" ? (
-        <span className="app-mac-ico-art">
-          <InstIcon inst={inst} size={Math.round(size * 0.82)} />
-        </span>
-      ) : (
-        <b style={{ fontSize: size * 0.34 }}>{inst.ticker.slice(0, 2).toUpperCase()}</b>
-      )}
-    </span>
-  );
+  return <InstIcon inst={inst} size={size} />;
 }
 
 export function MacHeader({
