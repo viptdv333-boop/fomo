@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanCandle } from "@/lib/chart/candles";
-import { frontSecid } from "@/lib/moex-contracts";
+import { autoContinuousSymbol, frontSecid } from "@/lib/moex-contracts";
 import { issSecurityPath, resolveMoex, type MoexSecurity } from "@/lib/moex-resolve";
 import { parseBybitTicker } from "@/lib/bybit-symbol";
 import { applyTinkoffTail, type TailResult } from "@/lib/tinkoff-candles";
@@ -549,7 +549,7 @@ function pageMemo<T>(key: string, toMs: number, make: () => Promise<T>, worth: (
 async function handle(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const source = searchParams.get("source") || "";
-  const ticker = searchParams.get("ticker") || "";
+  let ticker = searchParams.get("ticker") || "";
   const interval = searchParams.get("interval") || "D";
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "300") || 300, 1), 5000);
   const toParam = searchParams.get("to");
@@ -557,6 +557,12 @@ async function handle(request: NextRequest) {
 
   if (!ticker || !source) {
     return NextResponse.json({ error: "source and ticker required" }, { status: 400 });
+  }
+  // «Авто (текущий)» of a FORTS family is its continuous front {ASSET}1!, not the dated front month: resolve the generic
+  // auto ticker (NG, GOLD, BR …) to the continuous series so every auto instrument — new or already stored — shows the склейка.
+  if (source === "moex") {
+    const ac = await autoContinuousSymbol(ticker);
+    if (ac) ticker = ac;
   }
   // second candles have no history anywhere: the chart builds them live in the browser (seconds-feed.ts), never from this API
   if (isSecondsInterval(interval)) {

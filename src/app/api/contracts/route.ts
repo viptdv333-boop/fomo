@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { contractBadge, contractLabel, findFamily, getFortsFamilies, refreshDays, type Lang } from "@/lib/moex-contracts";
+import { contractBadge, contractLabel, continuousAutoTicker, findFamily, getFortsFamilies, refreshDays, type Lang } from "@/lib/moex-contracts";
 import { getBybitContracts } from "@/lib/bybit-contracts";
 import { ipOf, overLimit } from "@/lib/mem-rate-limit";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
@@ -74,15 +74,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(none, { headers: CACHE });
   }
   const f = refreshDays(fam);
-  // Continuous (склейка) options come FIRST, then the dated contracts — for every family with a rollable chain (≥2 dated).
-  const datedCount = f.contracts.filter((c) => c.order >= 1).length;
-  const continuous = datedCount >= 2 ? chainContracts(f.asset, f.name, lang) : [];
+  // «Авто (текущий)» is the continuous front {ASSET}1! when a rollable chain exists; continuous options come FIRST, then dated.
+  const autoT = continuousAutoTicker(f) ?? f.auto;
+  const continuous = autoT !== f.auto ? chainContracts(f.asset, f.name, lang) : [];
+  const isAutoReq = asset === f.auto || asset === f.asset;
   const res: ContractsResponse = {
     source: "moex",
     asset: f.asset,
     name: f.name,
-    auto: f.auto,
-    current: continuousSymbol(asset) ? asset : f.contracts.find((c) => c.secid === asset)?.secid ?? f.contracts.find((c) => c.order === 1)?.secid,
+    auto: autoT,
+    current: continuousSymbol(asset) ? asset : isAutoReq ? autoT : f.contracts.find((c) => c.secid === asset)?.secid ?? autoT,
     contracts: [...continuous, ...f.contracts.map((c) => toInfo(c, f.name, lang))],
   };
   return NextResponse.json(res, { headers: CACHE });

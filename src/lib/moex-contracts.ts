@@ -324,3 +324,19 @@ export async function frontSecid(ticker: string): Promise<string | null> {
   const r = await resolveFuturesTicker(ticker);
   return r?.secid ?? null;
 }
+
+/** The auto (current) ticker of a family: the continuous front {ASSET}1! when a rollable chain (≥2 dated) exists, else null.
+ *  «Авто (текущий)» means the continuous front contract, not the dated front month. */
+export function continuousAutoTicker(f: ContractFamily): string | null {
+  return f.contracts.filter((c) => c.order >= 1).length >= 2 ? `${f.asset}1!` : null;
+}
+
+/** If `ticker` is a generic/auto FORTS ticker (NG, GOLD, BR, NG.F …) of a family with a rollable chain, its continuous front
+ *  {ASSET}1!; null for an exact contract (dated or perpetual), an already-continuous symbol, or a non-futures ticker. */
+export async function autoContinuousSymbol(ticker: string): Promise<string | null> {
+  if (!ticker || continuousSymbol(ticker)) return null;
+  const families = await getFortsFamilies();
+  if (families.some((f) => f.contracts.some((c) => c.secid === ticker))) return null; // an exact contract: keep it
+  const f = findFamily(families, ticker, false);
+  return f ? continuousAutoTicker(f) : null;
+}

@@ -5,7 +5,7 @@
  * No Next / DB imports.
  */
 
-import { baseName, findFamily, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
+import { baseName, continuousAutoTicker, findFamily, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
 import { continuousSymbol } from "./continuous-futures";
 import { getNgCatalogue } from "./moex-continuous";
@@ -80,9 +80,10 @@ function norm(s: string): string {
 
 function famItem(f: ContractFamily): MarketItem {
   const dated = f.contracts.filter((c) => c.kind !== "perpetual");
+  const autoT = continuousAutoTicker(f) ?? f.auto; // «Авто (текущий)» = the continuous front {ASSET}1!
   return {
-    secid: f.auto,
-    ticker: f.auto,
+    secid: autoT,
+    ticker: autoT,
     name: ruName(f) ? `${f.name} · ${ruName(f)}` : f.name,
     group: "future",
     source: "moex",
@@ -92,7 +93,7 @@ function famItem(f: ContractFamily): MarketItem {
     auto: true,
     asset: f.asset,
     contracts: f.contracts.length,
-    kind: dated.length ? dated[0].kind : "perpetual",
+    kind: autoT !== f.auto ? "continuous" : dated.length ? dated[0].kind : "perpetual",
   };
 }
 
