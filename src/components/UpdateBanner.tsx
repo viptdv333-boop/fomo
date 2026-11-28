@@ -19,10 +19,12 @@ function isEditing(): boolean {
  * missing Server Action, or the service worker telling that a build file it asked for is gone. The page drops the stored shell and reloads once
  * (loop guard in stale-build.ts). Production only: in `next dev` chunks come and go on every edit.
  */
-function useStaleErrors() {
+function useStaleErrors(showBanner: () => void) {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
-    const heal = (why: string) => void recoverStaleShell(why);
+    // A new release removed this bundle's files: surface the one-tap «update» card instead of a silent
+    // reload, so the person always sees the banner (a silent reload hid it after deploys).
+    const heal = (_why: string) => showBanner();
     // capture phase: a failed <script> / <link> does not bubble to window
     const onError = (e: Event) => {
       const t = e.target as (HTMLElement & { src?: string; href?: string }) | null;
@@ -57,7 +59,7 @@ export default function UpdateBanner() {
   const { t } = useT();
   const [outdated, setOutdated] = useState(false);
   const [busy, setBusy] = useState(false);
-  useStaleErrors();
+  useStaleErrors(() => setOutdated(true));
 
   useEffect(() => {
     const mine = process.env.NEXT_PUBLIC_BUILD_ID;
