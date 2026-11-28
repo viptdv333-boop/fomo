@@ -536,13 +536,6 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
 
   await Promise.all(jobs);
   const final: Record<string, BatchQuote> = {};
-  for (const [fetchKey, origKey] of back) {
-    const q = out[fetchKey];
-    if (!q) continue;
-    // MOEX here is a live feed (server T-Invest / GUEST_REALTIME), no delay marker; the public
-    // InstaForex forex candles and yahoo are ~15 min delayed, so they carry the clock marker.
-    const delayed = fetchKey.startsWith("moex:") ? false : fetchKey.startsWith("yahoo:") || fetchKey.startsWith("forex:") ? true : q.delayed;
-    final[origKey] = delayed ? { ...q, delayed } : q;
-  }
+  for (const [fetchKey, origKey] of back) if (out[fetchKey]) final[origKey] = out[fetchKey];
   return final;
 }
