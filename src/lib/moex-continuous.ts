@@ -1,7 +1,7 @@
 import { ruCaFetch } from "./algopack-tls";
 import { getIssJson, type Feed } from "./algopack-feed";
 import { mskDate } from "./moex-contracts";
-import { buildContinuous, nextDay, rollDelta, type ChainBar, type ChainContract, type ChainRequest } from "./continuous-futures";
+import { buildContinuous, continuousSymbol, nextDay, rollDelta, type ChainBar, type ChainContract, type ChainRequest } from "./continuous-futures";
 
 const ISS = "https://iss.moex.com/iss";
 type Block = { columns: string[]; data: unknown[][] };
@@ -15,26 +15,31 @@ async function publicJson(url: string): Promise<any> {
   return res.json();
 }
 
-let catalogue: { at: number; contracts: ChainContract[] } | undefined;
-let pending: Promise<ChainContract[]> | undefined;
-/** Includes expired contracts. Never infer expiry from a month code or use current-contract history as a substitute. */
-export async function getNgCatalogue(): Promise<ChainContract[]> {
-  if (catalogue && Date.now() - catalogue.at < 6 * 3600000) return catalogue.contracts;
-  if (pending) return pending;
-  pending = (async () => {
+const catalogues = new Map<string, { at: number; contracts: ChainContract[] }>();
+const cataloguePending = new Map<string, Promise<ChainContract[]>>();
+/** Includes expired contracts. Never infer expiry from a month code or use current-contract history as a substitute.
+ *  Generic over any FORTS family: the shortname filter ^{asset}-{m}.{yy} isolates the family (excludes minis GOLDM/BRM,
+ *  spreads and substring matches like SBRF/SILV), and ASSETCODE confirms it. The dated-secid prefix varies (GD for GOLD, Si, BR…). */
+export async function getCatalogue(asset: string): Promise<ChainContract[]> {
+  const hit = catalogues.get(asset);
+  if (hit && Date.now() - hit.at < 6 * 3600000) return hit.contracts;
+  const pend = cataloguePending.get(asset);
+  if (pend) return pend;
+  const shortnameRe = new RegExp(`^${asset}-\\d{1,2}\\.\\d{2}$`);
+  const task = (async () => {
     const ids = new Set<string>();
     let start = 0;
     for (let page = 0; ; page++) {
-      if (page >= 50) throw new Error("NG catalogue pagination limit reached");
-      const j = await publicJson(`${ISS}/securities.json?q=NG&engine=futures&market=forts&limit=100&start=${start}&iss.meta=off`);
+      if (page >= 50) throw new Error(`${asset} catalogue pagination limit reached`);
+      const j = await publicJson(`${ISS}/securities.json?q=${encodeURIComponent(asset)}&engine=futures&market=forts&limit=100&start=${start}&iss.meta=off`);
       const rows = records(j.securities);
       if (!rows.length) break;
       for (const r of rows) {
-        if (r.type === "futures" && /^NG-\d{1,2}\.\d{2}$/.test(String(r.shortname)) && /^NG[FGHJKMNQUVXZ]\d{1,2}$/.test(String(r.secid))) ids.add(String(r.secid));
+        if (r.type === "futures" && shortnameRe.test(String(r.shortname))) ids.add(String(r.secid));
       }
       start += rows.length;
     }
-    if (!ids.size) throw new Error("Empty NG catalogue");
+    if (!ids.size) throw new Error(`Empty ${asset} catalogue`);
     const queue = [...ids];
     const contracts: ChainContract[] = [];
     await Promise.all(Array.from({ length: 4 }, async () => {
@@ -43,15 +48,22 @@ export async function getNgCatalogue(): Promise<ChainContract[]> {
         if (!secid) break;
         const j = await publicJson(`${ISS}/securities/${secid}.json?iss.meta=off&iss.only=description`);
         const d = Object.fromEntries(records(j.description).map((r) => [String(r.name), String(r.value ?? "")]));
-        if (d.ASSETCODE !== "NG" || d.TYPE !== "futures" || !/^\d{4}-\d\d-\d\d$/.test(d.LSTTRADE) || !/^\d{4}-\d\d-\d\d$/.test(d.FRSTTRADE)) throw new Error("Invalid NG contract metadata: " + secid);
+        if (d.ASSETCODE !== asset) continue; // a different family caught by the search: not ours
+        if (d.TYPE !== "futures" || !/^\d{4}-\d{2}-\d{2}$/.test(d.LSTTRADE) || !/^\d{4}-\d{2}-\d{2}$/.test(d.FRSTTRADE)) throw new Error(`Invalid ${asset} contract metadata: ` + secid);
         contracts.push({ secid, first: d.FRSTTRADE, expiry: d.LSTTRADE });
       }
     }));
+    if (!contracts.length) throw new Error(`Empty ${asset} catalogue`);
     contracts.sort((a, b) => a.expiry.localeCompare(b.expiry));
-    catalogue = { at: Date.now(), contracts };
+    catalogues.set(asset, { at: Date.now(), contracts });
     return contracts;
-  })().finally(() => { pending = undefined; });
-  return pending;
+  })().finally(() => cataloguePending.delete(asset));
+  cataloguePending.set(asset, task);
+  return task;
+}
+/** @deprecated use getCatalogue("NG") */
+export async function getNgCatalogue(): Promise<ChainContract[]> {
+  return getCatalogue("NG");
 }
 
 // Public history only. Bounded to roughly 4 MB of raw numbers, including overhead well below a full chart cache.
@@ -85,7 +97,7 @@ export async function loadNgBars(secid: string, interval: number, from: string, 
 }
 
 async function fetchNgBars(secid: string, interval: number, from: string, till: string, feed?: Feed): Promise<ChainBar[]> {
-  if (!/^NG[FGHJKMNQUVXZ]\d{1,2}$/.test(secid)) throw new Error("Invalid dated NG contract");
+  if (!/^[A-Za-z]{1,6}[FGHJKMNQUVXZ]\d{1,2}$/.test(secid)) throw new Error("Invalid dated FORTS contract: " + secid);
   const out: ChainBar[] = [];
   let start = 0;
   for (let page = 0; ; page++) {
@@ -125,6 +137,12 @@ async function getDelta(oldId: string, newId: string, expiry: string): Promise<n
   return task;
 }
 
+export async function getContinuous(request: Omit<ChainRequest, "today">, feed: Feed): Promise<ChainBar[]> {
+  const sym = continuousSymbol(request.ticker);
+  if (!sym) throw new Error("Not a continuous symbol");
+  return buildContinuous(await getCatalogue(sym.asset), { ...request, today: mskDate() }, (id, iv, from, till) => loadNgBars(id, iv, from, till, feed), getDelta);
+}
+/** @deprecated use getContinuous */
 export async function getNgContinuous(request: Omit<ChainRequest, "today">, feed: Feed): Promise<ChainBar[]> {
-  return buildContinuous(await getNgCatalogue(), { ...request, today: mskDate() }, (id, iv, from, till) => loadNgBars(id, iv, from, till, feed), getDelta);
+  return getContinuous(request, feed);
 }

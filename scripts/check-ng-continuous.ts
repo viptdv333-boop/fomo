@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { cleanCandles, mergeCandle } from "../src/lib/chart/candles";
-import { aggregateChain, buildContinuous, chainSegments, continuousDay, nextDay, ngContinuousRank, rollDelta, shiftBar, wallDay, type ChainBar, type ChainContract, type ChainLoader } from "../src/lib/continuous-futures";
+import { aggregateChain, buildContinuous, chainSegments, continuousDay, continuousRank, continuousSymbol, nextDay, ngContinuousRank, rollDelta, shiftBar, wallDay, type ChainBar, type ChainContract, type ChainLoader } from "../src/lib/continuous-futures";
+import { chainContracts } from "../src/lib/ng-symbols";
 
 const contracts: ChainContract[] = [
   { secid: "NGF6", first: "2025-10-01", expiry: "2026-01-28" },
@@ -94,4 +95,27 @@ async function check() {
     console.log(JSON.stringify({ live: "PASS", catalogue: catalogue.length, first: catalogue[0], expiryChecked: outgoing.expiry, daily: rawLive.length, hourly: hourly.length, fiveMinute: minute.length }));
   }
 }
+// --- multi-asset generalization: continuous symbols/chains are not gas-specific
+assert.deepEqual(continuousSymbol("NG1!"), { asset: "NG", rank: 1 });
+assert.deepEqual(continuousSymbol("GOLD2!"), { asset: "GOLD", rank: 2 });
+assert.deepEqual(continuousSymbol("BR1!"), { asset: "BR", rank: 1 });
+assert.deepEqual(continuousSymbol("Si1!"), { asset: "Si", rank: 1 });
+assert.deepEqual(continuousSymbol("MIX2!"), { asset: "MIX", rank: 2 });
+assert.equal(continuousSymbol("NGZ6"), null); // a dated contract, not continuous
+assert.equal(continuousSymbol("GOLD"), null); // the family itself, not continuous
+assert.equal(continuousRank("GOLD1!"), 1);
+assert.equal(ngContinuousRank("BR2!"), 2); // deprecated alias still general
+const goldChain = chainContracts("GOLD", "Золото", "ru");
+assert.deepEqual(goldChain.map((c) => c.ticker), ["GOLD1!", "GOLD2!"]);
+assert.ok(goldChain.every((c) => c.kind === "continuous" && c.expiry === null));
+assert.equal(goldChain[0].shortname, "Золото · склейка 1");
+// the chain builder is asset-agnostic: a GOLD1! request over the same chain stitches like NG1!
+(async () => {
+  const today = "2026-03-02";
+  const ng = await buildContinuous(contracts, { ticker: "NG1!", interval: "D", limit: 6, adjusted: false, today }, load, delta);
+  const gold = await buildContinuous(contracts, { ticker: "GOLD1!", interval: "D", limit: 6, adjusted: false, today }, load, delta);
+  assert.deepEqual(gold, ng, "continuous stitching does not depend on the asset code");
+  assert.ok(gold.length > 0);
+  console.log("multi-asset: PASS (NG/GOLD/BR/Si/MIX symbols, GOLD chain contracts, asset-agnostic stitching)");
+})();
 check().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -5,9 +5,9 @@
  * No Next / DB imports.
  */
 
-import { baseName, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
+import { baseName, findFamily, getFortsFamilies, refreshDays, type ContractFamily, type FortsContract } from "./moex-contracts";
 import { groupOfMarket } from "./moex-resolve";
-import { ngChainItems } from "./ng-symbols";
+import { continuousSymbol } from "./continuous-futures";
 import { getNgCatalogue } from "./moex-continuous";
 import type { GroupTab, MarketGroup, MarketItem, MarketPage } from "./market-types";
 import { FX_PAIRS, parseFxSymbol, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
@@ -114,7 +114,23 @@ function contractItem(c: FortsContract, f: ContractFamily): MarketItem {
   };
 }
 
-/** FORTS families and exact contracts for a query with their relevance (best first). */
+/** A synthetic continuous (склейка) contract of a family: {ASSET}1! / {ASSET}2!, chosen inside the family's picker. */
+function continuousItem(f: ContractFamily, rank: 1 | 2): MarketItem {
+  const ticker = `${f.asset}${rank}!`;
+  return {
+    secid: ticker,
+    ticker,
+    name: `${f.name} · склейка ${rank}`,
+    group: "future",
+    source: "moex",
+    engine: "futures",
+    market: "forts",
+    board: "RFUD",
+    asset: f.asset,
+    kind: "continuous",
+    expiry: null,
+  };
+}
 function scoreFutures(families: ContractFamily[], q: string): { s: number; item: MarketItem }[] {
   const n = norm(q);
   if (!n) return [];
@@ -440,12 +456,15 @@ export function pageOf(list: MarketItem[], group: GroupTab, opts: PageOpts = {})
 
 /** A typed query on a chip: ranked rows (a page of them), tagged with their venue / country / category and filtered. */
 export async function searchMarketPage(q: string, group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
-  const ngQuery = /^(?:ng[12!]*|газ|природный(?: газ)?|natural(?: gas)?|gas)$/i.test(q.trim());
-  const ngExact = /^NG[FGHJKMNQUVXZ]\d{1,2}$/i.test(q.trim());
   const futures = group === "all" || group === "future";
-  const chains = futures && ngQuery ? ngChainItems().filter((c) => !/^NG[12]!$/i.test(q.trim()) || c.ticker === q.trim().toUpperCase()) : [];
-  const dated = futures && (ngQuery || ngExact) ? await ngDatedItems().catch(() => []) : [];
-  return pageOf(assetFirst(withProviders([...chains, ...await searchCandidates(q.trim(), group), ...dated.filter((c) => !ngExact || c.ticker === q.trim().toUpperCase())], q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
+  // Continuous contracts are chosen inside the family's picker, not listed as separate rows; a typed {ASSET}{rank}! still resolves directly.
+  const qsym = continuousSymbol(q.trim());
+  let continuous: MarketItem[] = [];
+  if (qsym && futures) {
+    const fam = findFamily(await getFortsFamilies(), qsym.asset, true);
+    if (fam) continuous = [continuousItem(refreshDays(fam), qsym.rank)];
+  }
+  return pageOf(assetFirst(withProviders([...continuous, ...await searchCandidates(q.trim(), group)], q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
 }
 
 async function ngDatedItems(): Promise<MarketItem[]> {
@@ -455,7 +474,7 @@ async function ngDatedItems(): Promise<MarketItem[]> {
 /** Nothing typed: the chip's popular list (a page of it). */
 export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
   const filtered = hasFilters(opts.filters ?? NO_FILTERS);
-  const base = [...(group === "future" || group === "all" ? ngChainItems() : []), ...(await popularCandidates(group, filtered))];
+  const base = [...(await popularCandidates(group, filtered))];
   const yh = yahooPopularFor(group).map(tagItem);
   const mixed = yh.length ? [...base, ...yh] : base;
   // the short mix of «Все» stays as it is; a filter on «Все» looks through every list, the providers' included
@@ -466,8 +485,11 @@ export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts 
 export async function lookupMarket(id: string): Promise<MarketItem | null> {
   id = id.trim();
   if (!id) return null;
-  const chain = ngChainItems().find((c) => c.ticker === id.toUpperCase());
-  if (chain) return chain;
+  const sym = continuousSymbol(id);
+  if (sym) {
+    const fam = findFamily(await getFortsFamilies(), sym.asset, true);
+    if (fam) return tagItem(continuousItem(refreshDays(fam), sym.rank));
+  }
   if (/^NG[FGHJKMNQUVXZ]\d{1,2}$/i.test(id)) {
     const dated = await ngDatedItems().catch(() => []);
     const c = dated.find((c) => c.ticker === id.toUpperCase());

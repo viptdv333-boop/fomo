@@ -1,6 +1,15 @@
 /** Synthetic series only. Dated contracts never pass through this module. */
+/** Any FORTS continuous symbol: {ASSET}{rank}! — NG1!, GOLD1!, BR2!, Si1!, MIX1! … The asset is the family code (not the dated-contract prefix). */
+export function continuousSymbol(ticker: string): { asset: string; rank: 1 | 2 } | null {
+  const m = /^([A-Za-z]{1,8})([12])!$/.exec(ticker);
+  return m ? { asset: m[1], rank: Number(m[2]) as 1 | 2 } : null;
+}
+export function continuousRank(ticker: string): 1 | 2 | null {
+  return continuousSymbol(ticker)?.rank ?? null;
+}
+/** @deprecated use continuousRank */
 export function ngContinuousRank(ticker: string): 1 | 2 | null {
-  return ticker === "NG1!" ? 1 : ticker === "NG2!" ? 2 : null;
+  return continuousRank(ticker);
 }
 export function continuousDay(ms = Date.now()): string {
   return new Date(ms + 3 * 3600000).toISOString().slice(0, 10);

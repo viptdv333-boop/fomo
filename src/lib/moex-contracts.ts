@@ -11,7 +11,7 @@
  * Classification (`buildFamilies`) is pure and unit-testable from a captured ISS response.
  */
 
-import { ngContinuousRank } from "./continuous-futures";
+import { continuousSymbol, ngContinuousRank } from "./continuous-futures";
 import { ruCaFetch } from "./algopack-tls";
 const ISS = "https://iss.moex.com/iss";
 const FORTS_URL = `${ISS}/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,BOARDID,SHORTNAME,SECNAME,ASSETCODE,LASTTRADEDATE,SECTYPE,LOTVOLUME,DECIMALS,MINSTEP`;
@@ -176,7 +176,8 @@ export function findFamily(families: ContractFamily[], input: string, loose = fa
   if (!s) return null;
   for (const f of families) if (f.contracts.some((c) => c.secid === s)) return f;
   let asset: string | null = null;
-  if (ngContinuousRank(s)) asset = "NG";
+  const sym = continuousSymbol(s);
+  if (sym) asset = sym.asset;
   else if (s.endsWith(AUTO_SUFFIX)) asset = s.slice(0, -AUTO_SUFFIX.length);
   else if (GENERIC_FUTURES.has(s)) asset = GENERIC_ALIAS[s] ?? s;
   if (asset) return families.find((f) => f.asset === asset) ?? families.find((f) => f.asset.toLowerCase() === asset!.toLowerCase()) ?? null;
@@ -301,10 +302,10 @@ export async function getContract(secid: string): Promise<FortsContract | undefi
 /** A ticker (exact SECID / generic ticker / "<ASSET>.F") -> the SECID to request data for. */
 export async function resolveFuturesTicker(ticker: string): Promise<{ secid: string; auto: boolean; board: string } | null> {
   const families = await getFortsFamilies();
-  const rank = ngContinuousRank(ticker);
-  if (rank) {
-    const dated = families.find((f) => f.asset === "NG")?.contracts.filter((c) => c.expiry && c.expiry >= mskDate()).sort((a, b) => a.expiry!.localeCompare(b.expiry!));
-    const c = dated?.[rank - 1];
+  const sym = continuousSymbol(ticker);
+  if (sym) {
+    const dated = families.find((f) => f.asset === sym.asset)?.contracts.filter((c) => c.expiry && c.expiry >= mskDate()).sort((a, b) => a.expiry!.localeCompare(b.expiry!));
+    const c = dated?.[sym.rank - 1];
     return c ? { secid: c.secid, auto: true, board: c.board } : null;
   }
   // an expired front can sit in the cached build until the next refresh: skip dated contracts that are already past

@@ -1,13 +1,23 @@
 import type { ContractInfo, MarketItem } from "./market-types";
 
-export function ngChainContracts(lang = "ru"): ContractInfo[] {
+/** Synthetic continuous (склейка) contracts of any FORTS family: {ASSET}1! / {ASSET}2!.
+ *  `name` is the family's display name (Газ, Золото, Нефть…). Dated contracts are listed separately by the picker. */
+export function chainContracts(asset: string, name: string, lang = "ru"): ContractInfo[] {
   return [1, 2].map((rank) => ({
-    secid: `NG${rank}!`, ticker: `NG${rank}!`, shortname: lang === "ru" ? `Газ · склейка ${rank}` : `Natural gas · continuous ${rank}`,
+    secid: `${asset}${rank}!`, ticker: `${asset}${rank}!`,
+    shortname: lang === "ru" ? `${name} · склейка ${rank}` : `${name} · continuous ${rank}`,
     kind: "continuous", expiry: null, order: 0, daysLeft: null,
     badge: lang === "ru" ? "склейка" : "continuous",
-    label: lang === "ru" ? `NG${rank}! · ${rank === 1 ? "ближайший" : "второй"} контракт · переход по экспирации` : `NG${rank}! · ${rank === 1 ? "front" : "second"} contract · expiry roll`,
+    label: lang === "ru" ? `${asset}${rank}! · ${rank === 1 ? "ближайший" : "второй"} контракт · переход по экспирации` : `${asset}${rank}! · ${rank === 1 ? "front" : "second"} contract · expiry roll`,
   }));
 }
+
+/** @deprecated use chainContracts("NG", …) */
+export function ngChainContracts(lang = "ru"): ContractInfo[] {
+  return chainContracts("NG", lang === "ru" ? "Газ" : "Natural gas", lang);
+}
+
+/** @deprecated continuous contracts are now chosen inside the family's contract picker, not as separate search items. */
 export function ngChainItems(): MarketItem[] {
-  return ngChainContracts().map((c) => ({ secid: c.ticker, ticker: c.ticker, name: c.shortname, nameEn: `Natural gas continuous ${c.ticker}`, group: "future", source: "moex", exchange: "MOEX", country: "RU", fgroup: "gas", asset: "NG", kind: "continuous", expiry: null }));
+  return [];
 }

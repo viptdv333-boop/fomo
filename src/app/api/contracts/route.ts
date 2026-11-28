@@ -3,8 +3,8 @@ import { contractBadge, contractLabel, findFamily, getFortsFamilies, refreshDays
 import { getBybitContracts } from "@/lib/bybit-contracts";
 import { ipOf, overLimit } from "@/lib/mem-rate-limit";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
-import { ngContinuousRank } from "@/lib/continuous-futures";
-import { ngChainContracts } from "@/lib/ng-symbols";
+import { continuousSymbol } from "@/lib/continuous-futures";
+import { chainContracts } from "@/lib/ng-symbols";
 
 /**
  * Exact tradable contracts of one underlying.
@@ -16,7 +16,7 @@ import { ngChainContracts } from "@/lib/ng-symbols";
 
 export const dynamic = "force-dynamic";
 
-const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
+const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|[A-Za-z]{1,8}[12]!)$/;
 const LANGS = new Set(["ru", "en", "cn"]);
 const CACHE = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
 
@@ -34,8 +34,11 @@ export async function GET(req: NextRequest) {
     const info: Record<string, ContractInfo & { asset: string; name: string; auto: string }> = {};
     for (const id of secids.split(",").slice(0, 100)) {
       if (!ID_RE.test(id)) continue;
-      if (ngContinuousRank(id)) {
-        info[id] = { ...ngChainContracts(lang).find((c) => c.ticker === id)!, asset: "NG", name: "NG", auto: "NG" };
+      const sym = continuousSymbol(id);
+      if (sym) {
+        const fam = findFamily(families, sym.asset, true);
+        const cc = chainContracts(sym.asset, fam?.name ?? sym.asset, lang).find((c) => c.ticker === id)!;
+        info[id] = { ...cc, asset: sym.asset, name: fam?.name ?? sym.asset, auto: fam?.auto ?? sym.asset };
         continue;
       }
       for (const f of families) {
@@ -71,13 +74,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(none, { headers: CACHE });
   }
   const f = refreshDays(fam);
+  // Continuous (склейка) options come FIRST, then the dated contracts — for every family with a rollable chain (≥2 dated).
+  const datedCount = f.contracts.filter((c) => c.order >= 1).length;
+  const continuous = datedCount >= 2 ? chainContracts(f.asset, f.name, lang) : [];
   const res: ContractsResponse = {
     source: "moex",
     asset: f.asset,
     name: f.name,
     auto: f.auto,
-    current: ngContinuousRank(asset) ? asset : f.contracts.find((c) => c.secid === asset)?.secid ?? f.contracts.find((c) => c.order === 1)?.secid,
-    contracts: [...f.contracts.map((c) => toInfo(c, f.name, lang)), ...(f.asset === "NG" ? ngChainContracts(lang) : [])],
+    current: continuousSymbol(asset) ? asset : f.contracts.find((c) => c.secid === asset)?.secid ?? f.contracts.find((c) => c.order === 1)?.secid,
+    contracts: [...continuous, ...f.contracts.map((c) => toInfo(c, f.name, lang))],
   };
   return NextResponse.json(res, { headers: CACHE });
 }
