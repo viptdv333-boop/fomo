@@ -177,8 +177,8 @@ export default function ContractPicker({
                 {isAuto && <span className="text-xs">✓</span>}
               </button>
             )}
-            {source === "moex" && chain && ([1, 2] as const).map((rank) => {
-              const symbol = `${chain.asset}${rank}!`;
+            {source === "moex" && /^[A-Za-z]{1,8}$/.test(data.asset) && ([1, 2] as const).map((rank) => {
+              const symbol = `${data.asset}${rank}!`;
               return <button key={symbol} role="option" aria-selected={ticker === symbol} onClick={() => { setOpen(false); onPick({ ...instrument, ticker: symbol, dataTicker: symbol, group: "future" }); }} className="w-full px-3.5 py-2 flex items-center gap-2 text-left cursor-pointer hover:bg-[var(--tv3-fill3)]"><span className="px-1.5 rounded bg-sky-500/15 text-sky-600 text-[10px]">{t("ct.b.continuous")}</span><span className="flex-1 text-[13px] font-semibold">{symbol}</span>{ticker === symbol && <span>✓</span>}</button>;
             })}
             {all.map((c) => {
