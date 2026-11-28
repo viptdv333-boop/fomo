@@ -86,6 +86,14 @@ html.app-ui .ach-subpill { height: 30px; padding: 0 12px; border-radius: 15px; d
 html.app-ui .ach-subpill[data-kind="me"],
 html.app-ui .ach-subpill[data-kind="on"] { background: var(--app-card2); color: var(--app-tx2); }
 
+/* Author actions are real FOMO UI buttons; the generic .ach button reset above must not flatten them into plain text. */
+html.app-ui .ach .author-actions { display: flex; flex: 0 0 auto; width: 100%; box-sizing: border-box; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 0 4px; }
+html.app-ui .ach .author-actions .author-action-btn { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; padding: 0 12px; border: 1px solid var(--app-line); border-radius: 10px; background: var(--app-card2); color: var(--app-tx); font-size: 13px; line-height: 1.2; font-weight: 600; white-space: nowrap; transition: background-color 0.15s, border-color 0.15s, transform 0.15s; }
+html.app-ui .ach .author-actions .author-action-btn:active { transform: translateY(1px); background: var(--app-press); }
+html.app-ui .ach .author-actions .author-action-btn--primary { border-color: transparent; background: var(--app-green); color: #fff; }
+html.app-ui .ach .author-actions .author-action-btn--primary:active { background: color-mix(in srgb, var(--app-green) 88%, #000); }
+html.app-ui .ach .author-actions .author-action-btn:disabled { opacity: 0.55; cursor: default; }
+
 /* authors as cards */
 html.app-ui .ach-agrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 html.app-ui .ach-acard { background: var(--app-card); border: 1px solid var(--app-line); border-radius: 14px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; cursor: pointer; min-width: 0; }

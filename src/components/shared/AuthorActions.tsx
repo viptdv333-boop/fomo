@@ -28,10 +28,10 @@ export default function AuthorActions({ id, name }: { id: string; name: string }
     } catch { setMessage("Не удалось повысить рейтинг"); }
     finally { setBusy(false); }
   }
-  return <div className="flex flex-wrap gap-2 py-2 text-xs" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-    <button type="button" className="rounded-lg bg-gray-100 dark:bg-gray-700 px-2 py-2" onClick={() => router.push(session?.user ? `/chat?with=${encodeURIComponent(id)}` : "/login")}>Написать</button>
-    <button type="button" className="rounded-lg bg-gray-100 dark:bg-gray-700 px-2 py-2" onClick={() => void donate()}>Задонатить</button>
-    <button type="button" className="rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-2" disabled={busy} onClick={() => void vote()}>Повысить рейтинг +0,1</button>
+  return <div className="author-actions flex flex-wrap gap-2 py-2 text-xs" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+    <button type="button" className="author-action-btn author-action-btn--neutral rounded-lg bg-gray-100 dark:bg-gray-700 px-2 py-2" onClick={() => router.push(session?.user ? `/chat?with=${encodeURIComponent(id)}` : "/login")}>Написать</button>
+    <button type="button" className="author-action-btn author-action-btn--neutral rounded-lg bg-gray-100 dark:bg-gray-700 px-2 py-2" onClick={() => void donate()}>Задонатить</button>
+    <button type="button" className="author-action-btn author-action-btn--primary rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-2" disabled={busy} onClick={() => void vote()}>Повысить рейтинг +0,1</button>
     {message && <span role="status" className="w-full text-gray-500">{message}</span>}
     {donation && <UnifiedPaymentModal purpose={{ type: "donation", authorId: id, authorName: name, donationCard: donation.donationCard, donationQrUrl: donation.sbpQrUrl }} onClose={() => setDonation(null)} />}
   </div>;

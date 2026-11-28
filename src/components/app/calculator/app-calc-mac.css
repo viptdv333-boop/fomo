@@ -65,8 +65,8 @@ html.app-ui.app-calc-mac .acalc-mac :where(button, input) { font-family: inherit
 /* the bar: glass over the wallpaper */
 html.app-ui.app-calc-mac .acalc-mac .ac-nav { background: var(--c-nav); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border-bottom: 0.5px solid var(--c-hair); }
 html.app-ui.app-calc-mac .acalc-mac .ac-back,
-html.app-ui.app-calc-mac .acalc-mac .ap-navbtn { color: var(--c-green-tx); font-weight: 600; }
-html.app-ui.app-calc-mac .acalc-mac .ap-navbtn { font-size: 16px; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-reset { margin-right: 20px; border: 0; background: var(--c-card2); box-shadow: var(--c-ring); color: var(--c-green-tx); font-size: 14px; }
+html.app-ui.app-calc-mac .acalc-mac .acalc-reset:active { background: var(--c-seg); }
 
 /* title + intro */
 html.app-ui.app-calc-mac .acalc-mac .ac-large { display: flex; align-items: center; gap: 14px; padding: 12px 20px 2px; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }

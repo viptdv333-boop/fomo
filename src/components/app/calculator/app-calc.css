@@ -11,6 +11,11 @@ html.app-ui.app-desktop.app-calc-on { --app-gutter: 0px; --app-col: min(640px, 9
 html.app-ui .acalc { min-height: 100%; }
 html.app-ui .acalc-mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
 html.app-ui .acalc h1 { margin: 0; }
+html.app-ui .acalc-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+html.app-ui .acalc-heading .ac-large { flex: 1; min-width: 0; }
+html.app-ui .acalc-reset { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; margin-right: 16px; padding: 0 11px; border: 1px solid var(--app-line); border-radius: 10px; background: var(--app-card); color: var(--app-green-tx); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: pointer; }
+html.app-ui .acalc-reset svg { width: 15px; height: 15px; }
+html.app-ui .acalc-reset:active { background: var(--app-press); }
 
 /* the result: pins under the bar while the form scrolls */
 html.app-ui .acalc-stick { position: sticky; top: 44.5px; z-index: 5; margin: 0 0 12px; padding: 4px 16px 6px; background: var(--app-bg); }

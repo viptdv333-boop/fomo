@@ -372,28 +372,26 @@ export default function AppCalculator() {
 
   return (
     <div className={`ac ap acalc${mac ? " acalc-mac" : ""}`}>
-      <div className="ac-nav">
-        {from === "terminal" ? (
-          <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>
-            <AppIcon name="chevL" size={22} stroke={1.8} />
-            <span>{t("nav.terminal")}</span>
-          </button>
-        ) : (
-          <span /> /* a dock tab of its own: no Back chevron (only the terminal's card pushes it over the terminal) */
-        )}
+      {from === "terminal" && <div className="ac-nav">
+        <button type="button" className="ac-back" onClick={back} aria-label={t("common.back")}>
+          <AppIcon name="chevL" size={22} stroke={1.8} />
+          <span>{t("nav.terminal")}</span>
+        </button>
         <div className="ac-navtitle" />
-        <div className="ap-navright">
-          <button type="button" className="ap-navbtn" onClick={reset}>
+        <div className="ap-navright" />
+      </div>}
+
+      <div className="ac-page acalc-page">
+        <div className="acalc-heading">
+          <h1 className="ac-large">
+            {mac && <CalcTile name="calc" size={46} />}
+            <span>{t("nav.calculator")}</span>
+          </h1>
+          <button type="button" className="acalc-reset" onClick={reset}>
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.2 7.2A7 7 0 1 1 3 11"/><path d="M3.2 3.8v3.8H7"/></svg>
             {t("appcalc.reset")}
           </button>
         </div>
-      </div>
-
-      <div className="ac-page acalc-page">
-        <h1 className="ac-large">
-          {mac && <CalcTile name="calc" size={46} />}
-          <span>{t("nav.calculator")}</span>
-        </h1>
         <div className="ac-intro">{t("appcalc.intro")}</div>
 
         {/* the contracts plate shows only once there is a result (no «Контрактов — / Укажите цену входа и стопа» placeholder) */}
