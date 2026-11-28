@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
@@ -27,6 +27,7 @@ import { useAppTopToolbar, useAppUi } from "@/components/app/useAppUi";
 import ProviderGate from "@/components/chart/ProviderGate";
 import AppTerminal from "@/components/app/AppTerminal";
 import ChartErrorBoundary from "@/components/chart/ChartErrorBoundary";
+import { restoredSelection } from "@/lib/terminal-selection";
 
 // MultiChart wraps the chart(s): one pane looks exactly like the plain TradingChart, the layout picker adds 2-4 linked panes
 const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
@@ -35,7 +36,6 @@ const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
 });
 
 const DEFAULT_INSTRUMENT: TerminalInstrument = TERMINAL_DATA[0].instruments[0];
-const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|[A-Za-z][A-Za-z0-9_.]{0,20}[12]!)$/;
 
 const LAST_KEY = "fomo-terminal-last-v1";
 
@@ -62,27 +62,13 @@ function getLastChannel(): Channel {
   return lastChannel;
 }
 
-/** The symbol to open when the URL names none: the last chart symbol saved on this device/account. */
-function storedSymbol(): { symbol: string; source: ChartSource } | null {
-  const ok = (v: unknown): v is { source: ChartSource; dataTicker: string } => {
-    const o = v as { source?: unknown; dataTicker?: unknown } | null;
-    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "binance" || o.source === "fmp" || o.source === "forex" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
-  };
-  try {
-    const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
-    if (ok(last)) return { symbol: last.dataTicker, source: last.source };
-  } catch {}
-  return null;
-}
-
 /** Restore the last chart state first. A symbol left in the address bar by an older session must not override it. */
 function instrumentFromUrl(): TerminalInstrument {
-  const sp = new URLSearchParams(window.location.search);
-  const stored = storedSymbol();
-  let symbol = stored?.symbol ?? sp.get("symbol")?.trim();
-  let src = stored?.source ?? sp.get("source");
-  if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
-  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "binance" || src === "fmp" || src === "forex" || src === "databento" || src === "twelvedata" ? src : null;
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(LAST_KEY); } catch {}
+  const restored=restoredSelection(raw,window.location.search);
+  if (!restored) return DEFAULT_INSTRUMENT;
+  const {symbol,source}=restored;
   if (source) {
     // a US future (CLUSD, GCUSD ...) opens with its root ticker, name and artwork, like a pick from the search
     const us = source === "fmp" ? usFutureBySymbol(symbol) : undefined;
@@ -111,6 +97,7 @@ export default function TerminalPage() {
     return () => window.removeEventListener("resize", f);
   }, []);
   const [selected, setSelected] = useState<TerminalInstrument | null>(null);
+  const selectionRevision = useRef(0);
   const [top, setTop] = useState(56);
 
   // A visitor who was a guest on this page a moment ago and has signed in without a reload: the chart state of the account is
@@ -123,14 +110,13 @@ export default function TerminalPage() {
   // the symbol comes from the URL, so a shared link opens the same chart
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      // The account may know a newer last symbol than this device (PC <-> phone). Reconcile before choosing the initial
-      // instrument even when a local value exists, otherwise a stale local default (often SBER) keeps reopening forever.
-      // Reconcile even if the URL has a symbol: older releases wrote the selected ticker there, and a stale SBER URL
-      // must not skip account sync or take precedence over the newer last-opened chart.
-      await withTimeout(getLastChannel().start(), 1200);
-      if (cancelled) return;
+    const revision=selectionRevision.current;
+    const restore=async () => {
+      if(cancelled || revision!==selectionRevision.current) return;
       const inst = instrumentFromUrl();
+      const apply=(next:TerminalInstrument) => {
+        if(!cancelled && revision===selectionRevision.current) setSelected(previous=>previous?.source===next.source && previous.dataTicker===next.dataTicker ? previous : next);
+      };
       // an id outside the curated list (an exact futures contract MXZ6, IMOEXF, a bond, a fund ...): ask the exchange search for
       // its proper name / group / unit once, before the chart loads (never longer than 2.5 s)
       if (inst.source === "moex" && !inst.emoji && !findInstrument("moex", inst.dataTicker)) {
@@ -138,11 +124,21 @@ export default function TerminalPage() {
         if (item && !cancelled) {
           const parent = item.asset ? ALL_INSTRUMENTS.find((i) => i.source === "moex" && i.group === undefined && (i.dataTicker === item.asset || autoToAsset(i.dataTicker) === item.asset)) : undefined;
           const found = itemToInstrument(item, parent?.emoji ?? "");
-          if (!cancelled) setSelected(found);
+          apply(found);
           return;
         }
       }
-      if (!cancelled) setSelected(inst);
+      apply(inst);
+    };
+    void (async () => {
+      let reconciled=false;
+      const sync=getLastChannel().start().then(()=>{reconciled=true;});
+      await withTimeout(sync,1200);
+      const needsLateRestore=!reconciled;
+      await restore();
+      // A slow account response can arrive after the initial render. Restore its
+      // newer symbol too, unless the user has already picked another chart.
+      if(needsLateRestore) void sync.then(restore);
     })();
     return () => {
       cancelled = true;
@@ -150,6 +146,7 @@ export default function TerminalPage() {
   }, []);
 
   const onSelectSymbol = useCallback((inst: TerminalInstrument) => {
+    selectionRevision.current++;
     rememberInstrument(inst);
     setSelected(inst);
     getLastChannel().changed(JSON.stringify({ source: inst.source, dataTicker: inst.dataTicker }));
