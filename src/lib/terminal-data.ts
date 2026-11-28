@@ -197,8 +197,8 @@ function yahooCountry(id: string): string {
 export function venueBadge(inst: { source: string; dataTicker: string; group?: string }): { iso?: string; text?: string } {
   const s = inst.source;
   if (s === "bybit" || s === "binance" || inst.group === "crypto") return { text: exchangeLabel(s) || "Crypto" };
-  if (s === "forex") return { text: "InstaForex" };
-  if (s === "instaforex") return instaInstrument(inst.dataTicker)?.group === "stock" ? {iso:"us"} : {text:"InstaForex"};
+  if (s === "forex") return {};
+  if (s === "instaforex") return instaInstrument(inst.dataTicker)?.group === "stock" ? {iso:"us"} : {};
   if (s === "moex") return { iso: "ru" };
   if (s === "yahoo") return { iso: (yahooCountry(inst.dataTicker) || "US").toLowerCase() };
   if (s === "fmp" || s === "databento" || s === "twelvedata") return { iso: "us" };
