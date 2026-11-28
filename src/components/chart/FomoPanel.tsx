@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { agoLabel } from "@/lib/app-ui";
 import { FOMO_COMMUNITY_URL, cleanTicker, type FomoIdeasAnswer } from "@/lib/fomo-ideas";
+import FomoLogo from "@/components/brand/FomoLogo";
 
 // Terminal site only (terminal.fomo.spot): «Идеи FOMO» of the open symbol (read from fomo.spot by the server route /api/fomo-ideas)
 // and the quiet «FOMO — сообщество трейдеров» card. Everything degrades silently: when fomo.spot does not answer, the ideas list
@@ -55,6 +56,24 @@ export function useFomoIdeas(sym: SymbolLike | null, enabled = true): FomoIdeasA
 }
 
 const ext = { target: "_blank", rel: "noopener" } as const;
+
+/** Branded link shown beneath the terminal watchlist and in app layouts. */
+export function FomoSpotBanner({ className = "" }: { className?: string }) {
+  return (
+    <a
+      {...ext}
+      href={FOMO_COMMUNITY_URL}
+      data-fomospot-banner
+      aria-label="FOMO Spot"
+      className={`tv3-press flex items-center justify-between gap-3 rounded-[14px] border border-[#8f3ca9]/25 bg-gradient-to-r from-[#a747bc] via-[#9252c7] to-[#7452cf] px-3.5 py-3 text-white shadow-sm ${className}`}
+    >
+      <FomoLogo product="spot" />
+      <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+      </svg>
+    </a>
+  );
+}
 
 /** The small «FOMO — сообщество трейдеров» card under the watchlist of the desktop right panel. `strip`: the copy built into the service strip under the chart (new look). */
 export function FomoCommunityCard({ strip = false }: { strip?: boolean } = {}) {

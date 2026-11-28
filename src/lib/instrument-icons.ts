@@ -30,6 +30,10 @@ export function tinkoffInstrumentIcon(kind: string | undefined, ...symbols: Arra
     for (const candidate of kinds) {
       const path = TINVEST_ALIASES[`${candidate}:${ticker}`];
       if (path) return path;
+      if (candidate === "future") {
+        const underlyingLogo = futureFamilyLogo(ticker);
+        if (underlyingLogo) return underlyingLogo;
+      }
     }
   }
   return "";
@@ -71,8 +75,20 @@ const FUTURE_TINVEST_LOGO: Partial<Record<FutAsset, string>> = {
 };
 
 function futureFamilyLogo(asset: string, hint?: FutAsset): string {
-  const family = hint ?? moexAssetGroup(asset);
-  return FUTURE_TINVEST_LOGO[family] ?? "";
+  if (hint && FUTURE_TINVEST_LOGO[hint]) return FUTURE_TINVEST_LOGO[hint]!;
+  const ticker = asset.trim().toUpperCase();
+  const roots = [
+    ticker.replace(/\d!$/, ""),
+    ticker.replace(/-[A-Z0-9]{1,2}\.\d{2}$/, ""),
+    ticker.replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, ""),
+    ticker,
+  ];
+  for (const root of new Set(roots)) {
+    if (!root || root === ticker) continue;
+    const logo = FUTURE_TINVEST_LOGO[moexAssetGroup(root)];
+    if (logo) return logo;
+  }
+  return FUTURE_TINVEST_LOGO[moexAssetGroup(ticker)] ?? "";
 }
 
 const categoryPath = (name: string) => `/icons/categories/${name}.svg`;

@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/i18n/locale-url";
 import DemoGate from "@/components/shared/DemoGate";
 import { isTerminalSite } from "@/lib/site-mode";
 import { FOMO_COMMUNITY_URL } from "@/lib/fomo-ideas";
-import FomoLogo from "@/components/brand/FomoLogo";
+import { FomoSpotBanner } from "@/components/chart/FomoPanel";
 import { localZone } from "@/lib/chart/settings";
 import CalendarPanel from "@/components/chart/calendar/CalendarPanel";
 import { setTermCal } from "./termCal";
@@ -62,19 +62,6 @@ const qKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dat
 // terminal.fomo.spot has no board of its own: the watchlist links to the FOMO Spot community.
 const TERMINAL_SITE = isTerminalSite();
 const TZ_LS = "fomo-calendar-tz";
-
-function FomoSpotBanner() {
-  return (
-    <a href={FOMO_COMMUNITY_URL} target="_blank" rel="noopener" className="app-term-ideas app-fomospot-banner" data-fomospot-banner aria-label="FOMO Spot">
-      <span className="app-fomospot-name"><FomoLogo product="spot" /></span>
-      <span className="app-fomospot-arrow" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
-        </svg>
-      </span>
-    </a>
-  );
-}
 
 function priceText(q: Quote | undefined, inst: { source: string; dataTicker: string }, locale: string): string {
   return q && Number.isFinite(q.price) ? fmtPrice(q.price, locale, priceDigits(inst)) : NO_VALUE;
