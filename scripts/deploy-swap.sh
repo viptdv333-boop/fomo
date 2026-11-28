@@ -35,4 +35,5 @@ deploy() {
 }
 
 deploy /opt/fomo fomo .next-prev ""
-deploy /opt/fomo-terminal fomo-terminal .next-old "--ff-only"
+# terminal diverges from origin (locally-deployed crypto-selector commits + past deploy merges), so a fast-forward is impossible: merge like fomo, keeping that work.
+deploy /opt/fomo-terminal fomo-terminal .next-old ""
