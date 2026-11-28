@@ -38,7 +38,6 @@ const DEFAULT_INSTRUMENT: TerminalInstrument = TERMINAL_DATA[0].instruments[0];
 const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
 
 const LAST_KEY = "fomo-terminal-last-v1";
-const WATCHLIST_KEY = "fomo-terminal-watchlist-v1"; // the terminal's own list (RightPanel keeps it in sync with the account)
 
 /** The last opened symbol follows the account (`terminal_last` / `default`, the newer of this device and the account wins). */
 let lastChannel: Channel | null = null;
@@ -63,37 +62,27 @@ function getLastChannel(): Channel {
   return lastChannel;
 }
 
-/** The symbol to open when the URL names none: the last one opened here, else the first of the watchlist (favorites). */
+/** The symbol to open when the URL names none: the last chart symbol saved on this device/account. */
 function storedSymbol(): { symbol: string; source: ChartSource } | null {
   const ok = (v: unknown): v is { source: ChartSource; dataTicker: string } => {
     const o = v as { source?: unknown; dataTicker?: unknown } | null;
-    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "binance" || o.source === "fmp" || o.source === "forex" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
+    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "binance" || o.source === "fmp" || o.source === "forex" || o.source === "instaforex" || o.source === "yahoo" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
   };
   try {
     const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
     if (ok(last)) return { symbol: last.dataTicker, source: last.source };
   } catch {}
-  try {
-    const list = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]");
-    if (Array.isArray(list) && ok(list[0])) return { symbol: list[0].dataTicker, source: list[0].source };
-  } catch {}
   return null;
 }
 
-/** ?symbol=SBER&source=moex -> instrument (curated list first, otherwise an ad-hoc symbol). Without a symbol: last opened / first favorite / SBER. */
+/** Restore the last chart state first. A symbol left in the address bar by an older session must not override it. */
 function instrumentFromUrl(): TerminalInstrument {
   const sp = new URLSearchParams(window.location.search);
-  let symbol = sp.get("symbol")?.trim();
-  let src = sp.get("source");
-  if (!symbol) {
-    const stored = storedSymbol();
-    if (stored) {
-      symbol = stored.symbol;
-      src = stored.source;
-    }
-  }
+  const stored = storedSymbol();
+  let symbol = stored?.symbol ?? sp.get("symbol")?.trim();
+  let src = stored?.source ?? sp.get("source");
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
-  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "binance" || src === "fmp" || src === "forex" || src === "databento" || src === "twelvedata" ? src : null;
+  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "binance" || src === "fmp" || src === "forex" || src === "instaforex" || src === "yahoo" || src === "databento" || src === "twelvedata" ? src : null;
   if (source) {
     // a US future (CLUSD, GCUSD ...) opens with its root ticker, name and artwork, like a pick from the search
     const us = source === "fmp" ? usFutureBySymbol(symbol) : undefined;
@@ -135,20 +124,12 @@ export default function TerminalPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // no symbol in the URL: the account may know a newer last symbol than this device (PC <-> phone). Waiting is short and only
-      // when it can matter: nothing is stored here yet, or this browser is known to be signed in.
-      if (!new URLSearchParams(window.location.search).get("symbol")) {
-        const ch = getLastChannel();
-        let hasLocal = false;
-        try {
-          hasLocal = !!localStorage.getItem(LAST_KEY);
-        } catch {}
-        // a symbol is stored on this device: the chart opens with it at once and the account is asked in the background (a newer symbol from another device
-        // is in the local copy the next time the terminal opens). Waiting for the account only when nothing is stored here.
-        if (!hasLocal) await withTimeout(ch.start(), 700);
-        else void ch.start();
-        if (cancelled) return;
-      }
+      // The account may know a newer last symbol than this device (PC <-> phone). Reconcile before choosing the initial
+      // instrument even when a local value exists, otherwise a stale local default (often SBER) keeps reopening forever.
+      // Reconcile even if the URL has a symbol: older releases wrote the selected ticker there, and a stale SBER URL
+      // must not skip account sync or take precedence over the newer last-opened chart.
+      await withTimeout(getLastChannel().start(), 1200);
+      if (cancelled) return;
       const inst = instrumentFromUrl();
       // an id outside the curated list (an exact futures contract MXZ6, IMOEXF, a bond, a fund ...): ask the exchange search for
       // its proper name / group / unit once, before the chart loads (never longer than 2.5 s)
