@@ -44,6 +44,7 @@ import { useAuthorList, useChannelList, useMySubs } from "./useChannelsData";
 import { useUnreadByIdea } from "../useUnreadByIdea";
 import { hasUnread, unreadLabel, unreadAccent } from "@/lib/app-unread";
 import { UnreadChip } from "../IdeaUnreadMarks";
+import AuthorActions from "@/components/shared/AuthorActions";
 
 /** the list scroll survives a visit to a channel / an author (the page is a route, so it unmounts while the detail is open) */
 const savedScroll: Record<string, number> = {};
@@ -344,7 +345,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
         {a.avatarUrl ? <img src={a.avatarUrl} alt="" /> : initials(a.displayName || "?")}
         {topBadge(podium.get(a.id))}
       </div>
-      <div className="ach-abody" data-last={last ? "1" : undefined}>
+      <div className="ach-abody ach-abody-actions" data-last={last ? "1" : undefined}>
         <div className="ach-atxt">
           <div className="ach-aname">
             <span className="ach-ellip">
@@ -354,6 +355,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
           <div className="ach-asub">{authorSub(a)}</div>
         </div>
         {authorPill(a)}
+        <AuthorActions id={a.id} name={a.displayName} />
       </div>
     </div>
   );
@@ -383,6 +385,7 @@ export default function AppChannelsHome({ seg }: { seg: "channels" | "authors" }
         </div>
       </div>
       {authorPill(a)}
+      <AuthorActions id={a.id} name={a.displayName} />
     </div>
   );
 

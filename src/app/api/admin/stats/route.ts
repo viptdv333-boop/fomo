@@ -14,6 +14,8 @@ export async function GET() {
 
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const since = new Date();
+  since.setUTCFullYear(since.getUTCFullYear() - 1);
 
   const [
     totalUsers,
@@ -24,6 +26,7 @@ export async function GET() {
     ideasThisWeek,
     purchaseRevenue,
     subscriptionRevenue,
+    userHistory, ideaHistory, purchases, payments,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "PENDING" } }),
@@ -38,7 +41,18 @@ export async function GET() {
       where: { status: "CONFIRMED", subscriptionType: { in: ["monthly", "tariff"] } },
       _sum: { amount: true },
     }),
+    prisma.user.findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.idea.findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.purchase.findMany({ where: { status: "completed", createdAt: { gte: since } }, select: { createdAt: true, amount: true } }),
+    prisma.paymentRequest.findMany({ where: { status: "CONFIRMED", subscriptionType: { in: ["monthly", "tariff"] }, updatedAt: { gte: since } }, select: { updatedAt: true, amount: true } }),
   ]);
+
+  const history: Record<string, { users: number; ideas: number; money: number }> = {};
+  function day(date: Date) { const key = date.toISOString().slice(0, 10); return history[key] ??= { users: 0, ideas: 0, money: 0 }; }
+  userHistory.forEach((x) => day(x.createdAt).users++);
+  ideaHistory.forEach((x) => day(x.createdAt).ideas++);
+  purchases.forEach((x) => { day(x.createdAt).money += Number(x.amount); });
+  payments.forEach((x) => { day(x.updatedAt).money += Number(x.amount); });
 
   const totalRevenue =
     Number(purchaseRevenue._sum.amount ?? 0) +
@@ -52,5 +66,6 @@ export async function GET() {
     totalIdeas,
     ideasThisWeek,
     totalRevenue,
+    history,
   });
 }

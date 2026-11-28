@@ -74,6 +74,8 @@ html.app-ui .ach-avatar-sq { border-radius: 12px; }
 html.app-ui .ach-emoji { font-size: 22px; font-weight: 400; }
 html.app-ui .ach-avatar-lg { width: 56px; height: 56px; font-size: 20px; }
 html.app-ui .ach-abody { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px 12px 0; border-bottom: 0.5px solid var(--app-line); }
+html.app-ui .ach-abody-actions { flex-wrap: wrap; }
+html.app-ui .ach-abody-actions > div:last-child { flex-basis: 100%; }
 html.app-ui .ach-abody[data-last="1"] { border-bottom: none; }
 html.app-ui .ach-atxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 html.app-ui .ach-aname { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 6px; min-width: 0; }

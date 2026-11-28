@@ -126,8 +126,8 @@ export default function AdminUsersPage() {
       {loading ? (
         <div className="text-gray-500 dark:text-gray-400">Загрузка...</div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
-          <table className="w-full text-sm dark:text-gray-300">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm dark:text-gray-300">
             <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Пользователь</th>
@@ -214,12 +214,12 @@ export default function AdminUsersPage() {
                         </button>
                       )}
                       {/* Permanent ban */}
-                      {user.status === "APPROVED" && (
+                      {user.status !== "BANNED" && (
                         <button
-                          onClick={() => adminAction(user.id, { status: "BANNED" })}
+                          onClick={() => adminAction(user.id, { status: "BANNED", bannedUntil: null, banReason: null })}
                           className="px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                         >
-                          🚫 Забанить
+                          🚫 Заблокировать
                         </button>
                       )}
                       {/* Unban */}

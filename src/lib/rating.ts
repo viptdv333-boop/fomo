@@ -20,6 +20,7 @@ export async function recalculateRating(userId: string): Promise<number> {
   if (!user) {
     throw new Error("User not found");
   }
+  const authorVotes = await prisma.terminalUserData.count({ where: { kind: "author_rating_vote", key: userId } });
 
   // The platform owner is pinned to the maximum. Every rating gate on the site
   // (paid ideas, paid tariffs) reads this value, and the owner must never be
@@ -104,6 +105,7 @@ export async function recalculateRating(userId: string): Promise<number> {
     // Manual admin adjustment. Lives in its own column because writing it into
     // `rating` meant the next publish/vote/follow recalculated it away.
     Number(user.ratingBonus) +
+    authorVotes * 0.1 +
     followerCount * Number(config.subscriberWeight) +
     likes * Number(config.likeWeight) -
     dislikes * Number(config.dislikeWeight) +

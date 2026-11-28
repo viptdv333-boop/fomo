@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import { useAppUi } from "@/components/app/useAppUi";
 import AppChannelsHome from "@/components/app/channels/AppChannelsHome";
 import { useChannelsTick } from "@/lib/channels-invalidate";
+import AuthorActions from "@/components/shared/AuthorActions";
 
 interface Author {
   id: string;
@@ -223,7 +224,7 @@ function AuthorsSite() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((author) => {
               return (
-                <Link key={author.id} href={`/profile/${author.id}`} className="bg-white dark:bg-gray-900 rounded-2xl shadow hover:shadow-lg transition-shadow p-5 flex flex-col items-center text-center">
+                <div key={author.id}><Link href={`/profile/${author.id}`} className="bg-white dark:bg-gray-900 rounded-2xl shadow hover:shadow-lg transition-shadow p-5 flex flex-col items-center text-center">
                   <AuthorAvatar author={author} />
                   <div className="flex items-center gap-1.5 mt-3 mb-0.5">
                     <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{author.displayName}</span>
@@ -234,7 +235,7 @@ function AuthorsSite() {
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.ideasCount}</div><div className="text-[10px] text-gray-400">{t("authors.ideasLabel")}</div></div>
                     <div><div className="font-semibold text-sm text-gray-900 dark:text-gray-100">{author.subscribersCount}</div><div className="text-[10px] text-gray-400">{t("authors.subscribers")}</div></div>
                   </div>
-                </Link>
+                </Link><AuthorActions id={author.id} name={author.displayName} /></div>
               );
             })}
           </div>
@@ -244,7 +245,7 @@ function AuthorsSite() {
             {filtered.map((author) => {
               const color = hashColor(author.id);
               return (
-                <Link key={author.id} href={`/profile/${author.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
+                <div key={author.id} className="px-4"><Link href={`/profile/${author.id}`} className="flex items-center gap-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b border-gray-100 dark:border-gray-800/30 last:border-b-0">
                   <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0`}>
                     {author.avatarUrl ? <img src={author.avatarUrl} alt="" className="w-full h-full object-cover" /> : (author.displayName || "?")[0]}
                   </div>
@@ -253,7 +254,7 @@ function AuthorsSite() {
                   <span className="text-xs text-gray-500 dark:text-gray-400">⭐ {Number(author.rating).toFixed(1)}</span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{author.ideasCount} {t("authors.ideasShort")}</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">👥 {author.subscribersCount}</span>
-                </Link>
+                </Link><AuthorActions id={author.id} name={author.displayName} /></div>
               );
             })}
           </div>
@@ -262,7 +263,7 @@ function AuthorsSite() {
           <div className="flex flex-col gap-4">
             {filtered.map((author) => {
               return (
-                <Link key={author.id} href={`/profile/${author.id}`}
+                <div key={author.id}><Link href={`/profile/${author.id}`}
                   className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-shadow px-5 py-4 flex items-center gap-3">
                   <AuthorAvatar author={author} />
                   <div className="flex-1 min-w-0">
@@ -274,7 +275,7 @@ function AuthorsSite() {
                     <span>{author.ideasCount} {t("authors.ideasShort")}</span>
                     <span className="hidden sm:inline">{author.subscribersCount} {t("authors.subscribers")}</span>
                   </div>
-                </Link>
+                </Link><AuthorActions id={author.id} name={author.displayName} /></div>
               );
             })}
           </div>
