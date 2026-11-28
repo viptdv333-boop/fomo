@@ -2393,7 +2393,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             {!isTransformedType(prefs.chartType) && <IndicatorLegend controller={indicators} getEngine={getEngine} hostRef={hostRef} ready={engineReady} onAlert={(uid) => setIndAlertUi({ uid, editId: null })} trailing={compareItems.length > 0 ? compareLegend(true) : undefined} />}
             {isTransformedType(prefs.chartType) && compareLegend(false)}
             <div className={`absolute bottom-0 z-30 flex items-center gap-1 ${cs.scale.side === "right" ? "right-0" : "left-0 flex-row-reverse"}`}>
-            {continuous && (
+            {continuous && (appPage || (appFull && !wideApp)) && (
               <button type="button" data-back-adjust aria-pressed={adjusted}
                 title={t("chart.backAdjust")}
                 onClick={() => update({ backAdjust: !prefs.backAdjust })}
@@ -2477,6 +2477,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             logScale={scaleModeNow === "log"}
             onAuto={() => engineRef.current?.setAutoScale(!autoScale)}
             onLog={() => setScaleMode(scaleModeNow === "log" ? "regular" : "log")}
+            backAdjust={adjusted}
+            onBackAdjust={continuous ? () => update({ backAdjust: !prefs.backAdjust }) : undefined}
             onRange={applyRange}
             rangeBusy={rangeBusy || replayActive}
             scaleMode={scaleModeNow}

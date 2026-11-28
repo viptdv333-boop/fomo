@@ -19,6 +19,8 @@ interface Props {
   logScale: boolean;
   onAuto: () => void;
   onLog: () => void;
+  backAdjust?: boolean;
+  onBackAdjust?: () => void;
   onRange: (r: RangeId) => void;
   rangeBusy: boolean;
   /* optional: time zone, go to date and the % scale toggle */
@@ -108,7 +110,7 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
   );
 }
 
-export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, onRange, rangeBusy, scaleMode, onScaleMode, tz, zone, onTz, onGoToDate, gotoSignal }: Props) {
+export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, backAdjust, onBackAdjust, onRange, rangeBusy, scaleMode, onScaleMode, tz, zone, onTz, onGoToDate, gotoSignal }: Props) {
   const { t, locale } = useT();
   const clock = useExchangeClock(source, zone);
 
@@ -185,6 +187,7 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
           %
         </button>
       )}
+      {onBackAdjust && <button type="button" data-back-adjust onClick={onBackAdjust} title={t("chart.backAdjust")} aria-pressed={!!backAdjust} className={`${btn} ${backAdjust ? on : ""}`}>B-ADJ</button>}
       <button onClick={onLog} title={t("chart.log")} aria-pressed={logScale} className={`${btn} ${logScale ? on : ""}`}>
         {t("chart.logShort")}
       </button>
