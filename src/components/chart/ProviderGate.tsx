@@ -20,18 +20,24 @@ export default function ProviderGate({ source, name, children, onBack }: { sourc
   const { t } = useT();
   const { status } = useSession();
   const conns = useConnections();
+  const pid = providerOfSource(source);
+  const connected = !!pid && conns.on.has(pid);
+  const blocked = !!pid && (!connected || !DATA_READY[pid]);
   // Esc dismisses the gate back to the previous instrument, same as the close button.
   useEffect(() => {
-    if (!onBack) return;
+    // This component also wraps public/connected charts. A hidden gate must not
+    // intercept Escape used by search, settings or drawing tools on that chart.
+    if (!onBack || !blocked) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onBack();
+      if (e.key === "Escape" && !e.defaultPrevented) {
+        e.preventDefault();
+        onBack();
+      }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onBack]);
-  const pid = providerOfSource(source);
+  }, [onBack, blocked]);
   if (!pid) return <>{children}</>;
-  const connected = conns.on.has(pid);
   if (connected && DATA_READY[pid]) return <>{children}</>;
   const p = providerById(pid) ?? DATA_PROVIDERS[0];
 
