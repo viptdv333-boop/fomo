@@ -5,14 +5,13 @@ import type { InstaInstrument } from "../src/lib/instaforex-meta";
 import ti from "../src/lib/tinvest-icons.generated.json";
 
 async function main() {
-  const response = await fetch("https://quotes.instaforex.com/api/quotesList", { signal: AbortSignal.timeout(20000), headers: { "User-Agent": "Mozilla/5.0" } });
-  if (!response.ok) throw new Error(`catalogue ${response.status}`);
-  const json = await response.json();
-  const raw = (json.quotesList ?? json) as Array<{ symbol: string; description: string; digits: number; trade: number; type: number }>;
   const [stockSpec, liveRows] = await Promise.all([
-    fetch("https://www.instaforex.com/specifications_com_v2_api?instrument=stocks").then(r=>r.json()),
-    fetch("https://api2-webtrader.ifxdb.com/api/public/quotes/list?server=usa2").then(r=>r.json()),
+    fetch("https://www.instaforex.com/specifications_com_v2_api?instrument=stocks",{signal:AbortSignal.timeout(20000)}).then(r=>r.json()),
+    fetch("https://api2-webtrader.ifxdb.com/api/public/quotes/list?server=usa2",{signal:AbortSignal.timeout(20000)}).then(r=>r.json()),
   ]);
+  const previous=JSON.parse(await fs.readFile("src/lib/instaforex-catalog.generated.json","utf8")) as InstaInstrument[];
+  const legacy=await fetch("https://quotes.instaforex.com/api/quotesList",{signal:AbortSignal.timeout(8000),headers:{"User-Agent":"Mozilla/5.0"}}).then(async r=>r.ok?await r.json():null).catch(()=>null);
+  const raw = (legacy?.quotesList ?? legacy ?? [...liveRows.map((r:any)=>({...r,trade:r.tradeEnabled})),...previous.map(r=>({symbol:r.symbol,description:r.name,digits:r.digits,trade:2,type:0}))]) as Array<{symbol:string;description:string;digits:number;trade:number;type:number}>;
   const stockMetadata = stockSpec.symbols.insta_standard.filter((r: any)=>r.country === "US");
   const stocks = stockMetadata.map((r: any) => raw.find(x=>x.symbol===r.ticker)).filter(Boolean) as typeof raw;
   const stockIcons = new Map<string,string>(stockMetadata.map((r:any)=>[r.ticker.slice(1),r.iconUrl]));
@@ -73,8 +72,20 @@ async function main() {
   }
   const currencies = new Set("USD EUR GBP JPY CHF AUD CAD NZD CNH CNY TRY RUB INR KZT SEK NOK PLN MXN ZAR SGD HKD DKK CZK HUF ILS RON BRL THB IDR KRW CLP COP AED SAR BHD QAR OMR TWD UAH".split(" "));
   for (const r of raw) if (r.trade === 2 && /^[A-Z]{6}$/.test(r.symbol) && currencies.has(r.symbol.slice(0, 3)) && currencies.has(r.symbol.slice(3))) add({ id: r.symbol, symbol: r.symbol, name: r.description, group: "forex", digits: r.digits });
-  // Standard share symbols, excluding account suffixes, retired symbols and crypto/indices.
-  for (const r of stocks) add({ id: r.symbol.slice(1), symbol: r.symbol, name: r.description, group: "stock", digits: r.digits });
+  // The broker's specification still contains delisted shares. Require an enabled symbol and a recent quote.
+  const candidates=stocks.filter(r=>liveRows.some((live:any)=>live.symbol===r.symbol && live.tradeEnabled===2));
+  const activeStocks=new Set<string>(); let stockCursor=0;
+  await Promise.all(Array.from({length:6},async()=>{
+    while(stockCursor<candidates.length) {
+      const r=candidates[stockCursor++];
+      const response=await fetch("https://api2-webtrader.ifxdb.com/api/public/quotes/extraData?"+new URLSearchParams({server:"usa2",symbol:r.symbol}),{signal:AbortSignal.timeout(12000)});
+      if(!response.ok) throw new Error(`stock quote validation ${response.status}: ${r.symbol}`);
+      const ticks=await response.json();
+      if(Array.isArray(ticks) && ticks.some(t=>t.symbol===r.symbol && +t.bid>0 && +t.lasttime>Date.now()/1000-7*86400)) activeStocks.add(r.symbol);
+    }
+  }));
+  if(activeStocks.size<100) throw new Error(`Suspiciously small active stock feed: ${activeStocks.size}; catalogue was not changed`);
+  for (const r of stocks.filter(r=>activeStocks.has(r.symbol))) add({ id: r.symbol.slice(1), symbol: r.symbol, name: r.description, group: "stock", digits: r.digits });
   const logos: Record<string, string> = {};
   const dir = "public/icons/instruments/us";
   await fs.mkdir(dir, { recursive: true });

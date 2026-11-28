@@ -1093,13 +1093,6 @@
     "digits": 2
   },
   {
-    "id": "FSLR",
-    "symbol": "#FSLR",
-    "name": "First Solar, Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "FCX",
     "symbol": "#FCX",
     "name": "Freeport-McMoRan Copper & Gold Inc.",
@@ -1121,20 +1114,6 @@
     "digits": 2
   },
   {
-    "id": "TWTR",
-    "symbol": "#TWTR",
-    "name": "Twitter, Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "UBS",
-    "symbol": "#UBS",
-    "name": "UBS AG",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "UPS",
     "symbol": "#UPS",
     "name": "United Parcel Service, Inc.",
@@ -1145,13 +1124,6 @@
     "id": "TSLA",
     "symbol": "#TSLA",
     "name": "Tesla Motors, Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "TRV",
-    "symbol": "#TRV",
-    "name": "The Travelers Companies, Inc.",
     "group": "stock",
     "digits": 2
   },
@@ -1310,13 +1282,6 @@
     "digits": 2
   },
   {
-    "id": "NOK",
-    "symbol": "#NOK",
-    "name": "Nokia Corporation",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "PFE",
     "symbol": "#PFE",
     "name": "Pfizer Inc",
@@ -1415,13 +1380,6 @@
     "digits": 2
   },
   {
-    "id": "HAL",
-    "symbol": "#HAL",
-    "name": "Halliburton Company",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "GS",
     "symbol": "#GS",
     "name": "Goldman Sachs Group Inc.",
@@ -1450,13 +1408,6 @@
     "digits": 2
   },
   {
-    "id": "BHP",
-    "symbol": "#BHP",
-    "name": "BHP Billiton Limited",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "CMCSA",
     "symbol": "#CMCSA",
     "name": "Comcast Corporation",
@@ -1474,13 +1425,6 @@
     "id": "MDLZ",
     "symbol": "#MDLZ",
     "name": "Mondelez International, Inc",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "ORAN",
-    "symbol": "#ORAN",
-    "name": "Orange",
     "group": "stock",
     "digits": 2
   },
@@ -1562,23 +1506,9 @@
     "digits": 2
   },
   {
-    "id": "NATI",
-    "symbol": "#NATI",
-    "name": "National Instruments Corp Nasdaq Stock Exchange (Nasdaq) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "NICE",
     "symbol": "#NICE",
     "name": "Nice Ltd - ADR Nasdaq Stock Exchange (Nasdaq) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "NLOK",
-    "symbol": "#NLOK",
-    "name": "NortonLifeLock Inc Nasdaq Stock Exchange (Nasdaq) USD",
     "group": "stock",
     "digits": 2
   },
@@ -1618,13 +1548,6 @@
     "digits": 2
   },
   {
-    "id": "CAJ",
-    "symbol": "#CAJ",
-    "name": "Canon Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "CIEN",
     "symbol": "#CIEN",
     "name": "Ciena Corporation",
@@ -1660,13 +1583,6 @@
     "digits": 2
   },
   {
-    "id": "TIXT",
-    "symbol": "#TIXT",
-    "name": "TELUS International (Cda) Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "TSM",
     "symbol": "#TSM",
     "name": "Taiwan Semiconductor Manufacturing Co Ltd - ADR New York Stock",
@@ -1684,20 +1600,6 @@
     "id": "ZBRA",
     "symbol": "#ZBRA",
     "name": "Zebra Technologies Corporation",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "ATVI",
-    "symbol": "#ATVI",
-    "name": "Activision Blizzard Inc",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "EA",
-    "symbol": "#EA",
-    "name": "Electronic Arts Inc.",
     "group": "stock",
     "digits": 2
   },
@@ -1744,13 +1646,6 @@
     "digits": 2
   },
   {
-    "id": "YY",
-    "symbol": "#YY",
-    "name": "JOYY Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "Z",
     "symbol": "#Z",
     "name": "Zillow Group Inc.",
@@ -1789,13 +1684,6 @@
     "id": "CME",
     "symbol": "#CME",
     "name": "CME Group Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "CS",
-    "symbol": "#CS",
-    "name": "Credit Suisse Group AG",
     "group": "stock",
     "digits": 2
   },
@@ -1919,13 +1807,6 @@
     "digits": 2
   },
   {
-    "id": "CLR",
-    "symbol": "#CLR",
-    "name": "Continental Resources Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "DVN",
     "symbol": "#DVN",
     "name": "Devon Energy Corporation",
@@ -1943,20 +1824,6 @@
     "id": "FANG",
     "symbol": "#FANG",
     "name": "Diamondback Energy Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "HES",
-    "symbol": "#HES",
-    "name": "Hess Corp New York Stock Exchange (NYSE) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "MMP",
-    "symbol": "#MMP",
-    "name": "Magellan Midstream Partners LP New York Stock Exchange (NYSE)",
     "group": "stock",
     "digits": 2
   },
@@ -2080,13 +1947,6 @@
     "digits": 2
   },
   {
-    "id": "BGNE",
-    "symbol": "#BGNE",
-    "name": "BeiGene Ltd.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "BIIB",
     "symbol": "#BIIB",
     "name": "Biogen Inc.",
@@ -2129,13 +1989,6 @@
     "digits": 2
   },
   {
-    "id": "DVAX",
-    "symbol": "#DVAX",
-    "name": "Dynavax Technologies Corporation",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "DXCM",
     "symbol": "#DXCM",
     "name": "DexCom Inc.",
@@ -2150,13 +2003,6 @@
     "digits": 2
   },
   {
-    "id": "EXAS",
-    "symbol": "#EXAS",
-    "name": "Exact Sciences Corporation",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "GMAB",
     "symbol": "#GMAB",
     "name": "Biotechnology Pharmaceuticals Biotechnology and Marijuana Pro",
@@ -2164,23 +2010,9 @@
     "digits": 2
   },
   {
-    "id": "HZNP",
-    "symbol": "#HZNP",
-    "name": "Horizon Therapeutics Plc Nasdaq Stock Exchange (Nasdaq) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "IQV",
     "symbol": "#IQV",
     "name": "IQVIA Holdings Inc New York Stock Exchange (NYSE) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "ISEE",
-    "symbol": "#ISEE",
-    "name": "IVERIC bio Inc.",
     "group": "stock",
     "digits": 2
   },
@@ -2255,13 +2087,6 @@
     "digits": 2
   },
   {
-    "id": "SGEN",
-    "symbol": "#SGEN",
-    "name": "Seattle Genetics Inc Nasdaq Stock Exchange (Nasdaq) USD",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "SNY",
     "symbol": "#SNY",
     "name": "Sanofi SA Nasdaq Stock Exchange (Nasdaq) USD",
@@ -2311,30 +2136,9 @@
     "digits": 2
   },
   {
-    "id": "GME",
-    "symbol": "#GME",
-    "name": "GameStop",
-    "group": "stock",
-    "digits": 2
-  },
-  {
     "id": "SPCE",
     "symbol": "#SPCE",
     "name": "Virgin Galactic",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "CTXS",
-    "symbol": "#CTXS",
-    "name": "Citrix Systems Inc.",
-    "group": "stock",
-    "digits": 2
-  },
-  {
-    "id": "ACH",
-    "symbol": "#ACH",
-    "name": "Aluminum Corp. of China Limited ADR Class H",
     "group": "stock",
     "digits": 2
   }

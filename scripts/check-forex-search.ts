@@ -2,6 +2,7 @@
    24x5 session clock, no network. Run: npx tsx scripts/check-forex-search.ts */
 import { FX_PAIRS, fxDigits, fxMarketOpen, fxName, isForexSymbol, looksLikeForex, pairToItem, parseFxSymbol, searchForex } from "../src/lib/forex-meta";
 import { popularMarketPage, searchMarketPage } from "../src/lib/moex-search";
+import { instaItems } from "../src/lib/instaforex-meta";
 
 let fails = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -52,7 +53,9 @@ eq("session", [at("2026-10-03T12:00:00Z"), at("2026-10-04T20:59:00Z"), at("2026-
 
 async function main() {
   /* the market search wires it: the «forex» group without network, «all» adds a few exact hits */
-  eq("popularMarketPage(forex) -> the whole curated list", (await popularMarketPage("forex", { limit: 100 })).items.map((i) => i.secid), FX_PAIRS.map((p) => p.symbol));
+  const livePairs=await popularMarketPage("forex",{limit:100});
+  eq("popularMarketPage(forex) -> InstaForex pairs, paginated", [livePairs.total,livePairs.items.length,livePairs.hasMore], [instaItems("forex").length,100,true]);
+  eq("forex catalogue excludes other providers and metals",livePairs.items.every(i=>i.source==="instaforex" && i.group==="forex" && !/^X(AU|AG|PT|PD)/.test(i.secid)),true);
   eq("searchMarketPage(forex, 'usdjpy')", (await searchMarketPage("usdjpy", "forex")).items.map((i) => i.secid), ["USDJPY"]);
   console.log(fails ? `\n${fails} FAILED` : "\nall ok");
   process.exit(fails ? 1 : 0);
