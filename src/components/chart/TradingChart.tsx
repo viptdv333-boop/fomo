@@ -2403,6 +2403,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 B-ADJ
               </button>
             )}
+            </div>
             {!appPage && !(appFull && !wideApp) && (
               <button
                 type="button"
@@ -2414,15 +2415,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   const r = e.currentTarget.getBoundingClientRect();
                   setScaleMenu({ x: r.right, y: r.top, paneId: "main", anchor: true });
                 }}
-                className="flex h-10 w-10 items-center justify-center border-0 bg-transparent text-[#338bd0] hover:text-[#176eb6] cursor-pointer"
+                className={`absolute top-1/2 z-30 flex h-8 w-8 -translate-y-1/2 items-center justify-center border-0 bg-transparent text-[#338bd0] hover:text-[#176eb6] cursor-pointer ${cs.scale.side === "right" ? "right-0.5" : "left-0.5"}`}
               >
-                <svg viewBox="0 0 32 32" className="h-10 w-10 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg viewBox="0 0 32 32" className="h-8 w-8 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M14 7H6a2 2 0 0 0-2 2v12h24v-8M2 24h28a2 2 0 0 1-2 3H4a2 2 0 0 1-2-3Z" />
                   <path d="M23 3a6 6 0 0 0-5.3 8.8L13 16.5a2 2 0 0 0 2.8 2.8l4.7-4.7A6 6 0 0 0 28 7l-3.6 3.2-2.9-.7-.7-2.9L24 3.1A6 6 0 0 0 23 3Z" />
                 </svg>
               </button>
             )}
-            </div>
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
               <div
                 className={`tv3-pop absolute bottom-2.5 z-10 flex items-center overflow-hidden rounded-xl shadow-[0_2px_12px_rgba(0,0,0,.14)] transition-opacity ${
