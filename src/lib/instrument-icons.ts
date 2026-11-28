@@ -76,10 +76,18 @@ const FUTURE_TINVEST_LOGO: Partial<Record<FutAsset, string>> = {
   palladium: "/icons/instruments/tinvest/Palladiumx160.webp",
 };
 
+// Exchange SECIDs use stable short roots, even for a newly listed expiry absent from the downloaded icon catalogue.
+const MOEX_CONTRACT_ASSET:Record<string,string>={GD:"GOLD",SV:"SILV",PT:"PLT",PD:"PLD",CE:"COPPER",CC:"COCOA",KC:"COFFEE",SU:"SUGAR",SA:"SUGR",W4:"WHEAT",NA:"NASD",MX:"MIX",RI:"RTS",SF:"SPYF"};
+function datedAsset(ticker:string):string {
+  const root=ticker.replace(/[FGHJKMNQUVXZ]\d{1,2}$/,"");
+  return root!==ticker ? MOEX_CONTRACT_ASSET[root] ?? root : ticker;
+}
+
 function futureFamilyLogo(asset: string, hint?: FutAsset): string {
   if (hint && FUTURE_TINVEST_LOGO[hint]) return FUTURE_TINVEST_LOGO[hint]!;
   const ticker = asset.trim().toUpperCase();
   const roots = [
+    datedAsset(ticker),
     ticker.replace(/\d!$/, ""),
     ticker.replace(/-[A-Z0-9]{1,2}\.\d{2}$/, ""),
     ticker.replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, ""),
@@ -105,6 +113,7 @@ function moexFutureRoot(...symbols: Array<string | undefined>): string | null {
     const raw = (symbol ?? "").trim().toUpperCase();
     if (!raw) continue;
     const roots = [
+      datedAsset(raw),
       raw.replace(/\d!$/, ""),
       raw.replace(/-[A-Z0-9]{1,2}\.\d{2}$/, ""),
       raw.replace(/[FGHJKMNQUVXZ]\d{1,2}$/, ""),

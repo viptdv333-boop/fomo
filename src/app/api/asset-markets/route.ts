@@ -28,7 +28,8 @@ export async function GET(req:NextRequest) {
   if(f) {
     const rf=refreshDays(f);
     const continuous=rf.contracts.filter(c=>c.order>=1).length>=2?chainContracts(f.asset,f.name,"ru"):[];
-    for(const c of [...continuous,...rf.contracts.map(c=>({ticker:c.secid,shortname:c.shortname,kind:c.kind,expiry:c.expiry}))]) items.push({ticker:c.ticker,name:f.name,source:"moex",dataTicker:c.ticker,group:"future",emoji:"",kind:c.kind,expiry:c.expiry});
+    const underlyingIcon=instrumentIcon({source:"moex",ticker:f.asset,dataTicker:f.asset,group:"future"});
+    for(const c of [...continuous,...rf.contracts.map(c=>({ticker:c.secid,shortname:c.shortname,kind:c.kind,expiry:c.expiry}))]) items.push({ticker:c.ticker,name:f.name,source:"moex",dataTicker:c.ticker,group:"future",emoji:underlyingIcon,kind:c.kind,expiry:c.expiry});
   }
   if(source==="moex" && stock && !usShare) {
     const share=await lookupMarket(stock,"moex");

@@ -35,6 +35,9 @@ async function main() {
   assert.equal(instrumentFamily({source:"moex",dataTicker:"T",name:"Т-Технологии",group:"stock"})?.name,"Т-Технологии");
   assert.notEqual(instrumentFamily({source:"instaforex",dataTicker:"T",name:"AT&T",group:"stock"})?.name,"Т-Технологии");
   assert.equal(instaInstrument("KCZ26")?.asset,"COFFEE");
+  for(const [id,asset] of [["GDZ0","GOLD"],["SVH0","SILV"],["PTM0","PLT"],["PDU0","PLD"]]) {
+    assert.equal(instrumentIcon({source:"moex",ticker:id,dataTicker:id}),instrumentIcon({source:"moex",ticker:asset,dataTicker:asset,group:"future"}),`New expiry artwork ${id}`);
+  }
   const rows=buildDisplayRows([
     {secid:"COCOA",ticker:"COCOA",name:"Какао",source:"moex",group:"future",fgroup:"soft",asset:"COCOA",country:"RU"},
     {secid:"COFFEE",ticker:"COFFEE",name:"Кофе",source:"moex",group:"future",fgroup:"soft",asset:"COFFEE",country:"RU"},
