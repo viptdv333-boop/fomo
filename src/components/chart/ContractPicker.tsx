@@ -35,12 +35,15 @@ export default function ContractPicker({
   onPick,
   btn,
   onShown,
+  marketLabel = false,
 }: {
   instrument: TerminalInstrument;
   onPick: (inst: TerminalInstrument) => void;
   btn: string;
   /** The exact contract on the chart (MXZ6 ...), for the symbol pill of the macOS look. */
   onShown?: (ticker: string | null) => void;
+  /** Show spot / perpetual / futures beside the symbol. */
+  marketLabel?: boolean;
 }) {
   const { t, locale } = useT();
   const [data, setData] = useState<ContractsResponse | null>(null);
@@ -106,20 +109,32 @@ export default function ContractPicker({
   const next = shown && shown.expiry ? dated.find((c) => (c.expiry as string) > (shown.expiry as string)) : undefined;
   const roll = shown && shown.daysLeft !== null && shown.daysLeft <= ROLL_DAYS && next ? shown.daysLeft : null;
   const chipLabel = shown?.ticker ?? ticker;
+  const marketLabelText = shown?.kind === "spot" ? t("ct.spot") : shown?.kind === "perpetual" ? t("ct.perpetual") : t("ct.futures");
+  const marketTone = shown?.kind === "spot"
+    ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+    : shown?.kind === "perpetual"
+      ? "bg-violet-500/15 text-violet-700 dark:text-violet-300"
+      : "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]";
 
   return (
     <>
       <button
         ref={ref}
         onClick={toggle}
-        title={t("ct.pick")}
+        title={marketLabel ? `${t("ct.pick")}: ${marketLabelText}` : t("ct.pick")}
         aria-label={t("ct.pick")}
         aria-expanded={open}
         className={`${btn} gap-1.5 px-2 border border-[var(--tv3-hair)] !rounded-[9px]`}
       >
-        {isAuto && source === "moex" && <span className="hidden sm:inline text-[10px] font-normal text-[var(--tv3-muted)]">{t("ct.auto").split(" ")[0]}</span>}
-        <span className="font-semibold text-[13px]">{chipLabel}</span>
-        {shown && <span className="hidden md:inline"><ContractBadge c={shown} /></span>}
+        {marketLabel ? (
+          <span className={`tb-ct-label px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${marketTone}`}>{marketLabelText}</span>
+        ) : (
+          <>
+            {isAuto && source === "moex" && <span className="hidden sm:inline text-[10px] font-normal text-[var(--tv3-muted)]">{t("ct.auto").split(" ")[0]}</span>}
+            <span className="font-semibold text-[13px]">{chipLabel}</span>
+            {shown && <span className="hidden md:inline"><ContractBadge c={shown} /></span>}
+          </>
+        )}
         <svg className="w-3 h-3 text-[var(--tv3-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9l6 6 6-6" />
         </svg>

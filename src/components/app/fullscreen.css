@@ -112,7 +112,11 @@ html.app-ui .app-term-fsclose:active { filter: brightness(0.92); }
 /* ---------- the phone's full-screen chart: one row of icons at the bottom, in the PC look (coloured glyphs with a caption) ---------- */
 html.app-ui .ph-tb { height: 66px; align-items: center; border-top: 0.5px solid var(--tv3-hair); }
 html.app-ui .ph-tb > * { flex: none; }
+html.app-ui .ph-tb .tb-market-group { display: flex; align-items: center; gap: 6px; flex: none; }
 html.app-ui .ph-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 58px; height: 58px; padding: 0 6px; border-radius: 12px; background: transparent; border: 0; color: var(--tv3-text2, var(--app-tx2)); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+html.app-ui .ph-tb .ph-ct { flex-direction: row; gap: 5px; min-width: 0; height: 40px; padding: 0 8px; border: 1px solid var(--tv3-hair); border-radius: 11px; background: var(--tv3-accent-soft); color: var(--tv3-accent); }
+html.app-ui .ph-tb .ph-ct .tb-ct-label { display: inline-flex; font-size: 11px; }
+html.app-ui .ph-tb .ph-ct > svg { display: block; width: 12px; height: 12px; }
 html.app-ui .ph-btn:disabled { opacity: 0.4; }
 html.app-ui .ph-btn:active, html.app-ui .ph-btn.ph-on { background: var(--tv3-fill, var(--app-press)); color: var(--tv3-text, var(--app-tx)); }
 html.app-ui .ph-cap { font-size: 10.5px; font-weight: 600; line-height: 1; }

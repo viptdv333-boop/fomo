@@ -245,6 +245,7 @@ export default function TopToolbar(p: Props) {
         }}
         className="ph-tb flex items-stretch gap-1 px-1.5 shrink-0 overflow-x-auto bg-[var(--tv3-card)] whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
+        <div className="tb-market-group">
         <button data-ph="asset" onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`tv3-press ph-sym ${p.phOpen === "asset" ? "ph-on" : ""}`}>
           <InstIcon inst={p.instrument} size={30} />
           <span className="ph-sym-t">
@@ -252,7 +253,8 @@ export default function TopToolbar(p: Props) {
             <small>{exchangeLabel(p.instrument.source)}</small>
           </span>
         </button>
-        {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn="hidden" onShown={setCtTicker} />}
+        {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn="tv3-press ph-btn ph-ct" onShown={setCtTicker} marketLabel />}
+        </div>
         {p.favIntervals && p.onFavIntervals && (
           <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} single />
         )}
@@ -327,6 +329,7 @@ export default function TopToolbar(p: Props) {
         {I.tools}
       </button>
 
+      <div className="tb-market-group">
       <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} tb-sym !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
         <InstIcon inst={p.instrument} size={28} />
         <span className="tb-sym-classic font-bold text-[16px]">{p.instrument.ticker}</span>
@@ -334,7 +337,8 @@ export default function TopToolbar(p: Props) {
         <span className="tb-sym-ex hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
         <span className="tb-sym-search text-[var(--tv3-text2)] inline-flex">{I.search}</span>
       </button>
-      {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={`${btn} tb-ct`} onShown={setCtTicker} />}
+      {p.onPickInstrument && <ContractPicker instrument={p.instrument} onPick={p.onPickInstrument} btn={`${btn} tb-ct`} onShown={setCtTicker} marketLabel />}
+      </div>
 
       {p.favIntervals && p.onFavIntervals ? (
         <IntervalControl interval={p.interval} onInterval={p.onInterval} favorites={p.favIntervals} onFavorites={p.onFavIntervals} btn={btn} btnOn={btnOn} source={p.instrument.source} single={p.appFull} />

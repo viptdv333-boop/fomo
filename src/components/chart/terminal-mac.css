@@ -951,23 +951,26 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { -
 .tvmac [data-tv="toolbar"] .tb-sym-classic,
 .tvmac [data-tv="toolbar"] .tb-sym-search { display: none !important; }
 .tvmac [data-tv="toolbar"] .tb-sym-mac { display: inline; font-weight: 600; font-size: 15px; }
+.tvmac [data-tv="toolbar"] .tb-market-group, .ph-tb .tb-market-group { display: flex; align-items: center; gap: 6px; flex: none; }
+.tvmac [data-tv="toolbar"] .tb-market-group .tb-sym { padding-right: 12px !important; }
 .tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 34px !important; }
 .tvmac [data-tv="toolbar"] .tb-ct {
   position: relative;
   z-index: 1;
-  width: 30px !important;
-  min-width: 30px !important;
+  width: auto !important;
+  min-width: 0 !important;
   height: 30px !important;
-  margin-left: -34px;
+  margin-left: 0;
   margin-right: 4px;
-  padding: 0 !important;
-  background: transparent !important;
+  padding: 0 7px !important;
+  background: var(--tv3-accent-soft) !important;
+  color: var(--tv3-accent) !important;
   box-shadow: none !important;
   border-radius: 9px !important;
   justify-content: center;
 }
-.tvmac [data-tv="toolbar"] .tb-ct > span { display: none !important; }
-.tvmac [data-tv="toolbar"] .tb-ct > svg { display: block; width: 14px; height: 14px; }
+.tvmac [data-tv="toolbar"] .tb-ct > span { display: inline-flex !important; }
+.tvmac [data-tv="toolbar"] .tb-ct > svg { display: block; width: 13px; height: 13px; }
 
 /* indicators dialog rows: 14px names, soft tags, green pills for "Add" / "Added" (design list style) */
 html[data-tvmac] .tv3 [role="dialog"]:has(nav[aria-label]) li { border-radius: 0; }
