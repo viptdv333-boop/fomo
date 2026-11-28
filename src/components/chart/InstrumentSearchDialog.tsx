@@ -163,7 +163,9 @@ const ResultRow = memo(function ResultRow({ rid, item, mode, active, listed, isC
   // a futures family shows its underlying code (BRM, not the terminal's «BRM.F»); the name's «BRM · » lead is the ticker again
   const shown = item.group === "future" && item.auto ? item.ticker.replace(/\.F$/, "") : item.ticker;
   const lead = [shown, item.ticker, item.asset].find((p) => p && raw.startsWith(`${p} · `));
-  const desc = lead ? raw.slice(lead.length + 3) : raw;
+  const description = lead ? raw.slice(lead.length + 3) : raw;
+  // Recents can predate the rename; do not keep the old caption visible there.
+  const desc = item.source === "moex" && /[12]!$/.test(item.secid) ? description.split(/\s*·\s*(?:склейка|continuous)\s*\d*/i)[0] : description;
   const badge =
     item.group === "future" && !item.auto && item.kind
       ? { kind: item.kind, order: item.order ?? 0, badge: item.kind === "spot" ? t("ct.spot") : item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }
@@ -546,7 +548,7 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
               {tab === "future" && <FilterSelect
                 value={filters.asset}
                 onChange={(asset) => setFilter({ asset: asset as FutAsset | "" })}
-                allLabel={t("is.assets")}
+                allLabel={t("is.filter.category")}
                 label={t("is.assets")}
                 options={FUT_ASSET_CHIPS.map((a) => ({ value: a, label: t(`is.fa.${a}`) }))}
               />}
