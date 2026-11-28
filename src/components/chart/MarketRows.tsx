@@ -14,6 +14,8 @@ import { ContractBadge, ROLL_DAYS } from "./ContractPicker";
 const INDEX_ICON: Record<string, string> = {
   IMOEX: "moex-index", RTSI: "rts-index",
   "^GSPC": "sp500", "^IXIC": "nasdaq100", "^DJI": "dow-jones", "^GDAXI": "dax40", "^FTSE": "ftse100",
+  SPX: "sp500", NDX: "nasdaq100", IXIC: "nasdaq100", DJI: "dow-jones", RUT: "russell2000", GDAXI: "dax40", FTSE: "ftse100",
+  HSI: "hang-seng", N225: "nikkei225", VIX: "vix",
   "^HSI": "hang-seng", "^N225": "nikkei225", "^RUT": "russell2000", "^VIX": "vix", "^TNX": "us10y", "^TYX": "us30y",
   "^STOXX50E": "stoxx50", "^KS11": "kospi", "^TWII": "twse", "^AXJO": "asx200", "^BSESN": "sensex", "000001.SS": "shanghai",
   MOEXBMI: "moex-bmi", MOEXBC: "moex-bc", MOEXOG: "moex-og", MOEXFN: "moex-fn", MOEXMM: "moex-mm", MOEXCN: "moex-cn",
