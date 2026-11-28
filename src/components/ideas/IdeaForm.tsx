@@ -336,16 +336,16 @@ export default function IdeaForm({ mode, ideaId, initialData, preselectedInstrum
 
     const body: any = {
       title,
-      preview: isChannelPost ? title : preview,
+      preview: isChannelPost && mode === "create" ? title : preview,
       content,
       isPaid: isChannelPost ? true : isPaid,
-      price: isChannelPost ? 0 : (isPaid ? Number(price) : undefined),
+      price: isChannelPost ? undefined : (isPaid ? Number(price) : undefined),
       acceptDonations: isChannelPost ? false : (!isPaid ? acceptDonations : false),
       instrumentIds: selectedChips.map((c) => c.id),
       general: isGeneral,
       attachments: attachments.length > 0 ? attachments : undefined,
     };
-    if (channelId) body.channelId = channelId;
+    if (channelId && mode === "create") body.channelId = channelId;
 
     const url = mode === "edit" ? `/api/ideas/${ideaId}` : "/api/ideas";
     const method = mode === "edit" ? "PATCH" : "POST";

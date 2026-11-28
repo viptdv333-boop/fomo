@@ -166,7 +166,7 @@ export async function GET(
     ...(includeContent && !locked ? { content: idea.content } : {}),
     ...(locked ? { locked: true, previewText, blurText } : {}),
     isPaid: idea.isPaid,
-    price: idea.price,
+    price: idea.tariffId ? null : idea.price,
     acceptDonations: idea.acceptDonations,
     channel: idea.tariff ? { id: idea.tariff.id, name: idea.tariff.name } : null,
     viewCount: idea.viewCount,
@@ -198,7 +198,7 @@ export async function PATCH(
 
   const idea = await prisma.idea.findUnique({
     where: { id },
-    select: { id: true, authorId: true, moderationStatus: true, attachments: true },
+    select: { id: true, authorId: true, tariffId: true, moderationStatus: true, attachments: true },
   });
 
   if (!idea) {
@@ -213,6 +213,14 @@ export async function PATCH(
   }
 
   const body = await request.json();
+  // A channel post is covered by the channel subscription. Ignore stale
+  // per-idea pricing fields from older editors; never turn it into a sale
+  // or a public post. Channel membership comes only from the stored idea.
+  if (idea.tariffId && body && typeof body === "object" && !Array.isArray(body)) {
+    delete body.isPaid;
+    delete body.price;
+    delete body.acceptDonations;
+  }
   const parsed = ideaPatchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -247,6 +255,7 @@ export async function PATCH(
   if (parsed.data.isPaid !== undefined) data.isPaid = parsed.data.isPaid;
   if (parsed.data.price !== undefined) data.price = parsed.data.price;
   if (parsed.data.acceptDonations !== undefined) data.acceptDonations = parsed.data.acceptDonations;
+  if (idea.tariffId) Object.assign(data, { isPaid: true, price: null, acceptDonations: false });
   if (parsed.data.attachments !== undefined) data.attachments = parsed.data.attachments;
   if (parsed.data.moderationStatus !== undefined) data.moderationStatus = parsed.data.moderationStatus;
   // a change of the post itself is an edit (a pin, an archive, a view or a like is not)

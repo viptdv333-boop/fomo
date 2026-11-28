@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       where: { id: body.ideaId },
       include: { author: { select: { id: true, paymentCard: true, sbpQrUrl: true, displayName: true } } },
     });
-    if (!idea || !idea.isPaid || !idea.price) {
+    if (!idea || idea.tariffId || !idea.isPaid || !idea.price) {
       return NextResponse.json({ error: t("notif.err.ideaNotPaid") }, { status: 400 });
     }
 

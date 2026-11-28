@@ -11,6 +11,7 @@ export default function EditIdeaPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { t } = useT();
+  const [channelId, setChannelId] = useState<string>();
   const [initialData, setInitialData] = useState<{
     title: string;
     preview: string;
@@ -41,6 +42,7 @@ export default function EditIdeaPage() {
         return;
       }
 
+      setChannelId(data.channel?.id);
       setInitialData({
         title: data.title,
         preview: data.preview,
@@ -63,7 +65,7 @@ export default function EditIdeaPage() {
   return (
     <div className="max-w-3xl w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6">{t("feed2.editIdea")}</h1>
-      <IdeaForm mode="edit" ideaId={params.id as string} initialData={initialData} />
+      <IdeaForm mode="edit" ideaId={params.id as string} initialData={initialData} channelId={channelId} />
     </div>
   );
 }
