@@ -10,8 +10,6 @@ import { appHeaderHidden } from "@/lib/app-ui";
 import { appBackTarget, backChrome, hasOwnBackBar, ownBackCount, subscribeOwnBack, type BackTarget } from "@/lib/app-back";
 import { isTerminalSite } from "@/lib/site-mode";
 import FomoLogo from "@/components/brand/FomoLogo";
-import ThemeToggle from "@/components/layout/ThemeToggle";
-import LanguageSelector from "@/components/layout/LanguageSelector";
 import NotificationBell from "@/components/layout/NotificationBell";
 import { useAppUi } from "./useAppUi";
 import AppBackButton from "./AppBackButton";
@@ -23,8 +21,8 @@ const TERMINAL = isTerminalSite();
 function Header({ back }: { back: BackTarget | null }) {
   const { locale } = useT();
 
-  // the design's header: the logo and the theme switch (no bell and no counter: the unread counts are the red badges of the dock, see AppTabBar). The profile (photo, menu, settings, text size, update, downloads, sign out)
-  // lives in the «Профиль» tab of the dock (components/app/profile). The hidden bell is NOT in here (see AppHeader): it must outlive the header.
+  // The header carries the logo and back navigation. Language and theme live after «Профиль» in the dock, so they stay in one place across every screen.
+  // The profile (photo, menu, settings, text size, update, downloads, sign out) lives in the «Профиль» tab of the dock (components/app/profile).
   return (
     <header className="app-header" data-app-product={TERMINAL ? "terminal" : "main"} data-app-header data-has-back={back ? "1" : undefined}>
       <div className="app-header-left">
@@ -39,14 +37,6 @@ function Header({ back }: { back: BackTarget | null }) {
       >
         <FomoLogo product={TERMINAL ? "terminal" : "spot"} />
       </Link>
-      </div>
-      <div className="app-header-right">
-        <div className="app-hbtn">
-          <LanguageSelector compact />
-        </div>
-        <div className="app-hbtn">
-          <ThemeToggle />
-        </div>
       </div>
     </header>
   );

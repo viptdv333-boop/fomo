@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
+import { useTheme } from "@/lib/theme";
 import { nativeBridge } from "@/lib/native-app";
 import { useAppMacSkin } from "@/lib/chart/mac-skin";
 import { APP_TABS, activeAppTab, appTabHref, badgeLabel, dockDragScroll, dockKeyAction, dockKeyTarget, dockWheelDelta, isDockDrag, isTabSwipe, raisesKeyboard, swipeAxis, swipeTargetTab, type AppTabId } from "@/lib/app-ui";
@@ -12,6 +13,8 @@ import { hiddenTabUnread, tabBadgeLabel } from "@/lib/app-badges";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import { useAppTopToolbar, useAppUi } from "./useAppUi";
 import { useTabBadges } from "./useTabBadges";
+import { LanguageSheet } from "./LanguagePicker";
+import { FlagIcon } from "@/components/layout/FlagIcon";
 import { applyFontStep, readFontStep } from "./fontStep";
 import { hostNavigate, useAppPathname } from "./tabhost/store";
 import { useTermCal } from "./termCal";
@@ -293,6 +296,8 @@ function TabBar() {
   const active: AppTabId | null = calTab && pathActive === "terminal" && termCal ? "calendar" : pathActive;
   const counts = useTabBadges(active); // red badges: Доска / Терминал / Болталка / Календарь / Каналы (src/lib/app-badges.ts)
   const { data: session } = useSession();
+  const { theme, toggleTheme } = useTheme();
+  const [languageOpen, setLanguageOpen] = useState(false);
   const me = session?.user as { image?: string | null; name?: string | null } | undefined;
   useKeyboardClass();
   useSwipeTabs();
@@ -344,7 +349,7 @@ function TabBar() {
     <>
     {/* desktop window: the bar's background spans the whole window while the tabs sit in the centred column (see app-desktop.css) */}
     <div className="app-dock-bg" aria-hidden="true" />
-    <nav ref={bar} className="app-tabbar" data-tabs={APP_TABS.length} style={{ "--app-tab-w": APP_TABS.length > 5 ? "18.18%" : `${100 / APP_TABS.length}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
+    <nav ref={bar} className="app-tabbar" data-tabs={APP_TABS.length + 2} style={{ "--app-tab-w": APP_TABS.length + 2 > 5 ? "18.18%" : `${100 / (APP_TABS.length + 2)}%` } as React.CSSProperties} aria-label={t("appui.nav")} data-app-tabbar>
       {APP_TABS.map((tab) => {
         const on = tab.id === active;
         // «Список» only on the terminal site (the dock there is the terminal's own); on fomo.spot the tab stays «Терминал»
@@ -399,6 +404,36 @@ function TabBar() {
           </Link>
         );
       })}
+      <button
+        type="button"
+        className="app-tab app-tab-control"
+        data-tab-control="language"
+        aria-label={t("appprof.language")}
+        aria-haspopup="dialog"
+        aria-expanded={languageOpen}
+        title={t("appprof.language")}
+        onClick={() => {
+          try { nativeBridge()?.haptic?.(); } catch { /* old app build */ }
+          setLanguageOpen(true);
+        }}
+      >
+        <span className="app-tab-ico"><FlagIcon code={locale} size={23} /></span>
+        <span className="app-tab-label">{t("appprof.language")}</span>
+      </button>
+      <button
+        type="button"
+        className="app-tab app-tab-control"
+        data-tab-control="theme"
+        aria-label={theme === "light" ? t("common.theme.dark") : t("common.theme.light")}
+        title={theme === "light" ? t("common.theme.dark") : t("common.theme.light")}
+        onClick={() => {
+          try { nativeBridge()?.haptic?.(); } catch { /* old app build */ }
+          toggleTheme();
+        }}
+      >
+        <span className="app-tab-ico"><AppIcon name={theme === "light" ? "moon" : "sun"} size={24} /></span>
+        <span className="app-tab-label">{t("common.theme")}</span>
+      </button>
     </nav>
     <div className="app-dock-track" aria-hidden="true">
       <span ref={thumb} className="app-dock-thumb" />
@@ -419,6 +454,7 @@ function TabBar() {
         </button>
       ) : null
     )}
+    {languageOpen && <LanguageSheet onClose={() => setLanguageOpen(false)} to={pathActive === "me" && !session ? "/feed" : undefined} />}
     </>
   );
 }
