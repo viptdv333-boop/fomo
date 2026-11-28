@@ -2411,9 +2411,9 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   const r = e.currentTarget.getBoundingClientRect();
                   setScaleMenu({ x: r.right, y: r.top, paneId: "main", anchor: true });
                 }}
-                className={`absolute bottom-0 z-30 flex h-6 w-7 items-center justify-center border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] cursor-pointer ${cs.scale.side === "right" ? "right-0 rounded-tl-md" : "left-0 rounded-tr-md"}`}
+                className={`absolute bottom-0 z-30 flex h-6 w-7 items-center justify-center border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#d58a27] hover:bg-[var(--tv3-fill)] hover:text-[#b96d12] cursor-pointer ${cs.scale.side === "right" ? "right-0 rounded-tl-md" : "left-0 rounded-tr-md"}`}
               >
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 drop-shadow-[0_2px_3px_rgba(213,138,39,0.35)]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d={DESIGN_PATHS.gear} />
                 </svg>
               </button>
