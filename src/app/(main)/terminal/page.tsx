@@ -35,7 +35,7 @@ const TradingChart = dynamic(() => import("@/components/chart/MultiChart"), {
 });
 
 const DEFAULT_INSTRUMENT: TerminalInstrument = TERMINAL_DATA[0].instruments[0];
-const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
+const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|[A-Za-z][A-Za-z0-9_.]{0,20}[12]!)$/;
 
 const LAST_KEY = "fomo-terminal-last-v1";
 
@@ -66,7 +66,7 @@ function getLastChannel(): Channel {
 function storedSymbol(): { symbol: string; source: ChartSource } | null {
   const ok = (v: unknown): v is { source: ChartSource; dataTicker: string } => {
     const o = v as { source?: unknown; dataTicker?: unknown } | null;
-    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "binance" || o.source === "fmp" || o.source === "forex" || o.source === "instaforex" || o.source === "yahoo" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
+    return !!o && (o.source === "moex" || o.source === "bybit" || o.source === "binance" || o.source === "fmp" || o.source === "forex" || o.source === "databento" || o.source === "twelvedata") && typeof o.dataTicker === "string" && TICKER_RE.test(o.dataTicker);
   };
   try {
     const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
@@ -82,7 +82,7 @@ function instrumentFromUrl(): TerminalInstrument {
   let symbol = stored?.symbol ?? sp.get("symbol")?.trim();
   let src = stored?.source ?? sp.get("source");
   if (!symbol || !TICKER_RE.test(symbol)) return DEFAULT_INSTRUMENT;
-  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "binance" || src === "fmp" || src === "forex" || src === "instaforex" || src === "yahoo" || src === "databento" || src === "twelvedata" ? src : null;
+  const source: ChartSource | null = src === "moex" || src === "bybit" || src === "binance" || src === "fmp" || src === "forex" || src === "databento" || src === "twelvedata" ? src : null;
   if (source) {
     // a US future (CLUSD, GCUSD ...) opens with its root ticker, name and artwork, like a pick from the search
     const us = source === "fmp" ? usFutureBySymbol(symbol) : undefined;
