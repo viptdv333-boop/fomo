@@ -7,6 +7,7 @@ import { findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
 import { contractToInstrument, fetchContracts, getLastContract, setLastContract, syncContractPrefs } from "@/lib/market-client";
 import { futuresIcon } from "@/lib/instrument-icons";
+import { continuousSymbol } from "@/lib/continuous-futures";
 
 /** Days before expiry from which the roll hint is shown. */
 export const ROLL_DAYS = 7;
@@ -52,22 +53,24 @@ export default function ContractPicker({
   const ref = useRef<HTMLButtonElement>(null);
   const source = instrument.source === "bybit" ? "bybit" : instrument.source === "moex" ? "moex" : null;
   const ticker = instrument.dataTicker;
+  const chain = source === "moex" ? continuousSymbol(ticker) : null;
+  const lookupTicker = chain?.asset ?? ticker;
 
   useEffect(() => {
     setData(null);
     if (!source) return;
     let cancelled = false;
     void syncContractPrefs();
-    void fetchContracts(source, ticker, locale).then((r) => {
+    void fetchContracts(source, lookupTicker, locale).then((r) => {
       if (!cancelled) setData(r);
     });
     return () => {
       cancelled = true;
     };
-  }, [source, ticker, locale]);
+  }, [source, lookupTicker, locale]);
 
   const all = data?.contracts ?? [];
-  const isAuto = source === "moex" && data !== null && (ticker === data.auto || !all.some((c) => c.ticker === ticker));
+  const isAuto = source === "moex" && data !== null && !chain && (ticker === data.auto || !all.some((c) => c.ticker === ticker));
   // what the chart is showing right now: the exact contract, or the front one for the auto ticker
   const shown = useMemo(() => all.find((c) => c.ticker === ticker) ?? (source === "moex" ? all.find((c) => c.order === 1) ?? all[0] : all[0]), [all, ticker, source]);
   const icon = useMemo(() => {
@@ -77,7 +80,7 @@ export default function ContractPicker({
     return autoIcon || instrument.emoji || (source === "moex" && data ? futuresIcon(data.asset) : "");
   }, [data, instrument.source, instrument.emoji, source]);
 
-  const shownTicker = source && data && all.length >= 2 ? (shown?.ticker ?? null) : null;
+  const shownTicker = !chain && source && data && all.length >= 2 ? (shown?.ticker ?? null) : null;
   useEffect(() => {
     onShown?.(shownTicker);
   }, [onShown, shownTicker]);
@@ -174,6 +177,10 @@ export default function ContractPicker({
                 {isAuto && <span className="text-xs">✓</span>}
               </button>
             )}
+            {source === "moex" && chain && ([1, 2] as const).map((rank) => {
+              const symbol = `${chain.asset}${rank}!`;
+              return <button key={symbol} role="option" aria-selected={ticker === symbol} onClick={() => { setOpen(false); onPick({ ...instrument, ticker: symbol, dataTicker: symbol, group: "future" }); }} className="w-full px-3.5 py-2 flex items-center gap-2 text-left cursor-pointer hover:bg-[var(--tv3-fill3)]"><span className="px-1.5 rounded bg-sky-500/15 text-sky-600 text-[10px]">{t("ct.b.continuous")}</span><span className="flex-1 text-[13px] font-semibold">{symbol}</span>{ticker === symbol && <span>✓</span>}</button>;
+            })}
             {all.map((c) => {
               const cur = c.ticker === shown?.ticker && !isAuto;
               return (

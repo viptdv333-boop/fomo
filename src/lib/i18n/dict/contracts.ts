@@ -18,6 +18,7 @@ const rows: [string, string, string, string][] = [
   ["ct.roll.to", "Перейти на {ticker}", "Switch to {ticker}", "切换到 {ticker}"],
   ["ct.roll.title", "Контракт скоро экспирируется: перейти на следующий", "The contract expires soon: switch to the next one", "合约即将到期：切换到下一个"],
   ["ct.b.current", "текущий", "current", "当前"],
+  ["ct.b.continuous", "склейка", "continuous", "连续"],
   ["ct.b.next", "следующий", "next", "次月"],
   ["ct.b.nth", "{n}-й", "#{n}", "第{n}个"],
   ["ct.contracts", "{n} контр.", "{n} contracts", "{n} 个合约"],
