@@ -7,7 +7,7 @@ import { openChannel, type Channel } from "@/lib/chart/account-sync";
 import { useRowReorder } from "@/lib/use-row-reorder";
 import RuNews from "@/components/instruments/RuNews";
 import CalendarPanel from "./calendar/CalendarPanel";
-import { panelTabIcon } from "./icons";
+import { panelTabIcon, ui } from "./icons";
 import InstIcon from "./InstIcon";
 import InstrumentSearchDialog from "./InstrumentSearchDialog";
 import { fxMarketOpen, parseFxSymbol } from "@/lib/forex-meta";
@@ -308,10 +308,14 @@ const WatchRow = memo(function WatchRow({
             ) : null}
             {(inst.source === "forex" || inst.source === "instaforex" || inst.source === "yahoo") && (
               <span title={tr("wl.delayed.tip")} aria-label={tr("wl.delayed.tip")} className="shrink-0 text-[var(--tv3-muted)] opacity-70">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" />
-                </svg>
+                {ui(
+                  <>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </>,
+                  13,
+                  1.7,
+                )}
               </span>
             )}
           </span>
