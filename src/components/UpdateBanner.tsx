@@ -5,7 +5,7 @@ import { forceUpdate } from "@/lib/force-update";
 import { useT } from "@/lib/i18n/client";
 import { autoUpdateDecision, buildMismatch, isBuildAssetUrl, isStaleBuildError, recoverStaleShell } from "@/lib/stale-build";
 
-const CHECK_EVERY_MS = 5 * 60 * 1000;
+const CHECK_EVERY_MS = 60 * 1000;
 
 function isEditing(): boolean {
   const el = document.activeElement as HTMLElement | null;
@@ -101,8 +101,14 @@ export default function UpdateBanner() {
     // the service worker saw a newer release in a response (sw.js noteBuild): compare with /api/version right away
     const onBuild = () => void check();
     window.addEventListener("fomo-build-changed", onBuild);
+    // also listen to the worker directly, so the banner appears even where OfflineSync is not mounted
+    const onSwMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === "fomo-build") void check();
+    };
+    navigator.serviceWorker?.addEventListener("message", onSwMessage);
     return () => {
       window.removeEventListener("fomo-build-changed", onBuild);
+      navigator.serviceWorker?.removeEventListener("message", onSwMessage);
       stopped = true;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
