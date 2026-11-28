@@ -10,7 +10,6 @@ import { tinkoffToken } from "@/lib/data/moex-keys";
 import { ruCaFetch } from "@/lib/algopack-tls";
 import { continuousSymbol } from "./continuous-futures";
 import { yahooCandles } from "./data/yahoo";
-import { frontSecid } from "./moex-contracts";
 
 /**
  * Batch quotes for the terminal watchlist.
