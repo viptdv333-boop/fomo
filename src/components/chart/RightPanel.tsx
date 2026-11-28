@@ -307,20 +307,15 @@ const WatchRow = memo(function WatchRow({
               <span className="shrink-0 truncate text-[11px] font-normal text-[var(--tv3-muted)] opacity-60">{badge.text}</span>
             ) : null}
             {(inst.source === "forex" || inst.source === "instaforex" || inst.source === "yahoo") && (
-              <span
-                title={tr("wl.delayed.tip")}
-                aria-label={tr("wl.delayed.tip")}
-                className="flex shrink-0 items-center gap-0.5 rounded bg-[var(--tv3-fill2)] px-1 text-[10px] leading-4 font-medium text-[var(--tv3-text2)]"
-              >
+              <span title={tr("wl.delayed.tip")} aria-label={tr("wl.delayed.tip")} className="shrink-0 text-amber-500">
                 {ui(
                   <>
                     <circle cx="12" cy="12" r="9" />
                     <path d="M12 7v5l3 2" />
                   </>,
-                  10,
-                  2,
+                  15,
+                  1.8,
                 )}
-                {tr("wl.delayed.short")}
               </span>
             )}
           </span>
