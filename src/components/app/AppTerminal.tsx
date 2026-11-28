@@ -501,6 +501,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
           {/* «Список»: a screen of its own over the chart (the chart keeps running under it) */}
           {macScreen === "list" && (
             <div className="app-mac-list" data-app-mac-list>
+              <div className="app-mac-list-content">
               {/* like TradingView's mobile list: lists across the top and a search / add icon; nothing else above the rows */}
               <div className="app-mac-list-h">
                 <h2 className="sr-only">{t("mac.m.tabList")}</h2>
@@ -585,11 +586,12 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                 </div>
               )}
 
-              {TERMINAL_SITE && <FomoSpotBanner />}
               {/* the calculator has its own tab in the dock, the community card is an ad: neither belongs under a watchlist */}
               <div className="app-term-disc">
                 {t("appui.term.disc")}
                 {delayed ? ` ${t("appui.term.disc15")}` : ""}
+              </div>
+              {TERMINAL_SITE && <FomoSpotBanner className="app-mac-list-banner" />}
               </div>
             </div>
           )}
