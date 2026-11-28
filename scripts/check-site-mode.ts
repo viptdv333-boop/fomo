@@ -95,6 +95,7 @@ const PAGES_CLOSED = [
   "/dev-notifications", "/clip-test", "/admin/ideas", "/admin/chat", "/admin/users/1", "/terminalx", "/calendarx", "/terminal/features", "/calendar", "/calendar/x", "/profilex", "/..%2Ffeed",
 ];
 const API_OPEN = [
+  "/api/asset-markets?source=instaforex&ticker=XAUUSD",
   "/api/auth/session", "/api/auth/csrf", "/api/auth/register", "/api/auth/send-code", "/api/auth/reset-password", "/api/auth/change-password", "/api/terminal/alerts", "/api/terminal/userdata", "/api/terminal/watchlist",
   "/api/terminal/alerts/abc", "/api/calendar/reminders", "/api/economic-calendar", "/api/klines", "/api/quote", "/api/quotes", "/api/market-search", "/api/contracts", "/api/orderbook", "/api/orderflow", "/api/moex-seconds",
   "/api/algopack/status", "/api/futures/spec", "/api/news", "/api/notifications", "/api/notifications/unread-by-type", "/api/notification-settings", "/api/notification-settings/channels/email/start", "/api/notification-settings/webhooks/telegram",

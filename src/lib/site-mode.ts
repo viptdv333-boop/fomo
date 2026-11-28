@@ -186,6 +186,7 @@ const TERMINAL_API_PREFIX = [
   "quotes",
   "market-search",
   "contracts",
+  "asset-markets", // the same underlying's spot/stock/futures choices across providers
   "continuous-rolls", // roll points of a continuous futures series (chart roll marks)
   "orderbook",
   "orderflow",
