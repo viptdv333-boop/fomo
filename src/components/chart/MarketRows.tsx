@@ -16,28 +16,47 @@ const INDEX_ICON: Record<string, string> = {
   "^GSPC": "sp500", "^IXIC": "nasdaq100", "^DJI": "dow-jones", "^GDAXI": "dax40", "^FTSE": "ftse100",
   "^HSI": "hang-seng", "^N225": "nikkei225", "^RUT": "russell2000", "^VIX": "vix", "^TNX": "us10y", "^TYX": "us30y",
   "^STOXX50E": "stoxx50", "^KS11": "kospi", "^TWII": "twse", "^AXJO": "asx200", "^BSESN": "sensex", "000001.SS": "shanghai",
+  MOEXBMI: "moex-bmi", MOEXBC: "moex-bc", MOEXOG: "moex-og", MOEXFN: "moex-fn", MOEXMM: "moex-mm", MOEXCN: "moex-cn",
+  MOEXIT: "moex-it", MOEXEU: "moex-eu", MOEXTL: "moex-tl", MOEXRE: "moex-re", MOEXCH: "moex-ch", MOEXTR: "moex-tr",
+};
+
+/** Foreign instruments carry their exchange's badge (CME / NYMEX / Nasdaq / Xetra …); RF uses T-Invest artwork. */
+const EXCHANGE_ICON: Record<string, string> = {
+  CME: "ex-cme", NYMEX: "ex-nymex", COMEX: "ex-comex", CBOT: "ex-cbot", ICE: "ex-ice",
+  Nasdaq: "ex-nasdaq", NYSE: "ex-nyse", "NYSE Arca": "ex-arca", "NYSE American": "ex-nyse", BATS: "ex-nyse",
+  Xetra: "ex-xetra", Frankfurt: "ex-xetra", Munich: "ex-xetra", Berlin: "ex-xetra", Düsseldorf: "ex-xetra", Hamburg: "ex-xetra", Stuttgart: "ex-xetra",
+  HKEX: "ex-hkex", Tokyo: "ex-tse", Osaka: "ex-ose", LSE: "ex-lse", "LSE Intl": "ex-lse",
+  "Euronext Paris": "ex-euronext", "Euronext Amsterdam": "ex-euronext", "Euronext Brussels": "ex-euronext", "Euronext Lisbon": "ex-euronext",
+  "Borsa Italiana": "ex-euronext", "BME Madrid": "ex-euronext", "Nasdaq Stockholm": "ex-nasdaq", "Nasdaq Helsinki": "ex-nasdaq", "Nasdaq Copenhagen": "ex-nasdaq", Oslo: "ex-ose",
+  Shanghai: "ex-sse", Shenzhen: "ex-szse", KOSPI: "ex-krx", KOSDAQ: "ex-krx", TWSE: "ex-twse", TPEx: "ex-twse",
+  ASX: "ex-asx", NZX: "ex-asx", BSE: "ex-bse", NSE: "ex-nse", Toronto: "ex-tsx", "TSX Venture": "ex-tsx",
 };
 
 /** The icon of a row of the market search, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
   const ti = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
-  if (ti) return ti;
+  // RF instruments: T-Invest brand artwork first.
+  if (item.source === "moex") {
+    if (ti) return ti;
+    if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : "/icons/instruments/moex-index.svg";
+    if (item.group === "stock") return curated.find((i) => i.source === "moex" && i.dataTicker === item.secid)?.emoji || marketItemIcon(item);
+    if (item.group !== "future") return marketItemIcon(item);
+    const own = curated.find((i) => i.source === "moex" && (i.dataTicker === item.secid || i.dataTicker === item.asset))?.emoji;
+    return own || marketItemIcon(item);
+  }
+  // Foreign: the exchange's badge (CME / NYMEX / Nasdaq / Xetra …), then brand index / T-Invest / curated.
   if (item.group === "forex") return fxIcon(item.secid) || marketItemIcon(item);
   if (item.group === "crypto") return coinIcon(item.asset ?? "") || (curated.find((i) => i.source === "bybit" && i.dataTicker === item.secid)?.emoji ?? "") || marketItemIcon(item);
+  if (item.group === "index" && INDEX_ICON[item.secid]) return `/icons/instruments/${INDEX_ICON[item.secid]}.svg`;
+  const ex = item.exchange ? EXCHANGE_ICON[item.exchange] : undefined;
+  if (ex) return `/icons/instruments/${ex}.svg`;
+  if (ti) return ti;
   if (item.source === "fmp") {
     const icon = usFutureBySymbol(item.secid)?.icon;
     if (icon) return icon;
   }
-  if (item.group === "index") {
-    if (INDEX_ICON[item.secid]) return `/icons/instruments/${INDEX_ICON[item.secid]}.svg`;
-    if (item.source === "moex") return "/icons/instruments/moex-index.svg";
-    return marketItemIcon(item);
-  }
-  // shares the terminal has artwork for (SBER, GAZP ...)
   if (item.group === "stock") return curated.find((i) => i.source === item.source && i.dataTicker === item.secid)?.emoji || marketItemIcon(item);
-  if (item.group !== "future") return marketItemIcon(item);
-  const own = curated.find((i) => i.source === "moex" && (i.dataTicker === item.secid || i.dataTicker === item.asset))?.emoji;
-  return own || marketItemIcon(item);
+  return marketItemIcon(item);
 }
 
 /** A market search result for a pick: a futures underlying opens the last chosen contract (when the user chose one), else the auto front month. */

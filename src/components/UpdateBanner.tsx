@@ -76,11 +76,8 @@ export default function UpdateBanner() {
         if (!res.ok) return;
         const { id } = await res.json();
         if (stopped || !buildMismatch(mine, id)) return;
-        const d = autoUpdateDecision({ mismatch: true, pageAgeMs: Date.now() - started, interacted, hiddenForMs, editing: isEditing() });
-        if (d === "now") {
-          // a silent reload; when the guard refuses (a reload just happened, offline) the card is shown instead
-          if (await recoverStaleShell(`build ${mine} -> ${id}`)) return;
-        }
+        // Always surface the one-tap «update» card on a new release (like every deploy),
+        // instead of silently reloading — the user expects the banner on all platforms.
         if (!stopped) setOutdated(true);
       } catch {
         // Offline or server restarting — try again next time.
