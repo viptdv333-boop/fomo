@@ -55,6 +55,7 @@ export interface Quote {
   open?: number;
   high?: number;
   low?: number;
+  delayed?: boolean;
 }
 
 const COLLAPSED_KEY = "fomo-terminal-watch-collapsed";
@@ -106,7 +107,7 @@ export function useBatchQuotes(instruments: TerminalInstrument[], enabled: boole
           const next = { ...prev };
           for (const [k, q] of Object.entries(data)) {
             const p = prev[k];
-            if (!p || p.price !== q.price || p.change !== q.change || p.changePercent !== q.changePercent) {
+            if (!p || p.price !== q.price || p.change !== q.change || p.changePercent !== q.changePercent || p.delayed !== q.delayed) {
               next[k] = q;
               changed = true;
             }
@@ -305,6 +306,14 @@ const WatchRow = memo(function WatchRow({
             ) : badge.text ? (
               <span className="shrink-0 truncate text-[11px] font-normal text-[var(--tv3-muted)] opacity-60">{badge.text}</span>
             ) : null}
+            {q?.delayed && (
+              <span title={tr("wl.delayed.tip")} aria-label={tr("wl.delayed.tip")} className="shrink-0 text-[var(--tv3-muted)] opacity-70">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              </span>
+            )}
           </span>
           <span className="flex items-center gap-1 text-[12px] leading-tight text-[var(--tv3-muted)]">
             {contract && <ContractBadge c={contract} />}

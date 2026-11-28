@@ -153,6 +153,7 @@ const rows: [string, string, string, string][] = [
   ["wl.cancel", "Отмена", "Cancel", "取消"],
   ["wl.createNew", "Создать список", "Create a list", "新建列表"],
   ["wl.rowMenu", "Закрепить / добавить в список", "Pin / add to a list", "置顶 / 添加到列表"],
+  ["wl.delayed.tip", "Данные с задержкой ~15 мин (публичный источник). Войдите или подключите свой ключ провайдера для данных без задержки.", "Data is delayed ~15 min (public feed). Sign in or connect your own provider key for real-time data.", "数据延迟约15分钟（公共源）。登录或连接您自己的提供商密钥以获取实时数据。"],
   ["wl.delete", "Удалить список", "Delete list", "删除列表"],
   ["wl.deleteSure", "Точно удалить?", "Really delete?", "确定删除？"],
   ["wl.clearList", "Очистить список", "Clear list", "清空列表"],

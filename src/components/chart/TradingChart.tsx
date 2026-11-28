@@ -2173,6 +2173,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   }, []);
 
   const handleSelect = (inst: TerminalInstrument) => {
+    // Run on the click, including a click on the already selected symbol.
+    if (indicators.openMainIfEmpty()) focusChart(null);
     onSelectSymbol?.(inst);
     if (!isDesktop) setMobilePanel(false);
   };
@@ -2367,8 +2369,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 )}
               </>
             )}
-            {(candlesDelayed || quoteDelayedMark) && !loading && !empty && (!appPage || appTb) && (
-              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500" title={t("ap.delayed.tip")}>
+            {(candlesDelayed || quoteDelayedMark) && !loading && !empty && (
+              <div className={`absolute z-10 pointer-events-none rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-500 ${appPage ? "top-7 left-2" : "top-1.5 left-1/2 -translate-x-1/2"}`} title={t("ap.delayed.tip")}>
                 {t("ap.delayed")}
               </div>
             )}

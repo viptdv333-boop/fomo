@@ -932,6 +932,14 @@ export class IndicatorsController implements IndicatorsControllerLike {
     this.emit();
   }
 
+  /** Picking a symbol from an empty workspace opens its main price chart. */
+  openMainIfEmpty(): boolean {
+    if (this.eff().wins.length > 0) return false;
+    this.resetWindows();
+    this.setFocusChart(MAIN_ID);
+    return true;
+  }
+
   /** Whether the indicator may live in an extra window. */
   canWindow(uid: string): boolean {
     const it = this.find(uid);

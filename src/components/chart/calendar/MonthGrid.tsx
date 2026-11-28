@@ -51,7 +51,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
   const by = useMemo(() => dayCounts(events, zone), [events, zone]);
   const refs = useRef(new Map<string, HTMLElement>());
   const [focusDate, setFocusDate] = useState<string | null>(null);
-  const todayCell = cells.find((c) => c.today)?.date ?? cells[0]?.date;
+  const todayCell = cells.find((c) => c.today && !c.outside)?.date ?? cells.find(c => !c.outside)?.date;
   const tab = focusDate && cells.some((c) => c.date === focusDate) ? focusDate : todayCell;
   const heads = useMemo(() => cells.slice(0, 7).map((c) => ({ long: formatDayHeading(c.date, locale, { weekday: "long" }), short: formatDayHeading(c.date, locale, { weekday: "short" }) })), [cells, locale]);
 
@@ -74,7 +74,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
   const move = (date: string, delta: number) => {
     const next = addDays(date, delta);
     const el = refs.current.get(next);
-    if (el) {
+    if (el && !cells.find(c => c.date === next)?.outside) {
       setFocusDate(next);
       el.focus();
     }
@@ -128,7 +128,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
       <div ref={gridRef} className={`grid flex-1 grid-cols-7 auto-rows-[minmax(64px,1fr)] sm:auto-rows-[minmax(150px,1fr)]`}>
         {cells.map((c) => {
           const b = by.get(c.date);
-          const none = outsideCoverage(c.date, coverage, zone);
+          const none = !!c.outside || outsideCoverage(c.date, coverage, zone);
           const { shown, more, total } = b ? pickFit(byWeight(b.events), cellH - CELL_CHROME, rowCost, MORE_ROW) : { shown: [] as CalEvent[], more: 0, total: 0 };
           const high = b?.byImpact[2] ?? 0;
           const day = Number(c.date.slice(8));
@@ -140,15 +140,16 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                 else refs.current.delete(c.date);
               }}
               role="gridcell"
-              tabIndex={tab === c.date ? 0 : -1}
+              aria-disabled={none || undefined}
+              tabIndex={!c.outside && tab === c.date ? 0 : -1}
               data-date={c.date}
-              aria-label={`${formatDayHeading(c.date, locale)}, ${none ? t("ec.nodata") : t("ec.nEvents", { n: total })}`}
+              aria-label={c.outside ? formatDayHeading(c.date, locale) : `${formatDayHeading(c.date, locale)}, ${none ? t("ec.nodata") : t("ec.nEvents", { n: total })}`}
               onClick={() => !none && onOpenDay(c.date)}
               onFocus={() => setFocusDate(c.date)}
-              onKeyDown={(e) => onKey(e, c.date)}
+              onKeyDown={(e) => !c.outside && onKey(e, c.date)}
               className={`relative flex min-w-0 flex-col gap-0.5 overflow-hidden border-b border-r border-[var(--tv3-hair)] p-1 outline-none transition focus-visible:z-[2] focus-visible:ring-2 focus-visible:ring-[var(--tv3-accent)] sm:gap-1 sm:p-1.5 ${none ? "cursor-default" : "cursor-pointer hover:bg-[var(--tv3-fill3)]"} ${
                 c.weekend ? "bg-[var(--tv3-fill3)]" : ""
-              } ${c.today ? "bg-[var(--tv3-accent-soft)] ring-1 ring-inset ring-[var(--tv3-accent)]" : ""} ${c.past && !c.today ? "opacity-75" : ""}`}
+              } ${c.today && !c.outside ? "bg-[var(--tv3-accent-soft)] ring-1 ring-inset ring-[var(--tv3-accent)]" : ""} ${c.outside ? "opacity-40" : c.past && !c.today ? "opacity-75" : ""}`}
             >
               <div className="flex items-center gap-1">
                 <span
@@ -169,7 +170,7 @@ export default function MonthGrid({ cells, events, zone, locale, coverage, fill 
                 </span>
               </div>
 
-              {none ? (
+              {c.outside ? null : none ? (
                 <span className="mt-auto pb-1 text-center text-[10px] leading-tight text-[var(--tv3-muted)]">{t("ec.nodata")}</span>
               ) : (
                 <>

@@ -1,4 +1,4 @@
-import { addDays, eventDay, weekday, zonedDayStart } from "./time";
+import { addDays, daySpan, eventDay, weekday, zonedDayStart, type DateRange } from "./time";
 import type { CalEvent } from "./types";
 
 /* Pure helpers of the month grid (squares view). */
@@ -10,6 +10,8 @@ export interface GridCell {
   past: boolean;
   /** first day of a month (label shows the month name) */
   first: boolean;
+  /** Padding dates outside the selected period. */
+  outside?: boolean;
 }
 
 /** Monday of the week a date is in. */
@@ -26,6 +28,18 @@ export function buildMonthCells(start: string, today: string, count = 35): GridC
     out.push({ date, weekend: wd >= 5, today: date === today, past: date < today, first: date.endsWith("-01") });
   }
   return out;
+}
+
+/** Complete Monday-to-Sunday rows around the selected period, with inactive padding dates. */
+export function buildRangeCells(range: DateRange, today: string): GridCell[] {
+  const start = monthWindowStart(range.from);
+  const end = addDays(monthWindowStart(range.to), 6);
+  return buildMonthCells(start, today, daySpan({ from: start, to: end })).map(c => ({ ...c, outside: c.date < range.from || c.date > range.to }));
+}
+
+/** Calendar arrows move one week while preserving the selected range length. */
+export function shiftCalendarRange(range: DateRange, weeks: number): DateRange {
+  return { from: addDays(range.from, weeks * 7), to: addDays(range.to, weeks * 7) };
 }
 
 export interface DayBucket {

@@ -794,6 +794,18 @@ function main() {
     ok(c.maximizedId() === null, "controller: an unknown window is not maximized");
     c.resetWindows();
     ok(isDefault(c.getWorkspace()) && c.maximizedId() === null, "controller: reset layout clears everything");
+    const existingLayout = c.serialize();
+    ok(!c.openMainIfEmpty() && c.serialize() === existingLayout, "symbol pick: an existing chart keeps its layout");
+    const indicatorCount = c.list().length;
+    c.closeWindow(MAIN_ID);
+    ok(c.getWorkspace().wins.length === 0, "symbol pick: all windows closed before selecting the same or another ticker");
+    ok(c.openMainIfEmpty() && hasWindow(c.getWorkspace(), MAIN_ID), "symbol pick: an empty workspace reopens the main price chart");
+    ok(c.list().length === indicatorCount, "symbol pick: reopening keeps configured indicators");
+    c.addWindow("ind");
+    c.closeWindow(MAIN_ID);
+    const indicatorsOnly = c.serialize();
+    ok(!c.openMainIfEmpty() && c.serialize() === indicatorsOnly, "symbol pick: indicator windows are preserved when the workspace is not empty");
+    c.resetWindows();
   }
 
   /* ───────────── phones: windows work everywhere, a bit differently ───────────── */

@@ -31,6 +31,8 @@ export interface BatchQuote {
   open?: number;
   high?: number;
   low?: number;
+  /** the feed is delayed (public MOEX ISS for guests, yahoo): the row shows a clock marker */
+  delayed?: boolean;
 }
 
 export interface QuoteRequest {
@@ -534,6 +536,11 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
 
   await Promise.all(jobs);
   const final: Record<string, BatchQuote> = {};
-  for (const [fetchKey, origKey] of back) if (out[fetchKey]) final[origKey] = out[fetchKey];
+  for (const [fetchKey, origKey] of back) {
+    const q = out[fetchKey];
+    if (!q) continue;
+    const delayed = fetchKey.startsWith("moex:") ? !realtime : fetchKey.startsWith("yahoo:") ? true : q.delayed;
+    final[origKey] = delayed ? { ...q, delayed } : q;
+  }
   return final;
 }

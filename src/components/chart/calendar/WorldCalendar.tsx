@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 import { intlLocale } from "@/lib/calendar/countries";
-import { buildMonthCells, monthWindowStart, outsideCoverage } from "@/lib/calendar/grid";
-import { parseCalendarHash, offsetForDay } from "@/lib/calendar/hash";
+import { buildRangeCells, shiftCalendarRange, outsideCoverage } from "@/lib/calendar/grid";
+import { parseCalendarHash } from "@/lib/calendar/hash";
 import { filterEvents } from "@/lib/calendar/normalize";
 import { useCalPrefs } from "@/lib/calendar/prefs";
-import { addDays, dayKey, eventDay, formatDayHeading } from "@/lib/calendar/time";
+import { addDays, dayKey, eventDay, formatDayHeading, rangeFor } from "@/lib/calendar/time";
 import { useCalendarWindow } from "@/lib/calendar/useCalendar";
 import type { CalEvent } from "@/lib/calendar/types";
 import { EC_ICONS } from "../icons-econ";
 import ChartEventsButton from "./ChartEventsMenu";
 import CalendarView, { NextChip, iconBtn } from "./CalendarView";
+import CalendarRangeControls from "./CalendarRangeControls";
 import DayModal from "./DayModal";
 import EventDetails from "./EventDetails";
 import { CategoryFilter, CountryFilter, SearchBox } from "./Filters";
@@ -21,8 +22,6 @@ import MobileCalendarBar from "./MobileCalendarBar";
 import MonthGrid from "./MonthGrid";
 import { SourceFooter, useNow } from "./parts";
 import { useIsPhone } from "./useViewport";
-
-const DAYS = 35;
 
 interface Props {
   /** IANA zone the times are shown in. */
@@ -46,18 +45,21 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
   // < 640 px: one row per day instead of the 7-column month grid, a compact header (null until mounted)
   const phone = useIsPhone();
   const [q, setQ] = useState("");
-  const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState<{ date: string; focusId?: string } | null>(null);
   const [details, setDetails] = useState<{ ev: CalEvent; anchor: Anchor } | null>(null);
   const now = useNow(60_000, visible);
   const today = dayKey(now, zone);
-  const start = useMemo(() => addDays(monthWindowStart(today), offset * 28), [today, offset]);
+  const rf = rangeFor(prefs.preset, zone, now, prefs.custom ?? undefined);
+  const range = useMemo(() => ({ from: rf.from, to: rf.to }), [rf.from, rf.to]);
+  const cells = useMemo(() => buildRangeCells(range, today), [range, today]);
+  const start = cells[0].date;
+  const moveWeek = (weeks: number) => update(p => ({ ...p, preset: "custom", custom: shiftCalendarRange(range, weeks) }));
+  const goToday = () => update(p => ({ ...p, preset: "today" }));
   const grid = prefs.view === "grid";
-  const data = useCalendarWindow(start, zone, visible && grid, locale, DAYS);
-  const cells = useMemo(() => buildMonthCells(start, today, DAYS), [start, today]);
+  const data = useCalendarWindow(start, zone, visible && grid, locale, cells.length);
 
   // country and search first (the category picker counts these), then the category filter
-  const base = useMemo(() => filterEvents(data.events, { countries: new Set(prefs.countries), q }), [data.events, prefs.countries, q]);
+  const base = useMemo(() => filterEvents(data.events.filter(e => { const day = eventDay(e, zone); return day >= range.from && day <= range.to; }), { countries: new Set(prefs.countries), q }), [data.events, prefs.countries, q, range, zone]);
   const events = useMemo(() => filterEvents(base, { categories: new Set<string>(prefs.categories) }), [base, prefs.categories]);
   // the list view loads its own data: its base reaches the category picker through this state
   const [listBase, setListBase] = useState<CalEvent[]>([]);
@@ -73,8 +75,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
     if (mode !== "page") return;
     const day = parseCalendarHash(window.location.hash);
     if (!day) return;
-    update((p) => (p.view === "grid" ? p : { ...p, view: "grid" }));
-    setOffset(offsetForDay(monthWindowStart(dayKey(Date.now(), zone)), day));
+    update((p) => ({ ...p, view: "grid", preset: "custom", custom: { from: day, to: day } }));
     setOpenDay({ date: day });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -89,7 +90,7 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
     return () => document.removeEventListener("keydown", onKey);
   }, [mode, onClose]);
 
-  const rangeTitle = `${formatDayHeading(start, loc, { day: "numeric", month: "short" })} — ${formatDayHeading(addDays(start, DAYS - 1), loc, { day: "numeric", month: "short", year: "numeric" })}`;
+  const rangeTitle = range.from === range.to ? formatDayHeading(range.from, loc, { day: "numeric", month: "short", year: "numeric" }) : `${formatDayHeading(range.from, loc, { day: "numeric", month: "short" })} — ${formatDayHeading(range.to, loc, { day: "numeric", month: "short", year: "numeric" })}`;
   const openDetails = (ev: CalEvent, anchor: Anchor) => setDetails({ ev, anchor });
 
   const seg = (id: "grid" | "list", icon: ReactNode, label: string) => (
@@ -141,10 +142,10 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
             </>
           }
           nav={grid}
-          atToday={offset === 0}
-          onPrev={() => setOffset((o) => o - 1)}
-          onToday={() => setOffset(0)}
-          onNext={() => setOffset((o) => o + 1)}
+          atToday={prefs.preset === "today"}
+          onPrev={() => moveWeek(-1)}
+          onToday={goToday}
+          onNext={() => moveWeek(1)}
           loading={data.status === "loading"}
           onRefresh={grid ? data.refresh : undefined}
           q={q}
@@ -189,13 +190,13 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--tv3-hair2)] px-3 py-2 sm:px-4">
         {grid && (
           <div className="flex items-center gap-1">
-            <button type="button" onClick={() => setOffset((o) => o - 1)} aria-label={t("ec.prevPeriod")} title={t("ec.prevPeriod")} className={iconBtn}>
+            <button type="button" onClick={() => moveWeek(-1)} aria-label={t("ec.prevPeriod")} title={t("ec.prevPeriod")} className={iconBtn}>
               <span className="scale-[0.92]">{EC_ICONS.prev}</span>
             </button>
-            <button type="button" onClick={() => setOffset(0)} disabled={offset === 0} className="h-7 rounded-[9px] bg-[var(--tv3-fill)] px-2 text-[12px] cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-50 disabled:cursor-default">
+            <button type="button" onClick={goToday} disabled={prefs.preset === "today"} className="h-7 rounded-[9px] bg-[var(--tv3-fill)] px-2 text-[12px] cursor-pointer hover:bg-[var(--tv3-fill)] disabled:opacity-50 disabled:cursor-default">
               {t("ec.tab.today")}
             </button>
-            <button type="button" onClick={() => setOffset((o) => o + 1)} aria-label={t("ec.nextPeriod")} title={t("ec.nextPeriod")} className={iconBtn}>
+            <button type="button" onClick={() => moveWeek(1)} aria-label={t("ec.nextPeriod")} title={t("ec.nextPeriod")} className={iconBtn}>
               <span className="scale-[0.92]">{EC_ICONS.next}</span>
             </button>
             <span className="ml-1 text-[12px] font-medium tabular-nums text-[var(--tv3-text2)]">{rangeTitle}</span>
@@ -209,6 +210,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
       )}
 
       {banner}
+
+      {grid && <div className="shrink-0 border-b border-[var(--tv3-hair)]"><CalendarRangeControls range={range} wide={phone === false} embedded /></div>}
 
       <div className="relative min-h-0 flex-1 overflow-auto" aria-busy={data.status === "loading"}>
         {grid && data.status === "loading" && data.events.length === 0 && (
@@ -238,8 +241,8 @@ export default function WorldCalendar({ zone, mode, onClose, zoneSlot, visible =
           zone={zone}
           locale={loc}
           focusId={openDay.focusId}
-          canPrev={idx > 0}
-          canNext={idx >= 0 && idx < cells.length - 1}
+          canPrev={idx > 0 && !cells[idx - 1].outside}
+          canNext={idx >= 0 && idx < cells.length - 1 && !cells[idx + 1].outside}
           noData={outsideCoverage(openDay.date, data.coverage, zone)}
           onPrev={() => goDay(-1)}
           onNext={() => goDay(1)}

@@ -96,7 +96,7 @@
   color: var(--tv3-text);
 }
 /* Accent is a readable foreground token; use dark ink on bright dark-theme buttons. */
-.dark .tv3 button[class*="bg-[var(--tv3-accent)]"] {
+.dark .tv3 :is(button, span)[class*="bg-[var(--tv3-accent)]"] {
   color: #092519;
 }
 

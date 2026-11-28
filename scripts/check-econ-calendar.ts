@@ -1,6 +1,7 @@
 /* Economic calendar checks: FMP row normalisation (fixture + edge cases), surprise colouring, time zones, range presets,
    server cache blocks, chart overlay time basis and clustering. Run: npx tsx scripts/check-econ-calendar.ts */
 import assert from "node:assert/strict";
+import { buildRangeCells, shiftCalendarRange } from "../src/lib/calendar/grid";
 import { categoryOf, eventId, filterEvents, inferUnit, normalizeFmpRows, parseCalDate, parseImpact, parseNum } from "../src/lib/calendar/normalize";
 import { mockFmpRows } from "../src/lib/calendar/fixture";
 import { formatChange, formatValue, isInverse, surprise } from "../src/lib/calendar/surprise";
@@ -196,6 +197,27 @@ async function main() {
     assert.equal(weekday("2026-10-05"), 0); // Monday
     assert.equal(weekday("2026-10-11"), 6);
     assert.equal(daySpan({ from: "2026-10-01", to: "2026-10-31" }), 31);
+  });
+  ok("calendar range navigation preserves length and crosses month/year boundaries by seven days", () => {
+    const range = { from: "2026-12-28", to: "2027-01-03" };
+    assert.deepEqual(shiftCalendarRange(range, 1), { from: "2027-01-04", to: "2027-01-10" });
+    assert.deepEqual(shiftCalendarRange(shiftCalendarRange(range, 1), -1), range);
+    const thirty = { from: "2026-11-23", to: "2026-12-22" };
+    assert.equal(daySpan(shiftCalendarRange(thirty, 1)), 30);
+    assert.equal(shiftCalendarRange(thirty, 1).from, "2026-11-30");
+  });
+  ok("calendar and list use the same selected dates with inactive week padding", () => {
+    const now = Date.UTC(2026, 10, 28, 12);
+    for (const preset of ["yesterday", "today", "tomorrow", "week", "d30", "nextweek"] as const) {
+      const range = rangeFor(preset, "Europe/Moscow", now);
+      const cells = buildRangeCells(range, "2026-11-28");
+      const active = cells.filter(c => !c.outside);
+      assert.equal(cells.length % 7, 0);
+      assert.equal(weekday(cells[0].date), 0);
+      assert.equal(active[0].date, range.from);
+      assert.equal(active[active.length - 1].date, range.to);
+      assert.equal(active.length, daySpan(range));
+    }
   });
   ok("range presets in the display zone", () => {
     const now = Date.UTC(2026, 9, 7, 22, 0); // Wed 7 Oct 22:00 UTC = Thu 8 Oct 01:00 Moscow
