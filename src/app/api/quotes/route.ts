@@ -13,7 +13,7 @@ import { withMoexKeys } from "@/lib/data/moex-access";
  */
 
 const MAX_ITEMS = 80;
-const TICKER_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
+const TICKER_RE = /^(?:\^[A-Za-z0-9_.-]{1,23}|[A-Za-z0-9_.-]{1,24}|[A-Za-z]{1,8}[12]!)$/;
 
 export async function GET(request: NextRequest) {
   // MOEX quotes are real time on the requester's own T-Invest token (data/moex-access.ts), delayed ISS otherwise
@@ -26,7 +26,7 @@ async function handle(request: NextRequest) {
   const seen = new Set<string>();
   for (const part of raw.split(",")) {
     const [source, ticker] = part.trim().split(":");
-    if ((source !== "moex" && source !== "bybit" && source !== "binance" && source !== "fmp" && source !== "forex") || !ticker || !TICKER_RE.test(ticker)) continue;
+    if ((source !== "moex" && source !== "bybit" && source !== "binance" && source !== "fmp" && source !== "forex" && source !== "yahoo" && source !== "twelvedata") || !ticker || !TICKER_RE.test(ticker)) continue;
     const key = `${source}:${ticker}`;
     if (seen.has(key)) continue;
     seen.add(key);

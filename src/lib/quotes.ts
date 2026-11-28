@@ -8,6 +8,9 @@ import { getForexQuotes } from "@/lib/forex";
 import { binanceAllTickers } from "@/lib/binance";
 import { tinkoffToken } from "@/lib/data/moex-keys";
 import { ruCaFetch } from "@/lib/algopack-tls";
+import { continuousSymbol } from "./continuous-futures";
+import { yahooCandles } from "./data/yahoo";
+import { frontSecid } from "./moex-contracts";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -30,7 +33,7 @@ export interface BatchQuote {
 }
 
 export interface QuoteRequest {
-  source: "moex" | "bybit" | "binance" | "fmp" | "forex";
+  source: "moex" | "bybit" | "binance" | "fmp" | "forex" | "yahoo" | "twelvedata";
   ticker: string;
 }
 
@@ -178,19 +181,33 @@ async function fetchMoex(tickers: string[], realtime = true): Promise<Map<string
       let classCode = "SPBFUT";
       if (shares.has(ticker)) classCode = "TQBR";
       else {
-        // any MOEX id: exact futures contract / perpetual as is, generic futures ticker -> front contract, everything else
-        // (shares of any board, bonds, funds, currency) on its primary board from ISS
-        const sec = await resolveMoex(ticker);
-        if (sec) {
-          secByTicker.set(ticker, sec);
-          resolved = sec.secid;
-          classCode = sec.classCode;
-        } else if (!realtime) {
-          return; // delayed feed: only what ISS knows
-        } else if (FUTURES_PREFIX[ticker]) {
-          const contract = await findActiveContract(ticker);
+        if (continuousSymbol(ticker)) {
+          const contract = await frontSecid(ticker);
           if (!contract) return;
           resolved = contract;
+          const contractSecurity = await resolveMoex(contract);
+          if (contractSecurity) {
+            secByTicker.set(ticker, contractSecurity);
+            classCode = contractSecurity.classCode;
+          }
+          if (!realtime) {
+            return;
+          }
+        } else {
+          // any MOEX id: exact futures contract / perpetual as is, generic futures ticker -> front contract, everything else
+          // (shares of any board, bonds, funds, currency) on its primary board from ISS
+          const sec = await resolveMoex(ticker);
+          if (sec) {
+            secByTicker.set(ticker, sec);
+            resolved = sec.secid;
+            classCode = sec.classCode;
+          } else if (!realtime) {
+            return; // delayed feed: only what ISS knows
+          } else if (FUTURES_PREFIX[ticker]) {
+            const contract = await findActiveContract(ticker);
+            if (!contract) return;
+            resolved = contract;
+          }
         }
       }
       if (!realtime) return; // no T-Invest lookup for a guest: the ISS fallback below answers
@@ -314,6 +331,25 @@ async function fetchFmpOne(ticker: string): Promise<BatchQuote | null> {
     low: it.dayLow || undefined,
   };
 }
+
+/** Yahoo instruments (including global indices such as ^BSESN) do not use the FMP quote endpoint. */
+async function fetchYahooOne(ticker: string): Promise<BatchQuote | null> {
+  const { candles } = await yahooCandles(ticker, "D", 2);
+  const last = candles[candles.length - 1];
+  if (!last || !(last.close > 0)) return null;
+  const previous = candles[candles.length - 2]?.close ?? 0;
+  const change = previous > 0 ? last.close - previous : 0;
+  return {
+    price: last.close,
+    change,
+    changePercent: previous > 0 ? (change / previous) * 100 : 0,
+    volume: last.volume,
+    time: new Date(last.timestamp).toISOString(),
+    open: last.open,
+    high: last.high,
+    low: last.low,
+  };
+}
 let moexInflight: { key: string; p: Promise<Map<string, BatchQuote>> } | null = null;
 
 /**
@@ -325,13 +361,32 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   const moexKey = (ticker: string) => (realtime ? `moex:${ticker}` : `delayed:moex:${ticker}`);
   const out: Record<string, BatchQuote> = {};
   const now = Date.now();
+  // Continuous futures (NASD1!) and Twelve Data symbols have no direct quote feed: resolve them to a
+  // fetchable quote (front contract / yahoo) and remap the answer back to the requested key.
+  const TD_TO_YAHOO: Record<string, string> = { SPX: "^GSPC", NDX: "^NDX", IXIC: "^IXIC", DJI: "^DJI", RUT: "^RUT", VIX: "^VIX", GDAXI: "^GDAXI", FTSE: "^FTSE", HSI: "^HSI", N225: "^N225", STOXX50E: "^STOXX50E", KS11: "^KS11", TWII: "^TWII", AXJO: "^AXJO", BSESN: "^BSESN" };
+  const req: QuoteRequest[] = [];
+  const back = new Map<string, string>();
+  for (const it of items) {
+    let src: QuoteRequest["source"] = it.source;
+    let tick = it.ticker;
+    if (it.source === "moex" && /[12]!$/.test(it.ticker)) {
+      const front = await frontSecid(it.ticker).catch(() => null);
+      if (front) tick = front;
+    } else if (it.source === "twelvedata") {
+      src = "yahoo";
+      tick = TD_TO_YAHOO[it.ticker] ?? it.ticker;
+    }
+    req.push({ source: src, ticker: tick });
+    back.set(`${src}:${tick}`, `${it.source}:${it.ticker}`);
+  }
   const staleMoex: string[] = [];
   const staleFmp: string[] = [];
+  const staleYahoo: string[] = [];
   const fxTickers: string[] = [];
   let needBybit = false;
   let needBinance = false;
 
-  for (const it of items) {
+  for (const it of req) {
     const key = `${it.source}:${it.ticker}`;
     if (it.source === "forex") {
       fxTickers.push(it.ticker); // cached inside the forex layer (about 8 s, shared in-flight requests)
@@ -344,6 +399,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
     }
     if (it.source === "moex") staleMoex.push(it.ticker);
     else if (it.source === "fmp") staleFmp.push(it.ticker);
+    else if (it.source === "yahoo") staleYahoo.push(it.ticker);
     else if (it.source === "binance") needBinance = true;
     else needBybit = true;
   }
@@ -392,6 +448,23 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
     );
   }
 
+  if (staleYahoo.length) {
+    jobs.push(
+      (async () => {
+        const list = [...new Set(staleYahoo)].slice(0, 30);
+        const res = await Promise.all(list.map((t) => fetchYahooOne(t).catch(() => null)));
+        const at = Date.now();
+        list.forEach((t, i) => {
+          const key = `yahoo:${t}`;
+          const prev = cache.get(key);
+          const keep = res[i] ?? (prev?.q && at - prev.at < 5 * 60_000 ? prev.q : null);
+          cache.set(key, { at, q: keep });
+          if (keep) out[key] = keep;
+        });
+      })()
+    );
+  }
+
   if (fxTickers.length) {
     jobs.push(
       (async () => {
@@ -408,11 +481,11 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
     jobs.push(
       (async () => {
         // BTCUSDT is spot, BTCUSDT.P / BTC-26DEC25 linear, BTCUSD.I inverse: one tickers request per category in use
-        const cats = [...new Set(items.filter((i) => i.source === "bybit").map((i) => parseBybitTicker(i.ticker).category))];
+        const cats = [...new Set(req.filter((i) => i.source === "bybit").map((i) => parseBybitTicker(i.ticker).category))];
         const maps = new Map<BybitCategory, Map<string, BatchQuote>>();
         await Promise.all(cats.map(async (c) => maps.set(c, await loadBybit(c))));
         const at = Date.now();
-        for (const it of items) {
+        for (const it of req) {
           if (it.source !== "bybit") continue;
           const key = `bybit:${it.ticker}`;
           const hit = cache.get(key);
@@ -433,7 +506,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
         const all = await binanceAllTickers();
         const at = Date.now();
         const time = new Date(at).toISOString();
-        for (const it of items) {
+        for (const it of req) {
           if (it.source !== "binance") continue;
           const key = `binance:${it.ticker}`;
           const hit = cache.get(key);
@@ -448,5 +521,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   }
 
   await Promise.all(jobs);
-  return out;
+  const final: Record<string, BatchQuote> = {};
+  for (const [fetchKey, origKey] of back) if (out[fetchKey]) final[origKey] = out[fetchKey];
+  return final;
 }
