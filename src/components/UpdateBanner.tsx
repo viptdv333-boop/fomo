@@ -106,9 +106,12 @@ export default function UpdateBanner() {
       if (e.data && e.data.type === "fomo-build") void check();
     };
     navigator.serviceWorker?.addEventListener("message", onSwMessage);
+    // a new service worker took over (fresh deploy claimed the page): re-check immediately
+    navigator.serviceWorker?.addEventListener("controllerchange", onBuild);
     return () => {
       window.removeEventListener("fomo-build-changed", onBuild);
       navigator.serviceWorker?.removeEventListener("message", onSwMessage);
+      navigator.serviceWorker?.removeEventListener("controllerchange", onBuild);
       stopped = true;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
