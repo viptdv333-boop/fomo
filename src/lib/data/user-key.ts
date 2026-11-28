@@ -24,7 +24,7 @@ export async function getUserKey(provider: DataProvider["id"]): Promise<UserKey 
       const key = row?.enabled ? decryptKey(row.keyEnc) : null;
       if (key) return { userId, key };
     }
-    const shared = ["twelvedata", "databento"].includes(provider) ? await globalProviderKey(provider) : null;
+    const shared = provider === "databento" ? await globalProviderKey(provider) : null;
     return shared ? { userId: "global", key: shared } : null;
   } catch {
     return null;
@@ -37,13 +37,12 @@ export async function connectedProviders(): Promise<DataProvider["id"][]> {
   try {
     userId = (await auth())?.user?.id;
   } catch {}
-  if (!userId) { const shared = await Promise.all([globalProviderKey("twelvedata"), globalProviderKey("databento")]); return (["twelvedata", "databento"] as const).filter((_, i) => !!shared[i]); }
+  if (!userId) return await globalProviderKey("databento") ? ["databento"] : [];
   const uid = userId;
   return memoized(`conn:${uid}`, 10_000, async () => {
     try {
       const rows = await prisma.dataConnection.findMany({ where: { userId: uid, enabled: true }, select: { provider: true } });
       const providers = rows.map((r) => r.provider as DataProvider["id"]);
-      if (!providers.includes("twelvedata") && await globalProviderKey("twelvedata")) providers.push("twelvedata");
       if (!providers.includes("databento") && await globalProviderKey("databento")) providers.push("databento");
       return providers;
     } catch {

@@ -16,8 +16,8 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 export async function GET() {
   const userId = (await auth())?.user?.id;
   const rows = userId ? await prisma.dataConnection.findMany({ where: { userId }, select: { provider: true, keyHint: true, enabled: true, status: true, checkedAt: true } }) : [];
-  const shared = await Promise.all([globalProviderKey("twelvedata"), globalProviderKey("databento")]);
-  return json({ connections: rows, sharedProviders: ["twelvedata", "databento"].filter((_, i) => !!shared[i]), ready: cryptoReady() });
+  const shared = await globalProviderKey("databento");
+  return json({ connections: rows, sharedProviders: shared ? ["databento"] : [], ready: cryptoReady() });
 }
 
 // POST { provider, key }: checks the key with the provider, stores it encrypted (replacing the old one)

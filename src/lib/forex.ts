@@ -605,14 +605,14 @@ const twelveProvider: ForexProvider = {
   async quote(symbol) {
     const [{ globalProviderKey }, { tdQuote }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
     const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
-    if (!key || !pair) return { ok: false, reason: "unsupported" };
+    if (!key || !pair || ["XAU", "XAG", "XPT", "XPD"].some((metal) => pair.base === metal || pair.quote === metal)) return { ok: false, reason: "unsupported" };
     const result = await tdQuote("global", key, `${pair.base}/${pair.quote}`);
     return result.quote ? { ok: true, data: result.quote } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
   },
   async candles(symbol, interval, from, to, limit) {
     const [{ globalProviderKey }, { tdCandles }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
     const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
-    if (!key || !pair) return { ok: false, reason: "unsupported" };
+    if (!key || !pair || ["XAU", "XAG", "XPT", "XPD"].some((metal) => pair.base === metal || pair.quote === metal)) return { ok: false, reason: "unsupported" };
     const result = await tdCandles("global", key, `${pair.base}/${pair.quote}`, interval, limit, to);
     return result.candles.length ? { ok: true, data: { candles: from ? result.candles.filter((c) => c.timestamp >= from) : result.candles, volume: "none" } } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
   },
