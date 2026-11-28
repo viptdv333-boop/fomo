@@ -10,6 +10,16 @@
     "digits": 2
   },
   {
+    "id": "GOLD.m",
+    "symbol": "GOLD.m",
+    "name": "Золото · спот (GOLD.m)",
+    "group": "future",
+    "kind": "spot",
+    "asset": "GOLD",
+    "fgroup": "gold",
+    "digits": 2
+  },
+  {
     "id": "XAGUSD",
     "symbol": "SILVER",
     "name": "Серебро · спот",

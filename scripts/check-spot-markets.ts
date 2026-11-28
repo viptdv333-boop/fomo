@@ -16,12 +16,12 @@ async function main() {
   const state=(globalThis as any).__fomoForts;
   state.cache={at:Date.now(),families,bySecid:new Map(families.flatMap(f=>f.contracts.map(c=>[c.secid,c])))};
   const spots=INSTA_INSTRUMENTS.filter(r=>r.kind==="spot");
-  assert.deepEqual(spots.map(r=>r.id).sort(),["BRENT.SPOT","XAGUSD","XAUUSD","XPDUSD"]);
+  assert.deepEqual(spots.map(r=>r.id).sort(),["BRENT.SPOT","GOLD.m","XAGUSD","XAUUSD","XPDUSD"]);
   const page=await popularMarketPage("spot",{limit:2});
-  const next=await popularMarketPage("spot",{limit:2,offset:2});
-  assert.equal(page.total,4); assert.equal(page.hasMore,true); assert.equal(next.hasMore,false);
-  assert.equal(new Set([...page.items,...next.items].map(r=>r.secid)).size,4);
-  assert.deepEqual((await searchMarketPage("золото","spot")).items.map(r=>r.secid),["XAUUSD"]);
+  const next=await popularMarketPage("spot",{limit:3,offset:2});
+  assert.equal(page.total,5); assert.equal(page.hasMore,true); assert.equal(next.hasMore,false);
+  assert.equal(new Set([...page.items,...next.items].map(r=>r.secid)).size,5);
+  assert.deepEqual((await searchMarketPage("золото","spot")).items.map(r=>r.secid),["XAUUSD","GOLD.m"]);
   assert.equal((await searchMarketPage("NG","spot")).total,0);
   assert.equal((await searchMarketPage("SBH27","spot")).total,0);
   assert.equal((await popularMarketPage("spot",{filters:{country:"",venue:"MOEX",asset:""}})).total,0);

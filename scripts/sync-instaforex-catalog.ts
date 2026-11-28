@@ -19,6 +19,7 @@ async function main() {
   const add = (row: InstaInstrument) => { if (!rows.some((r) => r.id === row.id)) rows.push(row); };
   const commodities: Array<[string, string, string, string, InstaInstrument["fgroup"], string[]]> = [
     ["XAUUSD", "XAUUSD", "Золото · спот", "GOLD", "gold", ["GOLD"]],
+    ["GOLD.m", "GOLD.m", "Золото · спот (GOLD.m)", "GOLD", "gold", []],
     ["XAGUSD", "SILVER", "Серебро · спот", "SILV", "silver", []],
     ["XPTUSD", "XPTUSD", "Платина · спот", "PLT", "platinum", ["XPTUSD.m"]],
     ["XPDUSD", "XPDUSD", "Палладий · спот", "PLD", "palladium", ["XPDUSD.m"]],
@@ -38,7 +39,8 @@ async function main() {
     ["RICE.SPOT", "#RR.z", "Рис · спот", "RICE", "grain", []],
   ];
   for (const [id, symbol, name, asset, fgroup, alternatives] of commodities) {
-    const available = [symbol, ...alternatives].filter((s) => raw.some((r) => r.symbol === s && r.trade === 2));
+    // A broker's trading permission does not determine access to public prices/history.
+    const available = [symbol, ...alternatives].filter((s) => raw.some((r) => r.symbol === s) || liveRows.some((r:any) => r.symbol === s));
     if (!available.length) continue;
     let chosen: string | undefined;
     for (const symbol of available) {
@@ -46,7 +48,7 @@ async function main() {
       if (Array.isArray(ticks) && ticks.some(t=>t.symbol===symbol && +t.bid>0 && +t.lasttime>Date.now()/1000-7*86400)) { chosen=symbol; break; }
     }
     if (!chosen) continue; // Never publish dead 2023 spot tickers as a live market.
-    const info = raw.find((r) => r.symbol === chosen)!;
+    const info = raw.find((r) => r.symbol === chosen) ?? liveRows.find((r:any) => r.symbol === chosen);
     add({ id, symbol: chosen, name, group: "future", kind: "spot", asset, fgroup, digits: info.digits });
   }
   const classify = (r: {symbol:string;description:string}): {asset:string;fgroup:InstaInstrument["fgroup"];name:string} | null => {

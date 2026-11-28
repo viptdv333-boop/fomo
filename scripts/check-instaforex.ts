@@ -51,7 +51,7 @@ async function main() {
   assert.equal(parseInstaCandles(xml.replace('<High>12','<High>8')).length,0);
   console.log(`Offline checks passed: ${stocks.length} local stock brands; underlying icons, instrument families, grouping, XML validation.`);
   if(process.argv.includes("--live")) {
-    for(const id of ["EURUSD","IBM","XAUUSD","XAGUSD","XPDUSD","BRENT.SPOT","NG","SBH27","SBK27","SBN27"]) {
+    for(const id of ["EURUSD","IBM","XAUUSD","GOLD.m","XAGUSD","XPDUSD","BRENT.SPOT","NG","SBH27","SBK27","SBN27"]) {
       assert(instaInstrument(id),`Missing catalogue ${id}`);
       const [quote,bars]=await Promise.all([getInstaQuote(id),getInstaCandles(id,"60",10)]);
       assert(quote && quote.price>0,`No quote ${id}`);
