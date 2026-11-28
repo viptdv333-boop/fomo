@@ -14,6 +14,7 @@ import { CHART_TYPE_ICONS, IND_ICONS, UI_ICONS } from "./icons";
 import { CHART_TYPE_ICONS_EXTRA, CS_ICONS } from "./icons-cs";
 import IntervalControl from "./IntervalControl";
 import ContractPicker from "./ContractPicker";
+import { instrumentFamily } from "@/lib/instrument-family";
 import ChartTypeSettings from "./ChartTypeSettings";
 import { CompareWindowIcon, type CompareItem } from "./CompareLegend";
 import TemplatesMenu from "./TemplatesMenu";
@@ -249,7 +250,7 @@ export default function TopToolbar(p: Props) {
         <button data-ph="asset" onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`tv3-press ph-sym ${p.phOpen === "asset" ? "ph-on" : ""}`}>
           <InstIcon inst={p.instrument} size={30} />
           <span className="ph-sym-t">
-            <b>{ctTicker ?? p.instrument.ticker}</b>
+            <b>{instrumentFamily(p.instrument)?.name ?? ctTicker ?? p.instrument.ticker}</b>
             <small>{exchangeLabel(p.instrument.source)}</small>
           </span>
         </button>
@@ -332,8 +333,8 @@ export default function TopToolbar(p: Props) {
       <div className="tb-market-group">
       <button onClick={p.onOpenSearch} title={t("shell.symbol.searchTitle")} className={`${btn} tb-sym !h-auto !gap-2 !rounded-xl !py-1 !pl-[5px] !pr-3`}>
         <InstIcon inst={p.instrument} size={28} />
-        <span className="tb-sym-classic font-bold text-[16px]">{p.instrument.ticker}</span>
-        <span className="tb-sym-mac">{ctTicker ?? p.instrument.ticker}</span>
+        <span className="tb-sym-classic font-bold text-[16px]">{instrumentFamily(p.instrument)?.name ?? p.instrument.ticker}</span>
+        <span className="tb-sym-mac">{instrumentFamily(p.instrument)?.name ?? ctTicker ?? p.instrument.ticker}</span>
         <span className="tb-sym-ex hidden sm:inline text-xs font-normal text-[var(--tv3-muted)] max-w-[110px] truncate">{exchangeLabel(p.instrument.source)}</span>
         <span className="tb-sym-search text-[var(--tv3-text2)] inline-flex">{I.search}</span>
       </button>

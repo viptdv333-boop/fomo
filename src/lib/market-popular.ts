@@ -10,7 +10,8 @@ import { FX_PAIRS, pairToItem as fxItem } from "./forex-meta";
 import { allUsFutureItems } from "./us-futures";
 import { arrangeByAsset } from "./futures-assets";
 import { tagItem } from "./instrument-filters";
-import { providerItemsOf } from "./data/provider-catalog";
+import { providerItemsOf as allProviderItems } from "./data/provider-catalog";
+const providerItemsOf = (group: Parameters<typeof allProviderItems>[0]) => allProviderItems(group).filter(i=>i.source!=="twelvedata");
 import { indexItem, popularIndexRows, staticIndexRows } from "./moex-indices";
 
 export type PopularGroup = MarketGroup | "all";

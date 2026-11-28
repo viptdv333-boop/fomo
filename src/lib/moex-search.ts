@@ -20,6 +20,7 @@ import { allUsFutureItems, fmpCatalogOn, scoreUsFutures, usFutureBySymbol, usFut
 import { getIndexRows, indexItem, popularIndexRows, searchIndexRows } from "./moex-indices";
 import { lookupProviderItem, providerItemsOf, searchProviderItems } from "./data/provider-catalog";
 import { searchYahoo, lookupYahoo, yahooPopularFor } from "./yahoo-search";
+import { instaItems, instaInstrument, instaItem } from "./instaforex-meta";
 
 const ISS = "https://iss.moex.com/iss";
 
@@ -461,6 +462,18 @@ export function pageOf(list: MarketItem[], group: GroupTab, opts: PageOpts = {})
   return { items: filtered.slice(offset, offset + limit), total: filtered.length, hasMore: offset + limit < filtered.length, facets: computeFacets(facetBase, group) };
 }
 
+/** US shares and commodities use InstaForex; international shares/indices keep their existing feed. */
+function withInsta(base: MarketItem[], group: GroupTab, query = ""): MarketItem[] {
+  const kept = base.filter(i => i.source !== "twelvedata" && i.source !== "forex" && !(i.source === "yahoo" && (i.group === "future" || (i.group === "stock" && i.country === "US"))));
+  const extra = instaItems(group, query).map(tagItem);
+  const aliases = base.filter(i=>i.source==="forex").flatMap(i=>{
+    const row=instaInstrument(i.secid);
+    return row && (group==="all" || row.group===group) ? [tagItem(instaItem(row))] : [];
+  });
+  const combined = [...kept, ...aliases, ...extra];
+  return group === "future" ? arrangeByAsset(combined, !!query) : combined;
+}
+
 /** A typed query on a chip: ranked rows (a page of them), tagged with their venue / country / category and filtered. */
 export async function searchMarketPage(q: string, group: GroupTab = "all", opts: PageOpts = {}): Promise<MarketPage> {
   const futures = group === "all" || group === "future";
@@ -471,7 +484,7 @@ export async function searchMarketPage(q: string, group: GroupTab = "all", opts:
     const fam = findFamily(await getFortsFamilies(), qsym.asset, true);
     if (fam) continuous = [continuousItem(refreshDays(fam), qsym.rank)];
   }
-  return pageOf(assetFirst(withProviders([...continuous, ...await searchCandidates(q.trim(), group)], q.trim(), group, opts.provs ?? []), q.trim(), group), group, opts);
+  return pageOf(assetFirst(withInsta(withProviders([...continuous, ...await searchCandidates(q.trim(), group)], q.trim(), group, opts.provs ?? []), group, q.trim()), q.trim(), group), group, opts);
 }
 
 async function ngDatedItems(): Promise<MarketItem[]> {
@@ -485,13 +498,15 @@ export async function popularMarketPage(group: GroupTab = "all", opts: PageOpts 
   const yh = yahooPopularFor(group).map(tagItem);
   const mixed = yh.length ? [...base, ...yh] : base;
   // the short mix of «Все» stays as it is; a filter on «Все» looks through every list, the providers' included
-  return pageOf(group === "all" && !filtered ? mixed : withProviders(mixed, "", group, opts.provs ?? []), group, opts);
+  return pageOf(withInsta(group === "all" && !filtered ? mixed : withProviders(mixed, "", group, opts.provs ?? []), group), group, opts);
 }
 
 /** Exact lookup by SECID / ISIN / auto ticker: the item a URL ?symbol= stands for. */
-export async function lookupMarket(id: string): Promise<MarketItem | null> {
+export async function lookupMarket(id: string, source?: string): Promise<MarketItem | null> {
   id = id.trim();
   if (!id) return null;
+  const insta = instaInstrument(id);
+  if (insta && (source === "instaforex" || id.endsWith(".SPOT"))) return tagItem(instaItem(insta));
   const sym = continuousSymbol(id);
   if (sym) {
     const fam = findFamily(await getFortsFamilies(), sym.asset, true);
@@ -505,7 +520,7 @@ export async function lookupMarket(id: string): Promise<MarketItem | null> {
   const us = usFutureBySymbol(id);
   if (us) return tagItem(usFutureItem(us));
   const prov = lookupProviderItem(id);
-  if (prov) return tagItem(prov);
+  if (prov && prov.source !== "twelvedata") return tagItem(prov);
   const fx = parseFxSymbol(id);
   if (fx && /^[A-Za-z]{6}$/.test(id)) return tagItem(fxPairToItem(fx));
   const families = await getFortsFamilies();

@@ -52,6 +52,9 @@ export const FX_CURRENCIES: Record<string, FxCurrency> = {
   ZAR: { ru: "Южноафриканский рэнд", en: "South African Rand", cn: "南非兰特", alias: ["рэнд", "ранд", "rand"], flag: "ZA" },
   SGD: { ru: "Сингапурский доллар", en: "Singapore Dollar", cn: "新加坡元", alias: ["сингапур"], flag: "SG" },
   HKD: { ru: "Гонконгский доллар", en: "Hong Kong Dollar", cn: "港元", alias: ["гонконг"], flag: "HK" },
+  CZK: { ru: "Чешская крона", en: "Czech Koruna", cn: "捷克克朗", alias: ["чешск", "koruna"], flag: "CZ" },
+  DKK: { ru: "Датская крона", en: "Danish Krone", cn: "丹麦克朗", alias: ["датск", "danish"], flag: "DK" },
+  HUF: { ru: "Венгерский форинт", en: "Hungarian Forint", cn: "匈牙利福林", alias: ["венгерск", "форинт", "forint"], flag: "HU" },
 };
 
 type Row = [symbol: string, kind: FxKind, digits?: number];

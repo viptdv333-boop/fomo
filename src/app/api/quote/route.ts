@@ -13,6 +13,8 @@ import { tinkoffToken } from "@/lib/data/moex-keys";
 import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdQuote } from "@/lib/data/twelvedata";
 import { dbQuote } from "@/lib/data/databento";
+import { getInstaQuote } from "@/lib/instaforex";
+import { instaInstrument } from "@/lib/instaforex-meta";
 
 /**
  * Real-time quote proxy for MOEX instruments via Tinkoff Invest API (signed-in sessions; a guest gets the delayed ISS marketdata).
@@ -315,6 +317,9 @@ async function handle(request: NextRequest) {
     const td = await tdQuote(uk.userId, uk.key, ticker);
     if (!td.quote) return NextResponse.json({ error: "No quote data", provider: "twelvedata", reason: td.error ?? "network" }, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
     return NextResponse.json({ ...td.quote, provider: "twelvedata" }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+  } else if (source === "instaforex" || (source === "yahoo" && instaInstrument(ticker)?.group === "stock")) {
+    const iq = await getInstaQuote(ticker);
+    if (iq) return NextResponse.json({ ...iq, ticker, provider: "instaforex" }, { headers: { "Cache-Control": "no-store" } });
   } else if (source === "forex") {
     // spot FX (provider layer: cached ~8 s, one upstream request shared by every client)
     const fx = await getForexQuote(ticker);

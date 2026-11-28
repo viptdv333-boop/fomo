@@ -1,0 +1,2341 @@
+[
+  {
+    "id": "XAUUSD",
+    "symbol": "XAUUSD",
+    "name": "Золото · спот",
+    "group": "future",
+    "kind": "spot",
+    "asset": "GOLD",
+    "fgroup": "gold",
+    "digits": 2
+  },
+  {
+    "id": "XAGUSD",
+    "symbol": "SILVER",
+    "name": "Серебро · спот",
+    "group": "future",
+    "kind": "spot",
+    "asset": "SILV",
+    "fgroup": "silver",
+    "digits": 3
+  },
+  {
+    "id": "XPDUSD",
+    "symbol": "XPDUSD",
+    "name": "Палладий · спот",
+    "group": "future",
+    "kind": "spot",
+    "asset": "PLD",
+    "fgroup": "palladium",
+    "digits": 2
+  },
+  {
+    "id": "BRENT.SPOT",
+    "symbol": "BRENT",
+    "name": "Нефть Brent · спот",
+    "group": "future",
+    "kind": "spot",
+    "asset": "BR",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "CL",
+    "symbol": "#CL",
+    "name": "Нефтепродукты · Crude Light Sweet Oil, Current Month",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "WTI",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "NG",
+    "symbol": "#NG",
+    "name": "Газ · Natural Gas, Current Month",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "NG",
+    "fgroup": "gas",
+    "digits": 3
+  },
+  {
+    "id": "XBZF27",
+    "symbol": "#XBZF27",
+    "name": "Нефть Brent · Brent Crude Oil, Jan 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "BR",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "USOIL",
+    "symbol": "USOIL",
+    "name": "Нефтепродукты · WTI Crude Oil",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "WTI",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "ZLZ26",
+    "symbol": "#ZLZ26",
+    "name": "Соевое масло · Futures Soybean Oil, Nov 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY_OIL",
+    "fgroup": "grain",
+    "digits": 2
+  },
+  {
+    "id": "PLF",
+    "symbol": "#PLF",
+    "name": "Платина · Platinum, Current Month",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "PLT",
+    "fgroup": "platinum",
+    "digits": 1
+  },
+  {
+    "id": "GCZ26",
+    "symbol": "#GCZ26",
+    "name": "Золото · Futures Gold, dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "GOLD",
+    "fgroup": "gold",
+    "digits": 2
+  },
+  {
+    "id": "ZSF27",
+    "symbol": "#ZSF27",
+    "name": "Соя · Futures Soybean, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY",
+    "fgroup": "grain",
+    "digits": 2
+  },
+  {
+    "id": "QMZ26",
+    "symbol": "#QMZ26",
+    "name": "Нефтепродукты · miNY Crude Oil, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "WTI",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "XRBZ26",
+    "symbol": "#XRBZ26",
+    "name": "Бензин RBOB · NY Harbor Gasoline, Dec 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "RBOB",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "HEZ26",
+    "symbol": "#HEZ26",
+    "name": "Скот · Futures Lean Hog, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "LIVESTOCK",
+    "fgroup": "livestock",
+    "digits": 2
+  },
+  {
+    "id": "ZCZ26",
+    "symbol": "#ZCZ26",
+    "name": "Кукуруза · Futures Corn, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "CORN",
+    "fgroup": "grain",
+    "digits": 1
+  },
+  {
+    "id": "ZMZ26",
+    "symbol": "#ZMZ26",
+    "name": "Соевый шрот · Futures Soybean Meal, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY_MEAL",
+    "fgroup": "grain",
+    "digits": 1
+  },
+  {
+    "id": "LEZ26",
+    "symbol": "#LEZ26",
+    "name": "Скот · Futures Live Cattle, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "LIVESTOCK",
+    "fgroup": "livestock",
+    "digits": 2
+  },
+  {
+    "id": "ZWZ26",
+    "symbol": "#ZWZ26",
+    "name": "Пшеница · Futures Wheat, Nov 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "WHEAT",
+    "fgroup": "grain",
+    "digits": 1
+  },
+  {
+    "id": "HGZ26",
+    "symbol": "#HGZ26",
+    "name": "Медь · Futures Copper, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COPPER",
+    "fgroup": "copper",
+    "digits": 3
+  },
+  {
+    "id": "SIZ26",
+    "symbol": "#SIZ26",
+    "name": "Серебро · Futures Silver, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SILV",
+    "fgroup": "silver",
+    "digits": 3
+  },
+  {
+    "id": "CCZ26",
+    "symbol": "#CCZ26",
+    "name": "Какао · Cocoa, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COCOA",
+    "fgroup": "soft",
+    "digits": 0
+  },
+  {
+    "id": "JOF27",
+    "symbol": "#JOF27",
+    "name": "Апельсиновый сок · Orange Juice, Jan 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "ORANGE",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "KCZ26",
+    "symbol": "#KCZ26",
+    "name": "Кофе · Cotton, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COFFEE",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "CTZ26",
+    "symbol": "#CTZ26",
+    "name": "Хлопок · Cotton, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COTTON",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "SBH27",
+    "symbol": "#SBH27",
+    "name": "Сахар · Sugar, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SUGAR",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "GBPUSD",
+    "symbol": "GBPUSD",
+    "name": "Great Britain Pound vs US Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURUSD",
+    "symbol": "EURUSD",
+    "name": "Euro vs US Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDUSD",
+    "symbol": "NZDUSD",
+    "name": "New Zealand Dollar vs US Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDCAD",
+    "symbol": "USDCAD",
+    "name": "US Dollar vs Canadian",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURCHF",
+    "symbol": "EURCHF",
+    "name": "Euro vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDJPY",
+    "symbol": "USDJPY",
+    "name": "US Dollar vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "EURGBP",
+    "symbol": "EURGBP",
+    "name": "Euro vs Great Britain Pound",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDUSD",
+    "symbol": "AUDUSD",
+    "name": "Australian vs US Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDCHF",
+    "symbol": "USDCHF",
+    "name": "US Dollar vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURJPY",
+    "symbol": "EURJPY",
+    "name": "Euro vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "NZDCHF",
+    "symbol": "NZDCHF",
+    "name": "New Zealand Dollar vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDJPY",
+    "symbol": "AUDJPY",
+    "name": "Australian Dollar vs Japanise Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "AUDCAD",
+    "symbol": "AUDCAD",
+    "name": "Australian Dollar vs Canadian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDCHF",
+    "symbol": "AUDCHF",
+    "name": "Australian Dollar vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDJPY",
+    "symbol": "NZDJPY",
+    "name": "New Zealand Dollar vs Japanise Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "CADCHF",
+    "symbol": "CADCHF",
+    "name": "Canadian Dollar vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDCAD",
+    "symbol": "NZDCAD",
+    "name": "New Zealand Dollar vs Canadian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADJPY",
+    "symbol": "CADJPY",
+    "name": "Canadian Dollar vs Japanise Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "CHFJPY",
+    "symbol": "CHFJPY",
+    "name": "Swiss Franc vs Japanise Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "GBPCHF",
+    "symbol": "GBPCHF",
+    "name": "Great Britain Pound vs Swiss Franc",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURAUD",
+    "symbol": "EURAUD",
+    "name": "Euro vs Australian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPJPY",
+    "symbol": "GBPJPY",
+    "name": "Great Britain Pound vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "GBPCAD",
+    "symbol": "GBPCAD",
+    "name": "Great Britain Pound vs Canadian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURCAD",
+    "symbol": "EURCAD",
+    "name": "Euro vs Canadian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPAUD",
+    "symbol": "GBPAUD",
+    "name": "Great Britain Pound vs Australian Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDNZD",
+    "symbol": "AUDNZD",
+    "name": "Australian Dollar vs New Zealand Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPNZD",
+    "symbol": "GBPNZD",
+    "name": "Great Britain Pound vs New Zealand Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURNZD",
+    "symbol": "EURNZD",
+    "name": "Euro vs New Zealand Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDSEK",
+    "symbol": "USDSEK",
+    "name": "US Dollar vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDDKK",
+    "symbol": "USDDKK",
+    "name": "US Dollar vs Denmark Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDNOK",
+    "symbol": "USDNOK",
+    "name": "US Dollar vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDZAR",
+    "symbol": "USDZAR",
+    "name": "US Dollar vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDPLN",
+    "symbol": "AUDPLN",
+    "name": "Australian Dollar vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDMXN",
+    "symbol": "USDMXN",
+    "name": "US Dollar vs Mexican Peso",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "MXNJPY",
+    "symbol": "MXNJPY",
+    "name": "Mexican Pesos vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "NZDDKK",
+    "symbol": "NZDDKK",
+    "name": "New Zeland Dollar vs Denmark Kroner",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "NOKJPY",
+    "symbol": "NOKJPY",
+    "name": "Norway Kroner vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "EURCZK",
+    "symbol": "EURCZK",
+    "name": "Euro vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "USDCZK",
+    "symbol": "USDCZK",
+    "name": "US Dollar vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "HUFJPY",
+    "symbol": "HUFJPY",
+    "name": "Hungarian Forint vs Japanese Yen",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURZAR",
+    "symbol": "EURZAR",
+    "name": "Euro vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFHKD",
+    "symbol": "CHFHKD",
+    "name": "Swiss Franc vs Hong-Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPSEK",
+    "symbol": "GBPSEK",
+    "name": "Great Britain Pound vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDZAR",
+    "symbol": "NZDZAR",
+    "name": "New Zeland Dollar vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDINR",
+    "symbol": "USDINR",
+    "name": "US Dollar vs India Rupee",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADSEK",
+    "symbol": "CADSEK",
+    "name": "Canadian Dollar vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADNOK",
+    "symbol": "CADNOK",
+    "name": "Canadian Dollar vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURHUF",
+    "symbol": "EURHUF",
+    "name": "Euro vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "EURSEK",
+    "symbol": "EURSEK",
+    "name": "Euro vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDHUF",
+    "symbol": "AUDHUF",
+    "name": "Australian Dollar vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "CZKJPY",
+    "symbol": "CZKJPY",
+    "name": "Czech Koruna vs Japanese Yen",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "NZDSEK",
+    "symbol": "NZDSEK",
+    "name": "New Zeland Dollar vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDMXN",
+    "symbol": "AUDMXN",
+    "name": "Australian Dollar vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADZAR",
+    "symbol": "CADZAR",
+    "name": "Canadian Dollar vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURNOK",
+    "symbol": "EURNOK",
+    "name": "Euro vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPCZK",
+    "symbol": "GBPCZK",
+    "name": "Great Britain Pound vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "CHFDKK",
+    "symbol": "CHFDKK",
+    "name": "Swiss Franc vs Denmark Kroner",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "AUDCZK",
+    "symbol": "AUDCZK",
+    "name": "Australian Dollar vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "HKDJPY",
+    "symbol": "HKDJPY",
+    "name": "Hong Kong Dollar vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "CHFZAR",
+    "symbol": "CHFZAR",
+    "name": "Swiss Franc vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADHUF",
+    "symbol": "CADHUF",
+    "name": "Canadian Dollar vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "AUDSEK",
+    "symbol": "AUDSEK",
+    "name": "Australian Dollar vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFNOK",
+    "symbol": "CHFNOK",
+    "name": "Swiss Franc vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDPLN",
+    "symbol": "NZDPLN",
+    "name": "New Zeland Dollar vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPNOK",
+    "symbol": "GBPNOK",
+    "name": "Great Britain Pound vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURPLN",
+    "symbol": "EURPLN",
+    "name": "Euro vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFCZK",
+    "symbol": "CHFCZK",
+    "name": "Swiss Franc vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "EURHKD",
+    "symbol": "EURHKD",
+    "name": "Euro vs Hong-Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPMXN",
+    "symbol": "GBPMXN",
+    "name": "Great Britain Pound vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDHKD",
+    "symbol": "AUDHKD",
+    "name": "Australian Dollar vs Hong-Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDNOK",
+    "symbol": "AUDNOK",
+    "name": "Australian Dollar vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPDKK",
+    "symbol": "GBPDKK",
+    "name": "Great Britain Pound vs Denmark Kroner",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "CHFSGD",
+    "symbol": "CHFSGD",
+    "name": "Swiss Franc vs Singapore Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDHKD",
+    "symbol": "NZDHKD",
+    "name": "New Zeland Dollar vs Hong Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFMXN",
+    "symbol": "CHFMXN",
+    "name": "Swiss Franc vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "SEKJPY",
+    "symbol": "SEKJPY",
+    "name": "Sweden Kronor vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "GBPHUF",
+    "symbol": "GBPHUF",
+    "name": "Great Britain Pound vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "USDHUF",
+    "symbol": "USDHUF",
+    "name": "US Dollar vs Hungary Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "GBPHKD",
+    "symbol": "GBPHKD",
+    "name": "Great Britain Pound vs Hong-Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDZAR",
+    "symbol": "AUDZAR",
+    "name": "Australian Dollar vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADDKK",
+    "symbol": "CADDKK",
+    "name": "Canadian Dollar vs Denmark Kroner",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "GBPSGD",
+    "symbol": "GBPSGD",
+    "name": "Great Britain Pound vs Singapore Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "AUDDKK",
+    "symbol": "AUDDKK",
+    "name": "Australian Dollar vs Denmark Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "DKKJPY",
+    "symbol": "DKKJPY",
+    "name": "Denmark Kroner vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "GBPPLN",
+    "symbol": "GBPPLN",
+    "name": "Great Britain Pound vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFHUF",
+    "symbol": "CHFHUF",
+    "name": "Swiss Franc vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "CADCZK",
+    "symbol": "CADCZK",
+    "name": "Canadian Dollar vs Czech Koruna",
+    "group": "forex",
+    "digits": 3
+  },
+  {
+    "id": "CHFSEK",
+    "symbol": "CHFSEK",
+    "name": "Swiss Franc vs Sweden Kronor",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADPLN",
+    "symbol": "CADPLN",
+    "name": "Canadian Dollar vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CHFPLN",
+    "symbol": "CHFPLN",
+    "name": "Swiss Franc vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADMXN",
+    "symbol": "CADMXN",
+    "name": "Canadian Dollar vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURMXN",
+    "symbol": "EURMXN",
+    "name": "Euro vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDPLN",
+    "symbol": "USDPLN",
+    "name": "US Dollar vs Polish Zloty",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "USDSGD",
+    "symbol": "USDSGD",
+    "name": "US Dollar vs Singapore Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "EURDKK",
+    "symbol": "EURDKK",
+    "name": "Euro vs Denmark Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDNOK",
+    "symbol": "NZDNOK",
+    "name": "New Zeland Dollar vs Norway Kroner",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "GBPZAR",
+    "symbol": "GBPZAR",
+    "name": "Great Britain Pound vs South Africa Rand",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "CADHKD",
+    "symbol": "CADHKD",
+    "name": "Canadian Dollar vs Hong-Kong Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDSGD",
+    "symbol": "NZDSGD",
+    "name": "New Zeland Dollar vs Singapore Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDHUF",
+    "symbol": "NZDHUF",
+    "name": "New Zeland Dollar vs Hungarian Forint",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "AUDSGD",
+    "symbol": "AUDSGD",
+    "name": "Australian Dollar vs Singapore Dollar",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "NZDMXN",
+    "symbol": "NZDMXN",
+    "name": "New Zeland Dollar vs Mexican Pesos",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "ZARJPY",
+    "symbol": "ZARJPY",
+    "name": "South Africa Rand vs Japanese Yen",
+    "group": "forex",
+    "digits": 2
+  },
+  {
+    "id": "EURTRY",
+    "symbol": "EURTRY",
+    "name": "Euro vs Turkish Lira",
+    "group": "forex",
+    "digits": 4
+  },
+  {
+    "id": "IBM",
+    "symbol": "#IBM",
+    "name": "IBM Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HON",
+    "symbol": "#HON",
+    "name": "Honeywell International Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "F",
+    "symbol": "#F",
+    "name": "Ford Motor Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CSCO",
+    "symbol": "#CSCO",
+    "name": "Cisco System, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CAT",
+    "symbol": "#CAT",
+    "name": "Caterpillar Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BA",
+    "symbol": "#BA",
+    "name": "Boeing Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AXP",
+    "symbol": "#AXP",
+    "name": "American Express Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MRK",
+    "symbol": "#MRK",
+    "name": "Merck & Co Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MMM",
+    "symbol": "#MMM",
+    "name": "3M Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PG",
+    "symbol": "#PG",
+    "name": "Procter & Gamble Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MS",
+    "symbol": "#MS",
+    "name": "Morgan Stanley",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MRVL",
+    "symbol": "#MRVL",
+    "name": "Marvell Technology Group Ltd.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MA",
+    "symbol": "#MA",
+    "name": "MasterCard Incorporated",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ILMN",
+    "symbol": "#ILMN",
+    "name": "Illumina, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GILD",
+    "symbol": "#GILD",
+    "name": "Gilead Sciences, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "FSLR",
+    "symbol": "#FSLR",
+    "name": "First Solar, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "FCX",
+    "symbol": "#FCX",
+    "name": "Freeport-McMoRan Copper & Gold Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SBUX",
+    "symbol": "#SBUX",
+    "name": "Starbucks Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "VZ",
+    "symbol": "#VZ",
+    "name": "Verizon Communications Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TWTR",
+    "symbol": "#TWTR",
+    "name": "Twitter, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "UBS",
+    "symbol": "#UBS",
+    "name": "UBS AG",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "UPS",
+    "symbol": "#UPS",
+    "name": "United Parcel Service, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TSLA",
+    "symbol": "#TSLA",
+    "name": "Tesla Motors, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TRV",
+    "symbol": "#TRV",
+    "name": "The Travelers Companies, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HD",
+    "symbol": "#HD",
+    "name": "Home Depot Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GE",
+    "symbol": "#GE",
+    "name": "General Electric Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DIS",
+    "symbol": "#DIS",
+    "name": "Walt Disney Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "EBAY",
+    "symbol": "#EBAY",
+    "name": "eBay Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "C",
+    "symbol": "#C",
+    "name": "Citigroup Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BAC",
+    "symbol": "#BAC",
+    "name": "Bank Of America Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BK",
+    "symbol": "#BK",
+    "name": "The Bank of New York Mellon Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AIG",
+    "symbol": "#AIG",
+    "name": "American International Group Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "KO",
+    "symbol": "#KO",
+    "name": "Coca-Cola Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "JNJ",
+    "symbol": "#JNJ",
+    "name": "Johnson & Johnson",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "JPM",
+    "symbol": "#JPM",
+    "name": "JPMorgan Chase & Co",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HPQ",
+    "symbol": "#HPQ",
+    "name": "Hewlett-Packard Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "QCOM",
+    "symbol": "#QCOM",
+    "name": "Qualcomm Incorporated",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ADBE",
+    "symbol": "#ADBE",
+    "name": "Adobe Systems Incorporated",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AAPL",
+    "symbol": "#AAPL",
+    "name": "Apple Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PBR",
+    "symbol": "#PBR",
+    "name": "Petrobras - Petroleo Brasileiro S.A.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NKE",
+    "symbol": "#NKE",
+    "name": "Nike Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NFLX",
+    "symbol": "#NFLX",
+    "name": "Netflix, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "INTC",
+    "symbol": "#INTC",
+    "name": "Intel Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "IP",
+    "symbol": "#IP",
+    "name": "International Paper Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MCD",
+    "symbol": "#MCD",
+    "name": "McDonald’s Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MSFT",
+    "symbol": "#MSFT",
+    "name": "Microsoft Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NOK",
+    "symbol": "#NOK",
+    "name": "Nokia Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PFE",
+    "symbol": "#PFE",
+    "name": "Pfizer Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SPY",
+    "symbol": "#SPY",
+    "name": "CFD Standard & Poor's Depositary Receipts",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AMZN",
+    "symbol": "#AMZN",
+    "name": "Amazon.com, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MU",
+    "symbol": "#MU",
+    "name": "Micron Technology, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GOOG",
+    "symbol": "#GOOG",
+    "name": "Alphabet Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TRI",
+    "symbol": "#TRI",
+    "name": "Thomson Reuters Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PEP",
+    "symbol": "#PEP",
+    "name": "PepsiCo Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ORCL",
+    "symbol": "#ORCL",
+    "name": "Oracle Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WDC",
+    "symbol": "#WDC",
+    "name": "Western Digital Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WFC",
+    "symbol": "#WFC",
+    "name": "Wells Fargo & Co.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "V",
+    "symbol": "#V",
+    "name": "Visa Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AMD",
+    "symbol": "#AMD",
+    "name": "Advanced Micro Devices, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TEVA",
+    "symbol": "#TEVA",
+    "name": "Teva Pharmaceutical Industries Ltd.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MGM",
+    "symbol": "#MGM",
+    "name": "MGM Resorts International",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HAL",
+    "symbol": "#HAL",
+    "name": "Halliburton Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GS",
+    "symbol": "#GS",
+    "name": "Goldman Sachs Group Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "FDX",
+    "symbol": "#FDX",
+    "name": "FedEx Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "META",
+    "symbol": "#META",
+    "name": "Meta Platforms Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BIDU",
+    "symbol": "#BIDU",
+    "name": "Baidu, Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BHP",
+    "symbol": "#BHP",
+    "name": "BHP Billiton Limited",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CMCSA",
+    "symbol": "#CMCSA",
+    "name": "Comcast Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CVX",
+    "symbol": "#CVX",
+    "name": "Chevron Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MDLZ",
+    "symbol": "#MDLZ",
+    "name": "Mondelez International, Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ORAN",
+    "symbol": "#ORAN",
+    "name": "Orange",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WMT",
+    "symbol": "#WMT",
+    "name": "Wal-Mart Stores Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "XOM",
+    "symbol": "#XOM",
+    "name": "ExxonMobil Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "T",
+    "symbol": "#T",
+    "name": "AT&T Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "UL",
+    "symbol": "#UL",
+    "name": "Unilever Plc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MO",
+    "symbol": "#MO",
+    "name": "Altria Group Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "KHC",
+    "symbol": "#KHC",
+    "name": "The Kraft Heinz Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ADSK",
+    "symbol": "#ADSK",
+    "name": "Autodesk Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ANSS",
+    "symbol": "#ANSS",
+    "name": "ANSYS Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CDNS",
+    "symbol": "#CDNS",
+    "name": "Cadence Design Systems Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DDOG",
+    "symbol": "#DDOG",
+    "name": "Datadog Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "INTU",
+    "symbol": "#INTU",
+    "name": "Intuit Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NATI",
+    "symbol": "#NATI",
+    "name": "National Instruments Corp Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NICE",
+    "symbol": "#NICE",
+    "name": "Nice Ltd - ADR Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NLOK",
+    "symbol": "#NLOK",
+    "name": "NortonLifeLock Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NOW",
+    "symbol": "#NOW",
+    "name": "ServiceNow Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "OTEX",
+    "symbol": "#OTEX",
+    "name": "Open Text Corp Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PAYC",
+    "symbol": "#PAYC",
+    "name": "Paycom Software Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PCTY",
+    "symbol": "#PCTY",
+    "name": "Paylocity Holding Corp Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SSNC",
+    "symbol": "#SSNC",
+    "name": "SS&C Technologies Holdings Inc Nasdaq Stock Exchange (Nasdaq)",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CAJ",
+    "symbol": "#CAJ",
+    "name": "Canon Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CIEN",
+    "symbol": "#CIEN",
+    "name": "Ciena Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ERIC",
+    "symbol": "#ERIC",
+    "name": "Ericsson",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GIB",
+    "symbol": "#GIB",
+    "name": "CGI Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MSI",
+    "symbol": "#MSI",
+    "name": "Motorola Solutions Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NVDA",
+    "symbol": "#NVDA",
+    "name": "NVIDIA Corp Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TIXT",
+    "symbol": "#TIXT",
+    "name": "TELUS International (Cda) Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TSM",
+    "symbol": "#TSM",
+    "name": "Taiwan Semiconductor Manufacturing Co Ltd - ADR New York Stock",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "UI",
+    "symbol": "#UI",
+    "name": "Ubiquiti Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ZBRA",
+    "symbol": "#ZBRA",
+    "name": "Zebra Technologies Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ATVI",
+    "symbol": "#ATVI",
+    "name": "Activision Blizzard Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "EA",
+    "symbol": "#EA",
+    "name": "Electronic Arts Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TTWO",
+    "symbol": "#TTWO",
+    "name": "Take-Two Interactive Software Inc Nasdaq Stock Exchange",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ABNB",
+    "symbol": "#ABNB",
+    "name": "Airbnb Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ANGI",
+    "symbol": "#ANGI",
+    "name": "Angi Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ATHM",
+    "symbol": "#ATHM",
+    "name": "Autohome Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TWLO",
+    "symbol": "#TWLO",
+    "name": "Twilio Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WB",
+    "symbol": "#WB",
+    "name": "Weibo Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "YY",
+    "symbol": "#YY",
+    "name": "JOYY Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "Z",
+    "symbol": "#Z",
+    "name": "Zillow Group Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ZG",
+    "symbol": "#ZG",
+    "name": "Zillow Group Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ZH",
+    "symbol": "#ZH",
+    "name": "Zhihu Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "COIN",
+    "symbol": "#COIN",
+    "name": "Coinbase Global Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MSTR",
+    "symbol": "#MSTR",
+    "name": "MicroStrategy Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CME",
+    "symbol": "#CME",
+    "name": "CME Group Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CS",
+    "symbol": "#CS",
+    "name": "Credit Suisse Group AG",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HOOD",
+    "symbol": "#HOOD",
+    "name": "Robinhood Markets Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PNC",
+    "symbol": "#PNC",
+    "name": "PNC Financial Services Group Inc New York Stock Exchange",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AEM",
+    "symbol": "#AEM",
+    "name": "Agnico Eagle Mines Ltd",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CMC",
+    "symbol": "#CMC",
+    "name": "Commercial Metals Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "FNV",
+    "symbol": "#FNV",
+    "name": "Franco-Nevada Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HWM",
+    "symbol": "#HWM",
+    "name": "Howmet Aerospace Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MT",
+    "symbol": "#MT",
+    "name": "ArcelorMittal SA (USD) New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NEM",
+    "symbol": "#NEM",
+    "name": "Newmont Corp.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NUE",
+    "symbol": "#NUE",
+    "name": "Nucor Corp New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PKX",
+    "symbol": "#PKX",
+    "name": "Posco New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "RS",
+    "symbol": "#RS",
+    "name": "Reliance Steel & Aluminum Co New York Stock Exchange (NYSE) U",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TECK",
+    "symbol": "#TECK",
+    "name": "Teck Resources Ltd New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TX",
+    "symbol": "#TX",
+    "name": "Ternium S.A. Sponsored ADR",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "VALE",
+    "symbol": "#VALE",
+    "name": "Vale S.A.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WPM",
+    "symbol": "#WPM",
+    "name": "Wheaton Precious Metals Corp.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AR",
+    "symbol": "#AR",
+    "name": "Antero Resources Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BTU",
+    "symbol": "#BTU",
+    "name": "Peabody Energy Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CLR",
+    "symbol": "#CLR",
+    "name": "Continental Resources Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DVN",
+    "symbol": "#DVN",
+    "name": "Devon Energy Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "EOG",
+    "symbol": "#EOG",
+    "name": "EOG Resources Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "FANG",
+    "symbol": "#FANG",
+    "name": "Diamondback Energy Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HES",
+    "symbol": "#HES",
+    "name": "Hess Corp New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MMP",
+    "symbol": "#MMP",
+    "name": "Magellan Midstream Partners LP New York Stock Exchange (NYSE)",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MPLX",
+    "symbol": "#MPLX",
+    "name": "MPLX LP New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "OXY",
+    "symbol": "#OXY",
+    "name": "Occidental Petroleum Corp New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "RRC",
+    "symbol": "#RRC",
+    "name": "Range Resources Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SU",
+    "symbol": "#SU",
+    "name": "Suncor Energy Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TPL",
+    "symbol": "#TPL",
+    "name": "Texas Pacific Land Corp.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TRP",
+    "symbol": "#TRP",
+    "name": "TC Energy Corp.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TS",
+    "symbol": "#TS",
+    "name": "Tenaris SA (USD) New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "UUUU",
+    "symbol": "#UUUU",
+    "name": "Energy Fuels Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PLUG",
+    "symbol": "#PLUG",
+    "name": "Plug Power Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SHLS",
+    "symbol": "#SHLS",
+    "name": "Shoals Technologies Group Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "A",
+    "symbol": "#A",
+    "name": "Agilent Technologies Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ABBV",
+    "symbol": "#ABBV",
+    "name": "AbbVie Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ACB",
+    "symbol": "#ACB",
+    "name": "Aurora Cannabis Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ALNY",
+    "symbol": "#ALNY",
+    "name": "Alnylam Pharmaceuticals Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AMGN",
+    "symbol": "#AMGN",
+    "name": "Amgen Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AUPH",
+    "symbol": "#AUPH",
+    "name": "Aurinia Pharmaceuticals Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AZN",
+    "symbol": "#AZN",
+    "name": "AstraZeneca plc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BGNE",
+    "symbol": "#BGNE",
+    "name": "BeiGene Ltd.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BIIB",
+    "symbol": "#BIIB",
+    "name": "Biogen Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BMY",
+    "symbol": "#BMY",
+    "name": "Bristol-Myers Squibb Company",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "BNTX",
+    "symbol": "#BNTX",
+    "name": "BioNTech SE",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CGC",
+    "symbol": "#CGC",
+    "name": "Canopy Growth Corp",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DGX",
+    "symbol": "#DGX",
+    "name": "Quest Diagnostics Incorporated",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DHR",
+    "symbol": "#DHR",
+    "name": "Danaher Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DVAX",
+    "symbol": "#DVAX",
+    "name": "Dynavax Technologies Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "DXCM",
+    "symbol": "#DXCM",
+    "name": "DexCom Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ELAN",
+    "symbol": "#ELAN",
+    "name": "Elanco Animal Health Incorporated",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "EXAS",
+    "symbol": "#EXAS",
+    "name": "Exact Sciences Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GMAB",
+    "symbol": "#GMAB",
+    "name": "Biotechnology Pharmaceuticals Biotechnology and Marijuana Pro",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "HZNP",
+    "symbol": "#HZNP",
+    "name": "Horizon Therapeutics Plc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "IQV",
+    "symbol": "#IQV",
+    "name": "IQVIA Holdings Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ISEE",
+    "symbol": "#ISEE",
+    "name": "IVERIC bio Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ISRG",
+    "symbol": "#ISRG",
+    "name": "Intuitive Surgical Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "LLY",
+    "symbol": "#LLY",
+    "name": "Eli Lilly and Co New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MCK",
+    "symbol": "#MCK",
+    "name": "McKesson Corp New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "MRNA",
+    "symbol": "#MRNA",
+    "name": "Moderna Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NTLA",
+    "symbol": "#NTLA",
+    "name": "Intellia Therapeutics Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NVO",
+    "symbol": "#NVO",
+    "name": "Novo Nordisk A/S - ADR New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "NVS",
+    "symbol": "#NVS",
+    "name": "Novartis AG - ADR New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "PHG",
+    "symbol": "#PHG",
+    "name": "Koninklijke Philips",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "REGN",
+    "symbol": "#REGN",
+    "name": "Regeneron Pharmaceuticals Inc Nasdaq Stock Exchange (Nasdaq)",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "RMD",
+    "symbol": "#RMD",
+    "name": "Resmed Inc New York Stock Exchange (NYSE) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SGEN",
+    "symbol": "#SGEN",
+    "name": "Seattle Genetics Inc Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SNY",
+    "symbol": "#SNY",
+    "name": "Sanofi SA Nasdaq Stock Exchange (Nasdaq) USD",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TAK",
+    "symbol": "#TAK",
+    "name": "Takeda Pharmaceutical Co Ltd New York Stock Exchange (NYSE)",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "TMO",
+    "symbol": "#TMO",
+    "name": "Thermo Fisher Scientific Inc New York Stock Exchange (NYSE)",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "VRTX",
+    "symbol": "#VRTX",
+    "name": "Vertex Pharmaceuticals Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "WAT",
+    "symbol": "#WAT",
+    "name": "Waters Corporation",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ZTS",
+    "symbol": "#ZTS",
+    "name": "Zoetis Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "AMC",
+    "symbol": "#AMC",
+    "name": "AMC Entertainment Holdings Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GME",
+    "symbol": "#GME",
+    "name": "GameStop",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "SPCE",
+    "symbol": "#SPCE",
+    "name": "Virgin Galactic",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "CTXS",
+    "symbol": "#CTXS",
+    "name": "Citrix Systems Inc.",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "ACH",
+    "symbol": "#ACH",
+    "name": "Aluminum Corp. of China Limited ADR Class H",
+    "group": "stock",
+    "digits": 2
+  }
+]

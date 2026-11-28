@@ -7,12 +7,14 @@
  */
 
 import type { FutAsset, GroupTab, MarketGroup, MarketItem } from "./market-types";
+import { instrumentFamily } from "./instrument-family";
 
 export type DisplayRow =
   | { kind: "recent-head"; key: string }
   | { kind: "group-head"; key: string; group: MarketGroup }
   | { kind: "asset-head"; key: string; asset: FutAsset }
   | { kind: "country-head"; key: string; country: string }
+  | { kind: "underlying-head"; key: string; name: string }
   | { kind: "item"; key: string; item: MarketItem; recent?: boolean };
 
 export const itemKey = (i: Pick<MarketItem, "source" | "secid">): string => `${i.source}:${i.secid}`;
@@ -46,16 +48,29 @@ export function buildDisplayRows(items: MarketItem[], ctx: RowsContext): Display
     for (const [assetKey, assetItems] of assets) {
       const asset = assetKey as FutAsset;
       if (!ctx.asset) out.push({ kind: "asset-head", key: `h:a:${asset}`, asset });
-      const countries = new Map<string, MarketItem[]>();
+      const underlying = new Map<string, MarketItem[]>();
+      const sharedMarkets = assetItems.some(i => i.source === "instaforex");
       for (const item of assetItems) {
+        const key = sharedMarkets ? item.asset ?? item.secid : "";
+        underlying.set(key, [...(underlying.get(key) ?? []), item]);
+      }
+      for (const [root, familyItems] of underlying) {
+      if (underlying.size > 1) {
+        const first = familyItems[0];
+        const family = instrumentFamily({source:first.source,dataTicker:first.asset ?? first.secid,name:first.name,group:first.group});
+        out.push({kind:"underlying-head",key:`h:u:${asset}:${root}`,name:family?.name ?? root});
+      }
+      const countries = new Map<string, MarketItem[]>();
+      for (const item of familyItems) {
         const key = item.country ?? "";
         const rows = countries.get(key) ?? [];
         rows.push(item);
         countries.set(key, rows);
       }
       for (const [country, countryItems] of countries) {
-        if (country) out.push({ kind: "country-head", key: `h:c:${asset}:${country}`, country });
+        if (country) out.push({ kind: "country-head", key: `h:c:${asset}:${root}:${country}`, country });
         for (const item of countryItems) out.push({ kind: "item", key: itemKey(item), item });
+      }
       }
     }
     return out;

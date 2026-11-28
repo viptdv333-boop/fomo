@@ -26,7 +26,7 @@ async function handle(request: NextRequest) {
   const seen = new Set<string>();
   for (const part of raw.split(",")) {
     const [source, ticker] = part.trim().split(":");
-    if ((source !== "moex" && source !== "bybit" && source !== "binance" && source !== "fmp" && source !== "forex" && source !== "yahoo" && source !== "twelvedata") || !ticker || !TICKER_RE.test(ticker)) continue;
+    if ((source !== "moex" && source !== "bybit" && source !== "binance" && source !== "fmp" && source !== "forex" && source !== "instaforex" && source !== "yahoo" && source !== "twelvedata") || !ticker || !TICKER_RE.test(ticker)) continue;
     const key = `${source}:${ticker}`;
     if (seen.has(key)) continue;
     seen.add(key);

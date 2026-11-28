@@ -4,26 +4,16 @@
  *   getForexQuote(symbol)                              -> last price + day change
  *   getForexCandles(symbol, interval, from?, to?, n?)  -> OHLC bars, ascending, UTC epoch ms
  *
- * Providers are pluggable (see FOREX_PROVIDERS) and tried in order; a provider that answers 401 / 402 / 403 / 429 / empty is
- * remembered as "denied" for a while (so a plan restriction costs ONE upstream call, not one per request) and the next one is used.
- *
- *   instaforex  Keyless live Forex quotes and OHLC candles. InstaForex requires a visible source link when these quotes are used.
- *   fmp    Financial Modeling Prep (official, the key is FMP_API_KEY from the environment, /stable endpoints). Free / basic plans
- *          serve only some pairs and no intraday charts; a paid plan serves everything. 250 calls a day on the free plan.
- *   stooq  keyless CSV (daily / weekly / monthly only). Since 2025 stooq.com answers a JS proof-of-work page to non-browsers, which is
- *          detected and switches the provider off for hours; kept for the day it is open again.
- *   yahoo  UNOFFICIAL FALLBACK: Yahoo Finance's public chart endpoint (query1.finance.yahoo.com/v8/finance/chart). No key, no
- *          contract, no SLA: Yahoo's terms do not license redistribution, the endpoint may change or block at any time. Used with
- *          timeouts, caching, request de-duplication and a circuit breaker; never scraped in loops.
- *
- * Honest data notes: spot FX has no central exchange, so there is no real volume. FMP daily bars carry a TICK volume, Yahoo none
- * (0). The market is continuous 24x5 (Sunday ~21:00 UTC to Friday ~21:00 UTC). Candle times are real UTC epoch ms (not wall clocks).
+ * Currency pairs and supported spot metals use the public InstaForex adapter, with a visible source link in the chart.
+ * Legacy FMP, Stooq and Yahoo adapters remain for compatibility checks; they are not used for runtime fallback.
+ * Missing provider volume stays zero and is identified as unavailable. Candle timestamps are UTC epoch milliseconds.
  */
 
 import { FX_PAIRS, fxDigits, parseFxSymbol } from "./forex-meta";
+import { getInstaQuote, getInstaCandles } from "./instaforex";
 import { fmpGateCheck, fmpGateReport } from "./fmp-gate";
 
-export type ForexProviderName = "instaforex" | "fmp" | "stooq" | "yahoo" | "twelvedata";
+export type ForexProviderName = "instaforex" | "fmp" | "stooq" | "yahoo";
 
 export interface FxCandle {
   timestamp: number;
@@ -517,119 +507,23 @@ const yahooProvider: ForexProvider = {
 
 /* ═══════════════════════════ InstaForex (live quotes + OHLC history) ═══════════════════════════ */
 
-const INSTA_QUOTES = "https://quotes.instaforex.com/api/quotesTick";
-// The published WSDL advertises this SOAP endpoint over HTTP (the API is public and has no credentials).
-const INSTA_CHARTS = "http://client-api.instaforex.com/SoapServices/charts.svc";
-const INSTA_INTERVAL: Record<string, string> = { "1": "M1", "5": "M5", "15": "M15", "30": "M30", "60": "H1", "240": "H4", D: "D1", W: "W1", M: "MN" };
-const INSTA_SYMBOL: Record<string, string> = { XAGUSD: "SILVER" };
-const instaSymbol = (symbol: string) => INSTA_SYMBOL[symbol] ?? symbol;
-
-interface InstaQuoteRow {
-  symbol?: string;
-  bid?: number;
-  ask?: number;
-  change24h?: number;
-  lasttime?: number;
-}
-
-function instaQuoteOf(row: InstaQuoteRow | undefined, symbol: string): FxQuote | null {
-  const bid = num(row?.bid);
-  const ask = num(row?.ask);
-  if (!(bid > 0) || !(ask > 0)) return null;
-  const digits = fxDigits(symbol);
-  const price = round((bid + ask) / 2, digits);
-  const change = round(num(row?.change24h) || 0, digits + 1);
-  const previousClose = price - change;
-  const ts = num(row?.lasttime);
-  return {
-    price,
-    volume: 0,
-    change,
-    changePercent: previousClose > 0 ? round((change / previousClose) * 100, 4) : 0,
-    time: ts > 0 ? new Date(ts * 1000).toISOString() : new Date().toISOString(),
-  };
-}
-
 const instaProvider: ForexProvider = {
   name: "instaforex",
   async quote(symbol) {
-    const providerSymbol = instaSymbol(symbol);
-    const url = `${INSTA_QUOTES}?${new URLSearchParams({ q: providerSymbol })}`;
-    const { status, text } = await http(url);
-    if (status === 429) return { ok: false, reason: "rate", status };
-    if (status !== 200) return { ok: false, reason: status === 404 ? "unsupported" : "error", status };
-    try {
-      const rows = JSON.parse(text) as InstaQuoteRow[];
-      const row = Array.isArray(rows) ? rows.find((r) => r.symbol?.toUpperCase() === providerSymbol.toUpperCase()) ?? rows[0] : undefined;
-      const quote = instaQuoteOf(row, symbol);
-      return quote ? { ok: true, data: quote } : { ok: false, reason: "unsupported", ttlMs: 10 * MIN };
-    } catch {
-      return { ok: false, reason: "error", status };
-    }
+    const quote = await getInstaQuote(symbol);
+    return quote ? { ok: true, data: quote } : { ok: false, reason: "empty" };
   },
   async candles(symbol, interval, from, to, limit) {
-    const type = INSTA_INTERVAL[interval];
-    if (!type) return { ok: false, reason: "unsupported" };
-    const now = Math.floor((to ?? Date.now()) / 1000);
-    const barSeconds: Record<string, number> = { "1": 60, "5": 300, "15": 900, "30": 1800, "60": 3600, "240": 14400, D: 86400, W: 604800, M: 2678400 };
-    const span = Math.ceil((limit * (barSeconds[interval] ?? 60) * 1.5) / 60) * 60;
-    const start = Math.floor((from ?? (now - span)) / 1000);
-    const request = `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><GetCharts xmlns="http://quotesservice"><chartRequest><From>${start}</From><Symbol>${instaSymbol(symbol)}</Symbol><To>${now}</To><Type>${type}</Type></chartRequest></GetCharts></s:Body></s:Envelope>`;
-    let response: { status: number; text: string };
-    try {
-      const res = await fetch(INSTA_CHARTS, { method: "POST", body: request, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS), headers: { "User-Agent": UA, "Content-Type": "text/xml; charset=utf-8", SOAPAction: '"http://quotesservice/IChartService/GetCharts"' } });
-      response = { status: res.status, text: await res.text() };
-    } catch {
-      return { ok: false, reason: "error" };
-    }
-    if (response.status === 429) return { ok: false, reason: "rate", status: response.status };
-    if (response.status !== 200) return { ok: false, reason: response.status === 404 ? "unsupported" : "error", status: response.status };
-    const rows: FxCandle[] = [];
-    for (const match of response.text.matchAll(/<Candle>([\s\S]*?)<\/Candle>/gi)) {
-      const xml = match[1];
-      const field = (name: string) => num(new RegExp(`<${name}>([^<]+)<\\/${name}>`, "i").exec(xml)?.[1]);
-      const timestamp = field("Timestamp");
-      const open = field("Open"), high = field("High"), low = field("Low"), close = field("Close");
-      if (timestamp > 0 && [open, high, low, close].every((v) => v > 0)) rows.push({ timestamp: timestamp * 1000, open, high, low, close, volume: 0 });
-    }
-    if (!rows.length) return { ok: false, reason: "unsupported", ttlMs: 5 * MIN };
-    rows.sort((a, b) => a.timestamp - b.timestamp);
-    return { ok: true, data: { candles: window(rows, from, to).slice(-limit), volume: "none" } };
+    const data = await getInstaCandles(symbol, interval, limit, to, from);
+    return data.candles.length ? { ok: true, data } : { ok: false, reason: "empty" };
   },
 };
 
-/* ═══════════════════════════ the layer ═══════════════════════════ */
+export const FOREX_PROVIDERS: Record<ForexProviderName, ForexProvider> = { instaforex: instaProvider, fmp: fmpProvider, stooq: stooqProvider, yahoo: yahooProvider };
 
-const twelveProvider: ForexProvider = {
-  name: "twelvedata",
-  async quote(symbol) {
-    const [{ globalProviderKey }, { tdQuote }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
-    const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
-    if (!key || !pair || ["XAU", "XAG", "XPT", "XPD"].some((metal) => pair.base === metal || pair.quote === metal)) return { ok: false, reason: "unsupported" };
-    const result = await tdQuote("global", key, `${pair.base}/${pair.quote}`);
-    return result.quote ? { ok: true, data: result.quote } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
-  },
-  async candles(symbol, interval, from, to, limit) {
-    const [{ globalProviderKey }, { tdCandles }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
-    const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
-    if (!key || !pair || ["XAU", "XAG", "XPT", "XPD"].some((metal) => pair.base === metal || pair.quote === metal)) return { ok: false, reason: "unsupported" };
-    const result = await tdCandles("global", key, `${pair.base}/${pair.quote}`, interval, limit, to);
-    return result.candles.length ? { ok: true, data: { candles: from ? result.candles.filter((c) => c.timestamp >= from) : result.candles, volume: "none" } } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
-  },
-};
-export const FOREX_PROVIDERS: Record<ForexProviderName, ForexProvider> = { instaforex: instaProvider, fmp: fmpProvider, stooq: stooqProvider, yahoo: yahooProvider, twelvedata: twelveProvider };
-
-function order(envName: string, def: string): ForexProvider[] {
-  const names = (process.env[envName] || def).split(",").map((s) => s.trim().toLowerCase());
-  return names.filter((n): n is ForexProviderName => n in FOREX_PROVIDERS).map((n) => FOREX_PROVIDERS[n]);
-}
-
-/**
- * InstaForex is the primary live source for quotes and candles; unsupported pairs fall through to FMP, then legacy Yahoo/Stooq fallbacks.
- * Provider order can be overridden with FOREX_CANDLE_PROVIDERS / FOREX_QUOTE_PROVIDERS (comma-separated provider ids).
- */
-const quoteOrder = () => order("FOREX_QUOTE_PROVIDERS", "twelvedata,instaforex,fmp,yahoo");
-const candleOrder = () => order("FOREX_CANDLE_PROVIDERS", "twelvedata,instaforex,fmp,stooq,yahoo");
+/** The selected public provider is fixed to InstaForex. Legacy adapters stay available for offline checks, not fallback routing. */
+const quoteOrder = () => [instaProvider];
+const candleOrder = () => [instaProvider];
 
 const QUOTE_TTL = () => Number(process.env.FOREX_QUOTE_TTL_MS) || 8_000;
 

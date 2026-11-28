@@ -166,7 +166,7 @@ const ResultRow = memo(function ResultRow({ rid, item, mode, active, listed, isC
   const desc = lead ? raw.slice(lead.length + 3) : raw;
   const badge =
     item.group === "future" && !item.auto && item.kind
-      ? { kind: item.kind, order: item.order ?? 0, badge: item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }
+      ? { kind: item.kind, order: item.order ?? 0, badge: item.kind === "spot" ? t("ct.spot") : item.kind === "perpetual" ? t("ms.perpetual") : item.order === 1 ? t("ct.b.current") : item.order === 2 ? t("ct.b.next") : t("ct.b.nth", { n: item.order ?? 0 }) }
       : null;
   const hasContracts = item.group === "future" && item.auto && (item.contracts ?? 0) > 1;
   return (
@@ -582,6 +582,8 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
                     {t(`is.fah.${r.asset}`)}
                   </div>
                 );
+              case "underlying-head":
+                return <div key={r.key} className="border-b border-[var(--tv3-hair2)] px-4 pb-1 pt-2 text-[13px] font-semibold sm:px-5">{r.name}</div>;
               case "country-head":
                 return (
                   <div key={r.key} className="flex items-center gap-2 px-4 pb-0.5 pt-2 text-[12px] font-semibold text-[var(--tv3-text2)] sm:px-5">

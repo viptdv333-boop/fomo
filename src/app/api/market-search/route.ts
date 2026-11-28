@@ -20,7 +20,7 @@ import type { GroupTab } from "@/lib/market-types";
 
 export const dynamic = "force-dynamic";
 
-const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|NG[12]!)$/;
+const ID_RE = /^(?:[A-Za-z0-9_.-]{1,24}|[A-Za-z][A-Za-z0-9_.]{0,20}[12]!)$/;
 const FILTER_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
 export async function GET(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const secid = sp.get("secid");
   if (secid) {
     if (!ID_RE.test(secid)) return NextResponse.json({ item: null }, { status: 400 });
-    const item = await lookupMarket(secid);
+    const item = await lookupMarket(secid, sp.get("source") ?? undefined);
     return NextResponse.json({ item }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } });
   }
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     asset: group === "future" && isFutAsset(asset) ? asset : "",
   };
   // the catalogues of the data providers this user connected join his search (a guest has none)
-  const provs = await connectedProviders();
+  const provs = await connectedProviders().catch(() => []);
   const opts = { limit, offset, filters, provs };
   const priv = { "Cache-Control": "private, max-age=20", Vary: "Cookie" };
 

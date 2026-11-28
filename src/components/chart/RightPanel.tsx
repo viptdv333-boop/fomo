@@ -347,7 +347,7 @@ const WL_KEY = "fomo-terminal-watchlist-v1";
 const wlKey = (i: { source: string; dataTicker: string }) => `${i.source}:${i.dataTicker}`;
 
 const WL_SYNCED_KEY = "fomo-terminal-watchlist-synced";
-const WL_SOURCES = ["moex", "bybit", "binance", "fmp", "forex", "yahoo", "databento", "twelvedata"];
+const WL_SOURCES = ["moex", "bybit", "binance", "fmp", "forex", "instaforex", "yahoo", "databento", "twelvedata"];
 
 export function cleanWatchItems(raw: unknown): TerminalInstrument[] {
   if (!Array.isArray(raw)) return [];
@@ -1163,7 +1163,7 @@ function moscowNow(): [number, number] {
 
 function isMarketOpen(inst: TerminalInstrument): boolean {
   if (inst.source === "bybit") return true;
-  if (inst.source === "forex") return fxMarketOpen(new Date());
+  if (inst.source === "forex" || inst.source === "instaforex") return fxMarketOpen(new Date());
   if (inst.source !== "moex") return true;
   const [dow, m] = moscowNow();
   if (dow === 0 || dow === 6) return false;
@@ -1179,6 +1179,7 @@ const POINT_CONTRACT = /^(MX|MM|RI|RM|SF|NA)[FGHJKMNQUVXZ]\d$|^(IMOEXF|SP500F|QQ
 
 function currencyOf(inst: TerminalInstrument, t: (k: string) => string): string {
   if (inst.source === "forex") return parseFxSymbol(inst.dataTicker)?.quote ?? "";
+  if (inst.source === "instaforex") return parseFxSymbol(inst.dataTicker)?.quote ?? "USD";
   if (inst.source === "bybit") return inst.ticker.endsWith("USDT") ? "USDT" : inst.ticker.endsWith("USDC") ? "USDC" : "";
   if (inst.source === "moex") return inst.unit === "%" ? "%" : POINT_TICKERS.has(inst.dataTicker) || POINT_CONTRACT.test(inst.dataTicker) || inst.group === "index" ? t("shell.info.points") : "RUB";
   return "";

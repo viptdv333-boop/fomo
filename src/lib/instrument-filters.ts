@@ -125,6 +125,11 @@ export function tagItem(item: MarketItem): MarketItem {
       out.exchange ??= "Forex";
       out.sub ??= fxPair(item.secid)?.kind ?? "cross";
       break;
+    case "instaforex":
+      out.exchange ??= "InstaForex";
+      if (item.group === "stock") { out.country ??= "US"; out.board ??= "InstaForex"; }
+      if (item.group === "forex") out.sub ??= fxPair(item.secid)?.kind ?? "cross";
+      break;
     case "fmp":
       out.exchange ??= "FMP";
       out.country ??= "US";

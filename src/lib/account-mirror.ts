@@ -393,7 +393,7 @@ export const mirrorMessageSchema = z.discriminatedUnion("op", [
     items: z
       .array(
         z.object({
-          source: z.enum(["moex", "bybit", "binance", "fmp", "forex", "databento", "twelvedata"]),
+          source: z.enum(["moex", "bybit", "binance", "fmp", "forex", "instaforex", "yahoo", "databento", "twelvedata"]),
           ticker: z.string().min(1).max(40),
           dataTicker: z.string().min(1).max(40),
           name: z.string().max(120),

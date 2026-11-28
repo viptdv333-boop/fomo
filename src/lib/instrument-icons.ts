@@ -4,6 +4,7 @@ import { knownMoexAssets, moexAssetGroup } from "./futures-assets";
 import { usFutureBySymbol } from "./us-futures";
 import type { FutAsset, MarketItem } from "./market-types";
 import tinkoffIcons from "./tinvest-icons.generated.json";
+import { instaBrandIcon, instaInstrument } from "./instaforex-meta";
 
 type TInvestKind = "stock" | "bond" | "fund" | "future" | "currency";
 const TINVEST_ALIASES = (tinkoffIcons as { aliases?: Record<string, string> }).aliases ?? {};
@@ -124,9 +125,19 @@ function inferredGroup(inst: IconInstrument): string | undefined {
 
 /** One resolved artwork path for the catalog, web watchlist and app watchlist. */
 export function instrumentIcon(inst: IconInstrument): string {
+  if (inst.source === "instaforex" || (inst.source === "forex" && instaInstrument(inst.dataTicker)?.kind === "spot")) return instaArtwork(inst.dataTicker);
   const group = inferredGroup(inst);
   const fallback = instrumentIconFallback({ ...inst, group });
   return tinkoffInstrumentIcon(group, inst.dataTicker, inst.ticker) || (fallback.includes("/tinvest/") ? fallback : "") || inst.emoji || fallback;
+}
+
+/** The same underlying uses the MOEX/T-Invest artwork on every market and every surface. */
+function instaArtwork(id: string): string {
+  const row = instaInstrument(id);
+  if (row?.group === "stock") return instaBrandIcon(row.id) || tinkoffInstrumentIcon("stock", row.id) || categoryPath("stocks-ru");
+  if (row?.asset) return tinkoffInstrumentIcon("future", row.asset) || futureFamilyLogo(row.asset, row.fgroup) || futuresIcon(row.asset, row.fgroup);
+  // Currency pairs are rendered as two flags by InstIcon.
+  return "";
 }
 
 /** Artwork for any listed or newly discovered futures family. */
@@ -178,6 +189,7 @@ export function instrumentIconFallback(inst: {
 
 /** Market-row resolver: T-Invest artwork first, then a non-empty class icon. */
 export function marketItemIcon(item: MarketItem): string {
+  if (item.source === "instaforex") return instaArtwork(item.secid);
   const providerLogo = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
   if (providerLogo) return providerLogo;
   if (item.group === "future") return futureFamilyLogo(item.asset || item.secid, item.fgroup) || futuresIcon(item.asset || item.secid, item.fgroup);

@@ -10,6 +10,8 @@ import { tinkoffToken } from "@/lib/data/moex-keys";
 import { ruCaFetch } from "@/lib/algopack-tls";
 import { continuousSymbol } from "./continuous-futures";
 import { yahooCandles } from "./data/yahoo";
+import { getInstaQuote } from "./instaforex";
+import { instaInstrument } from "./instaforex-meta";
 
 /**
  * Batch quotes for the terminal watchlist.
@@ -32,7 +34,7 @@ export interface BatchQuote {
 }
 
 export interface QuoteRequest {
-  source: "moex" | "bybit" | "binance" | "fmp" | "forex" | "yahoo" | "twelvedata";
+  source: "moex" | "bybit" | "binance" | "fmp" | "forex" | "instaforex" | "yahoo" | "twelvedata";
   ticker: string;
 }
 
@@ -375,6 +377,7 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
       src = "yahoo";
       tick = TD_TO_YAHOO[it.ticker] ?? it.ticker;
     }
+    if (src === "yahoo" && instaInstrument(tick)?.group === "stock") src = "instaforex";
     req.push({ source: src, ticker: tick });
     back.set(`${src}:${tick}`, `${it.source}:${it.ticker}`);
   }
@@ -382,11 +385,13 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   const staleFmp: string[] = [];
   const staleYahoo: string[] = [];
   const fxTickers: string[] = [];
+  const instaTickers: string[] = [];
   let needBybit = false;
   let needBinance = false;
 
   for (const it of req) {
     const key = `${it.source}:${it.ticker}`;
+    if (it.source === "instaforex") { instaTickers.push(it.ticker); continue; }
     if (it.source === "forex") {
       fxTickers.push(it.ticker); // cached inside the forex layer (about 8 s, shared in-flight requests)
       continue;
@@ -404,6 +409,14 @@ export async function getBatchQuotes(items: QuoteRequest[], opts: { realtime?: b
   }
 
   const jobs: Promise<void>[] = [];
+  if (instaTickers.length) {
+    jobs.push((async () => {
+      const list = [...new Set(instaTickers)]; let next = 0;
+      await Promise.all(Array.from({ length: Math.min(4, list.length) }, async () => {
+        while (next < list.length) { const ticker = list[next++]; const quote = await getInstaQuote(ticker); if (quote) out[`instaforex:${ticker}`] = quote; }
+      }));
+    })());
+  }
 
   if (staleMoex.length) {
     const list = [...new Set(staleMoex)].sort();

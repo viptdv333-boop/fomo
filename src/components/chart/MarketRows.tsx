@@ -46,6 +46,7 @@ function indexBadge(secid: string): string {
 
 /** The icon of a row of the market search, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
+  if (item.source === "instaforex") return marketItemIcon(item);
   const ti = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
   // RF instruments: T-Invest brand artwork first.
   if (item.source === "moex") {

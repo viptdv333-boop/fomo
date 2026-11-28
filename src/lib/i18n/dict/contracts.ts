@@ -8,6 +8,7 @@ const rows: [string, string, string, string][] = [
   ["ct.autoHint", "Всегда ближайший контракт, переключается сам при экспирации", "Always the nearest contract, rolls over by itself at expiry", "始终为最近月合约，到期时自动切换"],
   ["ct.loading", "Загрузка контрактов…", "Loading contracts…", "正在加载合约…"],
   ["ct.unavailable", "Список контрактов недоступен", "Contract list is unavailable", "合约列表不可用"],
+  ["ct.retry", "Повторить", "Retry", "重试"],
   ["ct.expires", "экспирация {date}", "expires {date}", "到期 {date}"],
   ["ct.left", "{n} дн.", "{n} d", "{n}天"],
   ["ct.noExpiry", "без экспирации", "no expiry", "无到期日"],

@@ -13,7 +13,7 @@ const isItem = (x: unknown): x is MarketItem => {
 export function getRecent(): MarketItem[] {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "[]");
-    return Array.isArray(raw) ? raw.filter(isItem).slice(0, MAX) : [];
+    return Array.isArray(raw) ? raw.filter(isItem).filter(i => i.source !== "twelvedata").slice(0, MAX) : [];
   } catch {
     return [];
   }

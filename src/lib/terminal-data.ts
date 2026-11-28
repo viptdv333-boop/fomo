@@ -2,8 +2,9 @@
 
 import type { MarketGroup } from "./market-types";
 import { FX_PAIRS, fxDigits, fxIcon, fxSlash } from "./forex-meta";
+import { instaInstrument } from "./instaforex-meta";
 
-export type ChartSource = "moex" | "fmp" | "bybit" | "binance" | "forex" | "databento" | "twelvedata" | "none";
+export type ChartSource = "moex" | "fmp" | "bybit" | "binance" | "forex" | "instaforex" | "databento" | "twelvedata" | "yahoo" | "none";
 
 export interface TerminalInstrument {
   ticker: string;
@@ -143,6 +144,8 @@ export function rememberInstrument(inst: TerminalInstrument): void {
 }
 
 export function findInstrument(source: string, ticker: string): TerminalInstrument | undefined {
+  const row = source === "instaforex" ? instaInstrument(ticker) : undefined;
+  if (row) return {ticker:row.id,dataTicker:row.id,name:row.name,source:"instaforex",group:row.group,emoji:""};
   return (
     ALL_INSTRUMENTS.find((i) => i.source === source && i.dataTicker.toLowerCase() === ticker.toLowerCase()) ??
     RUNTIME.get(`${source}:${ticker.toLowerCase()}`)
@@ -159,7 +162,7 @@ export function adHocInstrument(source: ChartSource, ticker: string): TerminalIn
 }
 
 export function exchangeLabel(source: string): string {
-  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "binance" ? "Binance" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
+  return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "binance" ? "Binance" : source === "fmp" ? "FMP" : source === "forex" || source === "instaforex" ? "InstaForex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
 }
 
 /** ISO country code → its flag emoji (regional indicators). "" for a non-2-letter code. */
@@ -192,7 +195,8 @@ function yahooCountry(id: string): string {
 export function venueBadge(inst: { source: string; dataTicker: string; group?: string }): { iso?: string; text?: string } {
   const s = inst.source;
   if (s === "bybit" || s === "binance" || inst.group === "crypto") return { text: exchangeLabel(s) || "Crypto" };
-  if (s === "forex") return { text: "Forex" };
+  if (s === "forex") return { text: "InstaForex" };
+  if (s === "instaforex") return instaInstrument(inst.dataTicker)?.group === "stock" ? {iso:"us"} : {text:"InstaForex"};
   if (s === "moex") return { iso: "ru" };
   if (s === "yahoo") return { iso: (yahooCountry(inst.dataTicker) || "US").toLowerCase() };
   if (s === "fmp" || s === "databento" || s === "twelvedata") return { iso: "us" };
@@ -201,6 +205,7 @@ export function venueBadge(inst: { source: string; dataTicker: string; group?: s
 
 /** Decimals a price of this instrument is shown with when they are fixed by the market (forex pips); undefined = by magnitude. */
 export function priceDigits(inst: { source: string; dataTicker: string }): number | undefined {
+  if (inst.source === "instaforex") return instaInstrument(inst.dataTicker)?.digits;
   return inst.source === "forex" ? fxDigits(inst.dataTicker) : undefined;
 }
 

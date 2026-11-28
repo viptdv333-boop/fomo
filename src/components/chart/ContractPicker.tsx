@@ -8,6 +8,8 @@ import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
 import { contractToInstrument, fetchContracts, getLastContract, setLastContract, syncContractPrefs } from "@/lib/market-client";
 import { futuresIcon } from "@/lib/instrument-icons";
 import { continuousSymbol } from "@/lib/continuous-futures";
+import { instrumentFamily } from "@/lib/instrument-family";
+import AssetMarketPicker from "./AssetMarketPicker";
 
 /** Days before expiry from which the roll hint is shown. */
 export const ROLL_DAYS = 7;
@@ -31,7 +33,7 @@ export function ContractBadge({ c, current }: { c: Pick<ContractInfo, "kind" | "
  * crypto: spot / perpetual / dated). Hidden for instruments with fewer than two contracts. Also shows the roll hint when the
  * contract expires soon, with a one-click switch to the next one.
  */
-export default function ContractPicker({
+function LegacyContractPicker({
   instrument,
   onPick,
   btn,
@@ -212,4 +214,11 @@ export default function ContractPicker({
       )}
     </>
   );
+}
+
+/** Same underlying in the first pill, venue and spot/futures in the adjacent picker. */
+export default function ContractPicker(props: Parameters<typeof LegacyContractPicker>[0]) {
+  const family = instrumentFamily(props.instrument);
+  useEffect(() => { if (family) props.onShown?.(null); }, [family?.asset, props.onShown]);
+  return family ? <AssetMarketPicker instrument={props.instrument} onPick={props.onPick} btn={props.btn} /> : <LegacyContractPicker {...props} />;
 }

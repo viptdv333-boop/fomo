@@ -12,6 +12,9 @@ const rows: [string, string, string, string][] = [
   ["fx.vol.fut", "реальный объём фьючерса COMEX (не спота)", "real volume of the COMEX futures contract (not spot)", "COMEX 期货真实成交量（非现货）"],
   ["fx.vol.none", "отсутствует", "not available", "无"],
   ["fx.vol.tick", "тиковый (число котировок, не биржевой)", "tick count (not exchange volume)", "跳动数（非交易所成交量）"],
+  ["insta.volume.none", "без объёма", "no volume", "无成交量"],
+  ["insta.volume.tick", "тиковый объём", "tick volume", "跳动量"],
+  ["insta.tip", "Источник: InstaForex. Объём — {volume}. Котировки брокера могут отличаться от биржевых.", "Source: InstaForex. Volume: {volume}. Broker quotes may differ from exchange prices.", "来源：InstaForex。成交量：{volume}。经纪商报价可能与交易所价格不同。"],
   [
     "fx.tip",
     "Спот-валюта: единой биржи нет, объём — {volume}. Торги 24x5 (вс 21:00 — пт 21:00 UTC). Источник: {provider}, котировки могут запаздывать.",

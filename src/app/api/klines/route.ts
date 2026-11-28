@@ -18,6 +18,8 @@ import { withMoexKeys } from "@/lib/data/moex-access";
 import { tdCandles, type TdError } from "@/lib/data/twelvedata";
 import { dbCandles } from "@/lib/data/databento";
 import { yahooCandles } from "@/lib/data/yahoo";
+import { getInstaCandles } from "@/lib/instaforex";
+import { instaInstrument } from "@/lib/instaforex-meta";
 import { UpstreamCache, issCacheTtl, bybitCacheTtl, LIVE_TTL_MS } from "@/lib/kline-cache";
 import { continuousDay, ngContinuousRank } from "@/lib/continuous-futures";
 import { getNgCatalogue, getNgContinuous } from "@/lib/moex-continuous";
@@ -632,6 +634,11 @@ async function handle(request: NextRequest) {
         ? await pageMemo(`binance|${ticker}|${srcInterval}|${srcLimit}|${toMs}`, toMs, () => binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs), (c) => c.length > 0)
         : await binanceCandles(ticker.toUpperCase(), srcInterval, srcLimit, toMs);
   } else if (source === "yahoo") {
+    if (instaInstrument(ticker)?.group === "stock") {
+      const data = await getInstaCandles(ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
+      fx = { ...data, provider: "instaforex" };
+      candles = data.candles;
+    } else {
     // Yahoo chart (US stocks/futures, LSE, HKEX, Xetra, Tokyo; ~15 min delayed, no key). 4h is resampled from 60m,
     // anchored to the first bar of each exchange day like the MOEX 4h; the upstream cache lives in data/yahoo.ts.
     const yi = srcInterval === "240" ? "60" : srcInterval;
@@ -639,6 +646,7 @@ async function handle(request: NextRequest) {
     const y = await yahooCandles(ticker, yi, yl, toMs);
     candles = srcInterval === "240" ? aggregateSessionCandles(y.candles, 4 * 3_600_000).slice(-Math.max(srcLimit, 1)) : y.candles;
     resolvedTicker = y.symbol || ticker;
+    }
   } else if (source === "databento") {
     // the user's own Databento key; without one the chart is not served (the client shows the connect window instead)
     const uk = await getUserKey("databento");
@@ -653,6 +661,10 @@ async function handle(request: NextRequest) {
     const td = await tdCandles(uk.userId, uk.key, ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
     candles = td.candles;
     userFeed = { provider: "twelvedata", ...(td.error ? { error: td.error, errorDetail: td.detail } : {}) };
+  } else if (source === "instaforex") {
+    const data = await getInstaCandles(ticker, srcInterval, Math.min(Math.max(srcLimit, 1), 5000), toMs);
+    fx = { ...data, provider: "instaforex" };
+    candles = data.candles;
   } else if (source === "forex") {
     // spot FX through the provider layer (FMP, then keyless fallbacks): UTC epoch bars, continuous 24x5, tick volume or none
     fx = await getForexCandles(ticker, srcInterval, undefined, toMs, Math.min(Math.max(srcLimit, 1), 5000));

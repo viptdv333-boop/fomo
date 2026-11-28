@@ -874,7 +874,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       const offsetMs = (source === "moex" ? MSK_MS : 0) - tzMs;
       shiftRef.current = { tzMs, displayShiftMs, offsetMs };
       setCandlesDelayed(delayedNow(source, delayed, candles[candles.length - 1]?.t, offsetMs, iv));
-      setFxInfo(source === "forex" ? fx ?? null : null);
+      setFxInfo(fx ?? null);
       // sessions / days of the order flow indicators follow the exchange clock
       engine.flow.wallShiftMs = source === "moex" ? tzMs : 0;
       engine.flow.sourceName = source;
@@ -1080,7 +1080,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       if (Date.now() - tickAtRef.current < 6000 && refCloseRef.current !== 0) return;
       // spot FX is closed on the weekend: a quote then would only draw flat bars; during the Sunday evening open the daily / weekly
       // bar is the Monday one (the data layer merges the short Sunday bar into Monday)
-      if (source === "forex" && !fxMarketOpen(new Date())) return;
+      if ((source === "forex" || source === "instaforex") && !fxMarketOpen(new Date())) return;
       quoteBusy = true;
       try {
         const r = await fetch(`/api/quote?source=${source}&ticker=${encodeURIComponent(ticker)}&_t=${Date.now()}`, { cache: "no-store" });
@@ -2372,14 +2372,14 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 {t("ap.delayed")}
               </div>
             )}
-            {source === "forex" && fxInfo && !loading && !empty && (
+            {fxInfo && !loading && !empty && (
               <div
                 className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)]"
-                title={`${t("fx.tip", { provider: fxInfo.provider === "instaforex" ? "InstaForex" : fxInfo.provider === "yahoo" ? "Yahoo Finance" : fxInfo.provider === "fmp" ? "FMP" : fxInfo.provider === "stooq" ? "Stooq" : fxInfo.provider, volume: t(`fx.vol.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`) })}${fxInfo.proxy ? ` ${t("fx.proxy", { proxy: fxInfo.proxy })}` : ""}`}
+                title={`${t(fxInfo.provider === "instaforex" ? "insta.tip" : "fx.tip", { provider: fxInfo.provider, volume: t(`fx.vol.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`) })}${fxInfo.proxy ? ` ${t("fx.proxy", { proxy: fxInfo.proxy })}` : ""}`}
               >
                 {fxInfo.provider === "instaforex" ? (
                   <a href="https://www.instaforex.com/" target="_blank" rel="noopener noreferrer" className="pointer-events-auto underline underline-offset-2">
-                    InstaForex · {t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}
+                    InstaForex · {t(`insta.volume.${fxInfo.volumeKind === "tick" ? "tick" : "none"}`)}
                   </a>
                 ) : (
                   <span className="pointer-events-none">{t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}</span>
