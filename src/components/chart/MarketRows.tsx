@@ -32,13 +32,23 @@ const EXCHANGE_ICON: Record<string, string> = {
   ASX: "ex-asx", NZX: "ex-asx", BSE: "ex-bse", NSE: "ex-nse", Toronto: "ex-tsx", "TSX Venture": "ex-tsx",
 };
 
+/** Every index gets its own badge: a deterministic colour + its ticker, so no two indices share a generic icon. */
+function indexBadge(secid: string): string {
+  let h = 0;
+  for (const c of secid) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue = h % 360;
+  const fs = secid.length > 7 ? 8 : secid.length > 5 ? 10 : 12;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="hsl(${hue},62%,38%)"/><text x="32" y="37" text-anchor="middle" font-family="Arial,sans-serif" font-size="${fs}" font-weight="bold" fill="#fff">${secid}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 /** The icon of a row of the market search, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
   const ti = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
   // RF instruments: T-Invest brand artwork first.
   if (item.source === "moex") {
     if (ti) return ti;
-    if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : "/icons/instruments/moex-index.svg";
+    if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : indexBadge(item.secid);
     if (item.group === "stock") return curated.find((i) => i.source === "moex" && i.dataTicker === item.secid)?.emoji || marketItemIcon(item);
     if (item.group !== "future") return marketItemIcon(item);
     const own = curated.find((i) => i.source === "moex" && (i.dataTicker === item.secid || i.dataTicker === item.asset))?.emoji;
@@ -48,6 +58,7 @@ export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string
   if (item.group === "forex") return fxIcon(item.secid) || marketItemIcon(item);
   if (item.group === "crypto") return coinIcon(item.asset ?? "") || (curated.find((i) => i.source === "bybit" && i.dataTicker === item.secid)?.emoji ?? "") || marketItemIcon(item);
   if (item.group === "index" && INDEX_ICON[item.secid]) return `/icons/instruments/${INDEX_ICON[item.secid]}.svg`;
+  if (item.group === "index") return indexBadge(item.secid);
   const ex = item.exchange ? EXCHANGE_ICON[item.exchange] : undefined;
   if (ex) return `/icons/instruments/${ex}.svg`;
   if (ti) return ti;
