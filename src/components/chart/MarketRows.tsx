@@ -11,7 +11,11 @@ import { marketItemIcon, tinkoffInstrumentIcon } from "@/lib/instrument-icons";
 import { usFutureBySymbol } from "@/lib/us-futures";
 import { ContractBadge, ROLL_DAYS } from "./ContractPicker";
 
-const INDEX_ICON: Record<string, string> = { IMOEX: "moex-index", RTSI: "rts-index" };
+const INDEX_ICON: Record<string, string> = {
+  IMOEX: "moex-index", RTSI: "rts-index",
+  "^GSPC": "sp500", "^IXIC": "nasdaq100", "^DJI": "dow-jones", "^GDAXI": "dax40", "^FTSE": "ftse100",
+  "^HSI": "hang-seng", "^N225": "nikkei225",
+};
 
 /** The icon of a row of the market search, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
@@ -23,7 +27,11 @@ export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string
     const icon = usFutureBySymbol(item.secid)?.icon;
     if (icon) return icon;
   }
-  if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : marketItemIcon(item);
+  if (item.group === "index") {
+    if (INDEX_ICON[item.secid]) return `/icons/instruments/${INDEX_ICON[item.secid]}.svg`;
+    if (item.source === "moex") return "/icons/instruments/moex-index.svg";
+    return marketItemIcon(item);
+  }
   // shares the terminal has artwork for (SBER, GAZP ...)
   if (item.group === "stock") return curated.find((i) => i.source === item.source && i.dataTicker === item.secid)?.emoji || marketItemIcon(item);
   if (item.group !== "future") return marketItemIcon(item);

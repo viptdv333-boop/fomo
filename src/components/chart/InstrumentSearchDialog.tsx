@@ -363,19 +363,26 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
   };
   const actRef = useRef<(item: MarketItem, shift: boolean) => void>(() => {});
   actRef.current = async (item, shift) => {
-    if (mode === "watchlist") {
-      const inst = itemToInstrument(item, iconFor(item, ALL_INSTRUMENTS));
-      if (!list.some((e) => sameInstrument(e, inst))) {
-        onPick(inst);
-        pushRecent(item);
+    try {
+      if (mode === "watchlist") {
+        let icon = "";
+        try { icon = iconFor(item, ALL_INSTRUMENTS); } catch { icon = ""; }
+        const inst = itemToInstrument(item, icon);
+        if (!list.some((e) => sameInstrument(e, inst))) {
+          onPick(inst);
+          pushRecent(item);
+        }
+        if (shift) onClose();
+        return;
       }
-      if (shift) onClose();
-      return;
+      const inst = await pickMarketItem(item, ALL_INSTRUMENTS);
+      pushRecent(item);
+      onPick(inst);
+      onClose();
+    } catch (err) {
+      // a failed icon/metadata lookup must not silently swallow the add (the plus button appeared dead)
+      console.error("[instrument-search] action failed for", item?.secid, err);
     }
-    const inst = await pickMarketItem(item, ALL_INSTRUMENTS);
-    pushRecent(item);
-    onPick(inst);
-    onClose();
   };
   const focusRef = useRef<() => void>(() => {});
   focusRef.current = refocus;
