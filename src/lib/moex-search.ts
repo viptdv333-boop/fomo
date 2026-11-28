@@ -122,7 +122,7 @@ function continuousItem(f: ContractFamily, rank: 1 | 2): MarketItem {
   return {
     secid: ticker,
     ticker,
-    name: `${f.name} · склейка ${rank}`,
+    name: f.name,
     group: "future",
     source: "moex",
     engine: "futures",

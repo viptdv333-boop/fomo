@@ -24,7 +24,9 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 export function ContractBadge({ c, current }: { c: Pick<ContractInfo, "kind" | "order" | "badge">; current?: boolean }) {
-  const cls = c.kind === "continuous" || c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]";
+  if (c.kind === "continuous") return null;
+  if (c.kind !== "perpetual" && c.kind !== "spot" && c.order <= 0) return null;
+  const cls = c.kind === "perpetual" || c.kind === "spot" ? KIND_COLOR[c.kind] : c.order === 1 ? KIND_COLOR.quarterly : "bg-[var(--tv3-fill2)] text-[var(--tv3-text2)]";
   return <span className={`px-1.5 rounded text-[10px] leading-4 font-medium whitespace-nowrap ${cls} ${current ? "ring-1 ring-current" : ""}`}>{c.badge}</span>;
 }
 

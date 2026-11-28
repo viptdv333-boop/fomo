@@ -5,9 +5,9 @@ import type { ContractInfo, MarketItem } from "./market-types";
 export function chainContracts(asset: string, name: string, lang = "ru"): ContractInfo[] {
   return [1, 2].map((rank) => ({
     secid: `${asset}${rank}!`, ticker: `${asset}${rank}!`,
-    shortname: lang === "ru" ? `${name} · склейка ${rank}` : `${name} · continuous ${rank}`,
+    shortname: name,
     kind: "continuous", expiry: null, order: 0, daysLeft: null,
-    badge: lang === "ru" ? "склейка" : "continuous",
+    badge: "",
     label: lang === "ru" ? `${asset}${rank}! · ${rank === 1 ? "ближайший" : "второй"} контракт · переход по экспирации` : `${asset}${rank}! · ${rank === 1 ? "front" : "second"} contract · expiry roll`,
   }));
 }

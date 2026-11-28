@@ -44,7 +44,7 @@
   --tv3-card: #1c1c1e;
   --tv3-text: #f2f2f7;
   --tv3-text2: #d1d1d6;
-  --tv3-muted: #8e8e93;
+  --tv3-muted: #b8b8c0;
   --tv3-hair: #2c2c2e;
   --tv3-hair2: #262628;
   --tv3-fill: #2c2c2e;
@@ -54,14 +54,14 @@
   --tv3-accent: #30d158;
   --tv3-accent-hover: #4ae071;
   --tv3-accent-soft: rgba(48, 209, 88, 0.2);
-  --tv3-up: #30c15c;
-  --tv3-down: #ff453a;
-  --tv3-blue: #0a84ff;
+  --tv3-up: #7ed4a1;
+  --tv3-down: #ff9e96;
+  --tv3-blue: #8ac2ff;
   --tv3-orange: #ff9f0a;
-  --tv3-red: #ff453a;
-  --tv3-purple: #bf5af2;
+  --tv3-red: #ff9e96;
+  --tv3-purple: #dba0ff;
   --tv3-teal: #19d3c5;
-  --tv3-pink: #e0457b;
+  --tv3-pink: #ff9ac1;
   --tv3-on: #30d158;
   --tv3-pill-dark: rgba(58, 58, 60, 0.95);
   --tv3-glass: rgba(28, 28, 30, 0.92);
@@ -89,6 +89,15 @@
 }
 .tv3 input::placeholder {
   color: var(--tv3-muted);
+}
+.tv3 select option,
+.tv3 select optgroup {
+  background-color: var(--tv3-card);
+  color: var(--tv3-text);
+}
+/* Accent is a readable foreground token; use dark ink on bright dark-theme buttons. */
+.dark .tv3 button[class*="bg-[var(--tv3-accent)]"] {
+  color: #092519;
 }
 
 /* ───────── iOS layer: rails, press feedback, focus ring, translucent popovers ───────── */

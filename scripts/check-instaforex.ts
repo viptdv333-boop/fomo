@@ -35,6 +35,7 @@ async function main() {
   assert.equal(instrumentFamily({source:"moex",dataTicker:"T",name:"Т-Технологии",group:"stock"})?.name,"Т-Технологии");
   assert.notEqual(instrumentFamily({source:"instaforex",dataTicker:"T",name:"AT&T",group:"stock"})?.name,"Т-Технологии");
   assert.equal(instaInstrument("KCZ26")?.asset,"COFFEE");
+  for(const id of ["SBH27","SBK27","SBN27"]) assert.equal(instaInstrument(id)?.asset,"SUGAR",`Missing public sugar expiry ${id}`);
   for(const [id,asset] of [["GDZ0","GOLD"],["SVH0","SILV"],["PTM0","PLT"],["PDU0","PLD"]]) {
     assert.equal(instrumentIcon({source:"moex",ticker:id,dataTicker:id}),instrumentIcon({source:"moex",ticker:asset,dataTicker:asset,group:"future"}),`New expiry artwork ${id}`);
   }
@@ -50,7 +51,7 @@ async function main() {
   assert.equal(parseInstaCandles(xml.replace('<High>12','<High>8')).length,0);
   console.log(`Offline checks passed: ${stocks.length} local stock brands; underlying icons, instrument families, grouping, XML validation.`);
   if(process.argv.includes("--live")) {
-    for(const id of ["EURUSD","IBM","XAUUSD","XAGUSD","XPDUSD","BRENT.SPOT","NG","SBH27"]) {
+    for(const id of ["EURUSD","IBM","XAUUSD","XAGUSD","XPDUSD","BRENT.SPOT","NG","SBH27","SBK27","SBN27"]) {
       assert(instaInstrument(id),`Missing catalogue ${id}`);
       const [quote,bars]=await Promise.all([getInstaQuote(id),getInstaCandles(id,"60",10)]);
       assert(quote && quote.price>0,`No quote ${id}`);

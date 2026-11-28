@@ -528,18 +528,6 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
                 </Chip>
               ))}
             </div>
-            {tab === "future" && (
-              <div role="group" aria-label={t("is.assets")} className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 px-4 pb-1.5 sm:px-5">
-                <Chip small tone="accent" on={!filters.asset} onClick={() => setFilter({ asset: "" })}>
-                  {t("is.fa.all")}
-                </Chip>
-                {FUT_ASSET_CHIPS.map((a: FutAsset) => (
-                  <Chip small tone="accent" key={a} on={filters.asset === a} onClick={() => setFilter({ asset: a })}>
-                    {t(`is.fa.${a}`)}
-                  </Chip>
-                ))}
-              </div>
-            )}
             <div role="group" aria-label={t("is.filters")} className="flex items-center gap-2 px-4 pb-2.5 sm:px-5">
               <FilterSelect
                 value={filters.country}
@@ -555,6 +543,13 @@ function Dialog({ mode, onClose, onPick, existing, onRemove, current, initialQue
                 label={t(FILTER_KEY[kind])}
                 options={opts.venues.map((v) => ({ value: v, label: venueLabel(v) }))}
               />
+              {tab === "future" && <FilterSelect
+                value={filters.asset}
+                onChange={(asset) => setFilter({ asset: asset as FutAsset | "" })}
+                allLabel={t("is.assets")}
+                label={t("is.assets")}
+                options={FUT_ASSET_CHIPS.map((a) => ({ value: a, label: t(`is.fa.${a}`) }))}
+              />}
               {search.loading && <span className="ml-1 hidden shrink-0 text-[12px] text-[var(--tv3-muted)] sm:block">{t("ms.searching")}</span>}
             </div>
           </div>

@@ -108,7 +108,8 @@ assert.equal(ngContinuousRank("BR2!"), 2); // deprecated alias still general
 const goldChain = chainContracts("GOLD", "Золото", "ru");
 assert.deepEqual(goldChain.map((c) => c.ticker), ["GOLD1!", "GOLD2!"]);
 assert.ok(goldChain.every((c) => c.kind === "continuous" && c.expiry === null));
-assert.equal(goldChain[0].shortname, "Золото · склейка 1");
+assert.equal(goldChain[0].shortname, "Золото");
+assert.equal(goldChain[0].badge, "");
 // the chain builder is asset-agnostic: a GOLD1! request over the same chain stitches like NG1!
 (async () => {
   const today = "2026-03-02";

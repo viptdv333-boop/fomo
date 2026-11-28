@@ -120,6 +120,16 @@
     "digits": 2
   },
   {
+    "id": "XBZG27",
+    "symbol": "#XBZG27",
+    "name": "Нефть Brent · Brent Crude Oil, Feb 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "BR",
+    "fgroup": "oil",
+    "digits": 2
+  },
+  {
     "id": "QMZ26",
     "symbol": "#QMZ26",
     "name": "Нефтепродукты · miNY Crude Oil, Dec 2026",
@@ -137,6 +147,26 @@
     "kind": "monthly",
     "asset": "RBOB",
     "fgroup": "oil",
+    "digits": 2
+  },
+  {
+    "id": "ZLF27",
+    "symbol": "#ZLF27",
+    "name": "Соевое масло · Futures Soybean Oil, Jan 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY_OIL",
+    "fgroup": "grain",
+    "digits": 2
+  },
+  {
+    "id": "ZLH27",
+    "symbol": "#ZLH27",
+    "name": "Соевое масло · Futures Soybean Oil, Feb 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY_OIL",
+    "fgroup": "grain",
     "digits": 2
   },
   {
@@ -180,6 +210,26 @@
     "digits": 2
   },
   {
+    "id": "ZSH27",
+    "symbol": "#ZSH27",
+    "name": "Соя · Futures Soybean, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY",
+    "fgroup": "grain",
+    "digits": 2
+  },
+  {
+    "id": "ZSK27",
+    "symbol": "#ZSK27",
+    "name": "Соя · Futures Soybean, May 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SOY",
+    "fgroup": "grain",
+    "digits": 2
+  },
+  {
     "id": "ZWZ26",
     "symbol": "#ZWZ26",
     "name": "Пшеница · Futures Wheat, Nov 2026",
@@ -200,9 +250,69 @@
     "digits": 3
   },
   {
+    "id": "HGF27",
+    "symbol": "#HGF27",
+    "name": "Медь · Futures Copper, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COPPER",
+    "fgroup": "copper",
+    "digits": 3
+  },
+  {
+    "id": "HGG27",
+    "symbol": "#HGG27",
+    "name": "Медь · Futures Copper, Feb 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COPPER",
+    "fgroup": "copper",
+    "digits": 3
+  },
+  {
+    "id": "GCG27",
+    "symbol": "#GCG27",
+    "name": "Золото · Futures Gold, Feb 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "GOLD",
+    "fgroup": "gold",
+    "digits": 2
+  },
+  {
+    "id": "GCF27",
+    "symbol": "#GCF27",
+    "name": "Золото · Futures Gold, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "GOLD",
+    "fgroup": "gold",
+    "digits": 2
+  },
+  {
     "id": "SIZ26",
     "symbol": "#SIZ26",
     "name": "Серебро · Futures Silver, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SILV",
+    "fgroup": "silver",
+    "digits": 3
+  },
+  {
+    "id": "SIF27",
+    "symbol": "#SIF27",
+    "name": "Серебро · Futures Silver, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SILV",
+    "fgroup": "silver",
+    "digits": 3
+  },
+  {
+    "id": "SIG27",
+    "symbol": "#SIG27",
+    "name": "Серебро · Futures Silver, Feb 2027",
     "group": "future",
     "kind": "monthly",
     "asset": "SILV",
@@ -230,9 +340,49 @@
     "digits": 2
   },
   {
+    "id": "CCH27",
+    "symbol": "#CCH27",
+    "name": "Какао · Cocoa, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COCOA",
+    "fgroup": "soft",
+    "digits": 0
+  },
+  {
+    "id": "CCK27",
+    "symbol": "#CCK27",
+    "name": "Какао · Cocoa, May 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COCOA",
+    "fgroup": "soft",
+    "digits": 0
+  },
+  {
     "id": "KCZ26",
     "symbol": "#KCZ26",
     "name": "Кофе · Cotton, Dec 2026",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COFFEE",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "KCH27",
+    "symbol": "#KCH27",
+    "name": "Кофе · Coffee, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COFFEE",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "KCK27",
+    "symbol": "#KCK27",
+    "name": "Кофе · Coffee, May 2027",
     "group": "future",
     "kind": "monthly",
     "asset": "COFFEE",
@@ -250,9 +400,49 @@
     "digits": 2
   },
   {
+    "id": "CTH27",
+    "symbol": "#CTH27",
+    "name": "Хлопок · Cotton, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COTTON",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "CTK27",
+    "symbol": "#CTK27",
+    "name": "Хлопок · Cotton, Apr 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "COTTON",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
     "id": "SBH27",
     "symbol": "#SBH27",
     "name": "Сахар · Sugar, Mar 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SUGAR",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "SBK27",
+    "symbol": "#SBK27",
+    "name": "Сахар · Sugar, May 2027",
+    "group": "future",
+    "kind": "monthly",
+    "asset": "SUGAR",
+    "fgroup": "soft",
+    "digits": 2
+  },
+  {
+    "id": "SBN27",
+    "symbol": "#SBN27",
+    "name": "Сахар · Sugar, Jul 2027",
     "group": "future",
     "kind": "monthly",
     "asset": "SUGAR",
@@ -2132,6 +2322,13 @@
     "id": "AMC",
     "symbol": "#AMC",
     "name": "AMC Entertainment Holdings Inc",
+    "group": "stock",
+    "digits": 2
+  },
+  {
+    "id": "GME",
+    "symbol": "#GME",
+    "name": "GameStop",
     "group": "stock",
     "digits": 2
   },

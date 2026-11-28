@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Native selects, date/time pickers and autofill follow the in-app theme. */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+select option, select optgroup { background-color: Field; color: FieldText; }
+
 /* ── Dark theme: neutral grays (no blue tint) ── */
 @theme {
   --color-gray-50: #fafafa;

@@ -65,15 +65,31 @@ async function main() {
     const match=defs.find(([re])=>re.test(d));
     return match ? {asset:match[1],fgroup:match[2],name:match[3]} : null;
   };
-  for (const r of liveRows) {
-    if (r.tradeEnabled !== 2 || !/^Futures (Energy|Agro|Metals|Goods)$/.test(r.typeName)) continue;
+  // Trading permission is not a market-data entitlement: later expiries can be
+  // tradeEnabled=0 while public quotes and charts are available (SBK27/SBN27).
+  const publicFutures = new Set<string>();
+  const futures = liveRows.filter((r:any)=>/^Futures (Energy|Agro|Metals|Goods)$/.test(r.typeName));
+  let futureCursor=0;
+  await Promise.all(Array.from({length:6},async()=>{
+    while(futureCursor<futures.length) {
+      const r=futures[futureCursor++];
+      if(r.tradeEnabled===2) { publicFutures.add(r.symbol); continue; }
+      const response=await fetch("https://api2-webtrader.ifxdb.com/api/public/quotes/extraData?"+new URLSearchParams({server:"usa2",symbol:r.symbol}),{signal:AbortSignal.timeout(12000)});
+      if(!response.ok) throw new Error(`futures quote validation ${response.status}: ${r.symbol}`);
+      const ticks=await response.json();
+      if(Array.isArray(ticks) && ticks.some(t=>t.symbol===r.symbol && +t.bid>0 && +t.lasttime>Date.now()/1000-7*86400)) publicFutures.add(r.symbol);
+    }
+  }));
+  for (const r of futures) {
+    if (!publicFutures.has(r.symbol)) continue;
     const family=classify(r); if (!family) continue;
     add({id:r.symbol.replace(/^#/,""),symbol:r.symbol,name:`${family.name} · ${r.description}`,group:"future",kind:"monthly",asset:family.asset,fgroup:family.fgroup,digits:r.digits});
   }
   const currencies = new Set("USD EUR GBP JPY CHF AUD CAD NZD CNH CNY TRY RUB INR KZT SEK NOK PLN MXN ZAR SGD HKD DKK CZK HUF ILS RON BRL THB IDR KRW CLP COP AED SAR BHD QAR OMR TWD UAH".split(" "));
   for (const r of raw) if (r.trade === 2 && /^[A-Z]{6}$/.test(r.symbol) && currencies.has(r.symbol.slice(0, 3)) && currencies.has(r.symbol.slice(3))) add({ id: r.symbol, symbol: r.symbol, name: r.description, group: "forex", digits: r.digits });
-  // The broker's specification still contains delisted shares. Require an enabled symbol and a recent quote.
-  const candidates=stocks.filter(r=>liveRows.some((live:any)=>live.symbol===r.symbol && live.tradeEnabled===2));
+  // The broker's specification still contains delisted shares. Require a current
+  // quote, independently of whether the broker permits opening a new position.
+  const candidates=stocks.filter(r=>liveRows.some((live:any)=>live.symbol===r.symbol));
   const activeStocks=new Set<string>(); let stockCursor=0;
   await Promise.all(Array.from({length:6},async()=>{
     while(stockCursor<candidates.length) {

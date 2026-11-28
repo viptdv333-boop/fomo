@@ -51,7 +51,9 @@ export const CATEGORY_NEWS: Record<string, string> = {
 export function instName(inst: TerminalInstrument, t: (key: string) => string): string {
   const key = `instname.${inst.dataTicker}`;
   const v = t(key);
-  return v === key ? inst.name : v;
+  const name = v === key ? inst.name : v;
+  // Existing synced watchlists may still hold the former continuous-series caption.
+  return inst.source === "moex" && /[12]!$/.test(inst.dataTicker) ? name.split(/\s*·\s*(?:склейка|continuous)\s*\d*/i)[0] : name;
 }
 
 export const TERMINAL_DATA: TerminalCategory[] = [
@@ -75,8 +77,8 @@ export const TERMINAL_DATA: TerminalCategory[] = [
     instruments: [
       { ticker: "BR", name: "Нефть Brent", source: "moex", dataTicker: "BR", emoji: "/icons/instruments/oil.svg" },
       { ticker: "NG", name: "Газ", source: "moex", dataTicker: "NG", emoji: "/icons/instruments/gas.svg" },
-      { ticker: "NG1!", name: "Газ · склейка 1", source: "moex", dataTicker: "NG1!", emoji: "/icons/instruments/gas.svg", group: "future" },
-      { ticker: "NG2!", name: "Газ · склейка 2", source: "moex", dataTicker: "NG2!", emoji: "/icons/instruments/gas.svg", group: "future" },
+      { ticker: "NG1!", name: "Газ", source: "moex", dataTicker: "NG1!", emoji: "/icons/instruments/gas.svg", group: "future" },
+      { ticker: "NG2!", name: "Газ", source: "moex", dataTicker: "NG2!", emoji: "/icons/instruments/gas.svg", group: "future" },
       { ticker: "COCOA", name: "Какао", source: "moex", dataTicker: "COCOA", emoji: "/icons/instruments/cocoa.svg" },
       { ticker: "KC", name: "Кофе", source: "moex", dataTicker: "KC", emoji: "/icons/instruments/coffee.svg" },
       { ticker: "SUGAR", name: "Сахар", source: "moex", dataTicker: "SUGAR", emoji: "/icons/instruments/sugar.svg" },

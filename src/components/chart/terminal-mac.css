@@ -669,8 +669,8 @@ html[data-tvmac] .tv3 {
   --tv3-font: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 html.dark[data-tvmac] .tv3 {
-  --tv3-accent: #6db88f;
-  --tv3-accent-hover: #86c9a3;
+  --tv3-accent: #83cda4;
+  --tv3-accent-hover: #9cdeb9;
   --tv3-accent-soft: rgba(109, 184, 143, 0.18);
   --tv3-fill: rgba(255, 255, 255, 0.08);
   --tv3-fill2: rgba(255, 255, 255, 0.12);
@@ -681,6 +681,9 @@ html.dark[data-tvmac] .tv3 {
   --tv3-hover: rgba(255, 255, 255, 0.09);
   --tv3-text: #f2f2f7;
   --tv3-text2: #d6d6dc;
+  --tv3-muted: #b8b8c0;
+  --tv3-up: #7ed4a1;
+  --tv3-down: #ff9e96;
 }
 html[data-tvmac] .tv3 .tv3-pop {
   background: rgba(255, 255, 255, 0.9);
@@ -728,7 +731,7 @@ html[data-tvmac] .tv3 .tv3-pop [class*="uppercase"] {
   font-size: 11px !important;
   font-weight: 600 !important;
   letter-spacing: 0.06em !important;
-  color: #8e8e93 !important;
+  color: var(--tv3-muted) !important;
 }
 
 /* dialogs: the large rounded glass sheet of the design (18px, soft shadow, hairlines) */
@@ -754,6 +757,9 @@ html[data-tvmac] .tv3 button[class*="bg-[var(--tv3-accent)]"] {
   box-shadow: 0 2px 6px rgba(79, 154, 116, 0.45);
   color: #fff;
   font-weight: 500;
+}
+html.dark[data-tvmac] .tv3 button[class*="bg-[var(--tv3-accent)]"] {
+  color: #092519;
 }
 
 /* drawing-tool flyouts: coloured duotone glyphs per group, 34px rows, no double caption */
@@ -832,7 +838,7 @@ html[data-tvmac] .tv3 [data-csd-row] {
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 html[data-tvmac] .tv3 [data-csd-row] > span { font-size: 14px !important; }
-html[data-tvmac] .tv3 [data-csd-sec] { padding: 16px 0 6px; margin: 0 !important; font-size: 11px !important; letter-spacing: 0.06em !important; color: #8e8e93 !important; }
+html[data-tvmac] .tv3 [data-csd-sec] { padding: 16px 0 6px; margin: 0 !important; font-size: 11px !important; letter-spacing: 0.06em !important; color: var(--tv3-muted) !important; }
 html[data-tvmac] .tv3 [data-csd] [role="switch"] { transform: scale(1.235); transform-origin: right center; background: var(--tv3-fill2); }
 html[data-tvmac] .tv3 [data-csd] [role="switch"][aria-checked="true"] { background: #4f9a74 !important; }
 html[data-tvmac] .tv3 [data-csd] select,
