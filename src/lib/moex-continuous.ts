@@ -49,7 +49,9 @@ export async function getCatalogue(asset: string): Promise<ChainContract[]> {
         const j = await publicJson(`${ISS}/securities/${secid}.json?iss.meta=off&iss.only=description`);
         const d = Object.fromEntries(records(j.description).map((r) => [String(r.name), String(r.value ?? "")]));
         if (d.ASSETCODE !== asset) continue; // a different family caught by the search: not ours
-        if (d.TYPE !== "futures" || !/^\d{4}-\d{2}-\d{2}$/.test(d.LSTTRADE) || !/^\d{4}-\d{2}-\d{2}$/.test(d.FRSTTRADE)) throw new Error(`Invalid ${asset} contract metadata: ` + secid);
+        // Some expired contracts lack FRSTTRADE in ISS (e.g. GOLD GDM6): skip unusable metadata rather than fail the whole
+        // family. The remaining contracts' real trading windows still cover the chain (a later contract's first trade fills the gap).
+        if (d.TYPE !== "futures" || !/^\d{4}-\d{2}-\d{2}$/.test(d.LSTTRADE) || !/^\d{4}-\d{2}-\d{2}$/.test(d.FRSTTRADE)) continue;
         contracts.push({ secid, first: d.FRSTTRADE, expiry: d.LSTTRADE });
       }
     }));
