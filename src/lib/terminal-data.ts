@@ -162,6 +162,42 @@ export function exchangeLabel(source: string): string {
   return source === "moex" ? "MOEX" : source === "bybit" ? "Bybit" : source === "binance" ? "Binance" : source === "fmp" ? "FMP" : source === "forex" ? "Forex" : source === "databento" ? "Databento" : source === "twelvedata" ? "Twelve Data" : "";
 }
 
+/** ISO country code → its flag emoji (regional indicators). "" for a non-2-letter code. */
+export function flagOf(iso: string): string {
+  if (!/^[A-Za-z]{2}$/.test(iso)) return "";
+  return String.fromCodePoint(...[...iso.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+/** Yahoo ticker suffix → listing country (the watchlist stores only the id, not the exchange). */
+const Y_SUFFIX: Record<string, string> = {
+  T: "JP", HK: "HK", DE: "DE", F: "DE", MU: "DE", BE: "DE", DU: "DE", HM: "DE", SG: "DE", L: "GB",
+  SS: "CN", SZ: "CN", KS: "KR", KQ: "KR", TW: "TW", TWO: "TW", AX: "AU", NZ: "NZ", TO: "CA", V: "CA",
+  PA: "FR", AS: "NL", BR: "BE", LS: "PT", MI: "IT", MC: "ES", ST: "SE", HE: "FI", CO: "DK", OL: "NO", BO: "IN", NS: "IN",
+};
+const Y_INDEX: Record<string, string> = {
+  "^GSPC": "US", "^DJI": "US", "^IXIC": "US", "^RUT": "US", "^VIX": "US", "^TNX": "US", "^TYX": "US",
+  "^N225": "JP", "^GDAXI": "DE", "^FTSE": "GB", "^STOXX50E": "DE", "^HSI": "HK", "^KS11": "KR", "^TWII": "TW", "^AXJO": "AU", "^BSESN": "IN", "000001.SS": "CN",
+};
+function yahooCountry(id: string): string {
+  if (Y_INDEX[id]) return Y_INDEX[id];
+  if (id.endsWith("=F")) return "US";
+  if (id.startsWith("^")) return "US";
+  const dot = id.lastIndexOf(".");
+  if (dot > 0) return Y_SUFFIX[id.slice(dot + 1)] || "";
+  return "US";
+}
+
+/** The badge beside a watchlist ticker: the flag of the exchange's country, or (crypto / forex) the exchange name. */
+export function venueBadge(inst: { source: string; dataTicker: string; group?: string }): { flag?: string; text?: string } {
+  const s = inst.source;
+  if (s === "bybit" || s === "binance" || inst.group === "crypto") return { text: exchangeLabel(s) || "Crypto" };
+  if (s === "forex") return { text: "Forex" };
+  if (s === "moex") return { flag: flagOf("RU") };
+  if (s === "yahoo") return { flag: flagOf(yahooCountry(inst.dataTicker) || "US") };
+  if (s === "fmp" || s === "databento" || s === "twelvedata") return { flag: flagOf("US") };
+  return {};
+}
+
 /** Decimals a price of this instrument is shown with when they are fixed by the market (forex pips); undefined = by magnitude. */
 export function priceDigits(inst: { source: string; dataTicker: string }): number | undefined {
   return inst.source === "forex" ? fxDigits(inst.dataTicker) : undefined;

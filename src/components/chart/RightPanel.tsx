@@ -32,6 +32,7 @@ import {
   instName,
   priceDigits,
   rememberInstrument,
+  venueBadge,
   type TerminalInstrument,
 } from "@/lib/terminal-data";
 import { fetchContractInfo, lookupSecid, type ContractBadgeInfo } from "@/lib/market-client";
@@ -248,6 +249,7 @@ const WatchRow = memo(function WatchRow({
   const prev = useRef<number | undefined>(undefined);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
   const price = q?.price;
+  const badge = venueBadge(inst);
   useEffect(() => {
     const before = prev.current;
     prev.current = price;
@@ -296,7 +298,14 @@ const WatchRow = memo(function WatchRow({
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight text-[var(--tv3-text)]">{inst.ticker}</span>
+          <span className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-[var(--tv3-text)]">
+            <span className="truncate">{inst.ticker}</span>
+            {badge.flag ? (
+              <span className="shrink-0 text-[12px] leading-none" aria-hidden>{badge.flag}</span>
+            ) : badge.text ? (
+              <span className="shrink-0 truncate text-[11px] font-normal text-[var(--tv3-muted)] opacity-60">{badge.text}</span>
+            ) : null}
+          </span>
           <span className="flex items-center gap-1 text-[12px] leading-tight text-[var(--tv3-muted)]">
             {contract && <ContractBadge c={contract} />}
             <span className="truncate">
