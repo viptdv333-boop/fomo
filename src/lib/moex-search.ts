@@ -248,6 +248,7 @@ function zipRows(a: MarketItem[], b: MarketItem[]): MarketItem[] {
 }
 
 async function buildCandidates(q: string, group: GroupTab): Promise<MarketItem[]> {
+  if (group === "spot") return instaItems("spot", q);
   // the whole Bybit and Binance spot lists (each has its own 1 h cache), a Bybit and a Binance row of the same coin side by side
   if (group === "crypto") {
     const [bb, bn] = await Promise.all([searchCrypto(q, CANDIDATES), searchBinanceSpot(q, CANDIDATES)]);
@@ -395,6 +396,7 @@ async function cachedPopular(group: LiveGroup): Promise<MarketItem[]> {
  * curated list, is served (never empty).
  */
 async function popularCandidates(group: GroupTab, filtered: boolean): Promise<MarketItem[]> {
+  if (group === "spot") return instaItems("spot");
   if (group === "forex") return FX_PAIRS.map(fxPairToItem).map(tagItem);
   if (group === "crypto") {
     const popular = new Set(POPULAR_CRYPTO.map((p) => p.symbol));
@@ -431,7 +433,7 @@ export interface PageOpts {
  * adds the provider's whole list of the chip.
  */
 function withProviders(base: MarketItem[], q: string, group: GroupTab, provs: readonly string[]): MarketItem[] {
-  if (provs.length === 0 || group === "forex" || group === "crypto" || group === "currency" || group === "bond") return base;
+  if (provs.length === 0 || group === "spot" || group === "forex" || group === "crypto" || group === "currency" || group === "bond") return base;
   const extra = (q ? searchProviderItems(q, group, 80, provs) : providerItemsOf(group, provs)).map(tagItem);
   if (extra.length === 0) return base;
   return group === "future" ? arrangeByAsset([...base, ...extra], !!q) : [...base, ...extra];

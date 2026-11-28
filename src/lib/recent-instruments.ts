@@ -21,7 +21,7 @@ export function getRecent(): MarketItem[] {
 
 /** The recents that belong on a chip («Все» takes every group). */
 export function recentFor(tab: GroupTab, list: MarketItem[]): MarketItem[] {
-  return tab === "all" ? list : list.filter((i) => i.group === tab);
+  return tab === "all" ? list : list.filter((i) => tab === "spot" ? i.kind === "spot" && i.source === "instaforex" : i.group === tab);
 }
 
 /** Remembers a pick (newest first, one entry per instrument). An exact contract is remembered as the contract. */

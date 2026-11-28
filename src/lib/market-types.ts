@@ -2,7 +2,7 @@
 
 export type MarketGroup = "stock" | "bond" | "fund" | "future" | "option" | "currency" | "index" | "crypto" | "forex" | "other";
 /** the chips of the instrument search dialog ("all" is every group) */
-export type GroupTab = "all" | Exclude<MarketGroup, "other">;
+export type GroupTab = "all" | "spot" | Exclude<MarketGroup, "other">;
 export type MarketSource = "moex" | "bybit" | "binance" | "forex" | "instaforex" | "fmp" | "databento" | "twelvedata" | "yahoo";
 /** underlying asset class of a futures row (the second chip row of the «Фьючерсы» chip); "other" is only listed under «Все» */
 export type FutAsset = "oil" | "gas" | "gold" | "silver" | "copper" | "platinum" | "palladium" | "index" | "currency" | "bond" | "grain" | "soft" | "livestock" | "crypto" | "stock" | "other";

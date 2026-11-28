@@ -4,7 +4,8 @@
  * when ISS is unreachable on the server, so a list is never empty) and the «Все» mix. The live fetching + caching lives in moex-search.ts.
  */
 
-import type { MarketGroup, MarketItem } from "./market-types";
+import type { GroupTab, MarketGroup, MarketItem } from "./market-types";
+import { instaItems } from "./instaforex-meta";
 import { pairToItem as cryptoItem, POPULAR_CRYPTO } from "./bybit-spot-search";
 import { FX_PAIRS, pairToItem as fxItem } from "./forex-meta";
 import { allUsFutureItems } from "./us-futures";
@@ -14,7 +15,7 @@ import { providerItemsOf as allProviderItems } from "./data/provider-catalog";
 const providerItemsOf = (group: Parameters<typeof allProviderItems>[0]) => allProviderItems(group).filter(i=>i.source!=="twelvedata");
 import { indexItem, popularIndexRows, staticIndexRows } from "./moex-indices";
 
-export type PopularGroup = MarketGroup | "all";
+export type PopularGroup = MarketGroup | GroupTab;
 
 /** One row of an ISS board listing joined with its turnover. */
 export interface BoardRow {
@@ -194,6 +195,8 @@ function staticFutures(): MarketItem[] {
 /** Curated lists shown when ISS is unreachable (and instantly on the client before the live list arrives). Every row is tagged (venue / country / category). */
 export function staticPopular(group: PopularGroup): MarketItem[] {
   switch (group) {
+    case "spot":
+      return instaItems("spot").map(tagItem);
     case "stock":
       return [...BRD(STATIC_STOCKS, stockItem).map(tagItem), ...providerItemsOf("stock").map(tagItem)];
     case "bond":

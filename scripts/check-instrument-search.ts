@@ -113,8 +113,8 @@ eq("a query naming an asset class lifts that class (газ -> Газ, not Газ
 
 /* ── filters ── */
 const tagged = (list: MarketItem[]) => list.map(tagItem);
-eq("tabs (TradingView's set + the user's)", GROUP_TABS, ["all", "stock", "fund", "future", "option", "forex", "currency", "crypto", "index", "bond"]);
-eq("what the second dropdown means", GROUP_TABS.map((t) => venueKind(t)), ["exchange", "board", "board", "exchange", "exchange", "category", "category", "quote", "category", "category"]);
+eq("tabs (TradingView's set + the user's)", GROUP_TABS, ["all", "stock", "fund", "future", "option", "spot", "forex", "currency", "crypto", "index", "bond"]);
+eq("what the second dropdown means", GROUP_TABS.map((t) => venueKind(t)), ["exchange", "board", "board", "exchange", "exchange", "exchange", "category", "category", "quote", "category", "category"]);
 const byCountry = (c: string) => applyFilters(cat, "future", { ...NO_FILTERS, country: c }).map((i) => i.country);
 eq("country RU", [...new Set(byCountry("RU"))], ["RU"]);
 eq("country US", [...new Set(byCountry("US"))], ["US"]);

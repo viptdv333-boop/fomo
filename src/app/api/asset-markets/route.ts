@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findFamily, getFortsFamilies, refreshDays } from "@/lib/moex-contracts";
-import { instrumentFamily, STOCK_FUTURES, US_STOCK_FUTURES } from "@/lib/instrument-family";
+import { commodityAsset, instrumentFamily, STOCK_FUTURES, US_STOCK_FUTURES } from "@/lib/instrument-family";
 import { INSTA_INSTRUMENTS, instaInstrument } from "@/lib/instaforex-meta";
 import { moexAssetGroup } from "@/lib/futures-assets";
 import { lookupMarket } from "@/lib/moex-search";
@@ -19,17 +19,20 @@ export async function GET(req:NextRequest) {
   // Equal tickers in different countries are not the same company (US T = AT&T, MOEX T = T-Technologies).
   const moexAsset=family?.stock && (source==="instaforex"||source==="yahoo") ? US_STOCK_FUTURES[family.stock] : family?.asset;
   const f=source==="moex" ? findFamily(families,ticker,true) ?? (moexAsset?findFamily(families,moexAsset,true):null) : moexAsset ? findFamily(families,moexAsset,true):null;
-  const root=f?.asset ?? family?.asset;
+  const root=commodityAsset(f?.asset ?? family?.asset ?? "");
   const stock=family?.stock ?? (f?Object.entries({...STOCK_FUTURES,...US_STOCK_FUTURES}).find(([,a])=>a===f.asset)?.[0] ?? (moexAssetGroup(f.asset)==="stock"?f.asset:undefined):undefined);
   const usShare=!!stock && (source==="instaforex" || source==="yahoo" || !!f && US_STOCK_FUTURES[stock]===f.asset);
   const title=family?.name===ticker && f ? f.name : family?.name ?? f?.name ?? ticker;
   const items:Array<TerminalInstrument & {kind:string;expiry?:string|null}>=[];
-  for(const r of INSTA_INSTRUMENTS) if((r.asset && r.asset===root)||(usShare && r.group==="stock" && r.id===stock)) items.push({ticker:r.id,name:r.name,source:"instaforex",dataTicker:r.id,group:r.group,emoji:"",kind:r.kind??"stock"});
-  if(f) {
-    const rf=refreshDays(f);
-    const continuous=rf.contracts.filter(c=>c.order>=1).length>=2?chainContracts(f.asset,f.name,"ru"):[];
-    const underlyingIcon=instrumentIcon({source:"moex",ticker:f.asset,dataTicker:f.asset,group:"future"});
-    for(const c of [...continuous,...rf.contracts.map(c=>({ticker:c.secid,shortname:c.shortname,kind:c.kind,expiry:c.expiry}))]) items.push({ticker:c.ticker,name:f.name,source:"moex",dataTicker:c.ticker,group:"future",emoji:underlyingIcon,kind:c.kind,expiry:c.expiry});
+  for(const r of INSTA_INSTRUMENTS) if((r.asset && commodityAsset(r.asset)===root)||(usShare && r.group==="stock" && r.id===stock)) items.push({ticker:r.id,name:r.name,source:"instaforex",dataTicker:r.id,group:r.group,emoji:"",kind:r.kind??"stock"});
+  const related=families.filter(candidate=>commodityAsset(candidate.asset)===root);
+  // Keep the selected exchange family first, then the same commodity's other contract sizes/currencies.
+  const markets=f ? [f,...related.filter(candidate=>candidate.asset!==f.asset)] : related;
+  for(const market of markets) {
+    const rf=refreshDays(market);
+    const continuous=rf.contracts.filter(c=>c.order>=1).length>=2?chainContracts(market.asset,market.name,"ru"):[];
+    const underlyingIcon=instrumentIcon({source:"moex",ticker:market.asset,dataTicker:market.asset,group:"future"});
+    for(const c of [...continuous,...rf.contracts.map(c=>({ticker:c.secid,shortname:c.shortname,kind:c.kind,expiry:c.expiry}))]) items.push({ticker:c.ticker,name:market.name,source:"moex",dataTicker:c.ticker,group:"future",emoji:underlyingIcon,kind:c.kind,expiry:c.expiry});
   }
   if(source==="moex" && stock && !usShare) {
     const share=await lookupMarket(stock,"moex");

@@ -12,7 +12,7 @@ import { moexAssetGroup } from "./futures-assets";
 import { US_EXCHANGES } from "./us-futures";
 
 /** The chips of the dialog, in order (TradingView's set; «Валюта» = MOEX FX spot, right after the international «Форекс»). */
-export const GROUP_TABS: GroupTab[] = ["all", "stock", "fund", "future", "option", "forex", "currency", "crypto", "index", "bond"];
+export const GROUP_TABS: GroupTab[] = ["all", "stock", "fund", "future", "option", "spot", "forex", "currency", "crypto", "index", "bond"];
 
 export interface Filters {
   /** ISO country of the listing, "" = every country */
@@ -49,6 +49,7 @@ export function venueKind(tab: GroupTab): VenueKind {
 const ALL_COUNTRIES = ["RU", "US", "CN", "HK", "JP", "GB", "DE", "IN"];
 const BASE_COUNTRIES: Record<GroupTab, string[]> = {
   all: ALL_COUNTRIES,
+  spot: ALL_COUNTRIES,
   stock: ALL_COUNTRIES,
   fund: ALL_COUNTRIES,
   bond: ALL_COUNTRIES,
@@ -63,6 +64,7 @@ const BASE_COUNTRIES: Record<GroupTab, string[]> = {
 /** Values of the second dropdown every chip offers. A board is offered only when it is certain to have rows (the rest come from the lists). */
 const BASE_VENUES: Record<GroupTab, string[]> = {
   all: ["MOEX", ...US_EXCHANGES, "Bybit", "Forex"],
+  spot: ["InstaForex"],
   stock: ["TQBR"],
   fund: [],
   bond: ["ofz", "corp"],

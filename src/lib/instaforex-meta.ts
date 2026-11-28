@@ -27,7 +27,7 @@ export function instaItem(row: InstaInstrument): MarketItem {
 const normalized = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[\s/#_-]/g, "");
 export function instaItems(group: GroupTab, query = ""): MarketItem[] {
   const q = normalized(query);
-  return INSTA_INSTRUMENTS.filter((r) => group === "all" || group === r.group)
+  return INSTA_INSTRUMENTS.filter((r) => group === "all" || (group === "spot" ? r.kind === "spot" : group === r.group))
     .map((row, index) => ({ row, index, score: !q ? 1 : normalized(row.id) === q ? 100 : normalized(row.id).startsWith(q) ? 80 : normalized(row.name).includes(q) || normalized(row.symbol).includes(q) || normalized(row.asset ?? "").includes(q) || normalized(row.fgroup ?? "").includes(q) ? 50 : 0 }))
     .filter((r) => r.score > 0).sort((a, b) => b.score - a.score || a.index - b.index).map((r) => instaItem(r.row));
 }

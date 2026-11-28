@@ -31,6 +31,7 @@ const rows: [string, string, string, string][] = [
   ["ms.tab.bond", "Облигации", "Bonds", "债券"],
   ["ms.tab.fund", "Фонды", "Funds", "基金"],
   ["ms.tab.future", "Фьючерсы", "Futures", "期货"],
+  ["ms.tab.spot", "Спот", "Spot", "现货"],
   ["ms.tab.option", "Опционы", "Options", "期权"],
   ["ms.tab.crypto", "Криптовалюты", "Crypto", "加密货币"],
   ["ms.tab.currency", "Валюта", "Currency", "外汇"],
