@@ -300,8 +300,8 @@ const WatchRow = memo(function WatchRow({
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-[var(--tv3-text)]">
             <span className="truncate">{inst.ticker}</span>
-            {badge.flag ? (
-              <span className="shrink-0 text-[12px] leading-none" aria-hidden>{badge.flag}</span>
+            {badge.iso ? (
+              <img src={`/flags/${badge.iso}.svg`} alt="" className="h-3 w-[18px] shrink-0 rounded-[2px] object-cover" />
             ) : badge.text ? (
               <span className="shrink-0 truncate text-[11px] font-normal text-[var(--tv3-muted)] opacity-60">{badge.text}</span>
             ) : null}

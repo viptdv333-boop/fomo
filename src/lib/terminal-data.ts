@@ -187,14 +187,15 @@ function yahooCountry(id: string): string {
   return "US";
 }
 
-/** The badge beside a watchlist ticker: the flag of the exchange's country, or (crypto / forex) the exchange name. */
-export function venueBadge(inst: { source: string; dataTicker: string; group?: string }): { flag?: string; text?: string } {
+/** The badge beside a watchlist ticker: the flag of the exchange's country (SVG image, renders on every OS),
+ *  or (crypto / forex) the exchange name. `iso` is the lowercase country code for /flags/{iso}.svg. */
+export function venueBadge(inst: { source: string; dataTicker: string; group?: string }): { iso?: string; text?: string } {
   const s = inst.source;
   if (s === "bybit" || s === "binance" || inst.group === "crypto") return { text: exchangeLabel(s) || "Crypto" };
   if (s === "forex") return { text: "Forex" };
-  if (s === "moex") return { flag: flagOf("RU") };
-  if (s === "yahoo") return { flag: flagOf(yahooCountry(inst.dataTicker) || "US") };
-  if (s === "fmp" || s === "databento" || s === "twelvedata") return { flag: flagOf("US") };
+  if (s === "moex") return { iso: "ru" };
+  if (s === "yahoo") return { iso: (yahooCountry(inst.dataTicker) || "US").toLowerCase() };
+  if (s === "fmp" || s === "databento" || s === "twelvedata") return { iso: "us" };
   return {};
 }
 
