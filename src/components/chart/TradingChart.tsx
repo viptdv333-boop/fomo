@@ -2175,6 +2175,8 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const handleSelect = (inst: TerminalInstrument) => {
     // Run on the click, including a click on the already selected symbol.
     if (indicators.openMainIfEmpty()) focusChart(null);
+    // Run on the click, including a click on the already selected symbol.
+    if (indicators.openMainIfEmpty()) focusChart(null);
     onSelectSymbol?.(inst);
     if (!isDesktop) setMobilePanel(false);
   };
