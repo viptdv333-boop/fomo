@@ -24,6 +24,10 @@ const VENUE: Record<string, [string, string]> = {
   ASX: ["ASX", "AU"], NZE: ["NZX", "NZ"],
   KSC: ["KOSPI", "KR"], KOS: ["KOSDAQ", "KR"], TAI: ["TWSE", "TW"], TWO: ["TPEx", "TW"],
   SHH: ["Shanghai", "CN"], SHZ: ["Shenzhen", "CN"], BSE: ["BSE", "IN"], NSE: ["NSE", "IN"],
+  // index symbols (^…) carry their own exchange codes, distinct from the stock venues above
+  SNP: ["S&P 500", "US"], DJI: ["Dow Jones", "US"], NYSE: ["NYSE", "US"], CBO: ["CBOE", "US"], NYB: ["US Treasuries", "US"], STOXX: ["STOXX", "DE"], BSP: ["B3", "BR"],
+  // US futures venues (CME Group + ICE)
+  CME: ["CME", "US"], CMX: ["COMEX", "US"], NYM: ["NYMEX", "US"], CBT: ["CBOT", "US"], ICE: ["ICE", "US"],
 };
 
 /** CME/CBOT/NYMEX/COMEX continuous contracts → the futures chip's asset class. */
