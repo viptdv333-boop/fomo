@@ -155,6 +155,12 @@ export default function AdminUsersPage() {
                       <div>
                         <div className="font-medium dark:text-gray-100">{user.displayName}</div>
                         <div className="text-xs text-gray-400">{user.email}</div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {user.status !== "BANNED" ? <>
+                            <button type="button" onClick={() => setBanModal({ userId: user.id, name: user.displayName })} className="px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">Временный бан</button>
+                            <button type="button" onClick={() => adminAction(user.id, { status: "BANNED", bannedUntil: null, banReason: null })} className="px-2 py-1 rounded text-xs bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400">Заблокировать</button>
+                          </> : <button type="button" onClick={() => adminAction(user.id, { status: "APPROVED", bannedUntil: null, banReason: null })} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">Разблокировать</button>}
+                        </div>
                       </div>
                     </div>
                   </td>

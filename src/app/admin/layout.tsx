@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { isTerminalSite } from "@/lib/site-mode";
 import AdminPullToRefresh from "@/components/admin/AdminPullToRefresh";
+import AdminBadge from "@/components/admin/AdminBadge";
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard" },
@@ -48,6 +49,8 @@ export default function AdminLayout({
                 className="block shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm md:text-base text-gray-300 hover:bg-gray-800 hover:text-white transition md:whitespace-normal"
               >
                 {link.label}
+                {link.href === "/admin/reports" && <AdminBadge kind="reports" />}
+                {link.href === "/admin/users" && <AdminBadge kind="users" />}
               </Link>
             ))}
           </nav>

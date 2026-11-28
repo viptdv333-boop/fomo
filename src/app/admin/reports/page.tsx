@@ -35,6 +35,7 @@ export default function AdminReportsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reportId, resolution }),
     });
+    window.dispatchEvent(new Event("admin-badges-refresh"));
     load();
   }
 

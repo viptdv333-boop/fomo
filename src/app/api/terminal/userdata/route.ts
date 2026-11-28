@@ -20,12 +20,14 @@ const KEY = z.string().min(1).max(120);
    that arrives from the other site. Every write / removal here is also copied to the other site at once (the account mirror, op "userdata"). */
 
 const putSchema = z.object({ kind: KIND, key: KEY, data: z.unknown() });
+const RESERVED_KINDS = new Set(["author_rating_vote", "global_provider_key"]);
 
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const kind = KIND.safeParse(request.nextUrl.searchParams.get("kind"));
   if (!kind.success) return NextResponse.json({ error: "Invalid kind" }, { status: 400 });
+  if (RESERVED_KINDS.has(kind.data)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const keyParam = request.nextUrl.searchParams.get("key");
   const rows = await prisma.terminalUserData.findMany({
     where: { userId: session.user.id, kind: kind.data, ...(keyParam ? { key: keyParam } : {}) },
@@ -54,6 +56,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
   const parsed = putSchema.safeParse(json);
+  if (parsed.success && RESERVED_KINDS.has(parsed.data.kind)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (!parsed.success || parsed.data.data === undefined) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   const { kind, key, data } = parsed.data;
   if (raw.length > (KIND_MAX_BYTES[kind] ?? MAX_BYTES)) return NextResponse.json({ error: "Too large" }, { status: 413 });
@@ -72,6 +75,7 @@ export async function DELETE(request: NextRequest) {
   const kind = KIND.safeParse(request.nextUrl.searchParams.get("kind"));
   const key = KEY.safeParse(request.nextUrl.searchParams.get("key"));
   if (!kind.success || !key.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  if (RESERVED_KINDS.has(kind.data)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await prisma.terminalUserData.deleteMany({ where: { userId: session.user.id, kind: kind.data, key: key.data } });
   mirrorUserData(session.user.id, session.user.email, kind.data, key.data, { at: Date.now(), deleted: true });
   return NextResponse.json({ ok: true });
