@@ -68,7 +68,7 @@ export function FomoSpotBanner({ className = "", promotional = false }: { classN
       aria-label="FOMO Spot"
       className={`tv3-press flex items-center justify-between gap-3 rounded-[14px] border border-[#8f3ca9]/25 bg-gradient-to-r from-[#a747bc] via-[#9252c7] to-[#7452cf] px-3.5 py-3 text-white shadow-sm ${className}`}
     >
-      {promotional ? <span className="app-fomo-promo-copy"><FomoLogo product="spot" /><span className="app-fomo-promo-title">{t("termsite.community")}</span><span className="app-fomo-promo-sub">{t("termsite.community.sub")}</span></span> : <FomoLogo product="spot" />}
+      {promotional ? <span className="app-fomo-promo-copy"><FomoLogo product="spot" /><span className="app-fomo-promo-title">{t("termsite.community.short")}</span><span className="app-fomo-promo-sub">{t("termsite.community.sub")}</span></span> : <FomoLogo product="spot" />}
       <svg viewBox="0 0 24 24" className={promotional ? "app-fomo-promo-arrow" : "h-5 w-5 shrink-0"} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
       </svg>
