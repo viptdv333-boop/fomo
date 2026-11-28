@@ -1,6 +1,6 @@
 /* Shapes shared by the market search / contracts APIs and the terminal UI (no runtime imports: safe on the client). */
 
-export type MarketGroup = "stock" | "bond" | "fund" | "future" | "currency" | "index" | "crypto" | "forex" | "other";
+export type MarketGroup = "stock" | "bond" | "fund" | "future" | "option" | "currency" | "index" | "crypto" | "forex" | "other";
 /** the chips of the instrument search dialog ("all" is every group) */
 export type GroupTab = "all" | Exclude<MarketGroup, "other">;
 export type MarketSource = "moex" | "bybit" | "binance" | "forex" | "fmp" | "databento" | "twelvedata" | "yahoo";

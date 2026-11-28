@@ -12,7 +12,7 @@ import { moexAssetGroup } from "./futures-assets";
 import { US_EXCHANGES } from "./us-futures";
 
 /** The chips of the dialog, in order (TradingView's set; «Валюта» = MOEX FX spot, right after the international «Форекс»). */
-export const GROUP_TABS: GroupTab[] = ["all", "stock", "fund", "future", "forex", "currency", "crypto", "index", "bond"];
+export const GROUP_TABS: GroupTab[] = ["all", "stock", "fund", "future", "option", "forex", "currency", "crypto", "index", "bond"];
 
 export interface Filters {
   /** ISO country of the listing, "" = every country */
@@ -53,6 +53,7 @@ const BASE_COUNTRIES: Record<GroupTab, string[]> = {
   bond: ["RU"],
   currency: ["RU"],
   future: ["RU", "US"],
+  option: ["RU"],
   forex: [],
   crypto: [],
   index: ["RU"],
@@ -66,6 +67,7 @@ const BASE_VENUES: Record<GroupTab, string[]> = {
   bond: ["ofz", "corp"],
   currency: ["fiat", "metal"],
   future: ["MOEX", ...US_EXCHANGES],
+  option: ["MOEX"],
   forex: ["major", "cross", "em", "metal"],
   crypto: ["USDT"],
   index: ["equity", "bond", "tr"],

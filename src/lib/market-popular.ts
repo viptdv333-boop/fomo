@@ -27,10 +27,10 @@ export interface BoardRow {
   turnover: number;
 }
 
-/** How many rows each chip shows. */
-export const POPULAR_COUNT = { stock: 15, bond: 15, fund: 12, future: 15, currency: 12 } as const;
+/** How many rows each chip shows. Generous so the browse represents the whole market, not a handful; the list is paged. */
+export const POPULAR_COUNT = { stock: 250, bond: 100, fund: 50, future: 15, option: 60, currency: 40 } as const;
 /** How many rows of each group the «Все» mix takes (chip order). */
-export const ALL_MIX: [MarketGroup, number][] = [["stock", 4], ["bond", 3], ["fund", 3], ["future", 4], ["index", 2], ["crypto", 3], ["currency", 3], ["forex", 3]];
+export const ALL_MIX: [MarketGroup, number][] = [["stock", 4], ["bond", 3], ["fund", 3], ["future", 4], ["option", 2], ["index", 2], ["crypto", 3], ["currency", 3], ["forex", 3]];
 
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
@@ -101,10 +101,10 @@ export function pickFunds(rows: BoardRow[], n: number = POPULAR_COUNT.fund): Boa
 export const BIG_ISSUER_RE = /^(Сбер|РЖД|Газ[КкПп]|ГПН|Роснефт|Лукойл|ЛУКОЙЛ|ВЭБ|Т-Банк|Тинькофф|Альфа|МТС|Магнит|Норн|Атомэн|Транснеф|НОВАТЭК|Новатэк|Северст|Полюс|Х5|X5|Россети|ВТБ)/;
 
 /** OFZ by turnover (+ a few big corporate issuers by turnover). [] = no usable turnover. */
-export function pickBonds(ofz: BoardRow[], corp: BoardRow[], nOfz = 12, nCorp = 3): { row: BoardRow; corp: boolean }[] {
+export function pickBonds(ofz: BoardRow[], corp: BoardRow[], nOfz = 60, nCorp = 40): { row: BoardRow; corp: boolean }[] {
   const o = byTurnover(ofz).filter((r) => r.turnover > 0).slice(0, nOfz);
   if (o.length < 5) return [];
-  const c = byTurnover(corp).filter((r) => r.turnover > 0 && BIG_ISSUER_RE.test(r.shortname)).slice(0, nCorp);
+  const c = byTurnover(corp).filter((r) => r.turnover > 0).slice(0, nCorp);
   return [...o.map((row) => ({ row, corp: false })), ...c.map((row) => ({ row, corp: true }))];
 }
 
@@ -131,6 +131,13 @@ export function stockItem(r: BoardRow): MarketItem {
 }
 export function fundItem(r: BoardRow): MarketItem {
   return { secid: r.secid, ticker: r.secid, name: r.name || r.shortname || r.secid, isin: r.isin || undefined, group: "fund", source: "moex", engine: "stock", market: "shares", board: "TQBR" };
+}
+export function optionItem(r: BoardRow): MarketItem {
+  return { secid: r.secid, ticker: r.secid, name: r.name || r.shortname || r.secid, group: "option", source: "moex", engine: "futures", market: "options", board: "ROPD" };
+}
+/** MOEX options (ROPD board) worth a row: the most active by turnover. */
+export function pickOptions(rows: BoardRow[], n: number = POPULAR_COUNT.option): BoardRow[] {
+  return byTurnover(rows).filter((r) => r.turnover > 0).slice(0, n);
 }
 export function bondItem(r: BoardRow, board: "TQOB" | "TQCB"): MarketItem {
   // bonds are identified by ISIN / SU number: show the readable short name (like the search does)

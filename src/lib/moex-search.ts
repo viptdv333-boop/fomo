@@ -13,7 +13,7 @@ import type { GroupTab, MarketGroup, MarketItem, MarketPage } from "./market-typ
 import { FX_PAIRS, parseFxSymbol, pairToItem as fxPairToItem, searchForex } from "./forex-meta";
 import { getBinanceSpotList } from "./binance";
 import { getBybitSpotList, looksLikeCoin, pairToItem, POPULAR_CRYPTO, searchCrypto, searchSpotPairs } from "./bybit-spot-search";
-import { bondItem, currencyItem, fundItem, mixAll, parseBoard, pickBonds, pickCurrency, pickFunds, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
+import { bondItem, currencyItem, fundItem, mixAll, optionItem, parseBoard, pickBonds, pickCurrency, pickFunds, pickOptions, pickStocks, staticPopular, stockItem, type BoardRow } from "./market-popular";
 import { applyFilters, computeFacets, hasFilters, NO_FILTERS, tagItem, type Filters } from "./instrument-filters";
 import { arrangeByAsset, classBoost, FUT_ASSETS, moexAssetOrder } from "./futures-assets";
 import { allUsFutureItems, fmpCatalogOn, scoreUsFutures, usFutureBySymbol, usFutureItem } from "./us-futures";
@@ -43,7 +43,7 @@ const ISS_GROUP: Record<string, MarketGroup | null> = {
   stock_gcc: null,
   stock_deposit: null,
   futures_forts: null, // served from the classified FORTS list
-  futures_options: null,
+  futures_options: "option",
 };
 
 /** Russian names of the popular underlyings (ISS only has the English short names): used for display and for matching "золото", "нефть" ... */
@@ -198,6 +198,8 @@ async function issSearch(q: string, group: GroupTab, limit: number): Promise<Mar
 function engineMarketOf(grp: string, board: string): [string, string] {
   void board;
   if (grp.startsWith("currency")) return ["currency", "selt"];
+  if (grp === "futures_options") return ["futures", "options"];
+  if (grp === "futures_forts") return ["futures", "forts"];
   if (grp === "stock_bonds" || grp === "stock_eurobond" || grp === "stock_mortgage") return ["stock", "bonds"];
   return ["stock", "shares"];
 }
@@ -328,7 +330,7 @@ export function futuresCatalog(families: ContractFamily[], provs: readonly strin
   return arrangeByAsset([...ru, ...(fmpCatalogOn() ? allUsFutureItems() : []).map(tagItem), ...providerItemsOf("future", provs).map(tagItem)]);
 }
 
-type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "index";
+type LiveGroup = "stock" | "bond" | "fund" | "currency" | "future" | "option" | "index";
 
 /** Live list of one group from ISS (turnover ranking / curated order checked against the board), null when it cannot be built. */
 async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
@@ -352,6 +354,10 @@ async function livePopular(group: LiveGroup): Promise<MarketItem[] | null> {
     case "future": {
       const families = await getFortsFamilies();
       return families.length < 20 ? null : futuresCatalog(families);
+    }
+    case "option": {
+      const picked = pickOptions(await issBoard("futures/markets/options/boards/ROPD", SHARE_COLS)).map(optionItem);
+      return picked.length ? picked.map(tagItem) : null;
     }
     case "index": {
       const rows = await getIndexRows();
@@ -401,7 +407,7 @@ async function popularCandidates(group: GroupTab, filtered: boolean): Promise<Ma
     return zipRows(bybit, binance);
   }
   if (group === "all") {
-    const groups = ["stock", "bond", "fund", "future", "index", "currency"] as const;
+    const groups = ["stock", "bond", "fund", "future", "option", "index", "currency"] as const;
     const by = new Map<string, MarketItem[]>(await Promise.all(groups.map(async (g) => [g, await cachedPopular(g)] as const)));
     // a filter on «Все» (an exchange, a country) looks through every list, not through the short mix
     if (filtered) return [...groups.flatMap((g) => by.get(g) ?? []), ...(await popularCandidates("forex", false)), ...(await popularCandidates("crypto", false))];

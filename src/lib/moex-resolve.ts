@@ -45,7 +45,7 @@ const ID_RE = /^[A-Za-z0-9_.-]{1,24}$/;
 
 /** MOEX market -> terminal group (a fund looks like a share on TQBR/TQTF: told apart by the search, not here) */
 export function groupOfMarket(engine: string, market: string, board: string): MarketGroup {
-  if (engine === "futures") return "future";
+  if (engine === "futures") return market === "options" ? "option" : "future";
   if (engine === "currency") return "currency";
   if (market === "bonds") return "bond";
   if (/^(TQTF|TQTD|TQIF|TQPI)$/.test(board)) return "fund";
