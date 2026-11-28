@@ -45,8 +45,8 @@ export function venueKind(tab: GroupTab): VenueKind {
   }
 }
 
-/** The approved countries the terminal actually covers (MOEX + the Yahoo venues), offered by every category's filter alike. */
-const ALL_COUNTRIES = ["RU", "US", "AU", "BE", "CA", "CN", "DE", "DK", "ES", "FI", "FR", "GB", "HK", "IN", "IT", "JP", "KR", "NL", "NO", "NZ", "PT", "SE", "TW"];
+/** The approved countries the terminal covers, offered by every category's filter alike (user-approved set). */
+const ALL_COUNTRIES = ["RU", "US", "CN", "HK", "JP", "GB", "DE", "IN"];
 const BASE_COUNTRIES: Record<GroupTab, string[]> = {
   all: ALL_COUNTRIES,
   stock: ALL_COUNTRIES,

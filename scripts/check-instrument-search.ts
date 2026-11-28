@@ -137,7 +137,7 @@ eq("text «gas» + asset Газ", applyFilters(typed, "future", { ...NO_FILTERS,
 const f1 = computeFacets(cat, "future");
 eq("facets of the futures catalogue", [f1.countries.sort(), f1.venues.sort()], [["RU", "US"], ["CBOT", "CME", "COMEX", "ICE", "MOEX", "NYMEX"]]);
 const o1 = filterOptions("future", f1, NO_FILTERS);
-eq("options: РФ before США, MOEX before the US exchanges", [o1.countries, o1.venues], [["RU", "US", "AU", "BE", "CA", "CN", "DE", "DK", "ES", "FI", "FR", "GB", "HK", "IN", "IT", "JP", "KR", "NL", "NO", "NZ", "PT", "SE", "TW"], ["MOEX", ...US_EXCHANGES]]);
+eq("options: РФ before США, MOEX before the US exchanges", [o1.countries, o1.venues], [["RU", "US", "CN", "DE", "GB", "HK", "IN", "JP"], ["MOEX", ...US_EXCHANGES]]);
 eq("options before any list is loaded", filterOptions("future", null, NO_FILTERS).venues, ["MOEX", ...US_EXCHANGES]);
 eq("options keep a selected value that the list lacks", filterOptions("stock", { countries: [], venues: [] }, { country: "", venue: "TQBD" }).venues, ["TQBR", "TQBD"]);
 eq("forex categories", filterOptions("forex", null, NO_FILTERS).venues, ["major", "cross", "em", "metal"]);
