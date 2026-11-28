@@ -22,8 +22,6 @@
 
 import { FX_PAIRS, fxDigits, parseFxSymbol } from "./forex-meta";
 import { fmpGateCheck, fmpGateReport } from "./fmp-gate";
-import { globalProviderKey } from "./data/global-key";
-import { tdCandles, tdQuote } from "./data/twelvedata";
 
 export type ForexProviderName = "instaforex" | "fmp" | "stooq" | "yahoo" | "twelvedata";
 
@@ -605,12 +603,14 @@ const instaProvider: ForexProvider = {
 const twelveProvider: ForexProvider = {
   name: "twelvedata",
   async quote(symbol) {
+    const [{ globalProviderKey }, { tdQuote }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
     const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
     if (!key || !pair) return { ok: false, reason: "unsupported" };
     const result = await tdQuote("global", key, `${pair.base}/${pair.quote}`);
     return result.quote ? { ok: true, data: result.quote } : { ok: false, reason: result.error === "limit" ? "rate" : result.error === "plan" || result.error === "key" ? "denied" : "empty" };
   },
   async candles(symbol, interval, from, to, limit) {
+    const [{ globalProviderKey }, { tdCandles }] = await Promise.all([import("./data/global-key"), import("./data/twelvedata")]);
     const key = await globalProviderKey("twelvedata"); const pair = parseFxSymbol(symbol);
     if (!key || !pair) return { ok: false, reason: "unsupported" };
     const result = await tdCandles("global", key, `${pair.base}/${pair.quote}`, interval, limit, to);
