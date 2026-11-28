@@ -7,15 +7,16 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // Build identifier baked into the client bundle (NEXT_PUBLIC_BUILD_ID) and
 // compared against /api/version, so an already-open app can tell that the
 // server has been redeployed and offer a refresh. The deploy is
-// `git pull && npm run build`, so HEAD's short hash is stable per release. Directly deployed hotfixes
-// can supply FOMO_RELEASE_ID to force installed PWAs to recognize the updated client bundle.
+// A build can also use files deployed directly over a checkout, so the Git hash
+// alone is not enough to distinguish releases. Every build needs its own id.
 function buildId(): string {
   const releaseId = process.env.FOMO_RELEASE_ID?.trim();
   if (releaseId) return releaseId;
   try {
-    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || "dev";
+    const revision = execFileSync("git", ["rev-parse", "--short", "HEAD"], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || "build";
+    return `${revision}-${Date.now().toString(36)}`;
   } catch {
-    return "dev";
+    return `build-${Date.now().toString(36)}`;
   }
 }
 
