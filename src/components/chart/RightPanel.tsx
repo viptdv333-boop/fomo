@@ -927,8 +927,8 @@ function Watchlist({
           norm(i.dataTicker).includes(needle) ||
           norm(i.name).includes(needle) ||
           norm(instName(i, t)).includes(needle)
-      ),
-    [items, needle, t]
+      ).sort((a, b) => Number(wl.pinned(b)) - Number(wl.pinned(a))),
+    [items, needle, t, wl]
   );
   const [addSeed, setAddSeed] = useState("");
   const [rowMenu, setRowMenu] = useState<{ inst: TerminalInstrument; top: number; left: number; sub: boolean; naming: boolean } | null>(null);
@@ -942,9 +942,14 @@ function Watchlist({
     setRowMenu({ inst, top: Math.min(r.bottom + 4, window.innerHeight - 260), left: Math.max(6, Math.min(r.left, window.innerWidth - 236)), sub: false, naming: false });
 
   const sparks = useSparklines(shown, visible);
-  // drag and drop (mouse and touch): only on the whole list, not on a filtered one
+  // drag and drop (mouse and touch): only on the whole list, not on a filtered one.
+  // the view is pinned-first, so a drag index belongs to `shown`; map it back to the stored order before moving.
   const boxRef = useRef<HTMLDivElement | null>(null);
-  useRowReorder(boxRef, !needle && items.length > 1, wl.move);
+  const moveRow = (from: number, to: number) => {
+    const idx = (n: number) => items.findIndex((i) => wlKey(i) === wlKey(shown[n]));
+    if (shown[from] && shown[to]) wl.move(idx(from), idx(to));
+  };
+  useRowReorder(boxRef, !needle && items.length > 1, moveRow);
   const btn = "mt-3 inline-flex items-center gap-1 px-3.5 h-8 rounded-[10px] bg-[var(--tv3-accent)] text-white text-[13px] font-semibold hover:bg-[var(--tv3-accent-hover)] cursor-pointer";
   return (
     <div className="flex flex-col min-h-0 flex-1">
