@@ -24,7 +24,8 @@ function PairIcon({ symbol, size }: { symbol: string; size: number }) {
 
 /** Round icon of an instrument: its artwork, the two flags of a currency pair, or the first letters of the ticker. */
 export default function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?: number }) {
-  const artwork = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker) || inst.emoji || instrumentIconFallback(inst);
+  const fallbackArtwork = instrumentIconFallback(inst);
+  const artwork = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker) || (fallbackArtwork.includes("/tinvest/") ? fallbackArtwork : "") || inst.emoji || fallbackArtwork;
   if (!artwork && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
   if (artwork) {
     // eslint-disable-next-line @next/next/no-img-element

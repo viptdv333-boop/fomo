@@ -60,6 +60,21 @@ const FUTURE_TICKER_ICON: Record<string, string> = {
   SUGAR: "sugar", SUGR: "sugar", COCOA: "cocoa", COFFEE: "coffee", ORANGE: "orange-juice",
 };
 
+// MOEX continuous commodity futures (for example PLD1!) do not always have a
+// separate brand entry in T-Invest's instrument catalogue. Reuse the official
+// T-Invest logo for the underlying asset when the exact contract has no logo.
+const FUTURE_TINVEST_LOGO: Partial<Record<FutAsset, string>> = {
+  gold: "/icons/instruments/tinvest/Gold1x160.webp",
+  silver: "/icons/instruments/tinvest/Silv1x160.webp",
+  platinum: "/icons/instruments/tinvest/Platinumx160.webp",
+  palladium: "/icons/instruments/tinvest/Palladiumx160.webp",
+};
+
+function futureFamilyLogo(asset: string, hint?: FutAsset): string {
+  const family = hint ?? moexAssetGroup(asset);
+  return FUTURE_TINVEST_LOGO[family] ?? "";
+}
+
 const categoryPath = (name: string) => `/icons/categories/${name}.svg`;
 
 /** Artwork for any listed or newly discovered futures family. */
@@ -90,7 +105,7 @@ export function instrumentIconFallback(inst: {
   }
   if (inst.source === "moex" && inst.group === "future") {
     const symbol = (inst.dataTicker || inst.ticker).replace(/\d!$/, "").replace(/[FGHJKMNQUVXZ]\d{1,2}$/i, "");
-    return futuresIcon(symbol);
+    return futureFamilyLogo(symbol) || futuresIcon(symbol);
   }
   if (inst.group === "future") return futuresIcon(inst.dataTicker || inst.ticker, undefined);
   if (inst.group === "stock") return categoryPath("stocks-ru");
@@ -108,7 +123,7 @@ export function instrumentIconFallback(inst: {
 export function marketItemIcon(item: MarketItem): string {
   const providerLogo = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
   if (providerLogo) return providerLogo;
-  if (item.group === "future") return futuresIcon(item.asset || item.secid, item.fgroup);
+  if (item.group === "future") return futureFamilyLogo(item.asset || item.secid, item.fgroup) || futuresIcon(item.asset || item.secid, item.fgroup);
   if (item.group === "stock") return categoryPath("stocks-ru");
   if (item.group === "fund") return categoryPath("funds");
   if (item.group === "bond") return categoryPath("bonds");
