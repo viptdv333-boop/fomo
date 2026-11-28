@@ -591,7 +591,7 @@ export default function AppTerminal({ selected, onSelectSymbol }: { selected: Te
                 {t("appui.term.disc")}
                 {delayed ? ` ${t("appui.term.disc15")}` : ""}
               </div>
-              {TERMINAL_SITE && <FomoSpotBanner className="app-mac-list-banner" />}
+              {TERMINAL_SITE && <FomoSpotBanner className="app-mac-list-banner" promotional />}
               </div>
             </div>
           )}
