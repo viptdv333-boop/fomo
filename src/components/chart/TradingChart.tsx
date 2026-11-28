@@ -2396,7 +2396,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
               <button type="button" data-back-adjust aria-pressed={adjusted}
                 title={t("chart.backAdjust")}
                 onClick={() => update({ backAdjust: !prefs.backAdjust })}
-                className={`absolute bottom-0 right-24 z-30 h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
+                className={`absolute bottom-0 z-30 h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${cs.scale.side === "right" ? "right-14" : "left-14"} ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
                 B-ADJ
               </button>
             )}
@@ -2411,10 +2411,10 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                   const r = e.currentTarget.getBoundingClientRect();
                   setScaleMenu({ x: r.right, y: r.top, paneId: "main", anchor: true });
                 }}
-                className={`absolute bottom-0 z-30 flex h-6 w-7 items-center justify-center border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#d58a27] hover:bg-[var(--tv3-fill)] hover:text-[#b96d12] cursor-pointer ${cs.scale.side === "right" ? "right-0 rounded-tl-md" : "left-0 rounded-tr-md"}`}
+                className={`absolute bottom-0 z-30 flex h-7 w-12 items-center justify-center rounded-md border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[#338bd0] hover:bg-[var(--tv3-fill)] hover:text-[#176eb6] cursor-pointer ${cs.scale.side === "right" ? "right-0" : "left-0"}`}
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4 drop-shadow-[0_2px_3px_rgba(213,138,39,0.35)]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d={DESIGN_PATHS.gear} />
+                <svg viewBox="0 0 24 24" className="h-5 w-5 drop-shadow-[0_2px_3px_rgba(51,139,208,0.35)]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M13 5H4a1 1 0 0 0-1 1v10h18v-4M2 19h20M8 19h8M16.2 3.6a4 4 0 0 0-1.7 4.7l-3.2 3.2a1.8 1.8 0 0 0 2.5 2.5L17 10.8a4 4 0 0 0 4.7-5l-2.6 2.4-2.1-.5-.5-2.1 2.4-2.6a4 4 0 0 0-2.7.6z" />
                 </svg>
               </button>
             )}
