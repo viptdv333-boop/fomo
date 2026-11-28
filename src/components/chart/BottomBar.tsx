@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import MenuPopover from "./MenuPopover";
 import { CS_ICONS } from "./icons-cs";
-import { DESIGN_PATHS } from "./icons";
 import { tzLabel } from "./tz";
 import { TIME_ZONES } from "@/lib/chart/settings";
 import { zoneOffsetMs } from "@/lib/chart/format";
@@ -25,8 +24,6 @@ interface Props {
   /* optional: time zone, go to date and the % scale toggle */
   scaleMode?: ScaleMode;
   onScaleMode?: (m: ScaleMode) => void;
-  /** gear beside Лог/Авто: opens the chart settings dialog (scales tab) */
-  onSettings?: () => void;
   tz?: string;
   /** IANA zone the tz setting resolves to (for the clock). */
   zone?: string;
@@ -111,7 +108,7 @@ function GoToDate({ btn, onGo, signal }: { btn: string; onGo: (d: string) => voi
   );
 }
 
-export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, onRange, rangeBusy, scaleMode, onScaleMode, onSettings, tz, zone, onTz, onGoToDate, gotoSignal }: Props) {
+export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, onRange, rangeBusy, scaleMode, onScaleMode, tz, zone, onTz, onGoToDate, gotoSignal }: Props) {
   const { t, locale } = useT();
   const clock = useExchangeClock(source, zone);
 
@@ -194,18 +191,6 @@ export default function BottomBar({ source, autoScale, logScale, onAuto, onLog, 
       <button onClick={onAuto} title={t("shell.autoTip")} aria-pressed={autoScale} className={`${btn} ${autoScale ? on : ""}`}>
         {t("chart.auto")}
       </button>
-      {onSettings && (
-        <button
-          onClick={onSettings}
-          title={t("mnav.settings")}
-          aria-label={t("mnav.settings")}
-          className={`${btn} !px-2 inline-flex items-center`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d={DESIGN_PATHS.gear} />
-          </svg>
-        </button>
-      )}
     </div>
   );
 }

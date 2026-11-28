@@ -339,7 +339,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [engineReady, setEngineReady] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
   const [csTab, setCsTab] = useState<SettingsTab>("symbol");
-  const [scaleMenu, setScaleMenu] = useState<{ x: number; y: number; paneId: string } | null>(null);
+  const [scaleMenu, setScaleMenu] = useState<{ x: number; y: number; paneId: string; anchor?: boolean } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [gotoSignal, setGotoSignal] = useState(0);
   const [offsetMs, setOffsetMs] = useState(0);
@@ -2374,10 +2374,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             )}
             {source === "forex" && fxInfo && !loading && !empty && (
               <div
-                className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)]"
-                title={`${t("fx.tip", { provider: fxInfo.provider === "yahoo" ? "Yahoo Finance" : fxInfo.provider === "fmp" ? "FMP" : fxInfo.provider === "stooq" ? "Stooq" : fxInfo.provider, volume: t(`fx.vol.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`) })}${fxInfo.proxy ? ` ${t("fx.proxy", { proxy: fxInfo.proxy })}` : ""}`}
+                className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 rounded bg-[var(--tv3-fill2)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--tv3-muted)]"
+                title={`${t("fx.tip", { provider: fxInfo.provider === "instaforex" ? "InstaForex" : fxInfo.provider === "yahoo" ? "Yahoo Finance" : fxInfo.provider === "fmp" ? "FMP" : fxInfo.provider === "stooq" ? "Stooq" : fxInfo.provider, volume: t(`fx.vol.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`) })}${fxInfo.proxy ? ` ${t("fx.proxy", { proxy: fxInfo.proxy })}` : ""}`}
               >
-                {t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}
+                {fxInfo.provider === "instaforex" ? (
+                  <a href="https://www.instaforex.com/" target="_blank" rel="noopener noreferrer" className="pointer-events-auto underline underline-offset-2">
+                    InstaForex · {t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}
+                  </a>
+                ) : (
+                  <span className="pointer-events-none">{t(`fx.badge.${fxInfo.volumeKind === "tick" ? "tick" : fxInfo.volumeKind === "futures" ? "fut" : "none"}`)}</span>
+                )}
               </div>
             )}
             {!loading && empty && (
@@ -2392,6 +2398,24 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
                 onClick={() => update({ backAdjust: !prefs.backAdjust })}
                 className={`absolute bottom-0 right-24 z-30 h-7 px-2 rounded-md border text-[11px] font-semibold cursor-pointer ${adjusted ? "bg-[var(--tv3-accent)] text-white border-transparent" : "bg-[var(--tv3-card)] text-[var(--tv3-text)] border-[var(--tv3-hair)]"}`}>
                 B-ADJ
+              </button>
+            )}
+            {!appPage && !(appFull && !wideApp) && (
+              <button
+                type="button"
+                data-price-scale-settings
+                title={t("cs.scaleMenuTitle")}
+                aria-label={t("cs.scaleMenuTitle")}
+                aria-haspopup="menu"
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setScaleMenu({ x: r.right, y: r.top, paneId: "main", anchor: true });
+                }}
+                className={`absolute bottom-0 z-30 flex h-6 w-7 items-center justify-center border border-[var(--tv3-hair)] bg-[var(--tv3-card)] text-[var(--tv3-muted)] hover:bg-[var(--tv3-fill)] hover:text-[var(--tv3-text)] cursor-pointer ${cs.scale.side === "right" ? "right-0 rounded-tl-md" : "left-0 rounded-tr-md"}`}
+              >
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={DESIGN_PATHS.gear} />
+                </svg>
               </button>
             )}
             {false && cs.navButtons !== "never" && !(appFull && !wideApp) && (
@@ -2454,7 +2478,6 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
             rangeBusy={rangeBusy || replayActive}
             scaleMode={scaleModeNow}
             onScaleMode={setScaleMode}
-            onSettings={() => openSettings("scales")}
             tz={cs.tz}
             zone={resolveZone(cs.tz, source)}
             onTz={(tz) => csApi.update((x) => ({ ...x, tz }))}

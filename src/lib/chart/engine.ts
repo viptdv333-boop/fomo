@@ -1254,6 +1254,7 @@ export class ChartEngine {
       let hi = -Infinity;
       if (!transformed) {
         for (const s of p.series) {
+          if (p.id === "main" && this.opts.ignoreIndicatorScale) continue;
           const rg = s.range?.(this.candles, from, to);
           if (rg) {
             lo = Math.min(lo, rg[0]);

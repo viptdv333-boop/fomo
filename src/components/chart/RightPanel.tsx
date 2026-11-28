@@ -370,9 +370,10 @@ export interface WatchList {
 }
 interface WatchLists {
   active: string;
+  mainName: string;
   lists: WatchList[];
 }
-const EMPTY_LISTS: WatchLists = { active: WLS_MAIN, lists: [] };
+const EMPTY_LISTS: WatchLists = { active: WLS_MAIN, mainName: "", lists: [] };
 
 /** pinned rows per list: { [listId]: ["source:ticker", ...] }, this device only */
 const PINS_KEY = "fomo-terminal-wl-pins-v1";
@@ -405,7 +406,7 @@ function parseLists(raw: string | null): WatchLists {
       if (lists.length >= WLS_MAX_LISTS) break;
     }
     const active = typeof j?.active === "string" && (j.active === WLS_MAIN || ids.has(j.active)) ? j.active : WLS_MAIN;
-    return { active, lists };
+    return { active, mainName: typeof j?.mainName === "string" ? j.mainName.trim().slice(0, 40) : "", lists };
   } catch {
     return EMPTY_LISTS;
   }
@@ -414,6 +415,7 @@ function packLists(s: WatchLists): string {
   return JSON.stringify({
     v: 1,
     active: s.active,
+    mainName: s.mainName,
     lists: s.lists.map((l) => ({ id: l.id, name: l.name, items: l.items.map((i) => ({ source: i.source, ticker: i.ticker, dataTicker: i.dataTicker, name: i.name })) })),
   });
 }
@@ -444,7 +446,11 @@ function getListsChannel(): Channel {
           window.dispatchEvent(new Event(WL_EVENT));
         } catch {}
       },
-      isEmpty: (j) => !j || parseLists(j).lists.length === 0,
+      isEmpty: (j) => {
+        if (!j) return true;
+        const parsed = parseLists(j);
+        return parsed.lists.length === 0 && !parsed.mainName;
+      },
       emptyJson: "",
     });
   }
@@ -602,6 +608,12 @@ export function useWatchlist() {
       if (!shownItems.some((i) => wlKey(i) === wlKey(inst))) setActiveItems([...shownItems, inst]);
     },
     remove: (inst: TerminalInstrument) => setActiveItems(shownItems.filter((i) => wlKey(i) !== wlKey(inst))),
+    clear: () => {
+      const lid = activeExt ? activeExt.id : WLS_MAIN;
+      setActiveItems([]);
+      pinsWrite(lid, new Set());
+      setPinTick((n) => n + 1);
+    },
     /** drag and drop: the row at `from` goes to position `to` (indexes of the whole open list) */
     move: (from: number, to: number) => {
       if (from === to || from < 0 || to < 0 || from >= shownItems.length || to >= shownItems.length) return;
@@ -666,7 +678,7 @@ export function useWatchlist() {
       setPinTick((n) => n + 1);
     },
     /** all lists: the main one first, then the user's own */
-    lists: [{ id: WLS_MAIN, name: "", count: items.length }, ...ext.lists.map((l) => ({ id: l.id, name: l.name, count: l.items.length }))],
+    lists: [{ id: WLS_MAIN, name: ext.mainName, count: items.length }, ...ext.lists.map((l) => ({ id: l.id, name: l.name, count: l.items.length }))],
     activeId: activeExt ? activeExt.id : WLS_MAIN,
     selectList: (id: string) => {
       if (id === ext.active || (id !== WLS_MAIN && !ext.lists.some((l) => l.id === id))) return;
@@ -676,22 +688,23 @@ export function useWatchlist() {
       const clean = name.trim().slice(0, 40);
       if (!clean || ext.lists.length >= WLS_MAX_LISTS) return null;
       const id = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-      commitExt({ active: id, lists: [...ext.lists, { id, name: clean, items: [] }] });
+      commitExt({ active: id, mainName: ext.mainName, lists: [...ext.lists, { id, name: clean, items: [] }] });
       return id;
     },
     renameList: (id: string, name: string) => {
       const clean = name.trim().slice(0, 40);
       if (!clean) return;
-      commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === id ? { ...l, name: clean } : l)) });
+      if (id === WLS_MAIN) commitExt({ ...ext, mainName: clean });
+      else commitExt({ ...ext, lists: ext.lists.map((l) => (l.id === id ? { ...l, name: clean } : l)) });
     },
     deleteList: (id: string) => {
       if (!ext.lists.some((l) => l.id === id)) return;
-      commitExt({ active: ext.active === id ? WLS_MAIN : ext.active, lists: ext.lists.filter((l) => l.id !== id) });
+      commitExt({ active: ext.active === id ? WLS_MAIN : ext.active, mainName: ext.mainName, lists: ext.lists.filter((l) => l.id !== id) });
     },
   };
 }
 
-/** The watchlists as TABS above the list: the main list, the user's own lists, «+» to add one. The open own list has a «⋯» (rename / delete). */
+/** The watchlists as TABS above the list: the main list, the user's own lists, «+» to add one. The open list has a «⋯» menu. */
 export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const { t } = useT();
   const [adding, setAdding] = useState(false);
@@ -699,12 +712,13 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const [value, setValue] = useState("");
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
   const [sure, setSure] = useState(false);
+  const [clearSure, setClearSure] = useState(false);
   const moreRef = useRef<HTMLButtonElement | null>(null);
   const tabDrag = useRef<{ id: number; x: number; left: number; moved: boolean } | null>(null);
   const suppressTabClick = useRef(0);
   const atLimit = wl.lists.length > WLS_MAX_LISTS;
   const tabsRef = useRef<HTMLDivElement | null>(null);
-  const name = (l: { id: string; name: string }) => (l.id === "main" ? t("wl.main") : l.name);
+  const name = (l: { id: string; name: string }) => (l.id === "main" ? l.name || t("wl.main") : l.name);
   const cur = wl.lists.find((l) => l.id === wl.activeId) ?? wl.lists[0];
   const tab = "tv3-press h-7 shrink-0 max-w-[150px] truncate rounded-full px-3 text-[12.5px] font-semibold cursor-pointer";
   const finish = () => {
@@ -737,6 +751,7 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
   const closeMenu = () => {
     setMenu(null);
     setSure(false);
+    setClearSure(false);
   };
   const item = "tv3-press tv3-hov flex h-9 w-full items-center gap-2 px-3.5 text-left text-[13.5px] cursor-pointer";
   useEffect(() => {
@@ -826,11 +841,11 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
           </button>
         )}
       </div>
-      {wl.activeId !== "main" && !renaming && (
+      {!renaming && (
         <button
           ref={moreRef}
           type="button"
-          aria-label={t("wl.rename")}
+          aria-label={t("wl.options")}
           aria-haspopup="menu"
           onClick={() => {
             const r = moreRef.current?.getBoundingClientRect();
@@ -854,7 +869,7 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
               type="button"
               className={item}
               onClick={() => {
-                setValue(cur.name);
+                setValue(cur.name || (wl.activeId === "main" ? t("wl.main") : ""));
                 setRenaming(true);
                 closeMenu();
               }}
@@ -866,13 +881,27 @@ export function ListSwitch({ wl }: { wl: ReturnType<typeof useWatchlist> }) {
               type="button"
               className={`${item} text-[var(--tv3-red)]`}
               onClick={() => {
-                if (!sure) return setSure(true);
-                wl.deleteList(wl.activeId);
+                if (!clearSure) return setClearSure(true);
+                wl.clear();
                 closeMenu();
               }}
             >
-              {sure ? t("wl.deleteSure") : t("wl.delete")}
+              {clearSure ? t("wl.clearSure") : t("wl.clearList")}
             </button>
+            {wl.activeId !== "main" && (
+              <button
+                role="menuitem"
+                type="button"
+                className={`${item} text-[var(--tv3-red)]`}
+                onClick={() => {
+                  if (!sure) return setSure(true);
+                  wl.deleteList(wl.activeId);
+                  closeMenu();
+                }}
+              >
+                {sure ? t("wl.deleteSure") : t("wl.delete")}
+              </button>
+            )}
           </div>
         </PopupPortal>
       )}
@@ -955,8 +984,7 @@ function Watchlist({
     <div className="flex flex-col min-h-0 flex-1">
       <div className="relative px-2.5 pb-2 shrink-0">
         <ListSwitch wl={wl} />
-        <div className="flex items-center gap-1.5">
-          <div className="relative flex-1 min-w-0">
+        <div className="relative min-w-0">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--tv3-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="7" />
               <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
@@ -968,23 +996,24 @@ function Watchlist({
               aria-label={t("shell.watch.filter")}
               className="w-full h-8 pl-8 pr-2 rounded-[10px] bg-[var(--tv3-fill)] text-[13px] text-[var(--tv3-text)] outline-none"
             />
-          </div>
-          <button
-            onClick={() => {
-              setAddSeed("");
-              setAdding((v) => !v);
-            }}
-            title={t("shell.watch.add")}
-            aria-label={t("shell.watch.add")}
-            className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-[10px] cursor-pointer ${
-              adding ? "bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "bg-[var(--tv3-fill)] text-[var(--tv3-text2)] hover:bg-[var(--tv3-fill2)]"
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setAddSeed("");
+            setAdding((v) => !v);
+          }}
+          title={t("shell.watch.add")}
+          aria-label={t("shell.watch.add")}
+          className={`mt-1.5 w-full h-8 flex items-center justify-center gap-1.5 rounded-[10px] border border-dashed text-[12px] font-semibold transition-colors cursor-pointer ${
+            adding ? "border-[var(--tv3-accent)] bg-[var(--tv3-accent-soft)] text-[var(--tv3-accent)]" : "border-[var(--tv3-hair)] bg-[var(--tv3-fill)] text-[var(--tv3-accent)] hover:bg-[var(--tv3-accent-soft)]"
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          {t("shell.watch.add")}
+        </button>
         <InstrumentSearchDialog open={adding} mode="watchlist" onClose={() => setAdding(false)} onPick={onAdd} existing={items} onRemove={onRemove} initialQuery={addSeed} />
       </div>
       <div ref={boxRef} title={items.length > 1 && !needle ? t("wl.dragHint") : undefined} className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5">

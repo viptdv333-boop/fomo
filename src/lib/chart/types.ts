@@ -215,6 +215,8 @@ export interface EngineOptions {
   scaleMode: ScaleMode;
   /** Independent indicator-pane scale. Percent/indexed are price-only modes. */
   indicatorScaleMode: "regular" | "log";
+  /** Exclude main-pane indicator series from automatic price bounds. */
+  ignoreIndicatorScale: boolean;
   invertScale: boolean;
   /** Freeze the price range: no auto-scale, no dragging of the price scale. */
   lockScale: boolean;
@@ -275,6 +277,7 @@ export const DEFAULT_OPTIONS: EngineOptions = {
   maxLineWidth: 0.5,
   scaleMode: "regular",
   indicatorScaleMode: "regular",
+  ignoreIndicatorScale: true,
   invertScale: false,
   lockScale: false,
   scaleSide: "right",

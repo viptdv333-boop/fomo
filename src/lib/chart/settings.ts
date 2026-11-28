@@ -41,6 +41,8 @@ export interface ScaleSettings {
   mode: ScaleMode;
   /** Indicator panes use their own scale mode; linear by default even when the price axis is logarithmic. */
   indicatorMode: "regular" | "log";
+  /** Keep main-chart indicators from stretching the price scale. */
+  ignoreIndicators: boolean;
   invert: boolean;
   lock: boolean;
   side: "right" | "left";
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   scale: {
     mode: "regular",
     indicatorMode: "regular",
+    ignoreIndicators: true,
     invert: false,
     lock: false,
     side: "right",
@@ -282,6 +285,7 @@ export function settingsToEngine(s: ChartSettings, siteDark: boolean): Partial<E
     maxLineWidth: s.maxLineWidth,
     scaleMode: s.scale.mode,
     indicatorScaleMode: s.scale.indicatorMode,
+    ignoreIndicatorScale: s.scale.ignoreIndicators,
     invertScale: s.scale.invert,
     lockScale: s.scale.lock,
     scaleSide: s.scale.side,

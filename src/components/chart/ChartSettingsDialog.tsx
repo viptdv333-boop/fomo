@@ -272,6 +272,7 @@ export default function ChartSettingsDialog({ open, onClose, api, theme, autoSca
       <Row label={t("cs.indicatorScaleMode")}>
         <Sel value={sc.indicatorMode} options={(["regular", "log"] as const).map((id) => ({ id, label: t(`cs.mode.${id}`) }))} onChange={(v) => setScale("indicatorMode", v)} width={170} />
       </Row>
+      <Check checked={sc.ignoreIndicators} onChange={(v) => setScale("ignoreIndicators", v)} label={t("cs.ignoreIndicators")} />
       <Check checked={autoScale} onChange={onAutoScale} label={t("cs.autoScale")} />
       <Check checked={sc.lock} onChange={(v) => setScale("lock", v)} label={t("cs.lockScale")} />
       <Check checked={sc.invert} onChange={(v) => setScale("invert", v)} label={t("cs.invertScale")} />

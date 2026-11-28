@@ -2,38 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
-import type { ContractInfo, ContractsResponse, FutAsset, MarketItem } from "@/lib/market-types";
+import type { ContractInfo, ContractsResponse, MarketItem } from "@/lib/market-types";
 import { contractToInstrument, fetchContracts, getLastContract, lookupSecid, itemToInstrument } from "@/lib/market-client";
 import { rememberInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 import { coinIcon } from "@/lib/bybit-spot-search";
 import { fxIcon } from "@/lib/forex-meta";
+import { marketItemIcon, tinkoffInstrumentIcon } from "@/lib/instrument-icons";
 import { usFutureBySymbol } from "@/lib/us-futures";
 import { ContractBadge, ROLL_DAYS } from "./ContractPicker";
 
-/** terminal artwork of the metals / energy classes: the icon of a futures row that has none of its own (BRM, GOLDM, SILVM ...) */
-const FUT_ASSET_ICON: Partial<Record<FutAsset, string>> = {
-  oil: "oil",
-  gas: "gas",
-  gold: "gold",
-  silver: "silver",
-  copper: "copper",
-  platinum: "platinum",
-  palladium: "palladium",
-};
 const INDEX_ICON: Record<string, string> = { IMOEX: "moex-index", RTSI: "rts-index" };
 
 /** The icon of a row of the market search, when the terminal has one. */
 export function iconFor(item: MarketItem, curated: TerminalInstrument[]): string {
-  if (item.group === "forex") return fxIcon(item.secid);
-  if (item.group === "crypto") return coinIcon(item.asset ?? "") || (curated.find((i) => i.source === "bybit" && i.dataTicker === item.secid)?.emoji ?? "");
-  if (item.source === "fmp") return usFutureBySymbol(item.secid)?.icon ?? "";
-  if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : "";
+  const ti = tinkoffInstrumentIcon(item.group, item.secid, item.ticker, item.isin ? `ISIN:${item.isin}` : undefined);
+  if (ti) return ti;
+  if (item.group === "forex") return fxIcon(item.secid) || marketItemIcon(item);
+  if (item.group === "crypto") return coinIcon(item.asset ?? "") || (curated.find((i) => i.source === "bybit" && i.dataTicker === item.secid)?.emoji ?? "") || marketItemIcon(item);
+  if (item.source === "fmp") {
+    const icon = usFutureBySymbol(item.secid)?.icon;
+    if (icon) return icon;
+  }
+  if (item.group === "index") return INDEX_ICON[item.secid] ? `/icons/instruments/${INDEX_ICON[item.secid]}.svg` : marketItemIcon(item);
   // shares the terminal has artwork for (SBER, GAZP ...)
-  if (item.group === "stock") return curated.find((i) => i.source === item.source && i.dataTicker === item.secid)?.emoji ?? "";
-  if (item.group !== "future") return "";
+  if (item.group === "stock") return curated.find((i) => i.source === item.source && i.dataTicker === item.secid)?.emoji || marketItemIcon(item);
+  if (item.group !== "future") return marketItemIcon(item);
   const own = curated.find((i) => i.source === "moex" && (i.dataTicker === item.secid || i.dataTicker === item.asset))?.emoji;
-  const byClass = item.fgroup ? FUT_ASSET_ICON[item.fgroup] : undefined;
-  return own || (byClass ? `/icons/instruments/${byClass}.svg` : "");
+  return own || marketItemIcon(item);
 }
 
 /** A market search result for a pick: a futures underlying opens the last chosen contract (when the user chose one), else the auto front month. */

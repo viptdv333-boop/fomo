@@ -13,6 +13,7 @@ import { futuresCatalog, pageOf } from "../src/lib/moex-search";
 import { INDEX_PRIORITY, indexItem, parseIndexList, popularIndexRows, searchIndexRows, staticIndexRows } from "../src/lib/moex-indices";
 import { staticPopular } from "../src/lib/market-popular";
 import { fmpSymbol } from "../src/lib/fmp-alias";
+import { marketItemIcon } from "../src/lib/instrument-icons";
 import type { FutAsset, MarketItem } from "../src/lib/market-types";
 
 let fails = 0;
@@ -82,6 +83,7 @@ eq("US search: scores are descending", scoreUsFutures("s").every((x, i, a) => !i
 
 /* ── catalogue: asset header -> РФ rows then США rows ── */
 const fullCat = futuresCatalog(fams, ["databento", "twelvedata"]);
+eq("every existing and new catalogue futures row resolves to a local icon", fullCat.filter((i) => i.group === "future" && !existsSync(join(__dirname, "..", "public", marketItemIcon(i).replace(/^\//, "")))).map((i) => i.secid), []);
 // the rows of the user-key providers (Databento) are checked apart below; the Russian + FMP table keeps its own expectations here
 const cat = fullCat.filter((i) => !i.provider);
 const provFut = fullCat.filter((i) => i.provider);
@@ -92,9 +94,9 @@ const groupsInOrder = [...new Set(cat.map((i) => i.fgroup))];
 eq("the catalogue lists the asset classes in the chip order", groupsInOrder, FUT_ASSETS.filter((g) => groupsInOrder.includes(g)));
 const seq = (g: FutAsset) => cat.filter((i) => i.fgroup === g).map((i) => `${i.country}:${i.ticker}`);
 const gas = seq("gas");
-eq("Газ: the Russian rows first (curated order), then the US one", gas, ["RU:NG", "RU:NGM.F", "RU:TTF.F", "US:NG"]);
+eq("Газ: the Russian rows first (curated order), then the US one", gas, ["RU:NG1!", "RU:NGM1!", "RU:TTF1!", "US:NG"]);
 eq("Нефть: РФ then США", seq("oil").map((s) => s.split(":")[0]).join(""), "RURURURURUUSUSUSUS");
-eq("Золото: GOLD, GOLDM, GL then GC, MGC", seq("gold"), ["RU:GOLD", "RU:GOLDM.F", "RU:GL.F", "US:GC", "US:MGC"]);
+eq("Золото: GOLD, GOLDM, GL then GC, MGC", seq("gold"), ["RU:GOLD1!", "RU:GOLDM1!", "RU:GL1!", "US:GC", "US:MGC"]);
 eq("Скот: only the US rows", [...new Set(cat.filter((i) => i.fgroup === "livestock").map((i) => i.country))], ["US"]);
 eq("Крипто: only the Russian rows", [...new Set(cat.filter((i) => i.fgroup === "crypto").map((i) => i.country))], ["RU"]);
 eq("every catalogue row is tagged", cat.filter((i) => !i.exchange || !i.country || !i.fgroup).length, 0);
@@ -111,8 +113,8 @@ eq("a query naming an asset class lifts that class (газ -> Газ, not Газ
 
 /* ── filters ── */
 const tagged = (list: MarketItem[]) => list.map(tagItem);
-eq("tabs (TradingView's set + the user's)", GROUP_TABS, ["all", "stock", "fund", "future", "forex", "currency", "crypto", "index", "bond"]);
-eq("what the second dropdown means", GROUP_TABS.map((t) => venueKind(t)), ["exchange", "board", "board", "exchange", "category", "category", "quote", "category", "category"]);
+eq("tabs (TradingView's set + the user's)", GROUP_TABS, ["all", "stock", "fund", "future", "option", "forex", "currency", "crypto", "index", "bond"]);
+eq("what the second dropdown means", GROUP_TABS.map((t) => venueKind(t)), ["exchange", "board", "board", "exchange", "exchange", "category", "category", "quote", "category", "category"]);
 const byCountry = (c: string) => applyFilters(cat, "future", { ...NO_FILTERS, country: c }).map((i) => i.country);
 eq("country RU", [...new Set(byCountry("RU"))], ["RU"]);
 eq("country US", [...new Set(byCountry("US"))], ["US"]);
@@ -123,7 +125,7 @@ eq("asset chip Газ", applyFilters(cat, "future", { ...NO_FILTERS, asset: "gas
 eq("asset Газ + country US", applyFilters(cat, "future", { country: "US", venue: "", asset: "gas" }).map((i) => i.secid), ["NGUSD"]);
 eq("asset Нефть + exchange NYMEX", applyFilters(cat, "future", { country: "", venue: "NYMEX", asset: "oil" }).map((i) => i.ticker), ["CL", "BZ", "HO", "RB"]);
 eq("asset Нефть + exchange CME = nothing", applyFilters(cat, "future", { country: "", venue: "CME", asset: "oil" }).length, 0);
-eq("asset Золото + country RU + exchange MOEX", applyFilters(cat, "future", { country: "RU", venue: "MOEX", asset: "gold" }).map((i) => i.ticker), ["GOLD", "GOLDM.F", "GL.F"]);
+eq("asset Золото + country RU + exchange MOEX", applyFilters(cat, "future", { country: "RU", venue: "MOEX", asset: "gold" }).map((i) => i.ticker), ["GOLD1!", "GOLDM1!", "GL1!"]);
 eq("the asset filter does not touch the other chips", applyFilters(tagged(staticPopular("stock")), "stock", { ...NO_FILTERS, asset: "gas" }).length, staticPopular("stock").length);
 eq("no filter returns the list itself", applyFilters(cat, "future", NO_FILTERS) === cat, true);
 ok("hasFilters", !hasFilters(NO_FILTERS) && hasFilters({ ...NO_FILTERS, asset: "oil" }) && hasFilters({ ...NO_FILTERS, country: "RU" }));
@@ -135,7 +137,7 @@ eq("text «gas» + asset Газ", applyFilters(typed, "future", { ...NO_FILTERS,
 const f1 = computeFacets(cat, "future");
 eq("facets of the futures catalogue", [f1.countries.sort(), f1.venues.sort()], [["RU", "US"], ["CBOT", "CME", "COMEX", "ICE", "MOEX", "NYMEX"]]);
 const o1 = filterOptions("future", f1, NO_FILTERS);
-eq("options: РФ before США, MOEX before the US exchanges", [o1.countries, o1.venues], [["RU", "US"], ["MOEX", ...US_EXCHANGES]]);
+eq("options: РФ before США, MOEX before the US exchanges", [o1.countries, o1.venues], [["RU", "US", "AU", "BE", "CA", "CN", "DE", "DK", "ES", "FI", "FR", "GB", "HK", "IN", "IT", "JP", "KR", "NL", "NO", "NZ", "PT", "SE", "TW"], ["MOEX", ...US_EXCHANGES]]);
 eq("options before any list is loaded", filterOptions("future", null, NO_FILTERS).venues, ["MOEX", ...US_EXCHANGES]);
 eq("options keep a selected value that the list lacks", filterOptions("stock", { countries: [], venues: [] }, { country: "", venue: "TQBD" }).venues, ["TQBR", "TQBD"]);
 eq("forex categories", filterOptions("forex", null, NO_FILTERS).venues, ["major", "cross", "em", "metal"]);
@@ -151,11 +153,20 @@ const fut = buildDisplayRows(cat, { tab: "future", asset: "", mix: false });
 const heads = fut.filter((r) => r.kind === "asset-head").map((r) => (r.kind === "asset-head" ? r.asset : ""));
 eq("«Все» futures: one asset header per class, in order", heads, groupsInOrder);
 const gasAt = fut.findIndex((r) => r.kind === "asset-head" && r.asset === "gas");
-eq("Газ: header, РФ, rows, США, row", fut.slice(gasAt, gasAt + 7).map((r) => (r.kind === "item" ? r.item.ticker : r.kind === "country-head" ? `[${r.country}]` : `<${r.kind}>`)), ["<asset-head>", "[RU]", "NG", "NGM.F", "TTF.F", "[US]", "NG"]);
+eq("Газ: header, РФ, rows, США, row", fut.slice(gasAt, gasAt + 7).map((r) => (r.kind === "item" ? r.item.ticker : r.kind === "country-head" ? `[${r.country}]` : `<${r.kind}>`)), ["<asset-head>", "[RU]", "NG1!", "NGM1!", "TTF1!", "[US]", "NG"]);
+const mixedFutures = [cat.find((i) => i.asset === "NG")!, cat.find((i) => i.asset === "BR")!, cat.find((i) => i.asset === "NGM")!, cat.find((i) => i.asset === "BR")!];
+const mixedFutureRows = buildDisplayRows(mixedFutures, { tab: "future", asset: "", mix: false });
+const mixedFutureHeads = mixedFutureRows.filter((r) => r.kind === "asset-head").map((r) => r.kind === "asset-head" ? r.asset : "");
+eq("interleaved futures results render each asset category once", mixedFutureHeads, [...new Set(mixedFutureHeads)]);
 const one = buildDisplayRows(applyFilters(cat, "future", { ...NO_FILTERS, asset: "gas" }), { tab: "future", asset: "gas", mix: false });
 eq("one asset chip: no asset header, the country headers stay", one.map((r) => r.kind), ["country-head", "item", "item", "item", "country-head", "item"]);
 const mix = buildDisplayRows(staticPopular("all"), { tab: "all", asset: "", mix: true });
 eq("«Все» with nothing typed: group headers", [...new Set(mix.filter((r) => r.kind === "group-head").map((r) => (r.kind === "group-head" ? r.group : "")))], ["stock", "bond", "fund", "future", "index", "crypto", "currency", "forex"]);
+const popularMix = staticPopular("all");
+const interleavedMix = [popularMix[0], popularMix.find((i) => i.group === "future")!, popularMix.find((i) => i.group === "index")!, popularMix[1], popularMix.find((i) => i.group === "future")!];
+const interleavedMixRows = buildDisplayRows(interleavedMix, { tab: "all", asset: "", mix: true });
+const interleavedGroups = interleavedMixRows.filter((r) => r.kind === "group-head").map((r) => r.kind === "group-head" ? r.group : "");
+eq("interleaved all-market results render each category once", interleavedGroups, [...new Set(interleavedGroups)]);
 eq("typed «Все»: a flat list", buildDisplayRows(staticPopular("all"), { tab: "all", asset: "", mix: false }).every((r) => r.kind === "item"), true);
 eq("recents first, under their header", buildDisplayRows(staticPopular("stock").slice(0, 2), { tab: "stock", asset: "", mix: false, recent: staticPopular("stock").slice(5, 6) }).map((r) => r.kind), ["recent-head", "item", "item", "item"]);
 eq("selectable rows = the items only", selectableRows(fut).length, cat.length);

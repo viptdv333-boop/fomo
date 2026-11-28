@@ -552,7 +552,9 @@ html.app-ui .app-term .app-wl-swipe-actions button { flex: 1; min-width: 0; disp
 html.app-ui .app-term .app-wl-swipe-actions [data-tone="pin"] { background: #a56814; }
 html.app-ui .app-term .app-wl-swipe-actions [data-tone="add"] { background: #2679ad; }
 html.app-ui .app-term .app-wl-swipe-actions [data-tone="remove"] { background: #cd3b44; }
-html.app-ui .app-wl-swipe-front { position: relative; background: var(--m-bg, var(--app-bg)); transition: transform .18s ease-out; }
+html.app-ui .app-wl-swipe-front { position: relative; box-sizing: border-box; padding-left: 42px; background: var(--m-bg, var(--app-bg)); transition: transform .18s ease-out; }
+html.app-ui .app-wl-drag-handle { position: absolute; z-index: 4; left: 0; top: 0; bottom: 0; width: 42px; display: flex; align-items: center; justify-content: center; color: var(--app-accent, #159947); background: color-mix(in srgb, var(--app-card) 88%, var(--app-accent, #159947)); border: 0; border-right: 1px solid var(--app-line); border-radius: 10px 0 0 10px; padding: 0; opacity: 1; touch-action: none; -webkit-touch-callout: none; cursor: grab; }
+html.app-ui .app-wl-drag-handle:active { color: var(--app-accent, #159947); background: color-mix(in srgb, var(--app-card) 72%, var(--app-accent, #159947)); cursor: grabbing; }
 html.app-ui .app-wl-swipe[data-open] .app-wl-swipe-front { transform: translateX(calc(-1 * var(--wl-action-width))); }
 html.app-ui .app-wl-pin { display: none; }
 html.app-ui .app-wl-ticker-pin { display: inline-flex; vertical-align: -3px; margin-left: 5px; color: #eab308; pointer-events: none; }

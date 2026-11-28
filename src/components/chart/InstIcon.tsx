@@ -2,6 +2,7 @@
 
 import Flag from "./Flag";
 import { FX_CURRENCIES, parseFxSymbol } from "@/lib/forex-meta";
+import { instrumentIconFallback, tinkoffInstrumentIcon } from "@/lib/instrument-icons";
 import type { TerminalInstrument } from "@/lib/terminal-data";
 
 /** Two overlapping flags of a currency pair (EUR/USD); the metals have artwork and never get here. */
@@ -23,10 +24,11 @@ function PairIcon({ symbol, size }: { symbol: string; size: number }) {
 
 /** Round icon of an instrument: its artwork, the two flags of a currency pair, or the first letters of the ticker. */
 export default function InstIcon({ inst, size = 20 }: { inst: TerminalInstrument; size?: number }) {
-  if (!inst.emoji && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
-  if (inst.emoji) {
+  const artwork = tinkoffInstrumentIcon(inst.group, inst.dataTicker, inst.ticker) || inst.emoji || instrumentIconFallback(inst);
+  if (!artwork && inst.source === "forex" && parseFxSymbol(inst.dataTicker)) return <PairIcon symbol={inst.dataTicker} size={size} />;
+  if (artwork) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={inst.emoji} alt="" width={size} height={size} className="rounded-full shrink-0" style={{ width: size, height: size }} />;
+    return <img src={artwork} alt="" width={size} height={size} className="rounded-full shrink-0" style={{ width: size, height: size }} />;
   }
   return (
     <span

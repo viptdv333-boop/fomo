@@ -137,6 +137,7 @@ export default function AppChat() {
   const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
   const [newChat, setNewChat] = useState(false);
   const [dialogMenu, setDialogMenu] = useState<Conversation | null>(null);
+  const defaultGeneralOpened = useRef(false);
   const marks = useDmMarks();
   const [toast, setToast] = useState("");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,6 +179,13 @@ export default function AppChat() {
     },
     [urlFor, inThread],
   );
+  // Entering the chat tab opens the general room immediately. Keep the list reachable with Back;
+  // only apply this once per mount so backing out to the room list does not reopen the thread.
+  useEffect(() => {
+    if (defaultGeneralOpened.current || !rooms.loaded || route.seg !== "rooms" || route.room || route.dm || route.with || route.groups) return;
+    defaultGeneralOpened.current = true;
+    go({ room: rooms.generalRoomId || "general" }, true);
+  }, [go, rooms.generalRoomId, rooms.loaded, route.dm, route.groups, route.room, route.seg, route.with]);
   /** «Назад»: one step back when this screen was opened from the list, otherwise straight to the list */
   const back = useCallback(() => {
     if (window.history.state?.appChat) window.history.back();

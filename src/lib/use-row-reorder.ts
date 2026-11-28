@@ -15,9 +15,10 @@ interface Drag {
   from: number;
   to: number;
   pid: number;
+  touchId: number | null;
   touch: boolean;
   active: boolean;
-  armed: boolean;
+  startX: number;
   startY: number;
   startScroll: number;
   y: number;
@@ -106,9 +107,9 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       el.style.background = "var(--tv3-card)";
       el.style.opacity = "0.97";
       el.style.cursor = "grabbing";
-      try {
-        box.setPointerCapture(d.pid);
-      } catch {}
+      if (d.pid >= 0) {
+        try { box.setPointerCapture(d.pid); } catch {}
+      }
       if (d.touch && navigator.vibrate) navigator.vibrate(12);
       d.raf = requestAnimationFrame(autoScroll);
       place();
@@ -130,56 +131,32 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
         r.style.opacity = "";
         r.style.cursor = "";
       }
-      try {
-        box.releasePointerCapture(d.pid);
-      } catch {}
+      if (d.pid >= 0) {
+        try { box.releasePointerCapture(d.pid); } catch {}
+      }
       d = null;
     };
 
     const down = (e: PointerEvent) => {
+      // Touch is handled through Touch Events below. Unlike Pointer Events, a cancelable touchmove
+      // can be prevented after a long-press, allowing the row to become draggable while preserving
+      // ordinary vertical scrolling when the finger moves before the hold threshold.
+      if (e.pointerType !== "mouse") return;
       if (d || (e.pointerType === "mouse" && e.button !== 0)) return;
       const t = e.target as HTMLElement | null;
       if (!t || t.closest("[data-no-drag]")) return;
       const row = t.closest<HTMLElement>("[data-row-key]");
       if (!row || !box.contains(row)) return;
-      const touch = e.pointerType !== "mouse";
-      d = { key: row.dataset.rowKey!, from: -1, to: -1, pid: e.pointerId, touch, active: false, armed: false, startY: e.clientY, startScroll: box.scrollTop, y: e.clientY, timer: null, rows: [], h: 0, raf: 0 };
-      if (touch) {
-        if (!longPressCb.current) d.timer = setTimeout(activate, TOUCH_HOLD_MS);
-        else d.timer = setTimeout(() => {
-          if (!d || d.active) return;
-          if (allowReorder) d.armed = true;
-          d.timer = setTimeout(() => {
-            if (!d || d.active) return;
-            // With a row action menu, keep the existing hold-to-reorder gesture: after the short hold,
-            // moving the finger starts the drag. Staying still a little longer opens row actions.
-            const key = d.key;
-            cleanup();
-            swallowClick = true;
-            swallowContextMenu = true;
-            setTimeout(() => { swallowClick = false; swallowContextMenu = false; }, 1000);
-            longPressCb.current?.(key);
-          }, 420);
-        }, TOUCH_HOLD_MS);
-      }
+      d = { key: row.dataset.rowKey!, from: -1, to: -1, pid: e.pointerId, touchId: null, touch: false, active: false, startX: e.clientX, startY: e.clientY, startScroll: box.scrollTop, y: e.clientY, timer: null, rows: [], h: 0, raf: 0 };
     };
 
     const move = (e: PointerEvent) => {
       if (!d || e.pointerId !== d.pid) return;
       d.y = e.clientY;
       if (!d.active) {
-        if (d.touch && longPressCb.current && d.armed) {
-          // A held finger that starts moving is a reorder, while a stationary hold is the action menu.
-          if (allowReorder) {
-            activate();
-            place();
-          } else cleanup();
-          return;
-        }
-        const slop = d.touch ? TOUCH_SLOP : MOUSE_SLOP;
-        if (Math.abs(e.clientY - d.startY) > slop) {
-          if (d.touch) cleanup(); // a finger that moved before the hold: it is a scroll
-          else activate();
+        const dy = e.clientY - d.startY;
+        if (Math.abs(dy) > MOUSE_SLOP) {
+          activate();
         }
         return;
       }
@@ -204,10 +181,60 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       cleanup();
     };
 
-    // a finger that is dragging a row must not scroll the page / the list
-    const touchMove = (e: TouchEvent) => {
-      if (d && d.active && e.cancelable) e.preventDefault();
+    const touchStart = (e: TouchEvent) => {
+      if (d || e.touches.length !== 1) return;
+      const t = e.target as HTMLElement | null;
+      if (!t || t.closest("[data-no-drag]")) return;
+      const row = t.closest<HTMLElement>("[data-row-key]");
+      const touch = e.changedTouches[0];
+      if (!row || !touch || !box.contains(row)) return;
+      d = { key: row.dataset.rowKey!, from: -1, to: -1, pid: -1, touchId: touch.identifier, touch: true, active: false, startX: touch.clientX, startY: touch.clientY, startScroll: box.scrollTop, y: touch.clientY, timer: null, rows: [], h: 0, raf: 0 };
+      // The grip is explicitly marked touch-action:none and can start immediately. Anywhere else,
+      // wait briefly so normal finger scrolling remains natural; after the hold, movement reorders.
+      if (t.closest("[data-drag-handle]")) activate();
+      else d.timer = setTimeout(() => {
+        if (!d || d.active) return;
+        if (allowReorder) {
+          activate();
+          return;
+        }
+        const key = d.key;
+        cleanup();
+        swallowClick = true;
+        swallowContextMenu = true;
+        setTimeout(() => { swallowClick = false; swallowContextMenu = false; }, 1000);
+        longPressCb.current?.(key);
+      }, TOUCH_HOLD_MS);
     };
+    const touchMove = (e: TouchEvent) => {
+      if (!d?.touch || d.touchId === null) return;
+      const touch = Array.from(e.touches).find((t) => t.identifier === d!.touchId);
+      if (!touch) return;
+      d.y = touch.clientY;
+      if (!d.active) {
+        const dx = touch.clientX - d.startX;
+        const dy = touch.clientY - d.startY;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > TOUCH_SLOP) cleanup();
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      place();
+    };
+    const touchEnd = (e: TouchEvent) => {
+      if (!d?.touch || d.touchId === null || !Array.from(e.changedTouches).some((t) => t.identifier === d!.touchId)) return;
+      const was = d.active;
+      const { from, to } = d;
+      cleanup();
+      if (was) {
+        swallowClick = true;
+        setTimeout(() => (swallowClick = false), 0);
+        if (from !== to && from >= 0) cb.current(from, to);
+      }
+    };
+    const touchCancel = (e: TouchEvent) => {
+      if (d?.touch && d.touchId !== null && Array.from(e.changedTouches).some((t) => t.identifier === d!.touchId)) cleanup();
+    };
+
     const click = (e: MouseEvent) => {
       if (swallowClick) {
         e.stopPropagation();
@@ -215,14 +242,19 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       }
     };
     const ctx = (e: Event) => {
-      if ((d && d.touch) || swallowContextMenu) e.preventDefault(); // use the app's row menu, not the browser menu
+      if ((d && d.touch) || swallowContextMenu) {
+        e.preventDefault(); // use the app's row menu, not the browser menu
+      }
     };
 
     box.addEventListener("pointerdown", down);
     box.addEventListener("pointermove", move);
     box.addEventListener("pointerup", up);
     box.addEventListener("pointercancel", cancel);
+    box.addEventListener("touchstart", touchStart, { passive: true });
     box.addEventListener("touchmove", touchMove, { passive: false });
+    box.addEventListener("touchend", touchEnd);
+    box.addEventListener("touchcancel", touchCancel);
     box.addEventListener("click", click, true);
     box.addEventListener("contextmenu", ctx);
     return () => {
@@ -231,7 +263,10 @@ export function useRowReorder(ref: RefObject<HTMLElement | null>, enabled: boole
       box.removeEventListener("pointermove", move);
       box.removeEventListener("pointerup", up);
       box.removeEventListener("pointercancel", cancel);
+      box.removeEventListener("touchstart", touchStart);
       box.removeEventListener("touchmove", touchMove);
+      box.removeEventListener("touchend", touchEnd);
+      box.removeEventListener("touchcancel", touchCancel);
       box.removeEventListener("click", click, true);
       box.removeEventListener("contextmenu", ctx);
     };

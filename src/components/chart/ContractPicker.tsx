@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n/client";
 import { findInstrument, type TerminalInstrument } from "@/lib/terminal-data";
 import type { ContractInfo, ContractsResponse } from "@/lib/market-types";
 import { contractToInstrument, fetchContracts, getLastContract, setLastContract, syncContractPrefs } from "@/lib/market-client";
+import { futuresIcon } from "@/lib/instrument-icons";
 
 /** Days before expiry from which the roll hint is shown. */
 export const ROLL_DAYS = 7;
@@ -66,7 +67,12 @@ export default function ContractPicker({
   const isAuto = source === "moex" && data !== null && (ticker === data.auto || !all.some((c) => c.ticker === ticker));
   // what the chart is showing right now: the exact contract, or the front one for the auto ticker
   const shown = useMemo(() => all.find((c) => c.ticker === ticker) ?? (source === "moex" ? all.find((c) => c.order === 1) ?? all[0] : all[0]), [all, ticker, source]);
-  const icon = useMemo(() => (data ? findInstrument(instrument.source, data.auto)?.emoji ?? instrument.emoji : instrument.emoji), [data, instrument.source, instrument.emoji]);
+  const icon = useMemo(() => {
+    // RUNTIME can contain an earlier ad-hoc entry with an empty icon. Treat that as missing and
+    // keep the current contract's artwork instead of erasing it on the next contract change.
+    const autoIcon = data ? findInstrument(instrument.source, data.auto)?.emoji : "";
+    return autoIcon || instrument.emoji || (source === "moex" && data ? futuresIcon(data.asset) : "");
+  }, [data, instrument.source, instrument.emoji, source]);
 
   const shownTicker = source && data && all.length >= 2 ? (shown?.ticker ?? null) : null;
   useEffect(() => {

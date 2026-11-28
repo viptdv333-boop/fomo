@@ -2,7 +2,7 @@ import type { SectionDict } from "./types";
 
 const dict: SectionDict = {
   ru: {
-    "shell.watch.add": "Добавить тикер",
+    "shell.watch.add": "Добавить",
     "shell.watch.emptyList": "Список пуст",
     "shell.watch.emptyHint": "Добавьте тикеры из базы инструментов",
     "shell.watch.remove": "Убрать из списка",
@@ -76,7 +76,7 @@ const dict: SectionDict = {
     "shell.settings.resetView": "Сбросить вид",
   },
   en: {
-    "shell.watch.add": "Add symbol",
+    "shell.watch.add": "Add",
     "shell.watch.emptyList": "The list is empty",
     "shell.watch.emptyHint": "Add symbols from the instrument database",
     "shell.watch.remove": "Remove from list",
@@ -150,7 +150,7 @@ const dict: SectionDict = {
     "shell.settings.resetView": "Reset view",
   },
   cn: {
-    "shell.watch.add": "添加代码",
+    "shell.watch.add": "添加",
     "shell.watch.emptyList": "列表为空",
     "shell.watch.emptyHint": "从品种数据库中添加代码",
     "shell.watch.remove": "从列表中移除",
