@@ -14,6 +14,7 @@ import AlertQuickEdit from "./AlertQuickEdit";
 import { IndicatorAlertDialog, IndicatorAlertToasts, useIndicatorAlerts } from "./IndicatorAlerts";
 import { updateIndAlert } from "@/lib/chart/indicator-alerts";
 import { EventsLayer } from "@/lib/chart/events-layer";
+import { RollMarkersLayer } from "@/lib/chart/roll-markers-layer";
 import { useCalPrefs } from "@/lib/calendar/prefs";
 import CalendarRemindersHost from "@/components/chart/calendar/CalendarRemindersHost";
 import { OrderFlowClient } from "@/lib/chart/orderflow/client";
@@ -269,6 +270,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
   const [indicators] = useState(() => new IndicatorsController());
   const [alertsLayer] = useState(() => new AlertsLayer());
   const [eventsLayer] = useState(() => new EventsLayer());
+  const [rollLayer] = useState(() => new RollMarkersLayer());
   const [calPrefs, updateCalPrefs] = useCalPrefs();
   const [avwapLayer] = useState(() => new AnchoredVwapLayer(indicators));
   const [vpLayer] = useState(() => new VpLayer(indicators));
@@ -569,6 +571,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     drawings.attach(engine);
     alertsLayer.attach(engine);
     eventsLayer.attach(engine);
+    rollLayer.attach(engine);
     indicators.attach(engine);
     avwapLayer.attach(engine);
     vpLayer.attach(engine);
@@ -631,6 +634,7 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
       drawings.detach();
       alertsLayer.detach();
       eventsLayer.detach();
+      rollLayer.detach();
       avwapLayer.detach();
       vpLayer.detach();
       indicators.detach();
@@ -1584,6 +1588,16 @@ export default function TradingChart({ ticker, source, name, onSelectSymbol, emb
     eventsLayer.setFilter(calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities, calPrefs.russia);
     eventsLayer.setEnabled(calPrefs.chart.on);
   }, [eventsLayer, calPrefs.chart.on, calPrefs.chart.impacts, calPrefs.countries, calPrefs.moex, calPrefs.commodities, calPrefs.russia]);
+  // roll marks on a continuous futures series: where the chain switched contracts
+  useEffect(() => {
+    rollLayer.setTimeOffset(offsetMs);
+  }, [rollLayer, offsetMs]);
+  useEffect(() => {
+    rollLayer.setSeries(ticker, source);
+  }, [rollLayer, ticker, source]);
+  useEffect(() => {
+    rollLayer.setLabel(t("cs.rollMark"));
+  }, [rollLayer, t]);
 
   const openAlerts = useCallback((draft: AlertDraft | null) => {
     setAlertDraft(draft);

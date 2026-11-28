@@ -85,6 +85,20 @@ export function aggregateChain(bars: ChainBar[], interval: string): ChainBar[] {
   return [...buckets.values()];
 }
 
+/** The points where the chain already rolled: at each front contract's last trading day the series switches to the next one.
+ *  Used to mark the splices on the chart. Only past rolls (a future expiry has not happened yet). */
+export interface ChainRoll { t: number; from: string; to: string; expiry: string }
+export function chainRolls(contracts: ChainContract[], rank: 1 | 2, today: string): ChainRoll[] {
+  const sorted = [...contracts].sort((a, b) => a.expiry.localeCompare(b.expiry));
+  const out: ChainRoll[] = [];
+  for (let i = 0; i + rank < sorted.length; i++) {
+    const expiry = sorted[i].expiry;
+    if (expiry >= today) break;
+    out.push({ t: Date.parse(`${expiry}T00:00:00Z`), from: sorted[i + rank - 1].secid, to: sorted[i + rank].secid, expiry });
+  }
+  return out;
+}
+
 export interface ChainRequest { ticker: string; interval: string; limit: number; to?: number; adjusted: boolean; today: string }
 export async function buildContinuous(
   contracts: ChainContract[], request: ChainRequest, load: ChainLoader,
