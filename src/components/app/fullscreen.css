@@ -64,8 +64,7 @@ html.app-ui .app-term-chart.app-term-fs { z-index: 44; bottom: auto; height: cal
 
 /* the full-screen chart's toolbar: ONE asset button, as on the PC: icon, the exact contract ticker, the exchange (no second contract button, no search glyph) */
 html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-classic,
-html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-search,
-html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-ct { display: none !important; }
+html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-search { display: none !important; }
 html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-mac { display: inline !important; font-weight: 700; font-size: 15px; }
 html.app-ui .app-term-chart.app-term-fs [data-tv="toolbar"] .tb-sym-ex { display: inline !important; }
 

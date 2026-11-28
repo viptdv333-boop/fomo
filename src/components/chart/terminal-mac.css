@@ -953,7 +953,7 @@ html[data-tvmac] .tv3 [role="dialog"] nav[aria-label] button:nth-of-type(6n) { -
 .tvmac [data-tv="toolbar"] .tb-sym-mac { display: inline; font-weight: 600; font-size: 15px; }
 .tvmac [data-tv="toolbar"] .tb-market-group, .ph-tb .tb-market-group { display: flex; align-items: center; gap: 6px; flex: none; }
 .tvmac [data-tv="toolbar"] .tb-market-group .tb-sym { padding-right: 12px !important; }
-.tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 34px !important; }
+.tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 12px !important; }
 .tvmac [data-tv="toolbar"] .tb-ct {
   position: relative;
   z-index: 1;
@@ -1136,9 +1136,7 @@ html[data-tvmac] .tv3 [data-fly] button[role="menuitem"] > svg:not(.mg) {
 }
 .tvmac { padding-bottom: 10px; }
 
-/* the separate contract chevron is not in the design: the pill shows the contract ticker, another contract is picked in the symbol search (or from the expiry banner) */
-.tvmac [data-tv="toolbar"] .tb-ct { display: none !important; }
-.tvmac [data-tv="toolbar"] .tb-sym:has(+ .tb-ct) { padding-right: 12px !important; }
+/* Keep the market and contract selector visible beside the ticker. */
 
 /* dense candles: use the same icon-over-caption control as the neighbouring chart tools */
 .tvmac [data-tv="toolbar"] .tb-dense {
