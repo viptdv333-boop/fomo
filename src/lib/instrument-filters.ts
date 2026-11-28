@@ -45,18 +45,19 @@ export function venueKind(tab: GroupTab): VenueKind {
   }
 }
 
-/** Countries every chip offers even before a list is loaded. */
+/** The approved countries the terminal actually covers (MOEX + the Yahoo venues), offered by every category's filter alike. */
+const ALL_COUNTRIES = ["RU", "US", "AU", "BE", "CA", "CN", "DE", "DK", "ES", "FI", "FR", "GB", "HK", "IN", "IT", "JP", "KR", "NL", "NO", "NZ", "PT", "SE", "TW"];
 const BASE_COUNTRIES: Record<GroupTab, string[]> = {
-  all: ["RU", "US"],
-  stock: ["RU"],
-  fund: ["RU"],
-  bond: ["RU"],
-  currency: ["RU"],
-  future: ["RU", "US"],
-  option: ["RU"],
-  forex: [],
-  crypto: [],
-  index: ["RU"],
+  all: ALL_COUNTRIES,
+  stock: ALL_COUNTRIES,
+  fund: ALL_COUNTRIES,
+  bond: ALL_COUNTRIES,
+  currency: ALL_COUNTRIES,
+  future: ALL_COUNTRIES,
+  option: ALL_COUNTRIES,
+  forex: ALL_COUNTRIES,
+  crypto: ALL_COUNTRIES,
+  index: ALL_COUNTRIES,
 };
 
 /** Values of the second dropdown every chip offers. A board is offered only when it is certain to have rows (the rest come from the lists). */
