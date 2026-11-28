@@ -125,6 +125,8 @@ export default function AppChat() {
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const pathname = usePathname() || "/chat";
+  const chatPath = stripLocale(pathname).path;
+  const isChatPage = chatPath === "/chat" || chatPath === "/messages" || /^\/rooms\/[^/]+\/?$/.test(chatPath);
   const params = useSearchParams();
   const route = useMemo(() => parseChatRoute(pathname, params), [pathname, params]);
   const inThread = !!(route.room || route.dm || route.with);
@@ -180,12 +182,12 @@ export default function AppChat() {
     [urlFor, inThread],
   );
   // Entering the chat tab opens the general room immediately. Keep the list reachable with Back;
-  // only apply this once per mount so backing out to the room list does not reopen the thread.
+  // only apply on a chat URL: AppTabHost keeps this component mounted while other tabs are active.
   useEffect(() => {
-    if (defaultGeneralOpened.current || !rooms.loaded || route.seg !== "rooms" || route.room || route.dm || route.with || route.groups) return;
+    if (!isChatPage || defaultGeneralOpened.current || !rooms.loaded || route.seg !== "rooms" || route.room || route.dm || route.with || route.groups) return;
     defaultGeneralOpened.current = true;
     go({ room: rooms.generalRoomId || "general" }, true);
-  }, [go, rooms.generalRoomId, rooms.loaded, route.dm, route.groups, route.room, route.seg, route.with]);
+  }, [go, isChatPage, rooms.generalRoomId, rooms.loaded, route.dm, route.groups, route.room, route.seg, route.with]);
   /** «Назад»: one step back when this screen was opened from the list, otherwise straight to the list */
   const back = useCallback(() => {
     if (window.history.state?.appChat) window.history.back();
