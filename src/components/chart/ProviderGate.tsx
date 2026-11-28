@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/client";
@@ -20,6 +20,15 @@ export default function ProviderGate({ source, name, children, onBack }: { sourc
   const { t } = useT();
   const { status } = useSession();
   const conns = useConnections();
+  // Esc dismisses the gate back to the previous instrument, same as the close button.
+  useEffect(() => {
+    if (!onBack) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onBack();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onBack]);
   const pid = providerOfSource(source);
   if (!pid) return <>{children}</>;
   const connected = conns.on.has(pid);
@@ -28,7 +37,20 @@ export default function ProviderGate({ source, name, children, onBack }: { sourc
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+      <div className="relative w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={t("pg.back")}
+            title={t("pg.back")}
+            className="absolute right-3 top-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        )}
         {onBack && (
           <button type="button" onClick={onBack} className="mb-4 block w-full cursor-pointer rounded-xl bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
             {t("pg.back")}
